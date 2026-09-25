@@ -5,4 +5,5 @@
 - **Fix a tab's spelling before code references it**: its title becomes the sheet's key in the generated files and every string literal naming it.
 - **`makeValueConfigs` keeps its `const` type parameter.** Without it every dropdown column's value type widens to `string`, silently.
 - **Don't repurpose `customDefaultValue`**: it is reserved for column defaults and not implemented; a read-time coercion belongs on the value schema.
+- **Don't change `sheetLayout.idDelimiter`**: every column ID already minted, the floor's included, would stop parsing.
 - Mechanics: [`docs/generated-data.md`](../../docs/generated-data.md).
