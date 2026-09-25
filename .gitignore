@@ -1,0 +1,18 @@
+node_modules/
+dist/
+coverage/
+.DS_Store
+
+# No lockfile: CI installs fresh, so dependency drift shows up there.
+package-lock.json
+
+# OAuth client secrets live outside the repo; this is belt-and-braces.
+client_secret*.json
+.clasprc.json*
+
+# Full JSON responses from `probe` — live spreadsheet data, never committed.
+.probe/
+
+# Spreadsheet and script IDs stay local; copy the committed .example.json files.
+sheets.config.json
+.clasp.json

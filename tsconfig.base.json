@@ -1,0 +1,58 @@
+{
+  // The compiler options framework source is written for; the framework's own program and every app program extend it.
+  "compilerOptions": {
+    // File Layout
+    // "rootDir": "./src",
+    // "outDir": "./dist",
+
+    // Environment Settings
+    // See also https://aka.ms/tsconfig/module
+    "target": "ES2022",
+    // Apps Script's V8 runtime doesn't support native public class fields;
+    // this keeps TS emitting `this.x = ...` in the constructor instead.
+    "useDefineForClassFields": false,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "lib": ["esnext"],
+    "types": ["google-apps-script"],
+    "strict": false,
+
+    "sourceMap": true,
+    "allowUmdGlobalAccess": true,
+
+    // "ignoreDeprecations": "6.0",
+
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "noEmit": true,
+    // "outFile": "./dist/bundle.js", // For single file output
+
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    // "typeRoots": ["./node_modules/@types"],
+
+    // For nodejs:
+    // "lib": ["esnext"],
+    // "types": ["node"],
+    // and npm install -D @types/node
+
+    // Stricter Typechecking Options
+    "noUncheckedIndexedAccess": true,
+    // "exactOptionalPropertyTypes": true,
+
+    // Style Options
+    "noImplicitReturns": true,
+    // "noImplicitOverride": true,
+    // "noUnusedLocals": true,
+    // "noUnusedParameters": true,
+    // "noFallthroughCasesInSwitch": true,
+    // "noPropertyAccessFromIndexSignature": true,
+
+    // Recommended Options
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "noUncheckedSideEffectImports": true,
+    "moduleDetection": "force",
+    "skipLibCheck": true
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "spreadsheetId": "<your dev spreadsheet's ID>",
+  "generatedDir": "dev/generated",
+  "choreHomes": ["dev/chores"]
+}

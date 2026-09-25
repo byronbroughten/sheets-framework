@@ -1,0 +1,24 @@
+{
+  // The Node program: scripts/ run under tsx, plus the four JS files that run outside it. Self-contained, since scripts/ ships in the package.
+  "compilerOptions": {
+    "target": "ES2023",
+    "module": "preserve",
+    "lib": ["esnext"],
+    "types": ["node", "google-apps-script"],
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "allowJs": true,
+    "maxNodeModuleJsDepth": 1, // @byronbroughten/config ships JS without .d.ts, so an npm install needs this to type it.
+    "checkJs": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "skipLibCheck": true,
+
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitReturns": true
+  },
+  "include": ["**/*.ts", "**/*.js", "../src/TypeDeclarations/**/*.ts"]
+}

@@ -1,0 +1,5 @@
+{
+  // The framework program: src/ and dev/, typed to the dev configs that dev/devConfigs.ts registers (#138, #139).
+  "extends": "./tsconfig.base.json",
+  "include": ["src/**/*.ts", "dev/**/*.ts"]
+}
