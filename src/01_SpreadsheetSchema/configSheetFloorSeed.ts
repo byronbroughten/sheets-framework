@@ -5,10 +5,6 @@ import {
   getSheetColumnNames,
 } from "./columnConfigsTypes";
 import { sheetConfigsByGid } from "./sheetConfigsTypes";
-import {
-  spreadsheetConfigIndexHeaders,
-  spreadsheetConfigTextHeaders,
-} from "./spreadsheetConfigFields";
 
 export type FloorColumnType = Extract<
   TableColumnType,
@@ -44,15 +40,6 @@ interface FloorSeedSheet {
   };
 }
 
-function indexSeedColumn(header: string): FloorSeedGroupedColumn {
-  return {
-    header,
-    columnGroupHeading: "",
-    columnType: "DOUBLE",
-    emptyValueAllowed: false,
-  };
-}
-
 export const configSheetFloorSeed = {
   spreadsheetConfig: {
     title: "Spreadsheet Config",
@@ -66,25 +53,6 @@ export const configSheetFloorSeed = {
         emptyValueAllowed: false,
         dataValue: "Not used",
       },
-      {
-        header: spreadsheetConfigTextHeaders.idHeader,
-        columnGroupHeading: "Spreadsheet Rules",
-        columnType: "TEXT",
-        emptyValueAllowed: false,
-      },
-      {
-        header: spreadsheetConfigTextHeaders.nameHeader,
-        columnGroupHeading: "",
-        columnType: "TEXT",
-        emptyValueAllowed: false,
-      },
-      {
-        header: spreadsheetConfigTextHeaders.idDelimiter,
-        columnGroupHeading: "",
-        columnType: "TEXT",
-        emptyValueAllowed: false,
-      },
-      ...Obj.values(spreadsheetConfigIndexHeaders).map(indexSeedColumn),
     ],
     endpoints: {
       spreadsheetConfig_fillRowIdsTimeLastRan: {

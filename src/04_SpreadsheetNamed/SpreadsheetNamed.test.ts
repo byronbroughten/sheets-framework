@@ -8,7 +8,7 @@ import {
   getSheetTraitByName,
   type SheetName,
 } from "../01_SpreadsheetSchema/sheetConfigsTypes";
-import { ssConfigGet } from "../01_SpreadsheetSchema/spreadsheetConfigTypes";
+import { sheetLayout } from "../01_SpreadsheetSchema/sheetLayout";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {
   blankSheetConfigRow,
@@ -121,7 +121,7 @@ describe("SpreadsheetNamed navigation", () => {
   });
 });
 
-const topDataRowIndex = ssConfigGet("tableHeaderRowIndexBase0") + 1;
+const topDataRowIndex = sheetLayout.tableHeaderRowIndex + 1;
 const datesGid = getSheetTraitByName("dates", "sheetGid");
 const valueTypesGid = getSheetTraitByName("valueTypes", "sheetGid");
 const idColumnId = getColumnTraitByName("dates", "id", "columnId");

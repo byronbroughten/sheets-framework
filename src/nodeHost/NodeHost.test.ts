@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { SheetsHttpRequest } from "../00_Source/GoogleSheets/GoogleSheetsAPI";
 import { installedConfigs } from "../01_SpreadsheetSchema/configRegister";
-import { ssConfigGet } from "../01_SpreadsheetSchema/spreadsheetConfigTypes";
+import { sheetLayout } from "../01_SpreadsheetSchema/sheetLayout";
 import { SpreadsheetRaw } from "../02_SpreadsheetRaw/SpreadsheetRaw";
 import { NodeHost } from "./NodeHost";
 
@@ -17,9 +17,9 @@ const gadgetsPayload = {
         {
           tableId: "fake-table",
           range: {
-            startRowIndex: ssConfigGet("tableHeaderRowIndexBase0"),
+            startRowIndex: sheetLayout.tableHeaderRowIndex,
             endRowIndex: 11,
-            startColumnIndex: ssConfigGet("startTableColIndexBase0"),
+            startColumnIndex: sheetLayout.startTableColIndex,
             endColumnIndex: 5,
           },
         },

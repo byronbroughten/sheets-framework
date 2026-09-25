@@ -34,10 +34,6 @@ _Avoid_: header row, title row, top row, row 1
 The first row of the Table's data, always the row immediately below the Table header row. That index is not stored separately.
 _Avoid_: data start, top data row, row 5
 
-**Layout value**:
-One of Spreadsheet Config's cells saying where the bookkeeping rows and the Table sit and how IDs are written. All but ID header and Name header are fixed for now.
-_Avoid_: layout setting, layout constant, spreadsheet config value
-
 **Blank row**:
 A data row with nothing in any of the columns you fill in yourself, which the app leaves when it deletes everything on a sheet. The next row the app adds goes into it. Why, and how: [`docs/architecture/blank-row.md`](./docs/architecture/blank-row.md).
 _Avoid_: empty row, placeholder row, spare row
@@ -79,7 +75,7 @@ A Sheet Config or Column Config row describing a config-sheet floor tab or floor
 _Avoid_: config-about-config row
 
 **Seeded value**:
-A cell or column the floor seed fills once, when it creates the tab or Table, and never restores — such as Spreadsheet Config's **layout values** or Value Config's example column.
+A cell or column the floor seed fills once, when it creates the tab or Table, and never restores — such as Value Config's example column.
 _Avoid_: initial value (too close to Custom default value)
 
 **Floor notice**:
@@ -159,7 +155,7 @@ Said of a column whose type menu, checkbox validation, and first-data-row number
 _Avoid_: unset, automatic, missing type
 
 **Name column**:
-A column of names people type to refer to a row, such as a customer's or a project's name, on any sheet whose Table header row holds Spreadsheet Config's Name header. An endpoint finds a row by what's in it; a name that matches no row, or several, is the endpoint's to report, and the app enforces nothing else about it.
+A column of names people type to refer to a row, such as a customer's or a project's name, on any sheet whose Table header row holds a **Name** header. An endpoint finds a row by what's in it; a name that matches no row, or several, is the endpoint's to report, and the app enforces nothing else about it.
 _Avoid_: key column, label column, title column
 
 **Serial date**:

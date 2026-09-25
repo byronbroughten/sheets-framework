@@ -2,10 +2,6 @@ import { columnConfigsByName } from "../01_SpreadsheetSchema/columnConfigsTypes"
 import { assertFloorMatchesSeed } from "../01_SpreadsheetSchema/floorSeedCheck";
 import { sheetConfigsByName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
 import {
-  clearSpreadsheetConfigOverlay,
-  overlaySpreadsheetConfig,
-} from "../01_SpreadsheetSchema/spreadsheetConfigTypes";
-import {
   SpreadsheetBaseNamed,
   type SpreadsheetNamedProps,
 } from "../04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
@@ -19,7 +15,6 @@ import { SpreadsheetConfigOperator } from "./SpreadsheetConfigOperator";
 import { ValueConfigOperator } from "./ValueConfigOperator";
 
 export interface ConfigRegeneration {
-  spreadsheetConfig: string;
   sheetConfigs: string;
   columnConfigs: string;
   valueConfigs: string;
@@ -31,10 +26,9 @@ export interface ConfigRegeneration {
 
 /**
  * Coordinates Spreadsheet/Sheet/Column/Value Config: the config-sheet floor
- * first (one extra flush), overlay live layout, sync the live config sheets,
- * one more flush, then emit all four generated files or none. Config
- * maintenance is this Operator family, not Raw or Named. npm run gen:configs
- * is the only regeneration path.
+ * first (one extra flush), sync the live config sheets, one more flush, then
+ * emit all three generated files or none. Config maintenance is this Operator
+ * family, not Raw or Named. npm run gen:configs is the only regeneration path.
  * docs/generated-data.md
  */
 export class ConfigCoordinator extends SpreadsheetBaseOperator {
@@ -72,51 +66,34 @@ export class ConfigCoordinator extends SpreadsheetBaseOperator {
   }
   // Returns the run status an endpoint should report, if there's one to make.
   syncConfigSheetRows(): string | undefined {
-    return this._withFloorThenLiveConfig((floorReport) =>
-      this._combinedSyncReport(floorReport),
-    );
+    return this._combinedSyncReport(this._ensureFloorAndFlush());
   }
   syncAndFlushConfigSheets(): string | undefined {
-    return this._withFloorThenLiveConfig((floorReport) => {
-      const summary = this._combinedSyncReport(floorReport);
-      this.ss.batchUpdateGSheets();
-      return summary;
-    });
+    const summary = this.syncConfigSheetRows();
+    this.ss.batchUpdateGSheets();
+    return summary;
   }
   generateConfigFiles(makeConfigsImport: string): ConfigRegeneration {
-    return this._withFloorThenLiveConfig((floorReport) => {
-      const untypedColumnsSummary = this._syncConfigSheetRows();
-      this.ss.batchUpdateGSheets();
-      this.valueConfigOperator.fetchAfterColumnConfigSynced();
-      this._assertFloorIdentityUnchanged();
-      this._assertFloorMatchesSeed();
-      return {
-        spreadsheetConfig:
-          this.spreadsheetConfigOperator.toFileSource(makeConfigsImport),
-        sheetConfigs: this.sheetConfigOperator.toFileSource(makeConfigsImport),
-        columnConfigs:
-          this.columnConfigOperator.toFileSource(makeConfigsImport),
-        valueConfigs: this.valueConfigOperator.toFileSource(makeConfigsImport),
-        untypedColumnsSummary,
-        floorReport,
-        idPrefixReport: this.sheetConfigOperator.idPrefixChangeReport(),
-        declaredCellReport: this._declaredCellReport(),
-      };
-    });
+    const floorReport = this._ensureFloorAndFlush();
+    const untypedColumnsSummary = this._syncConfigSheetRows();
+    this.ss.batchUpdateGSheets();
+    this.valueConfigOperator.fetchAfterColumnConfigSynced();
+    this._assertFloorIdentityUnchanged();
+    this._assertFloorMatchesSeed();
+    return {
+      sheetConfigs: this.sheetConfigOperator.toFileSource(makeConfigsImport),
+      columnConfigs: this.columnConfigOperator.toFileSource(makeConfigsImport),
+      valueConfigs: this.valueConfigOperator.toFileSource(makeConfigsImport),
+      untypedColumnsSummary,
+      floorReport,
+      idPrefixReport: this.sheetConfigOperator.idPrefixChangeReport(),
+      declaredCellReport: this._declaredCellReport(),
+    };
   }
-  private _withFloorThenLiveConfig<RT>(body: (floorReport: string) => RT): RT {
+  private _ensureFloorAndFlush(): string {
     const floorReport = this.ensureConfigSheetFloor();
     this.ss.batchUpdateGSheets();
-    return this._withLiveSpreadsheetConfig(() => body(floorReport));
-  }
-  private _withLiveSpreadsheetConfig<RT>(body: () => RT): RT {
-    const liveConfig = this.spreadsheetConfigOperator.fetchLiveConfig();
-    overlaySpreadsheetConfig(liveConfig);
-    try {
-      return body();
-    } finally {
-      clearSpreadsheetConfigOverlay();
-    }
+    return floorReport;
   }
   private _assertFloorIdentityUnchanged(): void {
     assertFloorIdentityUnchanged({

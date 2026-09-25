@@ -5,7 +5,7 @@ import { googleRawRequest } from "../00_Source/GoogleSheets/GoogleSheetsAPI";
 import type { AddTableOperation } from "../00_Source/RawSource/RawSource";
 import type { RgbColor } from "../00_Source/RawSource/RgbColor";
 import { getSheetTraitByName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
-import { ssConfigGet } from "../01_SpreadsheetSchema/spreadsheetConfigTypes";
+import { sheetLayout } from "../01_SpreadsheetSchema/sheetLayout";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {
   buildGridRows,
@@ -29,9 +29,9 @@ const lightGreen = { red: 0.851, green: 0.918, blue: 0.827 };
 
 const itemGid = getSheetTraitByName("item", "sheetGid");
 const logGid = getSheetTraitByName("log", "sheetGid");
-const tableHeaderRowIndex = ssConfigGet("tableHeaderRowIndexBase0");
-const colIdRowIndex = ssConfigGet("columnIdRowIdxBase0");
-const startTableColIndex = ssConfigGet("startTableColIndexBase0");
+const tableHeaderRowIndex = sheetLayout.tableHeaderRowIndex;
+const colIdRowIndex = sheetLayout.colIdRowIndex;
+const startTableColIndex = sheetLayout.startTableColIndex;
 const topDataRowIndex = tableHeaderRowIndex + 1;
 const scratchGid = 999999;
 const tableEndRowIndex = tableHeaderRowIndex + 3;

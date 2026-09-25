@@ -24,14 +24,7 @@ describe("Endpoint's column parameters", () => {
     assertType<
       IsExactly<
         TimeLastRanOf<"spreadsheetConfig">,
-        | "idDelimiter"
-        | "idHeader"
-        | "nameHeader"
-        | "tableMenuSpace"
-        | "fillRowIdsTimeLastRan"
-        | "fillRowIdsRunStatus"
-        | "syncConfigSheetRowsTimeLastRan"
-        | "syncConfigSheetRowsRunStatus"
+        ColumnNameFiltered<"spreadsheetConfig", "string", false>
       >
     >(true);
   });

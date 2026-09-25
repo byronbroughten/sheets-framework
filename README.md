@@ -24,15 +24,14 @@ Your package needs:
 
 App code imports only from `@byronbroughten/sheets-framework`; test files may also import `@byronbroughten/sheets-framework/testing`. Every other path is internal.
 
-**Register your configs once.** `sheets-framework gen-configs` writes four config files into your `generatedDir`. Gather them and augment `Register`, so every Named and endpoint type is typed to your spreadsheet:
+**Register your configs once.** `sheets-framework gen-configs` writes three config files into your `generatedDir`. Gather them and augment `Register`, so every Named and endpoint type is typed to your spreadsheet:
 
 ```ts
 import { columnConfigs } from "./generated/columnConfigs";
 import { sheetConfigs } from "./generated/sheetConfigs";
-import { spreadsheetConfig } from "./generated/spreadsheetConfig";
 import { valueConfigs } from "./generated/valueConfigs";
 
-export const appConfigs = { spreadsheetConfig, sheetConfigs, columnConfigs, valueConfigs };
+export const appConfigs = { sheetConfigs, columnConfigs, valueConfigs };
 
 declare module "@byronbroughten/sheets-framework" {
   interface Register {
@@ -77,7 +76,7 @@ The entry also exports the Named-tier classes (`SpreadsheetNamed`, `SheetNamed`,
 
 | Command | Does |
 | --- | --- |
-| `sheets-framework gen-configs` | Ensures the config-sheet floor, then regenerates the four config files from the config sheets. **It writes to the live spreadsheet.** |
+| `sheets-framework gen-configs` | Ensures the config-sheet floor, then regenerates the three config files from the config sheets. **It writes to the live spreadsheet.** |
 | `sheets-framework chore [name] [--send] [--json]` | Lists the chores, dry-runs one (reads live, writes nothing, prints the requests), or applies it with `--send`. |
 | `sheets-framework probe --fields\|--filter\|--path …` | One read-only Sheets request; the full JSON goes to `.probe/last.json`. |
 | `sheets-framework setup-auth` | Mints the credential the Node host uses, from clasp's login. |

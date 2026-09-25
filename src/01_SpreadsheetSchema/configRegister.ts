@@ -1,12 +1,10 @@
 import type {
   ColumnConfigsBase,
   SheetConfigsBase,
-  SpreadsheetConfigBase,
   ValueConfigsBase,
 } from "./makeConfigs";
 
 export interface ConfigSetBase {
-  spreadsheetConfig: SpreadsheetConfigBase;
   sheetConfigs: SheetConfigsBase;
   columnConfigs: ColumnConfigsBase;
   valueConfigs: ValueConfigsBase;

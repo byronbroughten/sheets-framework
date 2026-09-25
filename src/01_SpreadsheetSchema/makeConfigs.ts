@@ -1,16 +1,11 @@
 import { idPrefixes } from "./idPrefixes";
-import {
-  uniformRowLayout,
-  type UniformRowLayoutIndexes,
-} from "./uniformRowLayout";
 import type { Value, ValueName } from "./valueSchemas";
 
 export function makeImportLine(
   configMagerName:
     | "makeSheetConfigs"
     | "makeColumnConfigs"
-    | "makeValueConfigs"
-    | "makeSpreadsheetConfig",
+    | "makeValueConfigs",
   makeConfigsImport: string,
 ): string {
   return `import { ${configMagerName} } from ${JSON.stringify(makeConfigsImport)};`;
@@ -21,15 +16,6 @@ function makeStructuredConfig<ST, const CF extends ST>(
   t: CF,
 ): CF {
   return t;
-}
-
-export type SpreadsheetConfigBase = UniformRowLayoutIndexes &
-  Record<string, string | number>;
-export function makeSpreadsheetConfig<SC extends SpreadsheetConfigBase>(
-  config: SC,
-): SC {
-  uniformRowLayout.validate(config);
-  return config;
 }
 
 export interface SheetConfigStored<HI extends boolean = boolean> {

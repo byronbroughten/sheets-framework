@@ -7,10 +7,7 @@ import {
 } from "../00_Source/CellValues/cellValues";
 import { Obj } from "../utils/Obj";
 import { Str } from "../utils/Str";
-import {
-  type LiveSpreadsheetConfig,
-  ssConfigGet,
-} from "./spreadsheetConfigTypes";
+import { sheetLayout } from "./sheetLayout";
 import { uniformRows } from "./uniformRows";
 
 export class SpreadsheetBaseSchema {
@@ -23,11 +20,11 @@ export class SpreadsheetBaseSchema {
   ): `${SA}${CodebaseNameDelimiter}${SB}` {
     return `${name1}${this.codebaseNameDelimiter}${name2}`;
   }
-  get idHeader(): LiveSpreadsheetConfig["idHeader"] {
-    return ssConfigGet("idHeader");
+  get idHeader(): string {
+    return sheetLayout.idHeader;
   }
-  get nameHeader(): LiveSpreadsheetConfig["nameHeader"] {
-    return ssConfigGet("nameHeader");
+  get nameHeader(): string {
+    return sheetLayout.nameHeader;
   }
   titleToName(sheetTitle: string): string {
     return Str.sentenceToCamelCase(sheetTitle);
@@ -109,7 +106,7 @@ export class SpreadsheetBaseSchema {
     return rowIndex >= this.topDataRowIdx;
   }
   get startTableColIndex(): number {
-    return ssConfigGet("startTableColIndexBase0");
+    return sheetLayout.startTableColIndex;
   }
   get colIdRowIndex(): number {
     return uniformRows.indexes().columnId;
@@ -124,6 +121,6 @@ export class SpreadsheetBaseSchema {
     return this.tableHeaderRowIndex + 1;
   }
   get idDelimiter(): string {
-    return ssConfigGet("idDelimiter");
+    return sheetLayout.idDelimiter;
   }
 }

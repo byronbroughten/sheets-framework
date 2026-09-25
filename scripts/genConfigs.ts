@@ -1,7 +1,7 @@
-// `sheets-framework gen-configs`: regenerates the package's four config files from its live config sheets, on the Node host.
+// `sheets-framework gen-configs`: regenerates the package's three config files from its live config sheets, on the Node host.
 import { spawnSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
-import { dirname, relative } from "node:path";
+import { relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import type { ConfigRegeneration } from "../src/05_Operators/ConfigCoordinator.ts";
@@ -22,7 +22,6 @@ class ConfigFilesGenerator {
     this.sheetsConfig = sheetsConfig;
     const { generatedDir } = sheetsConfig;
     this.path = {
-      spreadsheetConfig: configFilePath(generatedDir, "spreadsheetConfig"),
       sheetConfigs: configFilePath(generatedDir, "sheetConfigs"),
       columnConfigs: configFilePath(generatedDir, "columnConfigs"),
       valueConfigs: configFilePath(generatedDir, "valueConfigs"),
@@ -33,7 +32,6 @@ class ConfigFilesGenerator {
   }
   async run(): Promise<void> {
     const {
-      spreadsheetConfig,
       sheetConfigs,
       columnConfigs,
       valueConfigs,
@@ -43,13 +41,11 @@ class ConfigFilesGenerator {
       declaredCellReport,
     } = await this._generate();
 
-    // Write nothing until all four are confirmed good; a subset would go stale.
-    mkdirSync(dirname(this.path.spreadsheetConfig), { recursive: true });
-    writeFileSync(this.path.spreadsheetConfig, spreadsheetConfig);
+    // Write nothing until all three are confirmed good; a subset would go stale.
+    mkdirSync(this.sheetsConfig.generatedDir, { recursive: true });
     writeFileSync(this.path.sheetConfigs, sheetConfigs);
     writeFileSync(this.path.columnConfigs, columnConfigs);
     writeFileSync(this.path.valueConfigs, valueConfigs);
-    console.log(`Wrote ${this.path.spreadsheetConfig}`);
     console.log(`Wrote ${this.path.sheetConfigs}`);
     console.log(`Wrote ${this.path.columnConfigs}`);
     console.log(`Wrote ${this.path.valueConfigs}`);
@@ -96,7 +92,7 @@ class ConfigFilesGenerator {
     const makeConfigsPath = fileURLToPath(
       new URL("../src/01_SpreadsheetSchema/makeConfigs", import.meta.url),
     );
-    return relative(dirname(this.path.spreadsheetConfig), makeConfigsPath);
+    return relative(this.sheetsConfig.generatedDir, makeConfigsPath);
   }
 
   _runTsc(): boolean {
@@ -110,7 +106,7 @@ class ConfigFilesGenerator {
 
 function reportTscFailure(): void {
   console.error(
-    "\ngen:configs: regeneration succeeded and all four files were written, " +
+    "\ngen:configs: regeneration succeeded and all three files were written, " +
       "but this package's `npm run tsc` failed above. This usually means " +
       "hand-written references in this package still name a sheet or column " +
       "that no longer exists after this regeneration. Fix those references " +

@@ -70,11 +70,15 @@ describe("assertFloorMatchesSeed", () => {
 
   it("throws when a floor column's emptyValueAllowed differs from the seed's", () => {
     const configs = floorColumnConfigs();
-    const idHeader = floorColumn(configs, "spreadsheetConfig", "idHeader");
-    idHeader.emptyValueAllowed = true;
+    const tableMenuSpace = floorColumn(
+      configs,
+      "spreadsheetConfig",
+      "tableMenuSpace",
+    );
+    tableMenuSpace.emptyValueAllowed = true;
 
     expect(() => assertFloorMatchesSeed(sheetConfigs, configs)).toThrow(
-      `Floor column "ID header" on "spreadsheetConfig" (column ID "${idHeader.columnId}") has emptyValueAllowed true where the floor seed has false.`,
+      `Floor column "Table menu space" on "spreadsheetConfig" (column ID "${tableMenuSpace.columnId}") has emptyValueAllowed true where the floor seed has false.`,
     );
   });
 

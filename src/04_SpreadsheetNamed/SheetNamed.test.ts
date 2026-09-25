@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { getColumnTraitByName } from "../01_SpreadsheetSchema/columnConfigsTypes";
 import { getSheetTraitByName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
-import { ssConfigGet } from "../01_SpreadsheetSchema/spreadsheetConfigTypes";
+import { sheetLayout } from "../01_SpreadsheetSchema/sheetLayout";
 import {
   buildGridRows,
   stubSheetsService,
@@ -10,7 +10,7 @@ import {
 import { Val } from "../utils/Val";
 import { SpreadsheetNamed } from "./SpreadsheetNamed";
 
-const topDataRowIndex = ssConfigGet("tableHeaderRowIndexBase0") + 1;
+const topDataRowIndex = sheetLayout.tableHeaderRowIndex + 1;
 const runItemGid = getSheetTraitByName("runItem", "sheetGid");
 const idColumnId = getColumnTraitByName("runItem", "id", "columnId");
 const selectColumnId = getColumnTraitByName("runItem", "selected", "columnId");

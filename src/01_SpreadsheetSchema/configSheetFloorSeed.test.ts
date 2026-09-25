@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   configSheetFloorSeed,
   type FloorSeedColumn,
+  floorSeedColumns,
 } from "./configSheetFloorSeed";
 
 function seedColumn(
@@ -28,35 +29,25 @@ function seedFeedback(header: string) {
   return column;
 }
 
+describe("configSheetFloorSeed Spreadsheet Config", () => {
+  it("declares only Table menu space and the framework endpoint columns", () => {
+    expect(
+      floorSeedColumns("spreadsheetConfig").map((column) => column.header),
+    ).toEqual([
+      "Table menu space",
+      "Fill row IDs, time last ran",
+      "Fill row IDs, run status",
+      "Sync config sheet rows, time last ran",
+      "Sync config sheet rows, run status",
+    ]);
+  });
+});
+
 describe("configSheetFloorSeed column types", () => {
   it("declares TEXT, DOUBLE and BOOLEAN on the floor columns the spec names", () => {
     expect(seedColumn("spreadsheetConfig", "Table menu space").columnType).toBe(
       "TEXT",
     );
-    expect(seedColumn("spreadsheetConfig", "ID header").columnType).toBe(
-      "TEXT",
-    );
-    expect(seedColumn("spreadsheetConfig", "ID delimiter").columnType).toBe(
-      "TEXT",
-    );
-    expect(
-      seedColumn("spreadsheetConfig", "Start table column index base 1")
-        .columnType,
-    ).toBe("DOUBLE");
-    expect(
-      seedColumn("spreadsheetConfig", "Column ID row index base 1").columnType,
-    ).toBe("DOUBLE");
-    expect(
-      seedColumn("spreadsheetConfig", "Column group heading row index base 1")
-        .columnType,
-    ).toBe("DOUBLE");
-    expect(
-      seedColumn("spreadsheetConfig", "Action row index base 1").columnType,
-    ).toBe("DOUBLE");
-    expect(
-      seedColumn("spreadsheetConfig", "Table header row index base 1")
-        .columnType,
-    ).toBe("DOUBLE");
     expect(seedFeedback("Fill row IDs, time last ran").columnType).toBe("TEXT");
     expect(seedFeedback("Fill row IDs, run status").columnType).toBe("TEXT");
     expect(

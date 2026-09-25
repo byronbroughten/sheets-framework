@@ -1,14 +1,14 @@
 import type { UniformRowName } from "../00_Source/CellValues/cellValues";
 import { Obj } from "../utils/Obj";
-import { ssConfigGet } from "./spreadsheetConfigTypes";
+import { sheetLayout } from "./sheetLayout";
 
 export const uniformRows = {
   indexes(): Record<UniformRowName, number> {
     return {
-      columnId: ssConfigGet("columnIdRowIdxBase0"),
-      colGroupName: ssConfigGet("columnGroupHeadingRowIndexBase0"),
-      action: ssConfigGet("actionRowIndexBase0"),
-      tableHeader: ssConfigGet("tableHeaderRowIndexBase0"),
+      columnId: sheetLayout.colIdRowIndex,
+      colGroupName: sheetLayout.colGroupHeadingRowIndex,
+      action: sheetLayout.actionRowIndex,
+      tableHeader: sheetLayout.tableHeaderRowIndex,
     };
   },
   index(name: UniformRowName): number {

@@ -1,6 +1,6 @@
 import { dimensionIds } from "../../../src/01_SpreadsheetSchema/dimensionIds";
 import { getSheetTraitByName } from "../../../src/01_SpreadsheetSchema/sheetConfigsTypes";
-import { ssConfigGet } from "../../../src/01_SpreadsheetSchema/spreadsheetConfigTypes";
+import { sheetLayout } from "../../../src/01_SpreadsheetSchema/sheetLayout";
 import { SpreadsheetBaseNamed } from "../../../src/04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
 import { SpreadsheetNamed } from "../../../src/04_SpreadsheetNamed/SpreadsheetNamed";
 import {
@@ -27,12 +27,11 @@ export class DevFixtureBuilder extends SpreadsheetBaseNamed {
       .sheet("columnConfig")
       .prepFetchColumnsFull("sheetGid", "columnId", "emptyValueAllowed");
     this.ss.fetchAllPrepped({ skipFetchingProperties: true });
-    const fixtures = devFixtureSheets();
-    const missing = fixtures.filter(
+    const missing = devFixtureSheets.filter(
       (fixture) => !this.ss.raw.gidIsActive(fixture.sheetGid),
     );
     missing.forEach((fixture) => this._addFixtureSheet(fixture));
-    fixtures.forEach((fixture) => {
+    devFixtureSheets.forEach((fixture) => {
       this._ensureLetApiAccess(fixture);
       this._ensureEmptyValueAllowed(fixture);
     });
@@ -55,8 +54,8 @@ export class DevFixtureBuilder extends SpreadsheetBaseNamed {
   }
   private _addFixtureSheet(fixture: DevFixtureSheet): void {
     const { sheetGid, columns } = fixture;
-    const headerRowIdx = ssConfigGet("tableHeaderRowIndexBase0");
-    const startColIdx = ssConfigGet("startTableColIndexBase0");
+    const headerRowIdx = sheetLayout.tableHeaderRowIndex;
+    const startColIdx = sheetLayout.startTableColIndex;
     const rowCount = Math.max(...columns.map((column) => column.values.length));
     const endRowIdx = headerRowIdx + 1 + rowCount;
     const endColIdx = startColIdx + columns.length;
@@ -86,7 +85,7 @@ export class DevFixtureBuilder extends SpreadsheetBaseNamed {
       const colIndex = startColIdx + columnIndex;
       this.ss.raw.gatherAddedSheetCellRequest({
         sheetId: sheetGid,
-        rowIndex: ssConfigGet("columnIdRowIdxBase0"),
+        rowIndex: sheetLayout.colIdRowIndex,
         colIndex,
         value: dimensionIds.col(fixture.idPrefix, column.key),
       });
@@ -102,7 +101,7 @@ export class DevFixtureBuilder extends SpreadsheetBaseNamed {
     column: DevFixtureColumn,
     rowCount: number,
   ): void {
-    const topDataRowIdx = ssConfigGet("tableHeaderRowIndexBase0") + 1;
+    const topDataRowIdx = sheetLayout.tableHeaderRowIndex + 1;
     for (let rowOffset = 0; rowOffset < rowCount; rowOffset++) {
       const position = {
         sheetId,
@@ -125,8 +124,8 @@ export class DevFixtureBuilder extends SpreadsheetBaseNamed {
     if (columnIndex === -1) {
       throw new Error(`${fixture.title} has no "${columnKey}" column.`);
     }
-    const rowIndex = ssConfigGet("actionRowIndexBase0");
-    const colIndex = ssConfigGet("startTableColIndexBase0") + columnIndex;
+    const rowIndex = sheetLayout.actionRowIndex;
+    const colIndex = sheetLayout.startTableColIndex + columnIndex;
     this.ss.raw
       .gatherAddedSheetCellRequest({
         sheetId: fixture.sheetGid,
