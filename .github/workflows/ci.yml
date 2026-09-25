@@ -13,6 +13,8 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
+      # Node 22's bundled npm 10 crashes resolving this package's peers (reading 'edgesOut'); npm 11 doesn't.
+      - run: npm install -g npm@11
       - run: npm install
       - run: npm run tsc
       - run: npm run test:coverage
