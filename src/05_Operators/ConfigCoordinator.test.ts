@@ -1,29 +1,27 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import { installedConfigs } from "../01_SpreadsheetSchema/configRegister";
 import { configSheetFloorSeed } from "../01_SpreadsheetSchema/configSheetFloorSeed";
 import { getSheetTraitByName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
-import {
-  clearSpreadsheetConfigOverlay,
-  ssConfigGet,
-} from "../01_SpreadsheetSchema/spreadsheetConfigTypes";
+import { sheetLayout } from "../01_SpreadsheetSchema/sheetLayout";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {
   buildGridRows,
+  type FakeCellValue,
   type FakeSheetProperties,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
 import { ConfigCoordinator } from "./ConfigCoordinator";
 
-const { columnConfigs, spreadsheetConfig } = installedConfigs();
+const { columnConfigs } = installedConfigs();
 const testSheetGid = getSheetTraitByName("item", "sheetGid");
 const sheetConfigGid = 210603630;
 const columnConfigGid = 2034522667;
 const draftGid = 777000111;
 const draftTitle = "Add Widget Order";
-const headerOnlyTableEndRowIndex = ssConfigGet("tableHeaderRowIndexBase0") + 1;
-const tableHeaderRowIndex = ssConfigGet("tableHeaderRowIndexBase0");
-const startTableColIndex = ssConfigGet("startTableColIndexBase0");
+const headerOnlyTableEndRowIndex = sheetLayout.tableHeaderRowIndex + 1;
+const tableHeaderRowIndex = sheetLayout.tableHeaderRowIndex;
+const startTableColIndex = sheetLayout.startTableColIndex;
 const spreadsheetConfigGid = getSheetTraitByName(
   "spreadsheetConfig",
   "sheetGid",
@@ -39,14 +37,34 @@ const sscColumns = [
   "fillRowIdsRunStatus",
   "syncConfigSheetRowsTimeLastRan",
   "syncConfigSheetRowsRunStatus",
-  "idDelimiter",
-  "idHeader",
-  "nameHeader",
-  "startTableColumnIndexBase1",
-  "columnIdRowIndexBase1",
-  "columnGroupHeadingRowIndexBase1",
-  "actionRowIndexBase1",
-  "tableHeaderRowIndexBase1",
+] as const;
+
+// The columns sheetLayout replaced, as a spreadsheet synced before it still has them.
+const legacyLayoutColumns = [
+  { columnId: "c:sscf:XOpXA8U", header: "ID header", value: "ID" },
+  { columnId: "c:sscf:Gp3PuNE", header: "Name header", value: "Name" },
+  { columnId: "c:sscf:8uxVA53", header: "ID delimiter", value: ":" },
+  {
+    columnId: "c:sscf:RtBaCIb",
+    header: "Start table column index base 1",
+    value: 1,
+  },
+  {
+    columnId: "c:sscf:Kt9oKSY",
+    header: "Column ID row index base 1",
+    value: 1,
+  },
+  {
+    columnId: "c:sscf:Tm9zOUP",
+    header: "Column group heading row index base 1",
+    value: 2,
+  },
+  { columnId: "c:sscf:GKSJHu0", header: "Action row index base 1", value: 3 },
+  {
+    columnId: "c:sscf:58r8zkF",
+    header: "Table header row index base 1",
+    value: 4,
+  },
 ] as const;
 
 function floorSeedType(
@@ -81,48 +99,43 @@ beforeEach(() => {
   stubLogger();
 });
 
-afterEach(() => {
-  clearSpreadsheetConfigOverlay();
-});
-
 function spreadsheetConfigSheet(
-  idDelimiter: string,
   options: {
-    idHeader?: string;
     tableEndRowIndex?: number;
     fillRowIdsRunStatusColumnId?: string;
-    startTableColumnIndexBase1?: number;
+    hasLegacyLayoutColumns?: boolean;
     extraRows?: Record<number, readonly (string | number | boolean | null)[]>;
     protectedRanges?: GoogleAppsScript.Sheets.Schema.ProtectedRange[];
   } = {},
 ) {
-  const headers = sscColumns.map((columnName) => ssc[columnName].header);
-  const groupHeadings = sscColumns.map((columnName) =>
-    spreadsheetConfigGroupHeading(ssc[columnName].header),
+  const legacyColumns = options.hasLegacyLayoutColumns
+    ? legacyLayoutColumns
+    : [];
+  const headers = [
+    ...sscColumns.map((columnName) => ssc[columnName].header),
+    ...legacyColumns.map((column) => column.header),
+  ];
+  const groupHeadings = headers.map((header) =>
+    spreadsheetConfigGroupHeading(header),
   );
-  const dataRow = sscColumns.map((columnName) => {
-    if (columnName === "tableMenuSpace") return "Not used";
-    if (columnName === "idDelimiter") return idDelimiter;
-    if (columnName === "idHeader") return options.idHeader ?? "ID";
-    if (columnName === "nameHeader") return "Name";
-    if (columnName === "startTableColumnIndexBase1") {
-      return options.startTableColumnIndexBase1 ?? 1;
-    }
-    if (columnName === "columnIdRowIndexBase1") return 1;
-    if (columnName === "columnGroupHeadingRowIndexBase1") return 2;
-    if (columnName === "actionRowIndexBase1") return 3;
-    if (columnName === "tableHeaderRowIndexBase1") return 4;
-    return "";
-  });
+  const dataRow = [
+    ...sscColumns.map((columnName) =>
+      columnName === "tableMenuSpace" ? "Not used" : "",
+    ),
+    ...legacyColumns.map((column) => column.value),
+  ];
   return {
     sheetId: spreadsheetConfigGid,
     title: "Spreadsheet Config",
     rows: buildGridRows({
-      0: sscColumns.map((columnName) =>
-        columnName === "fillRowIdsRunStatus"
-          ? (options.fillRowIdsRunStatusColumnId ?? ssc[columnName].columnId)
-          : ssc[columnName].columnId,
-      ),
+      0: [
+        ...sscColumns.map((columnName) =>
+          columnName === "fillRowIdsRunStatus"
+            ? (options.fillRowIdsRunStatusColumnId ?? ssc[columnName].columnId)
+            : ssc[columnName].columnId,
+        ),
+        ...legacyColumns.map((column) => column.columnId),
+      ],
       1: groupHeadings,
       3: headers,
       4: dataRow,
@@ -133,7 +146,7 @@ function spreadsheetConfigSheet(
       startRowIndex: tableHeaderRowIndex,
       startColumnIndex: startTableColIndex,
       endRowIndex: options.tableEndRowIndex ?? 5,
-      endColumnIndex: sscColumns.length,
+      endColumnIndex: headers.length,
       columnTypes: columnTypesByHeader("spreadsheetConfig", headers),
     },
     protectedRanges: options.protectedRanges,
@@ -174,8 +187,6 @@ function headerOnlyDraftSheet(
 
 function seedFixture(
   options: {
-    idDelimiter?: string;
-    idHeader?: string;
     testColumnId?: string;
     fillRowIdsRunStatusColumnId?: string;
     spreadsheetConfigTableEndRowIndex?: number;
@@ -190,20 +201,20 @@ function seedFixture(
       readonly (string | number | boolean | null)[]
     >;
     sheetConfigTableEndRowIndex?: number;
-    startTableColumnIndexBase1?: number;
+    hasLegacyLayoutColumns?: boolean;
+    columnConfigDataRows?: readonly (readonly FakeCellValue[])[];
     spreadsheetConfigProtections?: GoogleAppsScript.Sheets.Schema.ProtectedRange[];
   } = {},
 ) {
-  const idDelimiter = options.idDelimiter ?? ":";
   const testColumnId = options.testColumnId ?? "c:itm:xyz123";
+  const columnConfigDataRows = options.columnConfigDataRows ?? [];
   return stubSheetsService({
     sheets: [
-      spreadsheetConfigSheet(idDelimiter, {
-        idHeader: options.idHeader,
+      spreadsheetConfigSheet({
         tableEndRowIndex: options.spreadsheetConfigTableEndRowIndex,
         fillRowIdsRunStatusColumnId: options.fillRowIdsRunStatusColumnId,
+        hasLegacyLayoutColumns: options.hasLegacyLayoutColumns,
         extraRows: options.spreadsheetConfigExtraRows,
-        startTableColumnIndexBase1: options.startTableColumnIndexBase1,
         protectedRanges: options.spreadsheetConfigProtections,
       }),
       {
@@ -254,12 +265,15 @@ function seedFixture(
             cc.header.header,
             cc.emptyValueAllowed.header,
           ],
+          ...rowsFromFirstDataRow(columnConfigDataRows),
         }),
         table: {
           name: configSheetFloorSeed.columnConfig.tableName,
           startRowIndex: tableHeaderRowIndex,
           startColumnIndex: startTableColIndex,
-          endRowIndex: 5,
+          endRowIndex:
+            headerOnlyTableEndRowIndex +
+            Math.max(1, columnConfigDataRows.length),
           endColumnIndex: startTableColIndex + 5,
           columnTypes: {
             0: "DOUBLE",
@@ -328,6 +342,18 @@ function valueConfigTab(options: {
     }),
     table: { endRowIndex: 5 },
   };
+}
+
+function rowsFromFirstDataRow(
+  rows: readonly (readonly FakeCellValue[])[],
+): Record<number, readonly FakeCellValue[]> {
+  return rows.reduce<Record<number, readonly FakeCellValue[]>>(
+    (byIndex, row, offset) => {
+      byIndex[sheetLayout.tableHeaderRowIndex + 1 + offset] = row;
+      return byIndex;
+    },
+    {},
+  );
 }
 
 function spreadsheetConfigGroupHeading(header: string): string {
@@ -420,18 +446,6 @@ describe("ConfigCoordinator.syncAndFlushConfigSheets", () => {
     expect(typeof summary).toBe("string");
   });
 
-  it("flushes floor warnings before the live Spreadsheet Config overlay is read", () => {
-    const { batchUpdateCalls } = seedFixture({
-      startTableColumnIndexBase1: 2,
-    });
-
-    expect(() => ConfigCoordinator.init().syncAndFlushConfigSheets()).toThrow();
-
-    expect(floorWarningDescriptions(batchUpdateCalls[0]?.requests)).toContain(
-      driftedFloorWarningDescription(),
-    );
-  });
-
   it("returns the floor report beside the untyped-column summary, as one line", () => {
     seedFixture({
       spreadsheetConfigProtections: [driftedFloorWarningProtection()],
@@ -452,7 +466,6 @@ describe("ConfigCoordinator.generateConfigFiles", () => {
 
     const parsed =
       ConfigCoordinator.init().generateConfigFiles("../makeConfigs");
-    expect(typeof parsed.spreadsheetConfig).toBe("string");
     expect(typeof parsed.sheetConfigs).toBe("string");
     expect(typeof parsed.columnConfigs).toBe("string");
     expect(parsed.sheetConfigs).toContain('"item"');
@@ -461,38 +474,58 @@ describe("ConfigCoordinator.generateConfigFiles", () => {
     expect(parsed.columnConfigs).toContain("c:itm:xyz123");
   });
 
-  it("refuses a live ID delimiter change, naming it with the expected one", () => {
-    seedFixture({ idDelimiter: "|", testColumnId: "" });
-
-    expect(() =>
-      ConfigCoordinator.init().generateConfigFiles("../makeConfigs"),
-    ).toThrow('Spreadsheet Config column "ID delimiter" is "|"; expected ":".');
-  });
-
-  it("emits the live Spreadsheet Config values", () => {
-    seedFixture({ idHeader: "Key" });
+  it("emits no Spreadsheet Config file", () => {
+    seedFixture();
 
     const parsed =
       ConfigCoordinator.init().generateConfigFiles("../makeConfigs");
-    expect(parsed.spreadsheetConfig).toContain('idHeader: "Key"');
+    expect(Object.keys(parsed)).not.toContain("spreadsheetConfig");
+    expect(Object.values(parsed).join("\n")).not.toContain(
+      "makeSpreadsheetConfig",
+    );
   });
 
-  it("clears the live layout after the call returns", () => {
-    seedFixture({ idHeader: "Key" });
+  it("syncs a Spreadsheet Config that still has the old layout columns, cataloguing them as plain columns", () => {
+    seedFixture({ hasLegacyLayoutColumns: true });
 
-    ConfigCoordinator.init().generateConfigFiles("../makeConfigs");
-    expect(ssConfigGet("idHeader")).toBe(spreadsheetConfig.idHeader);
+    const parsed =
+      ConfigCoordinator.init().generateConfigFiles("../makeConfigs");
+    legacyLayoutColumns.forEach(({ columnId }) => {
+      expect(parsed.columnConfigs).toContain(columnId);
+    });
   });
 
-  it("clears the live layout when later work throws", () => {
-    stubSheetsService({
-      sheets: [spreadsheetConfigSheet(":", { idHeader: "Key" })],
+  it("ignores edited old layout values, since nothing reads them", () => {
+    seedFixture({
+      hasLegacyLayoutColumns: true,
+      spreadsheetConfigExtraRows: {
+        4: ["Not used", "", "", "", "", "Key", "Title", "|", 9, 9, 9, 9, 9],
+      },
     });
 
     expect(() =>
-      ConfigCoordinator.init().generateConfigFiles("../makeConfigs"),
-    ).toThrow(/need a full row\/column fetch but have no Table object/);
-    expect(ssConfigGet("idHeader")).toBe(spreadsheetConfig.idHeader);
+      ConfigCoordinator.init().syncAndFlushConfigSheets(),
+    ).not.toThrow();
+  });
+
+  it("prunes the old layout columns' Column Config rows once they are gone from the sheet", () => {
+    const legacyColumnConfigRows = legacyLayoutColumns.map((column) => [
+      spreadsheetConfigGid,
+      column.columnId,
+      "Spreadsheet Config",
+      column.header,
+      false,
+    ]);
+    seedFixture({ columnConfigDataRows: legacyColumnConfigRows });
+
+    const coordinator = ConfigCoordinator.init();
+    const parsed = coordinator.generateConfigFiles("../makeConfigs");
+    const columnIdColumn =
+      coordinator.columnConfigOperator.sheet.column("columnId");
+    legacyLayoutColumns.forEach(({ columnId }) => {
+      expect(columnIdColumn.hasValue(columnId)).toBe(false);
+      expect(parsed.columnConfigs).not.toContain(columnId);
+    });
   });
 
   it("carries the untyped-column summary back, since no run status cell will show it", () => {
@@ -543,7 +576,7 @@ describe("ConfigCoordinator.generateConfigFiles", () => {
     ];
     stubSheetsService({
       sheets: [
-        spreadsheetConfigSheet(":"),
+        spreadsheetConfigSheet(),
         {
           sheetId: sheetConfigGid,
           title: "Sheet Config",

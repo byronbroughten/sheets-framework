@@ -271,7 +271,7 @@ export class SheetNamed<
     }
     return cell.valueNotEmpty();
   }
-  // By header, since the layout values name these columns, not a column name.
+  // By header, since sheetLayout names these columns, not a column name.
   private _idColumn(): ColumnIdentified<"id"> {
     // The framework's own column, so its value type is named here.
     return new ColumnIdentified<"id">({

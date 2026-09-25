@@ -1,22 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { makeSheetConfigs, makeSpreadsheetConfig } from "./makeConfigs";
-
-const validLayout = {
-  idDelimiter: ":",
-  idHeader: "ID",
-  startTableColIndexBase0: 0,
-  columnIdRowIdxBase0: 0,
-  columnGroupHeadingRowIndexBase0: 1,
-  actionRowIndexBase0: 2,
-  tableHeaderRowIndexBase0: 3,
-} as const;
-
-describe("makeSpreadsheetConfig", () => {
-  it("loads a layout whose uniform-row indexes are distinct and off the first data row", () => {
-    expect(makeSpreadsheetConfig(validLayout)).toEqual(validLayout);
-  });
-});
+import { makeSheetConfigs } from "./makeConfigs";
 
 describe("makeSheetConfigs", () => {
   it("throws when two sheets share a non-empty ID prefix", () => {

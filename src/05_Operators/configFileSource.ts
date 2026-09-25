@@ -2,7 +2,6 @@ import type {
   ColumnConfigsGeneric,
   SheetConfigsBase,
 } from "../01_SpreadsheetSchema/makeConfigs";
-import type { LiveSpreadsheetConfig } from "../01_SpreadsheetSchema/spreadsheetConfigTypes";
 
 function oneLineJsonObject(record: object): string {
   const fields = Object.entries(record).map(
@@ -26,16 +25,6 @@ export function columnConfigsFileSource(
     return `  ${JSON.stringify(sheetName)}: {\n${columnLines.join(",\n")}\n  }`;
   });
   return `{\n${blocks.join(",\n")}\n}`;
-}
-
-export function spreadsheetConfigFileSource(
-  spreadsheetConfig: LiveSpreadsheetConfig,
-): string {
-  const lines = Object.entries(spreadsheetConfig).map(
-    ([field, value]) =>
-      `  ${field}: ${typeof value === "string" ? JSON.stringify(value) : String(value)},`,
-  );
-  return `{\n${lines.join("\n")}\n}`;
 }
 
 export function sheetConfigsFileSource(sheetConfigs: SheetConfigsBase): string {

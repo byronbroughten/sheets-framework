@@ -4,7 +4,7 @@ import type { SheetEdit } from "../00_Source/PlatformEvents/sheetEdit";
 import { getColumnTraitByName } from "../01_SpreadsheetSchema/columnConfigsTypes";
 import { installedConfigs } from "../01_SpreadsheetSchema/configRegister";
 import { getSheetTraitByName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
-import { ssConfigGet } from "../01_SpreadsheetSchema/spreadsheetConfigTypes";
+import { sheetLayout } from "../01_SpreadsheetSchema/sheetLayout";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {
   buildGridRows,
@@ -25,7 +25,7 @@ const idColIndex = 0;
 const twoWayColIndex = 1;
 const buttonColIndex = 2;
 const blankIdColIndex = 3;
-const actionRowIndex = ssConfigGet("actionRowIndexBase0");
+const actionRowIndex = sheetLayout.actionRowIndex;
 const endRowIndex = 7;
 
 function stubRunItemSheet() {
@@ -50,7 +50,7 @@ function stubRunItemSheet() {
 function actionRowEdit(colIndex: number, value: string): SheetEdit {
   return {
     sheetGid: runItemGid,
-    rowIndexBase0: ssConfigGet("actionRowIndexBase0"),
+    rowIndexBase0: sheetLayout.actionRowIndex,
     colIndexBase0: colIndex,
     value,
   };

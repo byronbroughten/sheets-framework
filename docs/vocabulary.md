@@ -10,7 +10,7 @@ One line per term. The elaboration is one file away. Open a reasoning file only 
 | --- | --- |
 | Source, Platform, Raw, Identified, Named | [`docs/vocabulary/tiers.md`](./vocabulary/tiers.md) |
 | Tier word, State, Base, Operator, Collaborator | [`docs/vocabulary/class-names.md`](./vocabulary/class-names.md) |
-| `xConfigs` / `XConfig` / trait, `spreadsheetConfig`, the config-sheet floor | [`docs/vocabulary/config.md`](./vocabulary/config.md) |
+| `xConfigs` / `XConfig` / trait, the config-sheet floor | [`docs/vocabulary/config.md`](./vocabulary/config.md) |
 | Meta vs primary, crossing views, which class a member belongs to, Active, Active facts | [`docs/vocabulary/meta-primary.md`](./vocabulary/meta-primary.md) |
 | Schema, blank cells, `value` / `valueOrEmpty` / `valueNotEmpty`, checkbox, `SerialDate`, `emptyValueAllowed` | [`docs/vocabulary/values.md`](./vocabulary/values.md) |
 
@@ -35,7 +35,6 @@ One line per term. The elaboration is one file away. Open a reasoning file only 
 
 - **Config is the data describing the spreadsheet's own structure, generated from the live sheet**, in each package's `generatedDir`.
 - **`xConfigs` is the whole map, `XConfig` is one entry's record, and a trait is one property of one record.** "Trait" never means a collection.
-- **`spreadsheetConfig` is a single record**, with no `spreadsheetConfigs` collection.
 - **The config-sheet floor is guaranteed, not data to fix**: the four config sheets' own entries always come out the same on regeneration.
 
 ## Meta / primary

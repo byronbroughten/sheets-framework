@@ -1,4 +1,4 @@
-import { ssConfigGet } from "./spreadsheetConfigTypes";
+import { sheetLayout } from "./sheetLayout";
 
 type DimensionKind = "c" | "r";
 
@@ -11,7 +11,7 @@ export const dimensionIds = {
   },
   // Undefined for an id minted under a different delimiter, which parses as one part.
   colIdPrefixOrUndefined(colId: string): string | undefined {
-    const parts = colId.split(ssConfigGet("idDelimiter"));
+    const parts = colId.split(sheetLayout.idDelimiter);
     const idPrefix = parts[1];
     if (parts.length !== 3 || parts[0] !== "c" || !idPrefix || !parts[2]) {
       return undefined;
@@ -28,7 +28,7 @@ function dimensionId(
   if (!idPrefix) {
     throw new Error(`Attempted to make id for sheet without an idPrefix`);
   }
-  return [kind, idPrefix, suffix].join(ssConfigGet("idDelimiter"));
+  return [kind, idPrefix, suffix].join(sheetLayout.idDelimiter);
 }
 
 function randomSuffix(): string {

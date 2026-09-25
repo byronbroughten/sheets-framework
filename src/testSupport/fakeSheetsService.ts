@@ -1,6 +1,6 @@
 import { GoogleSheetsAPI } from "../00_Source/GoogleSheets/GoogleSheetsAPI";
 import { installRawSource } from "../00_Source/RawSource/RawSource";
-import { ssConfigGet } from "../01_SpreadsheetSchema/spreadsheetConfigTypes";
+import { sheetLayout } from "../01_SpreadsheetSchema/sheetLayout";
 
 type BatchUpdateRequest =
   GoogleAppsScript.Sheets.Schema.BatchUpdateSpreadsheetRequest;
@@ -36,7 +36,7 @@ export interface FakeSheetProperties {
   /**
    * Row-major grid data, starting at row/column 0 — row indexes here are
    * literal sheet row indexes, so they must line up with
-   * `spreadsheetConfig`'s row layout (row 0 is the columnId row, row 4 is
+   * `sheetLayout`'s row layout (row 0 is the columnId row, row 4 is
    * the first data row, etc.) for anything above 02_SpreadsheetRaw to
    * resolve columns/values correctly. Omit for a sheet whose cell content
    * doesn't matter to the test (sheet-properties-only fixtures still work
@@ -63,7 +63,7 @@ export interface FakeSheetProperties {
     endColumnIndex?: number;
     /**
      * Where the Table's range starts, defaulting to the layout every sheet
-     * is required to follow (`tableHeaderRowIndexBase0`/`startTableColIndexBase0`).
+     * is required to follow (`sheetLayout.tableHeaderRowIndex`/`startTableColIndex`).
      * Override either one only to build a deliberately misplaced Table, which
      * `SpreadsheetRaw`'s post-fetch placement check refuses.
      */
@@ -166,7 +166,7 @@ export interface FakeSheetsService {
  * Builds a `FakeSheetProperties["rows"]` array from a sparse `{ rowIndex:
  * cells }` map, padding the gaps with empty rows so array position lines
  * up with literal sheet row index (row 0 is the columnId row, row 4 is
- * the first data row, per `spreadsheetConfig` — see `rows`' own doc).
+ * the first data row, per `sheetLayout` — see `rows`' own doc).
  */
 export function buildGridRows(
   rowsByIndex: Record<number, readonly FakeCell[]>,
@@ -281,7 +281,7 @@ function fakeRowsToGoogleSheetData({
 function tableStartColumnIndex(
   table: NonNullable<FakeSheetProperties["table"]>,
 ): number {
-  return table.startColumnIndex ?? ssConfigGet("startTableColIndexBase0");
+  return table.startColumnIndex ?? sheetLayout.startTableColIndex;
 }
 
 function fakeCellHeader(cell: FakeCell | undefined): string | undefined {
@@ -349,7 +349,7 @@ function fakeTableRange(
 ): GoogleAppsScript.Sheets.Schema.GridRange {
   return {
     startRowIndex:
-      table.startRowIndex ?? ssConfigGet("tableHeaderRowIndexBase0"),
+      table.startRowIndex ?? sheetLayout.tableHeaderRowIndex,
     endRowIndex: table.endRowIndex,
     startColumnIndex: tableStartColumnIndex(table),
     endColumnIndex:
@@ -492,7 +492,7 @@ function replayUpdateTableRequest(
   const tableState = sheet.table;
   const startColumnIndex = tableStartColumnIndex(tableState);
   const headerRowIndex =
-    tableState.startRowIndex ?? ssConfigGet("tableHeaderRowIndexBase0");
+    tableState.startRowIndex ?? sheetLayout.tableHeaderRowIndex;
   const columnProperties = table.columnProperties ?? [];
   columnProperties.forEach((column) => {
     if (column.columnName === undefined || column.columnName === "") {

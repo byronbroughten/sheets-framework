@@ -5,7 +5,7 @@ import {
   type Configs,
   installConfigs,
 } from "../01_SpreadsheetSchema/configRegister";
-import { ssConfigGet } from "../01_SpreadsheetSchema/spreadsheetConfigTypes";
+import { sheetLayout } from "../01_SpreadsheetSchema/sheetLayout";
 import { SpreadsheetSchema } from "../01_SpreadsheetSchema/SpreadsheetSchema";
 import { SpreadsheetIdentified } from "../03_SpreadsheetIdentified/SpreadsheetIdentified";
 import {
@@ -71,7 +71,7 @@ export class Api extends SpreadsheetBaseNamed {
   static isSuspectedApiCall(edit: SheetEdit): boolean {
     return (
       (edit.value === "TRUE" || edit.value === "FALSE") &&
-      edit.rowIndexBase0 === ssConfigGet("actionRowIndexBase0")
+      edit.rowIndexBase0 === sheetLayout.actionRowIndex
     );
   }
   handleSheetEdit({ sheetGid, colIndexBase0, value }: SheetEdit): void {

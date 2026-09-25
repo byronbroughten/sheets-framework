@@ -1,4 +1,3 @@
-import type { LiveSpreadsheetConfig } from "../01_SpreadsheetSchema/spreadsheetConfigTypes";
 import {
   SpreadsheetBaseNamed,
   type SpreadsheetNamedProps,
@@ -19,9 +18,6 @@ export interface ConfigSyncState {
     declaredCellReportLines: string[];
   };
   valueConfigSync: { activeHeaders: Set<string> };
-  spreadsheetConfigSync: {
-    liveConfig: LiveSpreadsheetConfig | undefined;
-  };
 }
 
 export interface OperatorProps extends SpreadsheetNamedProps {
@@ -53,7 +49,6 @@ export class SpreadsheetBaseOperator extends SpreadsheetBaseNamed {
         declaredCellReportLines: [],
       },
       valueConfigSync: { activeHeaders: new Set() },
-      spreadsheetConfigSync: { liveConfig: undefined },
     };
   }
   static initOperatorProps(): OperatorProps {
