@@ -82,7 +82,7 @@ Google no longer lets you view or download a client secret after creating it, bu
 
 ## Seeing the raw Sheets JSON
 
-`GoogleSheetsAPI` maps the payload before anything can log it, and the `gsheets` MCP returns cell values only. To see what Google actually sent, use the committed probe:
+`GoogleSheetsAPI` maps the payload before anything can log it, and the `gworkspace` MCP returns cell values only. To see what Google actually sent, use the committed probe:
 
 ```
 sheets-framework probe --fields 'sheets(properties(sheetId,title),protectedRanges)'
@@ -92,8 +92,9 @@ sheets-framework probe --path sheets.title=Log.protectedRanges      # re-read th
 
 The bin's `probe` (`scripts/sheetsProbe.ts`) sends one request through the Node host's `SheetsTransport`, authenticated like a chore. That request is a `GET` with a `fields` mask or a `:getByDataFilter`, and the script cannot build any other kind. It writes the full response, pretty-printed, to the gitignored `.probe/last.json` in its package: `.probe/last.json` for the app, `dev/.probe/last.json` for dev. Stdout gets only a summary: top-level keys, array counts, and each sheet's id and title. With `--path`, stdout gets that one subtree, printed whole when it is short and summarized when it is not. When the summary isn't enough, `Read` a line range of the file it names. The throwaway `scripts/*.tmp.mjs` route this replaced is retired.
 
-## The `gsheets` MCP tools
+## The `gworkspace` MCP tools
 
-A `gsheets` MCP server can read and write a Google Sheet directly, separately from `clasp`/Apps Script. Take `spreadsheet_id` from the package's `sheets.config.json`.
+A `gworkspace` MCP server (`workspace-mcp` on PyPI, run with `uvx` at a pinned version, limited to Docs, Drive and Sheets) reads and writes Google Docs and Sheets directly, separately from `clasp`/Apps Script. It signs in as one dedicated Google account and sees only the files shared with that account, so granting access is a share, not a config change. Take `spreadsheet_id` from the package's `sheets.config.json`; `list_spreadsheets` finds any spreadsheet shared with the account too.
 
-- **It returns cell values only, so it cannot see a table's declared column types.** `tables[].columnProperties` — a column's `columnType`, its table-column name, its validation rule — is invisible to `get_sheet_data`, and `include_grid_data` reaches cell formats but not tables. Reading those means calling the Sheets REST API with the `clasp` credential, and `probe` (above) is how to do it: it is read-only, like a chore dry run.
+- **It returns cell values, and table and column names, but not a table's declared column types.** `tables[].columnProperties[].columnType` and a column's validation rule are invisible to `read_sheet_values` and `list_sheet_tables`. Reading those means calling the Sheets REST API with the `clasp` credential, and `probe` (above) is how to do it: it is read-only, like a chore dry run.
+- **Upgrades are manual**: read the release notes, bump the pin, re-check the tool names the permission rules and hooks name, and re-test on the dev spreadsheet.
