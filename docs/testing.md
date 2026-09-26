@@ -88,7 +88,7 @@ Live JSON omits empty lists and zero-valued fields (a gid-0 sheet, column A, row
 
 ## Live-sheet verification
 
-There's no standing integration-test tier against a real spreadsheet. When Claude is asked to extend this test infrastructure, it may use the `gsheets` MCP ad hoc (within the repo's gsheets write rules; what the MCP can see is [`docs/how-it-runs.md`](./how-it-runs.md#the-gsheets-mcp-tools)'s) to sanity-check that a fake's behavior actually matches the real API — that stays a manual verification step, never part of `npm test`/CI.
+There's no standing integration-test tier against a real spreadsheet. When Claude is asked to extend this test infrastructure, it may use the `gworkspace` MCP ad hoc (within the repo's Sheets write rules; what the MCP can see is [`docs/how-it-runs.md`](./how-it-runs.md#the-gworkspace-mcp-tools)'s) to sanity-check that a fake's behavior actually matches the real API — that stays a manual verification step, never part of `npm test`/CI.
 
 ## Navigation assertions
 
