@@ -74,9 +74,9 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
     sheetGid: number,
     change: SheetChangesToSave,
   ): void {
-    change.insertColumn.forEach(({ startColumnIndex }) => {
-      this.ss.sheet(sheetGid).gatherInsertColumnRequest(startColumnIndex);
-    });
+    this.ss
+      .sheet(sheetGid)
+      .gatherInsertTableEndColumnRequests(change.tableEndColumnInsertCount);
     if (change.sort !== undefined) {
       this.ss.sheet(sheetGid).gatherSortRequest(change.sort);
     }
@@ -145,7 +145,7 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
       // First among column writes, so a header write in the same batch renames the column rather than being reverted.
       ...requests.updateTableColumnProperties,
       ...requests.append,
-      ...requests.insertColumn,
+      ...requests.insertTableEndColumn,
       // Fills go before updates, so a per-cell write on a filled column wins.
       ...requests.fill,
       ...requests.update,

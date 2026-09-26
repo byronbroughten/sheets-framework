@@ -121,7 +121,7 @@ export type LocalWriteOperation =
   | AddSheetOperation
   | AddTableOperation
   | AppendRowsOperation
-  | InsertColumnOperation
+  | InsertTableEndColumnOperation
   | FillOperation
   | UpdateCellOperation
   | FindReplaceOperation
@@ -167,8 +167,9 @@ export interface AppendRowsOperation {
   emptyRowCount: number;
 }
 
-export interface InsertColumnOperation {
-  kind: "insertColumn";
+// Table-end only: a mid-Table insert needs its own measured inheritFromBefore.
+export interface InsertTableEndColumnOperation {
+  kind: "insertTableEndColumn";
   sheetId: number;
   startColumnIndex: number;
 }

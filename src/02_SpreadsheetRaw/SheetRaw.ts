@@ -185,9 +185,6 @@ export class SheetRaw extends SheetCommonRaw {
   clearRowIndexStale(): void {
     this.activeTable.clearRowIndexStale();
   }
-  ensureColIndexIsStale(colIndex: number): void {
-    this.activeTable.ensureColIndexIsStale(colIndex);
-  }
   row(rowIndex: number): RowRaw {
     return new RowRaw({
       rowIndex,
@@ -465,17 +462,15 @@ export class SheetRaw extends SheetCommonRaw {
     });
     return this;
   }
-  gatherInsertColumnRequest(startColumnIndex: number): void {
-    this.updateRequests.insertColumn.push({
-      kind: "insertColumn",
-      sheetId: this.sheetGid,
-      startColumnIndex,
-    });
-    if (startColumnIndex === this.activeTable.endColumnIndex) {
+  gatherInsertTableEndColumnRequests(insertCount: number): void {
+    Array.from({ length: insertCount }).forEach(() => {
+      this.updateRequests.insertTableEndColumn.push({
+        kind: "insertTableEndColumn",
+        sheetId: this.sheetGid,
+        startColumnIndex: this.activeTable.endColumnIndex,
+      });
       this.activeTable.growEndColumnIndex();
-    } else {
-      this.ensureColIndexIsStale(startColumnIndex);
-    }
+    });
   }
   gatherColumnTypesRequest(ops: UpdateTableColumnTypeOperation[]): void {
     this._assertColumnTypesUpdateAllowed(ops);
@@ -507,7 +502,7 @@ export class SheetRaw extends SheetCommonRaw {
       );
     }
     if (
-      this.updateRequests.insertColumn.some(
+      this.updateRequests.insertTableEndColumn.some(
         ({ sheetId }) => sheetId === this.sheetGid,
       )
     ) {

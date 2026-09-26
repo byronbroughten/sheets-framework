@@ -87,7 +87,6 @@ export class ColumnRaw<
   // State is still mirrored row by row; only the queued request collapses.
   updateAllCells(change: Omit<RowCellChange<VN>, "formula">): this {
     this.sheet.activeTable.assertRowIndexesNotStale();
-    this.sheet.activeTable.validateColIndexNotStale(this.colIndex);
     this.sheet.validateNotPrunedToSelection();
     const { endRowIndex } = this.sheet.activeTable;
     const { value } = change;
@@ -110,7 +109,6 @@ export class ColumnRaw<
   updateAllFormulas(formula: string): this {
     this.sheet.activeTable.assertRowIndexesNotStale();
     validateFormulaString(formula);
-    this.sheet.activeTable.validateColIndexNotStale(this.colIndex);
     this.sheet.validateNotPrunedToSelection();
     const { endRowIndex } = this.sheet.activeTable;
     this.sheet.rowIndexesFull.forEach((rowIndex) => {
@@ -127,7 +125,6 @@ export class ColumnRaw<
   }
   updateActiveCells(change: Omit<RowCellChange<VN>, "formula">): this {
     this.sheet.activeTable.assertRowIndexesNotStale();
-    this.sheet.activeTable.validateColIndexNotStale(this.colIndex);
     const rowIndexes = this.cellIndexesActive;
     const { value } = change;
     if (value !== undefined) {
@@ -149,7 +146,6 @@ export class ColumnRaw<
   updateActiveFormulas(formula: string): this {
     this.sheet.activeTable.assertRowIndexesNotStale();
     validateFormulaString(formula);
-    this.sheet.activeTable.validateColIndexNotStale(this.colIndex);
     Arr.contiguousRanges(this.cellIndexesActive).forEach(
       ({ startIndex, endIndex }) => {
         this.sheet.addSheetChangeToSave({
@@ -165,7 +161,6 @@ export class ColumnRaw<
   }
   // Reaches every data row like a whole-column fill, so it takes the same guards.
   findReplace(terms: FindReplaceTerms): this {
-    this.sheet.activeTable.validateColIndexNotStale(this.colIndex);
     this.sheet.validateNotPrunedToSelection();
     this.ss.findReplace({ ...terms, scope: { range: this.dataGridRange } });
     return this;

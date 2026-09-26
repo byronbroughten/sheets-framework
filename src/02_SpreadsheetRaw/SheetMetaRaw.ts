@@ -5,6 +5,7 @@ import {
 import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
 import { Val } from "../utils/Val";
 import { SheetCommonRaw } from "./ClassBases/SheetCommonRaw";
+import type { TableEndColumnUniformCells } from "./ClassTypes/StateRaw";
 import { ColumnMetaRaw } from "./ColumnMetaRaw";
 import { SheetRaw } from "./SheetRaw";
 import { SpreadsheetRaw } from "./SpreadsheetRaw";
@@ -106,14 +107,14 @@ export class SheetMetaRaw extends SheetCommonRaw {
     });
     return addedCount;
   }
-  insertColumnAtEnd(props: { idPrefix: string; header: string }): number {
-    const columnIndex = this.nextEndColumnInsertIndex;
-    this.addSheetChangeToSave({
-      action: "insertColumn",
-      startColumnIndex: columnIndex,
-    });
-    this.column(columnIndex).initUniformCells(props);
-    return columnIndex;
+  // Past the inserts already queued, since each lands at the Table end as it stands then.
+  insertColumnAtEnd(uniformCells: TableEndColumnUniformCells): number {
+    const colIndex =
+      this.activeTable.endColumnIndex +
+      this.changesToSave.tableEndColumnInsertCount;
+    this.changesToSave.tableEndColumnInsertCount++;
+    this.column(colIndex).initUniformCells(uniformCells);
+    return colIndex;
   }
   // Only table columns: a fact is always reached through a column ID.
   ensureTableColumnsActiveFacts(): void {

@@ -12,9 +12,11 @@ import {
   type FakeCell,
   type FakeRichCellValue,
   type FakeSheetProperties,
+  type FakeTable,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
 import { assertType, type IsExactly } from "../testSupport/typeAssertions";
+import { Val } from "../utils/Val";
 import type { CellRaw } from "./CellRaw";
 import type { RowCommonRaw } from "./ClassBases/RowCommonRaw";
 import type { CellStateRaw, RowCellChange } from "./ClassTypes/StateRaw";
@@ -1800,36 +1802,76 @@ describe("CellRaw.updateValue", () => {
   });
 });
 
-describe("SheetRaw column insert", () => {
-  function stubThreeColumnTable() {
+describe("SheetMetaRaw.insertColumnAtEnd", () => {
+  const green = { red: 0.2, green: 0.8, blue: 0.2 };
+  const newColumn = { startColumnIndex: 3, endColumnIndex: 4 } as const;
+
+  function stubThreeColumnTable(
+    tableOverrides: Partial<FakeTable> = {},
+    rightmostCells: Record<number, FakeCell> = {},
+  ) {
+    const rows = buildGridRows({
+      [colIdRowIndex]: ["c:lse:aaa", "c:lse:bbb", "c:lse:ccc"],
+      [tableHeaderRowIndex]: ["ID", "Left", "Right"],
+      [topDataRowIndex]: ["r:lse:1", "left", "right"],
+    });
+    Object.entries(rightmostCells).forEach(([rowIndex, cell]) => {
+      const row = Val.assert(rows[Number(rowIndex)], "fixture row");
+      row[2] = cell;
+    });
     return stubSheetsService({
       sheets: [
         {
           sheetId: 111,
           title: "Records",
-          rows: buildGridRows({
-            0: ["c:lse:aaa", "c:lse:bbb", "c:lse:ccc"],
-            4: ["r:lse:1", "left", "right"],
-          }),
-          table: { endRowIndex: 11, endColumnIndex: 3 },
+          rows,
+          table: { endRowIndex: 11, endColumnIndex: 3, ...tableOverrides },
         },
       ],
     });
   }
 
-  it("grows the exclusive end column for an insert at the Table end and does not mark columns stale", () => {
-    stubThreeColumnTable();
+  function tableColumnNames(
+    grid: ReturnType<typeof stubSheetsService>["grid"],
+  ): (string | undefined)[] | undefined {
+    return grid
+      .sheet(111)
+      .tables[0]?.columnProperties?.map((column) => column.columnName);
+  }
+
+  it("grows the Table by one column holding the new header, column ID and group heading", () => {
+    const { grid } = stubThreeColumnTable();
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
     const insertedIndex = raw.sheetMeta(111).insertColumnAtEnd({
-      idPrefix: "lse",
+      columnId: "c:lse:ddd",
       header: "New",
+      colGroupName: "Group",
     });
     raw.batchUpdateGSheets();
 
     expect(insertedIndex).toBe(3);
     expect(raw.sheet(111).activeTable.endColumnIndex).toBe(4);
+    expect(grid.sheet(111).tables[0]?.range?.endColumnIndex).toBe(4);
+    expect(tableColumnNames(grid)).toEqual(["ID", "Left", "Right", "New"]);
+    expect(
+      grid
+        .sheet(111)
+        .values({ ...newColumn, endRowIndex: topDataRowIndex + 1 }),
+    ).toEqual([["c:lse:ddd"], ["Group"], [null], ["New"], [null]]);
+  });
+
+  it("leaves row indexes fresh and every column writable after the insert", () => {
+    stubThreeColumnTable();
+
+    const raw = SpreadsheetRaw.init();
+    raw.fetchAllSheetProperties();
+    const insertedIndex = raw
+      .sheetMeta(111)
+      .insertColumnAtEnd({ columnId: "c:lse:ddd", header: "New" });
+    raw.batchUpdateGSheets();
+
     expect(raw.sheet(111).rowIndexesAreStale).toBe(false);
     expect(raw.sheet(111).activeTable.endRowIndex).toBe(11);
     expect(() =>
@@ -1840,131 +1882,89 @@ describe("SheetRaw column insert", () => {
     ).not.toThrow();
   });
 
-  it("marks column indexes at and to the right of a mid-Table insert stale, and leaves indexes to the left writable", () => {
-    stubThreeColumnTable();
-
-    const raw = SpreadsheetRaw.init();
-    raw.fetchAllSheetProperties();
-    raw.sheet(111).addSheetChangeToSave({
-      action: "insertColumn",
-      startColumnIndex: 1,
-    });
-    raw.batchUpdateGSheets();
-
-    expect(raw.sheet(111).rowIndexesAreStale).toBe(false);
-    expect(raw.sheet(111).activeTable.endRowIndex).toBe(11);
-    expect(raw.sheet(111).activeTable.endColumnIndex).toBe(3);
-    expect(() =>
-      raw.sheet(111).row(5).cell(0).updateValue("left"),
-    ).not.toThrow();
-    expect(() => raw.sheet(111).row(5).cell(1).updateValue("mid")).toThrow(
-      "Column index 1 is stale. First stale column index is 1.",
-    );
-    expect(() => raw.sheet(111).row(5).cell(2).updateValue("right")).toThrow(
-      "Column index 2 is stale. First stale column index is 1.",
-    );
-  });
-
-  it("inserts two end columns on one sheet in queue order", () => {
+  it("lands two inserts on one sheet side by side inside the Table, in queue order", () => {
     const { grid } = stubThreeColumnTable();
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
     const first = raw
       .sheetMeta(111)
-      .insertColumnAtEnd({ idPrefix: "lse", header: "First" });
+      .insertColumnAtEnd({ columnId: "c:lse:ddd", header: "First" });
     const second = raw
       .sheetMeta(111)
-      .insertColumnAtEnd({ idPrefix: "lse", header: "Second" });
+      .insertColumnAtEnd({ columnId: "c:lse:eee", header: "Second" });
     raw.batchUpdateGSheets();
 
     expect([first, second]).toEqual([3, 4]);
     expect(raw.sheet(111).activeTable.endColumnIndex).toBe(5);
+    expect(grid.sheet(111).tables[0]?.range?.endColumnIndex).toBe(5);
+    expect(tableColumnNames(grid)).toEqual([
+      "ID",
+      "Left",
+      "Right",
+      "First",
+      "Second",
+    ]);
     expect(grid.sheet(111).values(gridRanges.headerAndTopDataRow)).toEqual([
-      [null, null, null, "First", "Second"],
+      ["ID", "Left", "Right", "First", "Second"],
       ["r:lse:1", "left", "right", null, null],
     ]);
   });
 
-  it("refuses a mid-Table insert queued beside another insert on that sheet, and inserts only the first", () => {
-    const { grid } = stubThreeColumnTable();
-
-    const raw = SpreadsheetRaw.init();
-    raw.fetchAllSheetProperties();
-    raw.sheetMeta(111).insertColumnAtEnd({ idPrefix: "lse", header: "New" });
-
-    expect(() =>
-      raw.sheet(111).addSheetChangeToSave({
-        action: "insertColumn",
-        startColumnIndex: 1,
-      }),
-    ).toThrow(
-      'Refusing to queue a column insert at 1 on "Records" (gid 111): it already has a column insert queued, so the next must land at the Table end, 4.',
+  it("starts plain beside a checkbox column, keeping none of its cells' validation, format or ticks", () => {
+    const { grid } = stubThreeColumnTable(
+      { columnTypes: { 2: "BOOLEAN" } },
+      {
+        [sheetLayout.colGroupHeadingRowIndex]: {
+          value: "Checks",
+          backgroundColor: green,
+        },
+        [sheetLayout.actionRowIndex]: {
+          value: true,
+          dataValidationConditionType: "BOOLEAN",
+        },
+        [topDataRowIndex]: {
+          value: true,
+          dataValidationConditionType: "BOOLEAN",
+          numberFormatType: "NUMBER",
+        },
+      },
     );
-    raw.batchUpdateGSheets();
-
-    expect(grid.sheet(111).values(gridRanges.headerAndTopDataRow)).toEqual([
-      [null, null, null, "New"],
-      ["r:lse:1", "left", "right", null],
-    ]);
-  });
-
-  it("refuses a second insert queued beside a mid-Table insert on that sheet, and inserts only the first", () => {
-    const { grid } = stubThreeColumnTable();
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheet(111).addSheetChangeToSave({
-      action: "insertColumn",
-      startColumnIndex: 1,
-    });
-
-    expect(() =>
-      raw.sheetMeta(111).insertColumnAtEnd({ idPrefix: "lse", header: "New" }),
-    ).toThrow(
-      'Refusing to queue a column insert on "Records" (gid 111): a mid-Table column insert is already queued.',
-    );
+    raw
+      .sheetMeta(111)
+      .insertColumnAtEnd({ columnId: "c:lse:ddd", header: "New" });
     raw.batchUpdateGSheets();
 
-    expect(grid.sheet(111).tables[0]?.range?.endColumnIndex).toBe(4);
-    expect(grid.sheet(111).values(gridRanges.headerAndTopDataRow)).toEqual([
-      [null, "Column 2", null, null],
-      ["r:lse:1", null, "left", "right"],
-    ]);
+    expect(
+      grid.sheet(111).rows({ ...newColumn, endRowIndex: topDataRowIndex + 1 }),
+    ).toEqual([["c:lse:ddd"], [null], [null], ["New"], [null]]);
+    expect(grid.sheet(111).tables[0]?.columnProperties?.[3]).toEqual({
+      columnIndex: 3,
+      columnName: "New",
+    });
   });
 
-  it("refuses a second Table-end insert that skips past the end plus the inserts already queued", () => {
-    stubThreeColumnTable();
+  it("starts plain beside a dropdown column, taking neither its type nor its options", () => {
+    const { grid } = stubThreeColumnTable({
+      columnTypes: { 2: "DROPDOWN" },
+      columnValidationConditionTypes: { 2: "ONE_OF_LIST" },
+      columnValidationValues: { 2: ["left", "right"] },
+    });
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheet(111).addSheetChangeToSave({
-      action: "insertColumn",
-      startColumnIndex: 3,
-    });
-
-    expect(() =>
-      raw.sheet(111).addSheetChangeToSave({
-        action: "insertColumn",
-        startColumnIndex: 5,
-      }),
-    ).toThrow("the next must land at the Table end, 4.");
-  });
-
-  it("still reads a cell whose column index became stale, because reads do not consult the watermark", () => {
-    stubThreeColumnTable();
-
-    const raw = SpreadsheetRaw.init();
-    raw.fetchAllSheetProperties();
-    raw.sheet(111).row(4).gatherFetchFull();
-    raw.fetchAllGathered();
-    raw.sheet(111).addSheetChangeToSave({
-      action: "insertColumn",
-      startColumnIndex: 1,
-    });
+    raw
+      .sheetMeta(111)
+      .insertColumnAtEnd({ columnId: "c:lse:ddd", header: "New" });
     raw.batchUpdateGSheets();
 
-    expect(raw.sheet(111).row(4).valueOrEmpty(1)).toBe("left");
+    expect(grid.sheet(111).tables[0]?.columnProperties?.[3]).toEqual({
+      columnIndex: 3,
+      columnName: "New",
+    });
   });
 });
 
@@ -3048,10 +3048,9 @@ describe("ColumnMetaRaw.updateColumnType", () => {
       .sheet(111)
       .meta.column(startTableColIndex + 2)
       .updateColumnType("DOUBLE");
-    raw.sheet(111).addSheetChangeToSave({
-      action: "insertColumn",
-      startColumnIndex: startTableColIndex + 3,
-    });
+    raw
+      .sheetMeta(111)
+      .insertColumnAtEnd({ columnId: "c:lse:new", header: "New" });
 
     expect(() => raw.batchUpdateGSheets()).toThrow(/inserts a column/);
     expect(batchUpdateCount()).toBe(0);

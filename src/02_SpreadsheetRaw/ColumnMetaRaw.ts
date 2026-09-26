@@ -10,11 +10,14 @@ import type {
   GridCellSnapshot,
   TableColumnType,
 } from "../00_Source/RawSource/RawSource";
-import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
 import { type PrimitiveValueName, Val } from "../utils/Val";
 import { CellRaw } from "./CellRaw";
 import { ColumnBaseRaw } from "./ClassBases/ColumnBaseRaw";
-import type { ActiveFactsRaw, ColumnStateRaw } from "./ClassTypes/StateRaw";
+import type {
+  ActiveFactsRaw,
+  ColumnStateRaw,
+  TableEndColumnUniformCells,
+} from "./ClassTypes/StateRaw";
 import { ColumnRaw } from "./ColumnRaw";
 import { SheetMetaRaw } from "./SheetMetaRaw";
 
@@ -63,7 +66,6 @@ export class ColumnMetaRaw<
     return this._tableColumnState()?.columnType;
   }
   updateColumnType(columnType: TableColumnType): this {
-    this.sheet.activeTable.validateColIndexNotStale(this.colIndex);
     this.updateRequests.updateTableColumnType.push({
       kind: "updateTableColumnType",
       sheetId: this.sheetGid,
@@ -89,15 +91,15 @@ export class ColumnMetaRaw<
     });
   }
   initUniformCells({
-    idPrefix,
+    columnId,
     header,
-  }: {
-    idPrefix: string;
-    header: string;
-  }): this {
-    const columnId = dimensionIds.col(idPrefix);
+    colGroupName,
+  }: TableEndColumnUniformCells): this {
     this.uniformCell("columnId").updateValue(columnId);
     this.uniformCell("tableHeader").updateValue(header);
+    if (colGroupName !== undefined) {
+      this.uniformCell("colGroupName").updateValue(colGroupName);
+    }
     return this;
   }
   updateUniformCell<UN extends UniformRowName>(

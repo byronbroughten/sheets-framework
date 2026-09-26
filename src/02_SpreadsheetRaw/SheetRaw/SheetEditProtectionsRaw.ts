@@ -191,12 +191,7 @@ export class SheetEditProtectionsRaw extends SheetCommonRaw {
   private _assertOneProtectionRangeCoordinatesNotStale(
     range: ProtectionGridRange,
   ): void {
-    if (isWholeColumnGridRange(range)) {
-      if (this.sheetState.working.knownTable !== undefined) {
-        this.activeTable.validateColIndexNotStale(range.startColumnIndex);
-      }
-      return;
-    }
+    if (isWholeColumnGridRange(range)) return;
     if (!protectionRangeHasRowCoordinates(range)) return;
     this.activeTable.assertRowIndexesNotStale();
   }

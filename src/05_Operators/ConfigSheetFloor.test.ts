@@ -1321,8 +1321,8 @@ describe("ConfigSheetFloor", () => {
     expect(batchUpdateCount()).toBe(0);
   });
 
-  it("skips a recreated column the refetch still lacks in the label, data-value, column-type and edit-warning steps, without throwing, in two batch updates", () => {
-    const { batchUpdateCount } = floorFixture({
+  it("recreates a column inside its Table, so the refetch carries it through the column-type step, in two batch updates", () => {
+    const { batchUpdateCount, grid } = floorFixture({
       columnTypesAreUnset: true,
       columnConfigColumnOrder: [
         "sheetGid",
@@ -1334,8 +1334,12 @@ describe("ConfigSheetFloor", () => {
     const { floor, report } = applyFloor();
 
     expect(batchUpdateCount()).toBe(2);
-    expect(report).toContain("Set column types:");
-    expect(report).not.toContain(`(${cc.header.columnId}) → TEXT`);
+    expect(
+      grid
+        .sheet(columnConfigGid)
+        .tables[0]?.columnProperties?.map((column) => column.columnName),
+    ).toContain(cc.header.header);
+    expect(report).toContain(`(${cc.header.columnId}) → TEXT`);
     expect(report).not.toContain("Restored headers:");
     expect(protectionsOf(floor, "columnConfig")).toHaveLength(1);
   });

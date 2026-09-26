@@ -149,6 +149,51 @@ describe("stubSheetsService replays row and column changes", () => {
     );
   });
 
+  it("copies each left neighbour's format and validation, but not its value or column type, into a column inserted inheriting from before", () => {
+    const green = { red: 0.2, green: 0.8, blue: 0.2 };
+    const { grid } = stubSheetsService({
+      sheets: [
+        {
+          ...widgetSheet(),
+          rows: buildGridRows({
+            0: ["h1", "h2", "h3"],
+            1: [1, "x", { value: true, dataValidationConditionType: "BOOLEAN" }],
+            2: [2, "y", { value: 3, numberFormatType: "CURRENCY" }],
+            3: [3, "z", { value: "r", backgroundColor: green }],
+          }),
+          table: {
+            name: "Widget",
+            startRowIndex: 0,
+            startColumnIndex: 0,
+            endRowIndex: 4,
+            endColumnIndex: 3,
+            columnTypes: { 2: "BOOLEAN" },
+          },
+        },
+      ],
+    });
+
+    send({
+      insertDimension: {
+        range: {
+          sheetId: widgetGid,
+          dimension: "COLUMNS",
+          startIndex: 3,
+          endIndex: 4,
+        },
+        inheritFromBefore: true,
+      },
+    });
+
+    const sheet = grid.sheet(widgetGid);
+    expect(sheet.rows({ startRowIndex: 1, startColumnIndex: 3 })).toEqual([
+      [{ value: false, dataValidationConditionType: "BOOLEAN" }],
+      [{ value: null, numberFormatType: "CURRENCY" }],
+      [{ value: null, backgroundColor: green }],
+    ]);
+    expect(sheet.tables[0]?.columnProperties?.[3]?.columnType).toBeUndefined();
+  });
+
   it("moves a column's type with the column an insert shifts", () => {
     const { grid } = stubSheetsService({ sheets: [widgetSheet()] });
 

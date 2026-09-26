@@ -40,7 +40,7 @@ export class FloorTabColumnCreator<
       );
     });
   }
-  // Putting it back first would be an insert inside the Table, which stales every index right of it.
+  // Putting it back first would need a mid-Table insert, and column inserts land only at the Table end.
   private _assertTableMenuSpaceIsFirst(): void {
     if (this.sheetName !== "spreadsheetConfig") return;
     const meta = this.sheet.raw.meta;
@@ -67,16 +67,11 @@ export class FloorTabColumnCreator<
   createMissing(): string[] {
     const meta = this.sheet.raw.meta;
     return this._missingColumns().map((floorColumn) => {
-      const colIndex = meta.nextEndColumnInsertIndex;
-      meta.addSheetChangeToSave({
-        action: "insertColumn",
-        startColumnIndex: colIndex,
+      meta.insertColumnAtEnd({
+        columnId: floorColumn.columnId,
+        header: floorColumn.header,
+        colGroupName: floorColumn.groupHeading,
       });
-      meta
-        .column(colIndex)
-        .updateUniformCell("tableHeader", floorColumn.header)
-        .updateUniformCell("columnId", floorColumn.columnId)
-        .updateUniformCell("colGroupName", floorColumn.groupHeading);
       return `${this.sheet.raw.title} · ${floorColumn.header} (${floorColumn.columnId})`;
     });
   }
