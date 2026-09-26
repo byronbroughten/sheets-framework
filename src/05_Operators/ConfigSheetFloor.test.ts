@@ -1344,6 +1344,58 @@ describe("ConfigSheetFloor", () => {
     expect(protectionsOf(floor, "columnConfig")).toHaveLength(1);
   });
 
+  it("reports nothing and sends no batch update on a second sync after recreating a column inside its Table in two", () => {
+    const { batchUpdateCount, grid } = floorFixture({
+      columnConfigColumnOrder: [
+        "sheetGid",
+        "columnId",
+        "sheetTitle",
+        "emptyValueAllowed",
+      ],
+    });
+    applyFloor();
+    expect(batchUpdateCount()).toBe(2);
+
+    const second = applyFloor();
+
+    expect(second.report).toBe("");
+    expect(batchUpdateCount()).toBe(2);
+    const headers = [
+      cc.sheetGid.header,
+      cc.columnId.header,
+      cc.sheetTitle.header,
+      cc.emptyValueAllowed.header,
+      cc.header.header,
+    ];
+    expect(
+      tableColumns(grid, columnConfigGid).map(({ columnName }) => columnName),
+    ).toEqual(headers);
+    expect(
+      rowValues(grid, columnConfigGid, sheetLayout.tableHeaderRowIndex),
+    ).toEqual(headers);
+  });
+
+  it("skips a recreated column the refetch still lacks in the label, data-value and column-type steps, without throwing, in two batch updates", () => {
+    const { batchUpdateCount } = floorFixture({
+      columnTypesAreUnset: true,
+      columnConfigColumnOrder: [
+        "sheetGid",
+        "columnId",
+        "sheetTitle",
+        "emptyValueAllowed",
+      ],
+      isDryRun: true,
+    });
+    const { report } = applyFloor();
+
+    expect(batchUpdateCount()).toBe(2);
+    expect(report).toContain(
+      `Recreated columns: Column Config · ${cc.header.header} (${cc.header.columnId})`,
+    );
+    expect(report).toContain("Set column types:");
+    expect(report).not.toContain(`(${cc.header.columnId}) →`);
+  });
+
   it.each([
     { sheetName: "sheetConfig", sheetGid: sheetConfigGid },
     { sheetName: "columnConfig", sheetGid: columnConfigGid },
