@@ -10,6 +10,7 @@ import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {
   buildGridRows,
   type FakeCell,
+  type FakeRichCellValue,
   type FakeSheetProperties,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
@@ -35,6 +36,33 @@ const startTableColIndex = sheetLayout.startTableColIndex;
 const topDataRowIndex = tableHeaderRowIndex + 1;
 const scratchGid = 999999;
 const tableEndRowIndex = tableHeaderRowIndex + 3;
+const gridRanges = {
+  columnOneData: {
+    startRowIndex: topDataRowIndex,
+    startColumnIndex: 1,
+    endColumnIndex: 2,
+  },
+  headerAndTopDataRow: {
+    startRowIndex: tableHeaderRowIndex,
+    endRowIndex: topDataRowIndex + 1,
+  },
+} as const;
+
+function threeByThreeAround(rowIndex: number, colIndex: number) {
+  return {
+    startRowIndex: rowIndex - 1,
+    endRowIndex: rowIndex + 2,
+    startColumnIndex: colIndex - 1,
+    endColumnIndex: colIndex + 2,
+  };
+}
+
+function firstTableEndRowIndex(
+  grid: ReturnType<typeof stubSheetsService>["grid"],
+  sheetGid: number,
+): number | undefined {
+  return grid.sheet(sheetGid).tables[0]?.range?.endRowIndex;
+}
 
 function placedTableSheet(sheet: {
   sheetId: number;
@@ -87,6 +115,10 @@ function recordedGridRanges(calls: object[]): unknown[] {
     dataFilters: { gridRange: unknown }[];
   };
   return resource.dataFilters.map((filter) => filter.gridRange);
+}
+
+function formulaCell(formula: string): FakeRichCellValue {
+  return { value: formula, isFormula: true };
 }
 
 function thrownMessage(fn: () => void): string {
@@ -659,9 +691,20 @@ describe("ColumnMetaRaw active facts", () => {
 });
 
 describe("SpreadsheetRaw.batchUpdateGSheets", () => {
-  it("sends exactly the sort request gathered for a sheet-level sort change", () => {
-    const { batchUpdateCalls } = stubSheetsService({
-      sheets: [{ sheetId: 111, title: "Records" }],
+  it("sorts the data rows by the requested column and order, leaving the rows above them", () => {
+    const { grid } = stubSheetsService({
+      sheets: [
+        {
+          sheetId: 111,
+          title: "Records",
+          rows: buildGridRows({
+            [tableHeaderRowIndex]: ["ID", "Name", "Rank"],
+            [topDataRowIndex]: ["r1", "c", 3],
+            [topDataRowIndex + 1]: ["r2", "a", 1],
+            [topDataRowIndex + 2]: ["r3", "b", 2],
+          }),
+        },
+      ],
     });
 
     const raw = SpreadsheetRaw.init();
@@ -671,30 +714,26 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
     });
     raw.batchUpdateGSheets();
 
-    expect(batchUpdateCalls).toEqual([
-      {
-        requests: [
-          {
-            sortRange: {
-              range: { sheetId: 111, startRowIndex: 4, startColumnIndex: 0 },
-              sortSpecs: [{ dimensionIndex: 2, sortOrder: "ASCENDING" }],
-            },
-          },
-        ],
-      },
+    expect(
+      grid.sheet(111).values({ startRowIndex: tableHeaderRowIndex }),
+    ).toEqual([
+      ["ID", "Name", "Rank"],
+      ["r2", "a", 1],
+      ["r3", "b", 2],
+      ["r1", "c", 3],
     ]);
   });
 
-  it("sends no request when there is nothing to save", () => {
-    const { batchUpdateCalls } = stubSheetsService();
+  it("sends no batch update when there is nothing to save", () => {
+    const { batchUpdateCount } = stubSheetsService();
 
     SpreadsheetRaw.init().batchUpdateGSheets();
 
-    expect(batchUpdateCalls).toEqual([]);
+    expect(batchUpdateCount()).toBe(0);
   });
 
-  it("sends one appendCells whose rows array is the full append, so a Sheets table grows by every row rather than by one", () => {
-    const { batchUpdateCalls } = stubSheetsService({
+  it("grows the Table by every appended row rather than by one", () => {
+    const { grid } = stubSheetsService({
       sheets: [{ sheetId: 111, title: "Records", table: { endRowIndex: 11 } }],
     });
 
@@ -705,20 +744,11 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
     raw.sheet(111).appendDataRow();
     raw.batchUpdateGSheets();
 
-    expect(batchUpdateCalls[0]?.requests).toEqual([
-      {
-        appendCells: {
-          sheetId: 111,
-          tableId: "fake-table-111",
-          rows: [{}, {}, {}],
-          fields: "userEnteredValue",
-        },
-      },
-    ]);
+    expect(firstTableEndRowIndex(grid, 111)).toBe(14);
   });
 
-  it("keeps a second sheet's append as its own request rather than folding it into the first table's", () => {
-    const { batchUpdateCalls } = stubSheetsService({
+  it("grows each sheet's Table by the rows appended to that sheet, however the appends interleave", () => {
+    const { grid } = stubSheetsService({
       sheets: [
         { sheetId: 111, title: "Records", table: { endRowIndex: 11 } },
         { sheetId: 222, title: "Entries", table: { endRowIndex: 6 } },
@@ -732,29 +762,20 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
     raw.sheet(111).appendDataRow();
     raw.batchUpdateGSheets();
 
-    expect(batchUpdateCalls[0]?.requests).toEqual([
-      {
-        appendCells: {
-          sheetId: 111,
-          tableId: "fake-table-111",
-          rows: [{}, {}],
-          fields: "userEnteredValue",
-        },
-      },
-      {
-        appendCells: {
-          sheetId: 222,
-          tableId: "fake-table-222",
-          rows: [{}],
-          fields: "userEnteredValue",
-        },
-      },
-    ]);
+    expect(firstTableEndRowIndex(grid, 111)).toBe(13);
+    expect(firstTableEndRowIndex(grid, 222)).toBe(7);
   });
 
-  it("still gathers an append queued after a deletion on the same sheet, since row indexes only shift once the deletes are sent", () => {
-    const { batchUpdateCalls } = stubSheetsService({
-      sheets: [{ sheetId: 111, title: "Records", table: { endRowIndex: 11 } }],
+  it("still appends a row queued after a deletion on the same sheet, since row indexes only shift once the deletes are sent", () => {
+    const { grid } = stubSheetsService({
+      sheets: [
+        {
+          sheetId: 111,
+          title: "Records",
+          rows: buildGridRows({ 4: ["kept"], 5: ["deleted"], 6: ["later"] }),
+          table: { endRowIndex: 11 },
+        },
+      ],
     });
 
     const raw = SpreadsheetRaw.init();
@@ -763,14 +784,11 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
     raw.sheet(111).appendDataRow();
 
     expect(() => raw.batchUpdateGSheets()).not.toThrow();
-    expect(batchUpdateCalls[0]?.requests?.[0]).toEqual({
-      appendCells: {
-        sheetId: 111,
-        tableId: "fake-table-111",
-        rows: [{}],
-        fields: "userEnteredValue",
-      },
-    });
+    expect(grid.sheet(111).values({ startRowIndex: 4 })).toEqual([
+      ["kept"],
+      ["later"],
+    ]);
+    expect(firstTableEndRowIndex(grid, 111)).toBe(11);
     expect(raw.sheet(111).rowIndexesAreStale).toBe(true);
   });
 
@@ -927,9 +945,24 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
     expect(() => raw.sheet(111).row(4).cell(0).updateValue("ok")).not.toThrow();
   });
 
-  it("sends same-sheet row deletions in descending startIndex order so an earlier deletion can't shift a later one out from under it", () => {
-    const { batchUpdateCalls } = stubSheetsService({
-      sheets: [{ sheetId: 111, title: "Records", table: { endRowIndex: 11 } }],
+  it("deletes exactly the queued rows on one sheet, so an earlier deletion can't shift a later one out from under it", () => {
+    const { grid } = stubSheetsService({
+      sheets: [
+        {
+          sheetId: 111,
+          title: "Records",
+          rows: buildGridRows({
+            4: ["r4"],
+            5: ["r5"],
+            6: ["r6"],
+            7: ["r7"],
+            8: ["r8"],
+            9: ["r9"],
+            10: ["r10"],
+          }),
+          table: { endRowIndex: 11 },
+        },
+      ],
     });
 
     const raw = SpreadsheetRaw.init();
@@ -938,65 +971,54 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
     raw.sheet(111).row(10).delete();
     raw.batchUpdateGSheets();
 
-    expect(batchUpdateCalls).toEqual([
-      {
-        requests: [
-          {
-            deleteDimension: {
-              range: {
-                sheetId: 111,
-                dimension: "ROWS",
-                startIndex: 10,
-                endIndex: 11,
-              },
-            },
-          },
-          {
-            deleteDimension: {
-              range: {
-                sheetId: 111,
-                dimension: "ROWS",
-                startIndex: 5,
-                endIndex: 6,
-              },
-            },
-          },
-        ],
-      },
+    expect(grid.sheet(111).values({ startRowIndex: 4 })).toEqual([
+      ["r4"],
+      ["r6"],
+      ["r7"],
+      ["r8"],
+      ["r9"],
     ]);
   });
 });
 
 describe("SpreadsheetRaw.gatherRawRequest", () => {
-  it("sends a raw request last, after every request the framework models", () => {
-    const { batchUpdateCalls } = stubSheetsService({
+  function rawValueWrite(rowIndex: number, colIndex: number, value: string) {
+    return googleRawRequest({
+      updateCells: {
+        start: { sheetId: 111, rowIndex, columnIndex: colIndex },
+        rows: [{ values: [{ userEnteredValue: { stringValue: value } }] }],
+        fields: "userEnteredValue",
+      },
+    });
+  }
+
+  it("applies a raw request after every write the framework models, so it lands on the sheet those writes left", () => {
+    const { grid } = stubSheetsService({
       sheets: [{ sheetId: 111, title: "Records", table: { endRowIndex: 11 } }],
     });
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.gatherRawRequest(
-      googleRawRequest({
-        updateTable: {
-          table: { tableId: "fake-table-111", name: "Renamed" },
-          fields: "name",
-        },
-      }),
-    );
+    raw.gatherRawRequest(rawValueWrite(5, 2, "Raw"));
+    raw.gatherRawRequest(rawValueWrite(8, 2, "Raw"));
     raw.sheet(111).row(5).cell(2).updateValue("Processing...");
-    raw.sheet(111).row(10).delete();
+    raw.sheet(111).row(9).cell(2).updateValue("Shifted up");
+    raw.sheet(111).row(8).delete();
     raw.batchUpdateGSheets();
 
-    const requests = batchUpdateCalls[0]?.requests ?? [];
-    expect(requests.map((request) => Object.keys(request)[0])).toEqual([
-      "updateCells",
-      "deleteDimension",
-      "updateTable",
+    expect(
+      grid.sheet(111).values({ startRowIndex: 5, endRowIndex: 10 }),
+    ).toEqual([
+      [null, null, "Raw"],
+      [null, null, null],
+      [null, null, null],
+      [null, null, "Raw"],
+      [null, null, null],
     ]);
   });
 
-  it("discards a raw request alongside every other queued change", () => {
-    const { batchUpdateCalls } = stubSheetsService();
+  it("discards a raw request alongside every other queued change, sending no batch update", () => {
+    const { batchUpdateCount } = stubSheetsService();
 
     const raw = SpreadsheetRaw.init();
     raw.gatherRawRequest(
@@ -1005,7 +1027,7 @@ describe("SpreadsheetRaw.gatherRawRequest", () => {
     raw.discardQueuedChanges();
     raw.batchUpdateGSheets();
 
-    expect(batchUpdateCalls).toEqual([]);
+    expect(batchUpdateCount()).toBe(0);
   });
 });
 
@@ -1030,8 +1052,23 @@ describe("SpreadsheetRaw add sheet and add Table", () => {
     ],
   };
 
-  it("sends the add-sheet request first, the add-Table request second, and a sheet-title update after both", () => {
-    const { batchUpdateCalls } = stubSheetsService({
+  const addedTable = {
+    tableId: "spreadsheetConfig",
+    name: "spreadsheetConfig",
+    range: {
+      startRowIndex: 2,
+      endRowIndex: 5,
+      startColumnIndex: 1,
+      endColumnIndex: 3,
+    },
+    columnProperties: [
+      {},
+      { columnIndex: 1, columnName: "Name", columnType: "TEXT" },
+    ],
+  };
+
+  it("adds the tab and its Table in the same batch update that renames another tab, whatever the gather order", () => {
+    const { batchUpdateCount, grid } = stubSheetsService({
       sheets: [{ sheetId: 111, title: "Records", table: { endRowIndex: 11 } }],
     });
 
@@ -1042,42 +1079,11 @@ describe("SpreadsheetRaw add sheet and add Table", () => {
     raw.gatherAddSheetRequest(addSheetProps);
     raw.batchUpdateGSheets();
 
-    expect(batchUpdateCalls).toHaveLength(1);
-    expect(batchUpdateCalls[0]?.requests).toEqual([
-      {
-        addSheet: {
-          properties: {
-            sheetId: 555,
-            title: "Spreadsheet Config",
-            gridProperties: { rowCount: 20, columnCount: 6 },
-          },
-        },
-      },
-      {
-        addTable: {
-          table: {
-            tableId: "spreadsheetConfig",
-            name: "spreadsheetConfig",
-            range: addTableProps.range,
-          },
-        },
-      },
-      {
-        updateTable: {
-          table: {
-            tableId: "spreadsheetConfig",
-            columnProperties: addTableProps.columnProperties,
-          },
-          fields: "columnProperties",
-        },
-      },
-      {
-        updateSheetProperties: {
-          properties: { sheetId: 111, title: "Renamed" },
-          fields: "title",
-        },
-      },
-    ]);
+    expect(batchUpdateCount()).toBe(1);
+    expect(grid.sheetTitles()).toEqual(["Renamed", "Spreadsheet Config"]);
+    const added = grid.sheet(555);
+    expect([added.rowCount, added.columnCount]).toEqual([20, 6]);
+    expect(added.tables).toEqual([addedTable]);
   });
 
   it("puts one operation on the spreadsheet's write queue per queue method", () => {
@@ -1145,30 +1151,32 @@ describe("SpreadsheetRaw add sheet and add Table", () => {
     );
   });
 
-  it("seeds a formula on an added tab, and refuses one that doesn't start with =", () => {
-    const { batchUpdateCalls } = stubSheetsService();
-    const { value: _value, ...seededPosition } = seededCell;
+  const { value: _value, ...seededPosition } = seededCell;
+
+  it("seeds a formula on an added tab", () => {
+    const { grid } = stubSheetsService();
 
     const raw = SpreadsheetRaw.init();
     raw.gatherAddSheetRequest(addSheetProps);
-    expect(() =>
-      raw.gatherAddedSheetCellRequest({ ...seededPosition, formula: "ROW()" }),
-    ).toThrow('Formula must start with "="');
     raw.gatherAddedSheetCellRequest({ ...seededPosition, formula: "=ROW()" });
     raw.batchUpdateGSheets();
 
-    expect(batchUpdateCalls[0]?.requests).toContainEqual({
-      pasteData: {
-        coordinate: { sheetId: 555, rowIndex: 3, columnIndex: 1 },
-        data: '"=ROW()"',
-        delimiter: "\t",
-        type: "PASTE_FORMULA",
-      },
-    });
+    expect(grid.sheet(555).cell(3, 1)).toEqual(formulaCell("=ROW()"));
   });
 
-  it("sends the add-sheet, then the add-Table, then the seeded value's updateCells in one batch", () => {
-    const { batchUpdateCalls } = stubSheetsService();
+  it("refuses a seeded formula that doesn't start with =", () => {
+    stubSheetsService();
+
+    const raw = SpreadsheetRaw.init();
+    raw.gatherAddSheetRequest(addSheetProps);
+
+    expect(() =>
+      raw.gatherAddedSheetCellRequest({ ...seededPosition, formula: "ROW()" }),
+    ).toThrow('Formula must start with "="');
+  });
+
+  it("seeds a value inside the added Table in the same batch update that adds the tab", () => {
+    const { batchUpdateCount, grid } = stubSheetsService();
 
     const raw = SpreadsheetRaw.init();
     raw.gatherAddSheetRequest(addSheetProps);
@@ -1176,51 +1184,9 @@ describe("SpreadsheetRaw add sheet and add Table", () => {
     raw.gatherAddedSheetCellRequest(seededCell);
     raw.batchUpdateGSheets();
 
-    expect(batchUpdateCalls).toHaveLength(1);
-    expect(batchUpdateCalls[0]?.requests).toEqual([
-      {
-        addSheet: {
-          properties: {
-            sheetId: 555,
-            title: "Spreadsheet Config",
-            gridProperties: { rowCount: 20, columnCount: 6 },
-          },
-        },
-      },
-      {
-        addTable: {
-          table: {
-            tableId: "spreadsheetConfig",
-            name: "spreadsheetConfig",
-            range: addTableProps.range,
-          },
-        },
-      },
-      {
-        updateTable: {
-          table: {
-            tableId: "spreadsheetConfig",
-            columnProperties: addTableProps.columnProperties,
-          },
-          fields: "columnProperties",
-        },
-      },
-      {
-        updateCells: {
-          range: {
-            sheetId: 555,
-            startRowIndex: 3,
-            endRowIndex: 4,
-            startColumnIndex: 1,
-            endColumnIndex: 2,
-          },
-          rows: [
-            { values: [{ userEnteredValue: { stringValue: "Example" } }] },
-          ],
-          fields: "userEnteredValue",
-        },
-      },
-    ]);
+    expect(batchUpdateCount()).toBe(1);
+    expect(grid.sheet(555).cell(3, 1)).toBe("Example");
+    expect(grid.sheet(555).tables).toEqual([addedTable]);
   });
 
   it("refuses a checkbox validation for a GID with no add-sheet queued, naming the GID, and queues nothing", () => {
@@ -1236,8 +1202,8 @@ describe("SpreadsheetRaw add sheet and add Table", () => {
     expect(raw.updateRequests.addCheckboxValidation).toEqual([]);
   });
 
-  it("sends a checkbox validation after the add-sheet, the add-Table and the seeded value, whatever the gather order", () => {
-    const { batchUpdateCalls } = stubSheetsService();
+  it("makes a seeded cell on an added tab a checkbox holding its seeded value, in the same batch update", () => {
+    const { batchUpdateCount, grid } = stubSheetsService();
 
     const raw = SpreadsheetRaw.init();
     raw.gatherAddSheetRequest(addSheetProps);
@@ -1246,26 +1212,16 @@ describe("SpreadsheetRaw add sheet and add Table", () => {
     raw.gatherAddedSheetCellRequest({ ...seededCell, value: false });
     raw.batchUpdateGSheets();
 
-    expect(batchUpdateCalls).toHaveLength(1);
-    const requests = batchUpdateCalls[0]?.requests ?? [];
-    expect(requests.map((request) => Object.keys(request))).toEqual([
-      ["addSheet"],
-      ["addTable"],
-      ["updateTable"],
-      ["updateCells"],
-      ["setDataValidation"],
-    ]);
-    expect(requests[4]).toEqual({
-      setDataValidation: {
-        range: checkboxRange,
-        rule: { condition: { type: "BOOLEAN" } },
-      },
+    expect(batchUpdateCount()).toBe(1);
+    expect(grid.sheet(555).cell(3, 1)).toEqual({
+      value: false,
+      dataValidationConditionType: "BOOLEAN",
     });
     expect(raw.updateRequests.addCheckboxValidation).toEqual([]);
   });
 
-  it("drops a queued seeded value on discardQueuedChanges", () => {
-    const { batchUpdateCalls } = stubSheetsService();
+  it("drops a queued seeded value on discardQueuedChanges, sending no batch update", () => {
+    const { batchUpdateCount } = stubSheetsService();
 
     const raw = SpreadsheetRaw.init();
     raw.gatherAddSheetRequest(addSheetProps);
@@ -1274,7 +1230,7 @@ describe("SpreadsheetRaw add sheet and add Table", () => {
     raw.batchUpdateGSheets();
 
     expect(raw.updateRequests.update).toEqual([]);
-    expect(batchUpdateCalls).toEqual([]);
+    expect(batchUpdateCount()).toBe(0);
   });
 });
 
@@ -1285,6 +1241,14 @@ describe("RowRaw.delete", () => {
         {
           sheetId: 111,
           title: "Records",
+          rows: buildGridRows(
+            Object.fromEntries(
+              Array.from({ length: dataRowCount }, (_, offset) => [
+                topDataRowIndex + offset,
+                [`r${offset + 1}`],
+              ]),
+            ),
+          ),
           table: { endRowIndex: topDataRowIndex + dataRowCount },
         },
       ],
@@ -1307,33 +1271,33 @@ describe("RowRaw.delete", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheet(111).row(4).delete();
-    raw.sheet(111).row(5).delete();
+    raw.sheet(111).row(topDataRowIndex).delete();
+    raw
+      .sheet(111)
+      .row(topDataRowIndex + 1)
+      .delete();
 
-    expect(() => raw.sheet(111).row(6).delete()).toThrowError(
-      /last data row.*may never be left with none/,
-    );
+    expect(() =>
+      raw
+        .sheet(111)
+        .row(topDataRowIndex + 2)
+        .delete(),
+    ).toThrowError(/last data row.*may never be left with none/);
   });
 
-  it("still emits a row deletion when other data rows survive it", () => {
-    const { batchUpdateCalls } = stubSheetWithDataRows(2);
+  it("still deletes a row when other data rows survive it", () => {
+    const { grid } = stubSheetWithDataRows(2);
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheet(111).row(5).delete();
+    raw
+      .sheet(111)
+      .row(topDataRowIndex + 1)
+      .delete();
     raw.batchUpdateGSheets();
 
-    expect(batchUpdateCalls[0]?.requests).toEqual([
-      {
-        deleteDimension: {
-          range: {
-            sheetId: 111,
-            dimension: "ROWS",
-            startIndex: 5,
-            endIndex: 6,
-          },
-        },
-      },
+    expect(grid.sheet(111).values({ startRowIndex: topDataRowIndex })).toEqual([
+      ["r1"],
     ]);
   });
 
@@ -1764,8 +1728,8 @@ describe("queued writes outlive a same-run re-fetch", () => {
 });
 
 describe("CellRaw.updateValue", () => {
-  it("sends a write to a row that was never fetched, since a write needs no fetched state", () => {
-    const { batchUpdateCalls } = stubSheetsService({
+  it("writes to a row that was never fetched, since a write needs no fetched state", () => {
+    const { grid } = stubSheetsService({
       sheets: [{ sheetId: 111, title: "Records", table: { endRowIndex: 11 } }],
     });
 
@@ -1774,24 +1738,13 @@ describe("CellRaw.updateValue", () => {
     raw.sheet(111).row(5).cell(2).updateValue("Processing...");
     raw.batchUpdateGSheets();
 
-    expect(batchUpdateCalls[0]?.requests).toEqual([
-      {
-        updateCells: {
-          range: {
-            sheetId: 111,
-            startRowIndex: 5,
-            endRowIndex: 6,
-            startColumnIndex: 2,
-            endColumnIndex: 3,
-          },
-          rows: [
-            {
-              values: [{ userEnteredValue: { stringValue: "Processing..." } }],
-            },
-          ],
-          fields: "userEnteredValue",
-        },
-      },
+    expect(grid.sheet(111).values()).toEqual([
+      [null, null, null],
+      [null, null, null],
+      [null, null, null],
+      [null, null, null],
+      [null, null, null],
+      [null, null, "Processing..."],
     ]);
   });
 
@@ -1912,30 +1865,8 @@ describe("SheetRaw column insert", () => {
     );
   });
 
-  function insertDimensionRequests(
-    batchUpdateCalls: { requests?: object[] }[],
-  ): object[] {
-    return batchUpdateCalls
-      .flatMap(({ requests = [] }) => requests)
-      .filter((request) => "insertDimension" in request);
-  }
-
-  function insertColumnRequest(startIndex: number) {
-    return {
-      insertDimension: {
-        range: {
-          sheetId: 111,
-          dimension: "COLUMNS",
-          startIndex,
-          endIndex: startIndex + 1,
-        },
-        inheritFromBefore: false,
-      },
-    };
-  }
-
-  it("sends two end inserts on one sheet as two insertDimension requests in queue order", () => {
-    const { batchUpdateCalls } = stubThreeColumnTable();
+  it("inserts two end columns on one sheet in queue order", () => {
+    const { grid } = stubThreeColumnTable();
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
@@ -1949,14 +1880,14 @@ describe("SheetRaw column insert", () => {
 
     expect([first, second]).toEqual([3, 4]);
     expect(raw.sheet(111).activeTable.endColumnIndex).toBe(5);
-    expect(insertDimensionRequests(batchUpdateCalls)).toEqual([
-      insertColumnRequest(3),
-      insertColumnRequest(4),
+    expect(grid.sheet(111).values(gridRanges.headerAndTopDataRow)).toEqual([
+      [null, null, null, "First", "Second"],
+      ["r:lse:1", "left", "right", null, null],
     ]);
   });
 
-  it("refuses a mid-Table insert queued beside another insert on that sheet, and sends only the first", () => {
-    const { batchUpdateCalls } = stubThreeColumnTable();
+  it("refuses a mid-Table insert queued beside another insert on that sheet, and inserts only the first", () => {
+    const { grid } = stubThreeColumnTable();
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
@@ -1972,13 +1903,14 @@ describe("SheetRaw column insert", () => {
     );
     raw.batchUpdateGSheets();
 
-    expect(insertDimensionRequests(batchUpdateCalls)).toEqual([
-      insertColumnRequest(3),
+    expect(grid.sheet(111).values(gridRanges.headerAndTopDataRow)).toEqual([
+      [null, null, null, "New"],
+      ["r:lse:1", "left", "right", null],
     ]);
   });
 
-  it("refuses a second insert queued beside a mid-Table insert on that sheet, and sends only the first", () => {
-    const { batchUpdateCalls } = stubThreeColumnTable();
+  it("refuses a second insert queued beside a mid-Table insert on that sheet, and inserts only the first", () => {
+    const { grid } = stubThreeColumnTable();
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
@@ -1994,8 +1926,10 @@ describe("SheetRaw column insert", () => {
     );
     raw.batchUpdateGSheets();
 
-    expect(insertDimensionRequests(batchUpdateCalls)).toEqual([
-      insertColumnRequest(1),
+    expect(grid.sheet(111).tables[0]?.range?.endColumnIndex).toBe(4);
+    expect(grid.sheet(111).values(gridRanges.headerAndTopDataRow)).toEqual([
+      [null, "Column 2", null, null],
+      ["r:lse:1", null, "left", "right"],
     ]);
   });
 
@@ -2035,8 +1969,8 @@ describe("SheetRaw column insert", () => {
 });
 
 describe("SpreadsheetRaw.discardQueuedChanges", () => {
-  it("sends nothing for changes queued before the discard", () => {
-    const { batchUpdateCalls } = stubSheetsService({
+  it("sends no batch update for changes queued before the discard", () => {
+    const { batchUpdateCount } = stubSheetsService({
       sheets: [{ sheetId: 111, title: "Records", table: { endRowIndex: 11 } }],
     });
 
@@ -2046,13 +1980,13 @@ describe("SpreadsheetRaw.discardQueuedChanges", () => {
     raw.discardQueuedChanges();
     raw.batchUpdateGSheets();
 
-    expect(batchUpdateCalls).toEqual([]);
+    expect(batchUpdateCount()).toBe(0);
     expect(raw.sheet(111).rowIndexesAreStale).toBe(false);
     expect(raw.sheet(111).activeTable.endRowIndex).toBe(11);
   });
 
-  it("empties the spreadsheet and per-sheet write queues, so a later flush sends nothing", () => {
-    const { batchUpdateCalls } = stubSheetsService({
+  it("empties the spreadsheet and per-sheet write queues, so a later flush sends no batch update", () => {
+    const { batchUpdateCount } = stubSheetsService({
       sheets: [{ sheetId: 111, title: "Records", table: { endRowIndex: 11 } }],
     });
 
@@ -2069,12 +2003,19 @@ describe("SpreadsheetRaw.discardQueuedChanges", () => {
     raw.discardQueuedChanges();
     raw.batchUpdateGSheets();
 
-    expect(batchUpdateCalls).toEqual([]);
+    expect(batchUpdateCount()).toBe(0);
   });
 
-  it("still sends changes queued after the discard, so a failure handler can report status", () => {
-    const { batchUpdateCalls } = stubSheetsService({
-      sheets: [{ sheetId: 111, title: "Records", table: { endRowIndex: 11 } }],
+  it("still applies changes queued after the discard, so a failure handler can report status", () => {
+    const { grid } = stubSheetsService({
+      sheets: [
+        {
+          sheetId: 111,
+          title: "Records",
+          rows: buildGridRows({ 4: ["r4"], 5: ["r5"] }),
+          table: { endRowIndex: 11 },
+        },
+      ],
     });
 
     const raw = SpreadsheetRaw.init();
@@ -2084,16 +2025,11 @@ describe("SpreadsheetRaw.discardQueuedChanges", () => {
     raw.sheet(111).appendDataRow();
     raw.batchUpdateGSheets();
 
-    expect(batchUpdateCalls[0]?.requests).toEqual([
-      {
-        appendCells: {
-          sheetId: 111,
-          tableId: "fake-table-111",
-          rows: [{}],
-          fields: "userEnteredValue",
-        },
-      },
+    expect(grid.sheet(111).values({ startRowIndex: 4 })).toEqual([
+      ["r4"],
+      ["r5"],
     ]);
+    expect(firstTableEndRowIndex(grid, 111)).toBe(12);
   });
 });
 
@@ -2122,27 +2058,21 @@ describe("ColumnRaw.updateAllCells", () => {
     return raw;
   }
 
-  it("sends one repeatCell for the whole column instead of one write per row", () => {
-    const { batchUpdateCalls } = stubFilledSheet();
+  it("fills every data row of the column, leaving the rows above it and the column beside it", () => {
+    const { grid } = stubFilledSheet();
 
     const raw = fetchedColumn();
     raw.sheet(111).column(1).updateAllCells({ value: "new" });
     raw.batchUpdateGSheets();
 
-    expect(batchUpdateCalls[0]?.requests).toEqual([
-      {
-        repeatCell: {
-          range: {
-            sheetId: 111,
-            startRowIndex: 4,
-            endRowIndex: 7,
-            startColumnIndex: 1,
-            endColumnIndex: 2,
-          },
-          cell: { userEnteredValue: { stringValue: "new" } },
-          fields: "userEnteredValue",
-        },
-      },
+    expect(grid.sheet(111).values()).toEqual([
+      ["c:lse:aaa", "c:lse:bbb"],
+      [null, null],
+      [null, null],
+      [null, null],
+      ["r:lse:1", "new"],
+      ["r:lse:2", "new"],
+      ["r:lse:3", "new"],
     ]);
   });
 
@@ -2159,27 +2089,23 @@ describe("ColumnRaw.updateAllCells", () => {
     ]);
   });
 
-  it("orders a per-cell write after the fill, so the cell wins", () => {
-    const { batchUpdateCalls } = stubFilledSheet();
+  it("lets a per-cell write win over the fill", () => {
+    const { grid } = stubFilledSheet();
 
     const raw = fetchedColumn();
     raw.sheet(111).column(1).updateAllCells({ value: "filled" });
     raw.sheet(111).row(5).cell(1).updateValue("overridden");
     raw.batchUpdateGSheets();
 
-    const requests = batchUpdateCalls[0]?.requests ?? [];
-    expect(requests[0]?.repeatCell?.cell?.userEnteredValue).toEqual({
-      stringValue: "filled",
-    });
-    expect(
-      requests[1]?.updateCells?.rows?.[0]?.values?.[0]?.userEnteredValue,
-    ).toEqual({
-      stringValue: "overridden",
-    });
+    expect(grid.sheet(111).values(gridRanges.columnOneData)).toEqual([
+      ["filled"],
+      ["overridden"],
+      ["filled"],
+    ]);
   });
 
-  it("carries a background colour alongside the value in the one fill request", () => {
-    const { batchUpdateCalls } = stubFilledSheet();
+  it("fills a background colour alongside the value", () => {
+    const { grid } = stubFilledSheet();
 
     const raw = fetchedColumn();
     raw
@@ -2188,38 +2114,25 @@ describe("ColumnRaw.updateAllCells", () => {
       .updateAllCells({ value: "new", backgroundColor: lightGreen });
     raw.batchUpdateGSheets();
 
-    expect(batchUpdateCalls[0]?.requests).toEqual([
-      {
-        repeatCell: {
-          range: {
-            sheetId: 111,
-            startRowIndex: 4,
-            endRowIndex: 7,
-            startColumnIndex: 1,
-            endColumnIndex: 2,
-          },
-          cell: {
-            userEnteredValue: { stringValue: "new" },
-            userEnteredFormat: { backgroundColor: lightGreen },
-          },
-          fields: "userEnteredValue,userEnteredFormat.backgroundColor",
-        },
-      },
+    const filled = { value: "new", backgroundColor: lightGreen };
+    expect(grid.sheet(111).rows(gridRanges.columnOneData)).toEqual([
+      [filled],
+      [filled],
+      [filled],
     ]);
   });
 
   it("leaves a row appended after the fill alone, since the fill's bound is snapshotted", () => {
-    const { batchUpdateCalls } = stubFilledSheet();
+    const { grid } = stubFilledSheet();
 
     const raw = fetchedColumn();
     raw.sheet(111).column(1).updateAllCells({ value: "filled" });
     raw.sheet(111).appendDataRow();
     raw.batchUpdateGSheets();
 
-    const fill = (batchUpdateCalls[0]?.requests ?? []).find(
-      (r) => r.repeatCell,
-    );
-    expect(fill?.repeatCell?.range?.endRowIndex).toBe(7);
+    expect(
+      grid.sheet(111).values({ ...gridRanges.columnOneData, endRowIndex: 8 }),
+    ).toEqual([["filled"], ["filled"], ["filled"], [null]]);
   });
 });
 
@@ -2251,46 +2164,41 @@ describe("ColumnRaw.updateActiveCells", () => {
     raw.fetchAllGathered();
     return raw;
   }
-  function fillRanges(
-    calls: GoogleAppsScript.Sheets.Schema.BatchUpdateSpreadsheetRequest[],
-  ) {
-    return calls
-      .flatMap((call) => call.requests ?? [])
-      .filter((request) => request.repeatCell)
-      .map((request) => ({
-        startRowIndex: request.repeatCell?.range?.startRowIndex,
-        endRowIndex: request.repeatCell?.range?.endRowIndex,
-      }));
-  }
-
-  it("sends one request for a column whose active rows are all contiguous", () => {
-    const { batchUpdateCalls } = stubSelectionSheet();
+  it("fills every active row of a column whose active rows are all contiguous", () => {
+    const { grid } = stubSelectionSheet();
 
     const raw = fetchedSelectionSheet();
     raw.sheet(111).column(1).updateActiveCells({ value: "new" });
     raw.batchUpdateGSheets();
 
-    expect(fillRanges(batchUpdateCalls)).toEqual([
-      { startRowIndex: 4, endRowIndex: 9 },
+    expect(grid.sheet(111).values(gridRanges.columnOneData)).toEqual([
+      ["new"],
+      ["new"],
+      ["new"],
+      ["new"],
+      ["new"],
     ]);
   });
 
-  it("sends one request per contiguous run rather than one per row", () => {
-    const { batchUpdateCalls } = stubSelectionSheet();
+  it("fills only the active rows when they fall in separate runs", () => {
+    const { grid } = stubSelectionSheet();
 
     const raw = fetchedSelectionSheet();
     raw.sheet(111).removeRowsExcept(4, 5, 8);
     raw.sheet(111).column(1).updateActiveCells({ value: "new" });
     raw.batchUpdateGSheets();
 
-    expect(fillRanges(batchUpdateCalls)).toEqual([
-      { startRowIndex: 4, endRowIndex: 6 },
-      { startRowIndex: 8, endRowIndex: 9 },
+    expect(grid.sheet(111).values(gridRanges.columnOneData)).toEqual([
+      ["new"],
+      ["new"],
+      ["old"],
+      ["old"],
+      ["new"],
     ]);
   });
 
-  it("carries value and background colour together under a mask naming both", () => {
-    const { batchUpdateCalls } = stubSelectionSheet();
+  it("writes value and background colour together", () => {
+    const { grid } = stubSelectionSheet();
 
     const raw = fetchedSelectionSheet();
     raw.sheet(111).removeRowsExcept(4);
@@ -2300,49 +2208,35 @@ describe("ColumnRaw.updateActiveCells", () => {
       .updateActiveCells({ value: "new", backgroundColor: lightGreen });
     raw.batchUpdateGSheets();
 
-    expect(batchUpdateCalls[0]?.requests).toEqual([
-      {
-        repeatCell: {
-          range: {
-            sheetId: 111,
-            startRowIndex: 4,
-            endRowIndex: 5,
-            startColumnIndex: 1,
-            endColumnIndex: 2,
-          },
-          cell: {
-            userEnteredValue: { stringValue: "new" },
-            userEnteredFormat: { backgroundColor: lightGreen },
-          },
-          fields: "userEnteredValue,userEnteredFormat.backgroundColor",
-        },
-      },
-    ]);
+    expect(
+      grid.sheet(111).rows({ ...gridRanges.columnOneData, endRowIndex: 6 }),
+    ).toEqual([[{ value: "new", backgroundColor: lightGreen }], ["old"]]);
   });
 
   it("leaves values alone when only a background colour is written", () => {
-    const { batchUpdateCalls } = stubSelectionSheet();
+    const { grid } = stubSelectionSheet();
 
     const raw = fetchedSelectionSheet();
     raw.sheet(111).removeRowsExcept(4);
     raw.sheet(111).column(1).updateActiveCells({ backgroundColor: lightGreen });
     raw.batchUpdateGSheets();
 
-    expect(batchUpdateCalls[0]?.requests?.[0]?.repeatCell?.cell).toEqual({
-      userEnteredFormat: { backgroundColor: lightGreen },
+    expect(grid.sheet(111).cell(4, 1)).toEqual({
+      value: "old",
+      backgroundColor: lightGreen,
     });
     expect(raw.sheet(111).column(1).valueArrOrEmpty).toEqual(["old"]);
   });
 
-  it("writes nothing when no row is active", () => {
-    const { batchUpdateCalls } = stubSelectionSheet();
+  it("sends no batch update when no row is active", () => {
+    const { batchUpdateCount } = stubSelectionSheet();
 
     const raw = fetchedSelectionSheet();
     raw.sheet(111).removeRowsExcept();
     raw.sheet(111).column(1).updateActiveCells({ value: "new" });
     raw.batchUpdateGSheets();
 
-    expect(batchUpdateCalls).toEqual([]);
+    expect(batchUpdateCount()).toBe(0);
   });
 
   it("mirrors the write into row state, so a read before the flush sees it", () => {
@@ -2432,25 +2326,34 @@ describe("ColumnRaw.updateAllFormulas", () => {
     });
   }
 
-  it("serializes pasteData PASTE_FORMULA once per fill and does not mirror into row state", () => {
-    const { batchUpdateCalls } = stubFilledSheet();
-
+  function fetchedColumn() {
     const raw = SpreadsheetRaw.init();
     raw.sheet(111).column(1).gatherFetchFull();
     raw.fetchAllGathered();
+    return raw;
+  }
+
+  it("writes the formula into every data row of the column", () => {
+    const { grid } = stubFilledSheet();
+
+    const raw = fetchedColumn();
     raw.sheet(111).column(1).updateAllFormulas("=2+1");
     raw.batchUpdateGSheets();
 
-    expect(batchUpdateCalls[0]?.requests).toEqual([
-      {
-        pasteData: {
-          coordinate: { sheetId: 111, rowIndex: 4, columnIndex: 1 },
-          data: '"=2+1"\n"=2+1"\n"=2+1"',
-          delimiter: "\t",
-          type: "PASTE_FORMULA",
-        },
-      },
+    expect(grid.sheet(111).rows(gridRanges.columnOneData)).toEqual([
+      [formulaCell("=2+1")],
+      [formulaCell("=2+1")],
+      [formulaCell("=2+1")],
     ]);
+  });
+
+  it("leaves row state holding the fetched values, since a formula fill isn't mirrored into it", () => {
+    stubFilledSheet();
+
+    const raw = fetchedColumn();
+    raw.sheet(111).column(1).updateAllFormulas("=2+1");
+    raw.batchUpdateGSheets();
+
     expect(raw.sheet(111).column(1).valueArrOrEmpty).toEqual([
       "old",
       "old",
@@ -2458,8 +2361,8 @@ describe("ColumnRaw.updateAllFormulas", () => {
     ]);
   });
 
-  it("quotes commas and quotes so a FILTER formula stays in one cell", () => {
-    const { batchUpdateCalls } = stubFilledSheet();
+  it("writes a formula holding commas and quotes into one cell", () => {
+    const { grid } = stubFilledSheet();
     const formula = '=FILTER(A:A,A:A<>"")';
 
     const raw = SpreadsheetRaw.init();
@@ -2467,20 +2370,15 @@ describe("ColumnRaw.updateAllFormulas", () => {
     raw.sheet(111).row(4).cell(1).updateFormula(formula);
     raw.batchUpdateGSheets();
 
-    expect(batchUpdateCalls[0]?.requests).toEqual([
-      {
-        pasteData: {
-          coordinate: { sheetId: 111, rowIndex: 4, columnIndex: 1 },
-          data: '"=FILTER(A:A,A:A<>"""")"',
-          delimiter: "\t",
-          type: "PASTE_FORMULA",
-        },
-      },
+    expect(grid.sheet(111).rows(threeByThreeAround(4, 1))).toEqual([
+      [null, null, null],
+      ["r:lse:1", formulaCell(formula), null],
+      ["r:lse:2", "old", null],
     ]);
   });
 
-  it("keeps a pretty-printed formula in one quoted field", () => {
-    const { batchUpdateCalls } = stubFilledSheet();
+  it("writes a pretty-printed formula into one cell", () => {
+    const { grid } = stubFilledSheet();
     const formula = "=2+SINGLE(\ntest[Number])";
 
     const raw = SpreadsheetRaw.init();
@@ -2488,13 +2386,15 @@ describe("ColumnRaw.updateAllFormulas", () => {
     raw.sheet(111).row(4).cell(1).updateFormula(formula);
     raw.batchUpdateGSheets();
 
-    expect(batchUpdateCalls[0]?.requests?.[0]?.pasteData?.data).toBe(
-      `"${formula}"`,
-    );
+    expect(grid.sheet(111).rows(threeByThreeAround(4, 1))).toEqual([
+      [null, null, null],
+      ["r:lse:1", formulaCell(formula), null],
+      ["r:lse:2", "old", null],
+    ]);
   });
 
-  it("sends pasteData then a colour repeatCell in the same batchUpdate", () => {
-    const { batchUpdateCalls } = stubFilledSheet();
+  it("writes a formula fill and a colour fill on one column in the same batch update", () => {
+    const { batchUpdateCount, grid } = stubFilledSheet();
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
@@ -2502,33 +2402,17 @@ describe("ColumnRaw.updateAllFormulas", () => {
     raw.sheet(111).column(1).updateAllCells({ backgroundColor: lightGreen });
     raw.batchUpdateGSheets();
 
-    expect(batchUpdateCalls[0]?.requests).toEqual([
-      {
-        pasteData: {
-          coordinate: { sheetId: 111, rowIndex: 4, columnIndex: 1 },
-          data: '"=2+1"\n"=2+1"\n"=2+1"',
-          delimiter: "\t",
-          type: "PASTE_FORMULA",
-        },
-      },
-      {
-        repeatCell: {
-          range: {
-            sheetId: 111,
-            startRowIndex: 4,
-            endRowIndex: 7,
-            startColumnIndex: 1,
-            endColumnIndex: 2,
-          },
-          cell: { userEnteredFormat: { backgroundColor: lightGreen } },
-          fields: "userEnteredFormat.backgroundColor",
-        },
-      },
+    expect(batchUpdateCount()).toBe(1);
+    const filled = { ...formulaCell("=2+1"), backgroundColor: lightGreen };
+    expect(grid.sheet(111).rows(gridRanges.columnOneData)).toEqual([
+      [filled],
+      [filled],
+      [filled],
     ]);
   });
 
-  it("drops a previously queued value when a formula is written on the same cell", () => {
-    const { batchUpdateCalls } = stubFilledSheet();
+  it("lets a formula written after a value on the same cell win", () => {
+    const { grid } = stubFilledSheet();
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
@@ -2537,20 +2421,11 @@ describe("ColumnRaw.updateAllFormulas", () => {
     cell.updateFormula("=2+1");
     raw.batchUpdateGSheets();
 
-    expect(batchUpdateCalls[0]?.requests).toEqual([
-      {
-        pasteData: {
-          coordinate: { sheetId: 111, rowIndex: 4, columnIndex: 1 },
-          data: '"=2+1"',
-          delimiter: "\t",
-          type: "PASTE_FORMULA",
-        },
-      },
-    ]);
+    expect(grid.sheet(111).cell(4, 1)).toEqual(formulaCell("=2+1"));
   });
 
-  it("orders a per-cell formula paste after the fill paste, so the cell wins", () => {
-    const { batchUpdateCalls } = stubFilledSheet();
+  it("lets a per-cell formula win over the formula fill", () => {
+    const { grid } = stubFilledSheet();
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
@@ -2558,22 +2433,25 @@ describe("ColumnRaw.updateAllFormulas", () => {
     raw.sheet(111).row(5).cell(1).updateFormula("=9");
     raw.batchUpdateGSheets();
 
-    const requests = batchUpdateCalls[0]?.requests ?? [];
-    expect(requests[0]?.pasteData?.coordinate?.rowIndex).toBe(4);
-    expect(requests[0]?.pasteData?.data).toBe('"=2+1"\n"=2+1"\n"=2+1"');
-    expect(requests[1]?.pasteData).toEqual({
-      coordinate: { sheetId: 111, rowIndex: 5, columnIndex: 1 },
-      data: '"=9"',
-      delimiter: "\t",
-      type: "PASTE_FORMULA",
-    });
+    expect(grid.sheet(111).rows(gridRanges.columnOneData)).toEqual([
+      [formulaCell("=2+1")],
+      [formulaCell("=9")],
+      [formulaCell("=2+1")],
+    ]);
   });
 });
 
 describe("CellRaw.updateBackgroundColor", () => {
-  it("sends one updateCells request masking only the background colour, with no value", () => {
-    const { batchUpdateCalls } = stubSheetsService({
-      sheets: [{ sheetId: 111, title: "Records", table: { endRowIndex: 11 } }],
+  it("colours the cell and leaves its value alone", () => {
+    const { grid } = stubSheetsService({
+      sheets: [
+        {
+          sheetId: 111,
+          title: "Records",
+          rows: buildGridRows({ 5: [null, null, "existing"] }),
+          table: { endRowIndex: 11 },
+        },
+      ],
     });
 
     const raw = SpreadsheetRaw.init();
@@ -2581,29 +2459,14 @@ describe("CellRaw.updateBackgroundColor", () => {
     raw.sheet(111).row(5).cell(2).updateBackgroundColor(lightGreen);
     raw.batchUpdateGSheets();
 
-    expect(batchUpdateCalls[0]?.requests).toEqual([
-      {
-        updateCells: {
-          range: {
-            sheetId: 111,
-            startRowIndex: 5,
-            endRowIndex: 6,
-            startColumnIndex: 2,
-            endColumnIndex: 3,
-          },
-          rows: [
-            {
-              values: [{ userEnteredFormat: { backgroundColor: lightGreen } }],
-            },
-          ],
-          fields: "userEnteredFormat.backgroundColor",
-        },
-      },
-    ]);
+    expect(grid.sheet(111).cell(5, 2)).toEqual({
+      value: "existing",
+      backgroundColor: lightGreen,
+    });
   });
 
-  it("collapses a value and a colour on one cell into a single request masking both", () => {
-    const { batchUpdateCalls } = stubSheetsService({
+  it("writes the value queued before the colour on the same cell", () => {
+    const { grid } = stubSheetsService({
       sheets: [{ sheetId: 111, title: "Records", table: { endRowIndex: 11 } }],
     });
 
@@ -2613,46 +2476,10 @@ describe("CellRaw.updateBackgroundColor", () => {
     raw.sheet(111).row(5).cell(2).updateBackgroundColor(lightGreen);
     raw.batchUpdateGSheets();
 
-    expect(batchUpdateCalls[0]?.requests).toEqual([
-      {
-        updateCells: {
-          range: {
-            sheetId: 111,
-            startRowIndex: 5,
-            endRowIndex: 6,
-            startColumnIndex: 2,
-            endColumnIndex: 3,
-          },
-          rows: [
-            {
-              values: [
-                {
-                  userEnteredValue: { stringValue: "2026-09-05 10:00:00" },
-                  userEnteredFormat: { backgroundColor: lightGreen },
-                },
-              ],
-            },
-          ],
-          fields: "userEnteredValue,userEnteredFormat.backgroundColor",
-        },
-      },
-    ]);
-  });
-
-  it("leaves a value queued for the cell intact when the colour is queued after it", () => {
-    const { batchUpdateCalls } = stubSheetsService({
-      sheets: [{ sheetId: 111, title: "Records", table: { endRowIndex: 11 } }],
+    expect(grid.sheet(111).cell(5, 2)).toEqual({
+      value: "2026-09-05 10:00:00",
+      backgroundColor: lightGreen,
     });
-
-    const raw = SpreadsheetRaw.init();
-    raw.fetchAllSheetProperties();
-    raw.sheet(111).row(5).cell(2).updateValue("kept");
-    raw.sheet(111).row(5).cell(2).updateBackgroundColor(lightGreen);
-    raw.batchUpdateGSheets();
-
-    const values =
-      batchUpdateCalls[0]?.requests?.[0]?.updateCells?.rows?.[0]?.values;
-    expect(values?.[0]?.userEnteredValue).toEqual({ stringValue: "kept" });
   });
 
   it("leaves the cell unreadable, since the read path never fetches colour", () => {
@@ -2671,8 +2498,8 @@ describe("CellRaw.updateBackgroundColor", () => {
 });
 
 describe("CellRaw.addCheckboxValidation", () => {
-  it("sends one setDataValidation with a BOOLEAN condition over the cell", () => {
-    const { batchUpdateCalls } = stubSheetsService({
+  it("makes that one cell a checkbox", () => {
+    const { grid } = stubSheetsService({
       sheets: [{ sheetId: 111, title: "Records", table: { endRowIndex: 11 } }],
     });
 
@@ -2681,19 +2508,11 @@ describe("CellRaw.addCheckboxValidation", () => {
     raw.sheet(111).row(5).cell(2).addCheckboxValidation();
     raw.batchUpdateGSheets();
 
-    expect(batchUpdateCalls[0]?.requests).toEqual([
-      {
-        setDataValidation: {
-          range: {
-            sheetId: 111,
-            startRowIndex: 5,
-            endRowIndex: 6,
-            startColumnIndex: 2,
-            endColumnIndex: 3,
-          },
-          rule: { condition: { type: "BOOLEAN" } },
-        },
-      },
+    const checkbox = { value: null, dataValidationConditionType: "BOOLEAN" };
+    expect(grid.sheet(111).rows(threeByThreeAround(5, 2))).toEqual([
+      [null, null, null],
+      [null, checkbox, null],
+      [null, null, null],
     ]);
   });
 });
@@ -2768,12 +2587,18 @@ describe("SpreadsheetRaw.findReplace", () => {
           sheetId: 111,
           title: "Records",
           rows: buildGridRows({
-            0: ["c:lse:aaa", "c:lse:bbb"],
-            4: ["r:lse:1", "Currency"],
-            5: ["r:lse:2", "Caretaking"],
-            6: ["r:lse:3", "Currency"],
+            [colIdRowIndex]: ["c:lse:aaa", "c:lse:bbb", "c:lse:ccc"],
+            [tableHeaderRowIndex]: ["ID", "Currency", "Currency"],
+            [topDataRowIndex]: ["r:lse:1", "Currency", "Currency"],
+            [topDataRowIndex + 1]: ["r:lse:2", "Caretaking", "Currency"],
+            [topDataRowIndex + 2]: ["r:lse:3", "Currency", "Currency"],
           }),
-          table: { endRowIndex: 7 },
+          table: { endRowIndex: topDataRowIndex + 3 },
+        },
+        {
+          sheetId: 222,
+          title: "Other",
+          rows: [["Currency", formulaCell('="Currency"')]],
         },
       ],
     });
@@ -2785,8 +2610,8 @@ describe("SpreadsheetRaw.findReplace", () => {
     return raw;
   }
 
-  it("scopes a column's replace to that column's data rows", () => {
-    const { batchUpdateCalls } = stubFilledSheet();
+  it("replaces within that column's data rows only", () => {
+    const { grid } = stubFilledSheet();
 
     const raw = fetchedColumn();
     raw.sheet(111).column(1).findReplace({
@@ -2796,45 +2621,37 @@ describe("SpreadsheetRaw.findReplace", () => {
     });
     raw.batchUpdateGSheets();
 
-    expect(batchUpdateCalls[0]?.requests).toEqual([
-      {
-        findReplace: {
-          find: "Currency",
-          replacement: "Total",
-          matchEntireCell: true,
-          range: {
-            sheetId: 111,
-            startRowIndex: 4,
-            endRowIndex: 7,
-            startColumnIndex: 1,
-            endColumnIndex: 2,
-          },
-        },
-      },
+    expect(
+      grid.sheet(111).values({ startRowIndex: tableHeaderRowIndex }),
+    ).toEqual([
+      ["ID", "Currency", "Currency"],
+      ["r:lse:1", "Total", "Currency"],
+      ["r:lse:2", "Caretaking", "Currency"],
+      ["r:lse:3", "Total", "Currency"],
     ]);
   });
 
-  it("scopes a sheet's replace by sheetId rather than by range", () => {
-    const { batchUpdateCalls } = stubFilledSheet();
+  it("replaces across the whole of that sheet and no other", () => {
+    const { grid } = stubFilledSheet();
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
     raw.sheet(111).findReplace({ find: "Currency", replacement: "Total" });
     raw.batchUpdateGSheets();
 
-    expect(batchUpdateCalls[0]?.requests).toEqual([
-      {
-        findReplace: {
-          find: "Currency",
-          replacement: "Total",
-          sheetId: 111,
-        },
-      },
+    expect(
+      grid.sheet(111).values({ startRowIndex: tableHeaderRowIndex }),
+    ).toEqual([
+      ["ID", "Total", "Total"],
+      ["r:lse:1", "Total", "Total"],
+      ["r:lse:2", "Caretaking", "Total"],
+      ["r:lse:3", "Total", "Total"],
     ]);
+    expect(grid.sheet(222).values()).toEqual([["Currency", '="Currency"']]);
   });
 
-  it("carries an allSheets scope straight through", () => {
-    const { batchUpdateCalls } = stubFilledSheet();
+  it("replaces across every sheet, formulas included when asked", () => {
+    const { grid } = stubFilledSheet();
 
     const raw = SpreadsheetRaw.init();
     raw.findReplace({
@@ -2845,20 +2662,18 @@ describe("SpreadsheetRaw.findReplace", () => {
     });
     raw.batchUpdateGSheets();
 
-    expect(batchUpdateCalls[0]?.requests).toEqual([
-      {
-        findReplace: {
-          find: "Currency",
-          replacement: "Total",
-          includeFormulas: true,
-          allSheets: true,
-        },
-      },
+    expect(grid.sheet(111).values({ startRowIndex: topDataRowIndex })).toEqual([
+      ["r:lse:1", "Total", "Total"],
+      ["r:lse:2", "Caretaking", "Total"],
+      ["r:lse:3", "Total", "Total"],
+    ]);
+    expect(grid.sheet(222).rows()).toEqual([
+      ["Total", formulaCell('="Total"')],
     ]);
   });
 
-  it("sends after the per-cell writes, whose text it would otherwise miss", () => {
-    const { batchUpdateCalls } = stubFilledSheet();
+  it("replaces text the same flush writes, since it runs after the per-cell writes", () => {
+    const { grid } = stubFilledSheet();
 
     const raw = fetchedColumn();
     raw.findReplace({
@@ -2866,15 +2681,20 @@ describe("SpreadsheetRaw.findReplace", () => {
       replacement: "Total",
       scope: { allSheets: true },
     });
-    raw.sheet(111).row(5).cell(1).updateValue("Currency");
-    raw.sheet(111).row(6).delete();
+    raw
+      .sheet(111)
+      .row(topDataRowIndex + 1)
+      .cell(1)
+      .updateValue("Currency");
+    raw
+      .sheet(111)
+      .row(topDataRowIndex + 2)
+      .delete();
     raw.batchUpdateGSheets();
 
-    const requests = batchUpdateCalls[0]?.requests ?? [];
-    expect(requests.map((request) => Object.keys(request)[0])).toEqual([
-      "updateCells",
-      "findReplace",
-      "deleteDimension",
+    expect(grid.sheet(111).values(gridRanges.columnOneData)).toEqual([
+      ["Total"],
+      ["Total"],
     ]);
   });
 
@@ -2904,16 +2724,16 @@ describe("SpreadsheetRaw.findReplace", () => {
       .findReplace({ find: "Currency", replacement: "Total" });
     raw.batchUpdateGSheets();
 
-    expect(() => raw.sheet(111).row(4).cell(1).valueOrEmpty()).toThrowError(
-      /went stale when a findReplace was sent/,
-    );
+    expect(() =>
+      raw.sheet(111).row(topDataRowIndex).cell(1).valueOrEmpty(),
+    ).toThrowError(/went stale when a findReplace was sent/);
   });
 
   it("leaves fetched values alone when no findReplace was queued", () => {
     stubFilledSheet();
 
     const raw = fetchedColumn();
-    raw.sheet(111).row(4).cell(1).updateValue("Total");
+    raw.sheet(111).row(topDataRowIndex).cell(1).updateValue("Total");
     raw.batchUpdateGSheets();
 
     expect(raw.sheet(111).column(1).valueArrOrEmpty).toEqual([
@@ -2942,8 +2762,8 @@ describe("SpreadsheetRaw.findReplace", () => {
     ]);
   });
 
-  it("discards a queued replace alongside every other change", () => {
-    const { batchUpdateCalls } = stubFilledSheet();
+  it("discards a queued replace alongside every other change, sending no batch update", () => {
+    const { batchUpdateCount } = stubFilledSheet();
 
     const raw = SpreadsheetRaw.init();
     raw.findReplace({
@@ -2954,7 +2774,7 @@ describe("SpreadsheetRaw.findReplace", () => {
     raw.discardQueuedChanges();
     raw.batchUpdateGSheets();
 
-    expect(batchUpdateCalls).toEqual([]);
+    expect(batchUpdateCount()).toBe(0);
   });
 });
 
@@ -2966,8 +2786,8 @@ describe("SheetMetaRaw.activeColumnIds", () => {
           sheetId: 111,
           title: "Records",
           rows: buildGridRows({
-            0: columnIdRow,
-            4: [],
+            [colIdRowIndex]: columnIdRow,
+            [topDataRowIndex]: [],
           }),
           table: { endRowIndex: topDataRowIndex + 1, endColumnIndex: 2 },
         },
@@ -3076,8 +2896,8 @@ describe("ColumnMetaRaw.updateColumnType", () => {
     return raw;
   }
 
-  it("sends one full-list updateTable first in the batch, carrying every column's name and type", () => {
-    const { batchUpdateCalls } = stubTypedTable();
+  it("sets every queued column type on the Table in the flush that appends to it, keeping each column's name", () => {
+    const { grid } = stubTypedTable();
     const raw = fetchedRaw();
     raw.sheet(111).appendDataRow();
     raw
@@ -3090,22 +2910,32 @@ describe("ColumnMetaRaw.updateColumnType", () => {
       .updateColumnType("TEXT");
     raw.batchUpdateGSheets();
 
-    const requests = batchUpdateCalls[0]?.requests ?? [];
-    expect(requests.filter((request) => request.updateTable)).toHaveLength(1);
-    expect(requests[0]).toEqual({
-      updateTable: {
-        table: {
-          tableId: "fake-table-111",
-          columnProperties: [
-            { columnIndex: 0, columnName: "Name", columnType: "TEXT" },
-            { columnIndex: 1, columnName: "ID", columnType: "TEXT" },
-            { columnIndex: 2, columnName: "Amount", columnType: "DOUBLE" },
-          ],
-        },
-        fields: "columnProperties",
-      },
+    const [table] = grid.sheet(111).tables;
+    expect(table?.columnProperties).toEqual([
+      { columnName: "Name", columnType: "TEXT" },
+      { columnIndex: 1, columnName: "ID", columnType: "TEXT" },
+      { columnIndex: 2, columnName: "Amount", columnType: "DOUBLE" },
+    ]);
+    expect(table?.range?.endRowIndex).toBe(tableEndRowIndex + 1);
+  });
+
+  it("lets a header written in the same flush rename its column rather than be reverted by the type update", () => {
+    const { grid } = stubTypedTable();
+    const raw = fetchedRaw();
+    raw
+      .sheet(111)
+      .meta.column(startTableColIndex + 2)
+      .updateColumnType("DOUBLE");
+    raw
+      .sheet(111)
+      .meta.column(startTableColIndex + 1)
+      .updateUniformCell("tableHeader", "Identifier");
+    raw.batchUpdateGSheets();
+
+    expect(grid.sheet(111).tables[0]?.columnProperties?.[1]).toEqual({
+      columnIndex: 1,
+      columnName: "Identifier",
     });
-    expect(requests[1]?.appendCells).toBeDefined();
   });
 
   it("keeps an untouched column's name and type through the full-list replace", () => {
@@ -3129,8 +2959,8 @@ describe("ColumnMetaRaw.updateColumnType", () => {
     ).toBe("DOUBLE");
   });
 
-  it("sends a sibling column's type back unchanged when it is one the framework does not name", () => {
-    const { batchUpdateCalls } = stubTypedTable({
+  it("keeps a sibling column's type unchanged when it is one the framework does not name", () => {
+    const { grid } = stubTypedTable({
       columnTypes: { [startTableColIndex]: "FUTURE_CHIP" },
     });
     const raw = fetchedRaw();
@@ -3140,10 +2970,8 @@ describe("ColumnMetaRaw.updateColumnType", () => {
       .updateColumnType("DOUBLE");
     raw.batchUpdateGSheets();
 
-    expect(
-      batchUpdateCalls[0]?.requests?.[0]?.updateTable?.table?.columnProperties,
-    ).toEqual([
-      { columnIndex: 0, columnName: "Name", columnType: "FUTURE_CHIP" },
+    expect(grid.sheet(111).tables[0]?.columnProperties).toEqual([
+      { columnName: "Name", columnType: "FUTURE_CHIP" },
       { columnIndex: 1, columnName: "ID" },
       { columnIndex: 2, columnName: "Amount", columnType: "DOUBLE" },
     ]);
@@ -3194,8 +3022,8 @@ describe("ColumnMetaRaw.updateColumnType", () => {
     expect(() => raw.batchUpdateGSheets()).toThrow(/columnName/);
   });
 
-  it("refuses before sending anything when a column on the Table has a validation rule, naming the Table and those columns", () => {
-    const { batchUpdateCalls } = stubTypedTable({
+  it("refuses before sending any batch update when a column on the Table has a validation rule, naming the Table and those columns", () => {
+    const { batchUpdateCount } = stubTypedTable({
       columnValidationValues: { [startTableColIndex + 1]: ["a", "b"] },
       columnValidationConditionTypes: {
         [startTableColIndex + 1]: "ONE_OF_LIST",
@@ -3210,11 +3038,11 @@ describe("ColumnMetaRaw.updateColumnType", () => {
     expect(() => raw.batchUpdateGSheets()).toThrow(
       /fake-table-111.*Records.*ID/,
     );
-    expect(batchUpdateCalls).toEqual([]);
+    expect(batchUpdateCount()).toBe(0);
   });
 
-  it("refuses when the same flush inserts a column on that sheet", () => {
-    const { batchUpdateCalls } = stubTypedTable();
+  it("refuses when the same flush inserts a column on that sheet, sending no batch update", () => {
+    const { batchUpdateCount } = stubTypedTable();
     const raw = fetchedRaw();
     raw
       .sheet(111)
@@ -3226,11 +3054,11 @@ describe("ColumnMetaRaw.updateColumnType", () => {
     });
 
     expect(() => raw.batchUpdateGSheets()).toThrow(/inserts a column/);
-    expect(batchUpdateCalls).toEqual([]);
+    expect(batchUpdateCount()).toBe(0);
   });
 
-  it("refuses a second update after a flush until the Table is refetched", () => {
-    const { batchUpdateCalls } = stubTypedTable();
+  it("refuses a second update after a flush until the Table is refetched, sending no second batch update", () => {
+    const { batchUpdateCount } = stubTypedTable();
     const raw = fetchedRaw();
     raw
       .sheet(111)
@@ -3245,6 +3073,6 @@ describe("ColumnMetaRaw.updateColumnType", () => {
     expect(() => raw.batchUpdateGSheets()).toThrow(
       /no fetched column properties/,
     );
-    expect(batchUpdateCalls).toHaveLength(1);
+    expect(batchUpdateCount()).toBe(1);
   });
 });
