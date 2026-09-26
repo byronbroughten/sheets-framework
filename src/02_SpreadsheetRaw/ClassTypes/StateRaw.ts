@@ -226,6 +226,7 @@ export type AddedSheetCell = Required<
 
 export interface SheetChangePropsObj {
   sort: SheetChangeSortProps;
+  insertTableEndColumn: { action: "insertTableEndColumn" };
   fill: { action: "fill" } & ColumnFill;
 }
 export type SheetChangeProps = SheetChangePropsObj[keyof SheetChangePropsObj];

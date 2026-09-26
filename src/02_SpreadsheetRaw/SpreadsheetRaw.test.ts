@@ -123,6 +123,12 @@ function formulaCell(formula: string): FakeRichCellValue {
   return { value: formula, isFormula: true };
 }
 
+function fetchedRaw(): SpreadsheetRaw {
+  const raw = SpreadsheetRaw.init();
+  raw.fetchAllSheetProperties();
+  return raw;
+}
+
 function thrownMessage(fn: () => void): string {
   try {
     fn();
@@ -1803,7 +1809,6 @@ describe("CellRaw.updateValue", () => {
 });
 
 describe("SheetMetaRaw.insertColumnAtEnd", () => {
-  const green = { red: 0.2, green: 0.8, blue: 0.2 };
   const newColumn = { startColumnIndex: 3, endColumnIndex: 4 } as const;
 
   function stubThreeColumnTable(
@@ -1842,8 +1847,7 @@ describe("SheetMetaRaw.insertColumnAtEnd", () => {
   it("grows the Table by one column holding the new header, column ID and group heading", () => {
     const { grid } = stubThreeColumnTable();
 
-    const raw = SpreadsheetRaw.init();
-    raw.fetchAllSheetProperties();
+    const raw = fetchedRaw();
     const insertedIndex = raw.sheetMeta(111).insertColumnAtEnd({
       columnId: "c:lse:ddd",
       header: "New",
@@ -1865,8 +1869,7 @@ describe("SheetMetaRaw.insertColumnAtEnd", () => {
   it("leaves row indexes fresh and every column writable after the insert", () => {
     stubThreeColumnTable();
 
-    const raw = SpreadsheetRaw.init();
-    raw.fetchAllSheetProperties();
+    const raw = fetchedRaw();
     const insertedIndex = raw
       .sheetMeta(111)
       .insertColumnAtEnd({ columnId: "c:lse:ddd", header: "New" });
@@ -1885,8 +1888,7 @@ describe("SheetMetaRaw.insertColumnAtEnd", () => {
   it("lands two inserts on one sheet side by side inside the Table, in queue order", () => {
     const { grid } = stubThreeColumnTable();
 
-    const raw = SpreadsheetRaw.init();
-    raw.fetchAllSheetProperties();
+    const raw = fetchedRaw();
     const first = raw
       .sheetMeta(111)
       .insertColumnAtEnd({ columnId: "c:lse:ddd", header: "First" });
@@ -1917,7 +1919,7 @@ describe("SheetMetaRaw.insertColumnAtEnd", () => {
       {
         [sheetLayout.colGroupHeadingRowIndex]: {
           value: "Checks",
-          backgroundColor: green,
+          backgroundColor: lightGreen,
         },
         [sheetLayout.actionRowIndex]: {
           value: true,
@@ -1931,8 +1933,7 @@ describe("SheetMetaRaw.insertColumnAtEnd", () => {
       },
     );
 
-    const raw = SpreadsheetRaw.init();
-    raw.fetchAllSheetProperties();
+    const raw = fetchedRaw();
     raw
       .sheetMeta(111)
       .insertColumnAtEnd({ columnId: "c:lse:ddd", header: "New" });
@@ -1954,8 +1955,7 @@ describe("SheetMetaRaw.insertColumnAtEnd", () => {
       columnValidationValues: { 2: ["left", "right"] },
     });
 
-    const raw = SpreadsheetRaw.init();
-    raw.fetchAllSheetProperties();
+    const raw = fetchedRaw();
     raw
       .sheetMeta(111)
       .insertColumnAtEnd({ columnId: "c:lse:ddd", header: "New" });
@@ -2888,12 +2888,6 @@ describe("ColumnMetaRaw.updateColumnType", () => {
         },
       ],
     });
-  }
-
-  function fetchedRaw(): SpreadsheetRaw {
-    const raw = SpreadsheetRaw.init();
-    raw.fetchAllSheetProperties();
-    return raw;
   }
 
   it("sets every queued column type on the Table in the flush that appends to it, keeping each column's name", () => {

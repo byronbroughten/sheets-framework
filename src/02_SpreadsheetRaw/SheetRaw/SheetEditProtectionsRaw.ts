@@ -91,7 +91,7 @@ export class SheetEditProtectionsRaw extends SheetCommonRaw {
     });
   }
   private _queueProtection(protection: EditProtectionContent): void {
-    this._assertProtectionWriteCoordinatesNotStale(
+    this._assertProtectionWriteRowIndexesNotStale(
       protection.range,
       protection.unprotectedRanges,
     );
@@ -136,7 +136,7 @@ export class SheetEditProtectionsRaw extends SheetCommonRaw {
     this.removeEditProtectionsAt(this.sheet.dataGridRange);
   }
   removeEditProtectionsAt(range: ProtectionGridRange): void {
-    this._assertProtectionWriteCoordinatesNotStale(range, []);
+    this._assertProtectionWriteRowIndexesNotStale(range, []);
     this.assertEditProtectionsNotStale();
     this.editProtections().forEach((protection) => {
       if (protection.kind === "unmodelable") return;
@@ -165,7 +165,7 @@ export class SheetEditProtectionsRaw extends SheetCommonRaw {
     this.editProtections().forEach((existing) => {
       if (!matches(existing)) return;
       if (existing.kind !== "unmodelable") {
-        this._assertProtectionWriteCoordinatesNotStale(
+        this._assertProtectionWriteRowIndexesNotStale(
           existing.range,
           existing.unprotectedRanges,
         );
@@ -180,15 +180,15 @@ export class SheetEditProtectionsRaw extends SheetCommonRaw {
       protectedRangeId: protectionId,
     });
   }
-  private _assertProtectionWriteCoordinatesNotStale(
+  private _assertProtectionWriteRowIndexesNotStale(
     range: ProtectionGridRange,
     unprotectedRanges: ProtectionGridRange[],
   ): void {
     [range, ...unprotectedRanges].forEach((item) => {
-      this._assertOneProtectionRangeCoordinatesNotStale(item);
+      this._assertOneProtectionRangeRowIndexesNotStale(item);
     });
   }
-  private _assertOneProtectionRangeCoordinatesNotStale(
+  private _assertOneProtectionRangeRowIndexesNotStale(
     range: ProtectionGridRange,
   ): void {
     if (isWholeColumnGridRange(range)) return;

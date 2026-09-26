@@ -302,11 +302,11 @@ function modeledOperationToGoogleRequests(
               startIndex: operation.startColumnIndex,
               endIndex: operation.startColumnIndex + 1,
             },
-            inheritFromBefore: true, // Measured live: only then does a Table-end insert grow the Table (docs/testing.md).
+            inheritFromBefore: true, // Only then does a Table-end insert grow the Table (docs/testing.md).
           },
         },
         {
-          // Measured live: the insert copies its neighbour's format and validation, and a checkbox's false.
+          // Clears what inheriting copied from the neighbour, so the column starts plain.
           repeatCell: {
             range: {
               sheetId: operation.sheetId,

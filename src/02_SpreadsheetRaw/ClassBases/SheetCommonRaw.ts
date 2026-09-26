@@ -62,12 +62,15 @@ export abstract class SheetCommonRaw extends SheetBaseRaw {
           sortOrder: props.sortOrder,
         };
         break;
+      case "insertTableEndColumn":
+        changes.tableEndColumnInsertCount++;
+        break;
       case "fill":
         changes.fills.push(Obj.strictOmit(props, "action"));
         break;
       default:
         throw new Error(
-          `Invalid action: ${(props as SheetChangeProps).action}. Must be "sort" or "fill".`,
+          `Invalid action: ${(props as SheetChangeProps).action}. Must be one of "sort", "insertTableEndColumn" or "fill".`,
         );
     }
     return this;

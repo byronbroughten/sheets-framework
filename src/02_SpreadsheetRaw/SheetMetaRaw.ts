@@ -112,7 +112,7 @@ export class SheetMetaRaw extends SheetCommonRaw {
     const colIndex =
       this.activeTable.endColumnIndex +
       this.changesToSave.tableEndColumnInsertCount;
-    this.changesToSave.tableEndColumnInsertCount++;
+    this.addSheetChangeToSave({ action: "insertTableEndColumn" });
     this.column(colIndex).initUniformCells(uniformCells);
     return colIndex;
   }
