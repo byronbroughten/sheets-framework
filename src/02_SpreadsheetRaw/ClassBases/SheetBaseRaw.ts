@@ -77,7 +77,6 @@ export class SheetBaseRaw extends SpreadsheetBaseRaw {
       ...range,
       columnProperties: table.columnProperties,
       rowIndexesAreStale: previous?.rowIndexesAreStale ?? false,
-      firstStaleColIndex: previous?.firstStaleColIndex,
     };
     this._parseColumnProperties(table, range.startColumnIndex);
   }

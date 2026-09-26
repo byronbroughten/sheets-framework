@@ -69,21 +69,6 @@ export class ActiveTableRaw {
     if (!this._knownTable().rowIndexesAreStale) return;
     throw new Error(`Row indexes are stale for sheetGid ${this.sheetGid}.`);
   }
-  ensureColIndexIsStale(colIndex: number): void {
-    const knownTable = this._knownTable();
-    knownTable.firstStaleColIndex = Math.min(
-      knownTable.firstStaleColIndex ?? Infinity,
-      colIndex,
-    );
-  }
-  validateColIndexNotStale(colIndex: number): void {
-    const { firstStaleColIndex } = this._knownTable();
-    if (firstStaleColIndex !== undefined && colIndex >= firstStaleColIndex) {
-      throw new Error(
-        `Column index ${colIndex} is stale. First stale column index is ${firstStaleColIndex}.`,
-      );
-    }
-  }
   private get sheetState(): SheetStateRaw {
     return Val.assert(
       this.spreadsheetStateRaw.sheets.get(this.sheetGid),

@@ -65,6 +65,13 @@ export const fakeCells = {
     }
     return normalized(rich);
   },
+  // Measured live: a column inserted inheriting from before copies format and validation, and a checkbox arrives unticked.
+  inherited(neighbour: FakeCell | undefined): FakeCell {
+    if (neighbour === undefined) return null;
+    const { value: _value, isFormula: _isFormula, ...facts } = toRich(neighbour);
+    const value = facts.dataValidationConditionType === "BOOLEAN" ? false : null;
+    return normalized({ value, ...facts });
+  },
   withValue(
     cell: FakeCell,
     value: FakeCellValue,

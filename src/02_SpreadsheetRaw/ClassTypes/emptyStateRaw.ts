@@ -19,7 +19,7 @@ export const emptyStateRaw = {
       update: [],
       delete: [],
       sort: [],
-      insertColumn: [],
+      insertTableEndColumn: [],
       fill: [],
       findReplace: [],
       deleteConditionalFormat: [],
@@ -41,7 +41,7 @@ export const emptyStateRaw = {
     return { updateRequests: emptyStateRaw.updateRequests() };
   },
   sheetChanges(): SheetChangesToSave {
-    return { sort: undefined, insertColumn: [], fills: [] };
+    return { sort: undefined, tableEndColumnInsertCount: 0, fills: [] };
   },
   rowChanges(): RowChangesToSave {
     return { append: false, delete: false, update: new Map() };

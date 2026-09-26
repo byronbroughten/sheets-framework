@@ -62,39 +62,17 @@ export abstract class SheetCommonRaw extends SheetBaseRaw {
           sortOrder: props.sortOrder,
         };
         break;
-      case "insertColumn":
-        this._validateColumnInsertAllowed(props.startColumnIndex);
-        changes.insertColumn.push(props);
+      case "insertTableEndColumn":
+        changes.tableEndColumnInsertCount++;
         break;
       case "fill":
         changes.fills.push(Obj.strictOmit(props, "action"));
         break;
       default:
         throw new Error(
-          `Invalid action: ${(props as SheetChangeProps).action}. Must be one of "sort", "insertColumn" or "fill".`,
+          `Invalid action: ${(props as SheetChangeProps).action}. Must be one of "sort", "insertTableEndColumn" or "fill".`,
         );
     }
     return this;
-  }
-  // Where the next Table-end column insert lands: past the inserts already queued.
-  get nextEndColumnInsertIndex(): number {
-    return (
-      this.activeTable.endColumnIndex + this.changesToSave.insertColumn.length
-    );
-  }
-  // Each insert shifts the indexes the next was computed against, so only Table-end inserts may share a flush.
-  private _validateColumnInsertAllowed(startColumnIndex: number): void {
-    const [firstQueued] = this.changesToSave.insertColumn;
-    if (firstQueued === undefined) return;
-    if (firstQueued.startColumnIndex !== this.activeTable.endColumnIndex) {
-      throw new Error(
-        `Refusing to queue a column insert on ${this.sheetLabel}: a mid-Table column insert is already queued.`,
-      );
-    }
-    if (startColumnIndex !== this.nextEndColumnInsertIndex) {
-      throw new Error(
-        `Refusing to queue a column insert at ${startColumnIndex} on ${this.sheetLabel}: it already has a column insert queued, so the next must land at the Table end, ${this.nextEndColumnInsertIndex}.`,
-      );
-    }
   }
 }

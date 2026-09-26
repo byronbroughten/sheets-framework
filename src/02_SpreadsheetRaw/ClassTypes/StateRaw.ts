@@ -18,7 +18,7 @@ import type {
   FindReplaceOperation,
   FindReplaceScope as BaseFindReplaceScope,
   FindReplaceTerms as BaseFindReplaceTerms,
-  InsertColumnOperation,
+  InsertTableEndColumnOperation,
   OpaqueRawWriteOperation,
   RawSource,
   SortOperation,
@@ -56,7 +56,7 @@ export interface UpdateRequests {
   update: UpdateCellOperation[];
   delete: DeleteRowsOperation[];
   sort: SortOperation[];
-  insertColumn: InsertColumnOperation[];
+  insertTableEndColumn: InsertTableEndColumnOperation[];
   fill: FillOperation[];
   findReplace: FindReplaceOperation[];
   deleteConditionalFormat: DeleteConditionalFormatRuleOperation[];
@@ -162,7 +162,6 @@ export interface KnownTableRaw {
   endColumnIndex: number; // lastColumnIndex + 1
   columnProperties: TableColumnSnapshot[];
   rowIndexesAreStale: boolean;
-  firstStaleColIndex: number | undefined;
 }
 
 export interface TableIdentityRaw {
@@ -191,9 +190,15 @@ export interface RowCellChange<VN extends CellValueName = CellValueName> {
   formula?: string;
   backgroundColor?: RgbColor;
 }
+// The uniform cells a Table-end column insert writes.
+export interface TableEndColumnUniformCells {
+  columnId: string;
+  header: string;
+  colGroupName?: string;
+}
 export interface SheetChangesToSave {
   sort: SortParameters | undefined;
-  insertColumn: SheetChangePropsObj["insertColumn"][];
+  tableEndColumnInsertCount: number;
   fills: ColumnFill[];
 }
 // One contiguous run of a column's cells: value/colour as repeatCell, formula as pasteData.
@@ -221,10 +226,7 @@ export type AddedSheetCell = Required<
 
 export interface SheetChangePropsObj {
   sort: SheetChangeSortProps;
-  insertColumn: {
-    action: "insertColumn";
-    startColumnIndex: number;
-  };
+  insertTableEndColumn: { action: "insertTableEndColumn" };
   fill: { action: "fill" } & ColumnFill;
 }
 export type SheetChangeProps = SheetChangePropsObj[keyof SheetChangePropsObj];

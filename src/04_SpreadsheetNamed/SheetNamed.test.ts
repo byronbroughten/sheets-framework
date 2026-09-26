@@ -795,23 +795,6 @@ describe("SheetNamed edit warnings and edit locks", () => {
     ]);
   });
 
-  it("refuses a whole-column protection write while column indexes are stale", () => {
-    const { ss, sheet } = fetchedRunItemProtections();
-
-    sheet.identified.raw.addSheetChangeToSave({
-      action: "insertColumn",
-      startColumnIndex: 0,
-    });
-    ss.batchUpdateGSheets();
-
-    expect(() => sheet.column("id").addEditWarningWholeColumn()).toThrowError(
-      /Column index 0 is stale/,
-    );
-    expect(() => sheet.column("id").addEditLockWholeColumn()).toThrowError(
-      /Column index 0 is stale/,
-    );
-  });
-
   it("allows a whole-column protection write while row indexes are stale", () => {
     const { ss, sheet } = fetchedRunItemProtections();
 

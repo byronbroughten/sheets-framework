@@ -100,7 +100,6 @@ export class CellRaw<
   }
   updateValue(value: CellValue<VN>): this {
     this.sheet.activeTable.assertRowIndexesNotStale();
-    this.sheet.activeTable.validateColIndexNotStale(this.colIndex);
     this.row.validateIsWritable();
     // A row that was never fetched has no state to mirror the write into.
     if (this.row.rowIsActive()) {
@@ -117,7 +116,6 @@ export class CellRaw<
   updateFormula(formula: string): this {
     this.sheet.activeTable.assertRowIndexesNotStale();
     validateFormulaString(formula);
-    this.sheet.activeTable.validateColIndexNotStale(this.colIndex);
     this.row.validateIsWritable();
     this.row.addRowChangeToSave({
       action: "update",
@@ -129,7 +127,6 @@ export class CellRaw<
   // No state mirror: the read path never fetches colour, so there's none to mirror.
   updateBackgroundColor(backgroundColor: RgbColor): this {
     this.sheet.activeTable.assertRowIndexesNotStale();
-    this.sheet.activeTable.validateColIndexNotStale(this.colIndex);
     this.row.validateIsWritable();
     this.row.addRowChangeToSave({
       action: "update",
@@ -139,7 +136,6 @@ export class CellRaw<
     return this;
   }
   addCheckboxValidation(): this {
-    this.sheet.activeTable.validateColIndexNotStale(this.colIndex);
     this.sheet.addCheckboxValidationAt(this.gridRange);
     return this;
   }

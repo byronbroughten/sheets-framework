@@ -112,7 +112,7 @@ describe("GoogleSheetsAPI write mapping", () => {
         tableId: "tbl",
         emptyRowCount: 2,
       },
-      { kind: "insertColumn", sheetId: 111, startColumnIndex: 3 },
+      { kind: "insertTableEndColumn", sheetId: 111, startColumnIndex: 3 },
       {
         kind: "fill",
         sheetId: 111,
@@ -219,7 +219,14 @@ describe("GoogleSheetsAPI write mapping", () => {
             startIndex: 3,
             endIndex: 4,
           },
-          inheritFromBefore: false,
+          inheritFromBefore: true,
+        },
+      },
+      {
+        repeatCell: {
+          range: { sheetId: 111, startColumnIndex: 3, endColumnIndex: 4 },
+          cell: {},
+          fields: "userEnteredValue,userEnteredFormat,dataValidation",
         },
       },
       {

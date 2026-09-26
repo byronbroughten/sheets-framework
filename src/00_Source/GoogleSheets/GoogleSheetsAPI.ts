@@ -292,7 +292,7 @@ function modeledOperationToGoogleRequests(
           },
         },
       ];
-    case "insertColumn":
+    case "insertTableEndColumn":
       return [
         {
           insertDimension: {
@@ -302,7 +302,19 @@ function modeledOperationToGoogleRequests(
               startIndex: operation.startColumnIndex,
               endIndex: operation.startColumnIndex + 1,
             },
-            inheritFromBefore: false, // Let the formatting and column header colors be natural.
+            inheritFromBefore: true, // Only then does a Table-end insert grow the Table (docs/testing.md).
+          },
+        },
+        {
+          // Clears what inheriting copied from the neighbour, so the column starts plain.
+          repeatCell: {
+            range: {
+              sheetId: operation.sheetId,
+              startColumnIndex: operation.startColumnIndex,
+              endColumnIndex: operation.startColumnIndex + 1,
+            },
+            cell: {},
+            fields: "userEnteredValue,userEnteredFormat,dataValidation",
           },
         },
       ];

@@ -94,8 +94,16 @@ export const fakeGrid = {
       sheet.rowCount += count;
     } else {
       sheet.rows.forEach((row) => {
-        if (row.length <= startIndex) return;
-        row.splice(startIndex, 0, ...Array.from({ length: count }, () => null));
+        let neighbour: FakeCell | undefined;
+        if (isInheritingFromBefore) neighbour = row[startIndex - 1];
+        if (row.length <= startIndex && neighbour === undefined) return;
+        row.splice(
+          startIndex,
+          0,
+          ...Array.from({ length: count }, () =>
+            fakeCells.inherited(neighbour),
+          ),
+        );
       });
       sheet.columnCount += count;
     }
