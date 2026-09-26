@@ -46,4 +46,4 @@ Because a column left on Automatic with no mapped format and no Insert > Checkbo
 
 ## The generated entry never says which step decided it
 
-**The generated entry itself never says which step decided it.** A declared `CURRENCY` column type and a `CURRENCY` number format under a blank top cell both emit `valueName: "number"`, so a wrong value name in `columnConfigs.ts` doesn't tell you whether to change a declaration or add one. That summary is the only signal the app gives; from outside it, read the live declared types directly (see [`docs/how-it-runs.md`](../how-it-runs.md) "The `gsheets` MCP tools").
+**The generated entry itself never says which step decided it.** A declared `CURRENCY` column type and a `CURRENCY` number format under a blank top cell both emit `valueName: "number"`, so a wrong value name in `columnConfigs.ts` doesn't tell you whether to change a declaration or add one. That summary is the only signal the app gives; from outside it, read the live declared types directly (see [`docs/how-it-runs.md`](../how-it-runs.md) "The `gworkspace` MCP tools").
