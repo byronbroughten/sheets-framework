@@ -36,11 +36,33 @@ const startTableColIndex = sheetLayout.startTableColIndex;
 const topDataRowIndex = tableHeaderRowIndex + 1;
 const scratchGid = 999999;
 const tableEndRowIndex = tableHeaderRowIndex + 3;
-const columnOneDataRange = {
-  startRowIndex: topDataRowIndex,
-  startColumnIndex: 1,
-  endColumnIndex: 2,
-};
+const gridRanges = {
+  columnOneData: {
+    startRowIndex: topDataRowIndex,
+    startColumnIndex: 1,
+    endColumnIndex: 2,
+  },
+  headerAndTopDataRow: {
+    startRowIndex: tableHeaderRowIndex,
+    endRowIndex: topDataRowIndex + 1,
+  },
+} as const;
+
+function threeByThreeAround(rowIndex: number, colIndex: number) {
+  return {
+    startRowIndex: rowIndex - 1,
+    endRowIndex: rowIndex + 2,
+    startColumnIndex: colIndex - 1,
+    endColumnIndex: colIndex + 2,
+  };
+}
+
+function firstTableEndRowIndex(
+  grid: ReturnType<typeof stubSheetsService>["grid"],
+  sheetGid: number,
+): number | undefined {
+  return grid.sheet(sheetGid).tables[0]?.range?.endRowIndex;
+}
 
 function placedTableSheet(sheet: {
   sheetId: number;
@@ -722,7 +744,7 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
     raw.sheet(111).appendDataRow();
     raw.batchUpdateGSheets();
 
-    expect(grid.sheet(111).tables[0]?.range?.endRowIndex).toBe(14);
+    expect(firstTableEndRowIndex(grid, 111)).toBe(14);
   });
 
   it("grows each sheet's Table by the rows appended to that sheet, however the appends interleave", () => {
@@ -740,8 +762,8 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
     raw.sheet(111).appendDataRow();
     raw.batchUpdateGSheets();
 
-    expect(grid.sheet(111).tables[0]?.range?.endRowIndex).toBe(13);
-    expect(grid.sheet(222).tables[0]?.range?.endRowIndex).toBe(7);
+    expect(firstTableEndRowIndex(grid, 111)).toBe(13);
+    expect(firstTableEndRowIndex(grid, 222)).toBe(7);
   });
 
   it("still appends a row queued after a deletion on the same sheet, since row indexes only shift once the deletes are sent", () => {
@@ -766,7 +788,7 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
       ["kept"],
       ["later"],
     ]);
-    expect(grid.sheet(111).tables[0]?.range?.endRowIndex).toBe(11);
+    expect(firstTableEndRowIndex(grid, 111)).toBe(11);
     expect(raw.sheet(111).rowIndexesAreStale).toBe(true);
   });
 
@@ -1129,19 +1151,28 @@ describe("SpreadsheetRaw add sheet and add Table", () => {
     );
   });
 
-  it("seeds a formula on an added tab, and refuses one that doesn't start with =", () => {
+  const { value: _value, ...seededPosition } = seededCell;
+
+  it("seeds a formula on an added tab", () => {
     const { grid } = stubSheetsService();
-    const { value: _value, ...seededPosition } = seededCell;
 
     const raw = SpreadsheetRaw.init();
     raw.gatherAddSheetRequest(addSheetProps);
-    expect(() =>
-      raw.gatherAddedSheetCellRequest({ ...seededPosition, formula: "ROW()" }),
-    ).toThrow('Formula must start with "="');
     raw.gatherAddedSheetCellRequest({ ...seededPosition, formula: "=ROW()" });
     raw.batchUpdateGSheets();
 
     expect(grid.sheet(555).cell(3, 1)).toEqual(formulaCell("=ROW()"));
+  });
+
+  it("refuses a seeded formula that doesn't start with =", () => {
+    stubSheetsService();
+
+    const raw = SpreadsheetRaw.init();
+    raw.gatherAddSheetRequest(addSheetProps);
+
+    expect(() =>
+      raw.gatherAddedSheetCellRequest({ ...seededPosition, formula: "ROW()" }),
+    ).toThrow('Formula must start with "="');
   });
 
   it("seeds a value inside the added Table in the same batch update that adds the tab", () => {
@@ -1214,7 +1245,7 @@ describe("RowRaw.delete", () => {
             Object.fromEntries(
               Array.from({ length: dataRowCount }, (_, offset) => [
                 topDataRowIndex + offset,
-                [`r${topDataRowIndex + offset}`],
+                [`r${offset + 1}`],
               ]),
             ),
           ),
@@ -1240,12 +1271,18 @@ describe("RowRaw.delete", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheet(111).row(4).delete();
-    raw.sheet(111).row(5).delete();
+    raw.sheet(111).row(topDataRowIndex).delete();
+    raw
+      .sheet(111)
+      .row(topDataRowIndex + 1)
+      .delete();
 
-    expect(() => raw.sheet(111).row(6).delete()).toThrowError(
-      /last data row.*may never be left with none/,
-    );
+    expect(() =>
+      raw
+        .sheet(111)
+        .row(topDataRowIndex + 2)
+        .delete(),
+    ).toThrowError(/last data row.*may never be left with none/);
   });
 
   it("still deletes a row when other data rows survive it", () => {
@@ -1253,11 +1290,14 @@ describe("RowRaw.delete", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheet(111).row(5).delete();
+    raw
+      .sheet(111)
+      .row(topDataRowIndex + 1)
+      .delete();
     raw.batchUpdateGSheets();
 
     expect(grid.sheet(111).values({ startRowIndex: topDataRowIndex })).toEqual([
-      ["r4"],
+      ["r1"],
     ]);
   });
 
@@ -1825,11 +1865,6 @@ describe("SheetRaw column insert", () => {
     );
   });
 
-  const headerAndDataRowRange = {
-    startRowIndex: tableHeaderRowIndex,
-    endRowIndex: topDataRowIndex + 1,
-  };
-
   it("inserts two end columns on one sheet in queue order", () => {
     const { grid } = stubThreeColumnTable();
 
@@ -1845,7 +1880,7 @@ describe("SheetRaw column insert", () => {
 
     expect([first, second]).toEqual([3, 4]);
     expect(raw.sheet(111).activeTable.endColumnIndex).toBe(5);
-    expect(grid.sheet(111).values(headerAndDataRowRange)).toEqual([
+    expect(grid.sheet(111).values(gridRanges.headerAndTopDataRow)).toEqual([
       [null, null, null, "First", "Second"],
       ["r:lse:1", "left", "right", null, null],
     ]);
@@ -1868,7 +1903,7 @@ describe("SheetRaw column insert", () => {
     );
     raw.batchUpdateGSheets();
 
-    expect(grid.sheet(111).values(headerAndDataRowRange)).toEqual([
+    expect(grid.sheet(111).values(gridRanges.headerAndTopDataRow)).toEqual([
       [null, null, null, "New"],
       ["r:lse:1", "left", "right", null],
     ]);
@@ -1892,7 +1927,7 @@ describe("SheetRaw column insert", () => {
     raw.batchUpdateGSheets();
 
     expect(grid.sheet(111).tables[0]?.range?.endColumnIndex).toBe(4);
-    expect(grid.sheet(111).values(headerAndDataRowRange)).toEqual([
+    expect(grid.sheet(111).values(gridRanges.headerAndTopDataRow)).toEqual([
       [null, "Column 2", null, null],
       ["r:lse:1", null, "left", "right"],
     ]);
@@ -1994,7 +2029,7 @@ describe("SpreadsheetRaw.discardQueuedChanges", () => {
       ["r4"],
       ["r5"],
     ]);
-    expect(grid.sheet(111).tables[0]?.range?.endRowIndex).toBe(12);
+    expect(firstTableEndRowIndex(grid, 111)).toBe(12);
   });
 });
 
@@ -2062,7 +2097,7 @@ describe("ColumnRaw.updateAllCells", () => {
     raw.sheet(111).row(5).cell(1).updateValue("overridden");
     raw.batchUpdateGSheets();
 
-    expect(grid.sheet(111).values(columnOneDataRange)).toEqual([
+    expect(grid.sheet(111).values(gridRanges.columnOneData)).toEqual([
       ["filled"],
       ["overridden"],
       ["filled"],
@@ -2080,7 +2115,7 @@ describe("ColumnRaw.updateAllCells", () => {
     raw.batchUpdateGSheets();
 
     const filled = { value: "new", backgroundColor: lightGreen };
-    expect(grid.sheet(111).rows(columnOneDataRange)).toEqual([
+    expect(grid.sheet(111).rows(gridRanges.columnOneData)).toEqual([
       [filled],
       [filled],
       [filled],
@@ -2096,7 +2131,7 @@ describe("ColumnRaw.updateAllCells", () => {
     raw.batchUpdateGSheets();
 
     expect(
-      grid.sheet(111).values({ ...columnOneDataRange, endRowIndex: 8 }),
+      grid.sheet(111).values({ ...gridRanges.columnOneData, endRowIndex: 8 }),
     ).toEqual([["filled"], ["filled"], ["filled"], [null]]);
   });
 });
@@ -2136,7 +2171,7 @@ describe("ColumnRaw.updateActiveCells", () => {
     raw.sheet(111).column(1).updateActiveCells({ value: "new" });
     raw.batchUpdateGSheets();
 
-    expect(grid.sheet(111).values(columnOneDataRange)).toEqual([
+    expect(grid.sheet(111).values(gridRanges.columnOneData)).toEqual([
       ["new"],
       ["new"],
       ["new"],
@@ -2153,7 +2188,7 @@ describe("ColumnRaw.updateActiveCells", () => {
     raw.sheet(111).column(1).updateActiveCells({ value: "new" });
     raw.batchUpdateGSheets();
 
-    expect(grid.sheet(111).values(columnOneDataRange)).toEqual([
+    expect(grid.sheet(111).values(gridRanges.columnOneData)).toEqual([
       ["new"],
       ["new"],
       ["old"],
@@ -2174,7 +2209,7 @@ describe("ColumnRaw.updateActiveCells", () => {
     raw.batchUpdateGSheets();
 
     expect(
-      grid.sheet(111).rows({ ...columnOneDataRange, endRowIndex: 6 }),
+      grid.sheet(111).rows({ ...gridRanges.columnOneData, endRowIndex: 6 }),
     ).toEqual([[{ value: "new", backgroundColor: lightGreen }], ["old"]]);
   });
 
@@ -2291,34 +2326,40 @@ describe("ColumnRaw.updateAllFormulas", () => {
     });
   }
 
-  it("writes the formula into every data row of the column, and does not mirror it into row state", () => {
-    const { grid } = stubFilledSheet();
-
+  function fetchedColumn() {
     const raw = SpreadsheetRaw.init();
     raw.sheet(111).column(1).gatherFetchFull();
     raw.fetchAllGathered();
+    return raw;
+  }
+
+  it("writes the formula into every data row of the column", () => {
+    const { grid } = stubFilledSheet();
+
+    const raw = fetchedColumn();
     raw.sheet(111).column(1).updateAllFormulas("=2+1");
     raw.batchUpdateGSheets();
 
-    expect(grid.sheet(111).rows(columnOneDataRange)).toEqual([
+    expect(grid.sheet(111).rows(gridRanges.columnOneData)).toEqual([
       [formulaCell("=2+1")],
       [formulaCell("=2+1")],
       [formulaCell("=2+1")],
     ]);
+  });
+
+  it("leaves row state holding the fetched values, since a formula fill isn't mirrored into it", () => {
+    stubFilledSheet();
+
+    const raw = fetchedColumn();
+    raw.sheet(111).column(1).updateAllFormulas("=2+1");
+    raw.batchUpdateGSheets();
+
     expect(raw.sheet(111).column(1).valueArrOrEmpty).toEqual([
       "old",
       "old",
       "old",
     ]);
   });
-
-  // Two rows and three columns from the written cell, so a formula split across fields or lines shows.
-  const aroundRowFourCell = {
-    startRowIndex: 4,
-    endRowIndex: 6,
-    startColumnIndex: 1,
-    endColumnIndex: 4,
-  };
 
   it("writes a formula holding commas and quotes into one cell", () => {
     const { grid } = stubFilledSheet();
@@ -2329,9 +2370,10 @@ describe("ColumnRaw.updateAllFormulas", () => {
     raw.sheet(111).row(4).cell(1).updateFormula(formula);
     raw.batchUpdateGSheets();
 
-    expect(grid.sheet(111).rows(aroundRowFourCell)).toEqual([
-      [formulaCell(formula), null, null],
-      ["old", null, null],
+    expect(grid.sheet(111).rows(threeByThreeAround(4, 1))).toEqual([
+      [null, null, null],
+      ["r:lse:1", formulaCell(formula), null],
+      ["r:lse:2", "old", null],
     ]);
   });
 
@@ -2344,9 +2386,10 @@ describe("ColumnRaw.updateAllFormulas", () => {
     raw.sheet(111).row(4).cell(1).updateFormula(formula);
     raw.batchUpdateGSheets();
 
-    expect(grid.sheet(111).rows(aroundRowFourCell)).toEqual([
-      [formulaCell(formula), null, null],
-      ["old", null, null],
+    expect(grid.sheet(111).rows(threeByThreeAround(4, 1))).toEqual([
+      [null, null, null],
+      ["r:lse:1", formulaCell(formula), null],
+      ["r:lse:2", "old", null],
     ]);
   });
 
@@ -2361,7 +2404,7 @@ describe("ColumnRaw.updateAllFormulas", () => {
 
     expect(batchUpdateCount()).toBe(1);
     const filled = { ...formulaCell("=2+1"), backgroundColor: lightGreen };
-    expect(grid.sheet(111).rows(columnOneDataRange)).toEqual([
+    expect(grid.sheet(111).rows(gridRanges.columnOneData)).toEqual([
       [filled],
       [filled],
       [filled],
@@ -2390,7 +2433,7 @@ describe("ColumnRaw.updateAllFormulas", () => {
     raw.sheet(111).row(5).cell(1).updateFormula("=9");
     raw.batchUpdateGSheets();
 
-    expect(grid.sheet(111).rows(columnOneDataRange)).toEqual([
+    expect(grid.sheet(111).rows(gridRanges.columnOneData)).toEqual([
       [formulaCell("=2+1")],
       [formulaCell("=9")],
       [formulaCell("=2+1")],
@@ -2466,14 +2509,7 @@ describe("CellRaw.addCheckboxValidation", () => {
     raw.batchUpdateGSheets();
 
     const checkbox = { value: null, dataValidationConditionType: "BOOLEAN" };
-    expect(
-      grid.sheet(111).rows({
-        startRowIndex: 4,
-        endRowIndex: 7,
-        startColumnIndex: 1,
-        endColumnIndex: 4,
-      }),
-    ).toEqual([
+    expect(grid.sheet(111).rows(threeByThreeAround(5, 2))).toEqual([
       [null, null, null],
       [null, checkbox, null],
       [null, null, null],
@@ -2551,13 +2587,13 @@ describe("SpreadsheetRaw.findReplace", () => {
           sheetId: 111,
           title: "Records",
           rows: buildGridRows({
-            0: ["c:lse:aaa", "c:lse:bbb", "c:lse:ccc"],
+            [colIdRowIndex]: ["c:lse:aaa", "c:lse:bbb", "c:lse:ccc"],
             [tableHeaderRowIndex]: ["ID", "Currency", "Currency"],
-            4: ["r:lse:1", "Currency", "Currency"],
-            5: ["r:lse:2", "Caretaking", "Currency"],
-            6: ["r:lse:3", "Currency", "Currency"],
+            [topDataRowIndex]: ["r:lse:1", "Currency", "Currency"],
+            [topDataRowIndex + 1]: ["r:lse:2", "Caretaking", "Currency"],
+            [topDataRowIndex + 2]: ["r:lse:3", "Currency", "Currency"],
           }),
-          table: { endRowIndex: 7 },
+          table: { endRowIndex: topDataRowIndex + 3 },
         },
         {
           sheetId: 222,
@@ -2626,7 +2662,7 @@ describe("SpreadsheetRaw.findReplace", () => {
     });
     raw.batchUpdateGSheets();
 
-    expect(grid.sheet(111).values({ startRowIndex: 4 })).toEqual([
+    expect(grid.sheet(111).values({ startRowIndex: topDataRowIndex })).toEqual([
       ["r:lse:1", "Total", "Total"],
       ["r:lse:2", "Caretaking", "Total"],
       ["r:lse:3", "Total", "Total"],
@@ -2645,11 +2681,18 @@ describe("SpreadsheetRaw.findReplace", () => {
       replacement: "Total",
       scope: { allSheets: true },
     });
-    raw.sheet(111).row(5).cell(1).updateValue("Currency");
-    raw.sheet(111).row(6).delete();
+    raw
+      .sheet(111)
+      .row(topDataRowIndex + 1)
+      .cell(1)
+      .updateValue("Currency");
+    raw
+      .sheet(111)
+      .row(topDataRowIndex + 2)
+      .delete();
     raw.batchUpdateGSheets();
 
-    expect(grid.sheet(111).values(columnOneDataRange)).toEqual([
+    expect(grid.sheet(111).values(gridRanges.columnOneData)).toEqual([
       ["Total"],
       ["Total"],
     ]);
@@ -2681,16 +2724,16 @@ describe("SpreadsheetRaw.findReplace", () => {
       .findReplace({ find: "Currency", replacement: "Total" });
     raw.batchUpdateGSheets();
 
-    expect(() => raw.sheet(111).row(4).cell(1).valueOrEmpty()).toThrowError(
-      /went stale when a findReplace was sent/,
-    );
+    expect(() =>
+      raw.sheet(111).row(topDataRowIndex).cell(1).valueOrEmpty(),
+    ).toThrowError(/went stale when a findReplace was sent/);
   });
 
   it("leaves fetched values alone when no findReplace was queued", () => {
     stubFilledSheet();
 
     const raw = fetchedColumn();
-    raw.sheet(111).row(4).cell(1).updateValue("Total");
+    raw.sheet(111).row(topDataRowIndex).cell(1).updateValue("Total");
     raw.batchUpdateGSheets();
 
     expect(raw.sheet(111).column(1).valueArrOrEmpty).toEqual([
@@ -2743,8 +2786,8 @@ describe("SheetMetaRaw.activeColumnIds", () => {
           sheetId: 111,
           title: "Records",
           rows: buildGridRows({
-            0: columnIdRow,
-            4: [],
+            [colIdRowIndex]: columnIdRow,
+            [topDataRowIndex]: [],
           }),
           table: { endRowIndex: topDataRowIndex + 1, endColumnIndex: 2 },
         },
