@@ -209,7 +209,34 @@ describe("stubSheetsService replays row and column changes", () => {
     expect(grid.sheet(widgetGid).hiddenRowIndexes).toEqual([1, 3]);
   });
 
-  it("sorts numbers before text and blanks last, whichever the order", () => {
+  it("sorts descending as the reverse of numbers, text, booleans, with blanks still last", () => {
+    const { grid } = stubSheetsService({
+      sheets: [
+        {
+          sheetId: widgetGid,
+          title: "Widget",
+          rows: [["text"], [true], [], [3], [false]],
+        },
+      ],
+    });
+
+    send({
+      sortRange: {
+        range: { sheetId: widgetGid, startRowIndex: 0, endRowIndex: 5 },
+        sortSpecs: [{ dimensionIndex: 0, sortOrder: "DESCENDING" }],
+      },
+    });
+
+    expect(grid.sheet(widgetGid).values({ endRowIndex: 5 })).toEqual([
+      [true],
+      [false],
+      ["text"],
+      [3],
+      [null],
+    ]);
+  });
+
+  it("sorts numbers before text and blanks last", () => {
     const { grid } = stubSheetsService({
       sheets: [
         {
@@ -270,6 +297,30 @@ describe("stubSheetsService replays Table updates by their field mask", () => {
       { columnIndex: 1, columnName: "h2b" },
       { columnIndex: 2, columnName: "h3" },
     ]);
+  });
+
+  it("throws naming a validation-rule field beyond the condition's type and values", () => {
+    stubSheetsService({ sheets: [widgetSheet()] });
+
+    expect(() =>
+      send({
+        updateTable: {
+          table: {
+            tableId: "fake-table-7",
+            columnProperties: [
+              {
+                columnName: "h1",
+                dataValidationRule: {
+                  condition: { type: "BOOLEAN" },
+                  strict: true,
+                },
+              },
+            ],
+          },
+          fields: "columnProperties",
+        },
+      }),
+    ).toThrowError('dataValidationRule field "strict"');
   });
 
   it("adds a second Table beside the first", () => {
@@ -449,6 +500,14 @@ describe("stubSheetsService as a whole", () => {
         mergeCells: { range: { sheetId: widgetGid }, mergeType: "MERGE_ALL" },
       }),
     ).toThrowError("The fake Sheets service does not replay mergeCells.");
+  });
+
+  it("throws deleting a protected range no sheet holds, as live", () => {
+    stubSheetsService({ sheets: [widgetSheet()] });
+
+    expect(() =>
+      send({ deleteProtectedRange: { protectedRangeId: 404 } }),
+    ).toThrowError(/no protected range with id 404/);
   });
 
   it("applies a batch all or nothing", () => {

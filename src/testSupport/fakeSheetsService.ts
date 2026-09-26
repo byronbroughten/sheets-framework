@@ -12,7 +12,7 @@ import {
   fakeSpreadsheet,
 } from "./fakeSheetsService/fakeSpreadsheet";
 import { fakeTables } from "./fakeSheetsService/fakeTables";
-import { buildGridView, type FakeGridView } from "./fakeSheetsService/gridView";
+import { type FakeGridView, gridView } from "./fakeSheetsService/gridView";
 import { ruleReplays } from "./fakeSheetsService/ruleReplays";
 import { sheetReplays } from "./fakeSheetsService/sheetReplays";
 import { tableReplays } from "./fakeSheetsService/tableReplays";
@@ -379,7 +379,7 @@ export function stubSheetsService(
     batchUpdateCount() {
       return batchUpdateCalls.length;
     },
-    grid: buildGridView(spreadsheet),
+    grid: gridView.build(spreadsheet),
     getByDataFilterCalls,
     getCalls,
   };

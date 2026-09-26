@@ -5,6 +5,7 @@ import {
   fakeSpreadsheet,
   type FakeTableState,
 } from "./fakeSpreadsheet";
+import { fieldMasks } from "./fieldMasks";
 
 type Response = GoogleAppsScript.Sheets.Schema.Response;
 type Table = GoogleAppsScript.Sheets.Schema.Table;
@@ -47,19 +48,16 @@ export const tableReplays = {
   ): Response {
     const update = request.table ?? {};
     const { sheet, table } = fakeSpreadsheet.table(spreadsheet, update.tableId);
-    (request.fields ?? "").split(",").forEach((rawField) => {
-      const field = rawField.trim();
-      if (field === "name") {
+    fieldMasks.replay(request.fields, "updateTable", {
+      name() {
         table.name = update.name;
-      } else if (field === "range") {
+      },
+      range() {
         Object.assign(table, fakeGrid.boundedRange(sheet, update.range ?? {}));
-      } else if (field === "columnProperties") {
+      },
+      columnProperties() {
         replaceColumnProperties(sheet, table, update);
-      } else {
-        throw new Error(
-          `The fake Sheets service does not replay updateTable field "${field}".`,
-        );
-      }
+      },
     });
     return {};
   },
@@ -72,7 +70,7 @@ function replaceColumnProperties(
   update: Table,
 ): void {
   const columnProperties = update.columnProperties ?? [];
-  columnProperties.forEach(validateColumnName);
+  columnProperties.forEach(validateColumn);
   table.columnTypes = {};
   table.columnValidationValues = {};
   table.columnValidationConditionTypes = {};
@@ -103,10 +101,22 @@ function replaceColumnProperties(
   });
 }
 
-function validateColumnName(column: TableColumnProperties): void {
+function validateColumn(column: TableColumnProperties): void {
   if (column.columnName === undefined || column.columnName === "") {
     throw new Error(
       `Invalid updateTable: column ${column.columnIndex ?? 0} has no columnName.`,
+    );
+  }
+  const rule = column.dataValidationRule ?? {};
+  const ruleFields = [
+    ...Object.keys(rule).filter((field) => field !== "condition"),
+    ...(rule.condition?.values ?? []).flatMap((value) =>
+      Object.keys(value).filter((field) => field !== "userEnteredValue"),
+    ),
+  ];
+  if (ruleFields.length > 0) {
+    throw new Error(
+      `The fake Sheets service does not replay updateTable dataValidationRule field "${ruleFields[0]}".`,
     );
   }
 }

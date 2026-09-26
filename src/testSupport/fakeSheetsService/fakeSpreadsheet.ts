@@ -25,7 +25,6 @@ export interface FakeSheetState extends Omit<
   hiddenColumnIndexes: number[];
 }
 
-// The in-memory spreadsheet every read serves and every batch update replays onto.
 export interface FakeSpreadsheet {
   sheets: FakeSheetState[];
   lastProtectedRangeId: number;

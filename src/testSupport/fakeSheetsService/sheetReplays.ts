@@ -1,4 +1,5 @@
 import { type FakeSpreadsheet, fakeSpreadsheet } from "./fakeSpreadsheet";
+import { fieldMasks } from "./fieldMasks";
 
 type Response = GoogleAppsScript.Sheets.Schema.Response;
 
@@ -64,20 +65,17 @@ export const sheetReplays = {
   ): Response {
     const properties = request.properties ?? {};
     const sheet = fakeSpreadsheet.sheet(spreadsheet, properties.sheetId);
-    (request.fields ?? "").split(",").forEach((rawField) => {
-      const field = rawField.trim();
-      if (field === "title") {
+    fieldMasks.replay(request.fields, "updateSheetProperties", {
+      title() {
         sheet.title = properties.title ?? "";
-      } else if (field === "gridProperties.rowCount") {
+      },
+      "gridProperties.rowCount"() {
         sheet.rowCount = properties.gridProperties?.rowCount ?? sheet.rowCount;
-      } else if (field === "gridProperties.columnCount") {
+      },
+      "gridProperties.columnCount"() {
         sheet.columnCount =
           properties.gridProperties?.columnCount ?? sheet.columnCount;
-      } else {
-        throw new Error(
-          `The fake Sheets service does not replay updateSheetProperties field "${field}".`,
-        );
-      }
+      },
     });
     return {};
   },

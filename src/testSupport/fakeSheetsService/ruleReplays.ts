@@ -2,7 +2,6 @@ import { type FakeSpreadsheet, fakeSpreadsheet } from "./fakeSpreadsheet";
 
 type Response = GoogleAppsScript.Sheets.Schema.Response;
 
-// Conditional formats and edit protections: an add inserts, a delete renumbers.
 export const ruleReplays = {
   addConditionalFormatRule(
     spreadsheet: FakeSpreadsheet,
@@ -49,12 +48,19 @@ export const ruleReplays = {
     request: GoogleAppsScript.Sheets.Schema.DeleteProtectedRangeRequest,
   ): Response {
     const removeId = request.protectedRangeId;
-    spreadsheet.sheets.forEach((sheet) => {
-      if (sheet.protectedRanges === undefined) return;
-      sheet.protectedRanges = sheet.protectedRanges.filter(
-        (protection) => protection.protectedRangeId !== removeId,
+    const sheet = spreadsheet.sheets.find((candidate) =>
+      (candidate.protectedRanges ?? []).some(
+        (protection) => protection.protectedRangeId === removeId,
+      ),
+    );
+    if (sheet?.protectedRanges === undefined) {
+      throw new Error(
+        `deleteProtectedRange: no protected range with id ${removeId}.`,
       );
-    });
+    }
+    sheet.protectedRanges = sheet.protectedRanges.filter(
+      (protection) => protection.protectedRangeId !== removeId,
+    );
     return {};
   },
 };

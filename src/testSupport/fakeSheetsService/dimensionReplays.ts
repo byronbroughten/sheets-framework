@@ -6,7 +6,7 @@ import { type FakeSpreadsheet, fakeSpreadsheet } from "./fakeSpreadsheet";
 type Response = GoogleAppsScript.Sheets.Schema.Response;
 type DimensionRange = GoogleAppsScript.Sheets.Schema.DimensionRange;
 
-// Sheets' ascending order across types, measured live for numbers and text.
+// Measured live: ascending is numbers, text, then booleans; descending reverses it.
 const sortTypeRanks = { number: 0, string: 1, boolean: 2 } as const;
 
 export const dimensionReplays = {

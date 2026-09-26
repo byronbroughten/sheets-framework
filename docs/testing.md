@@ -30,8 +30,9 @@ What the replay does where the choice isn't obvious, measured against the dev sp
 
 - **Appends**: `appendCells` with a `tableId` inserts its rows at the Table's end, pushing every row below down and growing the grid; without one it writes after the last row holding a value.
 - **Inserts and deletes**: rows and columns shift, and so do Tables, column types, protected ranges, conditional-format ranges and hidden indexes. An insert strictly inside a Table grows it; one at its end grows it only with `inheritFromBefore: true`, which heads a new column `Column <n>`. A delete inside a Table shrinks it.
-- **`updateTable`**: a field mask replaces only its fields (`name`, `range`, `columnProperties`). A `columnProperties` list replaces the Table's whole list: a column left out keeps its header cell but loses its type and validation, a sent `columnName` is written to the header cell, and a sent column with no name is rejected.
-- **`sortRange`**: numbers sort before text, and blanks sort last in either order. Booleans after text is the fake's assumption, unmeasured.
+- **`updateTable`**: a field mask replaces only its fields (`name`, `range`, `columnProperties`). A `columnProperties` list replaces the Table's whole list: a column left out keeps its header cell but loses its type and validation, a sent `columnName` is written to the header cell, and a sent column with no name is rejected. The fake keeps a validation rule's condition type and values, all the adapter reads back, and throws on any other rule field.
+- **`sortRange`**: ascending is numbers, then text, then booleans (`FALSE` before `TRUE`); descending is the exact reverse; blanks sort last in either order.
+- **`deleteProtectedRange`** with an id no sheet holds is rejected (`No protected range with id`), and the fake throws likewise.
 
 The fake stays simpler than Google on purpose: it evaluates no formula (a pasted or written formula reads back as its text, a fixture's formula cell as its computed value), grows the grid for a write past its edge where live refuses, and doesn't set the frozen row `addTable` sets live.
 

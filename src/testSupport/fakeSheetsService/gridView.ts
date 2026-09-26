@@ -36,16 +36,18 @@ export interface FakeGridView {
   sheet(sheetGid: number): FakeSheetView;
 }
 
-export function buildGridView(spreadsheet: FakeSpreadsheet): FakeGridView {
-  return {
-    sheetTitles() {
-      return spreadsheet.sheets.map((sheet) => sheet.title);
-    },
-    sheet(sheetGid) {
-      return sheetView(fakeSpreadsheet.sheet(spreadsheet, sheetGid));
-    },
-  };
-}
+export const gridView = {
+  build(spreadsheet: FakeSpreadsheet): FakeGridView {
+    return {
+      sheetTitles() {
+        return spreadsheet.sheets.map((sheet) => sheet.title);
+      },
+      sheet(sheetGid) {
+        return sheetView(fakeSpreadsheet.sheet(spreadsheet, sheetGid));
+      },
+    };
+  },
+};
 
 function sheetView(state: FakeSheetState): FakeSheetView {
   const sheet = copied(state);

@@ -7,7 +7,6 @@ import type {
 type GoogleCellData = GoogleAppsScript.Sheets.Schema.CellData;
 type ExtendedValue = GoogleAppsScript.Sheets.Schema.ExtendedValue;
 
-// The cell-data field paths a write may name, and the cell fact each one replaces.
 const cellFieldPaths = {
   userEnteredValue: ["value"],
   userEnteredFormat: ["backgroundColor", "numberFormat"],
