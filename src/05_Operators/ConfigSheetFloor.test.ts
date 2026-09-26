@@ -355,6 +355,7 @@ function floorFixture(
     };
     extraSheets?: FakeSheetProperties[];
     omitSheetGids?: readonly number[];
+    isDryRun?: boolean;
     omitSpreadsheetConfigTable?: boolean;
     spreadsheetConfigExtraTables?: NonNullable<
       FakeSheetProperties["extraTables"]
@@ -546,6 +547,7 @@ function floorFixture(
       },
       ...(options.extraSheets ?? []),
     ].filter((sheet) => !options.omitSheetGids?.includes(sheet.sheetId)),
+    isDryRun: options.isDryRun,
   });
 }
 
@@ -1705,15 +1707,20 @@ describe("ConfigSheetFloor", () => {
     const { batchUpdateCalls } = floorFixture({
       columnTypesAreUnset: true,
       omitSheetGids: [sheetConfigGid],
+      isDryRun: true,
     });
-    const { floor, report } = applyFloor();
+    const { report } = applyFloor();
 
     expect(batchUpdateCalls).toHaveLength(2);
     const laterRequests = batchUpdateCalls[1]?.requests ?? [];
     expect(requestsOnSheet(laterRequests, sheetConfigGid)).toEqual([]);
     expect(report).toContain("Set column types:");
     expect(report).not.toContain("Sheet Config ·");
-    expect(protectionsOf(floor, "columnConfig")).toHaveLength(1);
+    expect(
+      requestsOnSheet(laterRequests, columnConfigGid).filter(
+        (request) => request.addProtectedRange !== undefined,
+      ),
+    ).toHaveLength(1);
   });
 
   it("never lets a recreatable column be one of a self-describing row's identity or declared columns", () => {

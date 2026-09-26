@@ -6,5 +6,12 @@ export {
   buildGridRows,
   stubSheetsService,
   type FakeCell,
+  type FakeCellValue,
   type FakeSheetProperties,
+  type FakeSheetsService,
 } from "./testSupport/fakeSheetsService";
+export type {
+  FakeGridRange,
+  FakeGridView,
+  FakeSheetView,
+} from "./testSupport/fakeSheetsService/gridView";
