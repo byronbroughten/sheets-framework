@@ -73,7 +73,8 @@ One line per rule. The reasoning and worked examples are one file away. Open a r
 ## Tests
 
 - **A test imports only from its own tier and below.**
-- **Test an endpoint through `EndpointRun`, never by calling its action**, and assert the batch-update requests the run emits. No test reaches for a private helper.
+- **Test an endpoint through `EndpointRun`, never by calling its action.** No test reaches for a private helper.
+- **Assert the grid a write leaves, not the Google requests that carry it**, except in a test of the request mapping itself, a round-trip count, or the dry-run wire.
 - **A type-level test names an exemplar column whose value name can't churn under `gen:configs`.**
 
 ## Tooling

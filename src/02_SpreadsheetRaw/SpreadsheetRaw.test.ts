@@ -660,7 +660,9 @@ describe("ColumnMetaRaw active facts", () => {
 
 describe("SpreadsheetRaw.batchUpdateGSheets", () => {
   it("sends exactly the sort request gathered for a sheet-level sort change", () => {
-    const { batchUpdateCalls } = stubSheetsService();
+    const { batchUpdateCalls } = stubSheetsService({
+      sheets: [{ sheetId: 111, title: "Records" }],
+    });
 
     const raw = SpreadsheetRaw.init();
     raw.sheet(111).requestSortGSheet({
@@ -974,7 +976,12 @@ describe("SpreadsheetRaw.gatherRawRequest", () => {
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
     raw.gatherRawRequest(
-      googleRawRequest({ updateTable: { table: { tableId: "t" } } }),
+      googleRawRequest({
+        updateTable: {
+          table: { tableId: "fake-table-111", name: "Renamed" },
+          fields: "name",
+        },
+      }),
     );
     raw.sheet(111).row(5).cell(2).updateValue("Processing...");
     raw.sheet(111).row(10).delete();
@@ -1607,6 +1614,9 @@ describe("queued writes outlive a same-run re-fetch", () => {
     const raw = fetchedSpreadsheet();
     raw.sheet(111).topRow.cell(1).updateValue("queued");
     raw.batchUpdateGSheets();
+    const otherRun = fetchedSpreadsheet();
+    otherRun.sheet(111).topRow.cell(1).updateValue("live");
+    otherRun.batchUpdateGSheets();
     raw.sheet(111).topRow.gatherFetchFull();
     raw.fetchAllGathered();
 
@@ -1741,9 +1751,13 @@ describe("queued writes outlive a same-run re-fetch", () => {
     raw.sheet(111).updateTitle("Renamed");
     raw.sheet(111).updateTableName("renamedRecords");
     raw.batchUpdateGSheets();
+    const otherRun = SpreadsheetRaw.init();
+    otherRun.fetchAllSheetProperties();
+    otherRun.sheet(111).updateTitle("Records");
+    otherRun.sheet(111).updateTableName("records");
+    otherRun.batchUpdateGSheets();
     raw.fetchAllSheetProperties();
 
-    // The fake does not replay renames, so the live sheet still has the old ones.
     expect(raw.sheet(111).title).toBe("Records");
     expect(raw.sheet(111).activeTable.name).toBe("records");
   });
@@ -2922,9 +2936,9 @@ describe("SpreadsheetRaw.findReplace", () => {
     raw.fetchAllGathered();
 
     expect(raw.sheet(111).column(1).valueArrOrEmpty).toEqual([
-      "Currency",
+      "Total",
       "Caretaking",
-      "Currency",
+      "Total",
     ]);
   });
 

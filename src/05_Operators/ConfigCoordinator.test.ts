@@ -204,6 +204,7 @@ function seedFixture(
     hasLegacyLayoutColumns?: boolean;
     columnConfigDataRows?: readonly (readonly FakeCellValue[])[];
     spreadsheetConfigProtections?: GoogleAppsScript.Sheets.Schema.ProtectedRange[];
+    isDryRun?: boolean;
   } = {},
 ) {
   const testColumnId = options.testColumnId ?? "c:itm:xyz123";
@@ -304,6 +305,7 @@ function seedFixture(
       options.valueConfigSheet ?? floorValueConfigTab(),
       ...(options.extraSheets ?? []),
     ],
+    isDryRun: options.isDryRun,
   });
 }
 
@@ -636,6 +638,7 @@ describe("ConfigCoordinator.generateConfigFiles", () => {
     ).not.toThrow();
   });
 
+  // Dry runs, since once the floor and sync writes land the guard never sees the change (#15).
   describe("floor identity", () => {
     const movedValueConfigGid = 999000111;
 
@@ -644,6 +647,7 @@ describe("ConfigCoordinator.generateConfigFiles", () => {
         valueConfigSheet: tab,
         extraSheetConfigDataRows: { 5: [tab.sheetId, tab.title, true, ""] },
         sheetConfigTableEndRowIndex: 6,
+        isDryRun: true,
       });
     }
 
@@ -676,7 +680,10 @@ describe("ConfigCoordinator.generateConfigFiles", () => {
     });
 
     it("fails a floor column's changed column ID with the identity guard's message, before the floor seed check", () => {
-      seedFixture({ fillRowIdsRunStatusColumnId: "c:sscf:moved01" });
+      seedFixture({
+        fillRowIdsRunStatusColumnId: "c:sscf:moved01",
+        isDryRun: true,
+      });
 
       expect(() =>
         ConfigCoordinator.init().generateConfigFiles("../makeConfigs"),
