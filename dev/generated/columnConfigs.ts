@@ -3,14 +3,6 @@ import { makeColumnConfigs } from "../../src/01_SpreadsheetSchema/makeConfigs";
 export const columnConfigs = makeColumnConfigs({
   "spreadsheetConfig": {
     "tableMenuSpace": { "columnId": "c:sscf:0xzKfv_", "header": "Table menu space", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null },
-    "idHeader": { "columnId": "c:sscf:XOpXA8U", "header": "ID header", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null },
-    "nameHeader": { "columnId": "c:sscf:Gp3PuNE", "header": "Name header", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null },
-    "idDelimiter": { "columnId": "c:sscf:8uxVA53", "header": "ID delimiter", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null },
-    "startTableColumnIndexBase1": { "columnId": "c:sscf:RtBaCIb", "header": "Start table column index base 1", "valueName": "number", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null },
-    "columnIdRowIndexBase1": { "columnId": "c:sscf:Kt9oKSY", "header": "Column ID row index base 1", "valueName": "number", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null },
-    "columnGroupHeadingRowIndexBase1": { "columnId": "c:sscf:Tm9zOUP", "header": "Column group heading row index base 1", "valueName": "number", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null },
-    "actionRowIndexBase1": { "columnId": "c:sscf:GKSJHu0", "header": "Action row index base 1", "valueName": "number", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null },
-    "tableHeaderRowIndexBase1": { "columnId": "c:sscf:58r8zkF", "header": "Table header row index base 1", "valueName": "number", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null },
     "fillRowIdsTimeLastRan": { "columnId": "c:sscf:eV73Th5", "header": "Fill row IDs, time last ran", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null },
     "fillRowIdsRunStatus": { "columnId": "c:sscf:ebB4-9S", "header": "Fill row IDs, run status", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null },
     "syncConfigSheetRowsTimeLastRan": { "columnId": "c:sscf:pLBSdae", "header": "Sync config sheet rows, time last ran", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null },

@@ -142,135 +142,55 @@ function withExtraColumn<T>(row: T[], extra: T | undefined): T[] {
   return [...row, extra];
 }
 
-function columnTypeUpdates(
-  batchUpdateCalls: { requests?: GoogleAppsScript.Sheets.Schema.Request[] }[],
-) {
-  return (batchUpdateCalls[0]?.requests ?? []).flatMap((request) => {
-    const table = request.updateTable?.table;
-    if (table?.tableId === undefined) return [];
-    return (table.columnProperties ?? []).flatMap((column) => {
-      if (column.columnIndex === undefined || column.columnType === undefined) {
-        return [];
-      }
-      return [
-        {
-          tableId: table.tableId,
-          columnIndex: column.columnIndex,
-          columnType: column.columnType,
-        },
-      ];
-    });
-  });
-}
+type FloorGrid = ReturnType<typeof stubSheetsService>["grid"];
 
-function firstFlushRequests(
-  batchUpdateCalls: { requests?: GoogleAppsScript.Sheets.Schema.Request[] }[],
-): GoogleAppsScript.Sheets.Schema.Request[] {
-  return batchUpdateCalls[0]?.requests ?? [];
-}
-
-function sheetTitleUpdates(
-  batchUpdateCalls: { requests?: GoogleAppsScript.Sheets.Schema.Request[] }[],
-) {
-  return firstFlushRequests(batchUpdateCalls).flatMap((request) => {
-    const properties = request.updateSheetProperties?.properties;
-    if (properties?.sheetId === undefined || properties.title === undefined) {
-      return [];
-    }
-    return [{ sheetId: properties.sheetId, title: properties.title }];
-  });
-}
-
-function tableNameUpdates(
-  batchUpdateCalls: { requests?: GoogleAppsScript.Sheets.Schema.Request[] }[],
-) {
-  return firstFlushRequests(batchUpdateCalls).flatMap((request) => {
-    const table = request.updateTable?.table;
-    if (
-      request.updateTable?.fields !== "name" ||
-      table?.tableId === undefined ||
-      table.name === undefined
-    ) {
-      return [];
-    }
-    return [{ tableId: table.tableId, name: table.name }];
-  });
-}
-
-function cellUpdates(
-  batchUpdateCalls: { requests?: GoogleAppsScript.Sheets.Schema.Request[] }[],
-) {
-  return firstFlushRequests(batchUpdateCalls).flatMap((request) => {
-    const update = request.updateCells;
-    const range = update?.range;
-    if (
-      range?.sheetId === undefined ||
-      range.startRowIndex === undefined ||
-      range.startColumnIndex === undefined
-    ) {
-      return [];
-    }
-    const userEnteredValue = update?.rows?.[0]?.values?.[0]?.userEnteredValue;
-    return [
-      {
-        sheetId: range.sheetId,
-        rowIndex: range.startRowIndex,
-        colIndex: range.startColumnIndex,
-        value: userEnteredValue?.stringValue ?? userEnteredValue?.numberValue,
-      },
-    ];
-  });
-}
-
-function spreadsheetConfigCellUpdates(
-  batchUpdateCalls: { requests?: GoogleAppsScript.Sheets.Schema.Request[] }[],
-) {
-  return cellUpdates(batchUpdateCalls).filter(
-    (update) => update.sheetId === spreadsheetConfigGid,
+// A sheet's single Table's columns in order, as header and column type.
+function tableColumns(grid: FloorGrid, sheetGid: number) {
+  return (grid.sheet(sheetGid).tables[0]?.columnProperties ?? []).map(
+    ({ columnName, columnType }) => ({ columnName, columnType }),
   );
 }
 
-function columnInserts(
-  batchUpdateCalls: { requests?: GoogleAppsScript.Sheets.Schema.Request[] }[],
+function seedTableColumns(
+  columns: readonly { header: string; columnType: string }[],
 ) {
-  return firstFlushRequests(batchUpdateCalls).flatMap((request) => {
-    const range = request.insertDimension?.range;
-    if (range?.dimension !== "COLUMNS") return [];
-    return [{ sheetId: range.sheetId, startIndex: range.startIndex }];
-  });
+  return columns.map(({ header, columnType }) => ({
+    columnName: header,
+    columnType,
+  }));
 }
 
-function addSheetRequests(
-  batchUpdateCalls: { requests?: GoogleAppsScript.Sheets.Schema.Request[] }[],
+function floorTypedColumns(
+  sheetName: "spreadsheetConfig" | "sheetConfig" | "columnConfig",
+  headers: readonly string[],
 ) {
-  return firstFlushRequests(batchUpdateCalls).flatMap((request) => {
-    const properties = request.addSheet?.properties;
-    return properties === undefined ? [] : [properties];
-  });
+  return headers.map((header) => ({
+    columnName: header,
+    columnType: floorSeedType(sheetName, header),
+  }));
 }
 
-// The adapter sends a Table's columns on the updateTable after its addTable, not on the addTable.
-function addTableRequests(
-  batchUpdateCalls: { requests?: GoogleAppsScript.Sheets.Schema.Request[] }[],
+function rowValues(
+  grid: FloorGrid,
+  sheetGid: number,
+  rowIndex: number,
+  endColumnIndex?: number,
 ) {
-  const requests = firstFlushRequests(batchUpdateCalls);
-  return requests.flatMap((request) => {
-    const table = request.addTable?.table;
-    if (table === undefined) return [];
-    const columnProperties = requests.find(
-      (candidate) => candidate.updateTable?.table?.tableId === table.tableId,
-    )?.updateTable?.table?.columnProperties;
-    return [{ ...table, columnProperties }];
-  });
+  return grid.sheet(sheetGid).values({
+    startRowIndex: rowIndex,
+    endRowIndex: rowIndex + 1,
+    endColumnIndex,
+  })[0];
 }
 
-function requestsOnSheet(
-  requests: GoogleAppsScript.Sheets.Schema.Request[],
-  sheetId: number,
-): GoogleAppsScript.Sheets.Schema.Request[] {
-  return requests.filter((request) =>
-    JSON.stringify(request).includes(`"sheetId":${sheetId}`),
-  );
+function sheetSnapshot(grid: FloorGrid, sheetGid: number) {
+  const sheet = grid.sheet(sheetGid);
+  return {
+    title: sheet.title,
+    rows: sheet.rows(),
+    tables: sheet.tables,
+    protectedRanges: sheet.protectedRanges,
+  };
 }
 
 function spreadsheetConfigGroupHeading(header: string): string {
@@ -295,6 +215,20 @@ const columnConfigColumns = [
   "header",
   "emptyValueAllowed",
 ] as const;
+
+const defaultSpreadsheetConfigHeaders = sscColumns.map(
+  (columnName) => ssc[columnName].header,
+);
+const defaultSheetConfigHeaders = sheetConfigColumns.map(
+  (columnName) => sc[columnName].header,
+);
+const defaultColumnConfigHeaders = columnConfigColumns.map(
+  (columnName) => cc[columnName].header,
+);
+
+const restoredSpreadsheetConfigDataRow = sscColumns.map((columnName) =>
+  columnName === "tableMenuSpace" ? "Not used" : "",
+);
 
 const businessSheetGid = 9001;
 const addedColumnConfigColumn = { columnId: "c:ccf:notes", header: "Notes" };
@@ -576,24 +510,6 @@ function floorWarningDescription(title: string): string {
   return `${floorWarningPrefix} · ${title} · warning`;
 }
 
-function addedProtectedRanges(
-  batchUpdateCalls: { requests?: GoogleAppsScript.Sheets.Schema.Request[] }[],
-) {
-  return (batchUpdateCalls[0]?.requests ?? []).flatMap((request) => {
-    const protection = request.addProtectedRange?.protectedRange;
-    return protection === undefined ? [] : [protection];
-  });
-}
-
-function deletedProtectionIds(
-  batchUpdateCalls: { requests?: GoogleAppsScript.Sheets.Schema.Request[] }[],
-) {
-  return (batchUpdateCalls[0]?.requests ?? []).flatMap((request) => {
-    const id = request.deleteProtectedRange?.protectedRangeId;
-    return id === undefined ? [] : [id];
-  });
-}
-
 const spreadsheetConfigEditableRanges = [
   {
     sheetId: spreadsheetConfigGid,
@@ -650,7 +566,7 @@ const columnConfigEditableRanges = [
 
 describe("ConfigSheetFloor", () => {
   it("puts one whole-sheet warning on each of Spreadsheet Config, Sheet Config and Column Config, with editable ranges where an edit sticks, and locks none", () => {
-    const { batchUpdateCalls } = floorFixture();
+    const { grid } = floorFixture();
     const { floor } = applyFloor();
 
     const spreadsheet = protectionsOf(floor, "spreadsheetConfig");
@@ -683,19 +599,15 @@ describe("ConfigSheetFloor", () => {
     expect(columnConfig[0]?.unprotectedRanges).toEqual(
       columnConfigEditableRanges,
     );
-    expect(
-      addedProtectedRanges(batchUpdateCalls).map(
-        (protection) => protection.range?.sheetId,
-      ),
-    ).not.toContain(valueConfigGid);
+    expect(grid.sheet(valueConfigGid).protectedRanges).toEqual([]);
   });
 
-  it("queues nothing on a second run", () => {
-    const { batchUpdateCalls } = floorFixture();
+  it("sends no batch update on a second run", () => {
+    const { batchUpdateCount } = floorFixture();
     const { floor } = applyFloor();
     floor.ensure();
     floor.ss.batchUpdateGSheets();
-    expect(batchUpdateCalls).toHaveLength(1);
+    expect(batchUpdateCount()).toBe(1);
   });
 
   it("fetches the floor's grid in the same two reads it took before the carve read identity columns", () => {
@@ -787,15 +699,15 @@ describe("ConfigSheetFloor", () => {
     ]);
   });
 
-  it("queues no protection change on a second sync against the fixture the first one left", () => {
-    const { batchUpdateCalls } = floorFixture();
+  it("sends no batch update on a second sync against the grid the first one left", () => {
+    const { batchUpdateCount } = floorFixture();
     applyFloor();
-    expect(batchUpdateCalls).toHaveLength(1);
+    expect(batchUpdateCount()).toBe(1);
 
     const second = applyFloor();
 
     expect(second.report).toBe("");
-    expect(batchUpdateCalls).toHaveLength(1);
+    expect(batchUpdateCount()).toBe(1);
   });
 
   it("covers a column added beside the floor and reports it", () => {
@@ -854,25 +766,22 @@ describe("ConfigSheetFloor", () => {
   });
 
   it("leaves a hand-set protection untouched", () => {
-    const { batchUpdateCalls } = floorFixture({
-      sheetConfigProtections: [
-        {
-          protectedRangeId: 99,
-          description: "Hand-set",
-          warningOnly: true,
-          range: {
-            sheetId: sheetConfigGid,
-            startRowIndex: 0,
-            endRowIndex: 1,
-            startColumnIndex: 0,
-            endColumnIndex: 1,
-          },
-        },
-      ],
-    });
+    const handSet = {
+      protectedRangeId: 99,
+      description: "Hand-set",
+      warningOnly: true,
+      range: {
+        sheetId: sheetConfigGid,
+        startRowIndex: 0,
+        endRowIndex: 1,
+        startColumnIndex: 0,
+        endColumnIndex: 1,
+      },
+    };
+    const { grid } = floorFixture({ sheetConfigProtections: [handSet] });
     const { floor } = applyFloor();
 
-    expect(deletedProtectionIds(batchUpdateCalls)).not.toContain(99);
+    expect(grid.sheet(sheetConfigGid).protectedRanges).toContainEqual(handSet);
     expect(protectionsOf(floor, "sheetConfig")).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ id: 99, description: "Hand-set" }),
@@ -884,7 +793,7 @@ describe("ConfigSheetFloor", () => {
   });
 
   it("removes leftover per-cell floor warnings", () => {
-    const { batchUpdateCalls } = floorFixture({
+    const { grid } = floorFixture({
       spreadsheetConfigProtections: [
         {
           protectedRangeId: 41,
@@ -902,7 +811,11 @@ describe("ConfigSheetFloor", () => {
     });
     const { floor } = applyFloor();
 
-    expect(deletedProtectionIds(batchUpdateCalls)).toContain(41);
+    expect(
+      grid
+        .sheet(spreadsheetConfigGid)
+        .protectedRanges.map((protection) => protection.protectedRangeId),
+    ).not.toContain(41);
     expect(protectionsOf(floor, "spreadsheetConfig")).toHaveLength(1);
     expect(protectionsOf(floor, "spreadsheetConfig")[0]).toMatchObject({
       description: floorWarningDescription("Spreadsheet Config"),
@@ -911,7 +824,7 @@ describe("ConfigSheetFloor", () => {
   });
 
   it("sets a floor column whose type differs from the seed and reports it", () => {
-    const { batchUpdateCalls } = floorFixture({
+    const { grid } = floorFixture({
       spreadsheetConfigColumnTypes: { tableMenuSpace: "DOUBLE" },
     });
     const { report } = applyFloor();
@@ -920,52 +833,61 @@ describe("ConfigSheetFloor", () => {
     expect(report).toContain(
       `Spreadsheet Config · Table menu space (${ssc.tableMenuSpace.columnId}) → TEXT`,
     );
-    expect(columnTypeUpdates(batchUpdateCalls)).toContainEqual({
-      tableId: `fake-table-${spreadsheetConfigGid}`,
-      columnIndex: 0,
-      columnType: "TEXT",
-    });
-    expect(
-      (batchUpdateCalls[0]?.requests ?? []).filter(
-        (request) => request.updateTable !== undefined,
-      ),
-    ).toHaveLength(1);
+    expect(tableColumns(grid, spreadsheetConfigGid)).toEqual(
+      floorTypedColumns("spreadsheetConfig", defaultSpreadsheetConfigHeaders),
+    );
+    expect(tableColumns(grid, sheetConfigGid)).toEqual(
+      floorTypedColumns("sheetConfig", defaultSheetConfigHeaders),
+    );
+    expect(tableColumns(grid, columnConfigGid)).toEqual(
+      floorTypedColumns("columnConfig", defaultColumnConfigHeaders),
+    );
   });
 
   it("leaves matching floor column types unchanged", () => {
-    const { batchUpdateCalls } = floorFixture();
+    const { grid } = floorFixture();
     const { report } = applyFloor();
 
     expect(report).not.toContain("Set column types:");
-    expect(columnTypeUpdates(batchUpdateCalls)).toEqual([]);
+    expect(tableColumns(grid, spreadsheetConfigGid)).toEqual(
+      floorTypedColumns("spreadsheetConfig", defaultSpreadsheetConfigHeaders),
+    );
+    expect(tableColumns(grid, sheetConfigGid)).toEqual(
+      floorTypedColumns("sheetConfig", defaultSheetConfigHeaders),
+    );
+    expect(tableColumns(grid, columnConfigGid)).toEqual(
+      floorTypedColumns("columnConfig", defaultColumnConfigHeaders),
+    );
   });
 
   it("does not set a type on a column added to Column Config", () => {
-    const { batchUpdateCalls } = floorFixture({
+    const { grid } = floorFixture({
       columnTypesAreUnset: true,
       extraColumnConfigColumn: addedColumnConfigColumn,
     });
     applyFloor();
 
-    expect(columnTypeUpdates(batchUpdateCalls)).not.toContainEqual(
-      expect.objectContaining({
-        tableId: `fake-table-${columnConfigGid}`,
-        columnIndex: 5,
-      }),
-    );
+    expect(tableColumns(grid, columnConfigGid)).toEqual([
+      ...floorTypedColumns("columnConfig", defaultColumnConfigHeaders),
+      { columnName: addedColumnConfigColumn.header, columnType: undefined },
+    ]);
   });
 
-  it("does not queue column-type updates on a second run after setting them", () => {
-    const { batchUpdateCalls } = floorFixture({ columnTypesAreUnset: true });
+  it("sends no batch update on a second run after setting column types", () => {
+    const { grid, batchUpdateCount } = floorFixture({
+      columnTypesAreUnset: true,
+    });
     applyFloor();
 
-    expect(columnTypeUpdates(batchUpdateCalls).length).toBeGreaterThan(0);
+    expect(tableColumns(grid, sheetConfigGid)).toEqual(
+      floorTypedColumns("sheetConfig", defaultSheetConfigHeaders),
+    );
     applyFloor();
-    expect(batchUpdateCalls).toHaveLength(1);
+    expect(batchUpdateCount()).toBe(1);
   });
 
   it("renames a drifted floor tab back and reports it", () => {
-    const { batchUpdateCalls } = floorFixture({
+    const { grid } = floorFixture({
       spreadsheetConfigTitle: "Old Spreadsheet Config",
     });
     const { report } = applyFloor();
@@ -973,10 +895,7 @@ describe("ConfigSheetFloor", () => {
     expect(report).toContain(
       'Restored tab titles: "Old Spreadsheet Config" → Spreadsheet Config',
     );
-    expect(sheetTitleUpdates(batchUpdateCalls)).toContainEqual({
-      sheetId: spreadsheetConfigGid,
-      title: "Spreadsheet Config",
-    });
+    expect(grid.sheet(spreadsheetConfigGid).title).toBe("Spreadsheet Config");
   });
 
   it("names a restored tab by its seed title in the rest of the report", () => {
@@ -1004,20 +923,17 @@ describe("ConfigSheetFloor", () => {
   });
 
   it("renames Value Config's tab back and reports it", () => {
-    const { batchUpdateCalls } = floorFixture({
+    const { grid } = floorFixture({
       valueConfig: { title: "Values" },
     });
     const { report } = applyFloor();
 
     expect(report).toContain('Restored tab titles: "Values" → Value Config');
-    expect(sheetTitleUpdates(batchUpdateCalls)).toContainEqual({
-      sheetId: valueConfigGid,
-      title: "Value Config",
-    });
+    expect(grid.sheet(valueConfigGid).title).toBe("Value Config");
   });
 
   it("returns the floor notice for a renamed Value Config off freshly fetched sheet properties and sends no batch update", () => {
-    const { batchUpdateCalls, getCalls } = floorFixture({
+    const { batchUpdateCount, getCalls } = floorFixture({
       valueConfig: { title: "Values" },
     });
     const notice = ConfigSheetFloor.init().changeNotice("other");
@@ -1029,11 +945,11 @@ describe("ConfigSheetFloor", () => {
       untilClosed: false,
     });
     expect(getCalls).toHaveLength(1);
-    expect(batchUpdateCalls).toHaveLength(0);
+    expect(batchUpdateCount()).toBe(0);
   });
 
   it("renames a wrongly named floor Table and reports it", () => {
-    const { batchUpdateCalls } = floorFixture({
+    const { grid } = floorFixture({
       spreadsheetConfigTableName: "wrongTable",
     });
     const { report } = applyFloor();
@@ -1041,14 +957,13 @@ describe("ConfigSheetFloor", () => {
     expect(report).toContain(
       `Restored Table names: Spreadsheet Config's Table "wrongTable" → spreadsheetConfig`,
     );
-    expect(tableNameUpdates(batchUpdateCalls)).toContainEqual({
-      tableId: `fake-table-${spreadsheetConfigGid}`,
-      name: "spreadsheetConfig",
-    });
+    expect(grid.sheet(spreadsheetConfigGid).tables[0]?.name).toBe(
+      "spreadsheetConfig",
+    );
   });
 
   it("renames Value Config's Table back to valueConfig", () => {
-    const { batchUpdateCalls } = floorFixture({
+    const { grid } = floorFixture({
       valueConfig: { tableName: "values" },
     });
     const { report } = applyFloor();
@@ -1056,14 +971,11 @@ describe("ConfigSheetFloor", () => {
     expect(report).toContain(
       `Restored Table names: Value Config's Table "values" → valueConfig`,
     );
-    expect(tableNameUpdates(batchUpdateCalls)).toContainEqual({
-      tableId: `fake-table-${valueConfigGid}`,
-      name: "valueConfig",
-    });
+    expect(grid.sheet(valueConfigGid).tables[0]?.name).toBe("valueConfig");
   });
 
-  it("throws naming the tab when a floor title sits on the wrong GID, and flushes nothing", () => {
-    const { batchUpdateCalls } = floorFixture({
+  it("throws naming the tab when a floor title sits on the wrong GID, and sends no batch update", () => {
+    const { batchUpdateCount } = floorFixture({
       spreadsheetConfigTitle: "Old Spreadsheet Config",
       extraSheets: [
         {
@@ -1077,22 +989,22 @@ describe("ConfigSheetFloor", () => {
     expect(() => applyFloor()).toThrow(
       'A tab titled "Spreadsheet Config" is not the floor tab.',
     );
-    expect(batchUpdateCalls).toHaveLength(0);
+    expect(batchUpdateCount()).toBe(0);
   });
 
-  it("throws naming the tab when a floor tab has no Table, and flushes nothing", () => {
-    const { batchUpdateCalls } = floorFixture({
+  it("throws naming the tab when a floor tab has no Table, and sends no batch update", () => {
+    const { batchUpdateCount } = floorFixture({
       omitSpreadsheetConfigTable: true,
     });
 
     expect(() => applyFloor()).toThrow(
       'Floor tab "Spreadsheet Config" has no Table.',
     );
-    expect(batchUpdateCalls).toHaveLength(0);
+    expect(batchUpdateCount()).toBe(0);
   });
 
-  it("throws naming the tab when several Tables are present and none has the floor name, and flushes nothing", () => {
-    const { batchUpdateCalls } = floorFixture({
+  it("throws naming the tab when several Tables are present and none has the floor name, and sends no batch update", () => {
+    const { batchUpdateCount } = floorFixture({
       spreadsheetConfigTableName: "firstWrong",
       spreadsheetConfigExtraTables: [{ endRowIndex: 5, name: "secondWrong" }],
     });
@@ -1100,22 +1012,22 @@ describe("ConfigSheetFloor", () => {
     expect(() => applyFloor()).toThrow(
       'Floor tab "Spreadsheet Config" has several Tables and none is named spreadsheetConfig.',
     );
-    expect(batchUpdateCalls).toHaveLength(0);
+    expect(batchUpdateCount()).toBe(0);
   });
 
-  it("throws naming the tab when several Tables are present and one has the floor name, and flushes nothing", () => {
-    const { batchUpdateCalls } = floorFixture({
+  it("throws naming the tab when several Tables are present and one has the floor name, and sends no batch update", () => {
+    const { batchUpdateCount } = floorFixture({
       spreadsheetConfigExtraTables: [{ endRowIndex: 5, name: "extra" }],
     });
 
     expect(() => applyFloor()).toThrow(
       '1 sheet(s) have more than one Table — delete the extras so each sheet has exactly one: "Spreadsheet Config"',
     );
-    expect(batchUpdateCalls).toHaveLength(0);
+    expect(batchUpdateCount()).toBe(0);
   });
 
   it("overwrites a drifted floor header and reports it", () => {
-    const { batchUpdateCalls } = floorFixture({
+    const { grid } = floorFixture({
       spreadsheetConfigHeaders: { tableMenuSpace: "Menu spacer" },
     });
     const { report } = applyFloor();
@@ -1124,16 +1036,13 @@ describe("ConfigSheetFloor", () => {
     expect(report).toContain(
       `Spreadsheet Config · Menu spacer (${ssc.tableMenuSpace.columnId}) → Table menu space`,
     );
-    expect(cellUpdates(batchUpdateCalls)).toContainEqual({
-      sheetId: spreadsheetConfigGid,
-      rowIndex: 3,
-      colIndex: 0,
-      value: "Table menu space",
-    });
+    expect(grid.sheet(spreadsheetConfigGid).cell(3, 0)).toBe(
+      "Table menu space",
+    );
   });
 
   it("overwrites a drifted floor column ID and reports it", () => {
-    const { batchUpdateCalls } = floorFixture({
+    const { grid } = floorFixture({
       spreadsheetConfigColumnIds: { tableMenuSpace: "c:sscf:drifted" },
     });
     const { report } = applyFloor();
@@ -1142,16 +1051,13 @@ describe("ConfigSheetFloor", () => {
     expect(report).toContain(
       `Spreadsheet Config · Table menu space (c:sscf:drifted) → ${ssc.tableMenuSpace.columnId}`,
     );
-    expect(cellUpdates(batchUpdateCalls)).toContainEqual({
-      sheetId: spreadsheetConfigGid,
-      rowIndex: 0,
-      colIndex: 0,
-      value: ssc.tableMenuSpace.columnId,
-    });
+    expect(grid.sheet(spreadsheetConfigGid).cell(0, 0)).toBe(
+      ssc.tableMenuSpace.columnId,
+    );
   });
 
   it("overwrites a drifted Sheet GID column ID on Sheet Config without throwing, and reports it", () => {
-    const { batchUpdateCalls } = floorFixture({
+    const { grid } = floorFixture({
       sheetConfigColumnIds: { sheetGid: "c:scf:drifted" },
     });
     const { report } = applyFloor();
@@ -1159,16 +1065,11 @@ describe("ConfigSheetFloor", () => {
     expect(report).toContain(
       `Sheet Config · ${sc.sheetGid.header} (c:scf:drifted) → ${sc.sheetGid.columnId}`,
     );
-    expect(cellUpdates(batchUpdateCalls)).toContainEqual({
-      sheetId: sheetConfigGid,
-      rowIndex: 0,
-      colIndex: 0,
-      value: sc.sheetGid.columnId,
-    });
+    expect(grid.sheet(sheetConfigGid).cell(0, 0)).toBe(sc.sheetGid.columnId);
   });
 
   it("overwrites a drifted Column ID column ID on Column Config without throwing, and reports it", () => {
-    const { batchUpdateCalls } = floorFixture({
+    const { grid } = floorFixture({
       columnConfigColumnIds: { columnId: "c:ccf:drifted" },
     });
     const { report } = applyFloor();
@@ -1176,16 +1077,11 @@ describe("ConfigSheetFloor", () => {
     expect(report).toContain(
       `Column Config · ${cc.columnId.header} (c:ccf:drifted) → ${cc.columnId.columnId}`,
     );
-    expect(cellUpdates(batchUpdateCalls)).toContainEqual({
-      sheetId: columnConfigGid,
-      rowIndex: 0,
-      colIndex: 1,
-      value: cc.columnId.columnId,
-    });
+    expect(grid.sheet(columnConfigGid).cell(0, 1)).toBe(cc.columnId.columnId);
   });
 
   it("carves nothing on Sheet Config the sync its Sheet GID header has drifted, and restores the header without throwing", () => {
-    const { batchUpdateCalls } = floorFixture({
+    const { grid } = floorFixture({
       sheetConfigHeaders: { sheetGid: "Tab gid" },
     });
     const { floor, report } = applyFloor();
@@ -1201,16 +1097,11 @@ describe("ConfigSheetFloor", () => {
     expect(report).toContain(
       `Sheet Config · Tab gid (${sc.sheetGid.columnId}) → ${sc.sheetGid.header}`,
     );
-    expect(cellUpdates(batchUpdateCalls)).toContainEqual({
-      sheetId: sheetConfigGid,
-      rowIndex: 3,
-      colIndex: 0,
-      value: sc.sheetGid.header,
-    });
+    expect(grid.sheet(sheetConfigGid).cell(3, 0)).toBe(sc.sheetGid.header);
   });
 
   it("overwrites a drifted floor group heading and reports it", () => {
-    const { batchUpdateCalls } = floorFixture({
+    const { grid } = floorFixture({
       spreadsheetConfigGroupHeadings: { fillRowIdsTimeLastRan: "Rules" },
     });
     const { report } = applyFloor();
@@ -1219,16 +1110,15 @@ describe("ConfigSheetFloor", () => {
     expect(report).toContain(
       `Spreadsheet Config · Fill row IDs, time last ran (${ssc.fillRowIdsTimeLastRan.columnId}) → Fill Row IDs`,
     );
-    expect(cellUpdates(batchUpdateCalls)).toContainEqual({
-      sheetId: spreadsheetConfigGid,
-      rowIndex: 1,
-      colIndex: sscColumns.indexOf("fillRowIdsTimeLastRan"),
-      value: "Fill Row IDs",
-    });
+    expect(
+      grid
+        .sheet(spreadsheetConfigGid)
+        .cell(1, sscColumns.indexOf("fillRowIdsTimeLastRan")),
+    ).toBe("Fill Row IDs");
   });
 
   it("leaves an extra non-floor column's header, column ID and group heading alone", () => {
-    const { batchUpdateCalls } = floorFixture({
+    const { grid } = floorFixture({
       extraSpreadsheetConfigColumn: {
         columnId: "c:sscf:notes",
         header: "Notes",
@@ -1238,59 +1128,47 @@ describe("ConfigSheetFloor", () => {
     applyFloor();
 
     const extraColIndex = sscColumns.length;
-    expect(cellUpdates(batchUpdateCalls)).not.toContainEqual(
-      expect.objectContaining({
-        sheetId: spreadsheetConfigGid,
-        colIndex: extraColIndex,
+    expect(
+      grid.sheet(spreadsheetConfigGid).values({
+        endRowIndex: topDataRowIndex + 1,
+        startColumnIndex: extraColIndex,
+        endColumnIndex: extraColIndex + 1,
       }),
-    );
+    ).toEqual([["c:sscf:notes"], ["Mine"], [null], ["Notes"], [""]]);
   });
 
   it("writes Not used into a blank Table menu space data cell and reports it", () => {
-    const { batchUpdateCalls } = floorFixture({ tableMenuSpaceValue: "" });
+    const { grid } = floorFixture({ tableMenuSpaceValue: "" });
     const { report } = applyFloor();
 
     expect(report).toContain('Restored Table menu space: "" → Not used');
-    const dataCellUpdates = cellUpdates(batchUpdateCalls).filter(
-      (update) => update.rowIndex === topDataRowIndex,
-    );
-    expect(dataCellUpdates).toEqual([
-      {
-        sheetId: spreadsheetConfigGid,
-        rowIndex: topDataRowIndex,
-        colIndex: 0,
-        value: "Not used",
-      },
-    ]);
+    expect(
+      rowValues(grid, spreadsheetConfigGid, topDataRowIndex, sscColumns.length),
+    ).toEqual(restoredSpreadsheetConfigDataRow);
   });
 
-  it("queues no Table menu space update when the cell already reads Not used", () => {
-    const { batchUpdateCalls } = floorFixture();
+  it("leaves a Table menu space data cell that already reads Not used as it is, and reports nothing about it", () => {
+    const { grid } = floorFixture();
     const { report } = applyFloor();
 
     expect(report).not.toContain("Table menu space");
     expect(
-      cellUpdates(batchUpdateCalls).filter(
-        (update) => update.rowIndex === topDataRowIndex,
-      ),
-    ).toEqual([]);
+      rowValues(grid, spreadsheetConfigGid, topDataRowIndex, sscColumns.length),
+    ).toEqual(restoredSpreadsheetConfigDataRow);
   });
 
   it("overwrites an edited Table menu space data cell and reports it", () => {
-    const { batchUpdateCalls } = floorFixture({ tableMenuSpaceValue: "notes" });
+    const { grid } = floorFixture({ tableMenuSpaceValue: "notes" });
     const { report } = applyFloor();
 
     expect(report).toContain('Restored Table menu space: "notes" → Not used');
-    expect(cellUpdates(batchUpdateCalls)).toContainEqual({
-      sheetId: spreadsheetConfigGid,
-      rowIndex: topDataRowIndex,
-      colIndex: 0,
-      value: "Not used",
-    });
+    expect(grid.sheet(spreadsheetConfigGid).cell(topDataRowIndex, 0)).toBe(
+      "Not used",
+    );
   });
 
   it("recreates a missing Column Config Header column at the Table end with its header, column ID and heading, and reports it", () => {
-    const { batchUpdateCalls } = floorFixture({
+    const { grid } = floorFixture({
       columnConfigColumnOrder: [
         "sheetGid",
         "columnId",
@@ -1300,47 +1178,46 @@ describe("ConfigSheetFloor", () => {
     });
     const { report } = applyFloor();
 
-    expect(columnInserts(batchUpdateCalls)).toEqual([
-      { sheetId: columnConfigGid, startIndex: 4 },
-    ]);
-    const writes = cellUpdates(batchUpdateCalls).filter(
-      (update) => update.sheetId === columnConfigGid && update.colIndex === 4,
-    );
     expect(
-      writes
-        .map(({ rowIndex, value }) => ({ rowIndex, value }))
-        .sort((left, right) => left.rowIndex - right.rowIndex),
+      rowValues(grid, columnConfigGid, sheetLayout.tableHeaderRowIndex),
     ).toEqual([
-      { rowIndex: 0, value: cc.header.columnId },
-      { rowIndex: 1, value: "" },
-      { rowIndex: 3, value: cc.header.header },
+      cc.sheetGid.header,
+      cc.columnId.header,
+      cc.sheetTitle.header,
+      cc.emptyValueAllowed.header,
+      cc.header.header,
     ]);
+    expect(
+      grid.sheet(columnConfigGid).values({
+        endRowIndex: sheetLayout.tableHeaderRowIndex,
+        startColumnIndex: 4,
+        endColumnIndex: 5,
+      }),
+    ).toEqual([[cc.header.columnId], [""], [null]]);
     expect(report).toContain(
       `Recreated columns: Column Config · ${cc.header.header} (${cc.header.columnId})`,
     );
   });
 
-  it("recreates two missing columns on one tab as two Table-end inserts, in seed order", () => {
-    const { batchUpdateCalls } = floorFixture({
+  it("recreates two missing columns on one tab at the Table end, in seed order", () => {
+    const { grid } = floorFixture({
       columnConfigColumnOrder: ["sheetGid", "columnId", "emptyValueAllowed"],
     });
     applyFloor();
 
-    expect(columnInserts(batchUpdateCalls)).toEqual([
-      { sheetId: columnConfigGid, startIndex: 3 },
-      { sheetId: columnConfigGid, startIndex: 4 },
-    ]);
-    const headerWrites = cellUpdates(batchUpdateCalls).filter(
-      (update) => update.sheetId === columnConfigGid && update.rowIndex === 3,
-    );
-    expect(headerWrites).toEqual([
-      expect.objectContaining({ colIndex: 3, value: cc.sheetTitle.header }),
-      expect.objectContaining({ colIndex: 4, value: cc.header.header }),
+    expect(
+      rowValues(grid, columnConfigGid, sheetLayout.tableHeaderRowIndex),
+    ).toEqual([
+      cc.sheetGid.header,
+      cc.columnId.header,
+      cc.emptyValueAllowed.header,
+      cc.sheetTitle.header,
+      cc.header.header,
     ]);
   });
 
-  it("sends no column-type update for a sheet in the flush that inserts a column on it", () => {
-    const { batchUpdateCalls } = floorFixture({
+  it("keeps each Column Config column type on its own column in a sync that recreates a column there", () => {
+    const { grid } = floorFixture({
       columnTypesAreUnset: true,
       columnConfigColumnOrder: [
         "sheetGid",
@@ -1351,21 +1228,24 @@ describe("ConfigSheetFloor", () => {
     });
     applyFloor();
 
-    expect(columnInserts(batchUpdateCalls)).toEqual([
-      { sheetId: columnConfigGid, startIndex: 4 },
-    ]);
-    expect(columnTypeUpdates(batchUpdateCalls)).not.toContainEqual(
-      expect.objectContaining({ tableId: `fake-table-${columnConfigGid}` }),
-    );
+    const columns = tableColumns(grid, columnConfigGid);
+    expect(columns.length).toBeGreaterThan(0);
+    columns.forEach(({ columnName, columnType }) => {
+      expect(columnType).toBe(
+        floorSeedType("columnConfig", String(columnName)),
+      );
+    });
   });
 
   it("does not re-insert a column whose header drifted but whose column ID is intact", () => {
-    const { batchUpdateCalls } = floorFixture({
+    const { grid } = floorFixture({
       sheetConfigHeaders: { sheetTitle: "Tab name" },
     });
     const { report } = applyFloor();
 
-    expect(columnInserts(batchUpdateCalls)).toEqual([]);
+    expect(
+      rowValues(grid, sheetConfigGid, sheetLayout.tableHeaderRowIndex),
+    ).toEqual(defaultSheetConfigHeaders);
     expect(report).not.toContain("Recreated columns:");
     expect(report).toContain("Restored headers:");
   });
@@ -1424,25 +1304,25 @@ describe("ConfigSheetFloor", () => {
       },
     },
   ] as const)(
-    "throws naming $column when it can't be recreated, and flushes nothing",
+    "throws naming $column when it can't be recreated, and sends no batch update",
     ({ column, options }) => {
-      const { batchUpdateCalls } = floorFixture(options);
+      const { batchUpdateCount } = floorFixture(options);
 
       expect(() => applyFloor()).toThrow(`"${column}"`);
-      expect(batchUpdateCalls).toHaveLength(0);
+      expect(batchUpdateCount()).toBe(0);
     },
   );
 
   it("makes two grid reads and sends no batch update from inside ensure when nothing is missing", () => {
-    const { batchUpdateCalls, getByDataFilterCalls } = floorFixture();
+    const { batchUpdateCount, getByDataFilterCalls } = floorFixture();
     ConfigSheetFloor.init().ensure();
 
     expect(getByDataFilterCalls).toHaveLength(2);
-    expect(batchUpdateCalls).toHaveLength(0);
+    expect(batchUpdateCount()).toBe(0);
   });
 
-  it("skips a recreated column the refetch still lacks in the label, data-value, column-type and edit-warning steps, without throwing", () => {
-    const { batchUpdateCalls } = floorFixture({
+  it("skips a recreated column the refetch still lacks in the label, data-value, column-type and edit-warning steps, without throwing, in two batch updates", () => {
+    const { batchUpdateCount } = floorFixture({
       columnTypesAreUnset: true,
       columnConfigColumnOrder: [
         "sheetGid",
@@ -1453,7 +1333,7 @@ describe("ConfigSheetFloor", () => {
     });
     const { floor, report } = applyFloor();
 
-    expect(batchUpdateCalls).toHaveLength(2);
+    expect(batchUpdateCount()).toBe(2);
     expect(report).toContain("Set column types:");
     expect(report).not.toContain(`(${cc.header.columnId}) → TEXT`);
     expect(report).not.toContain("Restored headers:");
@@ -1466,40 +1346,30 @@ describe("ConfigSheetFloor", () => {
   ] as const)(
     "creates a missing $sheetName tab at its GID with its seed title and Table, and reports it",
     ({ sheetName, sheetGid }) => {
-      const { batchUpdateCalls } = floorFixture({ omitSheetGids: [sheetGid] });
+      const { grid } = floorFixture({ omitSheetGids: [sheetGid] });
       const { report } = applyFloor();
       const seed = configSheetFloorSeed[sheetName];
 
-      expect(addSheetRequests(batchUpdateCalls)).toEqual([
-        expect.objectContaining({ sheetId: sheetGid, title: seed.title }),
+      expect(grid.sheet(sheetGid).title).toBe(seed.title);
+      expect(grid.sheet(sheetGid).tables.map((table) => table.name)).toEqual([
+        seed.tableName,
       ]);
-      const tables = addTableRequests(batchUpdateCalls);
-      expect(tables.map((table) => table.name)).toEqual([seed.tableName]);
-      expect(tables[0]?.columnProperties).toEqual(
-        seed.columns.map((column, columnIndex) => ({
-          columnIndex,
-          columnName: column.header,
-          columnType: column.columnType,
-        })),
+      expect(tableColumns(grid, sheetGid)).toEqual(
+        seedTableColumns(seed.columns),
       );
       expect(report).toContain(`Created tabs: ${seed.title}`);
     },
   );
 
   it("places a created Table's header row, first column and one data row by the sheet layout", () => {
-    const { batchUpdateCalls } = floorFixture({
+    const { grid } = floorFixture({
       omitSheetGids: [sheetConfigGid],
     });
     applyFloor();
 
     const headerRowIndex = sheetLayout.tableHeaderRowIndex;
     const startColIndex = sheetLayout.startTableColIndex;
-    const table = addTableRequests(batchUpdateCalls)[0];
-    expect(
-      table?.columnProperties?.map((column) => column.columnIndex),
-    ).toEqual([0, 1, 2]);
-    expect(table?.range).toEqual({
-      sheetId: sheetConfigGid,
+    expect(grid.sheet(sheetConfigGid).tables[0]?.range).toEqual({
       startRowIndex: headerRowIndex,
       endRowIndex: headerRowIndex + 2,
       startColumnIndex: startColIndex,
@@ -1509,29 +1379,23 @@ describe("ConfigSheetFloor", () => {
   });
 
   it("creates a missing Spreadsheet Config at its GID with a Table carrying every seed column, the endpoint feedback columns included, and reports it", () => {
-    const { batchUpdateCalls } = floorFixture({
+    const { grid } = floorFixture({
       omitSheetGids: [spreadsheetConfigGid],
     });
     const { report } = applyFloor();
     const seed = configSheetFloorSeed.spreadsheetConfig;
 
-    expect(addSheetRequests(batchUpdateCalls)).toEqual([
-      expect.objectContaining({
-        sheetId: spreadsheetConfigGid,
-        title: seed.title,
-      }),
-    ]);
-    const tables = addTableRequests(batchUpdateCalls);
-    expect(tables.map((table) => table.name)).toEqual([seed.tableName]);
-    expect(tables[0]?.columnProperties).toEqual(
-      floorSeedColumns("spreadsheetConfig").map((column, columnIndex) => ({
-        columnIndex,
-        columnName: column.header,
-        columnType: column.columnType,
-      })),
+    expect(grid.sheet(spreadsheetConfigGid).title).toBe(seed.title);
+    expect(
+      grid.sheet(spreadsheetConfigGid).tables.map((table) => table.name),
+    ).toEqual([seed.tableName]);
+    expect(tableColumns(grid, spreadsheetConfigGid)).toEqual(
+      seedTableColumns(floorSeedColumns("spreadsheetConfig")),
     );
     expect(
-      tables[0]?.columnProperties?.map((column) => column.columnName),
+      tableColumns(grid, spreadsheetConfigGid).map(
+        (column) => column.columnName,
+      ),
     ).toEqual(
       expect.arrayContaining([
         ssc.fillRowIdsTimeLastRan.header,
@@ -1544,80 +1408,78 @@ describe("ConfigSheetFloor", () => {
   });
 
   it("creates a missing Spreadsheet Config with only Table menu space and the endpoint feedback columns", () => {
-    const { batchUpdateCalls } = floorFixture({
+    const { grid } = floorFixture({
       omitSheetGids: [spreadsheetConfigGid],
     });
     applyFloor();
 
     expect(
-      addTableRequests(batchUpdateCalls)[0]?.columnProperties?.map(
+      tableColumns(grid, spreadsheetConfigGid).map(
         (column) => column.columnName,
       ),
-    ).toEqual(sscColumns.map((columnName) => ssc[columnName].header));
+    ).toEqual(defaultSpreadsheetConfigHeaders);
   });
 
-  it("writes nothing into a created Spreadsheet Config's data row", () => {
-    const { batchUpdateCalls } = floorFixture({
+  it("leaves a created Spreadsheet Config's data row empty but for Not used in Table menu space", () => {
+    const { grid } = floorFixture({
       omitSheetGids: [spreadsheetConfigGid],
     });
     applyFloor();
 
     expect(
-      spreadsheetConfigCellUpdates(batchUpdateCalls).filter(
-        (cell) => cell.rowIndex === topDataRowIndex,
+      rowValues(grid, spreadsheetConfigGid, topDataRowIndex, sscColumns.length),
+    ).toEqual(
+      sscColumns.map((columnName) =>
+        columnName === "tableMenuSpace" ? "Not used" : null,
       ),
-    ).toEqual([]);
-  });
-
-  it("writes nothing into a created Spreadsheet Config's Table menu space data cell", () => {
-    const { batchUpdateCalls } = floorFixture({
-      omitSheetGids: [spreadsheetConfigGid],
-    });
-    applyFloor();
-
-    const tableMenuSpaceColIndex =
-      addTableRequests(batchUpdateCalls)[0]?.range?.startColumnIndex;
-    expect(
-      spreadsheetConfigCellUpdates(batchUpdateCalls).filter(
-        (cell) => cell.colIndex === tableMenuSpaceColIndex,
-      ),
-    ).toEqual([]);
+    );
   });
 
   it("writes nothing into a created Spreadsheet Config's action row, and no data validation", () => {
-    const { batchUpdateCalls } = floorFixture({
+    const { grid } = floorFixture({
       omitSheetGids: [spreadsheetConfigGid],
     });
     applyFloor();
 
-    const requests = batchUpdateCalls.flatMap((call) => call.requests ?? []);
+    const sheet = grid.sheet(spreadsheetConfigGid);
     expect(
-      spreadsheetConfigCellUpdates(batchUpdateCalls).filter(
-        (cell) => cell.rowIndex === actionRowIndex,
+      rowValues(grid, spreadsheetConfigGid, actionRowIndex, sscColumns.length),
+    ).toEqual(sscColumns.map(() => null));
+    expect(
+      sheet
+        .rows()
+        .flat()
+        .filter(
+          (cell) =>
+            typeof cell === "object" &&
+            cell?.dataValidationConditionType !== undefined,
+        ),
+    ).toEqual([]);
+    expect(
+      sheet.tables.flatMap((table) =>
+        (table.columnProperties ?? []).filter(
+          (column) => column.dataValidationRule !== undefined,
+        ),
       ),
     ).toEqual([]);
-    expect(requests.filter((request) => request.setDataValidation)).toEqual([]);
   });
 
   it("creates a missing Value Config at its GID with a Table of one example column and two data rows, and reports it", () => {
-    const { batchUpdateCalls } = floorFixture({
+    const { grid } = floorFixture({
       omitSheetGids: [valueConfigGid],
     });
     const { report } = applyFloor();
     const seed = configSheetFloorSeed.valueConfig;
 
-    expect(addSheetRequests(batchUpdateCalls)).toEqual([
-      expect.objectContaining({ sheetId: valueConfigGid, title: seed.title }),
-    ]);
-    const tables = addTableRequests(batchUpdateCalls);
+    expect(grid.sheet(valueConfigGid).title).toBe(seed.title);
+    const tables = grid.sheet(valueConfigGid).tables;
     expect(tables.map((table) => table.name)).toEqual(["valueConfig"]);
-    expect(tables[0]?.columnProperties).toEqual([
-      { columnIndex: 0, columnName: "Example value", columnType: "TEXT" },
+    expect(tableColumns(grid, valueConfigGid)).toEqual([
+      { columnName: "Example value", columnType: "TEXT" },
     ]);
     const headerRowIndex = sheetLayout.tableHeaderRowIndex;
     const startColIndex = sheetLayout.startTableColIndex;
     expect(tables[0]?.range).toEqual({
-      sheetId: valueConfigGid,
       startRowIndex: headerRowIndex,
       endRowIndex: headerRowIndex + 3,
       startColumnIndex: startColIndex,
@@ -1626,73 +1488,43 @@ describe("ConfigSheetFloor", () => {
     expect(report).toContain(`Created tabs: ${seed.title}`);
   });
 
-  it("sends a created Value Config's sample members and a vcf column ID, and no header write, in the same batch as and after its add-sheet and add-Table", () => {
-    const { batchUpdateCalls } = floorFixture({
+  it("fills a created Value Config's example column with a vcf column ID and its sample members, under the header its Table was created with", () => {
+    const { grid } = floorFixture({
       omitSheetGids: [valueConfigGid],
     });
     applyFloor();
 
-    const requests = firstFlushRequests(batchUpdateCalls);
-    const addSheetAt = requests.findIndex(
-      (request) => request.addSheet?.properties?.sheetId === valueConfigGid,
-    );
-    const addTableAt = requests.findIndex(
-      (request) => request.addTable?.table?.name === "valueConfig",
-    );
-    const seedAts = requests.flatMap((request, index) =>
-      request.updateCells?.range?.sheetId === valueConfigGid ? [index] : [],
-    );
-    expect(addSheetAt).toBeGreaterThanOrEqual(0);
-    expect(addTableAt).toBeGreaterThan(addSheetAt);
-    expect(seedAts).toHaveLength(3);
-    expect(Math.min(...seedAts)).toBeGreaterThan(addTableAt);
-
+    const { seededValues } = configSheetFloorSeed.valueConfig.exampleColumn;
     const startColIndex = sheetLayout.startTableColIndex;
-    const valueConfigCells = cellUpdates(batchUpdateCalls).filter(
-      (cell) => cell.sheetId === valueConfigGid,
-    );
-    expect(valueConfigCells).toEqual([
-      {
-        sheetId: valueConfigGid,
-        rowIndex: sheetLayout.colIdRowIndex,
-        colIndex: startColIndex,
-        value: expect.stringMatching(/^c:vcf:/),
-      },
-      ...configSheetFloorSeed.valueConfig.exampleColumn.seededValues.map(
-        (value, memberIndex) => ({
-          sheetId: valueConfigGid,
-          rowIndex: topDataRowIndex + memberIndex,
-          colIndex: startColIndex,
-          value,
-        }),
-      ),
-    ]);
     expect(
-      valueConfigCells.filter(
-        (cell) => cell.rowIndex === sheetLayout.tableHeaderRowIndex,
-      ),
-    ).toEqual([]);
+      grid.sheet(valueConfigGid).values({
+        startColumnIndex: startColIndex,
+        endColumnIndex: startColIndex + 1,
+      }),
+    ).toEqual([
+      [expect.stringMatching(/^c:vcf:/)],
+      [null],
+      [null],
+      ["Example value"],
+      ...seededValues.map((value) => [value]),
+    ]);
   });
 
   it("gives an existing Value Config whose example column was deleted no example column back", () => {
-    const { batchUpdateCalls } = floorFixture();
+    const { grid } = floorFixture();
+    const before = sheetSnapshot(grid, valueConfigGid);
     applyFloor();
 
-    const requests = batchUpdateCalls.flatMap((call) => call.requests ?? []);
-    expect(requestsOnSheet(requests, valueConfigGid)).toEqual([]);
+    expect(sheetSnapshot(grid, valueConfigGid)).toEqual(before);
   });
 
-  it("gives a created Value Config no edit-protection request", () => {
-    const { batchUpdateCalls } = floorFixture({
+  it("gives a created Value Config no edit protection", () => {
+    const { grid } = floorFixture({
       omitSheetGids: [valueConfigGid],
     });
     applyFloor();
 
-    expect(
-      addedProtectedRanges(batchUpdateCalls).map(
-        (protection) => protection.range?.sheetId,
-      ),
-    ).not.toContain(valueConfigGid);
+    expect(grid.sheet(valueConfigGid).protectedRanges).toEqual([]);
   });
 
   it("names exactly Spreadsheet Config, Sheet Config and Column Config as the warned floor tabs", () => {
@@ -1703,24 +1535,17 @@ describe("ConfigSheetFloor", () => {
     ]);
   });
 
-  it("skips a created tab the refetch still lacks in the label, data-value, column-type and edit-warning steps, without throwing", () => {
-    const { batchUpdateCalls } = floorFixture({
+  it("skips a created tab the refetch still lacks in the label, data-value and column-type steps, without throwing, in two batch updates", () => {
+    const { batchUpdateCount } = floorFixture({
       columnTypesAreUnset: true,
       omitSheetGids: [sheetConfigGid],
       isDryRun: true,
     });
     const { report } = applyFloor();
 
-    expect(batchUpdateCalls).toHaveLength(2);
-    const laterRequests = batchUpdateCalls[1]?.requests ?? [];
-    expect(requestsOnSheet(laterRequests, sheetConfigGid)).toEqual([]);
+    expect(batchUpdateCount()).toBe(2);
     expect(report).toContain("Set column types:");
     expect(report).not.toContain("Sheet Config ·");
-    expect(
-      requestsOnSheet(laterRequests, columnConfigGid).filter(
-        (request) => request.addProtectedRange !== undefined,
-      ),
-    ).toHaveLength(1);
   });
 
   it("never lets a recreatable column be one of a self-describing row's identity or declared columns", () => {
