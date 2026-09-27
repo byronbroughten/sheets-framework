@@ -13,10 +13,14 @@ import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {
   blankSheetConfigRow,
   filledSheetConfigRow,
+  sheetConfigGid,
+  sheetTitleColIndex,
   stubSheetConfigSheet,
 } from "../testSupport/fakeSheetConfigSheet";
 import {
   buildGridRows,
+  type FakeCellValue,
+  type FakeSheetsService,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
 import {
@@ -406,21 +410,21 @@ function fetchedSheetConfig(): SpreadsheetNamed {
   return ss;
 }
 
-function deleteRequestIndexes(
-  calls: GoogleAppsScript.Sheets.Schema.BatchUpdateSpreadsheetRequest[],
-): (number | undefined)[] {
-  return calls
-    .flatMap((call) => call.requests ?? [])
-    .filter((request) => request.deleteDimension)
-    .map((request) => request.deleteDimension?.range?.startIndex);
+// Each data row's cells, top data row to the Table's end.
+function tableDataRows(
+  service: FakeSheetsService,
+  sheetGid: number,
+): FakeCellValue[][] {
+  const sheet = service.grid.sheet(sheetGid);
+  return sheet.values({
+    startRowIndex: topDataRowIndex,
+    endRowIndex: sheet.tables[0]?.range?.endRowIndex,
+    endColumnIndex: sheet.tables[0]?.range?.endColumnIndex,
+  });
 }
 
-function appendRequestCount(
-  calls: GoogleAppsScript.Sheets.Schema.BatchUpdateSpreadsheetRequest[],
-): number {
-  return calls
-    .flatMap((call) => call.requests ?? [])
-    .filter((request) => request.appendCells).length;
+function sheetConfigTitles(service: FakeSheetsService): FakeCellValue[] {
+  return tableDataRows(service, sheetConfigGid).map((row) => row[sheetTitleColIndex] ?? null);
 }
 
 describe("SheetNamed.rowByValue", () => {
@@ -478,7 +482,7 @@ function stubDatesWithDuplicateIds() {
 
 describe("SheetNamed.DELETE_ALL_DATA_ROWS", () => {
   it("deletes every data row but the top one, and leaves that one blank", () => {
-    const { batchUpdateCalls } = stubSheetConfigSheet({
+    const service = stubSheetConfigSheet({
       4: filledSheetConfigRow,
       5: filledSheetConfigRow,
       6: filledSheetConfigRow,
@@ -488,12 +492,12 @@ describe("SheetNamed.DELETE_ALL_DATA_ROWS", () => {
     ss.sheet("sheetConfig").DELETE_ALL_DATA_ROWS();
     ss.batchUpdateGSheets();
 
-    expect(deleteRequestIndexes(batchUpdateCalls)).toEqual([6, 5]);
+    expect(tableDataRows(service, sheetConfigGid)).toEqual([["", "", ""]]);
     expect(ss.sheet("sheetConfig").topRow.isBlank).toBe(true);
   });
 
-  it("writes nothing at all for a sheet already down to its blank row", () => {
-    const { batchUpdateCalls } = stubSheetConfigSheet({
+  it("sends no batch update for a sheet already down to its blank row", () => {
+    const service = stubSheetConfigSheet({
       4: blankSheetConfigRow,
     });
 
@@ -501,13 +505,13 @@ describe("SheetNamed.DELETE_ALL_DATA_ROWS", () => {
     ss.sheet("sheetConfig").DELETE_ALL_DATA_ROWS();
     ss.batchUpdateGSheets();
 
-    expect(batchUpdateCalls).toEqual([]);
+    expect(service.batchUpdateCount()).toBe(0);
   });
 });
 
 describe("SheetNamed.appendRowWithVals", () => {
   it("reuses the blank row of an emptied sheet rather than appending beneath it", () => {
-    const { batchUpdateCalls } = stubSheetConfigSheet({
+    const service = stubSheetConfigSheet({
       4: blankSheetConfigRow,
     });
 
@@ -518,12 +522,12 @@ describe("SheetNamed.appendRowWithVals", () => {
     ss.batchUpdateGSheets();
 
     expect(row.rowIndex).toBe(topDataRowIndex);
-    expect(appendRequestCount(batchUpdateCalls)).toBe(0);
+    expect(sheetConfigTitles(service)).toEqual(["Item"]);
     expect(row.value("sheetTitle")).toBe("Item");
   });
 
   it("appends beneath a one-row sheet that still holds data", () => {
-    const { batchUpdateCalls } = stubSheetConfigSheet({
+    const service = stubSheetConfigSheet({
       4: filledSheetConfigRow,
     });
 
@@ -534,11 +538,11 @@ describe("SheetNamed.appendRowWithVals", () => {
     ss.batchUpdateGSheets();
 
     expect(row.rowIndex).toBe(topDataRowIndex + 1);
-    expect(appendRequestCount(batchUpdateCalls)).toBe(1);
+    expect(sheetConfigTitles(service)).toEqual(["Item", "Log"]);
   });
 
   it("reuses the blank row once and appends for the second row", () => {
-    const { batchUpdateCalls } = stubSheetConfigSheet({
+    const service = stubSheetConfigSheet({
       4: blankSheetConfigRow,
     });
 
@@ -552,12 +556,12 @@ describe("SheetNamed.appendRowWithVals", () => {
       topDataRowIndex,
       topDataRowIndex + 1,
     ]);
-    expect(appendRequestCount(batchUpdateCalls)).toBe(1);
+    expect(sheetConfigTitles(service)).toEqual(["one", "two"]);
   });
 
   // The wipe has to lift the reservation the first append took, or the second strands a row.
   it("hands the same row to a second append once a wipe has released it", () => {
-    const { batchUpdateCalls } = stubSheetConfigSheet({
+    const service = stubSheetConfigSheet({
       4: blankSheetConfigRow,
     });
 
@@ -569,12 +573,12 @@ describe("SheetNamed.appendRowWithVals", () => {
     ss.batchUpdateGSheets();
 
     expect(rebuilt.rowIndex).toBe(topDataRowIndex);
-    expect(appendRequestCount(batchUpdateCalls)).toBe(0);
+    expect(sheetConfigTitles(service)).toEqual(["two"]);
     expect(rebuilt.value("sheetTitle")).toBe("two");
   });
 
   it("reuses the row a wipe just cleared, so the wipe and rebuild leave only rebuilt rows", () => {
-    const { batchUpdateCalls } = stubSheetConfigSheet({
+    const service = stubSheetConfigSheet({
       4: filledSheetConfigRow,
       5: filledSheetConfigRow,
     });
@@ -586,8 +590,7 @@ describe("SheetNamed.appendRowWithVals", () => {
     ss.batchUpdateGSheets();
 
     expect(row.rowIndex).toBe(topDataRowIndex);
-    expect(appendRequestCount(batchUpdateCalls)).toBe(0);
-    expect(deleteRequestIndexes(batchUpdateCalls)).toEqual([5]);
+    expect(sheetConfigTitles(service)).toEqual(["new"]);
   });
 });
 
@@ -680,7 +683,7 @@ describe("SheetNamed.appendRowWithAllVals", () => {
   });
 
   it("reuses the blank row the way the partial append does", () => {
-    const { batchUpdateCalls } = stubValueTypesWithBlankRow();
+    const service = stubValueTypesWithBlankRow();
 
     const ss = fetchedValueTypesSpreadsheet();
     const row = ss
@@ -689,7 +692,11 @@ describe("SheetNamed.appendRowWithAllVals", () => {
     ss.batchUpdateGSheets();
 
     expect(row.rowIndex).toBe(topDataRowIndex);
-    expect(appendRequestCount(batchUpdateCalls)).toBe(0);
+    const rows = tableDataRows(service, valueTypesGid);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toEqual(
+      expect.arrayContaining([row.value("id"), "Yes", 7, true]),
+    );
   });
 
   it("asks a sheet with an ID column for every writable column but the ID", () => {
@@ -814,33 +821,32 @@ function stubComputedForFormulaWrite() {
   });
 }
 
+function rowNumberCells(grid: FakeSheetsService["grid"]): FakeCellValue[] {
+  const sheet = grid.sheet(computedGid);
+  return sheet
+    .values({
+      startRowIndex: topDataRowIndex,
+      endRowIndex: sheet.tables[0]?.range?.endRowIndex,
+      startColumnIndex: rowNumberColIndex,
+      endColumnIndex: rowNumberColIndex + 1,
+    })
+    .flat();
+}
+
 describe("Named formula writes", () => {
-  it("sends one pasteData PASTE_FORMULA for every Computed data row", () => {
-    const { batchUpdateCalls } = stubComputedForFormulaWrite();
+  it("writes the formula into every Computed data row", () => {
+    const { grid } = stubComputedForFormulaWrite();
 
     const ss = SpreadsheetNamed.init();
     ss.fetchAllSheetProperties();
     ss.sheet("computed").column("rowNumber").updateAllFormulas(testFormula);
     ss.batchUpdateGSheets();
 
-    expect(batchUpdateCalls[0]?.requests).toEqual([
-      {
-        pasteData: {
-          coordinate: {
-            sheetId: computedGid,
-            rowIndex: topDataRowIndex,
-            columnIndex: rowNumberColIndex,
-          },
-          data: `"${testFormula}"\n"${testFormula}"`,
-          delimiter: "\t",
-          type: "PASTE_FORMULA",
-        },
-      },
-    ]);
+    expect(rowNumberCells(grid)).toEqual([testFormula, testFormula]);
   });
 
-  it("sends one pasteData PASTE_FORMULA for a single Row number cell", () => {
-    const { batchUpdateCalls } = stubComputedForFormulaWrite();
+  it("writes the formula into a single Row number cell", () => {
+    const { grid } = stubComputedForFormulaWrite();
 
     const ss = SpreadsheetNamed.init();
     ss.fetchAllSheetProperties();
@@ -850,24 +856,11 @@ describe("Named formula writes", () => {
       .updateFormula(testFormula);
     ss.batchUpdateGSheets();
 
-    expect(batchUpdateCalls[0]?.requests).toEqual([
-      {
-        pasteData: {
-          coordinate: {
-            sheetId: computedGid,
-            rowIndex: topDataRowIndex,
-            columnIndex: rowNumberColIndex,
-          },
-          data: `"${testFormula}"`,
-          delimiter: "\t",
-          type: "PASTE_FORMULA",
-        },
-      },
-    ]);
+    expect(rowNumberCells(grid)).toEqual([testFormula, 21]);
   });
 
-  it("sends one pasteData per contiguous active run for updateActiveFormulas", () => {
-    const { batchUpdateCalls } = stubComputedForFormulaWrite();
+  it("writes the formula into only the active rows for updateActiveFormulas", () => {
+    const { grid } = stubComputedForFormulaWrite();
 
     const ss = SpreadsheetNamed.init();
     ss.sheet("computed").prepFetchColumnsFull("rowNumber");
@@ -876,20 +869,7 @@ describe("Named formula writes", () => {
     ss.sheet("computed").column("rowNumber").updateActiveFormulas(testFormula);
     ss.batchUpdateGSheets();
 
-    expect(batchUpdateCalls[0]?.requests).toEqual([
-      {
-        pasteData: {
-          coordinate: {
-            sheetId: computedGid,
-            rowIndex: topDataRowIndex,
-            columnIndex: rowNumberColIndex,
-          },
-          data: `"${testFormula}"`,
-          delimiter: "\t",
-          type: "PASTE_FORMULA",
-        },
-      },
-    ]);
+    expect(rowNumberCells(grid)).toEqual([testFormula, 21]);
   });
 
   it("throws before queueing when the formula does not start with =", () => {
@@ -935,7 +915,7 @@ describe("Named formula writes", () => {
   });
 
   it("merges a colour onto the same cell as a formula write", () => {
-    const { batchUpdateCalls } = stubComputedForFormulaWrite();
+    const { batchUpdateCount, grid } = stubComputedForFormulaWrite();
     const backgroundColor = { red: 0.851, green: 0.918, blue: 0.827 };
 
     const ss = SpreadsheetNamed.init();
@@ -945,37 +925,10 @@ describe("Named formula writes", () => {
     cell.updateBackgroundColor(backgroundColor);
     ss.batchUpdateGSheets();
 
-    expect(batchUpdateCalls[0]?.requests).toEqual([
-      {
-        pasteData: {
-          coordinate: {
-            sheetId: computedGid,
-            rowIndex: topDataRowIndex,
-            columnIndex: rowNumberColIndex,
-          },
-          data: `"${testFormula}"`,
-          delimiter: "\t",
-          type: "PASTE_FORMULA",
-        },
-      },
-      {
-        updateCells: {
-          range: {
-            sheetId: computedGid,
-            startRowIndex: topDataRowIndex,
-            endRowIndex: topDataRowIndex + 1,
-            startColumnIndex: rowNumberColIndex,
-            endColumnIndex: rowNumberColIndex + 1,
-          },
-          rows: [
-            {
-              values: [{ userEnteredFormat: { backgroundColor } }],
-            },
-          ],
-          fields: "userEnteredFormat.backgroundColor",
-        },
-      },
-    ]);
+    expect(
+      grid.sheet(computedGid).cell(topDataRowIndex, rowNumberColIndex),
+    ).toMatchObject({ value: testFormula, backgroundColor });
+    expect(batchUpdateCount()).toBe(1);
   });
 
   it("refuses a whole-column formula fill on a sheet pruned to a selection", () => {

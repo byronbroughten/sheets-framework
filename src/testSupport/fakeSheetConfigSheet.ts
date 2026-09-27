@@ -23,6 +23,10 @@ export const sheetConfigColumnIdRow = (
   getColumnTraitByName("sheetConfig", columnName, "columnId"),
 );
 
+export const sheetTitleColIndex = sheetConfigColumnIdRow.indexOf(
+  getColumnTraitByName("sheetConfig", "sheetTitle", "columnId"),
+);
+
 /** Every non-formula column filled in. */
 export const filledSheetConfigRow: FakeCell[] = [999001, "Item", true];
 
