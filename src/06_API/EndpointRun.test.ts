@@ -101,8 +101,8 @@ function stubRunItemSheetWithBlankRow() {
   });
 }
 
-// The sheet an earlier run emptied: one data row, nothing in it but what `blankRow` holds.
-function stubEmptiedRunItemSheet(blankRow: Partial<Record<string, FakeCell>>) {
+// One data row, nothing in it but what `topRow` holds: blank, as an earlier run emptied it, unless told otherwise.
+function stubOneRowRunItemSheet(topRow: Partial<Record<string, FakeCell>>) {
   const columnNames = [
     "id",
     "selected",
@@ -122,7 +122,7 @@ function stubEmptiedRunItemSheet(blankRow: Partial<Record<string, FakeCell>>) {
           [actionRowIndex]: actionRowWithEntryTicked,
           3: ["ID", "Selected", "Start time", "Run status", "Result"],
           [topDataRowIndex]: columnNames.map(
-            (columnName) => blankRow[columnName] ?? null,
+            (columnName) => topRow[columnName] ?? null,
           ),
         }),
         table: { endRowIndex: topDataRowIndex + 1 },
@@ -398,6 +398,18 @@ describe("EndpointRun.run, the selection a successful run consumes", () => {
     expect(entryCell(grid)).toBe(true);
   });
 
+  it("unticks a selected row the action ticked again", () => {
+    const { grid } = stubRunItemSheet();
+
+    runEndpoint(
+      selectiveEndpoint((ss) => {
+        ss.sheet("runItem").row(4).updateValue("selected", true);
+      }),
+    );
+
+    expect(columnCells(grid, selectorColIndex)).toEqual(allRows(false));
+  });
+
   it("clears a button's entry checkbox for the next click", () => {
     const { grid } = stubRunItemSheet();
 
@@ -466,8 +478,27 @@ describe("EndpointRun.run, an endpoint with no selector", () => {
     expect(received).toEqual([4, 5, 7, 8]);
   });
 
+  it("shows its outcome on the row left by an action that empties the sheet, and reuses that row", () => {
+    const { grid } = stubOneRowRunItemSheet({
+      id: "r:rit:row4",
+      result: "old",
+    });
+
+    runEndpoint(
+      reportingEndpoint((ss) => {
+        ss.sheet("runItem").DELETE_ALL_DATA_ROWS();
+      }),
+    );
+    expect(
+      grid.sheet(runItemGid).cell(topDataRowIndex, runStatusColIndex),
+    ).toEqual(stamp("Succeeded", lightGreen));
+    runEndpoint(reportingEndpoint(appendRow));
+
+    expect(idColumnValues(grid)).toEqual([expect.stringMatching(/^r:rit:/)]);
+  });
+
   it("still stamps its status across the blank row, which stays reusable, so an emptied sheet reports somewhere", () => {
-    const { grid } = stubEmptiedRunItemSheet({});
+    const { grid } = stubOneRowRunItemSheet({});
     let statusesWhileRunning: FakeCell[] = [];
 
     runEndpoint(
@@ -499,7 +530,7 @@ describe("EndpointRun.run, a blank row another endpoint stamped", () => {
   } as const satisfies Endpoint<"runItem">;
 
   it("is reused by this endpoint's append, since every declared endpoint's feedback columns are skipped", () => {
-    const { grid } = stubEmptiedRunItemSheet({ result: "Succeeded" });
+    const { grid } = stubOneRowRunItemSheet({ result: "Succeeded" });
 
     runEndpoint(reportingEndpoint(appendRow), {
       alsoDeclared: { runItem_selected: stampingEndpoint },
@@ -509,7 +540,7 @@ describe("EndpointRun.run, a blank row another endpoint stamped", () => {
   });
 
   it("is not reused when no declared endpoint reports into that column", () => {
-    const { grid } = stubEmptiedRunItemSheet({ result: "Succeeded" });
+    const { grid } = stubOneRowRunItemSheet({ result: "Succeeded" });
 
     runEndpoint(reportingEndpoint(appendRow));
 
@@ -779,6 +810,26 @@ describe("EndpointRun.run, a run report naming rows", () => {
       ]),
     };
   }
+
+  it("overwrites what the action wrote into the run-status column, keeping the named rows' own reports", () => {
+    const { grid } = stubRunItemSheet();
+
+    runEndpoint(
+      reportingEndpoint((ss) => {
+        ss.sheet("runItem").row(4).updateValue("runStatus", "mine");
+        ss.sheet("runItem").row(5).updateValue("runStatus", "mine");
+        return twoRowsFailed();
+      }),
+    );
+
+    expect(columnCells(grid, runStatusColIndex)).toEqual([
+      stamp("Succeeded", lightGreen),
+      stamp("No such row", lightRed),
+      stamp("Succeeded", lightGreen),
+      stamp("Amount is blank", lightRed),
+      stamp("Succeeded", lightGreen),
+    ]);
+  });
 
   it("writes each named row's own message and colour into its own cell", () => {
     const { grid } = stubRunItemSheet();

@@ -2136,6 +2136,122 @@ describe("ColumnRaw.updateAllCells", () => {
   });
 });
 
+describe("the last queued write wins between fills and cell writes", () => {
+  function stubFilledSheet() {
+    return stubSheetsService({
+      sheets: [
+        {
+          sheetId: 111,
+          title: "Records",
+          rows: buildGridRows({
+            0: ["c:lse:aaa", "c:lse:bbb"],
+            4: ["r:lse:1", "old"],
+            5: ["r:lse:2", "old"],
+          }),
+          table: { endRowIndex: 6 },
+        },
+      ],
+    });
+  }
+  function fetchedColumn() {
+    const raw = SpreadsheetRaw.init();
+    raw.sheet(111).column(1).gatherFetchFull();
+    raw.fetchAllGathered();
+    return raw;
+  }
+
+  it("shows a fill queued after a cell write", () => {
+    const { grid } = stubFilledSheet();
+
+    const raw = fetchedColumn();
+    raw.sheet(111).row(5).cell(1).updateValue("cell");
+    raw.sheet(111).column(1).updateAllCells({ value: "filled" });
+    raw.batchUpdateGSheets();
+
+    expect(grid.sheet(111).values(gridRanges.columnOneData)).toEqual([
+      ["filled"],
+      ["filled"],
+    ]);
+  });
+
+  it("keeps the cell's colour under a later value-only fill", () => {
+    const { grid } = stubFilledSheet();
+
+    const raw = fetchedColumn();
+    raw
+      .sheet(111)
+      .row(5)
+      .cell(1)
+      .updateValue("cell")
+      .updateBackgroundColor(lightGreen);
+    raw.sheet(111).column(1).updateAllCells({ value: "filled" });
+    raw.batchUpdateGSheets();
+
+    expect(grid.sheet(111).rows(gridRanges.columnOneData)).toEqual([
+      ["filled"],
+      [{ value: "filled", backgroundColor: lightGreen }],
+    ]);
+  });
+
+  it("keeps the cell's value under a later colour-only fill", () => {
+    const { grid } = stubFilledSheet();
+
+    const raw = fetchedColumn();
+    raw.sheet(111).row(5).cell(1).updateValue("cell");
+    raw.sheet(111).column(1).updateAllCells({ backgroundColor: lightGreen });
+    raw.batchUpdateGSheets();
+
+    expect(grid.sheet(111).rows(gridRanges.columnOneData)).toEqual([
+      [{ value: "old", backgroundColor: lightGreen }],
+      [{ value: "cell", backgroundColor: lightGreen }],
+    ]);
+  });
+
+  it("drops a queued cell formula under a later value fill", () => {
+    const { grid } = stubFilledSheet();
+
+    const raw = fetchedColumn();
+    raw.sheet(111).row(5).cell(1).updateFormula("=1+1");
+    raw.sheet(111).column(1).updateAllCells({ value: "filled" });
+    raw.batchUpdateGSheets();
+
+    expect(grid.sheet(111).rows(gridRanges.columnOneData)).toEqual([
+      ["filled"],
+      ["filled"],
+    ]);
+  });
+
+  it("reads before the flush what the grid shows after it, across a re-fetch", () => {
+    const { grid } = stubFilledSheet();
+
+    const raw = fetchedColumn();
+    raw.sheet(111).row(5).cell(1).updateValue("cell");
+    raw.sheet(111).column(1).updateAllCells({ value: "filled" });
+    raw.sheet(111).row(5).gatherFetchFull();
+    raw.fetchAllGathered();
+    const readBeforeFlush = raw.sheet(111).row(5).valueOrEmpty(1);
+    raw.batchUpdateGSheets();
+
+    expect([readBeforeFlush, grid.sheet(111).cell(5, 1)]).toEqual([
+      "filled",
+      "filled",
+    ]);
+  });
+
+  it("leaves a cell write on a row appended after the fill alone", () => {
+    const { grid } = stubFilledSheet();
+
+    const raw = fetchedColumn();
+    raw.sheet(111).column(1).updateAllCells({ value: "filled" });
+    raw.sheet(111).appendDataRow().cell(1).updateValue("appended");
+    raw.batchUpdateGSheets();
+
+    expect(
+      grid.sheet(111).values({ ...gridRanges.columnOneData, endRowIndex: 7 }),
+    ).toEqual([["filled"], ["filled"], ["appended"]]);
+  });
+});
+
 describe("ColumnRaw.updateActiveCells", () => {
   function stubSelectionSheet() {
     return stubSheetsService({

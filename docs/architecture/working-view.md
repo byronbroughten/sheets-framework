@@ -18,7 +18,7 @@ Each tier's state has three groups. The **working** view is what the run sees: t
 
 ## A queued write outlives a re-fetch
 
-**A queued write outlives a re-fetch in the same run.** Between a fetch and the flush, local state is the live sheet plus the queued writes: a row queued for delete stays gone however it is re-fetched or backfilled, and a cell with a queued value — its own update, else the most recently queued value fill that covers it — keeps that value once the row is fetched. A queued tab title, Table name or column type is applied again, in queue order, on top of the sheet properties a fetch integrates, so the last one queued wins. Formula writes stay out of local state, so a re-fetch still shows the old effective value. The flush clears the queue, so a fetch after it integrates the live sheet only.
+**A queued write outlives a re-fetch in the same run.** Between a fetch and the flush, local state is the live sheet plus the queued writes: a row queued for delete stays gone however it is re-fetched or backfilled, and a cell with a queued value keeps the latest one queued — its own update, else the most recently queued value fill that covers it, since a later fill erases the cell's earlier update — once the row is fetched. A queued tab title, Table name or column type is applied again, in queue order, on top of the sheet properties a fetch integrates, so the last one queued wins. Formula writes stay out of local state, so a re-fetch still shows the old effective value. The flush clears the queue, so a fetch after it integrates the live sheet only.
 
 ## Active means present in the working view
 

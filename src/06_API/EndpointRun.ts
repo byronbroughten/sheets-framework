@@ -203,7 +203,7 @@ export class EndpointRun<
       column.updateAllCells(change);
     }
   }
-  // Per-cell, so it lands on top of the run-level fill the same batch sends first.
+  // Per-cell and queued after the run-level fill, so it lands on top of it.
   private _applyRowReport(rowIndex: number, report: RunReport): void {
     this._validateIsDataRow(rowIndex);
     const state = runStates[report.runState ?? "success"];
