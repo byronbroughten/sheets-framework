@@ -691,7 +691,11 @@ describe("SheetNamed.appendRowWithAllVals", () => {
     ss.batchUpdateGSheets();
 
     expect(row.rowIndex).toBe(topDataRowIndex);
-    expect(tableDataRows(service, valueTypesGid)).toHaveLength(1);
+    const rows = tableDataRows(service, valueTypesGid);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toEqual(
+      expect.arrayContaining([row.value("id"), "Yes", 7, true]),
+    );
   });
 
   it("asks a sheet with an ID column for every writable column but the ID", () => {
@@ -910,7 +914,7 @@ describe("Named formula writes", () => {
   });
 
   it("merges a colour onto the same cell as a formula write", () => {
-    const { grid } = stubComputedForFormulaWrite();
+    const { batchUpdateCount, grid } = stubComputedForFormulaWrite();
     const backgroundColor = { red: 0.851, green: 0.918, blue: 0.827 };
 
     const ss = SpreadsheetNamed.init();
@@ -923,6 +927,7 @@ describe("Named formula writes", () => {
     expect(
       grid.sheet(computedGid).cell(topDataRowIndex, rowNumberColIndex),
     ).toMatchObject({ value: testFormula, backgroundColor });
+    expect(batchUpdateCount()).toBe(1);
   });
 
   it("refuses a whole-column formula fill on a sheet pruned to a selection", () => {
