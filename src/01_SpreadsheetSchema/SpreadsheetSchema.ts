@@ -1,3 +1,4 @@
+import { Val } from "../utils/Val";
 import {
   configSheetNames,
   sheetConfigsByGid,
@@ -18,5 +19,14 @@ export class SpreadsheetSchema extends SpreadsheetBaseSchema {
   }
   sheetByGid(sheetGid: number): SheetSchema {
     return SheetSchema.fromSheetGid(sheetGid);
+  }
+  // The inverse of `ColumnSchema.fullName`; a camelCase sheet name never holds the delimiter.
+  sheetByColumnFullName(fullName: string): SheetSchema {
+    const sheetName = this.sheetNames.find((name) =>
+      fullName.startsWith(this.combineNames(name, "")),
+    );
+    return SheetSchema.fromSheetName(
+      Val.assert(sheetName, `sheet of column full name ${fullName}`),
+    );
   }
 }

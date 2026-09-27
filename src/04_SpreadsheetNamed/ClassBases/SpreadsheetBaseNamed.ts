@@ -1,4 +1,5 @@
 import {
+  type FeedbackColumnIds,
   SpreadsheetBaseIdentified,
   type SpreadsheetIdentifiedProps,
 } from "../../03_SpreadsheetIdentified/ClassBases/SpreadsheetBaseIdentified";
@@ -11,7 +12,11 @@ export class SpreadsheetBaseNamed extends SpreadsheetBaseIdentified {
       ...this.spreadsheetIdentifiedProps,
     };
   }
-  static initSpreadsheetNamedProps(): SpreadsheetNamedProps {
-    return SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps();
+  static initSpreadsheetNamedProps(
+    feedbackColumnIds?: FeedbackColumnIds,
+  ): SpreadsheetNamedProps {
+    return SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(
+      feedbackColumnIds,
+    );
   }
 }

@@ -3,15 +3,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getColumnTraitByName } from "../01_SpreadsheetSchema/columnConfigsTypes";
 import { getSheetTraitByName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
 import { SpreadsheetBaseNamed } from "../04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
+import type { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {
   buildGridRows,
   type FakeCell,
+  type FakeCellValue,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
 import type { FakeGridView } from "../testSupport/fakeSheetsService/gridView";
 import { EndpointRun } from "./EndpointRun";
-import type { ActionReturn, Endpoint } from "./Endpoints";
+import type { ActionReturn, Endpoint, EndpointsAll } from "./Endpoints";
+import { feedbackColumnIdsOf } from "./feedbackColumnIds";
 
 type Color = GoogleAppsScript.Sheets.Schema.Color;
 
@@ -24,6 +27,7 @@ const idColIndex = 0;
 const selectorColIndex = 1;
 const timeLastRanColIndex = 2;
 const runStatusColIndex = 3;
+const resultColIndex = 4;
 const actionRowIndex = 2;
 const topDataRowIndex = 4;
 const endRowIndex = 9;
@@ -97,9 +101,49 @@ function stubRunItemSheetWithBlankRow() {
   });
 }
 
-function runEndpoint(endpoint: Endpoint<"runItem">, isChecked = true) {
+// The sheet an earlier run emptied: one data row, nothing in it but what `blankRow` holds.
+function stubEmptiedRunItemSheet(blankRow: Partial<Record<string, FakeCell>>) {
+  const columnNames = [
+    "id",
+    "selected",
+    "startTime",
+    "runStatus",
+    "result",
+  ] as const;
+  return stubSheetsService({
+    sheets: [
+      {
+        sheetId: runItemGid,
+        title: "Run item",
+        rows: buildGridRows({
+          0: columnNames.map((columnName) =>
+            getColumnTraitByName("runItem", columnName, "columnId"),
+          ),
+          [actionRowIndex]: actionRowWithEntryTicked,
+          3: ["ID", "Selected", "Start time", "Run status", "Result"],
+          [topDataRowIndex]: columnNames.map(
+            (columnName) => blankRow[columnName] ?? null,
+          ),
+        }),
+        table: { endRowIndex: topDataRowIndex + 1 },
+      },
+    ],
+  });
+}
+
+interface RunOptions {
+  isChecked?: boolean;
+  alsoDeclared?: EndpointsAll;
+}
+
+function runEndpoint(
+  endpoint: Endpoint<"runItem">,
+  { isChecked = true, alsoDeclared = {} }: RunOptions = {},
+) {
   const run = new EndpointRun({
-    ...SpreadsheetBaseNamed.initSpreadsheetNamedProps(),
+    ...SpreadsheetBaseNamed.initSpreadsheetNamedProps(
+      feedbackColumnIdsOf({ ...alsoDeclared, runItem_startTime: endpoint }),
+    ),
     sheetName: "runItem",
     entryColumnName: "startTime",
     endpoint,
@@ -146,6 +190,25 @@ function retainingEndpoint(
 }
 
 function noOp() {}
+
+function appendRow(ss: SpreadsheetNamed): void {
+  const sheet = ss.sheet("runItem");
+  sheet.row(topDataRowIndex).prepFetchFull();
+  ss.fetchAllPrepped();
+  sheet.appendRowWithVals({ result: "appended" });
+}
+
+// Every row down to the grid's end, so a row appended beneath the blank one shows.
+function idColumnValues(grid: FakeGridView): FakeCellValue[] {
+  return grid
+    .sheet(runItemGid)
+    .values({
+      startRowIndex: topDataRowIndex,
+      startColumnIndex: idColIndex,
+      endColumnIndex: idColIndex + 1,
+    })
+    .flat();
+}
 
 function startClockAtRunStart() {
   vi.useFakeTimers({ toFake: ["Date"] });
@@ -326,7 +389,10 @@ describe("EndpointRun.run, the selection a successful run consumes", () => {
   it("unticks them on an untick run too, leaving the entry checkbox alone", () => {
     const { grid } = stubRunItemSheet();
 
-    runEndpoint({ ...selectiveEndpoint(noOp), runOnUncheck: true }, false);
+    runEndpoint(
+      { ...selectiveEndpoint(noOp), runOnUncheck: true },
+      { isChecked: false },
+    );
 
     expect(columnCells(grid, selectorColIndex)).toEqual(allRows(false));
     expect(entryCell(grid)).toBe(true);
@@ -400,19 +466,70 @@ describe("EndpointRun.run, an endpoint with no selector", () => {
     expect(received).toEqual([4, 5, 7, 8]);
   });
 
-  it("still stamps its status across the blank row, so an emptied sheet reports somewhere", () => {
-    const { grid } = stubRunItemSheetWithBlankRow();
+  it("still stamps its status across the blank row, which stays reusable, so an emptied sheet reports somewhere", () => {
+    const { grid } = stubEmptiedRunItemSheet({});
     let statusesWhileRunning: FakeCell[] = [];
 
     runEndpoint(
       reportingEndpoint(() => {
-        statusesWhileRunning = columnCells(grid, runStatusColIndex);
+        statusesWhileRunning = grid
+          .sheet(runItemGid)
+          .rows({
+            startRowIndex: topDataRowIndex,
+            startColumnIndex: runStatusColIndex,
+            endColumnIndex: runStatusColIndex + 1,
+          })
+          .flat();
       }),
     );
+    expect(statusesWhileRunning).toEqual([stamp("Running…", lightYellow)]);
+    expect(
+      grid.sheet(runItemGid).cell(topDataRowIndex, runStatusColIndex),
+    ).toEqual(stamp("Succeeded", lightGreen));
+    runEndpoint(reportingEndpoint(appendRow));
 
-    expect(statusesWhileRunning).toEqual(
-      allRows(stamp("Running…", lightYellow)),
-    );
+    expect(idColumnValues(grid)).toEqual([expect.stringMatching(/^r:rit:/)]);
+  });
+});
+
+describe("EndpointRun.run, a blank row another endpoint stamped", () => {
+  const stampingEndpoint = {
+    action: noOp,
+    runStatus: "result",
+  } as const satisfies Endpoint<"runItem">;
+
+  it("is reused by this endpoint's append, since every declared endpoint's feedback columns are skipped", () => {
+    const { grid } = stubEmptiedRunItemSheet({ result: "Succeeded" });
+
+    runEndpoint(reportingEndpoint(appendRow), {
+      alsoDeclared: { runItem_selected: stampingEndpoint },
+    });
+
+    expect(idColumnValues(grid)).toEqual([expect.stringMatching(/^r:rit:/)]);
+  });
+
+  it("is not reused when no declared endpoint reports into that column", () => {
+    const { grid } = stubEmptiedRunItemSheet({ result: "Succeeded" });
+
+    runEndpoint(reportingEndpoint(appendRow));
+
+    expect(
+      grid.sheet(runItemGid).values({
+        startRowIndex: topDataRowIndex,
+        endRowIndex: topDataRowIndex + 2,
+        startColumnIndex: idColIndex,
+        endColumnIndex: resultColIndex + 1,
+      }),
+    ).toEqual([
+      [null, null, expect.anything(), expect.anything(), "Succeeded"],
+      [
+        expect.stringMatching(/^r:rit:/),
+        false,
+        expect.anything(),
+        expect.anything(),
+        "appended",
+      ],
+    ]);
   });
 });
 
