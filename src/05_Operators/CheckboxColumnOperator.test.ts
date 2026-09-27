@@ -62,21 +62,12 @@ function initOperatorWithFetchedColumn() {
   return operator;
 }
 
-function selectFills(
-  batchUpdateCalls: GoogleAppsScript.Sheets.Schema.BatchUpdateSpreadsheetRequest[],
-) {
-  return batchUpdateCalls
-    .flatMap((call) => call.requests ?? [])
-    .filter(
-      (request) =>
-        request.repeatCell?.range?.startColumnIndex === selectColIndex,
-    )
-    .map((request) => ({
-      startRowIndex: request.repeatCell?.range?.startRowIndex,
-      endRowIndex: request.repeatCell?.range?.endRowIndex,
-      value: request.repeatCell?.cell?.userEnteredValue?.boolValue,
-    }));
-}
+const selectedColumnRange = {
+  startRowIndex: 4,
+  endRowIndex,
+  startColumnIndex: selectColIndex,
+  endColumnIndex: selectColIndex + 1,
+};
 
 beforeEach(() => {
   stubLogger();
@@ -95,30 +86,33 @@ describe("CheckboxColumnOperator.rowIndexesChecked", () => {
 });
 
 describe("CheckboxColumnOperator.uncheckActiveCells", () => {
-  it("unticks a pruned sheet's remaining rows, one request per contiguous range", () => {
-    const { batchUpdateCalls } = seedSelectedColumn([true, false, true]);
+  it("unticks a pruned sheet's remaining rows and leaves the pruned rows ticked", () => {
+    const { grid } = seedSelectedColumn([true, true, true]);
     const operator = initOperatorWithFetchedColumn();
 
     operator.sheet.raw.removeRowsExcept(4, 6);
     operator.uncheckActiveCells();
     operator.ss.batchUpdateGSheets();
 
-    expect(selectFills(batchUpdateCalls)).toEqual([
-      { startRowIndex: 4, endRowIndex: 5, value: false },
-      { startRowIndex: 6, endRowIndex: 7, value: false },
+    expect(grid.sheet(runItemGid).values(selectedColumnRange)).toEqual([
+      [false],
+      [true],
+      [false],
     ]);
   });
 
   it("normalizes an untouched empty cell to an explicit false", () => {
-    const { batchUpdateCalls } = seedSelectedColumn([true, null, null]);
+    const { grid } = seedSelectedColumn([true, null, null]);
     const operator = initOperatorWithFetchedColumn();
 
     operator.sheet.raw.removeRowsExcept(5, 6);
     operator.uncheckActiveCells();
     operator.ss.batchUpdateGSheets();
 
-    expect(selectFills(batchUpdateCalls)).toEqual([
-      { startRowIndex: 5, endRowIndex: 7, value: false },
+    expect(grid.sheet(runItemGid).values(selectedColumnRange)).toEqual([
+      [true],
+      [false],
+      [false],
     ]);
   });
 });

@@ -372,15 +372,6 @@ function spreadsheetConfigGroupHeading(header: string): string {
   );
 }
 
-function floorWarningDescriptions(
-  requests: GoogleAppsScript.Sheets.Schema.Request[] | undefined,
-): string[] {
-  return (requests ?? []).flatMap((request) => {
-    const description = request.addProtectedRange?.protectedRange?.description;
-    return description === undefined ? [] : [description];
-  });
-}
-
 function driftedFloorWarningDescription(): string {
   return "Config-sheet floor · Spreadsheet Config · warning";
 }
@@ -419,17 +410,25 @@ function driftedFloorWarningProtection(): GoogleAppsScript.Sheets.Schema.Protect
 }
 
 describe("ConfigCoordinator.syncAndFlushConfigSheets", () => {
-  it("flushes the config-sheet floor, then Sheet Config and Column Config changes", () => {
-    const { batchUpdateCalls } = seedFixture();
+  it("flushes the config-sheet floor and the config sheets' changes in two batch updates", () => {
+    const { batchUpdateCount, grid } = seedFixture();
 
     const orchestrator = ConfigCoordinator.init();
     orchestrator.syncAndFlushConfigSheets();
 
-    expect(batchUpdateCalls.length).toBe(2);
-    expect(floorWarningDescriptions(batchUpdateCalls[0]?.requests)).toContain(
-      driftedFloorWarningDescription(),
-    );
-    expect(batchUpdateCalls[1]?.requests?.length).toBeGreaterThan(0);
+    expect(batchUpdateCount()).toBe(2);
+    expect(
+      grid
+        .sheet(spreadsheetConfigGid)
+        .protectedRanges.map((protection) => protection.description),
+    ).toContain(driftedFloorWarningDescription());
+    expect(
+      grid.sheet(columnConfigGid).values({
+        startRowIndex: 4,
+        endRowIndex: 5,
+        endColumnIndex: 4,
+      }),
+    ).toEqual([[testSheetGid, "c:itm:xyz123", "Item", "Some Header"]]);
     // The gathered column ID rode the appended Column Config row into the flush.
     expect(orchestrator.sheetConfigOperator.newSheetConfigs().item).toEqual({
       sheetGid: testSheetGid,
