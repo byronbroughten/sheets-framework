@@ -14,6 +14,7 @@ import {
   blankSheetConfigRow,
   filledSheetConfigRow,
   sheetConfigGid,
+  sheetTitleColIndex,
   stubSheetConfigSheet,
 } from "../testSupport/fakeSheetConfigSheet";
 import {
@@ -423,7 +424,7 @@ function tableDataRows(
 }
 
 function sheetConfigTitles(service: FakeSheetsService): FakeCellValue[] {
-  return tableDataRows(service, sheetConfigGid).map((row) => row[1] ?? null);
+  return tableDataRows(service, sheetConfigGid).map((row) => row[sheetTitleColIndex] ?? null);
 }
 
 describe("SheetNamed.rowByValue", () => {

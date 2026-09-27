@@ -5,6 +5,7 @@ import { getSheetTraitByName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
 import { sheetLayout } from "../01_SpreadsheetSchema/sheetLayout";
 import {
   buildGridRows,
+  type FakeSheetsService,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
 import { Val } from "../utils/Val";
@@ -76,6 +77,10 @@ function stubRunItemWithRules(
   });
 }
 
+function runItemRules(grid: FakeSheetsService["grid"]) {
+  return grid.sheet(runItemGid).conditionalFormats;
+}
+
 function fetchedRunItem() {
   const ss = SpreadsheetNamed.init();
   const sheet = ss.sheet("runItem");
@@ -104,7 +109,7 @@ describe("SheetNamed conditional format rules", () => {
     });
     ss.batchUpdateGSheets();
 
-    expect(grid.sheet(runItemGid).conditionalFormats).toEqual([
+    expect(runItemRules(grid)).toEqual([
       googleBooleanRule(idColumnRange, "NUMBER_EQ", "TRUE", pink),
       googleBooleanRule(sheetRange, "NUMBER_EQ", "TRUE", grey),
     ]);
@@ -133,7 +138,7 @@ describe("SheetNamed conditional format rules", () => {
     sheet.column("id").removeConditionalFormatRules();
     ss.batchUpdateGSheets();
 
-    expect(grid.sheet(runItemGid).conditionalFormats).toEqual([
+    expect(runItemRules(grid)).toEqual([
       googleBooleanRule(sheetRange, "NUMBER_EQ", "TRUE", grey),
       googleBooleanRule(selectColumnRange, "NUMBER_EQ", "TRUE", green),
     ]);
@@ -165,7 +170,7 @@ describe("SheetNamed conditional format rules", () => {
     sheet.column("id").removeConditionalFormatRule(toRemove);
     ss.batchUpdateGSheets();
 
-    expect(grid.sheet(runItemGid).conditionalFormats).toEqual([
+    expect(runItemRules(grid)).toEqual([
       googleBooleanRule(idColumnRange, "NUMBER_NOT_EQ", "TRUE", green),
     ]);
   });
@@ -197,7 +202,7 @@ describe("SheetNamed conditional format rules", () => {
     sheet.column("id").removeConditionalFormatRules();
     ss.batchUpdateGSheets();
 
-    expect(grid.sheet(runItemGid).conditionalFormats).toEqual([
+    expect(runItemRules(grid)).toEqual([
       googleBooleanRule(sheetRange, "NUMBER_EQ", "TRUE", grey),
     ]);
   });
@@ -226,7 +231,7 @@ describe("SheetNamed conditional format rules", () => {
       format: { backgroundColor: green },
     });
     ss.batchUpdateGSheets();
-    expect(grid.sheet(runItemGid).conditionalFormats).toEqual([
+    expect(runItemRules(grid)).toEqual([
       googleBooleanRule(idColumnRange, "NUMBER_NOT_EQ", "TRUE", green),
       googleBooleanRule(idColumnRange, "NUMBER_EQ", "TRUE", pink),
     ]);
@@ -267,7 +272,7 @@ describe("SheetNamed conditional format rules", () => {
     ss.batchUpdateGSheets();
 
     expect(
-      grid.sheet(runItemGid).conditionalFormats.map((rule) => rule.ranges),
+      runItemRules(grid).map((rule) => rule.ranges),
     ).toEqual([[topIdCellRange], [sheetRange]]);
   });
 
@@ -293,7 +298,7 @@ describe("SheetNamed conditional format rules", () => {
     ss.batchUpdateGSheets();
 
     expect(batchUpdateCount()).toBe(1);
-    expect(grid.sheet(runItemGid).conditionalFormats).toEqual([
+    expect(runItemRules(grid)).toEqual([
       googleBooleanRule(idColumnRange, "CUSTOM_FORMULA", "=$B5=FALSE", pink),
     ]);
   });
