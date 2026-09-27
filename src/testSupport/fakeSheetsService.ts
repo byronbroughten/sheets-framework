@@ -166,13 +166,11 @@ export interface FakeSheetsServiceOptions {
   sheets?: FakeSheetProperties[];
   /** The spreadsheet's `properties.timeZone`; `null` leaves it out of every response. */
   timeZone?: string | null;
-  /** Records and counts batch updates without replaying them, as the Node host's dry run sends none. */
+  /** Counts batch updates without replaying them, as the Node host's dry run sends none. */
   isDryRun?: boolean;
 }
 
 export interface FakeSheetsService {
-  /** Every request object passed to `Sheets.Spreadsheets.batchUpdate`, in call order. */
-  batchUpdateCalls: BatchUpdateRequest[];
   /** How many batch updates were sent, for a test whose name states a round-trip cost. */
   batchUpdateCount(): number;
   /** The fake spreadsheet as every replayed batch update left it. */
@@ -311,7 +309,7 @@ export function stubSheetsService(
   const spreadsheet = fakeSpreadsheet.init(options.sheets ?? []);
   const timeZone =
     options.timeZone === undefined ? fakeTimeZone : options.timeZone;
-  const batchUpdateCalls: BatchUpdateRequest[] = [];
+  let sentBatchCount = 0;
   const getByDataFilterCalls: object[] = [];
   const getCalls: { fields?: string }[] = [];
 
@@ -365,7 +363,7 @@ export function stubSheetsService(
         resource: BatchUpdateRequest,
         _spreadsheetId: string,
       ): BatchUpdateResponse => {
-        batchUpdateCalls.push(resource);
+        sentBatchCount++;
         if (options.isDryRun) return {};
         return replayBatch(spreadsheet, resource.requests ?? []);
       },
@@ -375,9 +373,8 @@ export function stubSheetsService(
   installRawSource(GoogleSheetsAPI.init(service, fakeSpreadsheetId));
 
   return {
-    batchUpdateCalls,
     batchUpdateCount() {
-      return batchUpdateCalls.length;
+      return sentBatchCount;
     },
     grid: gridView.build(spreadsheet),
     getByDataFilterCalls,
