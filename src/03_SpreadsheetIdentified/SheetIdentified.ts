@@ -126,6 +126,13 @@ export class SheetIdentified extends SheetCommonIdentified {
   anchoredA1(colIndex: number): string {
     return this.schema.anchoredA1(colIndex, this.schema.topDataRowIdx);
   }
+  // Feedback columns only report on a row, so a row holding nothing else is still blank.
+  blankTestColumnIds(): string[] {
+    const feedbackColumnIds = this.feedbackColumnIds.get(this.sheetGid);
+    return this.nonFormulaColumnIds.filter(
+      (columnId) => !feedbackColumnIds?.has(columnId),
+    );
+  }
   row(rowIndex: number): RowIdentified {
     return new RowIdentified({
       ...this.sheetIdentifiedProps,

@@ -54,7 +54,7 @@ export class RowIdentified extends RowCommonIdentified {
   // Raw decides, since a checkbox column's blank reads as false and an unread row isn't empty.
   get isBlank(): boolean {
     if (!this.isActive) return false;
-    return this._nonFormulaCellsActive.every((cell) => cell.raw.isEmpty);
+    return this._blankTestCellsActive.every((cell) => cell.raw.isEmpty);
   }
   get isReusable(): boolean {
     return this.isBlank && !this.raw.isReserved;
@@ -79,8 +79,9 @@ export class RowIdentified extends RowCommonIdentified {
       this.raw.delete();
     }
   }
-  private get _nonFormulaCellsActive(): CellIdentified[] {
-    return this.sheet.nonFormulaColumnIds
+  private get _blankTestCellsActive(): CellIdentified[] {
+    return this.sheet
+      .blankTestColumnIds()
       .map((columnId) => this.cell(columnId))
       .filter((cell) => cell.isActive);
   }

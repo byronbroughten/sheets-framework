@@ -292,6 +292,54 @@ describe("SheetIdentified.hasNoData", () => {
   });
 });
 
+const runItemGid = getSheetTraitByName("runItem", "sheetGid");
+const runItemColumnIds = (["id", "result", "runStatus"] as const).map(
+  (columnName) => getColumnTraitByName("runItem", columnName, "columnId"),
+);
+const runStatusColumnId = getColumnTraitByName(
+  "runItem",
+  "runStatus",
+  "columnId",
+);
+
+function runItemWithOneRow(topRow: (string | null)[]): SheetIdentified {
+  stubSheetsService({
+    sheets: [
+      {
+        sheetId: runItemGid,
+        title: "Run item",
+        rows: buildGridRows({ 0: runItemColumnIds, 4: topRow }),
+        table: { endRowIndex: 5 },
+      },
+    ],
+  });
+  const ssi = new SpreadsheetIdentified(
+    SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(
+      new Map([[runItemGid, new Set([runStatusColumnId])]]),
+    ),
+  );
+  const sheet = ssi.sheet(runItemGid);
+  sheet.topRow.prepFetchFull();
+  ssi.fetchAllPrepped();
+  return sheet;
+}
+
+describe("the blank test, on a sheet with a feedback column", () => {
+  it("calls a row holding only a run status blank", () => {
+    const sheet = runItemWithOneRow([null, null, "Succeeded"]);
+
+    expect(sheet.topRow.isBlank).toBe(true);
+    expect(sheet.hasNoData).toBe(true);
+  });
+
+  it("calls a row holding anything outside the feedback columns not blank", () => {
+    const sheet = runItemWithOneRow([null, "a result", "Succeeded"]);
+
+    expect(sheet.topRow.isBlank).toBe(false);
+    expect(sheet.hasNoData).toBe(false);
+  });
+});
+
 const computedGid = getSheetTraitByName("computed", "sheetGid");
 const amountColumnId = getColumnTraitByName("computed", "amount", "columnId");
 const rowNumberColumnId = getColumnTraitByName(

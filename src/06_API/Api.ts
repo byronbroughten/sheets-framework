@@ -16,6 +16,7 @@ import { ConfigSheetFloor } from "../05_Operators/ConfigSheetFloor";
 import type { FloorNotice } from "../05_Operators/ConfigSheetFloor/floorChangeNotice";
 import { EndpointRun } from "./EndpointRun";
 import type { Endpoints, EndpointsAll } from "./Endpoints";
+import { feedbackColumnIdsOf } from "./feedbackColumnIds";
 import { frameworkEndpoints } from "./frameworkEndpoints";
 
 interface ApiProps extends SpreadsheetNamedProps {
@@ -31,15 +32,14 @@ export class Api extends SpreadsheetBaseNamed {
   readonly endpoints: EndpointsAll;
   constructor({ endpoints, ...rest }: ApiProps) {
     super(rest);
-    this.endpoints = {
-      ...endpoints,
-      ...frameworkEndpoints,
-    };
+    this.endpoints = withFrameworkEndpoints(endpoints);
   }
   static init(endpoints: Endpoints): Api {
     return new Api({
       endpoints,
-      ...SpreadsheetBaseNamed.initSpreadsheetNamedProps(),
+      ...SpreadsheetBaseNamed.initSpreadsheetNamedProps(
+        feedbackColumnIdsOf(withFrameworkEndpoints(endpoints)),
+      ),
     });
   }
   static handleSheetEdit(
@@ -105,4 +105,8 @@ export class Api extends SpreadsheetBaseNamed {
       endpoint,
     }).run(isChecked);
   }
+}
+
+function withFrameworkEndpoints(endpoints: Endpoints): EndpointsAll {
+  return { ...endpoints, ...frameworkEndpoints };
 }
