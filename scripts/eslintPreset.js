@@ -2,6 +2,13 @@
 // JS, not TypeScript: a consumer's eslint config imports this from node_modules, where Node won't strip types.
 import { styleSyntax, variableNaming } from "@byronbroughten/config/eslint";
 
+const requestRecordingMessage =
+  "Assert the grid a write leaves through stubSheetsService()'s grid, not requests a hand-rolled batchUpdate records; only GoogleSheetsAPI.test.ts tests the request mapping (docs/style.md, Tests).";
+const requestRecordingSyntax = [
+  "ObjectExpression > Property[key.name='batchUpdate']",
+  "ObjectExpression > Property[key.value='batchUpdate']",
+].map((selector) => ({ selector, message: requestRecordingMessage }));
+
 const frameworkPackage = "@byronbroughten/sheets-framework";
 const platformMessage =
   "Google Sheets code lives only in the framework's src/00_Source/GoogleSheets/. Everything else takes a platform-neutral type or a return value that the entry point handles.";
@@ -22,6 +29,17 @@ export function sheetsSrcBlocks(platformIgnores) {
       files: ["**/*.test.ts"],
       rules: {
         "@typescript-eslint/naming-convention": ["error", variableNaming],
+      },
+    },
+    {
+      files: ["**/*.test.ts"],
+      ignores: ["**/GoogleSheetsAPI.test.ts"],
+      rules: {
+        "no-restricted-syntax": [
+          "error",
+          ...styleSyntax,
+          ...requestRecordingSyntax,
+        ],
       },
     },
     // The structural utilities do the generic typing that needs `any` (docs/style/type-modeling.md).
