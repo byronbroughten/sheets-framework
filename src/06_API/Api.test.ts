@@ -8,8 +8,10 @@ import { sheetLayout } from "../01_SpreadsheetSchema/sheetLayout";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {
   buildGridRows,
+  type FakeCell,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
+import type { FakeGridView } from "../testSupport/fakeSheetsService/gridView";
 import { Api } from "./Api";
 import type { Endpoints } from "./Endpoints";
 
@@ -28,7 +30,7 @@ const blankIdColIndex = 3;
 const actionRowIndex = sheetLayout.actionRowIndex;
 const endRowIndex = 7;
 
-function stubRunItemSheet() {
+function stubRunItemSheet(actionRowAsClicked: FakeCell[] = []) {
   return stubSheetsService({
     sheets: [
       {
@@ -36,6 +38,7 @@ function stubRunItemSheet() {
         title: "Run item",
         rows: buildGridRows({
           0: columnIds,
+          [actionRowIndex]: actionRowAsClicked,
           3: ["ID", "Selected", "Result", ""],
           4: ["r:rit:row4", false, "", ""],
           5: ["r:rit:row5", false, "", ""],
@@ -45,6 +48,10 @@ function stubRunItemSheet() {
       },
     ],
   });
+}
+
+function tickedAt(colIndex: number): FakeCell[] {
+  return columnIds.map((_, index) => (index === colIndex ? true : null));
 }
 
 function actionRowEdit(colIndex: number, value: string): SheetEdit {
@@ -72,18 +79,11 @@ function trackingEndpoints(calls: string[]): Endpoints {
   };
 }
 
-function actionRowWrites(
-  calls: GoogleAppsScript.Sheets.Schema.BatchUpdateSpreadsheetRequest[],
-) {
-  return calls
-    .flatMap((call) => call.requests ?? [])
-    .filter(
-      (request) => request.updateCells?.range?.startRowIndex === actionRowIndex,
-    )
-    .map((request) => ({
-      colIndex: request.updateCells?.range?.startColumnIndex,
-      value: request.updateCells?.rows?.[0]?.values?.[0]?.userEnteredValue,
-    }));
+function actionRowCells(grid: FakeGridView): FakeCell[] {
+  return grid
+    .sheet(runItemGid)
+    .rows({ startRowIndex: actionRowIndex, endRowIndex: actionRowIndex + 1 })
+    .flat();
 }
 
 beforeEach(() => {
@@ -200,26 +200,28 @@ describe("Api.handleSheetEdit, endpoint dispatch", () => {
 
   it("does nothing for a column with no registered entry", () => {
     const calls: string[] = [];
-    const { batchUpdateCalls } = stubRunItemSheet();
+    const { grid } = stubRunItemSheet(tickedAt(idColIndex));
+    const before = grid.sheet(runItemGid).rows();
 
     Api.init(trackingEndpoints(calls)).handleSheetEdit(
       actionRowEdit(idColIndex, "TRUE"),
     );
 
     expect(calls).toEqual([]);
-    expect(batchUpdateCalls).toEqual([]);
+    expect(grid.sheet(runItemGid).rows()).toEqual(before);
   });
 
   it("does nothing for a table column that has no column id yet", () => {
     const calls: string[] = [];
-    const { batchUpdateCalls } = stubRunItemSheet();
+    const { grid } = stubRunItemSheet(tickedAt(blankIdColIndex));
+    const before = grid.sheet(runItemGid).rows();
 
     Api.init(trackingEndpoints(calls)).handleSheetEdit(
       actionRowEdit(blankIdColIndex, "TRUE"),
     );
 
     expect(calls).toEqual([]);
-    expect(batchUpdateCalls).toEqual([]);
+    expect(grid.sheet(runItemGid).rows()).toEqual(before);
   });
 
   it("ignores an untick for an entry that does not run on uncheck", () => {
@@ -247,35 +249,33 @@ describe("Api.handleSheetEdit, endpoint dispatch", () => {
 
 describe("Api.handleSheetEdit, the entry checkbox", () => {
   it("clears a button's checkbox so it is ready for the next click", () => {
-    const { batchUpdateCalls } = stubRunItemSheet();
+    const { grid } = stubRunItemSheet(tickedAt(buttonColIndex));
 
     Api.init(trackingEndpoints([])).handleSheetEdit(
       actionRowEdit(buttonColIndex, "TRUE"),
     );
 
-    expect(actionRowWrites(batchUpdateCalls)).toEqual([
-      { colIndex: buttonColIndex, value: { boolValue: false } },
-    ]);
+    expect(actionRowCells(grid)).toEqual([null, null, false, null]);
   });
 
   it("leaves a two-way entry's checkbox where the operator put it", () => {
-    const { batchUpdateCalls } = stubRunItemSheet();
+    const { grid } = stubRunItemSheet(tickedAt(twoWayColIndex));
 
     Api.init(trackingEndpoints([])).handleSheetEdit(
       actionRowEdit(twoWayColIndex, "TRUE"),
     );
 
-    expect(actionRowWrites(batchUpdateCalls)).toEqual([]);
+    expect(actionRowCells(grid)).toEqual([null, true, null, null]);
   });
 
   it("costs one read and one write for an entry that reports nothing", () => {
-    const { batchUpdateCalls, getByDataFilterCalls } = stubRunItemSheet();
+    const { batchUpdateCount, getByDataFilterCalls } = stubRunItemSheet();
 
     Api.init(trackingEndpoints([])).handleSheetEdit(
       actionRowEdit(buttonColIndex, "TRUE"),
     );
 
     expect(getByDataFilterCalls).toHaveLength(1);
-    expect(batchUpdateCalls).toHaveLength(1);
+    expect(batchUpdateCount()).toBe(1);
   });
 });

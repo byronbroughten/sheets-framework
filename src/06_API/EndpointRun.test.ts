@@ -6,19 +6,21 @@ import { SpreadsheetBaseNamed } from "../04_SpreadsheetNamed/ClassBases/Spreadsh
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {
   buildGridRows,
+  type FakeCell,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
+import type { FakeGridView } from "../testSupport/fakeSheetsService/gridView";
 import { EndpointRun } from "./EndpointRun";
 import type { ActionReturn, Endpoint } from "./Endpoints";
 
-type BatchUpdateCall =
-  GoogleAppsScript.Sheets.Schema.BatchUpdateSpreadsheetRequest;
+type Color = GoogleAppsScript.Sheets.Schema.Color;
 
 const runItemGid = getSheetTraitByName("runItem", "sheetGid");
 const columnIds = (["id", "selected", "startTime", "runStatus"] as const).map(
   (columnName) => getColumnTraitByName("runItem", columnName, "columnId"),
 );
 const headers = ["ID", "Selected", "Start time", "Run status"];
+const idColIndex = 0;
 const selectorColIndex = 1;
 const timeLastRanColIndex = 2;
 const runStatusColIndex = 3;
@@ -32,6 +34,11 @@ const lightOrange = { red: 0.99, green: 0.85, blue: 0.7 };
 const lightRed = { red: 0.957, green: 0.8, blue: 0.8 };
 
 const timestamp = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
+const runStartUtc = new Date("2024-03-15T02:30:00Z");
+const runStartInSheetZone = "2024-03-14 21:30:00";
+
+const actionRowWithEntryTicked = [null, null, true, null];
+const selectionAsTicked = [true, false, true, false, false];
 
 // Rows 4 and 6 are ticked; 5, 7 and 8 are the rows a selective run must not touch.
 function stubRunItemSheet(
@@ -52,6 +59,7 @@ function stubRunItemSheet(
         title: "Run item",
         rows: buildGridRows({
           0: columnIds,
+          [actionRowIndex]: actionRowWithEntryTicked,
           3: headers,
           4: dataRow(4),
           5: dataRow(5),
@@ -75,6 +83,7 @@ function stubRunItemSheetWithBlankRow() {
         title: "Run item",
         rows: buildGridRows({
           0: columnIds,
+          [actionRowIndex]: actionRowWithEntryTicked,
           3: headers,
           4: dataRow(4),
           5: dataRow(5),
@@ -138,114 +147,105 @@ function retainingEndpoint(
 
 function noOp() {}
 
-function allRequests(calls: BatchUpdateCall[]) {
-  return calls.flatMap((call) => call.requests ?? []);
+function startClockAtRunStart() {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(runStartUtc);
 }
 
-function fillRequestsFor(calls: BatchUpdateCall[], colIndex: number) {
-  return allRequests(calls).filter(
-    (request) => request.repeatCell?.range?.startColumnIndex === colIndex,
-  );
+// The clock moves on while the action works, so a rewritten start time would show.
+function withClockMovingDuringAction(
+  action: Endpoint<"runItem">["action"],
+): Endpoint<"runItem">["action"] {
+  return (ss, props) => {
+    vi.setSystemTime(new Date(runStartUtc.getTime() + 15 * 60 * 1000));
+    return action(ss, props);
+  };
 }
 
-function fillsFor(calls: BatchUpdateCall[], colIndex: number) {
-  return fillRequestsFor(calls, colIndex).map((request) => ({
-    startRowIndex: request.repeatCell?.range?.startRowIndex,
-    endRowIndex: request.repeatCell?.range?.endRowIndex,
-    value: request.repeatCell?.cell?.userEnteredValue?.stringValue,
-    backgroundColor:
-      request.repeatCell?.cell?.userEnteredFormat?.backgroundColor,
-  }));
-}
-
-function checkboxFillsFor(calls: BatchUpdateCall[], colIndex: number) {
-  return fillRequestsFor(calls, colIndex).map((request) => ({
-    startRowIndex: request.repeatCell?.range?.startRowIndex,
-    endRowIndex: request.repeatCell?.range?.endRowIndex,
-    value: request.repeatCell?.cell?.userEnteredValue?.boolValue,
-  }));
-}
-
-function cellWritesFor(calls: BatchUpdateCall[], colIndex: number) {
-  return allRequests(calls)
-    .filter(
-      (request) =>
-        request.updateCells?.range?.startColumnIndex === colIndex &&
-        (request.updateCells.range.startRowIndex ?? 0) >= topDataRowIndex,
-    )
-    .map((request) => {
-      const cell = request.updateCells?.rows?.[0]?.values?.[0];
-      return {
-        rowIndex: request.updateCells?.range?.startRowIndex,
-        value: cell?.userEnteredValue?.stringValue,
-        backgroundColor: cell?.userEnteredFormat?.backgroundColor,
-      };
-    });
-}
-
-function actionRowWrites(calls: BatchUpdateCall[]) {
-  return allRequests(calls).filter((request) => {
-    const range = request.repeatCell?.range ?? request.updateCells?.range;
-    return range?.startRowIndex === actionRowIndex;
-  });
-}
-
-function touchedRowIndexes(calls: BatchUpdateCall[]): number[] {
-  const rowIndexes = allRequests(calls)
-    .flatMap((request) => {
-      const range = request.repeatCell?.range ?? request.updateCells?.range;
-      const start = range?.startRowIndex ?? 0;
-      const end = range?.endRowIndex ?? start + 1;
-      return Array.from({ length: end - start }, (_, i) => start + i);
+function columnCells(grid: FakeGridView, colIndex: number): FakeCell[] {
+  return grid
+    .sheet(runItemGid)
+    .rows({
+      startRowIndex: topDataRowIndex,
+      endRowIndex,
+      startColumnIndex: colIndex,
+      endColumnIndex: colIndex + 1,
     })
-    .filter((rowIndex) => rowIndex >= topDataRowIndex);
-  return [...new Set(rowIndexes)].sort((a, b) => a - b);
+    .flat();
+}
+
+function dataRows(grid: FakeGridView): FakeCell[][] {
+  return grid
+    .sheet(runItemGid)
+    .rows({ startRowIndex: topDataRowIndex, endRowIndex });
+}
+
+function entryCell(grid: FakeGridView): FakeCell {
+  return grid.sheet(runItemGid).cell(actionRowIndex, timeLastRanColIndex);
+}
+
+function stamp(value: string, backgroundColor: Color): FakeCell {
+  return { value, backgroundColor };
+}
+
+function stampedTime(backgroundColor: Color): FakeCell {
+  return { value: expect.stringMatching(timestamp) as string, backgroundColor };
+}
+
+// Rows 4 and 6 hold the cell; the unselected rows keep the fixture's blank.
+function onSelectedRows(cell: FakeCell): FakeCell[] {
+  return [cell, "", cell, "", ""];
+}
+
+function unselectedRows(rows: FakeCell[][]): (FakeCell[] | undefined)[] {
+  return [5, 7, 8].map((rowIndex) => rows[rowIndex - topDataRowIndex]);
+}
+
+function allRows(cell: FakeCell): FakeCell[] {
+  return Array.from({ length: endRowIndex - topDataRowIndex }, () => cell);
 }
 
 beforeEach(() => {
   stubLogger();
 });
 
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 describe("EndpointRun.run, an endpoint with a selector", () => {
-  it("stamps the run status into the selected rows only", () => {
-    const { batchUpdateCalls } = stubRunItemSheet();
+  it("shows the running state on the selected rows only while the action works", () => {
+    const { grid } = stubRunItemSheet();
+    let statusesWhileRunning: FakeCell[] = [];
+
+    runEndpoint(
+      selectiveEndpoint(() => {
+        statusesWhileRunning = columnCells(grid, runStatusColIndex);
+      }),
+    );
+
+    expect(statusesWhileRunning).toEqual(
+      onSelectedRows(stamp("Running…", lightYellow)),
+    );
+  });
+
+  it("leaves the run status on the selected rows only", () => {
+    const { grid } = stubRunItemSheet();
 
     runEndpoint(selectiveEndpoint(noOp));
 
-    expect(fillsFor(batchUpdateCalls, runStatusColIndex)).toEqual([
-      {
-        startRowIndex: 4,
-        endRowIndex: 5,
-        value: "Running…",
-        backgroundColor: lightYellow,
-      },
-      {
-        startRowIndex: 6,
-        endRowIndex: 7,
-        value: "Running…",
-        backgroundColor: lightYellow,
-      },
-      {
-        startRowIndex: 4,
-        endRowIndex: 5,
-        value: "Succeeded",
-        backgroundColor: lightGreen,
-      },
-      {
-        startRowIndex: 6,
-        endRowIndex: 7,
-        value: "Succeeded",
-        backgroundColor: lightGreen,
-      },
-    ]);
+    expect(columnCells(grid, runStatusColIndex)).toEqual(
+      onSelectedRows(stamp("Succeeded", lightGreen)),
+    );
   });
 
   it("leaves every unselected row completely untouched", () => {
-    const { batchUpdateCalls } = stubRunItemSheet();
+    const { grid } = stubRunItemSheet();
+    const before = dataRows(grid);
 
     runEndpoint(selectiveEndpoint(noOp));
 
-    expect(touchedRowIndexes(batchUpdateCalls)).toEqual([4, 6]);
+    expect(unselectedRows(dataRows(grid))).toEqual(unselectedRows(before));
   });
 
   it("hands the action exactly the rows it stamps", () => {
@@ -262,29 +262,21 @@ describe("EndpointRun.run, an endpoint with a selector", () => {
   });
 
   it("shows the run state on every selected row's start-time cell", () => {
-    const { batchUpdateCalls } = stubRunItemSheet();
+    const { grid } = stubRunItemSheet();
+    let startTimesWhileRunning: FakeCell[] = [];
 
-    runEndpoint(selectiveEndpoint(noOp));
-    const writes = fillsFor(batchUpdateCalls, timeLastRanColIndex);
+    runEndpoint(
+      selectiveEndpoint(() => {
+        startTimesWhileRunning = columnCells(grid, timeLastRanColIndex);
+      }),
+    );
 
-    expect(writes[0]?.value).toMatch(timestamp);
-    expect(writes[0]?.backgroundColor).toEqual(lightYellow);
-    expect(writes[1]?.value).toMatch(timestamp);
-    expect(writes[1]?.backgroundColor).toEqual(lightYellow);
-    expect(writes.slice(2)).toEqual([
-      {
-        startRowIndex: 4,
-        endRowIndex: 5,
-        value: undefined,
-        backgroundColor: lightGreen,
-      },
-      {
-        startRowIndex: 6,
-        endRowIndex: 7,
-        value: undefined,
-        backgroundColor: lightGreen,
-      },
-    ]);
+    expect(startTimesWhileRunning).toEqual(
+      onSelectedRows(stampedTime(lightYellow)),
+    );
+    expect(columnCells(grid, timeLastRanColIndex)).toEqual(
+      onSelectedRows(stampedTime(lightGreen)),
+    );
   });
 
   it("reads the selection without a round trip of its own", () => {
@@ -297,19 +289,16 @@ describe("EndpointRun.run, an endpoint with a selector", () => {
 });
 
 describe("EndpointRun.run, the selection a successful run consumes", () => {
-  it("unticks the selected rows and no other row", () => {
-    const { batchUpdateCalls } = stubRunItemSheet();
+  it("unticks the selected rows", () => {
+    const { grid } = stubRunItemSheet();
 
     runEndpoint(selectiveEndpoint(noOp));
 
-    expect(checkboxFillsFor(batchUpdateCalls, selectorColIndex)).toEqual([
-      { startRowIndex: 4, endRowIndex: 5, value: false },
-      { startRowIndex: 6, endRowIndex: 7, value: false },
-    ]);
+    expect(columnCells(grid, selectorColIndex)).toEqual(allRows(false));
   });
 
   it("leaves the ticks alone when the action throws", () => {
-    const { batchUpdateCalls } = stubRunItemSheet();
+    const { grid } = stubRunItemSheet();
 
     runEndpoint(
       selectiveEndpoint(() => {
@@ -317,62 +306,64 @@ describe("EndpointRun.run, the selection a successful run consumes", () => {
       }),
     );
 
-    expect(checkboxFillsFor(batchUpdateCalls, selectorColIndex)).toEqual([]);
-    expect(fillsFor(batchUpdateCalls, runStatusColIndex).at(-1)?.value).toBe(
-      "Error: no good",
+    expect(columnCells(grid, selectorColIndex)).toEqual(selectionAsTicked);
+    expect(columnCells(grid, runStatusColIndex)[0]).toEqual(
+      stamp("Error: no good", lightRed),
     );
   });
 
   it("leaves the ticks alone when the endpoint retains its selection", () => {
-    const { batchUpdateCalls } = stubRunItemSheet();
+    const { grid } = stubRunItemSheet();
 
     runEndpoint(retainingEndpoint(noOp));
 
-    expect(checkboxFillsFor(batchUpdateCalls, selectorColIndex)).toEqual([]);
-    expect(fillsFor(batchUpdateCalls, runStatusColIndex).at(-1)?.value).toBe(
-      "Succeeded",
+    expect(columnCells(grid, selectorColIndex)).toEqual(selectionAsTicked);
+    expect(columnCells(grid, runStatusColIndex)[0]).toEqual(
+      stamp("Succeeded", lightGreen),
     );
   });
 
   it("unticks them on an untick run too, leaving the entry checkbox alone", () => {
-    const { batchUpdateCalls } = stubRunItemSheet();
+    const { grid } = stubRunItemSheet();
 
     runEndpoint({ ...selectiveEndpoint(noOp), runOnUncheck: true }, false);
 
-    expect(checkboxFillsFor(batchUpdateCalls, selectorColIndex)).toEqual([
-      { startRowIndex: 4, endRowIndex: 5, value: false },
-      { startRowIndex: 6, endRowIndex: 7, value: false },
-    ]);
-    expect(actionRowWrites(batchUpdateCalls)).toEqual([]);
+    expect(columnCells(grid, selectorColIndex)).toEqual(allRows(false));
+    expect(entryCell(grid)).toBe(true);
+  });
+
+  it("clears a button's entry checkbox for the next click", () => {
+    const { grid } = stubRunItemSheet();
+
+    runEndpoint(selectiveEndpoint(noOp));
+
+    expect(entryCell(grid)).toBe(false);
   });
 });
 
 describe("EndpointRun.run, an endpoint with no selector", () => {
-  it("stamps every table data row through a single fill per state", () => {
-    const { batchUpdateCalls } = stubRunItemSheet();
+  it("stamps the start time on every table data row while the action works", () => {
+    const { grid } = stubRunItemSheet();
+    let startTimesWhileRunning: FakeCell[] = [];
 
-    runEndpoint(reportingEndpoint(noOp));
-    const writes = fillsFor(batchUpdateCalls, timeLastRanColIndex);
+    runEndpoint(
+      reportingEndpoint(() => {
+        startTimesWhileRunning = columnCells(grid, timeLastRanColIndex);
+      }),
+    );
 
-    expect(writes[0]?.startRowIndex).toBe(topDataRowIndex);
-    expect(writes[0]?.endRowIndex).toBe(endRowIndex);
-    expect(writes[0]?.value).toMatch(timestamp);
-    expect(writes[0]?.backgroundColor).toEqual(lightYellow);
+    expect(startTimesWhileRunning).toEqual(allRows(stampedTime(lightYellow)));
   });
 
-  it("writes the start time once and only recolours it afterwards", () => {
-    const { batchUpdateCalls } = stubRunItemSheet();
+  it("keeps the start time it wrote, only recolouring it afterwards", () => {
+    startClockAtRunStart();
+    const { grid } = stubRunItemSheet();
 
-    runEndpoint(reportingEndpoint(noOp));
-    const writes = fillsFor(batchUpdateCalls, timeLastRanColIndex);
+    runEndpoint(reportingEndpoint(withClockMovingDuringAction(noOp)));
 
-    expect(writes[1]).toEqual({
-      startRowIndex: topDataRowIndex,
-      endRowIndex,
-      value: undefined,
-      backgroundColor: lightGreen,
-    });
-    expect(writes).toHaveLength(2);
+    expect(columnCells(grid, timeLastRanColIndex)).toEqual(
+      allRows(stamp(runStartInSheetZone, lightGreen)),
+    );
   });
 
   it("tells the action about every data row", () => {
@@ -410,85 +401,94 @@ describe("EndpointRun.run, an endpoint with no selector", () => {
   });
 
   it("still stamps its status across the blank row, so an emptied sheet reports somewhere", () => {
-    const { batchUpdateCalls } = stubRunItemSheetWithBlankRow();
+    const { grid } = stubRunItemSheetWithBlankRow();
+    let statusesWhileRunning: FakeCell[] = [];
 
-    runEndpoint(reportingEndpoint(noOp));
+    runEndpoint(
+      reportingEndpoint(() => {
+        statusesWhileRunning = columnCells(grid, runStatusColIndex);
+      }),
+    );
 
-    expect(fillsFor(batchUpdateCalls, runStatusColIndex)[0]).toEqual({
-      startRowIndex: topDataRowIndex,
-      endRowIndex,
-      value: "Running…",
-      backgroundColor: lightYellow,
-    });
+    expect(statusesWhileRunning).toEqual(
+      allRows(stamp("Running…", lightYellow)),
+    );
   });
 });
 
 describe("EndpointRun.run, the run status message", () => {
   it("writes the action's returned string", () => {
-    const { batchUpdateCalls } = stubRunItemSheet();
+    const { grid } = stubRunItemSheet();
 
     runEndpoint(reportingEndpoint(() => "Built 5 items"));
 
-    expect(fillsFor(batchUpdateCalls, runStatusColIndex).at(-1)?.value).toBe(
-      "Built 5 items",
+    expect(columnCells(grid, runStatusColIndex)).toEqual(
+      allRows(stamp("Built 5 items", lightGreen)),
     );
   });
 
   it("writes Succeeded when the action returns nothing", () => {
-    const { batchUpdateCalls } = stubRunItemSheet();
+    const { grid } = stubRunItemSheet();
 
     runEndpoint(reportingEndpoint(noOp));
 
-    expect(fillsFor(batchUpdateCalls, runStatusColIndex).at(-1)?.value).toBe(
-      "Succeeded",
+    expect(columnCells(grid, runStatusColIndex)).toEqual(
+      allRows(stamp("Succeeded", lightGreen)),
     );
   });
 });
 
 describe("EndpointRun.run, the two flushes", () => {
   it("puts the running state on the sheet before the work begins", () => {
-    const { batchUpdateCalls } = stubRunItemSheet();
+    const { grid } = stubRunItemSheet();
+    let statusesWhileRunning: FakeCell[] = [];
+
+    runEndpoint(
+      reportingEndpoint(() => {
+        statusesWhileRunning = columnCells(grid, runStatusColIndex);
+      }),
+    );
+
+    expect(statusesWhileRunning).toEqual(
+      allRows(stamp("Running…", lightYellow)),
+    );
+  });
+
+  it("costs two batch updates, one before the work and one after", () => {
+    const { batchUpdateCount } = stubRunItemSheet();
 
     runEndpoint(reportingEndpoint(noOp));
 
-    expect(
-      fillsFor(batchUpdateCalls.slice(0, 1), runStatusColIndex).map(
-        (write) => write.value,
-      ),
-    ).toEqual(["Running…"]);
-    expect(batchUpdateCalls).toHaveLength(2);
+    expect(batchUpdateCount()).toBe(2);
   });
 });
 
 describe("EndpointRun.run, the start time", () => {
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
   it("is the wall-clock time in the spreadsheet's own zone", () => {
-    vi.useFakeTimers({ toFake: ["Date"] });
-    vi.setSystemTime(new Date("2024-03-15T02:30:00Z"));
-    const { batchUpdateCalls } = stubRunItemSheet([4, 6], "Asia/Tokyo");
+    startClockAtRunStart();
+    const { grid } = stubRunItemSheet([4, 6], "Asia/Tokyo");
 
     runEndpoint(selectiveEndpoint(noOp));
 
-    expect(fillsFor(batchUpdateCalls, timeLastRanColIndex)[0]?.value).toBe(
-      "2024-03-15 11:30:00",
+    expect(columnCells(grid, timeLastRanColIndex)[0]).toEqual(
+      stamp("2024-03-15 11:30:00", lightGreen),
     );
   });
 });
 
 describe("EndpointRun.run, an endpoint declaring no feedback columns", () => {
-  it("emits no stamp at all", () => {
-    const { batchUpdateCalls } = stubRunItemSheet();
+  it("leaves the start-time and status columns as they were", () => {
+    const { grid } = stubRunItemSheet();
+    const startTimes = columnCells(grid, timeLastRanColIndex);
+    const statuses = columnCells(grid, runStatusColIndex);
 
     runEndpoint({
       action: noOp,
       selector: { column: "selected" },
     });
 
-    expect(fillsFor(batchUpdateCalls, timeLastRanColIndex)).toEqual([]);
-    expect(fillsFor(batchUpdateCalls, runStatusColIndex)).toEqual([]);
+    expect(columnCells(grid, timeLastRanColIndex)).toEqual(startTimes);
+    expect(columnCells(grid, runStatusColIndex)).toEqual(statuses);
   });
 });
 
@@ -500,55 +500,33 @@ describe("EndpointRun.run, a run that fails", () => {
   }
 
   it("writes the error text and red to the selected rows only", () => {
-    const { batchUpdateCalls } = stubRunItemSheet();
+    const { grid } = stubRunItemSheet();
 
     runEndpoint(selectiveEndpoint(failingAction));
 
-    expect(fillsFor(batchUpdateCalls, runStatusColIndex).slice(2)).toEqual([
-      {
-        startRowIndex: 4,
-        endRowIndex: 5,
-        value: expect.stringMatching(/^Error: /) as string,
-        backgroundColor: lightRed,
-      },
-      {
-        startRowIndex: 6,
-        endRowIndex: 7,
-        value: expect.stringMatching(/^Error: /) as string,
-        backgroundColor: lightRed,
-      },
-    ]);
-    expect(fillsFor(batchUpdateCalls, timeLastRanColIndex).slice(2)).toEqual([
-      {
-        startRowIndex: 4,
-        endRowIndex: 5,
-        value: undefined,
-        backgroundColor: lightRed,
-      },
-      {
-        startRowIndex: 6,
-        endRowIndex: 7,
-        value: undefined,
-        backgroundColor: lightRed,
-      },
-    ]);
+    const error = {
+      value: expect.stringMatching(/^Error: /) as string,
+      backgroundColor: lightRed,
+    };
+    expect(columnCells(grid, runStatusColIndex)).toEqual(onSelectedRows(error));
+    expect(columnCells(grid, timeLastRanColIndex)).toEqual(
+      onSelectedRows(stampedTime(lightRed)),
+    );
   });
 
   it("discards what the action queued before it threw", () => {
-    const { batchUpdateCalls } = stubRunItemSheet();
+    const { grid } = stubRunItemSheet();
 
     runEndpoint(selectiveEndpoint(failingAction));
 
-    const idWrites = batchUpdateCalls
-      .flatMap((call) => call.requests ?? [])
-      .filter((request) => request.updateCells?.range?.startColumnIndex === 0);
-    expect(idWrites).toEqual([]);
+    expect(columnCells(grid, idColIndex)[0]).toBe("r:rit:row4");
   });
 });
 
 describe("EndpointRun.run, an empty selection", () => {
   it("runs no action and stamps nothing", () => {
-    const { batchUpdateCalls } = stubRunItemSheet([]);
+    const { grid } = stubRunItemSheet([]);
+    const before = dataRows(grid);
     const calls: string[] = [];
 
     runEndpoint(
@@ -558,19 +536,21 @@ describe("EndpointRun.run, an empty selection", () => {
     );
 
     expect(calls).toEqual([]);
-    expect(fillsFor(batchUpdateCalls, runStatusColIndex)).toEqual([]);
-    expect(batchUpdateCalls).toHaveLength(1);
+    expect(dataRows(grid)).toEqual(before);
   });
 });
 
 describe("EndpointRun.run, a selector that requires one row", () => {
   it("refuses a selection of two, naming the sheet and how many were ticked", () => {
-    const { batchUpdateCalls } = stubRunItemSheet();
+    const { grid } = stubRunItemSheet();
 
     runEndpoint(oneRowEndpoint(noOp));
 
-    expect(fillsFor(batchUpdateCalls, runStatusColIndex).at(-1)?.value).toBe(
-      'Error: This endpoint runs on one row of "Run item" at a time, but 2 are selected.',
+    expect(columnCells(grid, runStatusColIndex)[0]).toEqual(
+      stamp(
+        'Error: This endpoint runs on one row of "Run item" at a time, but 2 are selected.',
+        lightRed,
+      ),
     );
   });
 
@@ -588,32 +568,21 @@ describe("EndpointRun.run, a selector that requires one row", () => {
   });
 
   it("leaves the ticks alone, so the extras can be unticked and the run retried", () => {
-    const { batchUpdateCalls } = stubRunItemSheet();
+    const { grid } = stubRunItemSheet();
 
     runEndpoint(oneRowEndpoint(noOp));
 
-    expect(checkboxFillsFor(batchUpdateCalls, selectorColIndex)).toEqual([]);
+    expect(columnCells(grid, selectorColIndex)).toEqual(selectionAsTicked);
   });
 
   it("reports the refusal as a failed run on every ticked row", () => {
-    const { batchUpdateCalls } = stubRunItemSheet();
+    const { grid } = stubRunItemSheet();
 
     runEndpoint(oneRowEndpoint(noOp));
 
-    expect(fillsFor(batchUpdateCalls, timeLastRanColIndex).slice(2)).toEqual([
-      {
-        startRowIndex: 4,
-        endRowIndex: 5,
-        value: undefined,
-        backgroundColor: lightRed,
-      },
-      {
-        startRowIndex: 6,
-        endRowIndex: 7,
-        value: undefined,
-        backgroundColor: lightRed,
-      },
-    ]);
+    expect(columnCells(grid, timeLastRanColIndex)).toEqual(
+      onSelectedRows(stampedTime(lightRed)),
+    );
   });
 
   it("hands the action its one row when exactly one is ticked", () => {
@@ -630,64 +599,57 @@ describe("EndpointRun.run, a selector that requires one row", () => {
   });
 
   it("succeeds on that one row", () => {
-    const { batchUpdateCalls } = stubRunItemSheet([6]);
+    const { grid } = stubRunItemSheet([6]);
 
     runEndpoint(oneRowEndpoint(noOp));
 
-    expect(fillsFor(batchUpdateCalls, runStatusColIndex).at(-1)?.value).toBe(
-      "Succeeded",
-    );
+    expect(columnCells(grid, runStatusColIndex)).toEqual([
+      "",
+      "",
+      stamp("Succeeded", lightGreen),
+      "",
+      "",
+    ]);
   });
 });
 
 describe("EndpointRun.run, a run report naming a state", () => {
+  function warned() {
+    return { runState: "warning" as const, message: "Added 3 of 5" };
+  }
+
   it("writes the warning's own message, since warning has no useful default", () => {
-    const { batchUpdateCalls } = stubRunItemSheet();
+    const { grid } = stubRunItemSheet();
 
-    runEndpoint(
-      reportingEndpoint(() => ({
-        runState: "warning" as const,
-        message: "Added 3 of 5",
-      })),
-    );
+    runEndpoint(reportingEndpoint(warned));
 
-    expect(fillsFor(batchUpdateCalls, runStatusColIndex).at(-1)?.value).toBe(
-      "Added 3 of 5",
+    expect(columnCells(grid, runStatusColIndex)).toEqual(
+      allRows(stamp("Added 3 of 5", lightOrange)),
     );
   });
 
   it("colours both feedback columns, so a sheet with one of them still shows it", () => {
-    const { batchUpdateCalls } = stubRunItemSheet();
+    const { grid } = stubRunItemSheet();
 
-    runEndpoint(
-      reportingEndpoint(() => ({
-        runState: "warning" as const,
-        message: "Added 3 of 5",
-      })),
+    runEndpoint(reportingEndpoint(warned));
+
+    expect(columnCells(grid, runStatusColIndex)).toEqual(
+      allRows(stamp("Added 3 of 5", lightOrange)),
     );
-
-    expect(
-      fillsFor(batchUpdateCalls, runStatusColIndex).at(-1)?.backgroundColor,
-    ).toEqual(lightOrange);
-    expect(
-      fillsFor(batchUpdateCalls, timeLastRanColIndex).at(-1)?.backgroundColor,
-    ).toEqual(lightOrange);
+    expect(columnCells(grid, timeLastRanColIndex)).toEqual(
+      allRows(stampedTime(lightOrange)),
+    );
   });
 
-  it("leaves the start time written once, recolouring it without a value", () => {
-    const { batchUpdateCalls } = stubRunItemSheet();
+  it("keeps the start time it wrote, recolouring it without a value", () => {
+    startClockAtRunStart();
+    const { grid } = stubRunItemSheet();
 
-    runEndpoint(
-      reportingEndpoint(() => ({
-        runState: "warning" as const,
-        message: "Added 3 of 5",
-      })),
+    runEndpoint(reportingEndpoint(withClockMovingDuringAction(warned)));
+
+    expect(columnCells(grid, timeLastRanColIndex)).toEqual(
+      allRows(stamp(runStartInSheetZone, lightOrange)),
     );
-    const writes = fillsFor(batchUpdateCalls, timeLastRanColIndex);
-
-    expect(writes[0]?.value).toMatch(timestamp);
-    expect(writes[1]?.value).toBeUndefined();
-    expect(writes).toHaveLength(2);
   });
 });
 
@@ -702,42 +664,47 @@ describe("EndpointRun.run, a run report naming rows", () => {
   }
 
   it("writes each named row's own message and colour into its own cell", () => {
-    const { batchUpdateCalls } = stubRunItemSheet();
+    const { grid } = stubRunItemSheet();
 
     runEndpoint(reportingEndpoint(twoRowsFailed));
 
-    expect(cellWritesFor(batchUpdateCalls, runStatusColIndex)).toEqual([
-      { rowIndex: 5, value: "No such row", backgroundColor: lightRed },
-      { rowIndex: 7, value: "Amount is blank", backgroundColor: lightRed },
-    ]);
-  });
-
-  it("colours the named rows' start-time cells without rewriting the time", () => {
-    const { batchUpdateCalls } = stubRunItemSheet();
-
-    runEndpoint(reportingEndpoint(twoRowsFailed));
-
-    expect(cellWritesFor(batchUpdateCalls, timeLastRanColIndex)).toEqual([
-      { rowIndex: 5, value: undefined, backgroundColor: lightRed },
-      { rowIndex: 7, value: undefined, backgroundColor: lightRed },
+    expect(columnCells(grid, runStatusColIndex)).toEqual([
+      stamp("Succeeded", lightGreen),
+      stamp("No such row", lightRed),
+      stamp("Succeeded", lightGreen),
+      stamp("Amount is blank", lightRed),
+      stamp("Succeeded", lightGreen),
     ]);
   });
 
   it("defaults the unnamed rows to success when no state is named", () => {
-    const { batchUpdateCalls } = stubRunItemSheet();
+    const { grid } = stubRunItemSheet();
 
     runEndpoint(reportingEndpoint(twoRowsFailed));
 
-    expect(fillsFor(batchUpdateCalls, runStatusColIndex).at(-1)).toEqual({
-      startRowIndex: topDataRowIndex,
-      endRowIndex,
-      value: "Succeeded",
-      backgroundColor: lightGreen,
-    });
+    const statuses = columnCells(grid, runStatusColIndex);
+    expect([statuses[0], statuses[2], statuses[4]]).toEqual(
+      Array(3).fill(stamp("Succeeded", lightGreen)),
+    );
+  });
+
+  it("colours the named rows' start-time cells without rewriting the time", () => {
+    startClockAtRunStart();
+    const { grid } = stubRunItemSheet();
+
+    runEndpoint(reportingEndpoint(withClockMovingDuringAction(twoRowsFailed)));
+
+    expect(columnCells(grid, timeLastRanColIndex)).toEqual([
+      stamp(runStartInSheetZone, lightGreen),
+      stamp(runStartInSheetZone, lightRed),
+      stamp(runStartInSheetZone, lightGreen),
+      stamp(runStartInSheetZone, lightRed),
+      stamp(runStartInSheetZone, lightGreen),
+    ]);
   });
 
   it("gives the unnamed rows the state named beside the map", () => {
-    const { batchUpdateCalls } = stubRunItemSheet();
+    const { grid } = stubRunItemSheet();
 
     runEndpoint(
       reportingEndpoint(() => ({
@@ -747,16 +714,17 @@ describe("EndpointRun.run, a run report naming rows", () => {
       })),
     );
 
-    expect(fillsFor(batchUpdateCalls, runStatusColIndex).at(-1)).toEqual({
-      startRowIndex: topDataRowIndex,
-      endRowIndex,
-      value: "Added 3 of 5",
-      backgroundColor: lightOrange,
-    });
+    expect(columnCells(grid, runStatusColIndex)).toEqual([
+      stamp("Added 3 of 5", lightOrange),
+      stamp("No such row", lightRed),
+      stamp("Added 3 of 5", lightOrange),
+      stamp("Amount is blank", lightRed),
+      stamp("Added 3 of 5", lightOrange),
+    ]);
   });
 
   it("lets a named row be warned rather than failed", () => {
-    const { batchUpdateCalls } = stubRunItemSheet();
+    const { grid } = stubRunItemSheet();
 
     runEndpoint(
       reportingEndpoint(() => ({
@@ -766,13 +734,13 @@ describe("EndpointRun.run, a run report naming rows", () => {
       })),
     );
 
-    expect(cellWritesFor(batchUpdateCalls, runStatusColIndex)).toEqual([
-      { rowIndex: 5, value: "Check this one", backgroundColor: lightOrange },
-    ]);
+    expect(columnCells(grid, runStatusColIndex)[1]).toEqual(
+      stamp("Check this one", lightOrange),
+    );
   });
 
   it("keeps the rest of the run's writes, since a returned failure is not a throw", () => {
-    const { batchUpdateCalls } = stubRunItemSheet();
+    const { grid } = stubRunItemSheet();
 
     runEndpoint(
       reportingEndpoint((ss) => {
@@ -781,13 +749,11 @@ describe("EndpointRun.run, a run report naming rows", () => {
       }),
     );
 
-    expect(cellWritesFor(batchUpdateCalls, 0)).toEqual([
-      { rowIndex: 4, value: "r:rit:written", backgroundColor: undefined },
-    ]);
+    expect(columnCells(grid, idColIndex)[0]).toBe("r:rit:written");
   });
 
   it("lets a selector endpoint flag some of its selected rows and not others", () => {
-    const { batchUpdateCalls } = stubRunItemSheet();
+    const { grid } = stubRunItemSheet();
 
     runEndpoint(
       selectiveEndpoint(() => ({
@@ -797,13 +763,17 @@ describe("EndpointRun.run, a run report naming rows", () => {
       })),
     );
 
-    expect(cellWritesFor(batchUpdateCalls, runStatusColIndex)).toEqual([
-      { rowIndex: 6, value: "No such row", backgroundColor: lightRed },
+    expect(columnCells(grid, runStatusColIndex)).toEqual([
+      stamp("Succeeded", lightGreen),
+      "",
+      stamp("No such row", lightRed),
+      "",
+      "",
     ]);
   });
 
   it("fails the run when a key is not a data row of the sheet", () => {
-    const { batchUpdateCalls } = stubRunItemSheet();
+    const { grid } = stubRunItemSheet();
 
     runEndpoint(
       reportingEndpoint(() => ({
@@ -813,25 +783,27 @@ describe("EndpointRun.run, a run report naming rows", () => {
       })),
     );
 
-    expect(fillsFor(batchUpdateCalls, runStatusColIndex).at(-1)).toEqual({
-      startRowIndex: topDataRowIndex,
-      endRowIndex,
-      value: `Error: Row ${endRowIndex} is not a data row of "Run item", so this run cannot report into it.`,
-      backgroundColor: lightRed,
-    });
+    expect(columnCells(grid, runStatusColIndex)).toEqual(
+      allRows(
+        stamp(
+          `Error: Row ${endRowIndex} is not a data row of "Run item", so this run cannot report into it.`,
+          lightRed,
+        ),
+      ),
+    );
   });
 
-  it("costs the run no round trip of its own", () => {
-    const { batchUpdateCalls, getByDataFilterCalls } = stubRunItemSheet();
+  it("costs the run no read and no batch update of its own", () => {
+    const { batchUpdateCount, getByDataFilterCalls } = stubRunItemSheet();
 
     runEndpoint(reportingEndpoint(twoRowsFailed));
 
     expect(getByDataFilterCalls).toHaveLength(1);
-    expect(batchUpdateCalls).toHaveLength(2);
+    expect(batchUpdateCount()).toBe(2);
   });
 
-  it("leaves a deleted row's delete standing when the same run also names it", () => {
-    const { batchUpdateCalls } = stubRunItemSheet();
+  it("leaves a deleted row deleted when the same run also names it", () => {
+    const { grid } = stubRunItemSheet();
 
     runEndpoint(
       reportingEndpoint((ss) => {
@@ -840,13 +812,19 @@ describe("EndpointRun.run, a run report naming rows", () => {
       }),
     );
 
-    expect(
-      allRequests(batchUpdateCalls).filter(
-        (request) => request.deleteDimension?.range?.startIndex === 5,
-      ),
-    ).toHaveLength(1);
-    expect(cellWritesFor(batchUpdateCalls, runStatusColIndex)).toEqual([
-      { rowIndex: 7, value: "Amount is blank", backgroundColor: lightRed },
+    expect(dataRows(grid).map(([id]) => id)).toEqual([
+      "r:rit:row4",
+      "r:rit:row6",
+      "r:rit:row7",
+      "r:rit:row8",
+      null,
+    ]);
+    expect(columnCells(grid, runStatusColIndex)).toEqual([
+      stamp("Succeeded", lightGreen),
+      stamp("Succeeded", lightGreen),
+      stamp("Amount is blank", lightRed),
+      stamp("Succeeded", lightGreen),
+      null,
     ]);
   });
 });
