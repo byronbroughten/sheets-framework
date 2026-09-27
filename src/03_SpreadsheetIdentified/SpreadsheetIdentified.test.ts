@@ -292,26 +292,42 @@ describe("SheetIdentified.hasNoData", () => {
   });
 });
 
+const computedGid = getSheetTraitByName("computed", "sheetGid");
+const amountColumnId = getColumnTraitByName("computed", "amount", "columnId");
+const rowNumberColumnId = getColumnTraitByName(
+  "computed",
+  "rowNumber",
+  "columnId",
+);
+
+const topRowRange = { startRowIndex: 4, endRowIndex: 5 };
+
 describe("RowIdentified.clearValues", () => {
   it("empties every non-formula cell and touches no formula cell", () => {
-    const { batchUpdateCalls } = stubSheetConfigSheet({
-      4: filledSheetConfigRow,
+    const { grid } = stubSheetsService({
+      sheets: [
+        {
+          sheetId: computedGid,
+          title: "Computed",
+          rows: buildGridRows({
+            0: [amountColumnId, rowNumberColumnId],
+            4: [12, 5],
+          }),
+          table: { endRowIndex: 5 },
+        },
+      ],
     });
 
     const ssi = new SpreadsheetIdentified(
       SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
     );
-    const sheet = ssi.sheet(sheetConfigGid);
+    const sheet = ssi.sheet(computedGid);
     sheet.topRow.prepFetchFull();
     ssi.fetchAllPrepped();
     sheet.topRow.clearValues();
     ssi.raw.batchUpdateGSheets();
 
-    expect(writtenValuesByColIndex(batchUpdateCalls)).toEqual([
-      [0, ""],
-      [1, ""],
-      [2, ""],
-    ]);
+    expect(grid.sheet(computedGid).values(topRowRange)).toEqual([["", 5]]);
     expect(sheet.topRow.isBlank).toBe(true);
   });
 
@@ -351,7 +367,7 @@ describe("RowIdentified.clearValues", () => {
       "dateValue",
       "columnId",
     );
-    const { batchUpdateCalls } = stubSheetsService({
+    const { grid } = stubSheetsService({
       sheets: [
         {
           sheetId: valueTypesGid,
@@ -374,7 +390,9 @@ describe("RowIdentified.clearValues", () => {
     cell.updateToDefault();
     ssi.raw.batchUpdateGSheets();
 
-    expect(writtenValuesByColIndex(batchUpdateCalls)).toEqual([[1, ""]]);
+    expect(grid.sheet(valueTypesGid).values(topRowRange)).toEqual([
+      ["r:vty:row4", ""],
+    ]);
     expect(cell.valueOrEmpty()).toBe("");
   });
 });
@@ -397,7 +415,7 @@ describe("SheetIdentified.appendRowDefault", () => {
     const columnIdRow = sheetConfigColumnIdRow.filter(
       (columnId) => columnId !== omittedColumnId,
     );
-    const { batchUpdateCalls } = stubSheetsService({
+    const { grid } = stubSheetsService({
       sheets: [
         {
           sheetId: sheetConfigGid,
@@ -420,20 +438,11 @@ describe("SheetIdentified.appendRowDefault", () => {
     sheet.appendRowDefault();
     ssi.raw.batchUpdateGSheets();
 
-    expect(writtenValuesByColIndex(batchUpdateCalls)).toEqual([
-      [0, ""],
-      [1, ""],
-    ]);
+    expect(
+      grid.sheet(sheetConfigGid).values({ ...topRowRange, endColumnIndex: 3 }),
+    ).toEqual([["", "", null]]);
   });
 });
-
-const computedGid = getSheetTraitByName("computed", "sheetGid");
-const amountColumnId = getColumnTraitByName("computed", "amount", "columnId");
-const rowNumberColumnId = getColumnTraitByName(
-  "computed",
-  "rowNumber",
-  "columnId",
-);
 
 describe("Identified formula writes", () => {
   beforeEach(() => {
@@ -589,21 +598,3 @@ describe("SpreadsheetIdentified.fetchAllPrepped / FetchTargetIdentified", () => 
     );
   });
 });
-
-function writtenValuesByColIndex(
-  calls: GoogleAppsScript.Sheets.Schema.BatchUpdateSpreadsheetRequest[],
-): [number | undefined, unknown][] {
-  return calls
-    .flatMap((call) => call.requests ?? [])
-    .filter((request) => request.updateCells)
-    .map((request) => {
-      const userEnteredValue =
-        request.updateCells?.rows?.[0]?.values?.[0]?.userEnteredValue;
-      return [
-        request.updateCells?.range?.startColumnIndex,
-        userEnteredValue?.stringValue ??
-          userEnteredValue?.boolValue ??
-          userEnteredValue?.numberValue,
-      ];
-    });
-}
