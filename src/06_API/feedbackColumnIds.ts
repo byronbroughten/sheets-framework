@@ -6,7 +6,7 @@ import {
 import type { Endpoints, EndpointsAll } from "./Endpoints";
 import { withFrameworkEndpoints } from "./frameworkEndpoints";
 
-// After installConfigs, since resolving a feedback column reads the configs.
+// Throws before installConfigs, since resolving a feedback column reads the configs.
 export function installEndpoints(endpoints: Endpoints): void {
   installFeedbackColumnIds(
     feedbackColumnIdsOf(withFrameworkEndpoints(endpoints)),

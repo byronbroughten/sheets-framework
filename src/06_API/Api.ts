@@ -34,6 +34,7 @@ export class Api extends SpreadsheetBaseNamed {
     super(rest);
     this.endpoints = withFrameworkEndpoints(endpoints);
   }
+  // Takes the installed feedback columns; the entry calls install them first.
   static init(endpoints: Endpoints): Api {
     return new Api({
       endpoints,
