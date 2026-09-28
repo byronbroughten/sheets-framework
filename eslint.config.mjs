@@ -14,9 +14,9 @@ const importPatterns = {
       "Raw is positional: it addresses by GID and index and never resolves a column. Column and value lookups belong in the Identified tier or above.",
   },
   appConfigs: {
-    regex: "(^|/)generated/|(^|/)appConfigs(\\.js)?$",
+    regex: "(^|/)generated/",
     message:
-      "Tiers take config types from Register and values from installedConfigs(); only the app's appConfigs.ts and the framework's dev/devConfigs.ts import generated configs.",
+      "Tiers take config types from Register and values from installedConfigs(); only the generated appConfigs, the framework's dev/generated/appConfigs.ts included, gathers the generated configs.",
   },
 };
 // utils/ sits below every numbered tier.

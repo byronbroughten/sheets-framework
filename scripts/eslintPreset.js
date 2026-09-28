@@ -91,6 +91,11 @@ function appImportPatterns(depth, isTestingAllowed) {
       regex: `^${frameworkPackage}/${isTestingAllowed ? "(?!testing$)" : ""}`,
       message: appEntryMessage,
     },
+    {
+      regex: "(^|/)generated/(?!appConfigs(\\.js)?$)",
+      message:
+        "Outside generated/, import only generated/appConfigs; the other generated files are its internals.",
+    },
   ];
 }
 
