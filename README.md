@@ -63,7 +63,7 @@ Generated configs go in `src/generated` and chores are found in `src/chores` and
 
 | Command | Does |
 | --- | --- |
-| `sheets-framework gen-configs` | Ensures the config-sheet floor, then regenerates the three config files from the config sheets. **It writes to the live spreadsheet.** |
+| `sheets-framework gen-configs` | Ensures the config-sheet floor, then regenerates the three config files and `appConfigs.ts` from the config sheets. **It writes to the live spreadsheet.** |
 | `sheets-framework chore [name] [--send] [--json]` | Lists the chores, dry-runs one (reads live, writes nothing, prints the requests), or applies it with `--send`. |
 | `sheets-framework probe --fields\|--filter\|--path …` | One read-only Sheets request; the full JSON goes to `.probe/last.json`. |
 | `sheets-framework setup-auth` | Mints the credential the Node host uses, from clasp's login. |

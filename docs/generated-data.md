@@ -1,6 +1,6 @@
 # Generated data — do not hand-edit
 
-Each package's `generatedDir` (the app's `src/generated/`, the framework's `dev/generated/`) holds three files generated from the live spreadsheet. Regenerate all three together with `sheets-framework gen-configs`, never hand-edit them, and read `columnConfigs.ts` by block. The rules are [`src/01_SpreadsheetSchema/AGENTS.md`](../src/01_SpreadsheetSchema/AGENTS.md)'s; what the command writes is [`how-it-runs.md`](./how-it-runs.md#what-gen-configs-writes)'s.
+Each package's `generatedDir` (the app's `src/generated/`, the framework's `dev/generated/`) holds three config files generated from the live spreadsheet, plus `appConfigs.ts`, which gathers them into one `appConfigs` const and augments `Register`. Regenerate all three together with `sheets-framework gen-configs`, never hand-edit them, and read `columnConfigs.ts` by block. The rules are [`src/01_SpreadsheetSchema/AGENTS.md`](../src/01_SpreadsheetSchema/AGENTS.md)'s; what the command writes is [`how-it-runs.md`](./how-it-runs.md#what-gen-configs-writes)'s.
 
 ## One file per generated constant, the sync and the floor
 
@@ -18,7 +18,7 @@ Each package's `generatedDir` (the app's `src/generated/`, the framework's `dev/
 
 ## The generated half and the hand-written half
 
-A `generatedDir` holds the three generated data files and nothing else: `sheetConfigs.ts`, `columnConfigs.ts` and `valueConfigs.ts`. Each is one literal passed through its validating constructor (`makeSheetConfigs`, `makeColumnConfigs`, `makeValueConfigs`), imported from `../makeConfigs`. The hand-written half sits one level up at the Schema tier root: the generator helpers in `makeConfigs.ts`, the floor seed in `configSheetFloorSeed.ts`, and a sibling types file per constant (`sheetConfigsTypes`, `columnConfigsTypes`, `valueConfigsTypes`) holding the derived types and accessor functions built on the data. A generated file imports `makeConfigs` from the framework by the relative path `gen:configs` computes, the one framework deep import the app's lint exempts.
+A `generatedDir` holds the three generated data files, `sheetConfigs.ts`, `columnConfigs.ts` and `valueConfigs.ts`, plus the generated `appConfigs.ts`, and nothing else. Each is one literal passed through its validating constructor (`makeSheetConfigs`, `makeColumnConfigs`, `makeValueConfigs`), imported from `../makeConfigs`. The hand-written half sits one level up at the Schema tier root: the generator helpers in `makeConfigs.ts`, the floor seed in `configSheetFloorSeed.ts`, and a sibling types file per constant (`sheetConfigsTypes`, `columnConfigsTypes`, `valueConfigsTypes`) holding the derived types and accessor functions built on the data. A generated file imports `makeConfigs` from the framework by the relative path `gen:configs` computes, the one framework deep import the app's lint exempts.
 
 All three are (or are meant to be) mechanically generated from the real spreadsheet, not hand-authored.
 
@@ -30,7 +30,7 @@ The rules on regenerating and on tab spelling: [`src/01_SpreadsheetSchema/AGENTS
 
 ## What a regeneration runs, on the Node host
 
-Regenerate all three with `sheets-framework gen-configs` (see [`docs/how-it-runs.md`](./how-it-runs.md#what-gen-configs-writes)), which runs `ConfigCoordinator` (`05_Operators`) **on the Node host**: it syncs the live Sheet Config sheet, then the live Column Config sheet (including adding any missing column IDs to business sheets), flushes all of that in one write, then reads the live Value Config sheet, and only then emits source for all three files. **Live Table sampling on that run — Table header row, column-ID row, first data row — is for this run's Let api access sheets**, after Sheet Config is loaded, not for every tab. Everyday Table-placement and extra-Table checks still use last-generate sheet GIDs, one regen behind the live box. The command writes all three files or none, and runs `npm run tsc` itself afterward so a stale hand-written reference surfaces immediately.
+Regenerate all three with `sheets-framework gen-configs` (see [`docs/how-it-runs.md`](./how-it-runs.md#what-gen-configs-writes)), which runs `ConfigCoordinator` (`05_Operators`) **on the Node host**: it syncs the live Sheet Config sheet, then the live Column Config sheet (including adding any missing column IDs to business sheets), flushes all of that in one write, then reads the live Value Config sheet, and only then emits source for all three files. **Live Table sampling on that run — Table header row, column-ID row, first data row — is for this run's Let api access sheets**, after Sheet Config is loaded, not for every tab. Everyday Table-placement and extra-Table checks still use last-generate sheet GIDs, one regen behind the live box. The command writes all four files or none, and runs `npm run tsc` itself afterward so a stale hand-written reference surfaces immediately.
 
 ## The `clasp run` path is gone
 

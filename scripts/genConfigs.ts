@@ -42,7 +42,7 @@ class ConfigFilesGenerator {
       declaredCellReport,
     } = await this._generate();
 
-    // Write nothing until all three are confirmed good; a subset would go stale.
+    // Write nothing until all three configs are confirmed good; a subset would go stale.
     mkdirSync(this.sheetsConfig.generatedDir, { recursive: true });
     writeFileSync(this.path.sheetConfigs, sheetConfigs);
     writeFileSync(this.path.columnConfigs, columnConfigs);
@@ -118,14 +118,14 @@ function reportTscFailure(): void {
 }
 
 export function appConfigsText(): string {
-  return `import { columnConfigs } from "./columnConfigs";
+  return `// Without it, a program that reaches this file only by dynamic import rejects the augmentation (TS2664).
+import type {} from "@byronbroughten/sheets-framework";
+
+import { columnConfigs } from "./columnConfigs";
 import { sheetConfigs } from "./sheetConfigs";
 import { valueConfigs } from "./valueConfigs";
 
 export const appConfigs = { sheetConfigs, columnConfigs, valueConfigs };
-
-// Without it, a program that reaches this file only by dynamic import rejects the augmentation (TS2664).
-import type {} from "@byronbroughten/sheets-framework";
 
 declare module "@byronbroughten/sheets-framework" {
   interface Register {

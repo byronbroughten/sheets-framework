@@ -1,11 +1,11 @@
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { eslintPreset } from "@byronbroughten/config/eslint";
-import { ESLint } from "eslint";
+import { ESLint, type Linter } from "eslint";
 import { defineConfig } from "eslint/config";
-import { describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 
 import { appEslintPreset } from "./eslintPreset.js";
 
@@ -14,7 +14,8 @@ const eslint = new ESLint({
   cwd: appDir,
   overrideConfigFile: true,
   overrideConfig: defineConfig(
-    ...eslintPreset,
+    // Its JS literals infer rule levels as string, which Linter's types reject.
+    ...(eslintPreset as Linter.Config[]),
     ...appEslintPreset({ testSetupFiles: [] }),
   ),
 });
@@ -34,13 +35,20 @@ async function restrictedImports(
 }
 
 describe("appEslintPreset's generated/ boundary", () => {
+  afterAll(() => {
+    rmSync(appDir, { recursive: true });
+  });
+
   it("reports a config file imported from outside generated/", async () => {
     expect(
       await restrictedImports("src/deep/app.ts", "../generated/columnConfigs"),
-    ).toHaveLength(1);
+    ).toEqual([expect.stringContaining("import only generated/appConfigs")]);
   });
 
   it("allows generated/appConfigs from outside generated/", async () => {
+    expect(
+      await restrictedImports("src/index.ts", "./generated/appConfigs"),
+    ).toEqual([]);
     expect(
       await restrictedImports("src/app.test.ts", "./generated/appConfigs"),
     ).toEqual([]);
