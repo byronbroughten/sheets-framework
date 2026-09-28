@@ -42,12 +42,12 @@ The Node host is the second one (the framework's `src/nodeHost/`, launched by it
 
 **The framework's `scripts/sheets-framework.js` is the one tooling entry**, installed as the `sheets-framework` bin: a JS shim that registers `tsx`, then imports `scripts/cli.ts`, which runs `gen-configs`, `chore`, `probe` or `setup-auth`. The first three read the nearest `sheets.config.json` above cwd, the way clasp finds `.clasp.json`, and take the spreadsheet ID from it and nowhere else: no flag, no env override (`scripts/sheetsConfig.ts`). The file is gitignored and data-only; the package commits a `sheets.config.example.json` to copy from, and the bin fails naming it when only the example exists:
 
-- `spreadsheetId`: the package's spreadsheet.
-- `generatedDir`: where `gen-configs` writes the three config files and where the chore runner loads them from.
-- `choreHomes`: the package's own chore folders. The framework's generic chores (its `src/chores/`) are listed in every package, and a package chore with a generic chore's name stops the run (`scripts/choreIndex.ts`).
+- `spreadsheetId` (required): the package's spreadsheet.
+- `generatedDir` (optional): where `gen-configs` writes the three config files and where the chore runner loads them from. It defaults to `src/generated`.
+- `choreHomes` (optional): the package's own chore folders, each read one level deep. It defaults to `src/chores` and `src/chores/oneOff`; a missing home counts as empty. An explicit list replaces the default rather than adding to it, so `[]` means no homes of the package's own. The framework's generic chores (its `src/chores/`) are listed in every package, and a package chore with a generic chore's name stops the run (`scripts/choreIndex.ts`).
 - `endpointModule` (optional): the app's endpoint map, one const named after its file, which the chore runner installs so a chore's blank test skips the same feedback columns an endpoint run does. It defaults to `src/businessEndpoints.ts`; with no file there, a chore sees only the framework's endpoints, and a configured path with no file stops the run.
 
-Paths are relative to the config file, which sits at each package's root: the app's has `src/generated` with `src/chores` and `src/chores/oneOff`, the framework's (the dev spreadsheet) `dev/generated` with `dev/chores`. **The bin refuses to run when two `sheets.config.json` files in the repo share a spreadsheet ID**, so a copy-paste mistake can't merge the two targets. `gen-configs` checks its output with the package's own `npm run tsc`.
+Paths are relative to the config file, which sits at each package's root, and a key that is present but blank or the wrong shape stops the run rather than falling back to its default. An app on the defaults needs only its `spreadsheetId`; the framework's own config (the dev spreadsheet) names `dev/generated` and `dev/chores`. **The bin refuses to run when two `sheets.config.json` files in the repo share a spreadsheet ID**, so a copy-paste mistake can't merge the two targets. `gen-configs` checks its output with the package's own `npm run tsc`.
 
 ## The dev project
 
