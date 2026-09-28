@@ -171,7 +171,7 @@ export class CellRaw<
     if (!this.row.rowIsActive()) return;
     this.setValueState(this._queuedValue() ?? cell?.value ?? "");
   }
-  // Fills go before per-cell updates in a flush, so a cell's own value wins.
+  // A fill erases the cell writes queued before it, so a cell's own value is the latest.
   private _queuedValue(): CellValue | "" | undefined {
     const rowChange = this.sheetState.writeQueue.rows.get(this.rowIndex);
     if (rowChange !== undefined) {

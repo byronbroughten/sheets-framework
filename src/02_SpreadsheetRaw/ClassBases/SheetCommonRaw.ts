@@ -3,6 +3,8 @@ import { Obj } from "../../utils/Obj";
 import { ActiveTableRaw } from "../ActiveTableRaw";
 import type { SheetGridRangeProps } from "../ClassTypes/AccessorsRaw";
 import type {
+  ColumnFill,
+  RowCellChange,
   SheetChangeProps,
   SheetChangesToSave,
 } from "../ClassTypes/StateRaw";
@@ -65,9 +67,12 @@ export abstract class SheetCommonRaw extends SheetBaseRaw {
       case "insertTableEndColumn":
         changes.tableEndColumnInsertCount++;
         break;
-      case "fill":
-        changes.fills.push(Obj.strictOmit(props, "action"));
+      case "fill": {
+        const fill = Obj.strictOmit(props, "action");
+        this._eraseCellFieldsUnder(fill);
+        changes.fills.push(fill);
         break;
+      }
       default:
         throw new Error(
           `Invalid action: ${(props as SheetChangeProps).action}. Must be one of "sort", "insertTableEndColumn" or "fill".`,
@@ -75,4 +80,33 @@ export abstract class SheetCommonRaw extends SheetBaseRaw {
     }
     return this;
   }
+  // Fills are sent before per-cell updates, so a later fill wins by erasing what it covers.
+  private _eraseCellFieldsUnder(fill: ColumnFill): void {
+    for (const [rowIndex, rowChange] of this.sheetState.writeQueue.rows) {
+      if (rowIndex < fill.startRowIndex || rowIndex >= fill.endRowIndex) {
+        continue;
+      }
+      const cellChange = rowChange.update.get(fill.colIndex);
+      if (cellChange === undefined) continue;
+      const fieldsLeft = cellFieldsLeftUnder(fill, cellChange);
+      if (Object.keys(fieldsLeft).length === 0) {
+        rowChange.update.delete(fill.colIndex);
+      } else {
+        rowChange.update.set(fill.colIndex, fieldsLeft);
+      }
+    }
+  }
+}
+
+function cellFieldsLeftUnder(
+  fill: ColumnFill,
+  cellChange: RowCellChange,
+): RowCellChange {
+  const fieldsLeft = { ...cellChange };
+  if (fill.value !== undefined || fill.formula !== undefined) {
+    delete fieldsLeft.value;
+    delete fieldsLeft.formula;
+  }
+  if (fill.backgroundColor !== undefined) delete fieldsLeft.backgroundColor;
+  return fieldsLeft;
 }

@@ -146,7 +146,7 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
       ...requests.updateTableColumnProperties,
       ...requests.append,
       ...requests.insertTableEndColumn,
-      // Fills go before updates, so a per-cell write on a filled column wins.
+      // Fills go before updates; a later-queued fill already erased the cell writes it covers.
       ...requests.fill,
       ...requests.update,
       // After cell updates, so a checkbox's seeded value is written before its rule.
