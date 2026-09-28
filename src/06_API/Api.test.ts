@@ -279,3 +279,56 @@ describe("Api.handleSheetEdit, the entry checkbox", () => {
     expect(batchUpdateCount()).toBe(1);
   });
 });
+
+describe("Api.handleSheetEdit, the endpoints it installs", () => {
+  it("lets a spreadsheet built afterwards reuse a row holding only a run status", async () => {
+    vi.resetModules();
+    const fresh = await import("./Api");
+    const fake = await import("../testSupport/fakeSheetsService");
+    const { SpreadsheetNamed } =
+      await import("../04_SpreadsheetNamed/SpreadsheetNamed");
+    const runStatusColumnId = getColumnTraitByName(
+      "runItem",
+      "runStatus",
+      "columnId",
+    );
+    const { grid } = fake.stubSheetsService({
+      sheets: [
+        {
+          sheetId: runItemGid,
+          title: "Run item",
+          rows: buildGridRows({
+            0: [
+              getColumnTraitByName("runItem", "id", "columnId"),
+              getColumnTraitByName("runItem", "result", "columnId"),
+              runStatusColumnId,
+            ],
+            4: [null, null, "Succeeded"],
+          }),
+          table: { endRowIndex: 5 },
+        },
+      ],
+    });
+    fresh.Api.handleSheetEdit(
+      {
+        configs,
+        endpoints: {
+          runItem_selected: { action: vi.fn(), runStatus: "runStatus" },
+        },
+      },
+      { ...actionRowEdit(twoWayColIndex, "TRUE"), sheetGid: -1 },
+      vi.fn(),
+    );
+
+    const ss = SpreadsheetNamed.init();
+    const sheet = ss.sheet("runItem");
+    sheet.row(4).prepFetchFull();
+    ss.fetchAllPrepped();
+    sheet.appendRowWithVals({ result: "appended" });
+    ss.batchUpdateGSheets();
+
+    expect(grid.sheet(runItemGid).values({ startRowIndex: 4 })).toEqual([
+      [expect.stringMatching(/^r:rit:/), "appended", ""],
+    ]);
+  });
+});

@@ -74,6 +74,7 @@ class ConfigFilesGenerator {
 
   async _generate(): Promise<ConfigRegeneration> {
     // Only the config floor is read here; a package with no generated files yet borrows the framework's.
+    // No app endpoints: they may name columns the configs being regenerated don't have yet.
     await startNodeHost({
       isDryRun: false,
       sheetsConfig: this.sheetsConfig,

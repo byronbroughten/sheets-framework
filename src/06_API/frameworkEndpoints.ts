@@ -1,6 +1,6 @@
 import type { configSheetFloorSeed } from "../01_SpreadsheetSchema/configSheetFloorSeed";
 import { ConfigCoordinator } from "../05_Operators/ConfigCoordinator";
-import type { Endpoint } from "./Endpoints";
+import type { Endpoint, Endpoints, EndpointsAll } from "./Endpoints";
 
 type SeededFrameworkEndpoints = {
   [
@@ -23,3 +23,7 @@ export const frameworkEndpoints = {
     runStatus: "fillRowIdsRunStatus",
   },
 } as const satisfies SeededFrameworkEndpoints;
+
+export function withFrameworkEndpoints(endpoints: Endpoints): EndpointsAll {
+  return { ...endpoints, ...frameworkEndpoints };
+}

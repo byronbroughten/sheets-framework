@@ -2,11 +2,12 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import type { SheetsHttpRequest } from "../src/00_Source/GoogleSheets/GoogleSheetsAPI.ts";
 import type { Configs } from "../src/01_SpreadsheetSchema/configRegister.ts";
+import type { Endpoints } from "../src/06_API/Endpoints.ts";
 import type { NodeHost } from "../src/nodeHost/NodeHost.ts";
 import { Val } from "../src/utils/Val.ts";
 import type { SheetsConfig } from "./sheetsConfig.ts";
@@ -157,15 +158,18 @@ export async function startNodeHost({
   isDryRun,
   sheetsConfig,
   configs,
+  endpoints,
 }: {
   isDryRun: boolean;
   sheetsConfig: SheetsConfig;
   configs: Configs;
+  endpoints?: Endpoints;
 }): Promise<NodeHost> {
   const { NodeHost } = await import("../src/nodeHost/NodeHost.ts");
   const transport = SheetsTransport.init();
   return NodeHost.init({
     configs,
+    endpoints,
     spreadsheetId: sheetsConfig.spreadsheetId,
     transport: (request) => transport.send(request),
     isDryRun,
@@ -200,6 +204,31 @@ export function hasPackageConfigs({ generatedDir }: SheetsConfig): boolean {
 
 export function configFilePath(generatedDir: string, base: ConfigFile): string {
   return join(generatedDir, `${base}.ts`);
+}
+
+export async function loadPackageEndpoints({
+  endpointModule,
+}: SheetsConfig): Promise<Endpoints | undefined> {
+  if (endpointModule === undefined) return undefined;
+  return importConstNamedAfterFile<Endpoints>(
+    endpointModule,
+    "An endpoint module",
+  );
+}
+
+// The one rule a chore file and an endpoint module share, so a typo names the file and the const it lacks.
+export async function importConstNamedAfterFile<MX>(
+  modulePath: string,
+  fileKind: string,
+): Promise<MX> {
+  const name = basename(modulePath).replace(/\.ts$/, "");
+  const value = (await import(pathToFileURL(modulePath).href))[name];
+  if (!value) {
+    throw new Error(
+      `${modulePath} exports no "${name}". ${fileKind} exports one const named after the file.`,
+    );
+  }
+  return value;
 }
 
 // The framework's own dev configs: enough to read any spreadsheet's config floor.

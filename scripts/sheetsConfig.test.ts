@@ -90,3 +90,43 @@ describe("loadSheetsConfig", () => {
     expect(() => loadSheetsConfig(blankId)).toThrow(/spreadsheetId/);
   });
 });
+
+describe("loadSheetsConfig, the endpoint module", () => {
+  function withFile(root: string, path: string): string {
+    mkdirSync(join(root, path, ".."), { recursive: true });
+    writeFileSync(join(root, path), "");
+    return join(root, path);
+  }
+
+  it("finds the endpoint module at the conventional path with no key", () => {
+    const root = repoWith({ ".": app });
+    const path = withFile(root, "src/businessEndpoints.ts");
+    expect(loadSheetsConfig(root).endpointModule).toBe(path);
+  });
+
+  it("has none when the conventional path holds no file and no key is set", () => {
+    const root = repoWith({ ".": app });
+    expect(loadSheetsConfig(root).endpointModule).toBeUndefined();
+  });
+
+  it("takes the configured path over the conventional one", () => {
+    const root = repoWith({
+      ".": { ...app, endpointModule: "src/api/myEndpoints.ts" },
+    });
+    withFile(root, "src/businessEndpoints.ts");
+    const path = withFile(root, "src/api/myEndpoints.ts");
+    expect(loadSheetsConfig(root).endpointModule).toBe(path);
+  });
+
+  it("refuses a configured path that holds no file, naming it", () => {
+    const root = repoWith({
+      ".": { ...app, endpointModule: "src/typo.ts" },
+    });
+    expect(() => loadSheetsConfig(root)).toThrow(/src\/typo\.ts/);
+  });
+
+  it("refuses a configured path that isn't a filled string", () => {
+    const root = repoWith({ ".": { ...app, endpointModule: "" } });
+    expect(() => loadSheetsConfig(root)).toThrow(/endpointModule/);
+  });
+});

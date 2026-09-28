@@ -8,10 +8,14 @@ import {
   type Configs,
   installConfigs,
 } from "../01_SpreadsheetSchema/configRegister";
+import type { Endpoints } from "../06_API/Endpoints";
+import { installEndpoints } from "../06_API/feedbackColumnIds";
 import { UpdateRequestSummary } from "./UpdateRequestSummary";
 
 export interface NodeHostProps {
   configs: Configs;
+  // The app's map; absent, only the framework's own endpoints are installed.
+  endpoints?: Endpoints;
   spreadsheetId: string;
   transport: SheetsHttpTransport;
   isDryRun: boolean;
@@ -21,6 +25,7 @@ export interface NodeHostProps {
 // The framework's second host — Sheets only, in Node. See docs/how-it-runs.md.
 export class NodeHost {
   readonly configs: Configs;
+  private endpoints: Endpoints;
   readonly spreadsheetId: string;
   readonly isDryRun: boolean;
   private transport: SheetsHttpTransport;
@@ -28,6 +33,7 @@ export class NodeHost {
   private sentRequests: GoogleRequest[];
   constructor(props: NodeHostProps) {
     this.configs = props.configs;
+    this.endpoints = props.endpoints ?? {};
     this.spreadsheetId = props.spreadsheetId;
     this.isDryRun = props.isDryRun;
     this.transport = props.transport;
@@ -53,6 +59,7 @@ export class NodeHost {
     const globals = globalThis as Record<string, unknown>;
     globals.Logger = { log: this.log };
     installConfigs(this.configs);
+    installEndpoints(this.endpoints);
     installRawSource(this.googleSheetsAPI);
     return this;
   }

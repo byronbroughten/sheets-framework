@@ -6,6 +6,8 @@ const sheetsConfigFileNames = {
   config: "sheets.config.json",
   example: "sheets.config.example.json",
 } as const;
+// The app's endpoint map, found here unless the config names another file.
+const conventionalEndpointModule = "src/businessEndpoints.ts";
 const siblingScan = {
   depth: 3,
   skippedDirs: new Set(["node_modules", "dist", "coverage"]),
@@ -18,6 +20,8 @@ export interface SheetsConfig {
   spreadsheetId: string;
   generatedDir: string;
   choreHomes: string[];
+  // Absent when the package has no endpoint module; chores then see only the framework's endpoints.
+  endpointModule: string | undefined;
 }
 
 export function loadSheetsConfig(cwd = process.cwd()): SheetsConfig {
@@ -65,7 +69,31 @@ function readSheetsConfig(path: string): SheetsConfig {
     spreadsheetId: raw.spreadsheetId,
     generatedDir: join(dir, raw.generatedDir),
     choreHomes: raw.choreHomes.map((home: string) => join(dir, home)),
+    endpointModule: endpointModuleOf(path, raw.endpointModule),
   };
+}
+
+function endpointModuleOf(
+  configPath: string,
+  key: unknown,
+): string | undefined {
+  const dir = dirname(configPath);
+  if (key === undefined) {
+    const conventional = join(dir, conventionalEndpointModule);
+    return existsSync(conventional) ? conventional : undefined;
+  }
+  if (!isFilledString(key)) {
+    throw new Error(
+      `${configPath} has an "endpointModule" that isn't a file path string.`,
+    );
+  }
+  const configured = join(dir, key);
+  if (!existsSync(configured)) {
+    throw new Error(
+      `${configPath} names "endpointModule" ${key}, but ${configured} does not exist.`,
+    );
+  }
+  return configured;
 }
 
 // Every package config in the repo holding this one, so a copy-pasted ID is caught from either side.
