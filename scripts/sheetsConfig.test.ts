@@ -104,10 +104,23 @@ describe("loadSheetsConfig, the folder defaults", () => {
   });
 
   it("takes each explicit key in place of its default, never merged with it", () => {
-    const root = repoWith({ ".": dev });
-    const config = loadSheetsConfig(root);
-    expect(config.generatedDir).toBe(join(root, "generated"));
-    expect(config.choreHomes).toEqual([join(root, "chores")]);
+    const ownGenerated = repoWith({
+      ".": { spreadsheetId: "app-id", generatedDir: "generated" },
+    });
+    expect(loadSheetsConfig(ownGenerated)).toMatchObject({
+      generatedDir: join(ownGenerated, "generated"),
+      choreHomes: [
+        join(ownGenerated, "src", "chores"),
+        join(ownGenerated, "src", "chores", "oneOff"),
+      ],
+    });
+    const ownHomes = repoWith({
+      ".": { spreadsheetId: "app-id", choreHomes: ["chores"] },
+    });
+    expect(loadSheetsConfig(ownHomes)).toMatchObject({
+      generatedDir: join(ownHomes, "src", "generated"),
+      choreHomes: [join(ownHomes, "chores")],
+    });
   });
 
   it("resolves an explicit empty choreHomes to no homes", () => {
