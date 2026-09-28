@@ -16,7 +16,7 @@ Your package needs:
 
 - **`tsconfig.json`** extending `@byronbroughten/sheets-framework/tsconfig.base.json`.
 - **`rollup.config.mjs`** built from the preset: `export default rollupPreset({ input: "src/index.ts", rootDir: ".." })`, with `rollupPreset` from `@byronbroughten/sheets-framework/rollup`. `rootDir` must cover the framework's source. With tree-shaking on, only the entry file's functions are callable from Apps Script; `treeshake: false` opts out ([the rollup preset](./docs/how-it-runs.md#the-rollup-preset)).
-- **`eslint.config.mjs`** spreading `@byronbroughten/config`'s `eslintPreset` and then `appEslintPreset({ testSetupFiles: ["src/installAppConfigs.ts"] })` from `@byronbroughten/sheets-framework/eslint`, which adds the platform and public-entry import rules for your `src/`; `testSetupFiles` are the files besides tests that may import `./testing` ([the ESLint preset](./docs/how-it-runs.md#the-eslint-preset)).
+- **`eslint.config.mjs`** spreading `@byronbroughten/config`'s `eslintPreset` and then `appEslintPreset({ testSetupFiles: ["src/installAppConfigs.ts"] })` from `@byronbroughten/sheets-framework/eslint`, which adds the platform, public-entry and generated-files import rules for your `src/`; `testSetupFiles` are the files besides tests that may import `./testing` ([the ESLint preset](./docs/how-it-runs.md#the-eslint-preset)).
 - **`sheets.config.json`** at the package root, naming your spreadsheet ([the bin](#the-bin)). Copy `sheets.config.example.json`; the real file is gitignored.
 - **`.clasp.json`** and `appsscript.json` for an Apps Script project bound to your spreadsheet (created from its Extensions menu), with the Sheets advanced service enabled. Copy `.clasp.example.json`; the real file is gitignored. The script reads its spreadsheet from that binding; `sheets.config.json` names it for the Node commands.
 
@@ -24,21 +24,7 @@ Your package needs:
 
 App code imports only from `@byronbroughten/sheets-framework`; test files may also import `@byronbroughten/sheets-framework/testing`. Every other path is internal.
 
-**Register your configs once.** `sheets-framework gen-configs` writes three config files into your `generatedDir`. Gather them and augment `Register`, so every Named and endpoint type is typed to your spreadsheet:
-
-```ts
-import { columnConfigs } from "./generated/columnConfigs";
-import { sheetConfigs } from "./generated/sheetConfigs";
-import { valueConfigs } from "./generated/valueConfigs";
-
-export const appConfigs = { sheetConfigs, columnConfigs, valueConfigs };
-
-declare module "@byronbroughten/sheets-framework" {
-  interface Register {
-    configs: typeof appConfigs;
-  }
-}
-```
+**Register your configs once.** `sheets-framework gen-configs` writes four files into your `generatedDir`: three config files and `appConfigs.ts`, which gathers them into one `appConfigs` const and augments `Register` with its type, so every Named and endpoint type is typed to your spreadsheet. Every file there is machine-written; never hand-edit one. Your code imports only `appConfigs`, which goes to `Api` and to `installConfigs` in your test setup; `appEslintPreset` flags an import of the three config files from outside `generated/`.
 
 An unaugmented `Register` is a type error, not a silent widening.
 
@@ -46,6 +32,7 @@ An unaugmented `Register` is a type error, not a silent widening.
 
 ```ts
 import { Api } from "@byronbroughten/sheets-framework";
+import { appConfigs } from "./generated/appConfigs";
 
 const app = { configs: appConfigs, endpoints: myEndpoints };
 

@@ -233,5 +233,5 @@ export async function importConstNamedAfterFile<MX>(
 
 // The framework's own dev configs: enough to read any spreadsheet's config floor.
 export async function loadFrameworkConfigs(): Promise<Configs> {
-  return (await import("../dev/devConfigs.ts")).devConfigs;
+  return (await import("../dev/generated/appConfigs.ts")).appConfigs;
 }

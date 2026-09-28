@@ -1,8 +1,8 @@
 import { Api } from "../src/framework";
-import { devConfigs } from "./devConfigs";
 import { devEndpoints } from "./devEndpoints";
+import { appConfigs } from "./generated/appConfigs";
 
-const app = { configs: devConfigs, endpoints: devEndpoints };
+const app = { configs: appConfigs, endpoints: devEndpoints };
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Apps Script calls it as a global trigger
 function triggerOnEdit(e: GoogleAppsScript.Events.SheetsOnEdit): void {

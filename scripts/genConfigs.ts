@@ -1,7 +1,7 @@
-// `sheets-framework gen-configs`: regenerates the package's three config files from its live config sheets, on the Node host.
+// `sheets-framework gen-configs`: regenerates the package's four generated files from its live config sheets, on the Node host.
 import { spawnSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
-import { relative } from "node:path";
+import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import type { ConfigRegeneration } from "../src/05_Operators/ConfigCoordinator.ts";
@@ -17,7 +17,7 @@ import type { SheetsConfig } from "./sheetsConfig.ts";
 
 class ConfigFilesGenerator {
   readonly sheetsConfig: SheetsConfig;
-  readonly path: Record<ConfigFile, string>;
+  readonly path: Record<ConfigFile | "appConfigs", string>;
   constructor({ sheetsConfig }: { sheetsConfig: SheetsConfig }) {
     this.sheetsConfig = sheetsConfig;
     const { generatedDir } = sheetsConfig;
@@ -25,6 +25,7 @@ class ConfigFilesGenerator {
       sheetConfigs: configFilePath(generatedDir, "sheetConfigs"),
       columnConfigs: configFilePath(generatedDir, "columnConfigs"),
       valueConfigs: configFilePath(generatedDir, "valueConfigs"),
+      appConfigs: join(generatedDir, "appConfigs.ts"),
     };
   }
   static init(sheetsConfig: SheetsConfig): ConfigFilesGenerator {
@@ -46,9 +47,10 @@ class ConfigFilesGenerator {
     writeFileSync(this.path.sheetConfigs, sheetConfigs);
     writeFileSync(this.path.columnConfigs, columnConfigs);
     writeFileSync(this.path.valueConfigs, valueConfigs);
-    console.log(`Wrote ${this.path.sheetConfigs}`);
-    console.log(`Wrote ${this.path.columnConfigs}`);
-    console.log(`Wrote ${this.path.valueConfigs}`);
+    writeFileSync(this.path.appConfigs, appConfigsText());
+    Object.values(this.path).forEach((path) => {
+      console.log(`Wrote ${path}`);
+    });
     if (floorReport !== "") {
       console.log(`\ngen:configs: ${floorReport}`);
     }
@@ -107,12 +109,30 @@ class ConfigFilesGenerator {
 
 function reportTscFailure(): void {
   console.error(
-    "\ngen:configs: regeneration succeeded and all three files were written, " +
+    "\ngen:configs: regeneration succeeded and all four files were written, " +
       "but this package's `npm run tsc` failed above. This usually means " +
       "hand-written references in this package still name a sheet or column " +
       "that no longer exists after this regeneration. Fix those references " +
       "and re-run `npm run tsc` — do not hand-edit the generated files.",
   );
+}
+
+export function appConfigsText(): string {
+  return `import { columnConfigs } from "./columnConfigs";
+import { sheetConfigs } from "./sheetConfigs";
+import { valueConfigs } from "./valueConfigs";
+
+export const appConfigs = { sheetConfigs, columnConfigs, valueConfigs };
+
+// Without it, a program that reaches this file only by dynamic import rejects the augmentation (TS2664).
+import type {} from "@byronbroughten/sheets-framework";
+
+declare module "@byronbroughten/sheets-framework" {
+  interface Register {
+    configs: typeof appConfigs;
+  }
+}
+`;
 }
 
 export async function runGenConfigs(sheetsConfig: SheetsConfig): Promise<void> {
