@@ -11,7 +11,7 @@ A **chore** is a unit of work run from the terminal against the live spreadsheet
 
 **A chore's spreadsheet knows every declared endpoint's feedback columns.** The runner installs the package's endpoint module (`endpointModule` in `sheets.config.json`, `src/businessEndpoints.ts` by default; see [`how-it-runs.md`](../how-it-runs.md)), so a chore and an endpoint run agree on which row is [blank](./blank-row.md).
 
-**Homes, by how long the work lasts and whose spreadsheet it serves** (a package lists its own in `choreHomes`):
+**Homes, by how long the work lasts and whose spreadsheet it serves** (a package's own are `src/chores/` and `src/chores/oneOff/` unless its `choreHomes` names others):
 
 - **The app's `src/chores/oneOff/`** — transient chores, deleted in the commit that records their run. The folder is meant to empty; a chore left there goes stale against a sheet shape that no longer exists.
 - **The framework's `src/chores/`** — its generic chores, kept and listed in every package: `addMissingColumnIds`, `fillMissingRowIds`, and `ensureConfigSheetFloor`. A package chore with one of their names stops the runner. A twice-a-year repair belongs here, or in a package's own durable home, rather than earning a column and a checkbox on a sheet.

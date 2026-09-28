@@ -81,13 +81,50 @@ describe("loadSheetsConfig", () => {
     );
   });
 
-  it("refuses a config missing a field", () => {
-    const root = repoWith({
-      ".": { spreadsheetId: "app-id", generatedDir: "src/generated" },
-    });
-    expect(() => loadSheetsConfig(root)).toThrow(/choreHomes/);
+  it("refuses a config with a missing or blank spreadsheet ID", () => {
+    const { spreadsheetId: _, ...noId } = app;
+    expect(() => loadSheetsConfig(repoWith({ ".": noId }))).toThrow(
+      /spreadsheetId/,
+    );
     const blankId = repoWith({ ".": { ...app, spreadsheetId: "" } });
     expect(() => loadSheetsConfig(blankId)).toThrow(/spreadsheetId/);
+  });
+});
+
+describe("loadSheetsConfig, the folder defaults", () => {
+  it("resolves the conventional folders against the config's folder when only the spreadsheet ID is set", () => {
+    const root = repoWith({ app: { spreadsheetId: "app-id" } });
+    mkdirSync(join(root, "app", "src"), { recursive: true });
+    const config = loadSheetsConfig(join(root, "app", "src"));
+    expect(config.generatedDir).toBe(join(root, "app", "src", "generated"));
+    expect(config.choreHomes).toEqual([
+      join(root, "app", "src", "chores"),
+      join(root, "app", "src", "chores", "oneOff"),
+    ]);
+  });
+
+  it("takes each explicit key in place of its default, never merged with it", () => {
+    const root = repoWith({ ".": dev });
+    const config = loadSheetsConfig(root);
+    expect(config.generatedDir).toBe(join(root, "generated"));
+    expect(config.choreHomes).toEqual([join(root, "chores")]);
+  });
+
+  it("resolves an explicit empty choreHomes to no homes", () => {
+    const root = repoWith({ ".": { spreadsheetId: "app-id", choreHomes: [] } });
+    expect(loadSheetsConfig(root).choreHomes).toEqual([]);
+  });
+
+  it("refuses a blank generatedDir, naming it", () => {
+    const root = repoWith({ ".": { ...app, generatedDir: "" } });
+    expect(() => loadSheetsConfig(root)).toThrow(/generatedDir/);
+  });
+
+  it("refuses a choreHomes that isn't an array of folder strings, naming it", () => {
+    const notArray = repoWith({ ".": { ...app, choreHomes: "src/chores" } });
+    expect(() => loadSheetsConfig(notArray)).toThrow(/choreHomes/);
+    const blankHome = repoWith({ ".": { ...app, choreHomes: [""] } });
+    expect(() => loadSheetsConfig(blankHome)).toThrow(/choreHomes/);
   });
 });
 

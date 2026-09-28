@@ -68,11 +68,11 @@ The entry also exports the Named-tier classes (`SpreadsheetNamed`, `SheetNamed`,
 
 ```json
 {
-  "spreadsheetId": "<your spreadsheet's ID>",
-  "generatedDir": "src/generated",
-  "choreHomes": ["src/chores"]
+  "spreadsheetId": "<your spreadsheet's ID>"
 }
 ```
+
+Generated configs go in `src/generated` and chores are found in `src/chores` and `src/chores/oneOff`; `generatedDir` and `choreHomes` override those folders ([how it runs](./docs/how-it-runs.md#the-sheets-framework-bin)).
 
 | Command | Does |
 | --- | --- |

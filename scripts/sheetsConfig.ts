@@ -6,8 +6,12 @@ const sheetsConfigFileNames = {
   config: "sheets.config.json",
   example: "sheets.config.example.json",
 } as const;
-// The app's endpoint map, found here unless the config names another file.
-const conventionalEndpointModule = "src/businessEndpoints.ts";
+// Where an app keeps each, relative to its config, unless the config names another.
+const conventionalPaths = {
+  endpointModule: "src/businessEndpoints.ts",
+  generatedDir: "src/generated",
+  choreHomes: ["src/chores", "src/chores/oneOff"],
+} as const;
 const siblingScan = {
   depth: 3,
   skippedDirs: new Set(["node_modules", "dist", "coverage"]),
@@ -55,22 +59,39 @@ function nearestConfigPath(cwd: string): string {
 function readSheetsConfig(path: string): SheetsConfig {
   const raw = JSON.parse(readFileSync(path, "utf8"));
   const dir = dirname(path);
-  ["spreadsheetId", "generatedDir"].forEach((field) => {
-    if (!isFilledString(raw[field])) {
-      throw new Error(`${path} has no "${field}" string.`);
-    }
-  });
-  if (!Array.isArray(raw.choreHomes) || !raw.choreHomes.every(isFilledString)) {
-    throw new Error(`${path} has no "choreHomes" array of folder strings.`);
+  if (!isFilledString(raw.spreadsheetId)) {
+    throw new Error(`${path} has no "spreadsheetId" string.`);
   }
   return {
     path,
     dir,
     spreadsheetId: raw.spreadsheetId,
-    generatedDir: join(dir, raw.generatedDir),
-    choreHomes: raw.choreHomes.map((home: string) => join(dir, home)),
+    generatedDir: join(dir, generatedDirOf(path, raw.generatedDir)),
+    choreHomes: choreHomesOf(path, raw.choreHomes).map((home) =>
+      join(dir, home),
+    ),
     endpointModule: endpointModuleOf(path, raw.endpointModule),
   };
+}
+
+function generatedDirOf(configPath: string, key: unknown): string {
+  if (key === undefined) return conventionalPaths.generatedDir;
+  if (!isFilledString(key)) {
+    throw new Error(
+      `${configPath} has a "generatedDir" that isn't a folder string.`,
+    );
+  }
+  return key;
+}
+
+function choreHomesOf(configPath: string, key: unknown): readonly string[] {
+  if (key === undefined) return conventionalPaths.choreHomes;
+  if (!Array.isArray(key) || !key.every(isFilledString)) {
+    throw new Error(
+      `${configPath} has a "choreHomes" that isn't an array of folder strings.`,
+    );
+  }
+  return key;
 }
 
 function endpointModuleOf(
@@ -79,7 +100,7 @@ function endpointModuleOf(
 ): string | undefined {
   const dir = dirname(configPath);
   if (key === undefined) {
-    const conventional = join(dir, conventionalEndpointModule);
+    const conventional = join(dir, conventionalPaths.endpointModule);
     return existsSync(conventional) ? conventional : undefined;
   }
   if (!isFilledString(key)) {
