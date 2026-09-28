@@ -4,7 +4,12 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import type { Chore } from "../src/chores/Chore.ts";
 import type { NodeHost } from "../src/nodeHost/NodeHost.ts";
 import { ChoreIndex } from "./choreIndex.ts";
-import { loadPackageConfigs, startNodeHost } from "./nodeHost.ts";
+import {
+  importConstNamedAfterFile,
+  loadPackageConfigs,
+  loadPackageEndpoints,
+  startNodeHost,
+} from "./nodeHost.ts";
 import type { SheetsConfig } from "./sheetsConfig.ts";
 
 const genericHome = fileURLToPath(new URL("../src/chores/", import.meta.url));
@@ -65,8 +70,12 @@ class ChoreRunner {
       isDryRun: !this.isSend,
       sheetsConfig: this.sheetsConfig,
       configs: await loadPackageConfigs(this.sheetsConfig),
+      endpoints: await loadPackageEndpoints(this.sheetsConfig),
     });
-    const chore = await loadChore(modulePath, this.choreName);
+    const chore = await importConstNamedAfterFile<Chore>(
+      modulePath,
+      "A chore file",
+    );
     console.log(`chore: ${this.choreName} — ${chore.description}\n`);
     const { SpreadsheetNamed } =
       await import("../src/04_SpreadsheetNamed/SpreadsheetNamed.ts");
@@ -98,19 +107,6 @@ class ChoreRunner {
     const nextStep = this.isSend ? "" : " Re-run with `-- --send` to apply.";
     console.log(`\n${summary.count} request(s).${nextStep}`);
   }
-}
-
-async function loadChore(
-  modulePath: string,
-  choreName: string,
-): Promise<Chore> {
-  const chore = (await import(modulePath))[choreName];
-  if (!chore) {
-    throw new Error(
-      `${modulePath} exports no "${choreName}". A chore file exports one const named after the file.`,
-    );
-  }
-  return chore;
 }
 
 export async function runChore(

@@ -3,9 +3,10 @@ import {
   type SpreadsheetRawProps,
 } from "../../02_SpreadsheetRaw/ClassBases/SpreadsheetBaseRaw";
 import type { StateIdentified } from "../ClassTypes/StateIdentified";
-
-// Column ids by sheet GID; handed down as data, since the endpoints that declare them sit tiers above.
-export type FeedbackColumnIds = ReadonlyMap<number, ReadonlySet<string>>;
+import {
+  type FeedbackColumnIds,
+  installedFeedbackColumnIds,
+} from "../feedbackColumnRegister";
 
 export interface SpreadsheetIdentifiedProps extends SpreadsheetRawProps {
   spreadsheetStateIdentified: StateIdentified;
@@ -32,7 +33,7 @@ export class SpreadsheetBaseIdentified extends SpreadsheetBaseRaw {
     };
   }
   static initSpreadsheetIdentifiedProps(
-    feedbackColumnIds: FeedbackColumnIds = new Map(),
+    feedbackColumnIds: FeedbackColumnIds = installedFeedbackColumnIds(),
   ): SpreadsheetIdentifiedProps {
     return {
       ...SpreadsheetBaseRaw.initSpreadsheetRawProps(),

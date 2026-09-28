@@ -9,6 +9,8 @@ A **chore** is a unit of work run from the terminal against the live spreadsheet
 
 **Chores are found by folder and filename, not a registry.** Nothing dispatches on a chore's name except the person typing it, so a registry would add churn in a shared file for no checking benefit. That is the deliberate difference from endpoints, where the framework dispatches on the key and the registry earns its place.
 
+**A chore's spreadsheet knows every declared endpoint's feedback columns.** The runner installs the package's endpoint module (`endpointModule` in `sheets.config.json`, `src/businessEndpoints.ts` by default; see [`how-it-runs.md`](../how-it-runs.md)), so a chore and an endpoint run agree on which row is [blank](./blank-row.md).
+
 **Homes, by how long the work lasts and whose spreadsheet it serves** (a package lists its own in `choreHomes`):
 
 - **The app's `src/chores/oneOff/`** — transient chores, deleted in the commit that records their run. The folder is meant to empty; a chore left there goes stale against a sheet shape that no longer exists.

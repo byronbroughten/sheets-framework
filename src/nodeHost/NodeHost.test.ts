@@ -1,9 +1,18 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { SheetsHttpRequest } from "../00_Source/GoogleSheets/GoogleSheetsAPI";
+import { getColumnTraitByName } from "../01_SpreadsheetSchema/columnConfigsTypes";
 import { installedConfigs } from "../01_SpreadsheetSchema/configRegister";
+import { getSheetTraitByName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
 import { sheetLayout } from "../01_SpreadsheetSchema/sheetLayout";
 import { SpreadsheetRaw } from "../02_SpreadsheetRaw/SpreadsheetRaw";
+import type { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
+import type { Endpoints } from "../06_API/Endpoints";
+import {
+  buildGridRows,
+  type FakeCell,
+  type FakeCellValue,
+} from "../testSupport/fakeSheetsService";
 import { NodeHost } from "./NodeHost";
 
 const spreadsheetId = "spreadsheet-under-test";
@@ -100,5 +109,127 @@ describe("NodeHost.ensureGlobals", () => {
     };
     expect(globals.Sheets).toBeUndefined();
     expect(globals.PropertiesService).toBeUndefined();
+  });
+});
+
+const topDataRowIndex = 4;
+
+interface AppendCase {
+  sheetGid: number;
+  title: string;
+  columnIds: string[];
+  topRow: FakeCell[];
+  append: (ss: SpreadsheetNamed) => void;
+  endpoints?: Endpoints;
+}
+
+// A fresh program: the host installs its endpoints once, as a chore's would.
+async function appendBeneathOneRow({
+  sheetGid,
+  title,
+  columnIds,
+  topRow,
+  append,
+  endpoints,
+}: AppendCase): Promise<FakeCellValue[][]> {
+  vi.resetModules();
+  const { NodeHost } = await import("./NodeHost");
+  const { stubSheetsService } =
+    await import("../testSupport/fakeSheetsService");
+  const { SpreadsheetNamed } =
+    await import("../04_SpreadsheetNamed/SpreadsheetNamed");
+  NodeHost.init({
+    configs: installedConfigs(),
+    spreadsheetId,
+    transport: vi.fn(),
+    isDryRun: false,
+    log: vi.fn(),
+    endpoints,
+  }).ensureGlobals();
+  const { grid } = stubSheetsService({
+    sheets: [
+      {
+        sheetId: sheetGid,
+        title,
+        rows: buildGridRows({ 0: columnIds, [topDataRowIndex]: topRow }),
+        table: { endRowIndex: topDataRowIndex + 1 },
+      },
+    ],
+  });
+  const ss = SpreadsheetNamed.init();
+  append(ss);
+  ss.batchUpdateGSheets();
+  return grid.sheet(sheetGid).values({ startRowIndex: topDataRowIndex });
+}
+
+const runItemWithStatusOnly = {
+  sheetGid: getSheetTraitByName("runItem", "sheetGid"),
+  title: "Run item",
+  columnIds: [
+    getColumnTraitByName("runItem", "id", "columnId"),
+    getColumnTraitByName("runItem", "result", "columnId"),
+    getColumnTraitByName("runItem", "runStatus", "columnId"),
+  ],
+  topRow: [null, null, "Succeeded"],
+  append: (ss: SpreadsheetNamed) => {
+    const sheet = ss.sheet("runItem");
+    sheet.row(topDataRowIndex).prepFetchFull();
+    ss.fetchAllPrepped();
+    sheet.appendRowWithVals({ result: "appended" });
+  },
+};
+
+describe("NodeHost.ensureGlobals, the endpoints it installs", () => {
+  it("reuses a row holding only a run status an installed endpoint reports into", async () => {
+    const rows = await appendBeneathOneRow({
+      ...runItemWithStatusOnly,
+      endpoints: {
+        runItem_selected: { action: vi.fn(), runStatus: "runStatus" },
+      },
+    });
+
+    expect(rows).toEqual([[expect.stringMatching(/^r:rit:/), "appended", ""]]);
+  });
+
+  it("appends beneath that row when no endpoints are given", async () => {
+    const rows = await appendBeneathOneRow(runItemWithStatusOnly);
+
+    expect(rows).toEqual([
+      [null, null, "Succeeded"],
+      [expect.stringMatching(/^r:rit:/), "appended", ""],
+    ]);
+  });
+
+  it("appends beneath that row when no given endpoint reports into its column", async () => {
+    const rows = await appendBeneathOneRow({
+      ...runItemWithStatusOnly,
+      endpoints: { runItem_selected: { action: vi.fn(), runStatus: "result" } },
+    });
+
+    expect(rows).toHaveLength(2);
+  });
+
+  it("counts the framework's own feedback columns on the config sheets with no endpoints given", async () => {
+    const rows = await appendBeneathOneRow({
+      sheetGid: getSheetTraitByName("spreadsheetConfig", "sheetGid"),
+      title: "Spreadsheet Config",
+      columnIds: [
+        getColumnTraitByName("spreadsheetConfig", "tableMenuSpace", "columnId"),
+        getColumnTraitByName(
+          "spreadsheetConfig",
+          "fillRowIdsRunStatus",
+          "columnId",
+        ),
+      ],
+      topRow: [null, "Succeeded"],
+      append: (ss) => {
+        const sheet = ss.sheet("spreadsheetConfig");
+        sheet.row(topDataRowIndex).prepFetchFull();
+        ss.fetchAllPrepped();
+        sheet.appendRowWithVals({ tableMenuSpace: "space" });
+      },
+    });
+
+    expect(rows).toEqual([["space", ""]]);
   });
 });

@@ -1,6 +1,17 @@
 import { SpreadsheetSchema } from "../01_SpreadsheetSchema/SpreadsheetSchema";
-import type { FeedbackColumnIds } from "../03_SpreadsheetIdentified/ClassBases/SpreadsheetBaseIdentified";
-import type { EndpointsAll } from "./Endpoints";
+import {
+  type FeedbackColumnIds,
+  installFeedbackColumnIds,
+} from "../03_SpreadsheetIdentified/feedbackColumnRegister";
+import type { Endpoints, EndpointsAll } from "./Endpoints";
+import { withFrameworkEndpoints } from "./frameworkEndpoints";
+
+// After installConfigs, since resolving a feedback column reads the configs.
+export function installEndpoints(endpoints: Endpoints): void {
+  installFeedbackColumnIds(
+    feedbackColumnIdsOf(withFrameworkEndpoints(endpoints)),
+  );
+}
 
 // Every endpoint's, not just the running one's, so an append reuses a row any endpoint stamped.
 export function feedbackColumnIdsOf(
@@ -14,7 +25,8 @@ export function feedbackColumnIdsOf(
       if (columnName === undefined) continue;
       columnIds.add(sheet.columnByName(columnName).columnId);
     }
-    acc.set(sheet.sheetGid, columnIds);
+    // No empty entries, so two maps declaring the same feedback columns install as the same set.
+    if (columnIds.size > 0) acc.set(sheet.sheetGid, columnIds);
     return acc;
   }, new Map<number, Set<string>>());
 }

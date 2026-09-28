@@ -16,8 +16,8 @@ import { ConfigSheetFloor } from "../05_Operators/ConfigSheetFloor";
 import type { FloorNotice } from "../05_Operators/ConfigSheetFloor/floorChangeNotice";
 import { EndpointRun } from "./EndpointRun";
 import type { Endpoints, EndpointsAll } from "./Endpoints";
-import { feedbackColumnIdsOf } from "./feedbackColumnIds";
-import { frameworkEndpoints } from "./frameworkEndpoints";
+import { installEndpoints } from "./feedbackColumnIds";
+import { withFrameworkEndpoints } from "./frameworkEndpoints";
 
 interface ApiProps extends SpreadsheetNamedProps {
   endpoints: Endpoints;
@@ -37,9 +37,7 @@ export class Api extends SpreadsheetBaseNamed {
   static init(endpoints: Endpoints): Api {
     return new Api({
       endpoints,
-      ...SpreadsheetBaseNamed.initSpreadsheetNamedProps(
-        feedbackColumnIdsOf(withFrameworkEndpoints(endpoints)),
-      ),
+      ...SpreadsheetBaseNamed.initSpreadsheetNamedProps(),
     });
   }
   static handleSheetEdit(
@@ -49,16 +47,18 @@ export class Api extends SpreadsheetBaseNamed {
   ): void {
     installConfigs(configs);
     if (!Api.isSuspectedApiCall(edit)) return;
+    installEndpoints(endpoints);
     installSource();
     Api.init(endpoints).handleSheetEdit(edit);
   }
   static handleSheetChange(
-    { configs }: AppSetup,
+    { configs, endpoints }: AppSetup,
     change: SheetChange | undefined,
     installSource: () => void,
   ): FloorNotice | undefined {
     if (change === undefined) return undefined;
     installConfigs(configs);
+    installEndpoints(endpoints);
     installSource();
     return ConfigSheetFloor.init().changeNotice(change);
   }
@@ -105,8 +105,4 @@ export class Api extends SpreadsheetBaseNamed {
       endpoint,
     }).run(isChecked);
   }
-}
-
-function withFrameworkEndpoints(endpoints: Endpoints): EndpointsAll {
-  return { ...endpoints, ...frameworkEndpoints };
 }
