@@ -3,7 +3,7 @@
 import { styleSyntax, variableNaming } from "@byronbroughten/config/eslint";
 
 const requestRecordingMessage =
-  "Assert the grid a write leaves through stubSheetsService()'s grid, not requests a hand-rolled batchUpdate records; only GoogleSheetsAPI.test.ts tests the request mapping (docs/style.md, Tests).";
+  "Assert the grid a write leaves through stubSheetsService()'s grid, not requests a hand-rolled batchUpdate records; only GoogleSheetsAPI.test.ts tests the request mapping (docs/code-style.md, Tests).";
 const requestRecordingSyntax = [
   "ObjectExpression > Property[key.name='batchUpdate']",
   "ObjectExpression > Property[key.value='batchUpdate']",
@@ -42,7 +42,7 @@ export function sheetsSrcBlocks(platformIgnores) {
         ],
       },
     },
-    // The structural utilities do the generic typing that needs `any` (docs/style/type-modeling.md).
+    // The structural utilities do the generic typing that needs `any` (docs/code-style/type-modeling.md).
     {
       files: ["src/**/{Obj,Arr}.ts", "src/**/{Obj,Arr}/**/*.ts"],
       rules: { "@typescript-eslint/no-explicit-any": "off" },

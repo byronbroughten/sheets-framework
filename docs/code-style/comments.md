@@ -1,6 +1,6 @@
 # Comments: reasoning and examples
 
-Disclosed from [`docs/style.md`](../style.md), "Comments". The general comment reasoning is in `@byronbroughten/config`'s `docs/style/comments.md`.
+Disclosed from [`docs/code-style.md`](../code-style.md), "Comments". The general comment reasoning is in `@byronbroughten/config`'s `docs/code-style/comments.md`.
 
 ## The framework's navigation blocks
 

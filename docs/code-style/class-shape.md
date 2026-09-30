@@ -1,6 +1,6 @@
 # Class shape
 
-Style fragment. The one-line rules live in [`docs/style.md`](../style.md); this file holds the reasoning and the worked examples. The general class-shape reasoning (member order, helpers, dead scaffolding) is in `@byronbroughten/config`'s `docs/style/class-shape.md`.
+Style fragment. The one-line rules live in [`docs/code-style.md`](../code-style.md); this file holds the reasoning and the worked examples. The general class-shape reasoning (member order, helpers, dead scaffolding) is in `@byronbroughten/config`'s `docs/code-style/class-shape.md`.
 
 One heading per class-shape rule, most of them with the refactor that produced it: grep `^## ` for the rule you're applying and read that section.
 
@@ -77,7 +77,7 @@ private _isActiveColumnId(sheetGid: number, columnId: string): boolean {
 
 Destructure a collaborator's getter directly when only one property is needed: `const { activeColumnIds } = this.ss.raw.sheetMeta(sheetGid);`.
 
-A container method that takes an index/id as a parameter, but is only ever called by code that already has that exact value as its own instance state, is a sign the query belongs on the instance instead — drop the parameter along with the method. `SheetBaseRaw.columnValidationValues(colIndex: number)` was deleted; its one caller always already had its own `colIndex`, so the query moved to `ColumnMetaRaw` as `get valueValidationStrings()`, reading `this.sheet.activeTable.columnValidationValues.get(this.colIndex)` (`ColumnMetaRaw.ts`). The parameter disappearing is what turns it into a getter (see the getter rule in `@byronbroughten/config`'s `docs/style/naming.md`).
+A container method that takes an index/id as a parameter, but is only ever called by code that already has that exact value as its own instance state, is a sign the query belongs on the instance instead — drop the parameter along with the method. `SheetBaseRaw.columnValidationValues(colIndex: number)` was deleted; its one caller always already had its own `colIndex`, so the query moved to `ColumnMetaRaw` as `get valueValidationStrings()`, reading `this.sheet.activeTable.columnValidationValues.get(this.colIndex)` (`ColumnMetaRaw.ts`). The parameter disappearing is what turns it into a getter (see the getter rule in `@byronbroughten/config`'s `docs/code-style/naming.md`).
 
 ## Model state at the granularity the concept actually has
 
