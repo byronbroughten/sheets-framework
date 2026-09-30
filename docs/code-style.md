@@ -1,6 +1,6 @@
 # Framework style
 
-The framework's own code-shape rules, layered on the general style doc that ships with `@byronbroughten/config` (`docs/style.md` in that package; `config/docs/style.md` in the workspace). Read that first: everything there applies here too. Where things live is [`src/AGENTS.md`](../src/AGENTS.md) and [`vocabulary.md`](./vocabulary.md).
+The framework's own code-shape rules, layered on the general style doc that ships with `@byronbroughten/config` (`docs/code-style.md` in that package; `config/docs/code-style.md` in the workspace). Read that first: everything there applies here too. Where things live is [`src/AGENTS.md`](../src/AGENTS.md) and [`vocabulary.md`](./vocabulary.md).
 
 One line per rule. The reasoning and worked examples are one file away. Open a reasoning file only when you're changing the rule, or the rule's line doesn't decide your case.
 
@@ -8,13 +8,13 @@ One line per rule. The reasoning and worked examples are one file away. Open a r
 
 | When | File |
 | --- | --- |
-| Writing a coordinator or an Operator, placing a member or a class | [`docs/style/class-shape.md`](./style/class-shape.md) |
-| Naming a column, sheet, row or collaborator, a live read, or a method verb | [`docs/style/naming.md`](./style/naming.md) |
-| A type-level assertion, a cast, a registry literal, a utility type | [`docs/style/type-modeling.md`](./style/type-modeling.md) |
-| A guard, a blank-tolerant read, a `catch` | [`docs/style/error-handling.md`](./style/error-handling.md) |
-| Writing or changing a test | [`docs/style/tests.md`](./style/tests.md) |
-| A file-level navigation block | [`docs/style/comments.md`](./style/comments.md) |
-| A barrel, or a utility bundle's file name | [`docs/style/file-organization.md`](./style/file-organization.md) |
+| Writing a coordinator or an Operator, placing a member or a class | [`docs/code-style/class-shape.md`](./code-style/class-shape.md) |
+| Naming a column, sheet, row or collaborator, a live read, or a method verb | [`docs/code-style/naming.md`](./code-style/naming.md) |
+| A type-level assertion, a cast, a registry literal, a utility type | [`docs/code-style/type-modeling.md`](./code-style/type-modeling.md) |
+| A guard, a blank-tolerant read, a `catch` | [`docs/code-style/error-handling.md`](./code-style/error-handling.md) |
+| Writing or changing a test | [`docs/code-style/tests.md`](./code-style/tests.md) |
+| A file-level navigation block | [`docs/code-style/comments.md`](./code-style/comments.md) |
+| A barrel, or a utility bundle's file name | [`docs/code-style/file-organization.md`](./code-style/file-organization.md) |
 
 ## Class shape
 

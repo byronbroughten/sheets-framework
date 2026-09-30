@@ -1,8 +1,8 @@
 # Naming
 
-Style fragment. The one-line rules live in [`docs/style.md`](../style.md); this file holds the reasoning and the worked examples. The general naming reasoning is in `@byronbroughten/config`'s `docs/style/naming.md`.
+Style fragment. The one-line rules live in [`docs/code-style.md`](../code-style.md); this file holds the reasoning and the worked examples. The general naming reasoning is in `@byronbroughten/config`'s `docs/code-style/naming.md`.
 
-One heading per naming rule, in docs/style.md's order: grep `^## ` for the rule you're applying and read that section.
+One heading per naming rule, in docs/code-style.md's order: grep `^## ` for the rule you're applying and read that section.
 
 ## The `active` prefix marks a live read
 
@@ -10,7 +10,7 @@ One heading per naming rule, in docs/style.md's order: grep `^## ` for the rule 
 
 ## `_actualX` becomes `activeX` when a helper moves down
 
-**When a "compute the true/live value" helper moves from a coordinating Operator down onto the domain object it's actually about, rename it from `_actualX` to `activeX` to match that vocabulary.** `ColumnConfigOperator._actualValueTitle`/`_actualValidationValueName`/`_actualPrimitiveValueName` — named from the coordinator's point of view, contrasting a *live* value against the *stored config* value — became `ColumnMetaRaw.activeValueTitle()`/`.activeValidationValueTitle()`/`._actualPrimitiveValueName()` once they moved onto the column itself: from that object's own point of view it's just its current state, matching sibling getters like `activeHeader`/`activeIsFormula` on the same class. (The innermost helper, `_actualPrimitiveValueName`, kept its old name and stayed `private` — it has no live/committed counterpart to disambiguate, so `active` wouldn't fit; see the `_`-prefix note in `@byronbroughten/config`'s `docs/style/naming.md` for why it's still underscored while its siblings aren't.)
+**When a "compute the true/live value" helper moves from a coordinating Operator down onto the domain object it's actually about, rename it from `_actualX` to `activeX` to match that vocabulary.** `ColumnConfigOperator._actualValueTitle`/`_actualValidationValueName`/`_actualPrimitiveValueName` — named from the coordinator's point of view, contrasting a *live* value against the *stored config* value — became `ColumnMetaRaw.activeValueTitle()`/`.activeValidationValueTitle()`/`._actualPrimitiveValueName()` once they moved onto the column itself: from that object's own point of view it's just its current state, matching sibling getters like `activeHeader`/`activeIsFormula` on the same class. (The innermost helper, `_actualPrimitiveValueName`, kept its old name and stayed `private` — it has no live/committed counterpart to disambiguate, so `active` wouldn't fit; see the `_`-prefix note in `@byronbroughten/config`'s `docs/code-style/naming.md` for why it's still underscored while its siblings aren't.)
 
 ## `col` or `column`
 
@@ -22,7 +22,7 @@ One heading per naming rule, in docs/style.md's order: grep `^## ` for the rule 
 
 ## Google's API names stay at the wire
 
-**Google's API names stay at the wire; everything the framework defines for itself follows the glossary** (#70). Anything that spells a Google API object, request or field keeps Google's spelling: `GoogleProtectedRange`, the queued request kinds `"addProtectedRange"` and `"deleteProtectedRange"`, the fields `protectedRangeId` and `unprotectedRanges`. Everything above that takes the glossary term, so the framework type is `EditProtection` and the sheet reads `editProtections()`. Before #70 the framework used both, and `removeEditProtection(protection: ProtectedRange)` put the two names for one thing in a single signature. The enum-string rule under the constant rule in `@byronbroughten/config`'s `docs/style/naming.md` is the same boundary.
+**Google's API names stay at the wire; everything the framework defines for itself follows the glossary** (#70). Anything that spells a Google API object, request or field keeps Google's spelling: `GoogleProtectedRange`, the queued request kinds `"addProtectedRange"` and `"deleteProtectedRange"`, the fields `protectedRangeId` and `unprotectedRanges`. Everything above that takes the glossary term, so the framework type is `EditProtection` and the sheet reads `editProtections()`. Before #70 the framework used both, and `removeEditProtection(protection: ProtectedRange)` put the two names for one thing in a single signature. The enum-string rule under the constant rule in `@byronbroughten/config`'s `docs/code-style/naming.md` is the same boundary.
 
 ## A multi-row delete is `SHOUTING_SNAKE_CASE`
 

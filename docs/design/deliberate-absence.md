@@ -22,4 +22,4 @@ The riskiest gap in an AI-assisted codebase is the one that looks like an oversi
 
 ## Corollaries
 
-The same applies to commented-out code, which is why the general style doc's delete-dead-scaffolding rule (`@byronbroughten/config`'s `docs/style.md`) carves out an exception for it. Absence of an explanation is not evidence of absence of a reason — ask.
+The same applies to commented-out code, which is why the general style doc's delete-dead-scaffolding rule (`@byronbroughten/config`'s `docs/code-style.md`) carves out an exception for it. Absence of an explanation is not evidence of absence of a reason — ask.

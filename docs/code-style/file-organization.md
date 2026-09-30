@@ -1,6 +1,6 @@
 # Imports and file organization: examples
 
-Disclosed from [`docs/style.md`](../style.md), "Imports & file organization". The rules are there, one line each; this file holds the examples. The general reasoning is in `@byronbroughten/config`'s `docs/style/file-organization.md`.
+Disclosed from [`docs/code-style.md`](../code-style.md), "Imports & file organization". The rules are there, one line each; this file holds the examples. The general reasoning is in `@byronbroughten/config`'s `docs/code-style/file-organization.md`.
 
 ## The framework's public entries
 

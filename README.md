@@ -79,7 +79,7 @@ Details: [how it runs](./docs/how-it-runs.md).
 - [`docs/generated-data.md`](./docs/generated-data.md): the generated configs.
 - [`docs/how-it-runs.md`](./docs/how-it-runs.md): the hosts and the bin.
 - [`docs/testing.md`](./docs/testing.md): the fakes and seams.
-- [`docs/style.md`](./docs/style.md): the code-shape rules, layered on the general style doc in `@byronbroughten/config`.
+- [`docs/code-style.md`](./docs/code-style.md): the code-shape rules, layered on the general style doc in `@byronbroughten/config`.
 
 ## History
 
