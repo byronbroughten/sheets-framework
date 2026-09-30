@@ -162,3 +162,7 @@ _Avoid_: key column, label column, title column
 A date as Sheets stores it: the count of days since 30 December 1899. Adding or comparing serial dates doesn't depend on a timezone; knowing which one is today does, and the spreadsheet's own timezone decides that.
 _Avoid_: date number, day serial, JS date
 
+**Serial date-time**:
+A serial date with a fractional part, which is the time of day on the clock in the spreadsheet's own timezone. Turning it into a real moment needs that timezone's offset on that date, daylight saving included.
+_Avoid_: serial time, timestamp serial, JS date
+
