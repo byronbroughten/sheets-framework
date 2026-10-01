@@ -5,7 +5,7 @@ import { SpreadsheetRaw } from "../02_SpreadsheetRaw/SpreadsheetRaw.js";
 import type { SheetIdentified } from "../03_SpreadsheetIdentified/SheetIdentified";
 import type { GatherDataPrerequisitesProps } from "../03_SpreadsheetIdentified/SheetMetaIdentified";
 import { SpreadsheetIdentified } from "../03_SpreadsheetIdentified/SpreadsheetIdentified.js";
-import { Obj } from "../utils/Obj.js";
+import { Obj } from "../utils/Obj";
 import { SerialDate } from "../utils/SerialDate";
 import { Tim } from "../utils/Tim.js";
 import { Val } from "../utils/Val";
@@ -217,7 +217,10 @@ function sheetNamesFromReqProps<SN extends SheetName>(
   propsArr: FetchPropsStandardNamed<SN>[],
 ): Set<SN> {
   return propsArr.reduce((sheetNames, props) => {
-    return sheetNames.add(...Obj.keys(props.sheetColumnNames));
+    Obj.keys(props.sheetColumnNames).forEach((sheetName) =>
+      sheetNames.add(sheetName),
+    );
+    return sheetNames;
   }, new Set() as Set<SN>);
 }
 

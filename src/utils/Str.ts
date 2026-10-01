@@ -89,18 +89,16 @@ type JoinCamelWords<
     : `${CapitalizeWord<Head>}${JoinCamelWords<Rest, false>}`
   : "";
 
-// Type-level mirror of Str.sentenceToCamelCase: splits on runs of
-// non-alphanumeric characters (apostrophes removed rather than treated as a
-// split point, matching the runtime regex behavior) and camelCases the result.
+// Mirrors Str.sentenceToCamelCase, so apostrophes are removed rather than split on.
 export type SentenceToCamelCase<S extends string> = JoinCamelWords<
   SplitWords<RemoveApostrophes<Lowercase<S>>>
 >;
 
 export const Str = {
-  combineStrings: <S1 extends string, S2 extends string>(
+  combineStrings<S1 extends string, S2 extends string>(
     str1: S1,
     str2: S2,
-  ): CombineStrings<S1, S2> => {
+  ): CombineStrings<S1, S2> {
     return `${str1}${str2}` as CombineStrings<S1, S2>;
   },
   removeFirstN<T extends string, N extends number>(
@@ -115,12 +113,8 @@ export const Str = {
   ): TakeFirstN<T, N> {
     return str.split("").slice(0, n).join("") as TakeFirstN<T, N>;
   },
+  // Lets a row-3 header match despite spacing, punctuation or capitalization drift.
   sentenceToCamelCase<S extends string>(sentence: S): SentenceToCamelCase<S> {
-    /**
-     * Converts a header sentence (e.g. "Column ID") into a camelCase key
-     * (e.g. "columnId"), used to robustly match row-3 headers regardless of
-     * minor spacing/punctuation/capitalization differences.
-     */
     return sentence
       .toLowerCase()
       .trim()

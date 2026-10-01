@@ -125,6 +125,19 @@ describe("SpreadsheetNamed navigation", () => {
   });
 });
 
+describe("SpreadsheetNamed.fetch", () => {
+  it("hands back every sheet one props bag names", () => {
+    stubDatesAndValueTypesWithBlankRow();
+    const sheets = SpreadsheetNamed.init().fetch({
+      rowSpecifier: "data",
+      sheetColumnMode: "specific",
+      sheetColumnNames: { dates: ["id"], valueTypes: ["checkbox"] },
+    });
+
+    expect(Object.keys(sheets)).toEqual(["dates", "valueTypes"]);
+  });
+});
+
 const topDataRowIndex = sheetLayout.tableHeaderRowIndex + 1;
 const datesGid = getSheetTraitByName("dates", "sheetGid");
 const valueTypesGid = getSheetTraitByName("valueTypes", "sheetGid");
