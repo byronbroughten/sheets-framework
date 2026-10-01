@@ -29,7 +29,7 @@ import {
   type FindReplaceTerms,
   type SortParameters,
   type TableIdentityRaw,
-  type UpdateTableColumnTypeOperation,
+  type SetTableColumnTypeOperation,
 } from "./ClassTypes/StateRaw";
 import { ColumnRaw } from "./ColumnRaw";
 import { RowRaw } from "./RowRaw";
@@ -97,7 +97,7 @@ export class SheetRaw extends SheetCommonRaw {
   }
   updateTitle(title: string): this {
     this.updateRequests.updateSheetTitle.push({
-      kind: "updateSheetTitle",
+      kind: "renameSheet",
       sheetId: this.sheetGid,
       title,
     });
@@ -110,7 +110,7 @@ export class SheetRaw extends SheetCommonRaw {
   updateTableName(name: string): this {
     const tableId = this.activeTable.tableId;
     this.updateRequests.updateTableName.push({
-      kind: "updateTableName",
+      kind: "renameTable",
       tableId,
       name,
     });
@@ -445,7 +445,7 @@ export class SheetRaw extends SheetCommonRaw {
   }: ColumnFill): void {
     assertValueAndFormulaExclusive(change.value, formula);
     this.updateRequests.fill.push({
-      kind: "fill",
+      kind: "fillColumn",
       sheetId: this.sheetGid,
       colIndex,
       startRowIndex,
@@ -472,10 +472,10 @@ export class SheetRaw extends SheetCommonRaw {
       this.activeTable.growEndColumnIndex();
     });
   }
-  gatherColumnTypesRequest(ops: UpdateTableColumnTypeOperation[]): void {
+  gatherColumnTypesRequest(ops: SetTableColumnTypeOperation[]): void {
     this._assertColumnTypesUpdateAllowed(ops);
     this.updateRequests.updateTableColumnProperties.push({
-      kind: "updateTableColumnProperties",
+      kind: "setTableColumnProperties",
       tableId: this.activeTable.tableId,
       columnProperties: this._columnTypesColumnProperties(ops),
     });
@@ -484,7 +484,7 @@ export class SheetRaw extends SheetCommonRaw {
     this.activeTable.markColumnPropertiesStale();
   }
   private _assertColumnTypesUpdateAllowed(
-    ops: UpdateTableColumnTypeOperation[],
+    ops: SetTableColumnTypeOperation[],
   ): void {
     const tableId = Val.assert(ops[0], "queued column type").tableId;
     const tableLabel = this._tableLabel(tableId);
@@ -530,7 +530,7 @@ export class SheetRaw extends SheetCommonRaw {
   }
   // Full list, since a partial columnProperties replaces the rest.
   private _columnTypesColumnProperties(
-    ops: UpdateTableColumnTypeOperation[],
+    ops: SetTableColumnTypeOperation[],
   ): TableColumnPropertiesUpdate[] {
     const typeByIndex = new Map<number, string>(
       ops.map((operation) => [operation.columnIndex, operation.columnType]),

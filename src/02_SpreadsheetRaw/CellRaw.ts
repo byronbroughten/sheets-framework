@@ -53,7 +53,7 @@ export class CellRaw<
     const { formula, ...cellDataChange } = change;
     assertValueAndFormulaExclusive(cellDataChange.value, formula);
     this.updateRequests.update.push({
-      kind: "updateCell",
+      kind: "fillCell",
       sheetId: this.sheetGid,
       rowIndex: this.rowIndex,
       colIndex: this.colIndex,

@@ -7,7 +7,7 @@ import { emptyStateRaw } from "../ClassTypes/emptyStateRaw";
 import type {
   RowChangesToSave,
   SheetChangesToSave,
-  UpdateTableColumnTypeOperation,
+  SetTableColumnTypeOperation,
 } from "../ClassTypes/StateRaw";
 import { SpreadsheetRaw } from "../SpreadsheetRaw";
 
@@ -60,7 +60,7 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
     this._gatherColumnTypesRequests();
   }
   private _gatherColumnTypesRequests(): void {
-    const opsBySheet = new Map<number, UpdateTableColumnTypeOperation[]>();
+    const opsBySheet = new Map<number, SetTableColumnTypeOperation[]>();
     this.updateRequests.updateTableColumnType.forEach((operation) => {
       const ops = opsBySheet.get(operation.sheetId) ?? [];
       ops.push(operation);

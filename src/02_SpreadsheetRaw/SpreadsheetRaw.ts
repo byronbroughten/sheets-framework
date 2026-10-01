@@ -92,7 +92,7 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
   gatherAddedSheetCellRequest(props: AddedSheetCell): this {
     this._validateAddSheetQueued(props.sheetId, "cell write");
     if ("formula" in props) validateFormulaString(props.formula);
-    this.updateRequests.update.push({ kind: "updateCell", ...props });
+    this.updateRequests.update.push({ kind: "fillCell", ...props });
     return this;
   }
   // A checkbox on a tab this flush adds; an existing tab goes through CellRaw.

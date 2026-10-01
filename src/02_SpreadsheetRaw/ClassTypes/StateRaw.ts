@@ -14,20 +14,20 @@ import type {
   DeleteConditionalFormatRuleOperation,
   DeleteProtectedRangeOperation,
   DeleteRowsOperation,
-  FillOperation,
+  FillColumnOperation,
   FindReplaceOperation,
   FindReplaceScope as BaseFindReplaceScope,
   FindReplaceTerms as BaseFindReplaceTerms,
   InsertTableEndColumnOperation,
-  OpaqueRawWriteOperation,
+  RawWriteOperation,
   RawSource,
   SortOperation,
   TableColumnSnapshot,
   TableColumnType,
-  UpdateCellOperation,
-  UpdateSheetTitleOperation,
-  UpdateTableColumnPropertiesOperation,
-  UpdateTableNameOperation,
+  FillCellOperation,
+  RenameSheetOperation,
+  SetTableColumnPropertiesOperation,
+  RenameTableOperation,
 } from "../../00_Source/RawSource/RawSource";
 import type { RgbColor } from "../../00_Source/RawSource/RgbColor";
 import type { GridRangeProps } from "./AccessorsRaw";
@@ -53,27 +53,27 @@ export interface UpdateRequests {
   addSheet: AddSheetOperation[];
   addTable: AddTableOperation[];
   append: AppendRowsOperation[];
-  update: UpdateCellOperation[];
+  update: FillCellOperation[];
   delete: DeleteRowsOperation[];
   sort: SortOperation[];
   insertTableEndColumn: InsertTableEndColumnOperation[];
-  fill: FillOperation[];
+  fill: FillColumnOperation[];
   findReplace: FindReplaceOperation[];
   deleteConditionalFormat: DeleteConditionalFormatRuleOperation[];
   addConditionalFormat: AddConditionalFormatRuleOperation[];
   deleteProtectedRange: DeleteProtectedRangeOperation[];
   addProtectedRange: AddProtectedRangeOperation[];
-  updateSheetTitle: UpdateSheetTitleOperation[];
-  updateTableName: UpdateTableNameOperation[];
-  updateTableColumnType: UpdateTableColumnTypeOperation[];
-  updateTableColumnProperties: UpdateTableColumnPropertiesOperation[];
+  updateSheetTitle: RenameSheetOperation[];
+  updateTableName: RenameTableOperation[];
+  updateTableColumnType: SetTableColumnTypeOperation[];
+  updateTableColumnProperties: SetTableColumnPropertiesOperation[];
   addCheckboxValidation: AddCheckboxValidationOperation[];
-  raw: OpaqueRawWriteOperation[];
+  raw: RawWriteOperation[];
 }
 
-// Queue-only: the sheet gathers each Table's into one updateTableColumnProperties.
-export interface UpdateTableColumnTypeOperation {
-  kind: "updateTableColumnType";
+// Queue-only: the sheet gathers each Table's into one setTableColumnProperties.
+export interface SetTableColumnTypeOperation {
+  kind: "setTableColumnType";
   sheetId: number;
   tableId: string;
   columnIndex: number;
@@ -220,7 +220,7 @@ export interface FindReplaceProps extends FindReplaceTerms {
 }
 
 export type AddedSheetCell = Required<
-  Pick<UpdateCellOperation, "sheetId" | "rowIndex" | "colIndex">
+  Pick<FillCellOperation, "sheetId" | "rowIndex" | "colIndex">
 > &
   ({ value: CellValue } | { formula: string });
 

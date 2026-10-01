@@ -67,7 +67,7 @@ export class ColumnMetaRaw<
   }
   updateColumnType(columnType: TableColumnType): this {
     this.updateRequests.updateTableColumnType.push({
-      kind: "updateTableColumnType",
+      kind: "setTableColumnType",
       sheetId: this.sheetGid,
       tableId: this.sheet.activeTable.tableId,
       // Google's Table columnIndex is table-relative; colIndex is sheet-absolute.
