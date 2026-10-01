@@ -150,7 +150,7 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
       // Column fills go before cell writes; a later-queued fill already erased the cell writes it covers.
       ...queued.fillColumn,
       ...queued.fillCell,
-      // After cell updates, so a checkbox's seeded value is written before its rule.
+      // After cell writes, so a checkbox's seeded value is written before its rule.
       ...queued.addCheckboxValidation,
       // Reads the text as it stands mid-batch, so it must follow what writes it.
       ...queued.findReplace,
