@@ -57,9 +57,9 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
       state.writeQueue.rows = new Map();
     });
     // After the sheet queues, so the insert-column refusal sees this flush's inserts.
-    this._gatherSetTableColumnTypeOperations();
+    this._gatherSetTableColumnPropertiesOperations();
   }
-  private _gatherSetTableColumnTypeOperations(): void {
+  private _gatherSetTableColumnPropertiesOperations(): void {
     const opsBySheet = new Map<number, SetTableColumnTypeOperation[]>();
     this.writeOperations.setTableColumnType.forEach((operation) => {
       const ops = opsBySheet.get(operation.sheetId) ?? [];
@@ -67,7 +67,7 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
       opsBySheet.set(operation.sheetId, ops);
     });
     opsBySheet.forEach((ops, sheetGid) =>
-      this.ss.sheet(sheetGid).gatherSetTableColumnTypeOperation(ops),
+      this.ss.sheet(sheetGid).gatherSetTableColumnPropertiesOperation(ops),
     );
   }
   private _gatherSheetWrites(sheetGid: number, writes: SheetWrites): void {

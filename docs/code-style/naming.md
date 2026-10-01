@@ -35,6 +35,7 @@ One heading per naming rule, in docs/code-style.md's order: grep `^## ` for the 
 - `integrate` — merges a fetched snapshot into local state; no API call, so it is never `fetch`
 - `prep`/`gather` — queue state locally before a fetch (`prepFetchX` queues only; `gatherFetchX` queues *and* fetches)
 - `update` — writes a local/queued change, not yet flushed
+- `queue` — stages a write on a sheet's or row's write queue; the flusher gathers it into an operation. Internal to the queue layer, which never says `update`
 - `append` — adds a new row
 - `ensure` — idempotent guard: make this true, no-op if it already is
 - `validate` — asserts an invariant, throws on failure

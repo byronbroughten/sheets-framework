@@ -205,6 +205,6 @@ export function assertValueAndFormulaExclusive(
   formula: string | undefined,
 ): void {
   if (formula !== undefined && value !== undefined) {
-    throw new Error("A queued change cannot hold both a value and a formula.");
+    throw new Error("A queued write cannot hold both a value and a formula.");
   }
 }

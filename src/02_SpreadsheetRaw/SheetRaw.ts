@@ -472,7 +472,9 @@ export class SheetRaw extends SheetCommonRaw {
       this.activeTable.growEndColumnIndex();
     });
   }
-  gatherSetTableColumnTypeOperation(ops: SetTableColumnTypeOperation[]): void {
+  gatherSetTableColumnPropertiesOperation(
+    ops: SetTableColumnTypeOperation[],
+  ): void {
     this._assertColumnTypesUpdateAllowed(ops);
     this.writeOperations.setTableColumnProperties.push({
       kind: "setTableColumnProperties",

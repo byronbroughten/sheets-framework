@@ -41,8 +41,8 @@ One line per term. The elaboration is one file away. Open a reasoning file only 
 
 - **The queue layer says *write*, paired with *fetch*** (`fetchQueue` / `writeQueue`); *update* names no operation, key or field, because every queued operation is an update.
 - **A queue key equals its operation's `kind`, and a `kind` equals its type name without "Operation"**, in lower camel case; `WriteOperations` is a mapped type over the kinds, so the compiler holds it. The one exception is `raw`, the escape hatch's `RawWriteOperation`.
-- **A per-kind gather method is `gather<Key>Operation`**, and the per-row and per-sheet queue entries are `RowWrites` and `SheetWrites`.
-- **A field about one row or one column is singular (`appendRow`, `deleteRow`); a queue entry's field holding many is plural (`fillCells`, `fillColumns`); a `WriteOperations` key stays its kind.**
+- **A per-kind gather method is `gather<Key>Operation`, the key it pushes to**, and the per-row and per-sheet queue entries are `RowWrites` and `SheetWrites`.
+- **A field about one row or one column is singular (`appendRow`, `deleteRow`); a queue entry's field holding many is plural (`fillCells`, `fillColumns`); a `WriteOperations` key stays its kind.** A queue's flag is a directive to the flusher, like a config literal's, so it reads as a verb.
 - **`FillCellOperation` and `FillColumnOperation` stay separate** so the send order, column fills then cell writes, lives in the structure; a multi-column fill would be `FillRangeOperation`.
 
 ## Meta / primary
