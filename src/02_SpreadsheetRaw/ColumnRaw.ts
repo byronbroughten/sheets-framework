@@ -18,7 +18,7 @@ import type {
 import { Arr } from "../utils/Arr";
 import { CellRaw, validateFormulaString } from "./CellRaw";
 import { ColumnBaseRaw } from "./ClassBases/ColumnBaseRaw";
-import type { FindReplaceTerms, RowCellChange } from "./ClassTypes/StateRaw";
+import type { CellFill, FindReplaceTerms } from "./ClassTypes/StateRaw";
 import { ColumnMetaRaw } from "./ColumnMetaRaw";
 import { SheetRaw } from "./SheetRaw";
 import { SpreadsheetRaw } from "./SpreadsheetRaw";
@@ -85,7 +85,7 @@ export class ColumnRaw<
     return this;
   }
   // State is still mirrored row by row; only the queued request collapses.
-  updateAllCells(change: Omit<RowCellChange<VN>, "formula">): this {
+  updateAllCells(change: Omit<CellFill<VN>, "formula">): this {
     this.sheet.activeTable.assertRowIndexesNotStale();
     this.sheet.validateNotPrunedToSelection();
     const { endRowIndex } = this.sheet.activeTable;
@@ -97,8 +97,8 @@ export class ColumnRaw<
         this.cell(rowIndex).setValueState(value);
       }
     });
-    this.sheet.addSheetChangeToSave({
-      action: "fill",
+    this.sheet.queueSheetWrite({
+      action: "fillColumn",
       colIndex: this.colIndex,
       startRowIndex: this.schema.topDataRowIdx,
       endRowIndex,
@@ -114,8 +114,8 @@ export class ColumnRaw<
     this.sheet.rowIndexesFull.forEach((rowIndex) => {
       this.sheet.row(rowIndex).validateIsWritable();
     });
-    this.sheet.addSheetChangeToSave({
-      action: "fill",
+    this.sheet.queueSheetWrite({
+      action: "fillColumn",
       colIndex: this.colIndex,
       startRowIndex: this.schema.topDataRowIdx,
       endRowIndex,
@@ -123,7 +123,7 @@ export class ColumnRaw<
     });
     return this;
   }
-  updateActiveCells(change: Omit<RowCellChange<VN>, "formula">): this {
+  updateActiveCells(change: Omit<CellFill<VN>, "formula">): this {
     this.sheet.activeTable.assertRowIndexesNotStale();
     const rowIndexes = this.cellIndexesActive;
     const { value } = change;
@@ -133,8 +133,8 @@ export class ColumnRaw<
       });
     }
     Arr.contiguousRanges(rowIndexes).forEach(({ startIndex, endIndex }) => {
-      this.sheet.addSheetChangeToSave({
-        action: "fill",
+      this.sheet.queueSheetWrite({
+        action: "fillColumn",
         colIndex: this.colIndex,
         startRowIndex: startIndex,
         endRowIndex: endIndex,
@@ -148,8 +148,8 @@ export class ColumnRaw<
     validateFormulaString(formula);
     Arr.contiguousRanges(this.cellIndexesActive).forEach(
       ({ startIndex, endIndex }) => {
-        this.sheet.addSheetChangeToSave({
-          action: "fill",
+        this.sheet.queueSheetWrite({
+          action: "fillColumn",
           colIndex: this.colIndex,
           startRowIndex: startIndex,
           endRowIndex: endIndex,

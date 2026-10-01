@@ -5,9 +5,9 @@ import type {
 import { SpreadsheetBaseRaw } from "../ClassBases/SpreadsheetBaseRaw";
 import { emptyStateRaw } from "../ClassTypes/emptyStateRaw";
 import type {
-  RowChangesToSave,
+  RowWrites,
   SetTableColumnTypeOperation,
-  SheetChangesToSave,
+  SheetWrites,
 } from "../ClassTypes/StateRaw";
 import { SpreadsheetRaw } from "../SpreadsheetRaw";
 
@@ -49,17 +49,17 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
   }
   private _gatherWriteOperations(): void {
     this.sheetsStateRaw.forEach((state, sheetGid) => {
-      this._gatherSheetRequests(sheetGid, state.writeQueue.sheet);
-      for (const [rowIndex, change] of state.writeQueue.rows) {
-        this._gatherRowRequests(change, { sheetGid, rowIndex });
+      this._gatherSheetWrites(sheetGid, state.writeQueue.sheet);
+      for (const [rowIndex, writes] of state.writeQueue.rows) {
+        this._gatherRowWrites(writes, { sheetGid, rowIndex });
       }
-      state.writeQueue.sheet = emptyStateRaw.sheetChanges();
+      state.writeQueue.sheet = emptyStateRaw.sheetWrites();
       state.writeQueue.rows = new Map();
     });
     // After the sheet queues, so the insert-column refusal sees this flush's inserts.
-    this._gatherColumnTypesRequests();
+    this._gatherSetTableColumnTypeOperations();
   }
-  private _gatherColumnTypesRequests(): void {
+  private _gatherSetTableColumnTypeOperations(): void {
     const opsBySheet = new Map<number, SetTableColumnTypeOperation[]>();
     this.writeOperations.setTableColumnType.forEach((operation) => {
       const ops = opsBySheet.get(operation.sheetId) ?? [];
@@ -67,30 +67,27 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
       opsBySheet.set(operation.sheetId, ops);
     });
     opsBySheet.forEach((ops, sheetGid) =>
-      this.ss.sheet(sheetGid).gatherColumnTypesRequest(ops),
+      this.ss.sheet(sheetGid).gatherSetTableColumnTypeOperation(ops),
     );
   }
-  private _gatherSheetRequests(
-    sheetGid: number,
-    change: SheetChangesToSave,
-  ): void {
+  private _gatherSheetWrites(sheetGid: number, writes: SheetWrites): void {
     this.ss
       .sheet(sheetGid)
-      .gatherInsertTableEndColumnRequests(change.tableEndColumnInsertCount);
-    if (change.sort !== undefined) {
-      this.ss.sheet(sheetGid).gatherSortRequest(change.sort);
+      .gatherInsertTableEndColumnOperations(writes.insertTableEndColumnCount);
+    if (writes.sort !== undefined) {
+      this.ss.sheet(sheetGid).gatherSortOperation(writes.sort);
     }
-    change.fills.forEach((fill) => {
-      this.ss.sheet(sheetGid).gatherFillRequest(fill);
+    writes.fillColumns.forEach((fill) => {
+      this.ss.sheet(sheetGid).gatherFillColumnOperation(fill);
     });
   }
-  private _gatherRowRequests(
-    change: RowChangesToSave,
+  private _gatherRowWrites(
+    writes: RowWrites,
     { sheetGid, rowIndex }: SheetRowRef,
   ): void {
-    if (change.append && change.delete) {
+    if (writes.appendRow && writes.deleteRow) {
       return;
-    } else if (change.delete) {
+    } else if (writes.deleteRow) {
       this.writeOperations.deleteRows.push({
         kind: "deleteRows",
         sheetId: sheetGid,
@@ -99,11 +96,11 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
       });
     } else {
       const row = this.ss.sheet(sheetGid).rowCommon(rowIndex);
-      if (change.append) {
-        row.gatherAppendRequest();
+      if (writes.appendRow) {
+        row.gatherAppendRowsOperation();
       }
-      for (const [colIndex, cellChange] of change.update) {
-        row.cell(colIndex).gatherUpdateRequest(cellChange);
+      for (const [colIndex, cellFill] of writes.fillCells) {
+        row.cell(colIndex).gatherFillCellOperation(cellFill);
       }
     }
   }

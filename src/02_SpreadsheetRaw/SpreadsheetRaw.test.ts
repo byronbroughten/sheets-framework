@@ -19,7 +19,7 @@ import { assertType, type IsExactly } from "../testSupport/typeAssertions";
 import { Val } from "../utils/Val";
 import type { CellRaw } from "./CellRaw";
 import type { RowCommonRaw } from "./ClassBases/RowCommonRaw";
-import type { CellStateRaw, RowCellChange } from "./ClassTypes/StateRaw";
+import type { CellFill, CellStateRaw } from "./ClassTypes/StateRaw";
 import { ColumnMetaRaw } from "./ColumnMetaRaw";
 import { ColumnRaw } from "./ColumnRaw";
 import { RowRaw } from "./RowRaw";
@@ -989,7 +989,7 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
   });
 });
 
-describe("SpreadsheetRaw.gatherRawRequest", () => {
+describe("SpreadsheetRaw.gatherRawOperation", () => {
   function rawValueWrite(rowIndex: number, colIndex: number, value: string) {
     return googleRawRequest({
       updateCells: {
@@ -1007,8 +1007,8 @@ describe("SpreadsheetRaw.gatherRawRequest", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.gatherRawRequest(rawValueWrite(5, 2, "Raw"));
-    raw.gatherRawRequest(rawValueWrite(8, 2, "Raw"));
+    raw.gatherRawOperation(rawValueWrite(5, 2, "Raw"));
+    raw.gatherRawOperation(rawValueWrite(8, 2, "Raw"));
     raw.sheet(111).row(5).cell(2).updateValue("Processing...");
     raw.sheet(111).row(9).cell(2).updateValue("Shifted up");
     raw.sheet(111).row(8).delete();
@@ -1029,7 +1029,7 @@ describe("SpreadsheetRaw.gatherRawRequest", () => {
     const { batchUpdateCount } = stubSheetsService();
 
     const raw = SpreadsheetRaw.init();
-    raw.gatherRawRequest(
+    raw.gatherRawOperation(
       googleRawRequest({ updateTable: { table: { tableId: "t" } } }),
     );
     raw.discardQueuedChanges();
@@ -1083,8 +1083,8 @@ describe("SpreadsheetRaw add sheet and add Table", () => {
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
     raw.sheet(111).updateTitle("Renamed");
-    raw.gatherAddTableRequest(addTableProps);
-    raw.gatherAddSheetRequest(addSheetProps);
+    raw.gatherAddTableOperation(addTableProps);
+    raw.gatherAddSheetOperation(addSheetProps);
     raw.batchUpdateGSheets();
 
     expect(batchUpdateCount()).toBe(1);
@@ -1098,8 +1098,8 @@ describe("SpreadsheetRaw add sheet and add Table", () => {
     stubSheetsService();
 
     const raw = SpreadsheetRaw.init();
-    raw.gatherAddSheetRequest(addSheetProps);
-    raw.gatherAddTableRequest(addTableProps);
+    raw.gatherAddSheetOperation(addSheetProps);
+    raw.gatherAddTableOperation(addTableProps);
 
     expect(raw.writeOperations.addSheet).toEqual([
       { kind: "addSheet", ...addSheetProps },
@@ -1113,8 +1113,8 @@ describe("SpreadsheetRaw add sheet and add Table", () => {
     stubSheetsService();
 
     const raw = SpreadsheetRaw.init();
-    raw.gatherAddSheetRequest(addSheetProps);
-    raw.gatherAddTableRequest(addTableProps);
+    raw.gatherAddSheetOperation(addSheetProps);
+    raw.gatherAddTableOperation(addTableProps);
     raw.batchUpdateGSheets();
 
     expect(raw.writeOperations.addSheet).toEqual([]);
@@ -1141,7 +1141,7 @@ describe("SpreadsheetRaw add sheet and add Table", () => {
 
     const raw = SpreadsheetRaw.init();
 
-    expect(() => raw.gatherAddedSheetCellRequest(seededCell)).toThrow(
+    expect(() => raw.gatherAddedSheetFillCellOperation(seededCell)).toThrow(
       "Added-sheet cell write refused: no addSheet for GID 555 is queued in this flush.",
     );
     expect(raw.writeOperations.fillCell).toEqual([]);
@@ -1151,10 +1151,10 @@ describe("SpreadsheetRaw add sheet and add Table", () => {
     stubSheetsService();
 
     const raw = SpreadsheetRaw.init();
-    raw.gatherAddSheetRequest(addSheetProps);
+    raw.gatherAddSheetOperation(addSheetProps);
     raw.batchUpdateGSheets();
 
-    expect(() => raw.gatherAddedSheetCellRequest(seededCell)).toThrow(
+    expect(() => raw.gatherAddedSheetFillCellOperation(seededCell)).toThrow(
       "no addSheet for GID 555",
     );
   });
@@ -1165,8 +1165,11 @@ describe("SpreadsheetRaw add sheet and add Table", () => {
     const { grid } = stubSheetsService();
 
     const raw = SpreadsheetRaw.init();
-    raw.gatherAddSheetRequest(addSheetProps);
-    raw.gatherAddedSheetCellRequest({ ...seededPosition, formula: "=ROW()" });
+    raw.gatherAddSheetOperation(addSheetProps);
+    raw.gatherAddedSheetFillCellOperation({
+      ...seededPosition,
+      formula: "=ROW()",
+    });
     raw.batchUpdateGSheets();
 
     expect(grid.sheet(555).cell(3, 1)).toEqual(formulaCell("=ROW()"));
@@ -1176,10 +1179,13 @@ describe("SpreadsheetRaw add sheet and add Table", () => {
     stubSheetsService();
 
     const raw = SpreadsheetRaw.init();
-    raw.gatherAddSheetRequest(addSheetProps);
+    raw.gatherAddSheetOperation(addSheetProps);
 
     expect(() =>
-      raw.gatherAddedSheetCellRequest({ ...seededPosition, formula: "ROW()" }),
+      raw.gatherAddedSheetFillCellOperation({
+        ...seededPosition,
+        formula: "ROW()",
+      }),
     ).toThrow('Formula must start with "="');
   });
 
@@ -1187,9 +1193,9 @@ describe("SpreadsheetRaw add sheet and add Table", () => {
     const { batchUpdateCount, grid } = stubSheetsService();
 
     const raw = SpreadsheetRaw.init();
-    raw.gatherAddSheetRequest(addSheetProps);
-    raw.gatherAddTableRequest(addTableProps);
-    raw.gatherAddedSheetCellRequest(seededCell);
+    raw.gatherAddSheetOperation(addSheetProps);
+    raw.gatherAddTableOperation(addTableProps);
+    raw.gatherAddedSheetFillCellOperation(seededCell);
     raw.batchUpdateGSheets();
 
     expect(batchUpdateCount()).toBe(1);
@@ -1203,7 +1209,7 @@ describe("SpreadsheetRaw add sheet and add Table", () => {
     const raw = SpreadsheetRaw.init();
 
     expect(() =>
-      raw.gatherAddedSheetCheckboxValidationRequest(checkboxRange),
+      raw.gatherAddedSheetCheckboxValidationOperation(checkboxRange),
     ).toThrowError(
       "Added-sheet checkbox validation refused: no addSheet for GID 555 is queued in this flush.",
     );
@@ -1214,10 +1220,10 @@ describe("SpreadsheetRaw add sheet and add Table", () => {
     const { batchUpdateCount, grid } = stubSheetsService();
 
     const raw = SpreadsheetRaw.init();
-    raw.gatherAddSheetRequest(addSheetProps);
-    raw.gatherAddedSheetCheckboxValidationRequest(checkboxRange);
-    raw.gatherAddTableRequest(addTableProps);
-    raw.gatherAddedSheetCellRequest({ ...seededCell, value: false });
+    raw.gatherAddSheetOperation(addSheetProps);
+    raw.gatherAddedSheetCheckboxValidationOperation(checkboxRange);
+    raw.gatherAddTableOperation(addTableProps);
+    raw.gatherAddedSheetFillCellOperation({ ...seededCell, value: false });
     raw.batchUpdateGSheets();
 
     expect(batchUpdateCount()).toBe(1);
@@ -1232,8 +1238,8 @@ describe("SpreadsheetRaw add sheet and add Table", () => {
     const { batchUpdateCount } = stubSheetsService();
 
     const raw = SpreadsheetRaw.init();
-    raw.gatherAddSheetRequest(addSheetProps);
-    raw.gatherAddedSheetCellRequest(seededCell);
+    raw.gatherAddSheetOperation(addSheetProps);
+    raw.gatherAddedSheetFillCellOperation(seededCell);
     raw.discardQueuedChanges();
     raw.batchUpdateGSheets();
 
@@ -1997,7 +2003,7 @@ describe("SpreadsheetRaw.discardQueuedChanges", () => {
       colIdxToSortBy: 0,
       sortOrder: "ASCENDING",
     });
-    raw.gatherRawRequest(
+    raw.gatherRawOperation(
       googleRawRequest({ updateTable: { table: { tableId: "t" } } }),
     );
     raw.discardQueuedChanges();
@@ -2689,9 +2695,9 @@ describe("Raw value types", () => {
         boolean | ""
       >
     >(true);
-    assertType<
-      IsExactly<RowCellChange["backgroundColor"], RgbColor | undefined>
-    >(true);
+    assertType<IsExactly<CellFill["backgroundColor"], RgbColor | undefined>>(
+      true,
+    );
   });
 });
 
@@ -3090,7 +3096,7 @@ describe("ColumnMetaRaw.updateColumnType", () => {
   it("fake: a columnProperties update replaces the whole list, so a column left out loses its type", () => {
     stubTypedTable();
     const raw = fetchedRaw();
-    raw.gatherRawRequest(
+    raw.gatherRawOperation(
       googleRawRequest({
         updateTable: {
           table: {
@@ -3117,7 +3123,7 @@ describe("ColumnMetaRaw.updateColumnType", () => {
   it("fake: rejects a columnProperties update carrying a column with no columnName", () => {
     stubTypedTable();
     const raw = fetchedRaw();
-    raw.gatherRawRequest(
+    raw.gatherRawOperation(
       googleRawRequest({
         updateTable: {
           table: {

@@ -1,10 +1,10 @@
 import type {
-  RowChangesToSave,
-  SheetChangesToSave,
+  RowWrites,
   SheetFetchQueueRaw,
   SheetStateRaw,
   SheetWorkingStateRaw,
   SheetWriteQueueRaw,
+  SheetWrites,
   SpreadsheetFetchQueueRaw,
   SpreadsheetWriteQueueRaw,
   WriteOperations,
@@ -40,15 +40,15 @@ export const emptyStateRaw = {
   spreadsheetWriteQueue(): SpreadsheetWriteQueueRaw {
     return { operations: emptyStateRaw.writeOperations() };
   },
-  sheetChanges(): SheetChangesToSave {
-    return { sort: undefined, tableEndColumnInsertCount: 0, fills: [] };
+  sheetWrites(): SheetWrites {
+    return { sort: undefined, insertTableEndColumnCount: 0, fillColumns: [] };
   },
-  rowChanges(): RowChangesToSave {
-    return { append: false, delete: false, update: new Map() };
+  rowWrites(): RowWrites {
+    return { appendRow: false, deleteRow: false, fillCells: new Map() };
   },
   sheetWriteQueue(): SheetWriteQueueRaw {
     return {
-      sheet: emptyStateRaw.sheetChanges(),
+      sheet: emptyStateRaw.sheetWrites(),
       rows: new Map(),
       reservedRowIndexes: new Set(),
     };

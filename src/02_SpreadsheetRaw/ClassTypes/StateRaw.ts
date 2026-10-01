@@ -96,8 +96,8 @@ export interface SheetFinalizeQueueRaw {
 }
 
 export interface SheetWriteQueueRaw {
-  sheet: SheetChangesToSave;
-  rows: Map<RowIndex, RowChangesToSave>;
+  sheet: SheetWrites;
+  rows: Map<RowIndex, RowWrites>;
   // A row an append has handed out, so a second append can't reuse it.
   reservedRowIndexes: Set<RowIndex>;
 }
@@ -148,14 +148,14 @@ export interface SortParameters {
   sortOrder: "ASCENDING" | "DESCENDING";
 }
 
-export interface RowChangesToSave {
-  append: boolean;
-  delete: boolean;
+export interface RowWrites {
+  appendRow: boolean;
+  deleteRow: boolean;
   // Values, not indexes, so a queued write never depends on fetched row state.
-  update: Map<ColIndex, RowCellChange>;
+  fillCells: Map<ColIndex, CellFill>;
 }
 // One entry per cell, merged across writes, so a colour never cancels a value or a formula.
-export interface RowCellChange<VN extends CellValueName = CellValueName> {
+export interface CellFill<VN extends CellValueName = CellValueName> {
   value?: CellValue<VN>;
   formula?: string;
   backgroundColor?: RgbColor;
@@ -166,20 +166,20 @@ export interface TableEndColumnUniformCells {
   header: string;
   colGroupName?: string;
 }
-export interface SheetChangesToSave {
+export interface SheetWrites {
   sort: SortParameters | undefined;
-  tableEndColumnInsertCount: number;
-  fills: ColumnFill[];
+  insertTableEndColumnCount: number;
+  fillColumns: ColumnFill[];
 }
 // One contiguous run of a column's cells: value/colour as repeatCell, formula as pasteData.
-export interface ColumnFill extends RowCellChange {
+export interface ColumnFill extends CellFill {
   colIndex: ColIndex;
   startRowIndex: number;
   // Snapshotted when queued, so a fill never reaches a row appended after it.
   endRowIndex: number;
 }
 
-export interface SheetChangeSortProps extends SortParameters {
+export interface SheetWriteSortProps extends SortParameters {
   action: "sort";
 }
 
@@ -194,21 +194,21 @@ export type AddedSheetCell = Required<
 > &
   ({ value: CellValue } | { formula: string });
 
-export interface SheetChangePropsObj {
-  sort: SheetChangeSortProps;
+export interface SheetWritePropsObj {
+  sort: SheetWriteSortProps;
   insertTableEndColumn: { action: "insertTableEndColumn" };
-  fill: { action: "fill" } & ColumnFill;
+  fillColumn: { action: "fillColumn" } & ColumnFill;
 }
-export type SheetChangeProps = SheetChangePropsObj[keyof SheetChangePropsObj];
+export type SheetWriteProps = SheetWritePropsObj[keyof SheetWritePropsObj];
 
-export type RowChangeUpdateProps = {
-  action: "update";
+export type RowWriteFillCellProps = {
+  action: "fillCell";
   colIndex: ColIndex;
 } & (
   { value: CellValue } | { formula: string } | { backgroundColor: RgbColor }
 );
-export type RowChangeProps =
-  { action: "append" | "delete" } | RowChangeUpdateProps;
+export type RowWriteProps =
+  { action: "appendRow" | "deleteRow" } | RowWriteFillCellProps;
 
 export type ColumnSpecifierRaw = ColIndex[] | "allColumns";
 export type ColumnCount = number | "allFromStart";

@@ -163,8 +163,8 @@ export class SheetRaw extends SheetCommonRaw {
   }
   private _queuedRowDeleteCount(): number {
     let count = 0;
-    this.sheetState.writeQueue.rows.forEach((change) => {
-      if (change.delete) count++;
+    this.sheetState.writeQueue.rows.forEach((writes) => {
+      if (writes.deleteRow) count++;
     });
     return count;
   }
@@ -429,14 +429,14 @@ export class SheetRaw extends SheetCommonRaw {
     }
   }
   requestSortGSheet({ colIdxToSortBy, sortOrder }: SortParameters): void {
-    this.addSheetChangeToSave({
+    this.queueSheetWrite({
       action: "sort",
       colIdxToSortBy,
       sortOrder,
     });
   }
   // Value/colour fills stay one repeatCell; a formula fill is pasteData so Sheets parses it.
-  gatherFillRequest({
+  gatherFillColumnOperation({
     colIndex,
     startRowIndex,
     endRowIndex,
@@ -462,7 +462,7 @@ export class SheetRaw extends SheetCommonRaw {
     });
     return this;
   }
-  gatherInsertTableEndColumnRequests(insertCount: number): void {
+  gatherInsertTableEndColumnOperations(insertCount: number): void {
     Array.from({ length: insertCount }).forEach(() => {
       this.writeOperations.insertTableEndColumn.push({
         kind: "insertTableEndColumn",
@@ -472,7 +472,7 @@ export class SheetRaw extends SheetCommonRaw {
       this.activeTable.growEndColumnIndex();
     });
   }
-  gatherColumnTypesRequest(ops: SetTableColumnTypeOperation[]): void {
+  gatherSetTableColumnTypeOperation(ops: SetTableColumnTypeOperation[]): void {
     this._assertColumnTypesUpdateAllowed(ops);
     this.writeOperations.setTableColumnProperties.push({
       kind: "setTableColumnProperties",
@@ -553,7 +553,7 @@ export class SheetRaw extends SheetCommonRaw {
   private _tableLabel(tableId: string): string {
     return `Table ${tableId} on "${this.title}"`;
   }
-  gatherSortRequest({ colIdxToSortBy, sortOrder }: SortParameters): void {
+  gatherSortOperation({ colIdxToSortBy, sortOrder }: SortParameters): void {
     this.writeOperations.sort.push({
       kind: "sort",
       sheetId: this.sheetGid,

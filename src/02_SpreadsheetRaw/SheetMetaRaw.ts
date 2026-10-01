@@ -110,9 +110,8 @@ export class SheetMetaRaw extends SheetCommonRaw {
   // Past the inserts already queued, since each lands at the Table end as it stands then.
   insertColumnAtEnd(uniformCells: TableEndColumnUniformCells): number {
     const colIndex =
-      this.activeTable.endColumnIndex +
-      this.changesToSave.tableEndColumnInsertCount;
-    this.addSheetChangeToSave({ action: "insertTableEndColumn" });
+      this.activeTable.endColumnIndex + this.writes.insertTableEndColumnCount;
+    this.queueSheetWrite({ action: "insertTableEndColumn" });
     this.column(colIndex).initUniformCells(uniformCells);
     return colIndex;
   }

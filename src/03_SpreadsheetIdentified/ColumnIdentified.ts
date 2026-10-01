@@ -16,8 +16,8 @@ import {
   type VnToCvn,
 } from "../01_SpreadsheetSchema/valueSchemas";
 import type {
+  CellFill,
   FindReplaceTerms,
-  RowCellChange,
 } from "../02_SpreadsheetRaw/ClassTypes/StateRaw";
 import { ColumnRaw } from "../02_SpreadsheetRaw/ColumnRaw";
 import { CellIdentified } from "./CellIdentified";
@@ -190,7 +190,7 @@ export class ColumnIdentified<
   private _rawChange({
     value,
     ...rest
-  }: CellChange<VN>): RowCellChange<VnToCvn<VN>> {
+  }: CellChange<VN>): CellFill<VnToCvn<VN>> {
     if (value === undefined) return rest;
     this.schema.validateDataNotFormula();
     return { ...rest, value: toWireValue(value) };

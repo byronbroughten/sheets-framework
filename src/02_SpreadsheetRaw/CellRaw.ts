@@ -18,7 +18,7 @@ import type {
 import type { RgbColor } from "../00_Source/RawSource/RgbColor";
 import { CellBaseRaw } from "./ClassBases/CellBaseRaw";
 import type { RowCommonRaw } from "./ClassBases/RowCommonRaw";
-import type { RowCellChange } from "./ClassTypes/StateRaw";
+import type { CellFill } from "./ClassTypes/StateRaw";
 import { SheetRaw } from "./SheetRaw";
 
 export class CellRaw<
@@ -49,15 +49,15 @@ export class CellRaw<
     this.sheetState.fetchQueue.toFinalize.cells.set(this.rowIndex, colIndexes);
     return this;
   }
-  gatherUpdateRequest(change: RowCellChange): void {
-    const { formula, ...cellDataChange } = change;
-    assertValueAndFormulaExclusive(cellDataChange.value, formula);
+  gatherFillCellOperation(cellFill: CellFill): void {
+    const { formula, ...cellData } = cellFill;
+    assertValueAndFormulaExclusive(cellData.value, formula);
     this.writeOperations.fillCell.push({
       kind: "fillCell",
       sheetId: this.sheetGid,
       rowIndex: this.rowIndex,
       colIndex: this.colIndex,
-      ...cellDataChange,
+      ...cellData,
       ...(formula !== undefined ? { formula } : {}),
     });
   }
@@ -105,8 +105,8 @@ export class CellRaw<
     if (this.row.rowIsActive()) {
       this.setValueState(value);
     }
-    this.row.addRowChangeToSave({
-      action: "update",
+    this.row.queueRowWrite({
+      action: "fillCell",
       colIndex: this.colIndex,
       value,
     });
@@ -117,8 +117,8 @@ export class CellRaw<
     this.sheet.activeTable.assertRowIndexesNotStale();
     validateFormulaString(formula);
     this.row.validateIsWritable();
-    this.row.addRowChangeToSave({
-      action: "update",
+    this.row.queueRowWrite({
+      action: "fillCell",
       colIndex: this.colIndex,
       formula,
     });
@@ -128,8 +128,8 @@ export class CellRaw<
   updateBackgroundColor(backgroundColor: RgbColor): this {
     this.sheet.activeTable.assertRowIndexesNotStale();
     this.row.validateIsWritable();
-    this.row.addRowChangeToSave({
-      action: "update",
+    this.row.queueRowWrite({
+      action: "fillCell",
       colIndex: this.colIndex,
       backgroundColor,
     });
@@ -173,14 +173,14 @@ export class CellRaw<
   }
   // A fill erases the cell writes queued before it, so a cell's own value is the latest.
   private _queuedValue(): CellValue | "" | undefined {
-    const rowChange = this.sheetState.writeQueue.rows.get(this.rowIndex);
-    if (rowChange !== undefined) {
-      const cellChange = rowChange.update.get(this.colIndex);
-      if (cellChange?.value !== undefined) return cellChange.value;
+    const rowWrites = this.sheetState.writeQueue.rows.get(this.rowIndex);
+    if (rowWrites !== undefined) {
+      const cellFill = rowWrites.fillCells.get(this.colIndex);
+      if (cellFill?.value !== undefined) return cellFill.value;
     }
-    const fills = this.sheetState.writeQueue.sheet.fills;
-    for (let i = fills.length - 1; i >= 0; i--) {
-      const fill = fills[i];
+    const fillColumns = this.sheetState.writeQueue.sheet.fillColumns;
+    for (let i = fillColumns.length - 1; i >= 0; i--) {
+      const fill = fillColumns[i];
       if (fill === undefined || fill.value === undefined) continue;
       if (fill.colIndex !== this.colIndex) continue;
       if (

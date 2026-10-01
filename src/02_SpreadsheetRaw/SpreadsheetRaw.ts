@@ -80,23 +80,23 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
     this.flusher.flush();
   }
   // Queued on the spreadsheet: a tab that does not exist yet has no sheet state to hold it.
-  gatherAddSheetRequest(props: Omit<AddSheetOperation, "kind">): this {
+  gatherAddSheetOperation(props: Omit<AddSheetOperation, "kind">): this {
     this.writeOperations.addSheet.push({ kind: "addSheet", ...props });
     return this;
   }
-  gatherAddTableRequest(props: Omit<AddTableOperation, "kind">): this {
+  gatherAddTableOperation(props: Omit<AddTableOperation, "kind">): this {
     this.writeOperations.addTable.push({ kind: "addTable", ...props });
     return this;
   }
   // A seeded value on a tab this flush adds; an existing tab writes through CellRaw.
-  gatherAddedSheetCellRequest(props: AddedSheetCell): this {
+  gatherAddedSheetFillCellOperation(props: AddedSheetCell): this {
     this._validateAddSheetQueued(props.sheetId, "cell write");
     if ("formula" in props) validateFormulaString(props.formula);
     this.writeOperations.fillCell.push({ kind: "fillCell", ...props });
     return this;
   }
   // A checkbox on a tab this flush adds; an existing tab goes through CellRaw.
-  gatherAddedSheetCheckboxValidationRequest(range: BoundedGridRange): this {
+  gatherAddedSheetCheckboxValidationOperation(range: BoundedGridRange): this {
     this._validateAddSheetQueued(range.sheetId, "checkbox validation");
     this.writeOperations.addCheckboxValidation.push({
       kind: "addCheckboxValidation",
@@ -114,7 +114,7 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
     return this;
   }
   // The one bypass of the type layer; using it obliges filing an issue (docs/architecture/raw-request-opening.md).
-  gatherRawRequest(request: OpaqueRawRequest): this {
+  gatherRawOperation(request: OpaqueRawRequest): this {
     this.writeOperations.raw.push({ kind: "raw", request });
     return this;
   }
