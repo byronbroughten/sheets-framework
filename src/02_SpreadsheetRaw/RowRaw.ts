@@ -32,7 +32,7 @@ export class RowRaw extends RowCommonRaw {
     this.sheet.activeTable.assertRowIndexesNotStale();
     this.validateSheetKeepsADataRow();
     this.remove();
-    this.addRowChangeToSave({ action: "delete" });
+    this.queueRowWrite({ action: "deleteRow" });
     // this.activeTable.endRowIndex--;
     // TODO: technically, there should should be activeTable and workingTable; active table gets updated only at the update flush. workingTable gets updated immediately.
   }
@@ -43,7 +43,7 @@ export class RowRaw extends RowCommonRaw {
       );
     }
     this.sheetState.working.rowStates.set(this.rowIndex, new Map());
-    this.addRowChangeToSave({ action: "append" });
+    this.queueRowWrite({ action: "appendRow" });
     this.sheet.activeTable.growEndRowIndex();
     return this;
   }

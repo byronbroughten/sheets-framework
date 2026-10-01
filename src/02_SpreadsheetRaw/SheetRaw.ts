@@ -27,9 +27,9 @@ import { SheetCommonRaw } from "./ClassBases/SheetCommonRaw";
 import {
   type ColumnFill,
   type FindReplaceTerms,
+  type SetTableColumnTypeOperation,
   type SortParameters,
   type TableIdentityRaw,
-  type UpdateTableColumnTypeOperation,
 } from "./ClassTypes/StateRaw";
 import { ColumnRaw } from "./ColumnRaw";
 import { RowRaw } from "./RowRaw";
@@ -96,8 +96,8 @@ export class SheetRaw extends SheetCommonRaw {
     return this.sheetState.working.title;
   }
   updateTitle(title: string): this {
-    this.updateRequests.updateSheetTitle.push({
-      kind: "updateSheetTitle",
+    this.writeOperations.renameSheet.push({
+      kind: "renameSheet",
       sheetId: this.sheetGid,
       title,
     });
@@ -109,8 +109,8 @@ export class SheetRaw extends SheetCommonRaw {
   }
   updateTableName(name: string): this {
     const tableId = this.activeTable.tableId;
-    this.updateRequests.updateTableName.push({
-      kind: "updateTableName",
+    this.writeOperations.renameTable.push({
+      kind: "renameTable",
       tableId,
       name,
     });
@@ -163,8 +163,8 @@ export class SheetRaw extends SheetCommonRaw {
   }
   private _queuedRowDeleteCount(): number {
     let count = 0;
-    this.sheetState.writeQueue.rows.forEach((change) => {
-      if (change.delete) count++;
+    this.sheetState.writeQueue.rows.forEach((writes) => {
+      if (writes.deleteRow) count++;
     });
     return count;
   }
@@ -429,14 +429,14 @@ export class SheetRaw extends SheetCommonRaw {
     }
   }
   requestSortGSheet({ colIdxToSortBy, sortOrder }: SortParameters): void {
-    this.addSheetChangeToSave({
+    this.queueSheetWrite({
       action: "sort",
       colIdxToSortBy,
       sortOrder,
     });
   }
   // Value/colour fills stay one repeatCell; a formula fill is pasteData so Sheets parses it.
-  gatherFillRequest({
+  gatherFillColumnOperation({
     colIndex,
     startRowIndex,
     endRowIndex,
@@ -444,8 +444,8 @@ export class SheetRaw extends SheetCommonRaw {
     ...change
   }: ColumnFill): void {
     assertValueAndFormulaExclusive(change.value, formula);
-    this.updateRequests.fill.push({
-      kind: "fill",
+    this.writeOperations.fillColumn.push({
+      kind: "fillColumn",
       sheetId: this.sheetGid,
       colIndex,
       startRowIndex,
@@ -456,15 +456,15 @@ export class SheetRaw extends SheetCommonRaw {
   }
   addCheckboxValidationAt(range: BoundedGridRange): this {
     this.activeTable.assertRowIndexesNotStale();
-    this.updateRequests.addCheckboxValidation.push({
+    this.writeOperations.addCheckboxValidation.push({
       kind: "addCheckboxValidation",
       range,
     });
     return this;
   }
-  gatherInsertTableEndColumnRequests(insertCount: number): void {
+  gatherInsertTableEndColumnOperations(insertCount: number): void {
     Array.from({ length: insertCount }).forEach(() => {
-      this.updateRequests.insertTableEndColumn.push({
+      this.writeOperations.insertTableEndColumn.push({
         kind: "insertTableEndColumn",
         sheetId: this.sheetGid,
         startColumnIndex: this.activeTable.endColumnIndex,
@@ -472,10 +472,12 @@ export class SheetRaw extends SheetCommonRaw {
       this.activeTable.growEndColumnIndex();
     });
   }
-  gatherColumnTypesRequest(ops: UpdateTableColumnTypeOperation[]): void {
+  gatherSetTableColumnPropertiesOperation(
+    ops: SetTableColumnTypeOperation[],
+  ): void {
     this._assertColumnTypesUpdateAllowed(ops);
-    this.updateRequests.updateTableColumnProperties.push({
-      kind: "updateTableColumnProperties",
+    this.writeOperations.setTableColumnProperties.push({
+      kind: "setTableColumnProperties",
       tableId: this.activeTable.tableId,
       columnProperties: this._columnTypesColumnProperties(ops),
     });
@@ -484,7 +486,7 @@ export class SheetRaw extends SheetCommonRaw {
     this.activeTable.markColumnPropertiesStale();
   }
   private _assertColumnTypesUpdateAllowed(
-    ops: UpdateTableColumnTypeOperation[],
+    ops: SetTableColumnTypeOperation[],
   ): void {
     const tableId = Val.assert(ops[0], "queued column type").tableId;
     const tableLabel = this._tableLabel(tableId);
@@ -502,7 +504,7 @@ export class SheetRaw extends SheetCommonRaw {
       );
     }
     if (
-      this.updateRequests.insertTableEndColumn.some(
+      this.writeOperations.insertTableEndColumn.some(
         ({ sheetId }) => sheetId === this.sheetGid,
       )
     ) {
@@ -530,7 +532,7 @@ export class SheetRaw extends SheetCommonRaw {
   }
   // Full list, since a partial columnProperties replaces the rest.
   private _columnTypesColumnProperties(
-    ops: UpdateTableColumnTypeOperation[],
+    ops: SetTableColumnTypeOperation[],
   ): TableColumnPropertiesUpdate[] {
     const typeByIndex = new Map<number, string>(
       ops.map((operation) => [operation.columnIndex, operation.columnType]),
@@ -553,8 +555,8 @@ export class SheetRaw extends SheetCommonRaw {
   private _tableLabel(tableId: string): string {
     return `Table ${tableId} on "${this.title}"`;
   }
-  gatherSortRequest({ colIdxToSortBy, sortOrder }: SortParameters): void {
-    this.updateRequests.sort.push({
+  gatherSortOperation({ colIdxToSortBy, sortOrder }: SortParameters): void {
+    this.writeOperations.sort.push({
       kind: "sort",
       sheetId: this.sheetGid,
       startRowIndex: this.schema.topDataRowIdx,

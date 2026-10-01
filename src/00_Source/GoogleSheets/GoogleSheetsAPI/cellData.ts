@@ -1,8 +1,8 @@
 import { Obj } from "../../../utils/Obj";
 import type { CellValue } from "../../CellValues/cellValues";
 import type {
-  FillOperation,
-  UpdateCellOperation,
+  FillCellOperation,
+  FillColumnOperation,
 } from "../../RawSource/RawSource";
 import type { RgbColor } from "../../RawSource/RgbColor";
 import type { ModeledRequest } from "../GoogleSheetsAPI";
@@ -21,7 +21,7 @@ interface CellDataChange {
 }
 
 export const cellDataRequests = {
-  fill(operation: FillOperation): ModeledRequest[] {
+  fillColumn(operation: FillColumnOperation): ModeledRequest[] {
     return formulaAndCellDataRequests(
       operation,
       {
@@ -45,7 +45,7 @@ export const cellDataRequests = {
       }),
     );
   },
-  updateCell(operation: UpdateCellOperation): ModeledRequest[] {
+  fillCell(operation: FillCellOperation): ModeledRequest[] {
     return formulaAndCellDataRequests(
       operation,
       {

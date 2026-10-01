@@ -114,7 +114,7 @@ describe("GoogleSheetsAPI write mapping", () => {
       },
       { kind: "insertTableEndColumn", sheetId: 111, startColumnIndex: 3 },
       {
-        kind: "fill",
+        kind: "fillColumn",
         sheetId: 111,
         colIndex: 2,
         startRowIndex: 4,
@@ -123,7 +123,7 @@ describe("GoogleSheetsAPI write mapping", () => {
         backgroundColor: lightGreen,
       },
       {
-        kind: "fill",
+        kind: "fillColumn",
         sheetId: 111,
         colIndex: 2,
         startRowIndex: 4,
@@ -131,14 +131,14 @@ describe("GoogleSheetsAPI write mapping", () => {
         formula: "=A4",
       },
       {
-        kind: "updateCell",
+        kind: "fillCell",
         sheetId: 111,
         rowIndex: 5,
         colIndex: 2,
         value: "y",
       },
       {
-        kind: "updateCell",
+        kind: "fillCell",
         sheetId: 111,
         rowIndex: 5,
         colIndex: 2,
@@ -178,13 +178,13 @@ describe("GoogleSheetsAPI write mapping", () => {
       },
       { kind: "deleteProtectedRange", sheetId: 111, protectedRangeId: 7 },
       {
-        kind: "updateSheetTitle",
+        kind: "renameSheet",
         sheetId: 111,
         title: "Spreadsheet Config",
       },
-      { kind: "updateTableName", tableId: "tbl", name: "spreadsheetConfig" },
+      { kind: "renameTable", tableId: "tbl", name: "spreadsheetConfig" },
       {
-        kind: "updateTableColumnProperties",
+        kind: "setTableColumnProperties",
         tableId: "tbl",
         columnProperties: [
           {
@@ -517,7 +517,7 @@ describe("GoogleSheetsAPI write mapping", () => {
 
     api.flush([
       {
-        kind: "updateCell",
+        kind: "fillCell",
         sheetId: 111,
         rowIndex: 1,
         colIndex: 0,
@@ -1372,7 +1372,7 @@ describe("GoogleSheetsAPI colour mapping", () => {
 
     api.flush([
       {
-        kind: "updateCell",
+        kind: "fillCell",
         sheetId: 1,
         rowIndex: 0,
         colIndex: 0,
@@ -1472,7 +1472,7 @@ describe("GoogleSheetsAPI HTTP transport", () => {
 
     api.flush([
       {
-        kind: "updateCell",
+        kind: "fillCell",
         sheetId: 111,
         rowIndex: 5,
         colIndex: 2,
@@ -1491,7 +1491,7 @@ describe("GoogleSheetsAPI HTTP transport", () => {
 
     api.flush([
       {
-        kind: "updateCell",
+        kind: "fillCell",
         sheetId: 111,
         rowIndex: 5,
         colIndex: 2,
@@ -1526,7 +1526,7 @@ describe("GoogleSheetsAPI spreadsheet binding", () => {
     });
     api.flush([
       {
-        kind: "updateCell",
+        kind: "fillCell",
         sheetId: 111,
         rowIndex: 5,
         colIndex: 2,

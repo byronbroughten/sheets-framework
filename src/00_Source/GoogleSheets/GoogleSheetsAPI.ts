@@ -318,10 +318,10 @@ function modeledOperationToGoogleRequests(
           },
         },
       ];
-    case "fill":
-      return cellDataRequests.fill(operation);
-    case "updateCell":
-      return cellDataRequests.updateCell(operation);
+    case "fillColumn":
+      return cellDataRequests.fillColumn(operation);
+    case "fillCell":
+      return cellDataRequests.fillCell(operation);
     case "findReplace":
       return [
         {
@@ -432,7 +432,7 @@ function modeledOperationToGoogleRequests(
           },
         },
       ];
-    case "updateSheetTitle":
+    case "renameSheet":
       return [
         {
           updateSheetProperties: {
@@ -444,7 +444,7 @@ function modeledOperationToGoogleRequests(
           },
         },
       ];
-    case "updateTableName":
+    case "renameTable":
       return [
         {
           updateTable: {
@@ -456,7 +456,7 @@ function modeledOperationToGoogleRequests(
           },
         },
       ];
-    case "updateTableColumnProperties":
+    case "setTableColumnProperties":
       return [
         {
           updateTable: {

@@ -1,35 +1,35 @@
 import type {
-  RowChangesToSave,
-  SheetChangesToSave,
+  RowWrites,
   SheetFetchQueueRaw,
   SheetStateRaw,
   SheetWorkingStateRaw,
   SheetWriteQueueRaw,
+  SheetWrites,
   SpreadsheetFetchQueueRaw,
   SpreadsheetWriteQueueRaw,
-  UpdateRequests,
+  WriteOperations,
 } from "./StateRaw";
 
 export const emptyStateRaw = {
-  updateRequests(): UpdateRequests {
+  writeOperations(): WriteOperations {
     return {
       addSheet: [],
       addTable: [],
-      append: [],
-      update: [],
-      delete: [],
+      appendRows: [],
+      fillCell: [],
+      deleteRows: [],
       sort: [],
       insertTableEndColumn: [],
-      fill: [],
+      fillColumn: [],
       findReplace: [],
-      deleteConditionalFormat: [],
-      addConditionalFormat: [],
+      deleteConditionalFormatRule: [],
+      addConditionalFormatRule: [],
       deleteProtectedRange: [],
       addProtectedRange: [],
-      updateSheetTitle: [],
-      updateTableName: [],
-      updateTableColumnType: [],
-      updateTableColumnProperties: [],
+      renameSheet: [],
+      renameTable: [],
+      setTableColumnType: [],
+      setTableColumnProperties: [],
       addCheckboxValidation: [],
       raw: [],
     };
@@ -38,17 +38,17 @@ export const emptyStateRaw = {
     return { gridRanges: [] };
   },
   spreadsheetWriteQueue(): SpreadsheetWriteQueueRaw {
-    return { updateRequests: emptyStateRaw.updateRequests() };
+    return { operations: emptyStateRaw.writeOperations() };
   },
-  sheetChanges(): SheetChangesToSave {
-    return { sort: undefined, tableEndColumnInsertCount: 0, fills: [] };
+  sheetWrites(): SheetWrites {
+    return { sort: undefined, insertTableEndColumnCount: 0, fillColumns: [] };
   },
-  rowChanges(): RowChangesToSave {
-    return { append: false, delete: false, update: new Map() };
+  rowWrites(): RowWrites {
+    return { appendRow: false, deleteRow: false, fillCells: new Map() };
   },
   sheetWriteQueue(): SheetWriteQueueRaw {
     return {
-      sheet: emptyStateRaw.sheetChanges(),
+      sheet: emptyStateRaw.sheetWrites(),
       rows: new Map(),
       reservedRowIndexes: new Set(),
     };

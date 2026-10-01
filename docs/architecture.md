@@ -5,7 +5,7 @@ Map fragments, one file per heading. Open the file the task needs.
 | When | File |
 | --- | --- |
 | Chore homes, no registry, not tested | [chores.md](./architecture/chores.md) |
-| `gatherRawRequest` | [raw-request-opening.md](./architecture/raw-request-opening.md) |
+| `gatherRawOperation` | [raw-request-opening.md](./architecture/raw-request-opening.md) |
 | Conditional format rules (order, prepend, identity, anchored formulas) | [conditional-format-rules.md](./architecture/conditional-format-rules.md) |
 | Edit protections (edit warnings, edit locks, identity, stale refetch) | [edit-protections.md](./architecture/edit-protections.md) |
 | Queuing a write, flush order, stale indexes, fills, formula writes, `findReplace`, discarding | [queued-writes.md](./architecture/queued-writes.md) |

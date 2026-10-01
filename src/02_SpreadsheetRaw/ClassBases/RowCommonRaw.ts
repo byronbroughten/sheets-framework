@@ -6,9 +6,9 @@ import { Obj } from "../../utils/Obj";
 import { CellRaw } from "../CellRaw";
 import { emptyStateRaw } from "../ClassTypes/emptyStateRaw";
 import type {
-  RowChangeProps,
-  RowChangesToSave,
-  RowChangeUpdateProps,
+  RowWriteFillCellProps,
+  RowWriteProps,
+  RowWrites,
 } from "../ClassTypes/StateRaw";
 import { SheetRaw } from "../SheetRaw";
 import { RowBaseRaw } from "./RowBaseRaw";
@@ -71,52 +71,52 @@ export abstract class RowCommonRaw extends RowBaseRaw {
     return this;
   }
   get isQueuedForDelete(): boolean {
-    return this.sheetState.writeQueue.rows.get(this.rowIndex)?.delete === true;
+    return (
+      this.sheetState.writeQueue.rows.get(this.rowIndex)?.deleteRow === true
+    );
   }
-  get changesToSave(): RowChangesToSave {
-    this._ensureChangesToSaveExists();
-    return this.sheetState.writeQueue.rows.get(
-      this.rowIndex,
-    ) as RowChangesToSave;
+  get writes(): RowWrites {
+    this._ensureWritesExist();
+    return this.sheetState.writeQueue.rows.get(this.rowIndex) as RowWrites;
   }
-  private _ensureChangesToSaveExists(): void {
-    const rowChanges = this.sheetState.writeQueue.rows;
-    if (!rowChanges.has(this.rowIndex)) {
-      rowChanges.set(this.rowIndex, emptyStateRaw.rowChanges());
+  private _ensureWritesExist(): void {
+    const rowWrites = this.sheetState.writeQueue.rows;
+    if (!rowWrites.has(this.rowIndex)) {
+      rowWrites.set(this.rowIndex, emptyStateRaw.rowWrites());
     }
   }
-  addRowChangeToSave(props: RowChangeProps): this {
-    const changes = this.changesToSave;
-    if (changes.delete) return this;
+  queueRowWrite(props: RowWriteProps): this {
+    const writes = this.writes;
+    if (writes.deleteRow) return this;
     const actions = {
-      append: (_: RowChangeProps) => (changes.append = true),
-      delete: (_: RowChangeProps) => (changes.delete = true),
-      update: (props: RowChangeProps) => {
-        const { colIndex, ...rest } = props as RowChangeUpdateProps;
+      appendRow: (_: RowWriteProps) => (writes.appendRow = true),
+      deleteRow: (_: RowWriteProps) => (writes.deleteRow = true),
+      fillCell: (props: RowWriteProps) => {
+        const { colIndex, ...rest } = props as RowWriteFillCellProps;
         const incoming = Obj.strictOmit(rest, "action");
         const merged = {
-          ...changes.update.get(colIndex),
+          ...writes.fillCells.get(colIndex),
           ...incoming,
         };
         if ("formula" in incoming) delete merged.value;
         if ("value" in incoming) delete merged.formula;
-        changes.update.set(colIndex, merged);
+        writes.fillCells.set(colIndex, merged);
       },
     };
     actions[props.action](props);
     return this;
   }
-  gatherAppendRequest(): void {
+  gatherAppendRowsOperation(): void {
     // One request per table: Sheets treats each appendCells as targeting the
     // same first free row, so N one-row requests only grow the table by one.
-    const existing = this.updateRequests.append.find(
+    const existing = this.writeOperations.appendRows.find(
       (operation) => operation.sheetId === this.sheetGid,
     );
     if (existing) {
       existing.emptyRowCount += 1;
       return;
     }
-    this.updateRequests.append.push({
+    this.writeOperations.appendRows.push({
       kind: "appendRows",
       sheetId: this.sheetGid,
       tableId: `${this.sheet.activeTable.tableId}`,

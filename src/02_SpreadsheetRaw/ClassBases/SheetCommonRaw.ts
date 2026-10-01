@@ -3,10 +3,10 @@ import { Obj } from "../../utils/Obj";
 import { ActiveTableRaw } from "../ActiveTableRaw";
 import type { SheetGridRangeProps } from "../ClassTypes/AccessorsRaw";
 import type {
+  CellFill,
   ColumnFill,
-  RowCellChange,
-  SheetChangeProps,
-  SheetChangesToSave,
+  SheetWriteProps,
+  SheetWrites,
 } from "../ClassTypes/StateRaw";
 import type { SpreadsheetRaw } from "../SpreadsheetRaw";
 import { SheetBaseRaw } from "./SheetBaseRaw";
@@ -35,7 +35,7 @@ export abstract class SheetCommonRaw extends SheetBaseRaw {
       this.activeTable.endColumnIndex,
     );
   }
-  get changesToSave(): SheetChangesToSave {
+  get writes(): SheetWrites {
     return this.sheetState.writeQueue.sheet;
   }
   // The table's own range, not the layout's: no table means no table columns.
@@ -55,54 +55,51 @@ export abstract class SheetCommonRaw extends SheetBaseRaw {
     props.forEach((props) => this.gatherFetchRange(props));
     return this;
   }
-  addSheetChangeToSave(props: SheetChangeProps): this {
-    const changes = this.changesToSave;
+  queueSheetWrite(props: SheetWriteProps): this {
+    const writes = this.writes;
     switch (props.action) {
       case "sort":
-        changes.sort = {
+        writes.sort = {
           colIdxToSortBy: props.colIdxToSortBy,
           sortOrder: props.sortOrder,
         };
         break;
       case "insertTableEndColumn":
-        changes.tableEndColumnInsertCount++;
+        writes.insertTableEndColumnCount++;
         break;
-      case "fill": {
+      case "fillColumn": {
         const fill = Obj.strictOmit(props, "action");
         this._eraseCellFieldsUnder(fill);
-        changes.fills.push(fill);
+        writes.fillColumns.push(fill);
         break;
       }
       default:
         throw new Error(
-          `Invalid action: ${(props as SheetChangeProps).action}. Must be one of "sort", "insertTableEndColumn" or "fill".`,
+          `Invalid action: ${(props as SheetWriteProps).action}. Must be one of "sort", "insertTableEndColumn" or "fillColumn".`,
         );
     }
     return this;
   }
-  // Fills are sent before per-cell updates, so a later fill wins by erasing what it covers.
+  // Column fills are sent before cell writes, so a later column fill wins by erasing what it covers.
   private _eraseCellFieldsUnder(fill: ColumnFill): void {
-    for (const [rowIndex, rowChange] of this.sheetState.writeQueue.rows) {
+    for (const [rowIndex, rowWrites] of this.sheetState.writeQueue.rows) {
       if (rowIndex < fill.startRowIndex || rowIndex >= fill.endRowIndex) {
         continue;
       }
-      const cellChange = rowChange.update.get(fill.colIndex);
-      if (cellChange === undefined) continue;
-      const fieldsLeft = cellFieldsLeftUnder(fill, cellChange);
+      const cellFill = rowWrites.fillCells.get(fill.colIndex);
+      if (cellFill === undefined) continue;
+      const fieldsLeft = cellFieldsLeftUnder(fill, cellFill);
       if (Object.keys(fieldsLeft).length === 0) {
-        rowChange.update.delete(fill.colIndex);
+        rowWrites.fillCells.delete(fill.colIndex);
       } else {
-        rowChange.update.set(fill.colIndex, fieldsLeft);
+        rowWrites.fillCells.set(fill.colIndex, fieldsLeft);
       }
     }
   }
 }
 
-function cellFieldsLeftUnder(
-  fill: ColumnFill,
-  cellChange: RowCellChange,
-): RowCellChange {
-  const fieldsLeft = { ...cellChange };
+function cellFieldsLeftUnder(fill: ColumnFill, cellFill: CellFill): CellFill {
+  const fieldsLeft = { ...cellFill };
   if (fill.value !== undefined || fill.formula !== undefined) {
     delete fieldsLeft.value;
     delete fieldsLeft.formula;

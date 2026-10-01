@@ -83,15 +83,15 @@ export class SheetBaseRaw extends SpreadsheetBaseRaw {
   // Queued properties outlive a re-fetch until the flush sends them.
   private _integrateQueuedSheetProperties(): void {
     const working = this.sheetState.working;
-    this.updateRequests.updateSheetTitle.forEach(({ sheetId, title }) => {
+    this.writeOperations.renameSheet.forEach(({ sheetId, title }) => {
       if (sheetId === this.sheetGid) working.title = title;
     });
-    this.updateRequests.updateTableName.forEach(({ tableId, name }) => {
+    this.writeOperations.renameTable.forEach(({ tableId, name }) => {
       this._updateWorkingTableName(tableId, name);
     });
     const knownTable = working.knownTable;
     if (knownTable === undefined) return;
-    this.updateRequests.updateTableColumnType.forEach(
+    this.writeOperations.setTableColumnType.forEach(
       ({ tableId, columnIndex, columnType }) => {
         if (tableId !== knownTable.tableId) return;
         this._ensureColumnState(

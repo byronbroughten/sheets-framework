@@ -8,8 +8,8 @@ The working view is the fetched sheet plus every queued write, with row indexes 
 
 Each tier's state has three groups. The **working** view is what the run sees: the fetched sheet plus every queued write, with row indexes at their pre-flush positions. The **fetch queue** is what the next read will fetch, and the **write queue** is what the next flush will send.
 
-- **Raw spreadsheet:** `fetchQueue.gridRanges` for the next `fetchAllGathered`, and `writeQueue.updateRequests`, the requests a flush sends. The update requests stay spreadsheet-wide because the flush orders them by request kind across sheets.
-- **Raw sheet:** `working` holds the title, known Table, rows, column states, conditional formats and edit protections. `fetchQueue` holds the gather flags for conditional formats and edit protections, plus `toFinalize`, the rows, columns and cells a fetch has filled but not yet finalized. `writeQueue` holds `sheet` (fills, sorts, column inserts), `rows` (each row's queued append, delete and cell updates, keyed by row index) and the row indexes an append has already handed out.
+- **Raw spreadsheet:** `fetchQueue.gridRanges` for the next `fetchAllGathered`, and `writeQueue.operations`, the write operations a flush sends. They stay spreadsheet-wide because the flush orders them by kind across sheets.
+- **Raw sheet:** `working` holds the title, known Table, rows, column states, conditional formats and edit protections. `fetchQueue` holds the gather flags for conditional formats and edit protections, plus `toFinalize`, the rows, columns and cells a fetch has filled but not yet finalized. `writeQueue` holds `sheet` (`fillColumns`, `sort`, `insertTableEndColumnCount`), `rows` (each row's `appendRow`, `deleteRow` and `fillCells`, keyed by row index) and the row indexes an append has already handed out.
 - **Identified sheet:** a `fetchQueue` only: fetch targets addressed by column ID and tagged by `kind`, plus gather flags that it passes down to Raw when it gathers the fetch.
 
 ## A write does not require a fetch

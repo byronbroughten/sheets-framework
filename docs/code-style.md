@@ -39,6 +39,7 @@ One line per rule. The reasoning and worked examples are one file away. Open a r
   - `integrate` — merges a fetched snapshot into local state; no API call
   - `prep`/`gather` — queue state locally before a fetch (`prepFetchX` queues only; `gatherFetchX` queues _and_ fetches)
   - `update` — writes a local/queued change, not yet flushed
+  - `queue` — stages a write on a sheet's or row's write queue; the flusher gathers it into an operation
   - `append` — adds a new row
   - `ensure` — idempotent guard: make this true, no-op if it already is
   - `validate` — asserts an invariant, throws on failure

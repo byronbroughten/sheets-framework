@@ -63,7 +63,7 @@ export class CellIdentified<
       return value as NotEmpty<Value<VN>>;
     }
   }
-  // Both halves merge into the one queued change, so the field mask names both.
+  // Both halves merge into the one queued write, so the field mask names both.
   update({ value, backgroundColor }: CellChange<VN>): this {
     if (value !== undefined) this.updateValue(value);
     if (backgroundColor !== undefined) {

@@ -5,29 +5,13 @@ import type {
 import type { ConditionalFormatRule } from "../../00_Source/RawSource/ConditionalFormat";
 import type { EditProtection } from "../../00_Source/RawSource/EditProtection";
 import type {
-  AddCheckboxValidationOperation,
-  AddConditionalFormatRuleOperation,
-  AddProtectedRangeOperation,
-  AddSheetOperation,
-  AddTableOperation,
-  AppendRowsOperation,
-  DeleteConditionalFormatRuleOperation,
-  DeleteProtectedRangeOperation,
-  DeleteRowsOperation,
-  FillOperation,
-  FindReplaceOperation,
+  FillCellOperation,
   FindReplaceScope as BaseFindReplaceScope,
   FindReplaceTerms as BaseFindReplaceTerms,
-  InsertTableEndColumnOperation,
-  OpaqueRawWriteOperation,
+  LocalWriteOperation,
   RawSource,
-  SortOperation,
   TableColumnSnapshot,
   TableColumnType,
-  UpdateCellOperation,
-  UpdateSheetTitleOperation,
-  UpdateTableColumnPropertiesOperation,
-  UpdateTableNameOperation,
 } from "../../00_Source/RawSource/RawSource";
 import type { RgbColor } from "../../00_Source/RawSource/RgbColor";
 import type { GridRangeProps } from "./AccessorsRaw";
@@ -46,34 +30,20 @@ export interface SpreadsheetFetchQueueRaw {
 }
 
 export interface SpreadsheetWriteQueueRaw {
-  updateRequests: UpdateRequests;
+  operations: WriteOperations;
 }
 
-export interface UpdateRequests {
-  addSheet: AddSheetOperation[];
-  addTable: AddTableOperation[];
-  append: AppendRowsOperation[];
-  update: UpdateCellOperation[];
-  delete: DeleteRowsOperation[];
-  sort: SortOperation[];
-  insertTableEndColumn: InsertTableEndColumnOperation[];
-  fill: FillOperation[];
-  findReplace: FindReplaceOperation[];
-  deleteConditionalFormat: DeleteConditionalFormatRuleOperation[];
-  addConditionalFormat: AddConditionalFormatRuleOperation[];
-  deleteProtectedRange: DeleteProtectedRangeOperation[];
-  addProtectedRange: AddProtectedRangeOperation[];
-  updateSheetTitle: UpdateSheetTitleOperation[];
-  updateTableName: UpdateTableNameOperation[];
-  updateTableColumnType: UpdateTableColumnTypeOperation[];
-  updateTableColumnProperties: UpdateTableColumnPropertiesOperation[];
-  addCheckboxValidation: AddCheckboxValidationOperation[];
-  raw: OpaqueRawWriteOperation[];
-}
+// A key equals its operation's kind, so the compiler rejects one that matches none.
+export type WriteOperations = {
+  [KD in LocalWriteOperation["kind"]]: Extract<
+    LocalWriteOperation,
+    { kind: KD }
+  >[];
+} & { setTableColumnType: SetTableColumnTypeOperation[] };
 
-// Queue-only: the sheet gathers each Table's into one updateTableColumnProperties.
-export interface UpdateTableColumnTypeOperation {
-  kind: "updateTableColumnType";
+// Queue-only: the sheet gathers each Table's into one setTableColumnProperties.
+export interface SetTableColumnTypeOperation {
+  kind: "setTableColumnType";
   sheetId: number;
   tableId: string;
   columnIndex: number;
@@ -126,8 +96,8 @@ export interface SheetFinalizeQueueRaw {
 }
 
 export interface SheetWriteQueueRaw {
-  sheet: SheetChangesToSave;
-  rows: Map<RowIndex, RowChangesToSave>;
+  sheet: SheetWrites;
+  rows: Map<RowIndex, RowWrites>;
   // A row an append has handed out, so a second append can't reuse it.
   reservedRowIndexes: Set<RowIndex>;
 }
@@ -178,14 +148,14 @@ export interface SortParameters {
   sortOrder: "ASCENDING" | "DESCENDING";
 }
 
-export interface RowChangesToSave {
-  append: boolean;
-  delete: boolean;
+export interface RowWrites {
+  appendRow: boolean;
+  deleteRow: boolean;
   // Values, not indexes, so a queued write never depends on fetched row state.
-  update: Map<ColIndex, RowCellChange>;
+  fillCells: Map<ColIndex, CellFill>;
 }
 // One entry per cell, merged across writes, so a colour never cancels a value or a formula.
-export interface RowCellChange<VN extends CellValueName = CellValueName> {
+export interface CellFill<VN extends CellValueName = CellValueName> {
   value?: CellValue<VN>;
   formula?: string;
   backgroundColor?: RgbColor;
@@ -196,20 +166,20 @@ export interface TableEndColumnUniformCells {
   header: string;
   colGroupName?: string;
 }
-export interface SheetChangesToSave {
+export interface SheetWrites {
   sort: SortParameters | undefined;
-  tableEndColumnInsertCount: number;
-  fills: ColumnFill[];
+  insertTableEndColumnCount: number;
+  fillColumns: ColumnFill[];
 }
 // One contiguous run of a column's cells: value/colour as repeatCell, formula as pasteData.
-export interface ColumnFill extends RowCellChange {
+export interface ColumnFill extends CellFill {
   colIndex: ColIndex;
   startRowIndex: number;
   // Snapshotted when queued, so a fill never reaches a row appended after it.
   endRowIndex: number;
 }
 
-export interface SheetChangeSortProps extends SortParameters {
+export interface SheetWriteSortProps extends SortParameters {
   action: "sort";
 }
 
@@ -220,25 +190,25 @@ export interface FindReplaceProps extends FindReplaceTerms {
 }
 
 export type AddedSheetCell = Required<
-  Pick<UpdateCellOperation, "sheetId" | "rowIndex" | "colIndex">
+  Pick<FillCellOperation, "sheetId" | "rowIndex" | "colIndex">
 > &
   ({ value: CellValue } | { formula: string });
 
-export interface SheetChangePropsObj {
-  sort: SheetChangeSortProps;
+export interface SheetWritePropsObj {
+  sort: SheetWriteSortProps;
   insertTableEndColumn: { action: "insertTableEndColumn" };
-  fill: { action: "fill" } & ColumnFill;
+  fillColumn: { action: "fillColumn" } & ColumnFill;
 }
-export type SheetChangeProps = SheetChangePropsObj[keyof SheetChangePropsObj];
+export type SheetWriteProps = SheetWritePropsObj[keyof SheetWritePropsObj];
 
-export type RowChangeUpdateProps = {
-  action: "update";
+export type RowWriteFillCellProps = {
+  action: "fillCell";
   colIndex: ColIndex;
 } & (
   { value: CellValue } | { formula: string } | { backgroundColor: RgbColor }
 );
-export type RowChangeProps =
-  { action: "append" | "delete" } | RowChangeUpdateProps;
+export type RowWriteProps =
+  { action: "appendRow" | "deleteRow" } | RowWriteFillCellProps;
 
 export type ColumnSpecifierRaw = ColIndex[] | "allColumns";
 export type ColumnCount = number | "allFromStart";

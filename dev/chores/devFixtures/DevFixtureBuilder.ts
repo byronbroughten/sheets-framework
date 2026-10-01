@@ -60,13 +60,13 @@ export class DevFixtureBuilder extends SpreadsheetBaseNamed {
     const endRowIdx = headerRowIdx + 1 + rowCount;
     const endColIdx = startColIdx + columns.length;
     this.ss.raw
-      .gatherAddSheetRequest({
+      .gatherAddSheetOperation({
         sheetId: sheetGid,
         title: fixture.title,
         rowCount: endRowIdx,
         columnCount: endColIdx,
       })
-      .gatherAddTableRequest({
+      .gatherAddTableOperation({
         name: fixture.tableName,
         range: {
           sheetId: sheetGid,
@@ -83,7 +83,7 @@ export class DevFixtureBuilder extends SpreadsheetBaseNamed {
       });
     columns.forEach((column, columnIndex) => {
       const colIndex = startColIdx + columnIndex;
-      this.ss.raw.gatherAddedSheetCellRequest({
+      this.ss.raw.gatherAddedSheetFillCellOperation({
         sheetId: sheetGid,
         rowIndex: sheetLayout.colIdRowIndex,
         colIndex,
@@ -111,9 +111,9 @@ export class DevFixtureBuilder extends SpreadsheetBaseNamed {
       const { formula } = column;
       const value = column.values[rowOffset];
       if (formula !== undefined) {
-        this.ss.raw.gatherAddedSheetCellRequest({ ...position, formula });
+        this.ss.raw.gatherAddedSheetFillCellOperation({ ...position, formula });
       } else if (value !== undefined && value !== "") {
-        this.ss.raw.gatherAddedSheetCellRequest({ ...position, value });
+        this.ss.raw.gatherAddedSheetFillCellOperation({ ...position, value });
       }
     }
   }
@@ -127,13 +127,13 @@ export class DevFixtureBuilder extends SpreadsheetBaseNamed {
     const rowIndex = sheetLayout.actionRowIndex;
     const colIndex = sheetLayout.startTableColIndex + columnIndex;
     this.ss.raw
-      .gatherAddedSheetCellRequest({
+      .gatherAddedSheetFillCellOperation({
         sheetId: fixture.sheetGid,
         rowIndex,
         colIndex,
         value: false,
       })
-      .gatherAddedSheetCheckboxValidationRequest({
+      .gatherAddedSheetCheckboxValidationOperation({
         sheetId: fixture.sheetGid,
         startRowIndex: rowIndex,
         endRowIndex: rowIndex + 1,

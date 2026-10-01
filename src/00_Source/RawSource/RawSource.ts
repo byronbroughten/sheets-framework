@@ -122,8 +122,8 @@ export type LocalWriteOperation =
   | AddTableOperation
   | AppendRowsOperation
   | InsertTableEndColumnOperation
-  | FillOperation
-  | UpdateCellOperation
+  | FillColumnOperation
+  | FillCellOperation
   | FindReplaceOperation
   | DeleteRowsOperation
   | SortOperation
@@ -131,11 +131,11 @@ export type LocalWriteOperation =
   | DeleteConditionalFormatRuleOperation
   | AddProtectedRangeOperation
   | DeleteProtectedRangeOperation
-  | UpdateSheetTitleOperation
-  | UpdateTableNameOperation
-  | UpdateTableColumnPropertiesOperation
+  | RenameSheetOperation
+  | RenameTableOperation
+  | SetTableColumnPropertiesOperation
   | AddCheckboxValidationOperation
-  | OpaqueRawWriteOperation;
+  | RawWriteOperation;
 
 // Always at a given GID: Google refuses one another tab already holds (#74).
 export interface AddSheetOperation {
@@ -174,8 +174,8 @@ export interface InsertTableEndColumnOperation {
   startColumnIndex: number;
 }
 
-export interface FillOperation {
-  kind: "fill";
+export interface FillColumnOperation {
+  kind: "fillColumn";
   sheetId: number;
   colIndex: number;
   startRowIndex: number;
@@ -185,8 +185,8 @@ export interface FillOperation {
   backgroundColor?: RgbColor;
 }
 
-export interface UpdateCellOperation {
-  kind: "updateCell";
+export interface FillCellOperation {
+  kind: "fillCell";
   sheetId: number;
   rowIndex: number;
   colIndex: number;
@@ -240,21 +240,21 @@ export interface DeleteProtectedRangeOperation {
   protectedRangeId: number;
 }
 
-export interface UpdateSheetTitleOperation {
-  kind: "updateSheetTitle";
+export interface RenameSheetOperation {
+  kind: "renameSheet";
   sheetId: number;
   title: string;
 }
 
-export interface UpdateTableNameOperation {
-  kind: "updateTableName";
+export interface RenameTableOperation {
+  kind: "renameTable";
   tableId: string;
   name: string;
 }
 
 // Replaces the Table's whole column list, so it carries every column.
-export interface UpdateTableColumnPropertiesOperation {
-  kind: "updateTableColumnProperties";
+export interface SetTableColumnPropertiesOperation {
+  kind: "setTableColumnProperties";
   tableId: string;
   columnProperties: TableColumnPropertiesUpdate[];
 }
@@ -276,7 +276,7 @@ export interface OpaqueRawRequest {
   readonly [opaqueRawRequest]: true;
 }
 
-export interface OpaqueRawWriteOperation {
+export interface RawWriteOperation {
   kind: "raw";
   request: OpaqueRawRequest;
 }

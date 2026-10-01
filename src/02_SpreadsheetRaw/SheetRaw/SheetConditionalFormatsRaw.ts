@@ -53,7 +53,7 @@ export class SheetConditionalFormatsRaw extends SheetCommonRaw {
     ) {
       return;
     }
-    this.updateRequests.addConditionalFormat.push({
+    this.writeOperations.addConditionalFormatRule.push({
       kind: "addConditionalFormatRule",
       index: 0,
       rule,
@@ -62,13 +62,13 @@ export class SheetConditionalFormatsRaw extends SheetCommonRaw {
   private _pendingConditionalFormatRules(): ConditionalFormatRule[] {
     const fetched = this.sheetState.working.conditionalFormats.rules;
     const rules = fetched === undefined ? [] : [...fetched];
-    const deletes = [...this.updateRequests.deleteConditionalFormat]
+    const deletes = [...this.writeOperations.deleteConditionalFormatRule]
       .filter((operation) => operation.sheetId === this.sheetGid)
       .sort((left, right) => right.index - left.index);
     deletes.forEach((operation) => {
       rules.splice(operation.index, 1);
     });
-    this.updateRequests.addConditionalFormat.forEach((operation) => {
+    this.writeOperations.addConditionalFormatRule.forEach((operation) => {
       if (operation.rule.ranges[0]?.sheetId !== this.sheetGid) return;
       rules.splice(operation.index, 0, operation.rule);
     });
@@ -91,7 +91,7 @@ export class SheetConditionalFormatsRaw extends SheetCommonRaw {
     this.assertConditionalFormatIndexesNotStale();
     this.conditionalFormatRules().forEach((existing, index) => {
       if (!matches(existing)) return;
-      this.updateRequests.deleteConditionalFormat.push({
+      this.writeOperations.deleteConditionalFormatRule.push({
         kind: "deleteConditionalFormatRule",
         sheetId: this.sheetGid,
         index,

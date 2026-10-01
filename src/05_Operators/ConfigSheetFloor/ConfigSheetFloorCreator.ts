@@ -63,13 +63,13 @@ export class ConfigSheetFloorCreator extends SpreadsheetBaseNamed {
       const endRowIdx = headerRowIdx + 1 + createdDataRowCount(sheetName);
       const endColIdx = startColIdx + columns.length;
       this.ss.raw
-        .gatherAddSheetRequest({
+        .gatherAddSheetOperation({
           sheetId: sheetGid,
           title: seed.title,
           rowCount: endRowIdx,
           columnCount: endColIdx,
         })
-        .gatherAddTableRequest({
+        .gatherAddTableOperation({
           name: seed.tableName,
           range: {
             sheetId: sheetGid,
@@ -94,14 +94,14 @@ export class ConfigSheetFloorCreator extends SpreadsheetBaseNamed {
   private _seedExampleColumn(sheetGid: number, topDataRowIdx: number): void {
     const colIndex = sheetLayout.startTableColIndex;
     const idPrefix = getSheetTraitByName("valueConfig", "idPrefix");
-    this.ss.raw.gatherAddedSheetCellRequest({
+    this.ss.raw.gatherAddedSheetFillCellOperation({
       sheetId: sheetGid,
       rowIndex: sheetLayout.colIdRowIndex,
       colIndex,
       value: dimensionIds.col(idPrefix),
     });
     exampleColumn.seededValues.forEach((value, memberIndex) => {
-      this.ss.raw.gatherAddedSheetCellRequest({
+      this.ss.raw.gatherAddedSheetFillCellOperation({
         sheetId: sheetGid,
         rowIndex: topDataRowIdx + memberIndex,
         colIndex,
