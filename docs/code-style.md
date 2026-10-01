@@ -64,7 +64,7 @@ One line per rule. The reasoning and worked examples are one file away. Open a r
 - **Verify a type-level claim with `IsExactly` / `assertType` / `assertNotType` from `src/testSupport/typeAssertions.ts`, never an assignment.** Measure a mapped type over the config unions before adopting it.
 - **`as` casts narrow data that's already runtime-safe; they never substitute for validation.** External values go through `Val.validate.*`/`Val.is.*`. The three accepted cast idioms are in the reasoning file.
 - **A registry keyed by a finite name union takes a plain `: Type` annotation, not `makeStructuredConfig`**, which stays for the generated config files.
-- **Custom generic utility types live in `utils/Obj.ts`**, PascalCase, one clear transform per name.
+- **A custom generic utility type lives in the bundle file whose subject it transforms**: string types with `utils/Str.ts`, object and union types in `utils/Obj.ts` or `utils/Obj/`. PascalCase, one clear transform per name.
 
 ## Functional vs. imperative idioms
 

@@ -29,6 +29,6 @@ Test files are separately mid-migration off `as` via the `migrate-to-shoehorn` s
 
 ## Where utility types live
 
-Custom generic utility types live in `utils/Obj.ts`, PascalCase, one transform per name: `StrictOmit`, `DistributiveOmit`, `StrictPick`, `PickStartsWith`.
+A custom generic utility type lives in the bundle file whose subject it transforms, PascalCase, one transform per name. String template types sit with `Str` (`RemoveFirstN`, `SentenceToCamelCase`); object and union types sit in `utils/Obj.ts` (`StrictOmit`, `StrictExtract`, `PickStartsWith`) or the type-only files under `utils/Obj/` (`MergeUnion`, `UnionObj`).
 
-`NotEmpty<V>` is the one deliberate exception to `utils/Obj.ts`: it sits in `00_Source/CellValues/cellValues.ts` beside the wire value types, because the blank it removes is the cell blank those types define, not a general structural transform (#12).
+`NotEmpty<V>` is the one deliberate exception to that rule: it sits in `00_Source/CellValues/cellValues.ts` beside the wire value types, because the blank it removes is the cell blank those types define, not a general structural transform (#12).
