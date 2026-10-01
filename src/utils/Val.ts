@@ -1,12 +1,7 @@
 import { SerialDate } from "./SerialDate";
 
-class ValidationError extends Error {}
-
-export function validationError(
-  value: unknown,
-  notAWhat: string,
-): ValidationError {
-  return new ValidationError(`value "${value}" is not a ${notAWhat}`);
+export function validationError(value: unknown, notAWhat: string): Error {
+  return new Error(`value "${value}" is not a ${notAWhat}`);
 }
 
 interface PrimitiveValueNamesToTypes {
@@ -19,7 +14,7 @@ export type PrimitiveValueName = keyof PrimitiveValueNamesToTypes;
 export type PureValue<VN extends PrimitiveValueName> =
   PrimitiveValueNamesToTypes[VN];
 
-const _isS = {
+const is = {
   string(value: unknown): value is string {
     return typeof value === "string";
   },
@@ -40,41 +35,36 @@ const _isS = {
   },
 };
 
-const _validateS = {
-  string: (value: unknown): string => {
-    if (_isS.string(value)) {
+const validate = {
+  string(value: unknown): string {
+    if (is.string(value)) {
       return value;
-    } else {
-      throw validationError(value, "string");
     }
+    throw validationError(value, "string");
   },
-  number: (value: unknown): number => {
-    if (_isS.number(value)) {
+  number(value: unknown): number {
+    if (is.number(value)) {
       return value;
-    } else {
-      throw validationError(value, "number");
     }
+    throw validationError(value, "number");
   },
-  numberOrEmpty: (value: unknown): number | "" => {
-    if (_isS.number(value) || _isS.emptyString(value)) {
+  numberOrEmpty(value: unknown): number | "" {
+    if (is.number(value) || is.emptyString(value)) {
       return value;
-    } else {
-      throw validationError(value, "number or empty string");
     }
+    throw validationError(value, "number or empty string");
   },
-  boolean: (value: unknown): boolean => {
-    if (_isS.boolean(value)) {
+  boolean(value: unknown): boolean {
+    if (is.boolean(value)) {
       return value;
-    } else {
-      throw validationError(value, "boolean");
     }
+    throw validationError(value, "boolean");
   },
-  date: (value: unknown): SerialDate => {
-    if (_isS.date(value)) {
+  date(value: unknown): SerialDate {
+    if (is.date(value)) {
       return value;
-    } else {
-      throw validationError(value, "date");
     }
+    throw validationError(value, "date");
   },
 };
 
@@ -89,7 +79,7 @@ function assert<T>(
 }
 
 export const Val = {
-  is: _isS,
-  validate: _validateS,
+  is,
+  validate,
   assert,
 };

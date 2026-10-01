@@ -32,18 +32,6 @@ export interface FirstAndLastOfMonth {
 
 export interface MonthRange extends MonthYear, DateRange {}
 
-// A guard and its throwing form, outside the bundle so `this` can't swallow the narrowing.
-function isSerial(value: unknown): value is SerialDate {
-  return typeof value === "number" && Number.isInteger(value);
-}
-
-function validate(value: unknown): SerialDate {
-  if (isSerial(value)) {
-    return value;
-  }
-  throw new Error(`value "${String(value)}" is not a whole-day date serial`);
-}
-
 const monthAbbrevs = [
   "Jan",
   "Feb",
@@ -62,8 +50,15 @@ const monthAbbrevs = [
 export const SerialDate = {
   sheetsEpochUtcMs: Date.UTC(1899, 11, 30), // Dec 30, 1899, 00:00 UTC
   msPerDay: 86400000,
-  isSerial,
-  validate,
+  isSerial(value: unknown): value is SerialDate {
+    return typeof value === "number" && Number.isInteger(value);
+  },
+  validate(value: unknown): SerialDate {
+    if (SerialDate.isSerial(value)) {
+      return value;
+    }
+    throw new Error(`value "${String(value)}" is not a whole-day date serial`);
+  },
   fromInstant(instant: Date, timeZone: string): SerialDate {
     const parts = new Intl.DateTimeFormat("en-US", {
       timeZone,
@@ -76,7 +71,7 @@ export const SerialDate = {
         acc[part.type] = part.value;
         return acc;
       }, {});
-    return this.fromYmd({
+    return SerialDate.fromYmd({
       year: Number(parts.year),
       month: Number(parts.month),
       day: Number(parts.day),
@@ -84,15 +79,16 @@ export const SerialDate = {
   },
   fromYmd({ year, month, day }: Ymd): SerialDate {
     const utcMs = utcMsFromYmd({ year, month, day });
-    const serial = (utcMs - this.sheetsEpochUtcMs) / this.msPerDay;
-    if (!isSerial(serial)) {
+    const serial = (utcMs - SerialDate.sheetsEpochUtcMs) / SerialDate.msPerDay;
+    if (!SerialDate.isSerial(serial)) {
       throw new Error(`${year}-${month}-${day} is not a real date.`);
     }
     return serial;
   },
   toYmd(date: SerialDate): Ymd {
     const utc = new Date(
-      this.sheetsEpochUtcMs + validate(date) * this.msPerDay,
+      SerialDate.sheetsEpochUtcMs +
+        SerialDate.validate(date) * SerialDate.msPerDay,
     );
     return {
       year: utc.getUTCFullYear(),
@@ -101,7 +97,7 @@ export const SerialDate = {
     };
   },
   toDayMonthYear(date: SerialDate): string {
-    const { year, month, day } = this.toYmd(date);
+    const { year, month, day } = SerialDate.toYmd(date);
     const monthAbbrev = monthAbbrevs[month - 1];
     if (monthAbbrev === undefined) {
       throw new Error(`month ${month} is not 1-12`);
@@ -109,43 +105,44 @@ export const SerialDate = {
     return `${day} ${monthAbbrev} ${year}`;
   },
   addDays(date: SerialDate, days: number): SerialDate {
-    return validate(validate(date) + days);
+    return SerialDate.validate(SerialDate.validate(date) + days);
   },
   dayBefore(date: SerialDate): SerialDate {
-    return this.addDays(date, -1);
+    return SerialDate.addDays(date, -1);
   },
   addMonths(date: SerialDate, months: number): SerialDate {
-    const { year, month, day } = this.toYmd(date);
+    const { year, month, day } = SerialDate.toYmd(date);
     const monthCount = year * 12 + (month - 1) + months;
     const target = {
       month: (((monthCount % 12) + 12) % 12) + 1,
       year: Math.floor(monthCount / 12),
     };
-    return this.fromYmd({
+    return SerialDate.fromYmd({
       ...target,
-      day: Math.min(day, this._daysInMonthYear(target)),
+      day: Math.min(day, daysInMonthYear(target)),
     });
   },
   isSameOrAfter(date: SerialDate, referenceDate: SerialDate): boolean {
-    return validate(date) >= validate(referenceDate);
+    return SerialDate.validate(date) >= SerialDate.validate(referenceDate);
   },
   isSameOrBefore(date: SerialDate, referenceDate: SerialDate): boolean {
-    return validate(date) <= validate(referenceDate);
+    return SerialDate.validate(date) <= SerialDate.validate(referenceDate);
   },
   isOnOrBetween({ date, startDate, endDate }: DateInRange): boolean {
-    if (validate(startDate) > validate(endDate)) {
+    if (SerialDate.validate(startDate) > SerialDate.validate(endDate)) {
       throw new Error("Start date cannot be after end date.");
     }
     return (
-      this.isSameOrAfter(date, startDate) && this.isSameOrBefore(date, endDate)
+      SerialDate.isSameOrAfter(date, startDate) &&
+      SerialDate.isSameOrBefore(date, endDate)
     );
   },
   monthYear(date: SerialDate): MonthYear {
-    const { month, year } = this.toYmd(date);
+    const { month, year } = SerialDate.toYmd(date);
     return { month, year };
   },
   isInMonthAndYear(date: SerialDate, { month, year }: MonthYear): boolean {
-    const dateMonthYear = this.monthYear(date);
+    const dateMonthYear = SerialDate.monthYear(date);
     return dateMonthYear.month === month && dateMonthYear.year === year;
   },
   monthYearsOnAndBetween({
@@ -165,70 +162,54 @@ export const SerialDate = {
     return monthYears;
   },
   firstDayOfMonth(date: SerialDate): SerialDate {
-    return this.firstDayOfMonthYear(this.monthYear(date));
+    return SerialDate.firstDayOfMonthYear(SerialDate.monthYear(date));
   },
   lastDayOfMonth(date: SerialDate): SerialDate {
-    return this.lastDayOfMonthYear(this.monthYear(date));
+    return SerialDate.lastDayOfMonthYear(SerialDate.monthYear(date));
   },
   firstAndLastDayOfMonth(date: SerialDate): FirstAndLastOfMonth {
-    return this.firstAndLastDayOfMonthYear(this.monthYear(date));
+    return SerialDate.firstAndLastDayOfMonthYear(SerialDate.monthYear(date));
   },
   firstDayOfNextMonth(date: SerialDate): SerialDate {
-    return this.firstDayOfMonthYear(nextMonthYear(this.monthYear(date)));
+    return SerialDate.firstDayOfMonthYear(
+      nextMonthYear(SerialDate.monthYear(date)),
+    );
   },
   firstDayOfMonthYear({ month, year }: MonthYear): SerialDate {
-    return this.fromYmd({ month, year, day: 1 });
+    return SerialDate.fromYmd({ month, year, day: 1 });
   },
   lastDayOfMonthYear(monthYear: MonthYear): SerialDate {
-    return this.dayBefore(this.firstDayOfMonthYear(nextMonthYear(monthYear)));
+    return SerialDate.dayBefore(
+      SerialDate.firstDayOfMonthYear(nextMonthYear(monthYear)),
+    );
   },
   firstAndLastDayOfMonthYear(monthYear: MonthYear): FirstAndLastOfMonth {
     return {
-      firstOfMonth: this.firstDayOfMonthYear(monthYear),
-      lastOfMonth: this.lastDayOfMonthYear(monthYear),
+      firstOfMonth: SerialDate.firstDayOfMonthYear(monthYear),
+      lastOfMonth: SerialDate.lastDayOfMonthYear(monthYear),
     };
   },
   monthRanges(term: DateRange): MonthRange[] {
     validateDateOrder(term);
-    return this.monthYearsOnAndBetween({
-      startMonthYear: this.monthYear(term.startDate),
-      endMonthYear: this.monthYear(term.endDate),
-      // Annotated because `this` can't infer the callback's param inside the bundle.
-    }).map((monthYear: MonthYear) => {
+    return SerialDate.monthYearsOnAndBetween({
+      startMonthYear: SerialDate.monthYear(term.startDate),
+      endMonthYear: SerialDate.monthYear(term.endDate),
+    }).map((monthYear) => {
       const { firstOfMonth, lastOfMonth } =
-        this.firstAndLastDayOfMonthYear(monthYear);
+        SerialDate.firstAndLastDayOfMonthYear(monthYear);
       return {
         ...monthYear,
-        startDate: validate(Math.max(term.startDate, firstOfMonth)),
-        endDate: validate(Math.min(term.endDate, lastOfMonth)),
+        startDate: SerialDate.validate(Math.max(term.startDate, firstOfMonth)),
+        endDate: SerialDate.validate(Math.min(term.endDate, lastOfMonth)),
       };
     });
   },
   proratedMonthlyProportion(range: DateRange): number {
-    const monthYear = this._validateSingleMonth(range);
-    return (
-      (range.endDate - range.startDate + 1) / this._daysInMonthYear(monthYear)
-    );
+    const monthYear = validateSingleMonth(range);
+    return (range.endDate - range.startDate + 1) / daysInMonthYear(monthYear);
   },
   proratedMonthlyAmount(amount: number, range: DateRange): number {
-    return this.proratedMonthlyProportion(range) * amount;
-  },
-  // Hands back the month it proved, so the caller doesn't derive it twice.
-  _validateSingleMonth(range: DateRange): MonthYear {
-    validateDateOrder(range);
-    const start = this.monthYear(range.startDate);
-    const end = this.monthYear(range.endDate);
-    if (start.month !== end.month || start.year !== end.year) {
-      throw new Error(
-        `A prorated range must lie in one month, but ${start.year}-${start.month} and ${end.year}-${end.month} differ.`,
-      );
-    }
-    return start;
-  },
-  _daysInMonthYear(monthYear: MonthYear): number {
-    const { firstOfMonth, lastOfMonth } =
-      this.firstAndLastDayOfMonthYear(monthYear);
-    return lastOfMonth - firstOfMonth + 1;
+    return SerialDate.proratedMonthlyProportion(range) * amount;
   },
 };
 
@@ -250,6 +231,12 @@ function utcMsFromYmd({ year, month, day }: Ymd): number {
   return utc.getTime();
 }
 
+function daysInMonthYear(monthYear: MonthYear): number {
+  const { firstOfMonth, lastOfMonth } =
+    SerialDate.firstAndLastDayOfMonthYear(monthYear);
+  return lastOfMonth - firstOfMonth + 1;
+}
+
 function nextMonthYear({ month, year }: MonthYear): MonthYear {
   if (month === 12) {
     return { month: 1, year: year + 1 };
@@ -258,7 +245,20 @@ function nextMonthYear({ month, year }: MonthYear): MonthYear {
 }
 
 function validateDateOrder({ startDate, endDate }: DateRange): void {
-  if (validate(startDate) > validate(endDate)) {
+  if (SerialDate.validate(startDate) > SerialDate.validate(endDate)) {
     throw new Error("Start date cannot be after end date.");
   }
+}
+
+// Hands back the month it proved, so the caller doesn't derive it twice.
+function validateSingleMonth(range: DateRange): MonthYear {
+  validateDateOrder(range);
+  const start = SerialDate.monthYear(range.startDate);
+  const end = SerialDate.monthYear(range.endDate);
+  if (start.month !== end.month || start.year !== end.year) {
+    throw new Error(
+      `A prorated range must lie in one month, but ${start.year}-${start.month} and ${end.year}-${end.month} differ.`,
+    );
+  }
+  return start;
 }
