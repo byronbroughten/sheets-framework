@@ -1,19 +1,19 @@
-import { SerialDate, zonedDateParts } from "./SerialDate";
+import { SerialDate, zonedWallClockParts } from "./SerialDate";
 
-// A serial's fraction is wall-clock time in the spreadsheet's zone, so an instant needs that date's offset, DST included.
+// A serial's fraction is local wall-clock time, so an instant needs that date's offset.
 export const SerialDateTime = {
   sheetsEpochUtcMs: SerialDate.sheetsEpochUtcMs,
   msPerDay: SerialDate.msPerDay,
   // Wall-clock date and time fields of `instant` as seen in `tz`.
   wallClockParts(instant: Date, tz: string): Record<string, string> {
-    return zonedDateParts(instant, tz);
+    return zonedWallClockParts(instant, tz);
   },
   // Local wall-clock timestamp, e.g. "2026-08-31 17:14:10".
   nowTimestamp(tz: string): string {
     const p = SerialDateTime.wallClockParts(new Date(), tz);
     return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}:${p.second}`;
   },
-  // UTC offset in minutes of `tz` at `instant`, positive east of UTC; DST-aware via Intl's IANA data.
+  // Positive east of UTC, and DST-aware through Intl's IANA data.
   getTzOffsetMinutes(instant: Date, tz: string): number {
     const parts = SerialDateTime.wallClockParts(instant, tz);
     const asIfUTC = Date.UTC(

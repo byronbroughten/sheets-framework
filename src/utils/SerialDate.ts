@@ -60,7 +60,7 @@ export const SerialDate = {
     throw new Error(`value "${String(value)}" is not a whole-day date serial`);
   },
   fromInstant(instant: Date, timeZone: string): SerialDate {
-    const parts = zonedDateParts(instant, timeZone);
+    const parts = zonedWallClockParts(instant, timeZone);
     return SerialDate.fromYmd({
       year: Number(parts.year),
       month: Number(parts.month),
@@ -204,7 +204,7 @@ export const SerialDate = {
 };
 
 // Off the bundle and out of framework.ts: SerialDateTime shares it, business code doesn't.
-export function zonedDateParts(
+export function zonedWallClockParts(
   instant: Date,
   timeZone: string,
 ): Record<string, string> {

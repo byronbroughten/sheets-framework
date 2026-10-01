@@ -113,7 +113,7 @@ describe("SerialDateTime.serialToDateTime", () => {
   });
 
   it("rounds to the nearest millisecond", () => {
-    const justAfterNoon = 45292.5 + 0.4 / 86400000;
+    const justAfterNoon = 45292.5 + 0.4 / SerialDateTime.msPerDay;
 
     expect(iso(SerialDateTime.serialToDateTime(justAfterNoon, "UTC"))).toBe(
       "2024-01-01T12:00:00.000Z",
