@@ -162,6 +162,12 @@ describe("Obj.values", () => {
   it("lists the object's own values", () => {
     expect(Obj.values({ a: 1, b: "x" })).toEqual([1, "x"]);
   });
+
+  it("returns an array of the value union, not a one-item tuple", () => {
+    assertType<
+      IsExactly<ReturnType<typeof Obj.values<{ a: 1; b: 2 }>>, (1 | 2)[]>
+    >(true);
+  });
 });
 
 describe("Obj.entries", () => {

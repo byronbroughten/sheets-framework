@@ -47,7 +47,7 @@ export type InvertObj<O extends Record<string | number, string | number>> = {
 };
 
 type Keys<T> = (keyof T)[];
-type Values<T> = [T[keyof T]];
+type Values<T> = T[keyof T][];
 type Entries<O extends object> = { [K in keyof O]: [K, O[K]] }[keyof O][];
 
 export type Full<O extends object> = {
@@ -171,14 +171,13 @@ export const Obj = {
     prefix: S,
   ): PickStartsWith<T, S> {
     const result = {} as PickStartsWith<T, S>;
-    // for…in types the key as keyof T & string, which startsWith needs; Obj.keys gives keyof T.
-    for (const key in obj) {
+    Obj.stringKeys(obj).forEach((key) => {
       if (key.startsWith(prefix)) {
         result[key as unknown as keyof PickStartsWith<T, S>] = obj[
           key
         ] as unknown as PickStartsWith<T, S>[keyof PickStartsWith<T, S>];
       }
-    }
+    });
     return result;
   },
   strictOmit<O extends object, KS extends keyof O>(
@@ -221,8 +220,7 @@ export const Obj = {
     n: N,
   ): RemoveFirstNFromKeys<T, N> {
     const result = {} as RemoveFirstNFromKeys<T, N>;
-    // for…in types the key as keyof T & string, which removeFirstN needs; Obj.keys gives keyof T.
-    for (const key in obj) {
+    Obj.stringKeys(obj).forEach((key) => {
       const newKey = Str.removeFirstN(
         key,
         n,
@@ -231,7 +229,7 @@ export const Obj = {
         T,
         N
       >[typeof newKey];
-    }
+    });
     return result;
   },
   toKeyedMap<
