@@ -84,5 +84,5 @@ One line per rule. The reasoning and worked examples are one file away. Open a r
 ## Imports & file organization
 
 - **The framework's two public entries, `src/framework.ts` and `src/frameworkTesting.ts`, are its only barrels**; `src/index.ts` is the Apps Script entry point, not a barrel.
-- **Its utility bundles are `Str`, `Obj`, `Arr`, `Tim` and `Val`**; `SerialDate` is the exception, named for its type because it's the one utility the framework exports to business code, which has its own copy of `Arr`.
+- **A utility bundle takes a short abbreviation (`Str`, `Obj`, `Arr`, `Val`) or the name of the type it works on (`SerialDate`, `SerialDateTime`).**
 - **Tier subfolders**: `ClassBases/` for base and Common classes + their prop interfaces; `Types/`/`ClassTypes/` for supporting state/shape types consumed by that tier's classes.

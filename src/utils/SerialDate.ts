@@ -60,17 +60,7 @@ export const SerialDate = {
     throw new Error(`value "${String(value)}" is not a whole-day date serial`);
   },
   fromInstant(instant: Date, timeZone: string): SerialDate {
-    const parts = new Intl.DateTimeFormat("en-US", {
-      timeZone,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    })
-      .formatToParts(instant)
-      .reduce<Record<string, string>>((acc, part) => {
-        acc[part.type] = part.value;
-        return acc;
-      }, {});
+    const parts = zonedDateParts(instant, timeZone);
     return SerialDate.fromYmd({
       year: Number(parts.year),
       month: Number(parts.month),
@@ -212,6 +202,28 @@ export const SerialDate = {
     return SerialDate.proratedMonthlyProportion(range) * amount;
   },
 };
+
+// Off the bundle and out of framework.ts: SerialDateTime shares it, business code doesn't.
+export function zonedDateParts(
+  instant: Date,
+  timeZone: string,
+): Record<string, string> {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  })
+    .formatToParts(instant)
+    .reduce<Record<string, string>>((acc, part) => {
+      acc[part.type] = part.value;
+      return acc;
+    }, {});
+}
 
 // NaN when the calendar has no such day, so fromYmd throws instead of overflowing.
 function utcMsFromYmd({ year, month, day }: Ymd): number {
