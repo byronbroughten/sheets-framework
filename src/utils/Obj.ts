@@ -11,6 +11,7 @@ export type DistributiveOmit<T, K extends keyof T> = T extends unknown
 export type StrictPick<T, K extends keyof T> = Pick<T, K>;
 export type StrictPickPartial<T, K extends keyof T> = Partial<Pick<T, K>>;
 export type StrictOmitPartial<T, K extends keyof T> = Partial<Omit<T, K>>;
+export type StrictExtract<T, K extends T> = Extract<T, K>;
 export type PickStartsWith<T extends object, S extends string> = {
   [K in keyof T as K extends `${S}${string}` ? K : never]: T[K];
 };

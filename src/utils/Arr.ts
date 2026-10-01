@@ -1,5 +1,4 @@
 import { Val } from "./Val";
-export type StrictExtract<T, K extends T> = Extract<T, K>;
 
 export interface IndexRange {
   startIndex: number;
@@ -28,9 +27,34 @@ export const Arr = {
         return ranges;
       }, []);
   },
-  hasDuplicates(arr: unknown[]): boolean {
-    return new Set(arr).size !== arr.length;
+  numsInOffsetLength(offset: number, length: number) {
+    return Array.from({ length }, (_, k) => k + offset);
   },
+  indexesOf(arr: readonly unknown[], value: unknown): number[] {
+    return arr.flatMap((item, index) => (item === value ? [index] : []));
+  },
+  lastIndex(arr: readonly unknown[]): number {
+    return arr.length - 1;
+  },
+  isLastIndex(arr: readonly unknown[], index: number): boolean {
+    return Arr.lastIndex(arr) === index;
+  },
+  indexOrThrow<T>(arr: readonly T[], finder: (val: T) => boolean): number {
+    const index = arr.findIndex(finder);
+    if (index < 0) {
+      throw new Error("Value not found at any index.");
+    }
+    return index;
+  },
+  validateIndexOrThrow(arr: readonly unknown[], index: number): true {
+    if (index > Arr.lastIndex(arr)) {
+      throw new Error(
+        `The passed array does not have a value at passed idx ${index}`,
+      );
+    }
+    return true;
+  },
+
   compareForSort(a: unknown, b: unknown): number {
     if (typeof a === "number" && typeof b === "number") {
       return a - b;
@@ -47,18 +71,23 @@ export const Arr = {
   },
   sortAscending<A>(arr: A[]): A[] {
     return [...arr].sort((a, b) => {
-      return this.compareForSort(a, b);
+      return Arr.compareForSort(a, b);
     });
   },
   sortDescending<A>(arr: A[]): A[] {
     return [...arr].sort((a, b) => {
-      return this.compareForSort(b, a);
+      return Arr.compareForSort(b, a);
     });
   },
+
   oneOrThrow<V>(arr: readonly V[]): V {
-    if (arr.length !== 1) {
+    if (arr.length < 1) {
+      throw new Error("This array is empty.");
+    }
+    if (arr.length > 1) {
       throw new Error("There is more than one item in this array.");
-    } else return Val.assert(arr[0], "The only item");
+    }
+    return Val.assert(arr[0], "The only item");
   },
   firstOrThrow<V>(arr: readonly V[]): V {
     if (arr.length < 1) {
@@ -66,72 +95,48 @@ export const Arr = {
     } else return Val.assert(arr[0], "The first item");
   },
   lastOrThrow<V>(arr: readonly V[]): V {
-    const idx = this.lastIdx(arr);
-    if (idx < 0) {
+    const index = Arr.lastIndex(arr);
+    if (index < 0) {
       throw new Error("This array has no last value—it has no value.");
-    } else return Val.assert(arr[idx], "The last item");
+    } else return Val.assert(arr[index], "The last item");
   },
   getOnlyItem<T>(arr: T[], arrayOf?: string): T {
     const strArrayOf = arrayOf ?? "items";
     if (arr.length < 1) {
-      throw new ValueNotFoundError(`The array does not have any ${strArrayOf}`);
+      throw new Error(`The array does not have any ${strArrayOf}`);
     } else if (arr.length > 1) {
       throw new Error(`The array has too many ${strArrayOf}`);
     } else {
       return Val.assert(arr[0], "The only item");
     }
   },
-  insert<V>(arr: readonly V[], value: V, idx: number): V[] {
-    const nextArr = [...arr];
-    nextArr.splice(idx, 0, value);
-    return nextArr;
-  },
   nextRotatingValue<T>(arr: readonly T[], currentValue: T): T {
     if (arr.length === 0) {
       throw new Error("Cannot get next rotating value of an empty array.");
     }
-    const currentIdx = arr.indexOf(currentValue);
-    const nextIdx = (currentIdx + 1) % arr.length;
-    return Val.assert(arr[nextIdx], "The next rotating value");
+    const currentIndex = arr.indexOf(currentValue);
+    const nextIndex = (currentIndex + 1) % arr.length;
+    return Val.assert(arr[nextIndex], "The next rotating value");
   },
-  replaceAtIdx<V>(arr: readonly V[], value: V, idx: number): V[] {
+
+  insert<V>(arr: readonly V[], value: V, index: number): V[] {
     const nextArr = [...arr];
-    nextArr[idx] = value;
+    nextArr.splice(index, 0, value);
     return nextArr;
   },
-  rmFirstMatchOrThrow<T>(arr: T[], value: T): T[] {
-    const index = arr.indexOf(value);
-    if (index < 0) {
-      throw new ValueNotFoundError(`No value in the array matches "${value}".`);
-    }
+  replaceAtIndex<V>(arr: readonly V[], value: V, index: number): V[] {
     const nextArr = [...arr];
-    nextArr.splice(index, 1);
-    return nextArr;
-  },
-  rmFirstMatchFastMUTATE(arr: unknown[], value: unknown): void {
-    const index = arr.indexOf(value);
-    arr.splice(index, 1);
-  },
-  rmAtIndex<T>(arr: readonly T[], idx: number): T[] {
-    this.validateIdxOrThrow(arr, idx);
-    const nextArr = [...arr];
-    nextArr.splice(idx, 1);
+    nextArr[index] = value;
     return nextArr;
   },
   replaceValue<T>(arr: T[], value: T, nextValue: T): T[] {
-    const nextArr = [...arr];
-    while (true) {
-      const index = arr.indexOf(value);
-      if (index === -1) break;
-      nextArr[index] = nextValue;
-    }
-    return nextArr;
+    return arr.map((item) => (item === value ? nextValue : item));
   },
   upOneDimension<T>(arr: T[], innerArrsLength: number): T[][] {
     return arr.reduce(
       (arrOfArrs, item) => {
         if (arrOfArrs.length > 0) {
-          const lastRow = this.lastOrThrow(arrOfArrs);
+          const lastRow = Arr.lastOrThrow(arrOfArrs);
           if (lastRow.length === innerArrsLength) arrOfArrs.push([item]);
           else lastRow.push(item);
         }
@@ -140,33 +145,37 @@ export const Arr = {
       [[]] as T[][],
     );
   },
-  indicesOf(arr: readonly unknown[], value: unknown): number[] {
-    return arr.flatMap((item, idx) => (item === value ? [idx] : []));
-  },
-  lastIdx(arr: readonly unknown[]): number {
-    return arr.length - 1;
-  },
-  isLastIdx(arr: readonly unknown[], idx: number): boolean {
-    return this.lastIdx(arr) === idx;
-  },
 
-  includes<T, U extends T>(arr: readonly U[], elem: T): elem is U {
-    return (arr as readonly T[]).includes(elem);
+  removeFirstMatchOrThrow<T>(arr: T[], value: T): T[] {
+    const index = arr.indexOf(value);
+    if (index < 0) {
+      throw new Error(`No value in the array matches "${value}".`);
+    }
+    const nextArr = [...arr];
+    nextArr.splice(index, 1);
+    return nextArr;
   },
-  numsInOffsetLength(offset: number, length: number) {
-    return Array.from({ length }, (_, k) => k + offset);
+  removeFirstMatchInPlace(arr: unknown[], value: unknown): void {
+    const index = arr.indexOf(value);
+    arr.splice(index, 1);
   },
-  findAndRmFirst<T>(
+  removeAtIndex<T>(arr: readonly T[], index: number): T[] {
+    Arr.validateIndexOrThrow(arr, index);
+    const nextArr = [...arr];
+    nextArr.splice(index, 1);
+    return nextArr;
+  },
+  findAndRemoveFirst<T>(
     arr: T[],
     fn: (value: T) => boolean,
     mustFind: boolean = false,
   ): T[] {
     const nextArr = [...arr];
-    const idx = arr.findIndex(fn);
-    if (mustFind && idx === -1) {
-      throw new ValueNotFoundError("Value not found to remove.");
+    const index = nextArr.findIndex(fn);
+    if (mustFind && index === -1) {
+      throw new Error("Value not found to remove.");
     }
-    if (idx !== -1) arr.splice(idx, 1);
+    if (index !== -1) nextArr.splice(index, 1);
     return nextArr;
   },
   removeLast<T>(arr: T[]): T[] {
@@ -174,20 +183,27 @@ export const Arr = {
     nextArr.pop();
     return nextArr;
   },
-  findAll<T>(arr: readonly T[], fn: (value: T) => boolean): T[] {
-    const workingArr = [...arr];
-    const all: T[] = [];
-    while (true) {
-      const idx = workingArr.findIndex(fn);
-      if (idx < 0) return all;
-      all.push(Val.assert(workingArr[idx], "The found item"));
-      workingArr.splice(idx, 1);
-    }
+
+  hasDuplicates(arr: unknown[]): boolean {
+    return new Set(arr).size !== arr.length;
+  },
+  includes<T, U extends T>(arr: readonly U[], elem: T): elem is U {
+    return (arr as readonly T[]).includes(elem);
   },
   has<T>(arr: T[], fn: (value: T) => boolean): boolean {
     const value = arr.find(fn);
     if (value === undefined) return false;
     else return true;
+  },
+  findAll<T>(arr: readonly T[], fn: (value: T) => boolean): T[] {
+    const workingArr = [...arr];
+    const all: T[] = [];
+    while (true) {
+      const index = workingArr.findIndex(fn);
+      if (index < 0) return all;
+      all.push(Val.assert(workingArr[index], "The found item"));
+      workingArr.splice(index, 1);
+    }
   },
   exclude<A, B>(a: readonly A[], b: readonly B[]): Exclude<A, B>[] {
     return a.filter(
@@ -203,43 +219,21 @@ export const Arr = {
       B
     >[];
   },
+  extract<A, B>(a: readonly A[], b: readonly B[]): Extract<A, B>[] {
+    return a.filter((str) =>
+      (b as readonly unknown[]).includes(str),
+    ) as Extract<A, B>[];
+  },
   extractStrict<A, B extends A>(
     a: readonly A[],
     ...b: readonly B[]
   ): Extract<A, B>[] {
     return a.filter((str) => b.includes(str as B)) as Extract<A, B>[];
   },
-  extractOrder<A, B extends A>(
-    // is this useful?
-    a: readonly A[],
-    b: readonly B[],
-  ): Extract<A, B>[] {
+  extractOrder<A, B extends A>(a: readonly A[], b: readonly B[]): Extract<A, B>[] {
     return b.filter((str) => a.includes(str)) as Extract<A, B>[];
-  },
-  extract<A, B>(a: readonly A[], b: readonly B[]): Extract<A, B>[] {
-    return a.filter((str) =>
-      (b as readonly unknown[]).includes(str),
-    ) as Extract<A, B>[];
-  },
-  idxOrThrow<T>(arr: readonly T[], finder: (val: T) => boolean): number {
-    const idx = arr.findIndex(finder);
-    if (idx < 0) {
-      throw new ValueNotFoundError("Value not found at any index.");
-    }
-    return idx;
-  },
-  validateIdxOrThrow(arr: readonly unknown[], idx: number): true {
-    const highestIdx = arr.length - 1;
-    if (idx > highestIdx) {
-      throw new ValueNotFoundError(
-        `The passed array does not have a value at passed idx ${idx}`,
-      );
-    }
-    return true;
   },
   combineWithoutIdenticals<A, B>(a: A[], b: B[]): (A | B)[] {
     return [...new Set([...a, ...b])];
   },
 } as const;
-
-class ValueNotFoundError extends Error {}
