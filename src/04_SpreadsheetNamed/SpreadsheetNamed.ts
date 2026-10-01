@@ -6,9 +6,9 @@ import type { SheetIdentified } from "../03_SpreadsheetIdentified/SheetIdentifie
 import type { GatherDataPrerequisitesProps } from "../03_SpreadsheetIdentified/SheetMetaIdentified";
 import { SpreadsheetIdentified } from "../03_SpreadsheetIdentified/SpreadsheetIdentified.js";
 import { Obj } from "../utils/Obj.js";
-import { SerialDate } from "../utils/SerialDate.js";
+import { SerialDate } from "../utils/SerialDate";
 import { Tim } from "../utils/Tim.js";
-import { Val } from "../utils/Val.js";
+import { Val } from "../utils/Val";
 import { SpreadsheetBaseNamed } from "./ClassBases/SpreadsheetBaseNamed.js";
 import { SheetMetaNamed } from "./SheetMetaNamed.js";
 import { SheetNamed } from "./SheetNamed.js";
