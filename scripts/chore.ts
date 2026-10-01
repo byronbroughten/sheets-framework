@@ -1,5 +1,5 @@
 // `sheets-framework chore`: runs one chore against the package's spreadsheet. See docs/how-it-runs.md, "The chore and its dry run".
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 
 import type { Chore } from "../src/chores/Chore.ts";
 import type { NodeHost } from "../src/nodeHost/NodeHost.ts";
@@ -92,7 +92,7 @@ class ChoreRunner {
         `No chore named "${choreName}".\n\n${this.index.listing(this.sheetsConfig.dir)}`,
       );
     }
-    return pathToFileURL(path).href;
+    return path;
   }
   _report({ summary }: NodeHost): void {
     if (summary.isEmpty) {
