@@ -5,29 +5,13 @@ import type {
 import type { ConditionalFormatRule } from "../../00_Source/RawSource/ConditionalFormat";
 import type { EditProtection } from "../../00_Source/RawSource/EditProtection";
 import type {
-  AddCheckboxValidationOperation,
-  AddConditionalFormatRuleOperation,
-  AddProtectedRangeOperation,
-  AddSheetOperation,
-  AddTableOperation,
-  AppendRowsOperation,
-  DeleteConditionalFormatRuleOperation,
-  DeleteProtectedRangeOperation,
-  DeleteRowsOperation,
-  FillColumnOperation,
-  FindReplaceOperation,
+  FillCellOperation,
   FindReplaceScope as BaseFindReplaceScope,
   FindReplaceTerms as BaseFindReplaceTerms,
-  InsertTableEndColumnOperation,
-  RawWriteOperation,
+  LocalWriteOperation,
   RawSource,
-  SortOperation,
   TableColumnSnapshot,
   TableColumnType,
-  FillCellOperation,
-  RenameSheetOperation,
-  SetTableColumnPropertiesOperation,
-  RenameTableOperation,
 } from "../../00_Source/RawSource/RawSource";
 import type { RgbColor } from "../../00_Source/RawSource/RgbColor";
 import type { GridRangeProps } from "./AccessorsRaw";
@@ -46,30 +30,16 @@ export interface SpreadsheetFetchQueueRaw {
 }
 
 export interface SpreadsheetWriteQueueRaw {
-  updateRequests: UpdateRequests;
+  operations: WriteOperations;
 }
 
-export interface UpdateRequests {
-  addSheet: AddSheetOperation[];
-  addTable: AddTableOperation[];
-  append: AppendRowsOperation[];
-  update: FillCellOperation[];
-  delete: DeleteRowsOperation[];
-  sort: SortOperation[];
-  insertTableEndColumn: InsertTableEndColumnOperation[];
-  fill: FillColumnOperation[];
-  findReplace: FindReplaceOperation[];
-  deleteConditionalFormat: DeleteConditionalFormatRuleOperation[];
-  addConditionalFormat: AddConditionalFormatRuleOperation[];
-  deleteProtectedRange: DeleteProtectedRangeOperation[];
-  addProtectedRange: AddProtectedRangeOperation[];
-  updateSheetTitle: RenameSheetOperation[];
-  updateTableName: RenameTableOperation[];
-  updateTableColumnType: SetTableColumnTypeOperation[];
-  updateTableColumnProperties: SetTableColumnPropertiesOperation[];
-  addCheckboxValidation: AddCheckboxValidationOperation[];
-  raw: RawWriteOperation[];
-}
+// A key equals its operation's kind, so the compiler rejects one that matches none.
+export type WriteOperations = {
+  [KD in LocalWriteOperation["kind"]]: Extract<
+    LocalWriteOperation,
+    { kind: KD }
+  >[];
+} & { setTableColumnType: SetTableColumnTypeOperation[] };
 
 // Queue-only: the sheet gathers each Table's into one setTableColumnProperties.
 export interface SetTableColumnTypeOperation {

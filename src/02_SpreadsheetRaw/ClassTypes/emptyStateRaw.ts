@@ -7,29 +7,29 @@ import type {
   SheetWriteQueueRaw,
   SpreadsheetFetchQueueRaw,
   SpreadsheetWriteQueueRaw,
-  UpdateRequests,
+  WriteOperations,
 } from "./StateRaw";
 
 export const emptyStateRaw = {
-  updateRequests(): UpdateRequests {
+  writeOperations(): WriteOperations {
     return {
       addSheet: [],
       addTable: [],
-      append: [],
-      update: [],
-      delete: [],
+      appendRows: [],
+      fillCell: [],
+      deleteRows: [],
       sort: [],
       insertTableEndColumn: [],
-      fill: [],
+      fillColumn: [],
       findReplace: [],
-      deleteConditionalFormat: [],
-      addConditionalFormat: [],
+      deleteConditionalFormatRule: [],
+      addConditionalFormatRule: [],
       deleteProtectedRange: [],
       addProtectedRange: [],
-      updateSheetTitle: [],
-      updateTableName: [],
-      updateTableColumnType: [],
-      updateTableColumnProperties: [],
+      renameSheet: [],
+      renameTable: [],
+      setTableColumnType: [],
+      setTableColumnProperties: [],
       addCheckboxValidation: [],
       raw: [],
     };
@@ -38,7 +38,7 @@ export const emptyStateRaw = {
     return { gridRanges: [] };
   },
   spreadsheetWriteQueue(): SpreadsheetWriteQueueRaw {
-    return { updateRequests: emptyStateRaw.updateRequests() };
+    return { operations: emptyStateRaw.writeOperations() };
   },
   sheetChanges(): SheetChangesToSave {
     return { sort: undefined, tableEndColumnInsertCount: 0, fills: [] };

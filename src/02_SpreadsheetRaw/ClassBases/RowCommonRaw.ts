@@ -109,14 +109,14 @@ export abstract class RowCommonRaw extends RowBaseRaw {
   gatherAppendRequest(): void {
     // One request per table: Sheets treats each appendCells as targeting the
     // same first free row, so N one-row requests only grow the table by one.
-    const existing = this.updateRequests.append.find(
+    const existing = this.writeOperations.appendRows.find(
       (operation) => operation.sheetId === this.sheetGid,
     );
     if (existing) {
       existing.emptyRowCount += 1;
       return;
     }
-    this.updateRequests.append.push({
+    this.writeOperations.appendRows.push({
       kind: "appendRows",
       sheetId: this.sheetGid,
       tableId: `${this.sheet.activeTable.tableId}`,

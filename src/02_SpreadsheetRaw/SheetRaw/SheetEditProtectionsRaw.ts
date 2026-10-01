@@ -103,7 +103,7 @@ export class SheetEditProtectionsRaw extends SheetCommonRaw {
     ) {
       return;
     }
-    this.updateRequests.addProtectedRange.push({
+    this.writeOperations.addProtectedRange.push({
       kind: "addProtectedRange",
       protection,
     });
@@ -113,14 +113,14 @@ export class SheetEditProtectionsRaw extends SheetCommonRaw {
     const protections: EditProtection[] =
       fetched === undefined ? [] : [...fetched];
     const deletedIds = new Set(
-      this.updateRequests.deleteProtectedRange
+      this.writeOperations.deleteProtectedRange
         .filter((operation) => operation.sheetId === this.sheetGid)
         .map((operation) => operation.protectedRangeId),
     );
     const remaining = protections.filter(
       (protection) => !deletedIds.has(protection.id),
     );
-    const queued = this.updateRequests.addProtectedRange
+    const queued = this.writeOperations.addProtectedRange
       .filter(
         (operation) => operation.protection.range.sheetId === this.sheetGid,
       )
@@ -174,7 +174,7 @@ export class SheetEditProtectionsRaw extends SheetCommonRaw {
     });
   }
   private _queueDeleteEditProtection(protectionId: number): void {
-    this.updateRequests.deleteProtectedRange.push({
+    this.writeOperations.deleteProtectedRange.push({
       kind: "deleteProtectedRange",
       sheetId: this.sheetGid,
       protectedRangeId: protectionId,

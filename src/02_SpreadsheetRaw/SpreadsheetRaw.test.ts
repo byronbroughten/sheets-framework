@@ -1101,10 +1101,10 @@ describe("SpreadsheetRaw add sheet and add Table", () => {
     raw.gatherAddSheetRequest(addSheetProps);
     raw.gatherAddTableRequest(addTableProps);
 
-    expect(raw.updateRequests.addSheet).toEqual([
+    expect(raw.writeOperations.addSheet).toEqual([
       { kind: "addSheet", ...addSheetProps },
     ]);
-    expect(raw.updateRequests.addTable).toEqual([
+    expect(raw.writeOperations.addTable).toEqual([
       { kind: "addTable", ...addTableProps },
     ]);
   });
@@ -1117,8 +1117,8 @@ describe("SpreadsheetRaw add sheet and add Table", () => {
     raw.gatherAddTableRequest(addTableProps);
     raw.batchUpdateGSheets();
 
-    expect(raw.updateRequests.addSheet).toEqual([]);
-    expect(raw.updateRequests.addTable).toEqual([]);
+    expect(raw.writeOperations.addSheet).toEqual([]);
+    expect(raw.writeOperations.addTable).toEqual([]);
   });
 
   const seededCell = {
@@ -1144,7 +1144,7 @@ describe("SpreadsheetRaw add sheet and add Table", () => {
     expect(() => raw.gatherAddedSheetCellRequest(seededCell)).toThrow(
       "Added-sheet cell write refused: no addSheet for GID 555 is queued in this flush.",
     );
-    expect(raw.updateRequests.update).toEqual([]);
+    expect(raw.writeOperations.fillCell).toEqual([]);
   });
 
   it("refuses a seeded value after the create flush has sent that GID's add-sheet", () => {
@@ -1207,7 +1207,7 @@ describe("SpreadsheetRaw add sheet and add Table", () => {
     ).toThrowError(
       "Added-sheet checkbox validation refused: no addSheet for GID 555 is queued in this flush.",
     );
-    expect(raw.updateRequests.addCheckboxValidation).toEqual([]);
+    expect(raw.writeOperations.addCheckboxValidation).toEqual([]);
   });
 
   it("makes a seeded cell on an added tab a checkbox holding its seeded value, in the same batch update", () => {
@@ -1225,7 +1225,7 @@ describe("SpreadsheetRaw add sheet and add Table", () => {
       value: false,
       dataValidationConditionType: "BOOLEAN",
     });
-    expect(raw.updateRequests.addCheckboxValidation).toEqual([]);
+    expect(raw.writeOperations.addCheckboxValidation).toEqual([]);
   });
 
   it("drops a queued seeded value on discardQueuedChanges, sending no batch update", () => {
@@ -1237,7 +1237,7 @@ describe("SpreadsheetRaw add sheet and add Table", () => {
     raw.discardQueuedChanges();
     raw.batchUpdateGSheets();
 
-    expect(raw.updateRequests.update).toEqual([]);
+    expect(raw.writeOperations.fillCell).toEqual([]);
     expect(batchUpdateCount()).toBe(0);
   });
 });

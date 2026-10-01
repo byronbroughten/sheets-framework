@@ -6,8 +6,8 @@ import { SpreadsheetBaseRaw } from "../ClassBases/SpreadsheetBaseRaw";
 import { emptyStateRaw } from "../ClassTypes/emptyStateRaw";
 import type {
   RowChangesToSave,
-  SheetChangesToSave,
   SetTableColumnTypeOperation,
+  SheetChangesToSave,
 } from "../ClassTypes/StateRaw";
 import { SpreadsheetRaw } from "../SpreadsheetRaw";
 
@@ -21,17 +21,17 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
     return new SpreadsheetRaw(this.spreadsheetRawProps);
   }
   flush(): void {
-    this._gatherUpdateRequests();
+    this._gatherWriteOperations();
     const sheetGidsWithRowDeletes = this._sheetGidsWithRowDeletes();
     const sheetGidsWithConditionalFormatMutations =
       this._sheetGidsWithConditionalFormatMutations();
     const sheetGidsWithEditProtectionMutations =
       this._sheetGidsWithEditProtectionMutations();
-    const hasFindReplace = this.updateRequests.findReplace.length > 0;
+    const hasFindReplace = this.writeOperations.findReplace.length > 0;
     const sheetGidsWithColumnTypeUpdates = new Set(
-      this.updateRequests.updateTableColumnType.map(({ sheetId }) => sheetId),
+      this.writeOperations.setTableColumnType.map(({ sheetId }) => sheetId),
     );
-    this._sendUpdateRequests();
+    this._sendWriteOperations();
     sheetGidsWithColumnTypeUpdates.forEach((sheetGid) =>
       this.ss.sheet(sheetGid).markColumnPropertiesStale(),
     );
@@ -47,7 +47,7 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
     );
     if (hasFindReplace) this._invalidateFetchedCellState();
   }
-  private _gatherUpdateRequests(): void {
+  private _gatherWriteOperations(): void {
     this.sheetsStateRaw.forEach((state, sheetGid) => {
       this._gatherSheetRequests(sheetGid, state.writeQueue.sheet);
       for (const [rowIndex, change] of state.writeQueue.rows) {
@@ -61,7 +61,7 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
   }
   private _gatherColumnTypesRequests(): void {
     const opsBySheet = new Map<number, SetTableColumnTypeOperation[]>();
-    this.updateRequests.updateTableColumnType.forEach((operation) => {
+    this.writeOperations.setTableColumnType.forEach((operation) => {
       const ops = opsBySheet.get(operation.sheetId) ?? [];
       ops.push(operation);
       opsBySheet.set(operation.sheetId, ops);
@@ -91,7 +91,7 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
     if (change.append && change.delete) {
       return;
     } else if (change.delete) {
-      this.updateRequests.delete.push({
+      this.writeOperations.deleteRows.push({
         kind: "deleteRows",
         sheetId: sheetGid,
         startIndex: rowIndex,
@@ -108,14 +108,16 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
     }
   }
   private _sheetGidsWithRowDeletes(): Set<number> {
-    return new Set(this.updateRequests.delete.map(({ sheetId }) => sheetId));
+    return new Set(
+      this.writeOperations.deleteRows.map(({ sheetId }) => sheetId),
+    );
   }
   private _sheetGidsWithConditionalFormatMutations(): Set<number> {
     const sheetGids = new Set<number>();
-    this.updateRequests.deleteConditionalFormat.forEach(({ sheetId }) =>
+    this.writeOperations.deleteConditionalFormatRule.forEach(({ sheetId }) =>
       sheetGids.add(sheetId),
     );
-    this.updateRequests.addConditionalFormat.forEach(({ rule }) => {
+    this.writeOperations.addConditionalFormatRule.forEach(({ rule }) => {
       const sheetId = rule.ranges[0]?.sheetId;
       if (sheetId === undefined) {
         throw new Error(
@@ -128,57 +130,61 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
   }
   private _sheetGidsWithEditProtectionMutations(): Set<number> {
     return new Set([
-      ...this.updateRequests.deleteProtectedRange.map(({ sheetId }) => sheetId),
-      ...this.updateRequests.addProtectedRange.map(
+      ...this.writeOperations.deleteProtectedRange.map(
+        ({ sheetId }) => sheetId,
+      ),
+      ...this.writeOperations.addProtectedRange.map(
         ({ protection }) => protection.range.sheetId,
       ),
     ]);
   }
-  private _sendUpdateRequests(): void {
-    const requests = this.updateRequests;
+  private _sendWriteOperations(): void {
+    const queued = this.writeOperations;
     const operations = [
       // A Table can only be added to a tab this batch has created, so both go first.
-      ...requests.addSheet,
-      ...requests.addTable,
-      ...requests.updateSheetTitle,
-      ...requests.updateTableName,
+      ...queued.addSheet,
+      ...queued.addTable,
+      ...queued.renameSheet,
+      ...queued.renameTable,
       // First among column writes, so a header write in the same batch renames the column rather than being reverted.
-      ...requests.updateTableColumnProperties,
-      ...requests.append,
-      ...requests.insertTableEndColumn,
-      // Fills go before updates; a later-queued fill already erased the cell writes it covers.
-      ...requests.fill,
-      ...requests.update,
+      ...queued.setTableColumnProperties,
+      ...queued.appendRows,
+      ...queued.insertTableEndColumn,
+      // Column fills go before cell writes; a later-queued fill already erased the cell writes it covers.
+      ...queued.fillColumn,
+      ...queued.fillCell,
       // After cell updates, so a checkbox's seeded value is written before its rule.
-      ...requests.addCheckboxValidation,
+      ...queued.addCheckboxValidation,
       // Reads the text as it stands mid-batch, so it must follow what writes it.
-      ...requests.findReplace,
+      ...queued.findReplace,
       ...this._deleteOperationsDescending(),
-      ...requests.sort,
+      ...queued.sort,
       ...this._deleteConditionalFormatOperationsDescending(),
-      ...requests.addConditionalFormat,
-      ...requests.deleteProtectedRange,
-      ...requests.addProtectedRange,
+      ...queued.addConditionalFormatRule,
+      ...queued.deleteProtectedRange,
+      ...queued.addProtectedRange,
       // Outside the ordering rules the queue was built around, so last.
-      ...requests.raw,
+      ...queued.raw,
     ];
     this.spreadsheetStateRaw.rawSource.flush(operations);
-    this.spreadsheetStateRaw.writeQueue.updateRequests =
-      emptyStateRaw.updateRequests();
+    this.spreadsheetStateRaw.writeQueue.operations =
+      emptyStateRaw.writeOperations();
   }
   // Deletes within one batchUpdate apply sequentially and each shifts the
   // row indices below it, so same-sheet deletes must go highest-index-first
   // or a later request's pre-computed startIndex lands on the wrong row.
   private _deleteOperationsDescending(): DeleteRowsOperation[] {
-    return [...this.updateRequests.delete].sort(
+    return [...this.writeOperations.deleteRows].sort(
       (a, b) => b.startIndex - a.startIndex,
     );
   }
   private _deleteConditionalFormatOperationsDescending(): DeleteConditionalFormatRuleOperation[] {
-    return [...this.updateRequests.deleteConditionalFormat].sort((a, b) => {
-      if (a.sheetId !== b.sheetId) return a.sheetId - b.sheetId;
-      return b.index - a.index;
-    });
+    return [...this.writeOperations.deleteConditionalFormatRule].sort(
+      (a, b) => {
+        if (a.sheetId !== b.sheetId) return a.sheetId - b.sheetId;
+        return b.index - a.index;
+      },
+    );
   }
   // Scope can be allSheets, so one rule: every sheet's fetched cells go stale.
   private _invalidateFetchedCellState(): void {

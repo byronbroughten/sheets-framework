@@ -1,8 +1,8 @@
 import { Obj } from "../../../utils/Obj";
 import type { CellValue } from "../../CellValues/cellValues";
 import type {
-  FillColumnOperation,
   FillCellOperation,
+  FillColumnOperation,
 } from "../../RawSource/RawSource";
 import type { RgbColor } from "../../RawSource/RgbColor";
 import type { ModeledRequest } from "../GoogleSheetsAPI";

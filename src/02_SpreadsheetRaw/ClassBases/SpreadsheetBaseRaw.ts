@@ -2,7 +2,11 @@ import { installedRawSource } from "../../00_Source/RawSource/RawSource";
 import { SpreadsheetBaseSchema } from "../../01_SpreadsheetSchema/SpreadsheetBaseSchema";
 import type { GridRangeProps } from "../ClassTypes/AccessorsRaw";
 import { emptyStateRaw } from "../ClassTypes/emptyStateRaw";
-import type { SheetsStateRaw, StateRaw } from "../ClassTypes/StateRaw";
+import type {
+  SheetsStateRaw,
+  StateRaw,
+  WriteOperations,
+} from "../ClassTypes/StateRaw";
 
 export interface SpreadsheetRawProps {
   spreadsheetStateRaw: StateRaw;
@@ -22,8 +26,8 @@ export class SpreadsheetBaseRaw {
   get fetcherGridRanges(): GridRangeProps[] {
     return this.spreadsheetStateRaw.fetchQueue.gridRanges;
   }
-  get updateRequests(): StateRaw["writeQueue"]["updateRequests"] {
-    return this.spreadsheetStateRaw.writeQueue.updateRequests;
+  get writeOperations(): WriteOperations {
+    return this.spreadsheetStateRaw.writeQueue.operations;
   }
   get spreadsheetRawProps(): SpreadsheetRawProps {
     return {

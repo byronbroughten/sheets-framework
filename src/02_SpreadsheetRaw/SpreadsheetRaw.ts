@@ -81,24 +81,24 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
   }
   // Queued on the spreadsheet: a tab that does not exist yet has no sheet state to hold it.
   gatherAddSheetRequest(props: Omit<AddSheetOperation, "kind">): this {
-    this.updateRequests.addSheet.push({ kind: "addSheet", ...props });
+    this.writeOperations.addSheet.push({ kind: "addSheet", ...props });
     return this;
   }
   gatherAddTableRequest(props: Omit<AddTableOperation, "kind">): this {
-    this.updateRequests.addTable.push({ kind: "addTable", ...props });
+    this.writeOperations.addTable.push({ kind: "addTable", ...props });
     return this;
   }
   // A seeded value on a tab this flush adds; an existing tab writes through CellRaw.
   gatherAddedSheetCellRequest(props: AddedSheetCell): this {
     this._validateAddSheetQueued(props.sheetId, "cell write");
     if ("formula" in props) validateFormulaString(props.formula);
-    this.updateRequests.update.push({ kind: "fillCell", ...props });
+    this.writeOperations.fillCell.push({ kind: "fillCell", ...props });
     return this;
   }
   // A checkbox on a tab this flush adds; an existing tab goes through CellRaw.
   gatherAddedSheetCheckboxValidationRequest(range: BoundedGridRange): this {
     this._validateAddSheetQueued(range.sheetId, "checkbox validation");
-    this.updateRequests.addCheckboxValidation.push({
+    this.writeOperations.addCheckboxValidation.push({
       kind: "addCheckboxValidation",
       range,
     });
@@ -106,7 +106,7 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
   }
   // Matches by content rather than by coordinate, so no local mirror is possible.
   findReplace({ scope, ...terms }: FindReplaceProps): this {
-    this.updateRequests.findReplace.push({
+    this.writeOperations.findReplace.push({
       kind: "findReplace",
       terms,
       scope,
@@ -115,7 +115,7 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
   }
   // The one bypass of the type layer; using it obliges filing an issue (docs/architecture/raw-request-opening.md).
   gatherRawRequest(request: OpaqueRawRequest): this {
-    this.updateRequests.raw.push({ kind: "raw", request });
+    this.writeOperations.raw.push({ kind: "raw", request });
     return this;
   }
   // Abandons queued writes while local state still reflects them — terminal step only.
@@ -127,7 +127,7 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
     return this;
   }
   private _validateAddSheetQueued(sheetId: number, write: string): void {
-    if (this.updateRequests.addSheet.some((op) => op.sheetId === sheetId)) {
+    if (this.writeOperations.addSheet.some((op) => op.sheetId === sheetId)) {
       return;
     }
     throw new Error(

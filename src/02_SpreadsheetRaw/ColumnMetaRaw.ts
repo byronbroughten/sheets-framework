@@ -66,7 +66,7 @@ export class ColumnMetaRaw<
     return this._tableColumnState()?.columnType;
   }
   updateColumnType(columnType: TableColumnType): this {
-    this.updateRequests.updateTableColumnType.push({
+    this.writeOperations.setTableColumnType.push({
       kind: "setTableColumnType",
       sheetId: this.sheetGid,
       tableId: this.sheet.activeTable.tableId,
