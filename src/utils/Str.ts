@@ -113,7 +113,7 @@ export const Str = {
   ): TakeFirstN<T, N> {
     return str.split("").slice(0, n).join("") as TakeFirstN<T, N>;
   },
-  // Lets a row-3 header match despite spacing, punctuation or capitalization drift.
+  // Lets a header match despite spacing, punctuation or capitalization drift.
   sentenceToCamelCase<S extends string>(sentence: S): SentenceToCamelCase<S> {
     return sentence
       .toLowerCase()

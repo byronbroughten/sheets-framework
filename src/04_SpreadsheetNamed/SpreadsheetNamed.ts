@@ -216,12 +216,7 @@ export class SpreadsheetNamed extends SpreadsheetBaseNamed {
 function sheetNamesFromReqProps<SN extends SheetName>(
   propsArr: FetchPropsStandardNamed<SN>[],
 ): Set<SN> {
-  return propsArr.reduce((sheetNames, props) => {
-    Obj.keys(props.sheetColumnNames).forEach((sheetName) =>
-      sheetNames.add(sheetName),
-    );
-    return sheetNames;
-  }, new Set() as Set<SN>);
+  return new Set(propsArr.flatMap((props) => Obj.keys(props.sheetColumnNames)));
 }
 
 function prepFetchRowSpecifier(
