@@ -7,7 +7,7 @@ import type { GatherDataPrerequisitesProps } from "../03_SpreadsheetIdentified/S
 import { SpreadsheetIdentified } from "../03_SpreadsheetIdentified/SpreadsheetIdentified.js";
 import { Obj } from "../utils/Obj";
 import { SerialDate } from "../utils/SerialDate";
-import { Tim } from "../utils/Tim.js";
+import { SerialDateTime } from "../utils/SerialDateTime";
 import { Val } from "../utils/Val";
 import { SpreadsheetBaseNamed } from "./ClassBases/SpreadsheetBaseNamed.js";
 import { SheetMetaNamed } from "./SheetMetaNamed.js";
@@ -40,7 +40,7 @@ export class SpreadsheetNamed extends SpreadsheetBaseNamed {
     return SerialDate.fromInstant(new Date(), this.raw.timeZone);
   }
   now(): string {
-    return Tim.nowTimestamp(this.raw.timeZone);
+    return SerialDateTime.nowTimestamp(this.raw.timeZone);
   }
   get serialDate(): typeof SerialDate & { today(): SerialDate } {
     return { ...SerialDate, today: () => this.today() };

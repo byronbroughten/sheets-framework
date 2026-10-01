@@ -8,4 +8,4 @@ Disclosed from [`docs/code-style.md`](../code-style.md), "Imports & file organiz
 
 ## Utility bundle names
 
-`Str.ts` exports `Str`, and likewise `Obj`, `Arr`, `Tim` and `Val`. `SerialDate` is the exception, named for its type because it's the one utility the framework exports to business code, which has its own copy of `Arr`.
+`Str.ts` exports `Str`, and likewise `Obj`, `Arr` and `Val`: a short abbreviation for a bundle of functions on a general subject. A bundle may instead be named for the type it works on, as `SerialDate` and `SerialDateTime` are, after the glossary's **Serial date** and **Serial date-time**. The type's name tells a reader what the members take and return, which an abbreviation of a subject can't.
