@@ -37,6 +37,14 @@ One line per term. The elaboration is one file away. Open a reasoning file only 
 - **`xConfigs` is the whole map, `XConfig` is one entry's record, and a trait is one property of one record.** "Trait" never means a collection.
 - **The config-sheet floor is guaranteed, not data to fix**: the four config sheets' own entries always come out the same on regeneration.
 
+## Writes
+
+- **The queue layer says *write*, paired with *fetch*** (`fetchQueue` / `writeQueue`); *update* names no operation, key or field, because every queued operation is an update.
+- **A queue key equals its operation's `kind`, and a `kind` equals its type name without "Operation"**, in lower camel case; `WriteOperations` is a mapped type over the kinds, so the compiler holds it. The one exception is `raw`, the escape hatch's `RawWriteOperation`.
+- **A per-kind gather method is `gather<Key>Operation`**, and the per-row and per-sheet queue entries are `RowWrites` and `SheetWrites`.
+- **A field about one row or one column is singular (`appendRow`, `deleteRow`); a field holding many entries is plural (`fillCells`, `fillColumns`).**
+- **`FillCellOperation` and `FillColumnOperation` stay separate** so the send order, column fills then cell writes, lives in the structure; a multi-column fill would be `FillRangeOperation`.
+
 ## Meta / primary
 
 - **Meta / primary is an axis orthogonal to the tiers, not a fourth tier.** Primary deals in contents and takes the unmarked name; Meta is the structure's own shape and takes a `Meta` stem.
