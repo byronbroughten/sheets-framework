@@ -82,7 +82,7 @@ export const Arr = {
 
   oneOrThrow<V>(arr: readonly V[]): V {
     if (arr.length < 1) {
-      throw new Error("This array is empty.");
+      throw emptyArrayError();
     }
     if (arr.length > 1) {
       throw new Error("There is more than one item in this array.");
@@ -91,24 +91,26 @@ export const Arr = {
   },
   firstOrThrow<V>(arr: readonly V[]): V {
     if (arr.length < 1) {
-      throw new Error("This array is empty.");
-    } else return Val.assert(arr[0], "The first item");
+      throw emptyArrayError();
+    }
+    return Val.assert(arr[0], "The first item");
   },
   lastOrThrow<V>(arr: readonly V[]): V {
     const index = Arr.lastIndex(arr);
     if (index < 0) {
       throw new Error("This array has no last value—it has no value.");
-    } else return Val.assert(arr[index], "The last item");
+    }
+    return Val.assert(arr[index], "The last item");
   },
   getOnlyItem<T>(arr: T[], arrayOf?: string): T {
     const strArrayOf = arrayOf ?? "items";
     if (arr.length < 1) {
       throw new Error(`The array does not have any ${strArrayOf}`);
-    } else if (arr.length > 1) {
-      throw new Error(`The array has too many ${strArrayOf}`);
-    } else {
-      return Val.assert(arr[0], "The only item");
     }
+    if (arr.length > 1) {
+      throw new Error(`The array has too many ${strArrayOf}`);
+    }
+    return Val.assert(arr[0], "The only item");
   },
   nextRotatingValue<T>(arr: readonly T[], currentValue: T): T {
     if (arr.length === 0) {
@@ -237,3 +239,7 @@ export const Arr = {
     return [...new Set([...a, ...b])];
   },
 } as const;
+
+function emptyArrayError(): Error {
+  return new Error("This array is empty.");
+}
