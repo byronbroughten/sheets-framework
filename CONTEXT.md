@@ -35,7 +35,7 @@ The first row of the Table's data, always the row immediately below the Table he
 _Avoid_: data start, top data row, row 5
 
 **Blank row**:
-A data row with nothing in any of the columns you fill in yourself, which the app leaves when it deletes everything on a sheet. The next row the app adds goes into it. Why, and how: [`docs/architecture/blank-row.md`](./docs/architecture/blank-row.md).
+A data row with nothing in any of the columns you fill in yourself, which the app leaves when it deletes everything in a Table. The next row the app adds to that Table goes into it. Why, and how: [`docs/architecture/blank-row.md`](./docs/architecture/blank-row.md).
 _Avoid_: empty row, placeholder row, spare row
 
 **ID prefix**:
