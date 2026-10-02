@@ -4,7 +4,7 @@ import { sheetLayout } from "./sheetLayout";
 
 const uniformRowIndexes = [
   sheetLayout.colIdRowIndex,
-  sheetLayout.colGroupHeadingRowIndex,
+  sheetLayout.groupHeading1RowIndex,
   sheetLayout.actionRowIndex,
   sheetLayout.tableHeaderRowIndex,
 ];

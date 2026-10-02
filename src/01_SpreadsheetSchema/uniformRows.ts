@@ -6,7 +6,7 @@ export const uniformRows = {
   indexes(): Record<UniformRowName, number> {
     return {
       columnId: sheetLayout.colIdRowIndex,
-      colGroupName: sheetLayout.colGroupHeadingRowIndex,
+      colGroupName: sheetLayout.groupHeading1RowIndex,
       action: sheetLayout.actionRowIndex,
       tableHeader: sheetLayout.tableHeaderRowIndex,
     };

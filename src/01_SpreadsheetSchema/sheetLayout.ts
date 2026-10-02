@@ -5,7 +5,8 @@ export const sheetLayout = {
   nameHeader: "Name",
   startTableColIndex: 0,
   colIdRowIndex: 0,
-  colGroupHeadingRowIndex: 1,
+  groupHeading1RowIndex: 1,
+  groupHeading2RowIndex: 2,
   actionRowIndex: 2,
   tableHeaderRowIndex: 3,
 } as const;

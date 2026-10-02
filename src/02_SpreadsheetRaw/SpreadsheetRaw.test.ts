@@ -1923,7 +1923,7 @@ describe("SheetMetaRaw.insertColumnAtEnd", () => {
     const { grid } = stubThreeColumnTable(
       { columnTypes: { 2: "BOOLEAN" } },
       {
-        [sheetLayout.colGroupHeadingRowIndex]: {
+        [sheetLayout.groupHeading1RowIndex]: {
           value: "Checks",
           backgroundColor: lightGreen,
         },
