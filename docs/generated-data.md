@@ -40,6 +40,8 @@ Regenerate all three with `sheets-framework gen-configs` (see [`docs/how-it-runs
 
 **A sheet's key in `sheetConfigs`/`columnConfigs` is derived from its tab title**, so a misspelled tab becomes a misspelled identifier in the generated files and in every string literal naming that sheet. Fix a tab's spelling before code references it; afterwards it costs a sheet edit, a regeneration and every call site.
 
+**One word splitter, `Str.words`, derives sheet keys, column names, value names and new ID prefixes.** A title with whitespace is a sentence, split only on non-letters and non-digits with each word lowercased whole, so `CapEx budget` gives `capexBudget`. A title with no whitespace, like a Table name, is also split on camelCase and acronym boundaries, so `add occ charge`, `Add Occ Charge`, `add_occ_charge` and `addOccCharge` all give `addOccCharge` (prefix `aoc`), and the tab `CapEx` would give `capEx`. A trailing lone `s` stays on its acronym (`unitIDs` gives `unitIds`). `SentenceToCamelCase` mirrors the runtime rule at the type level.
+
 ## Never hand-edit the data; fix the sheet and regenerate
 
 Do not hand-edit (or AI-edit) the literal data inside `sheetConfigs`/`columnConfigs`/`valueConfigs` once they have real generators — always regenerate from the spreadsheet instead. Structural/type changes around them (not the data itself) are fine. A sheet-shape bug is fixed on the sheet, then regenerated; after any sheet change, read the regenerated entry before building on it.

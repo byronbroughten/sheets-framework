@@ -43,6 +43,34 @@ describe("Str.sentenceToCamelCase", () => {
     expect(Str.sentenceToCamelCase("Tenant's Name")).toBe("tenantsName");
     expect(Str.sentenceToCamelCase("Tenant’s Name")).toBe("tenantsName");
   });
+
+  it("gives one key for sentence, title, snake and camel spellings", () => {
+    ["add occ charge", "Add Occ Charge", "add_occ_charge", "addOccCharge"].forEach(
+      (spelling) => {
+        expect(Str.sentenceToCamelCase(spelling)).toBe("addOccCharge");
+      },
+    );
+  });
+
+  it("ends an acronym before the capital that starts the next word", () => {
+    expect(Str.sentenceToCamelCase("parseHTMLTable")).toBe("parseHtmlTable");
+    expect(Str.sentenceToCamelCase("Unit ID")).toBe("unitId");
+  });
+
+  it("keeps a mixed-case word whole inside a sentence", () => {
+    expect(Str.sentenceToCamelCase("CapEx budget")).toBe("capexBudget");
+  });
+
+  it("gives back a camelCase key unchanged", () => {
+    ["addOccCharge", "unit2Rent", "columnId", "capexBudget"].forEach((key) => {
+      expect(Str.sentenceToCamelCase(key)).toBe(key);
+    });
+  });
+
+  it("keeps a plural acronym as one word", () => {
+    expect(Str.sentenceToCamelCase("Unit IDs")).toBe("unitIds");
+    expect(Str.sentenceToCamelCase("unitIDsCount")).toBe("unitIdsCount");
+  });
 });
 
 describe("RemoveFirstN", () => {
@@ -68,5 +96,40 @@ describe("SentenceToCamelCase", () => {
     assertType<IsExactly<SentenceToCamelCase<"Tenant's Name">, "tenantsName">>(
       true,
     );
+  });
+
+  it("gives one key for sentence, title, snake and camel spellings", () => {
+    assertType<IsExactly<SentenceToCamelCase<"add occ charge">, "addOccCharge">>(
+      true,
+    );
+    assertType<IsExactly<SentenceToCamelCase<"Add Occ Charge">, "addOccCharge">>(
+      true,
+    );
+    assertType<IsExactly<SentenceToCamelCase<"add_occ_charge">, "addOccCharge">>(
+      true,
+    );
+    assertType<IsExactly<SentenceToCamelCase<"addOccCharge">, "addOccCharge">>(
+      true,
+    );
+  });
+
+  it("splits a token on case like the runtime, and a sentence only on punctuation", () => {
+    assertType<
+      IsExactly<SentenceToCamelCase<"parseHTMLTable">, "parseHtmlTable">
+    >(true);
+    assertType<IsExactly<SentenceToCamelCase<"unitIDsCount">, "unitIdsCount">>(
+      true,
+    );
+    assertType<IsExactly<SentenceToCamelCase<" unit2Rent ">, "unit2Rent">>(
+      true,
+    );
+    assertType<IsExactly<SentenceToCamelCase<"CapEx budget">, "capexBudget">>(
+      true,
+    );
+    assertType<IsExactly<SentenceToCamelCase<"Unit IDs">, "unitIds">>(true);
+  });
+
+  it("widens to string for a string that isn't a literal", () => {
+    assertType<IsExactly<SentenceToCamelCase<string>, string>>(true);
   });
 });

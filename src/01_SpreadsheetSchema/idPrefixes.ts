@@ -1,3 +1,5 @@
+import { Str } from "../utils/Str";
+
 export interface IdPrefixLabel {
   label: string;
   idPrefix: string;
@@ -40,10 +42,8 @@ function idPrefixBaseAndRemaining(title: string): {
   base: string;
   remainingConsonants: string;
 } {
-  const titleWords = title
-    .toLowerCase()
-    .replace(/[^a-z ]/g, "")
-    .split(" ")
+  const titleWords = Str.words(title)
+    .map((word) => word.replace(/[0-9]/g, ""))
     .filter((word) => word !== "");
   const lastWord = titleWords.at(-1);
   if (lastWord === undefined) return { base: "s", remainingConsonants: "" };
