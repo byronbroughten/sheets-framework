@@ -64,14 +64,18 @@ type RemoveChar<
 
 type RemoveApostrophes<S extends string> = RemoveChar<RemoveChar<S, "'">, "’">;
 
-type SplitWords<
+type SplitSentenceWords<
   S extends string,
   Current extends string = "",
   Words extends string[] = [],
 > = S extends `${infer C}${infer Rest}`
   ? C extends AlphaNumericChar
-    ? SplitWords<Rest, `${Current}${C}`, Words>
-    : SplitWords<Rest, "", Current extends "" ? Words : [...Words, Current]>
+    ? SplitSentenceWords<Rest, `${Current}${C}`, Words>
+    : SplitSentenceWords<
+        Rest,
+        "",
+        Current extends "" ? Words : [...Words, Current]
+      >
   : Current extends ""
     ? Words
     : [...Words, Current];
@@ -89,10 +93,94 @@ type JoinCamelWords<
     : `${CapitalizeWord<Head>}${JoinCamelWords<Rest, false>}`
   : "";
 
+type UpperAlpha = Uppercase<LowerAlpha>;
+// What \s and trim() match, so a type-level sentence is a runtime one.
+type Whitespace =
+  | " "
+  | "\t"
+  | "\n"
+  | "\v"
+  | "\f"
+  | "\r"
+  | "\u00a0"
+  | "\u1680"
+  | "\u2000"
+  | "\u2001"
+  | "\u2002"
+  | "\u2003"
+  | "\u2004"
+  | "\u2005"
+  | "\u2006"
+  | "\u2007"
+  | "\u2008"
+  | "\u2009"
+  | "\u200a"
+  | "\u2028"
+  | "\u2029"
+  | "\u202f"
+  | "\u205f"
+  | "\u3000"
+  | "\ufeff";
+
+type Trim<S extends string> = S extends `${Whitespace}${infer Rest}`
+  ? Trim<Rest>
+  : S extends `${infer Rest}${Whitespace}`
+    ? Trim<Rest>
+    : S;
+
+type IsSentence<S extends string> =
+  Trim<S> extends `${string}${Whitespace}${string}` ? true : false;
+
+type StartsLowerAlpha<S extends string> = S extends `${LowerAlpha}${string}`
+  ? true
+  : false;
+
+// Mirrors splitOnCase.
+type IsCaseBoundary<
+  Prev extends string,
+  C extends string,
+  Rest extends string,
+> = C extends UpperAlpha
+  ? Prev extends LowerAlpha | Digit
+    ? true
+    : Prev extends UpperAlpha
+      ? Rest extends `${infer Next}${infer After}`
+        ? Next extends "s"
+          ? StartsLowerAlpha<After>
+          : StartsLowerAlpha<Next>
+        : false
+      : false
+  : false;
+
+type SplitTokenWords<
+  S extends string,
+  Prev extends string = "",
+  Current extends string = "",
+  Words extends string[] = [],
+> = S extends `${infer C}${infer Rest}`
+  ? C extends AlphaNumericChar | UpperAlpha
+    ? IsCaseBoundary<Prev, C, Rest> extends true
+      ? SplitTokenWords<Rest, C, Lowercase<C>, [...Words, Current]>
+      : SplitTokenWords<Rest, C, `${Current}${Lowercase<C>}`, Words>
+    : SplitTokenWords<
+        Rest,
+        C,
+        "",
+        Current extends "" ? Words : [...Words, Current]
+      >
+  : Current extends ""
+    ? Words
+    : [...Words, Current];
+
+type SentenceOrTokenWords<S extends string> =
+  IsSentence<S> extends true
+    ? SplitSentenceWords<Lowercase<S>>
+    : SplitTokenWords<S>;
+
 // Mirrors Str.sentenceToCamelCase, so apostrophes are removed rather than split on.
-export type SentenceToCamelCase<S extends string> = JoinCamelWords<
-  SplitWords<RemoveApostrophes<Lowercase<S>>>
->;
+export type SentenceToCamelCase<S extends string> = string extends S
+  ? string
+  : JoinCamelWords<SentenceOrTokenWords<RemoveApostrophes<S>>>;
 
 export const Str = {
   combineStrings<S1 extends string, S2 extends string>(
@@ -113,14 +201,18 @@ export const Str = {
   ): TakeFirstN<T, N> {
     return str.split("").slice(0, n).join("") as TakeFirstN<T, N>;
   },
-  // Lets a header match despite spacing, punctuation or capitalization drift.
-  sentenceToCamelCase<S extends string>(sentence: S): SentenceToCamelCase<S> {
-    return sentence
-      .toLowerCase()
-      .trim()
-      .replace(/['’]/g, "") // remove straight & curly apostrophes
+  words(text: string): string[] {
+    let spaced = text.trim().replace(/['’]/g, ""); // remove straight & curly apostrophes
+    // Splitting a sentence on case would turn "CapEx budget" into capExBudget.
+    if (!/\s/.test(spaced)) spaced = splitOnCase(spaced);
+    return spaced
       .split(/[^a-zA-Z0-9]+/)
       .filter(Boolean)
+      .map((word) => word.toLowerCase());
+  },
+  // Lets a header match despite spacing, punctuation or capitalization drift.
+  sentenceToCamelCase<S extends string>(sentence: S): SentenceToCamelCase<S> {
+    return Str.words(sentence)
       .map((word, index) => {
         if (index === 0) return word;
         return word.charAt(0).toUpperCase() + word.slice(1);
@@ -128,3 +220,9 @@ export const Str = {
       .join("") as SentenceToCamelCase<S>;
   },
 };
+
+function splitOnCase(token: string): string {
+  return token
+    .replace(/([a-z0-9])(?=[A-Z])/g, "$1 ")
+    .replace(/([A-Z])(?=[A-Z][a-z])(?![A-Z]s(?![a-z]))/g, "$1 "); // a lone trailing s pluralizes the acronym
+}

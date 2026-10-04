@@ -13,6 +13,14 @@ describe("idPrefixes.fromTitle", () => {
     expect(idPrefixes.fromTitle("Run Item", new Set())).toBe("rit");
   });
 
+  it("gives one prefix for sentence, title, snake and camel spellings", () => {
+    ["add occ charge", "Add Occ Charge", "add_occ_charge", "addOccCharge"].forEach(
+      (spelling) => {
+        expect(idPrefixes.fromTitle(spelling, new Set())).toBe("aoc");
+      },
+    );
+  });
+
   it("keeps a title shorter than 3 consonants", () => {
     expect(idPrefixes.fromTitle("Id", new Set())).toBe("id");
   });
@@ -35,8 +43,9 @@ describe("idPrefixes.fromTitle", () => {
     expect(idPrefixes.fromTitle("2024", new Set(["s"]))).toBe("s2");
   });
 
-  it("drops punctuation and digits before abbreviating", () => {
-    expect(idPrefixes.fromTitle("Item-2B!", new Set())).toBe("itm");
+  it("splits words on punctuation and drops digits before abbreviating", () => {
+    expect(idPrefixes.fromTitle("Item 2", new Set())).toBe("itm");
+    expect(idPrefixes.fromTitle("Item-2B!", new Set())).toBe("ib");
   });
 
   it("returns only lowercase letters and digits", () => {
