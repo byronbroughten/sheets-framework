@@ -15,6 +15,7 @@ import {
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
 import { assertType, type IsExactly } from "../testSupport/typeAssertions";
+import { Val } from "../utils/Val";
 import { SpreadsheetBaseIdentified } from "./ClassBases/SpreadsheetBaseIdentified";
 import type { FetchTargetIdentified } from "./ClassTypes/StateIdentified";
 import { ColumnIdentified } from "./ColumnIdentified";
@@ -315,7 +316,7 @@ function runItemWithOneRow(topRow: (string | null)[]): TableIdentified {
   });
   const ssi = new SpreadsheetIdentified(
     SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(
-      new Map([[runItemGid, new Set([runStatusColumnId])]]),
+      new Map([["runItem", new Set([runStatusColumnId])]]),
     ),
   );
   const sheet = ssi.sheet(runItemGid);
@@ -337,6 +338,17 @@ describe("the blank test, on a sheet with a feedback column", () => {
 
     expect(sheet.topRow.isBlank).toBe(false);
     expect(sheet.hasNoData).toBe(false);
+  });
+
+  it("leaves the feedback column out of a Table reached by its tableId", () => {
+    const sheet = runItemWithOneRow([null, null, "Succeeded"]);
+    const tableId = Val.assert(sheet.knownTableId(), "runItem tableId");
+    const table = new SpreadsheetIdentified(
+      sheet.spreadsheetIdentifiedProps,
+    ).table(tableId);
+
+    expect(table.blankTestColumnIds()).not.toContain(runStatusColumnId);
+    expect(table.topRow.isBlank).toBe(true);
   });
 });
 
@@ -646,5 +658,128 @@ describe("SpreadsheetIdentified.fetchAllPrepped / FetchTargetIdentified", () => 
         },
       ]),
     );
+  });
+});
+
+describe("SpreadsheetIdentified Tables", () => {
+  const valueTypesTableId = `fake-table-${valueTypesGid}`;
+
+  function stubValueTypes(columnIdRow: string[], header: string[]) {
+    const idAt = columnIdRow.indexOf(valueTypesIdColumnId);
+    const bodyRow = columnIdRow.map((_, colIndex) =>
+      colIndex === idAt ? "r:vty:row4" : true,
+    );
+    return stubSheetsService({
+      sheets: [
+        {
+          sheetId: valueTypesGid,
+          title: "Value Types",
+          rows: buildGridRows({ 0: columnIdRow, 3: header, 4: bodyRow }),
+          table: { endRowIndex: 5 },
+        },
+      ],
+    });
+  }
+
+  function initIdentified(): SpreadsheetIdentified {
+    return new SpreadsheetIdentified(
+      SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
+    );
+  }
+
+  it("resolves a column moved within its Table to its new index, with no config change", () => {
+    stubValueTypes(
+      [checkboxColumnId, valueTypesIdColumnId],
+      ["Checkbox", "ID"],
+    );
+    const ssi = initIdentified();
+    const column = ssi.sheet(valueTypesGid).column(valueTypesIdColumnId);
+    column.prepFetchFull();
+    ssi.fetchAllPrepped();
+
+    expect(column.colIndex).toBe(1);
+    expect(column.valueOrEmpty(0)).toBe("r:vty:row4");
+  });
+
+  it("addresses a known Table by its tableId", () => {
+    stubValueTypes(
+      [valueTypesIdColumnId, checkboxColumnId],
+      ["ID", "Checkbox"],
+    );
+    const ssi = initIdentified();
+    ssi.sheet(valueTypesGid).meta.ensureColumnIdsAreFetched();
+    const column = ssi.table(valueTypesTableId).column(valueTypesIdColumnId);
+    column.prepFetchFull();
+    ssi.fetchAllPrepped();
+
+    expect(column.valueOrEmpty(0)).toBe("r:vty:row4");
+  });
+
+  it("queues fetches per Table, whether reached by its sheet or its tableId", () => {
+    stubValueTypes(
+      [valueTypesIdColumnId, checkboxColumnId],
+      ["ID", "Checkbox"],
+    );
+    const ssi = initIdentified();
+    ssi.sheet(valueTypesGid).meta.ensureColumnIdsAreFetched();
+    ssi.sheet(valueTypesGid).column(valueTypesIdColumnId).prepFetchFull();
+    ssi.table(valueTypesTableId).column(checkboxColumnId).prepFetchFull();
+
+    expect(
+      ssi.tablesPreppedForFetch.map((table) => table.fetchTargets),
+    ).toEqual([
+      [
+        { kind: "fullDataColumn", column: valueTypesIdColumnId },
+        { kind: "fullDataColumn", column: checkboxColumnId },
+      ],
+    ]);
+  });
+
+  it("keeps a fetch prepped through the sheet before its Table is known", () => {
+    stubValueTypes(
+      [valueTypesIdColumnId, checkboxColumnId],
+      ["ID", "Checkbox"],
+    );
+    const ssi = initIdentified();
+    ssi.sheet(valueTypesGid).column(checkboxColumnId).prepFetchFull();
+    ssi.sheet(valueTypesGid).meta.ensureColumnIdsAreFetched();
+    ssi.table(valueTypesTableId).column(valueTypesIdColumnId).prepFetchFull();
+    ssi.fetchAllPrepped();
+
+    const table = ssi.table(valueTypesTableId);
+    expect(table.column(valueTypesIdColumnId).valueOrEmpty(0)).toBe(
+      "r:vty:row4",
+    );
+    expect(table.column(checkboxColumnId).valueOrEmpty(0)).toBe(true);
+    expect(ssi.tablesPreppedForFetch).toEqual([]);
+  });
+
+  it("fetches a sheet's rules and protections with its Table's column IDs", () => {
+    const { getByDataFilterCalls } = stubSheetsService({
+      sheets: [
+        {
+          sheetId: valueTypesGid,
+          title: "Value Types",
+          rows: buildGridRows({
+            0: [valueTypesIdColumnId],
+            3: ["ID"],
+            4: ["r:vty:row4"],
+          }),
+          table: { endRowIndex: 5 },
+          conditionalFormats: [],
+          protectedRanges: [],
+        },
+      ],
+    });
+    const ssi = initIdentified();
+    const sheet = ssi.sheet(valueTypesGid);
+    sheet.prepFetchConditionalFormatRules().prepFetchEditProtections();
+    ssi.fetchAllPrepped();
+    const fetchCount = getByDataFilterCalls.length;
+
+    expect(sheet.conditionalFormatRules()).toEqual([]);
+    expect(sheet.editProtections()).toEqual([]);
+    expect(sheet.column(valueTypesIdColumnId).colIndex).toBe(0);
+    expect(getByDataFilterCalls).toHaveLength(fetchCount);
   });
 });

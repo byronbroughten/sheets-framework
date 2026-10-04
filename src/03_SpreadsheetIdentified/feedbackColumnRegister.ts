@@ -1,5 +1,7 @@
-// Column ids by sheet GID; installed as data, since the endpoints that declare them sit tiers above.
-export type FeedbackColumnIds = ReadonlyMap<number, ReadonlySet<string>>;
+import type { SheetName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
+
+// Column ids by Table config key; installed as data, since the endpoints that declare them sit tiers above.
+export type FeedbackColumnIds = ReadonlyMap<SheetName, ReadonlySet<string>>;
 
 let installed: FeedbackColumnIds | undefined;
 
@@ -22,8 +24,8 @@ function isSameFeedbackColumnIds(
   b: FeedbackColumnIds,
 ): boolean {
   if (a.size !== b.size) return false;
-  return [...a].every(([sheetGid, columnIds]) => {
-    const other = b.get(sheetGid);
+  return [...a].every(([sheetName, columnIds]) => {
+    const other = b.get(sheetName);
     return (
       other !== undefined &&
       other.size === columnIds.size &&

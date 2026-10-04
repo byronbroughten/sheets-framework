@@ -69,6 +69,13 @@ export class TableBaseRaw extends SpreadsheetBaseRaw {
   get rowStates(): RowStatesRaw {
     return this.tableState.working.rowStates;
   }
+  // Rules and protections are per sheet, so a Table reads its sheet's flags.
+  get hasGatheredSheetFetch(): boolean {
+    return (
+      this.sheetState.fetchQueue.gatherConditionalFormats ||
+      this.sheetState.fetchQueue.gatherEditProtections
+    );
+  }
   get sheetLabel(): string {
     return `"${this.sheetState.working.title ?? "(untitled)"}" (gid ${this.sheetGid})`;
   }

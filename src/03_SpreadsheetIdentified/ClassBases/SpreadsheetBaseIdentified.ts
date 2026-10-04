@@ -38,12 +38,16 @@ export class SpreadsheetBaseIdentified extends SpreadsheetBaseRaw {
     return {
       ...SpreadsheetBaseRaw.initSpreadsheetRawProps(),
       spreadsheetStateIdentified: {
-        sheets: new Map(),
+        tables: new Map(),
+        tableBeforePropertiesBySheet: new Map(),
       },
       feedbackColumnIds,
     };
   }
-  get sheetsStateIdentified(): StateIdentified["sheets"] {
-    return this.spreadsheetStateIdentified.sheets;
+  protected get tablesStateIdentified(): StateIdentified["tables"] {
+    return this.spreadsheetStateIdentified.tables;
+  }
+  protected get tableBeforePropertiesBySheet(): StateIdentified["tableBeforePropertiesBySheet"] {
+    return this.spreadsheetStateIdentified.tableBeforePropertiesBySheet;
   }
 }

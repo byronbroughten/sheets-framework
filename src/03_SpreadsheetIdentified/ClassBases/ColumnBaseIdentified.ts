@@ -5,12 +5,8 @@ import {
   type TableIdentifiedProps,
 } from "./TableBaseIdentified";
 
-export interface ColumnIdentifiedProps<
-  VN extends ValueName = ValueName,
-> extends TableIdentifiedProps {
-  columnId: string;
-  valueName?: VN;
-}
+export type ColumnIdentifiedProps<VN extends ValueName = ValueName> =
+  TableIdentifiedProps & { columnId: string; valueName?: VN };
 
 export class ColumnBaseIdentified<
   VN extends ValueName = ValueName,
