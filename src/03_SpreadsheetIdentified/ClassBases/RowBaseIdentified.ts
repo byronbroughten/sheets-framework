@@ -4,9 +4,7 @@ import {
   type TableIdentifiedProps,
 } from "./TableBaseIdentified";
 
-export interface RowIdentifiedProps extends TableIdentifiedProps {
-  rowIndex: number;
-}
+export type RowIdentifiedProps = TableIdentifiedProps & { rowIndex: number };
 
 export class RowBaseIdentified extends TableBaseIdentified {
   readonly rowIndex: number;

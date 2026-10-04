@@ -10,16 +10,12 @@ import type {
 } from "../00_Source/RawSource/EditProtection";
 import { uniformRows } from "../01_SpreadsheetSchema/uniformRows";
 import { UniformRowRaw } from "../02_SpreadsheetRaw/UniformRowRaw";
-import type { StrictOmit } from "../utils/Obj";
-import type { RowIdentifiedProps } from "./ClassBases/RowBaseIdentified";
 import { RowCommonIdentified } from "./ClassBases/RowCommonIdentified";
+import type { TableIdentifiedProps } from "./ClassBases/TableBaseIdentified";
 import { TableIdentified } from "./TableIdentified";
 
-export interface UniformRowIdentifiedProps<
-  UN extends UniformRowName,
-> extends StrictOmit<RowIdentifiedProps, "rowIndex"> {
-  uniformRowName: UN;
-}
+export type UniformRowIdentifiedProps<UN extends UniformRowName> =
+  TableIdentifiedProps & { uniformRowName: UN };
 
 export class UniformRowIdentified<
   UN extends UniformRowName = UniformRowName,

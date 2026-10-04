@@ -60,12 +60,6 @@ export class SheetMetaIdentified extends TableCommonIdentified {
     ) {
       this.raw.gatherFetchColumnIdsInit();
     }
-    if (this.sheetState.fetchQueue.gatherConditionalFormats) {
-      this.raw.primary.gatherFetchConditionalFormatRules();
-    }
-    if (this.sheetState.fetchQueue.gatherEditProtections) {
-      this.raw.primary.gatherFetchEditProtections();
-    }
   }
   gatherFetchDataPrepped(): void {
     // This is so that table dimensions and columnIndexes can be guaranteed

@@ -64,7 +64,7 @@ export class TableIdentified extends TableCommonIdentified {
     return this;
   }
   prepFetchConditionalFormatRules(): this {
-    this.sheetState.fetchQueue.gatherConditionalFormats = true;
+    this.raw.gatherFetchConditionalFormatRules();
     return this;
   }
   conditionalFormatRules(): ConditionalFormatRule[] {
@@ -83,7 +83,7 @@ export class TableIdentified extends TableCommonIdentified {
     return this;
   }
   prepFetchEditProtections(): this {
-    this.sheetState.fetchQueue.gatherEditProtections = true;
+    this.raw.gatherFetchEditProtections();
     return this;
   }
   editProtections(): EditProtection[] {
@@ -132,7 +132,7 @@ export class TableIdentified extends TableCommonIdentified {
   }
   // Feedback columns only report on a row, so a row holding nothing else is still blank.
   blankTestColumnIds(): string[] {
-    const feedbackColumnIds = this.feedbackColumnIds.get(this.sheetGid);
+    const feedbackColumnIds = this.feedbackColumnIds.get(this.sheetName);
     return this.nonFormulaColumnIds.filter(
       (columnId) => !feedbackColumnIds?.has(columnId),
     );

@@ -1,3 +1,4 @@
+import type { SheetName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
 import { SpreadsheetSchema } from "../01_SpreadsheetSchema/SpreadsheetSchema";
 import {
   type FeedbackColumnIds,
@@ -20,13 +21,13 @@ export function feedbackColumnIdsOf(
   const schema = new SpreadsheetSchema();
   return Object.entries(endpoints).reduce((acc, [fullName, endpoint]) => {
     const sheet = schema.sheetByColumnFullName(fullName);
-    const columnIds = acc.get(sheet.sheetGid) ?? new Set<string>();
+    const columnIds = acc.get(sheet.sheetName) ?? new Set<string>();
     for (const columnName of [endpoint.timeLastRan, endpoint.runStatus]) {
       if (columnName === undefined) continue;
       columnIds.add(sheet.columnByName(columnName).columnId);
     }
     // No empty entries, so two maps declaring the same feedback columns install as the same set.
-    if (columnIds.size > 0) acc.set(sheet.sheetGid, columnIds);
+    if (columnIds.size > 0) acc.set(sheet.sheetName, columnIds);
     return acc;
-  }, new Map<number, Set<string>>());
+  }, new Map<SheetName, Set<string>>());
 }

@@ -4,11 +4,8 @@ import {
   type ColumnIdentifiedProps,
 } from "./ColumnBaseIdentified";
 
-export interface CellIdentifiedProps<
-  VN extends ValueName = ValueName,
-> extends ColumnIdentifiedProps<VN> {
-  rowIndex: number;
-}
+export type CellIdentifiedProps<VN extends ValueName = ValueName> =
+  ColumnIdentifiedProps<VN> & { rowIndex: number };
 
 export class CellBaseIdentified<
   VN extends ValueName = ValueName,

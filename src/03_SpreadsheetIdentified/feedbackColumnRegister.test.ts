@@ -20,34 +20,36 @@ describe("installFeedbackColumnIds", () => {
   });
 
   it("gives back the installed set", () => {
-    register.installFeedbackColumnIds(new Map([[1, new Set(["c:a"])]]));
+    register.installFeedbackColumnIds(new Map([["item", new Set(["c:a"])]]));
 
     expect(register.installedFeedbackColumnIds()).toEqual(
-      new Map([[1, new Set(["c:a"])]]),
+      new Map([["item", new Set(["c:a"])]]),
     );
   });
 
   it("accepts the same set again, built afresh", () => {
-    register.installFeedbackColumnIds(new Map([[1, new Set(["c:a", "c:b"])]]));
+    register.installFeedbackColumnIds(
+      new Map([["item", new Set(["c:a", "c:b"])]]),
+    );
 
     expect(() =>
       register.installFeedbackColumnIds(
-        new Map([[1, new Set(["c:b", "c:a"])]]),
+        new Map([["item", new Set(["c:b", "c:a"])]]),
       ),
     ).not.toThrow();
   });
 
   it("refuses a different set once one is installed", () => {
-    register.installFeedbackColumnIds(new Map([[1, new Set(["c:a"])]]));
+    register.installFeedbackColumnIds(new Map([["item", new Set(["c:a"])]]));
 
     expect(() =>
-      register.installFeedbackColumnIds(new Map([[1, new Set(["c:b"])]])),
+      register.installFeedbackColumnIds(new Map([["item", new Set(["c:b"])]])),
     ).toThrow("A different set of feedback columns is already installed");
     expect(() =>
       register.installFeedbackColumnIds(
         new Map([
-          [1, new Set(["c:a"])],
-          [2, new Set(["c:a"])],
+          ["item", new Set(["c:a"])],
+          ["runItem", new Set(["c:a"])],
         ]),
       ),
     ).toThrow("A different set of feedback columns is already installed");

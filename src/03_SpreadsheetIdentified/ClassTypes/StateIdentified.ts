@@ -8,30 +8,27 @@ export interface CellChange<VN extends ValueName = ValueName> {
 }
 
 export interface StateIdentified {
-  sheets: SheetsStateIdentified;
+  tables: TablesStateIdentified;
+  // `ss.sheet(gid)` reaches a Table through its sheet, so what is prepped before that Table is known waits here.
+  tableBeforePropertiesBySheet: Map<SheetId, TableStateIdentified>;
 }
 
-export type SheetsStateIdentified = Map<SheetId, SheetStateIdentified>;
+export type TablesStateIdentified = Map<TableId, TableStateIdentified>;
 
-export interface SheetStateIdentified {
-  fetchQueue: SheetFetchQueueIdentified;
+export interface TableStateIdentified {
+  fetchQueue: TableFetchQueueIdentified;
 }
 
-export interface SheetFetchQueueIdentified {
+export interface TableFetchQueueIdentified {
   targets: FetchTargetIdentified[];
-  gatherConditionalFormats: boolean;
-  gatherEditProtections: boolean;
 }
 
-export function emptySheetFetchQueueIdentified(): SheetFetchQueueIdentified {
-  return {
-    targets: [],
-    gatherConditionalFormats: false,
-    gatherEditProtections: false,
-  };
+export function emptyTableStateIdentified(): TableStateIdentified {
+  return { fetchQueue: { targets: [] } };
 }
 
 type SheetId = number;
+type TableId = string;
 
 interface FullRowTarget {
   kind: "fullRow";

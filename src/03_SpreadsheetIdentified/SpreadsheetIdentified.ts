@@ -1,7 +1,6 @@
 import { SpreadsheetSchema } from "../01_SpreadsheetSchema/SpreadsheetSchema";
 import { SpreadsheetRaw } from "../02_SpreadsheetRaw/SpreadsheetRaw";
 import { SpreadsheetBaseIdentified } from "./ClassBases/SpreadsheetBaseIdentified";
-import { type ColumnIdentified } from "./ColumnIdentified";
 import {
   type GatherDataPrerequisitesProps,
   SheetMetaIdentified,
@@ -27,32 +26,50 @@ export class SpreadsheetIdentified extends SpreadsheetBaseIdentified {
       sheetGid,
     });
   }
-  column(sheetGid: number, columnId: string): ColumnIdentified {
-    return this.sheet(sheetGid).column(columnId);
+  table(tableId: string): TableIdentified {
+    return new TableIdentified({
+      ...this.spreadsheetIdentifiedProps,
+      tableId,
+    });
   }
   get activeSheets(): TableIdentified[] {
     return this.raw.activeSheetGids.map((sheetGid) => this.sheet(sheetGid));
   }
-  get sheetsPreppedForFetch(): SheetMetaIdentified[] {
-    return Array.from(this.sheetsStateIdentified.keys())
-      .map((sheetGid) => this.sheetMeta(sheetGid))
-      .filter((sheet) => sheet.isPreppedToFetch);
+  // Sheets first: building a sheet's handle hands its queue to its Table once that Table is known.
+  get tablesPreppedForFetch(): SheetMetaIdentified[] {
+    return [...this._sheetsWaitingOnTable(), ...this._knownTables()].filter(
+      (table) => table.isPreppedToFetch,
+    );
   }
   fetchAllPrepped({
     includeProgrammaticFacts = false,
     ...props
   }: GatherDataPrerequisitesProps = {}): void {
-    const sheetsPreppedForFetch = this.sheetsPreppedForFetch;
-    sheetsPreppedForFetch.forEach((sheet) => {
-      sheet._gatherDataPrerequisites(props);
+    const tablesPreppedForFetch = this.tablesPreppedForFetch;
+    tablesPreppedForFetch.forEach((table) => {
+      table._gatherDataPrerequisites(props);
     });
     this.raw.fetchAllGathered(includeProgrammaticFacts);
-    sheetsPreppedForFetch.forEach((sheet) => {
-      sheet.gatherFetchDataPrepped();
+    tablesPreppedForFetch.forEach((table) => {
+      table.gatherFetchDataPrepped();
     });
     this.raw.fetchAllGathered(includeProgrammaticFacts);
-    sheetsPreppedForFetch.forEach((sheet) => {
-      sheet.clearFetchTargets();
+    tablesPreppedForFetch.forEach((table) => {
+      table.clearFetchTargets();
     });
+  }
+  private _sheetsWaitingOnTable(): SheetMetaIdentified[] {
+    return [...this.tableBeforePropertiesBySheet.keys()]
+      .map((sheetGid) => this.sheetMeta(sheetGid))
+      .filter((sheet) => sheet.knownTableId() === undefined);
+  }
+  private _knownTables(): SheetMetaIdentified[] {
+    return [...this.tablesStateIdentified.keys()].map(
+      (tableId) =>
+        new SheetMetaIdentified({
+          ...this.spreadsheetIdentifiedProps,
+          tableId,
+        }),
+    );
   }
 }
