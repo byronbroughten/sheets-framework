@@ -17,9 +17,9 @@ import type {
 } from "../01_SpreadsheetSchema/columnConfigsTypes";
 import type { SheetName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
 import type { FindReplaceTerms } from "../02_SpreadsheetRaw/ClassTypes/StateRaw";
-import type { SheetRaw } from "../02_SpreadsheetRaw/SheetRaw";
+import type { TableRaw } from "../02_SpreadsheetRaw/TableRaw";
 import { ColumnIdentified } from "../03_SpreadsheetIdentified/ColumnIdentified";
-import { SheetIdentified } from "../03_SpreadsheetIdentified/SheetIdentified";
+import { TableIdentified } from "../03_SpreadsheetIdentified/TableIdentified";
 import { Arr } from "../utils/Arr";
 import { Obj } from "../utils/Obj";
 import { Val } from "../utils/Val";
@@ -43,11 +43,11 @@ export class SheetNamed<
   get meta(): SheetMetaNamed<SN> {
     return new SheetMetaNamed(this.sheetNamedProps);
   }
-  get raw(): SheetRaw {
+  get raw(): TableRaw {
     return this.identified.raw;
   }
-  get identified(): SheetIdentified {
-    return new SheetIdentified({
+  get identified(): TableIdentified {
+    return new TableIdentified({
       ...this.sheetNamedProps,
       sheetGid: this.sheetGid,
     });
@@ -275,7 +275,7 @@ export class SheetNamed<
   private _idColumn(): ColumnIdentified<"id"> {
     // The framework's own column, so its value type is named here.
     return new ColumnIdentified<"id">({
-      ...this.identified.sheetIdentifiedProps,
+      ...this.identified.tableIdentifiedProps,
       columnId: this.schema.columnIdByHeader(this.schema.idHeader),
     });
   }

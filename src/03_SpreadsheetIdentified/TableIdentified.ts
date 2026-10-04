@@ -11,18 +11,18 @@ import type {
 } from "../00_Source/RawSource/EditProtection";
 import type { Value } from "../01_SpreadsheetSchema/valueSchemas";
 import type { FindReplaceTerms } from "../02_SpreadsheetRaw/ClassTypes/StateRaw";
-import { SheetRaw } from "../02_SpreadsheetRaw/SheetRaw";
-import { SheetCommonIdentified } from "./ClassBases/SheetCommonIdentified";
+import { TableRaw } from "../02_SpreadsheetRaw/TableRaw";
+import { TableCommonIdentified } from "./ClassBases/TableCommonIdentified";
 import { ColumnIdentified } from "./ColumnIdentified";
 import { RowIdentified } from "./RowIdentified";
 import { SheetMetaIdentified } from "./SheetMetaIdentified";
 
-export class SheetIdentified extends SheetCommonIdentified {
+export class TableIdentified extends TableCommonIdentified {
   get meta(): SheetMetaIdentified {
-    return new SheetMetaIdentified(this.sheetIdentifiedProps);
+    return new SheetMetaIdentified(this.tableIdentifiedProps);
   }
-  get raw(): SheetRaw {
-    return new SheetRaw(this.sheetIdentifiedProps);
+  get raw(): TableRaw {
+    return new TableRaw(this.tableIdentifiedProps);
   }
   get rowIndexesActive(): number[] {
     return this.raw.rowIndexesActive;
@@ -55,7 +55,7 @@ export class SheetIdentified extends SheetCommonIdentified {
   }
   column(columnId: string): ColumnIdentified {
     return new ColumnIdentified({
-      ...this.sheetIdentifiedProps,
+      ...this.tableIdentifiedProps,
       columnId,
     });
   }
@@ -139,7 +139,7 @@ export class SheetIdentified extends SheetCommonIdentified {
   }
   row(rowIndex: number): RowIdentified {
     return new RowIdentified({
-      ...this.sheetIdentifiedProps,
+      ...this.tableIdentifiedProps,
       rowIndex,
     });
   }

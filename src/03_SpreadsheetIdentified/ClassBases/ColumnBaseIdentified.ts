@@ -1,20 +1,20 @@
 import { ColumnSchema } from "../../01_SpreadsheetSchema/ColumnSchema";
 import type { ValueName } from "../../01_SpreadsheetSchema/valueSchemas";
 import {
-  SheetBaseIdentified,
-  type SheetIdentifiedProps,
-} from "./SheetBaseIdentified";
+  TableBaseIdentified,
+  type TableIdentifiedProps,
+} from "./TableBaseIdentified";
 
 export interface ColumnIdentifiedProps<
   VN extends ValueName = ValueName,
-> extends SheetIdentifiedProps {
+> extends TableIdentifiedProps {
   columnId: string;
   valueName?: VN;
 }
 
 export class ColumnBaseIdentified<
   VN extends ValueName = ValueName,
-> extends SheetBaseIdentified {
+> extends TableBaseIdentified {
   readonly columnId: string;
   readonly valueName?: VN;
   constructor({ columnId, valueName, ...props }: ColumnIdentifiedProps<VN>) {
@@ -27,7 +27,7 @@ export class ColumnBaseIdentified<
   }
   get columnIdentifiedProps(): ColumnIdentifiedProps<VN> {
     return {
-      ...this.sheetIdentifiedProps,
+      ...this.tableIdentifiedProps,
       columnId: this.columnId,
       valueName: this.valueName,
     };

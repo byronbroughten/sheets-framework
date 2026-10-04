@@ -4,15 +4,15 @@ import { RowRaw } from "../02_SpreadsheetRaw/RowRaw";
 import { CellIdentified } from "./CellIdentified";
 import type { RowIdentifiedProps } from "./ClassBases/RowBaseIdentified";
 import { RowCommonIdentified } from "./ClassBases/RowCommonIdentified";
-import { SheetIdentified } from "./SheetIdentified";
+import { TableIdentified } from "./TableIdentified";
 
 export class RowIdentified extends RowCommonIdentified {
   constructor(props: RowIdentifiedProps) {
     super(props);
     void this.raw;
   }
-  get sheet(): SheetIdentified {
-    return new SheetIdentified(this.sheetIdentifiedProps);
+  get sheet(): TableIdentified {
+    return new TableIdentified(this.tableIdentifiedProps);
   }
   get raw(): RowRaw {
     return new RowRaw(this.rowIdentifiedProps);

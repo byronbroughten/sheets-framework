@@ -5,6 +5,7 @@ import type {
 import { SpreadsheetSchema } from "../../01_SpreadsheetSchema/SpreadsheetSchema";
 import { Val } from "../../utils/Val";
 import { SpreadsheetBaseRaw } from "../ClassBases/SpreadsheetBaseRaw";
+import { emptyStateRaw } from "../ClassTypes/emptyStateRaw";
 import { SpreadsheetRaw } from "../SpreadsheetRaw";
 import {
   type MisplacedTable,
@@ -78,9 +79,15 @@ export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
   private _finalizeGatheredFetches(): void {
     const misplacedTables: MisplacedTable[] = [];
     const absentTables: SheetIdentity[] = [];
+    const finalizedSheetGids: number[] = [];
     this.spreadsheetStateRaw.sheets.forEach((state, sheetGid) => {
       // Above the early return, so a range that arrived incidentally is still judged.
       const placement = this.tableValidator.tablePlacement(sheetGid);
+      const { toFinalize } = state.tableBeforeProperties.fetchQueue;
+      const isWaitingOnTable =
+        toFinalize.rows.size > 0 || toFinalize.columns.size > 0;
+      state.tableBeforeProperties.fetchQueue =
+        emptyStateRaw.tableFetchQueue();
       if (placement.kind === "extra") {
         return;
       }
@@ -88,28 +95,14 @@ export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
         misplacedTables.push(placement);
         return;
       }
-      const sheet = this.ss.sheet(sheetGid);
-      const toFinalize = state.fetchQueue.toFinalize;
-      sheet.finalizeFetchedCells();
-      if (toFinalize.rows.size === 0 && toFinalize.columns.size === 0) {
-        return;
-      }
-      if (state.working.knownTable === undefined) {
+      if (isWaitingOnTable) {
         absentTables.push({ sheetGid });
-        return;
       }
-      if (toFinalize.rows.has(this.schema.colIdRowIndex)) {
-        state.working.hasFetchedColumnIds = true;
-      }
-      toFinalize.rows.forEach((rowIndex) => {
-        sheet.rowCommon(rowIndex).ensureFullActiveDataCells();
-      });
-      toFinalize.columns.forEach((colIndex) => {
-        sheet.column(colIndex).ensureFullActiveDataCells();
-      });
-      sheet.ensureFetchedActiveFacts();
-      toFinalize.rows.clear();
-      toFinalize.columns.clear();
+      finalizedSheetGids.push(sheetGid);
+    });
+    this.spreadsheetStateRaw.tables.forEach((state, tableId) => {
+      if (!finalizedSheetGids.includes(state.sheetGid)) return;
+      this.ss.table(tableId).finalizeFetches();
     });
     if (absentTables.length > 0) {
       // The probe is built from the constants under test, so a moved Table looks absent.

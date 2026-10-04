@@ -5,6 +5,7 @@ import { emptyStateRaw } from "../ClassTypes/emptyStateRaw";
 import type {
   SheetsStateRaw,
   StateRaw,
+  TablesStateRaw,
   WriteOperations,
 } from "../ClassTypes/StateRaw";
 
@@ -19,6 +20,9 @@ export class SpreadsheetBaseRaw {
   }
   protected get sheetsStateRaw(): SheetsStateRaw {
     return this.spreadsheetStateRaw.sheets;
+  }
+  protected get tablesStateRaw(): TablesStateRaw {
+    return this.spreadsheetStateRaw.tables;
   }
   get schema(): SpreadsheetBaseSchema {
     return new SpreadsheetBaseSchema();
@@ -43,6 +47,7 @@ export class SpreadsheetBaseRaw {
         fetchQueue: emptyStateRaw.spreadsheetFetchQueue(),
         writeQueue: emptyStateRaw.spreadsheetWriteQueue(),
         sheets: new Map(),
+        tables: new Map(),
       },
     };
   }

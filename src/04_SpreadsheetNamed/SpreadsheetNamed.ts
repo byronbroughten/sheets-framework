@@ -2,9 +2,9 @@ import type { SheetName } from "../01_SpreadsheetSchema/sheetConfigsTypes.js";
 import { SpreadsheetSchema } from "../01_SpreadsheetSchema/SpreadsheetSchema";
 import type { FindReplaceProps } from "../02_SpreadsheetRaw/ClassTypes/StateRaw";
 import { SpreadsheetRaw } from "../02_SpreadsheetRaw/SpreadsheetRaw.js";
-import type { SheetIdentified } from "../03_SpreadsheetIdentified/SheetIdentified";
 import type { GatherDataPrerequisitesProps } from "../03_SpreadsheetIdentified/SheetMetaIdentified";
 import { SpreadsheetIdentified } from "../03_SpreadsheetIdentified/SpreadsheetIdentified.js";
+import type { TableIdentified } from "../03_SpreadsheetIdentified/TableIdentified";
 import { Obj } from "../utils/Obj";
 import { SerialDate } from "../utils/SerialDate";
 import { SerialDateTime } from "../utils/SerialDateTime";
@@ -220,7 +220,7 @@ function sheetNamesFromReqProps<SN extends SheetName>(
 }
 
 function prepFetchRowSpecifier(
-  sheet: SheetIdentified,
+  sheet: TableIdentified,
   rowSpecifier: RowSpecifierName,
   columnId: string,
 ): void {

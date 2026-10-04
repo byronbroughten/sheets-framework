@@ -12,16 +12,16 @@ import {
   type WholeSheetEditLockDeclaration,
   type WholeSheetEditWarningDeclaration,
 } from "../../00_Source/RawSource/EditProtection";
-import { SheetCommonRaw } from "../ClassBases/SheetCommonRaw";
-import { SheetRaw } from "../SheetRaw";
+import { TableCommonRaw } from "../ClassBases/TableCommonRaw";
 import { SpreadsheetRaw } from "../SpreadsheetRaw";
+import { TableRaw } from "../TableRaw";
 
-export class SheetEditProtectionsRaw extends SheetCommonRaw {
+export class SheetEditProtectionsRaw extends TableCommonRaw {
   get ss(): SpreadsheetRaw {
     return new SpreadsheetRaw(this.spreadsheetRawProps);
   }
-  get sheet(): SheetRaw {
-    return new SheetRaw(this.sheetRawProps);
+  get table(): TableRaw {
+    return new TableRaw(this.tableRawProps);
   }
   gatherFetchEditProtections(): void {
     this.sheetState.fetchQueue.gatherEditProtections = true;
@@ -37,17 +37,17 @@ export class SheetEditProtectionsRaw extends SheetCommonRaw {
     return protections;
   }
   addEditWarning(declaration: EditWarningDeclaration = {}): void {
-    this.addEditWarningAt(this.sheet.dataGridRange(), declaration);
+    this.addEditWarningAt(this.table.dataGridRange(), declaration);
   }
   addEditLock(declaration: EditLockDeclaration = {}): void {
-    this.addEditLockAt(this.sheet.dataGridRange(), declaration);
+    this.addEditLockAt(this.table.dataGridRange(), declaration);
   }
   addEditWarningWholeSheet(
     declaration: WholeSheetEditWarningDeclaration = {},
   ): void {
     this._queueProtection({
       kind: "warning",
-      range: this.sheet.wholeSheetGridRange,
+      range: this.table.wholeSheetGridRange,
       description: declaration.description ?? "",
       users: [],
       groups: [],
@@ -57,7 +57,7 @@ export class SheetEditProtectionsRaw extends SheetCommonRaw {
   addEditLockWholeSheet(declaration: WholeSheetEditLockDeclaration = {}): void {
     this._queueProtection({
       kind: "lock",
-      range: this.sheet.wholeSheetGridRange,
+      range: this.table.wholeSheetGridRange,
       description: declaration.description ?? "",
       users: declaration.users ?? [],
       groups: declaration.groups ?? [],
@@ -133,7 +133,7 @@ export class SheetEditProtectionsRaw extends SheetCommonRaw {
     ];
   }
   removeEditProtections(): void {
-    this.removeEditProtectionsAt(this.sheet.dataGridRange());
+    this.removeEditProtectionsAt(this.table.dataGridRange());
   }
   removeEditProtectionsAt(range: ProtectionGridRange): void {
     this._assertProtectionWriteRowIndexesNotStale(range, []);
@@ -193,7 +193,7 @@ export class SheetEditProtectionsRaw extends SheetCommonRaw {
   ): void {
     if (isWholeColumnGridRange(range)) return;
     if (!protectionRangeHasRowCoordinates(range)) return;
-    this.activeTable.assertRowIndexesNotStale();
+    this.assertRowIndexesNotStale();
   }
   markEditProtectionsStale(): void {
     this.sheetState.working.editProtections.isStale = true;

@@ -2,9 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import type { CellValue } from "../00_Source/CellValues/cellValues";
 import { googleRawRequest } from "../00_Source/GoogleSheets/GoogleSheetsAPI";
-import type {
-  AddTableOperation,
-  BoundedGridRange,
+import {
+  type AddTableOperation,
+  type BoundedGridRange,
+  installedRawSource,
 } from "../00_Source/RawSource/RawSource";
 import type { RgbColor } from "../00_Source/RawSource/RgbColor";
 import { SheetIndex } from "../00_Source/RawSource/SheetIndex";
@@ -29,8 +30,8 @@ import { ColumnMetaRaw } from "./ColumnMetaRaw";
 import { ColumnRaw } from "./ColumnRaw";
 import { RowRaw } from "./RowRaw";
 import { SheetMetaRaw } from "./SheetMetaRaw";
-import { SheetRaw } from "./SheetRaw";
 import { SpreadsheetRaw } from "./SpreadsheetRaw";
+import { TableRaw } from "./TableRaw";
 import { UniformRowRaw } from "./UniformRowRaw";
 
 const lightGreen = { red: 0.851, green: 0.918, blue: 0.827 };
@@ -533,19 +534,26 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     const raw = SpreadsheetRaw.init();
 
     expect(() => raw.sheet(111).topRow.gatherFetchFull()).toThrowError(
-      /Active table is null for sheetGid 111/,
+      /Table is unknown for sheetGid 111/,
     );
   });
 
-  it("aims a full-row fetch at the live Table start after properties, not the layout constant", () => {
+  it("aims a full-row fetch at the live Table's own columns after properties, not the layout constant", () => {
     const liveStart = startTableColIndex + 1;
     const { getByDataFilterCalls } = stubSheetsService({
       sheets: [
-        misplacedTableSheet({
+        {
           sheetId: scratchGid,
           title: "Byron's Scratch Sheet",
-          startColumnIndex: liveStart,
-        }),
+          rows: buildGridRows({
+            [tableHeaderRowIndex]: ["", "ID", "Name"],
+          }),
+          table: {
+            startColumnIndex: liveStart,
+            endColumnIndex: liveStart + 2,
+            endRowIndex: tableEndRowIndex,
+          },
+        },
       ],
     });
 
@@ -560,8 +568,72 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
         startRowIndex: topDataRowIndex,
         endRowIndex: topDataRowIndex + 1,
         startColumnIndex: liveStart,
+        endColumnIndex: liveStart + 2,
       },
     ]);
+  });
+
+  it("aims a full-column fetch from the column ID row to the Table's last row", () => {
+    const { getByDataFilterCalls } = stubSheetsService({
+      sheets: [
+        {
+          sheetId: 111,
+          title: "Records",
+          rows: buildGridRows({
+            [tableHeaderRowIndex]: ["ID", "Name"],
+            [topDataRowIndex]: ["r1", "a"],
+            [topDataRowIndex + 1]: ["r2", "b"],
+          }),
+          table: { endRowIndex: topDataRowIndex + 2 },
+        },
+      ],
+    });
+
+    const raw = SpreadsheetRaw.init();
+    raw.fetchAllSheetProperties();
+    raw.sheet(111).column(1).gatherFetchFull();
+    raw.fetchAllGathered();
+
+    expect(recordedGridRanges(getByDataFilterCalls)).toEqual([
+      {
+        sheetId: 111,
+        startRowIndex: colIdRowIndex,
+        endRowIndex: topDataRowIndex + 2,
+        startColumnIndex: startTableColIndex + 1,
+        endColumnIndex: startTableColIndex + 2,
+      },
+    ]);
+    expect(raw.sheet(111).column(1).valueArrOrEmpty).toEqual(["a", "b"]);
+  });
+
+  it("fetches a full row, a full column and a cell in one round trip", () => {
+    const { getByDataFilterCalls } = stubSheetsService({
+      sheets: [
+        {
+          sheetId: 111,
+          title: "Records",
+          rows: buildGridRows({
+            [tableHeaderRowIndex]: ["ID", "Name"],
+            [topDataRowIndex]: ["r1", "a"],
+            [topDataRowIndex + 1]: ["r2", "b"],
+          }),
+          table: { endRowIndex: topDataRowIndex + 2 },
+        },
+      ],
+    });
+
+    const raw = SpreadsheetRaw.init();
+    raw.fetchAllSheetProperties();
+    const sheet = raw.sheet(111);
+    sheet.topRow.gatherFetchFull();
+    sheet.column(1).gatherFetchFull();
+    sheet.row(1).cell(0).gatherFetchRange();
+    raw.fetchAllGathered();
+
+    expect(getByDataFilterCalls).toHaveLength(1);
+    expect(sheet.row(0).valueOrEmpty(0)).toBe("r1");
+    expect(sheet.row(1).valueOrEmpty(0)).toBe("r2");
+    expect(sheet.row(1).valueOrEmpty(1)).toBe("b");
   });
 });
 
@@ -743,6 +815,22 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
     ]);
   });
 
+  it("sends nothing for a write queued before the sheet's Table was fetched, once discarded", () => {
+    const { batchUpdateCount } = stubSheetsService({
+      sheets: [{ sheetId: 111, title: "Records" }],
+    });
+
+    const raw = SpreadsheetRaw.init();
+    raw.sheet(111).requestSortGSheet({
+      colIdxToSortBy: 0,
+      sortOrder: "ASCENDING",
+    });
+    raw.discardQueuedChanges();
+    raw.batchUpdateGSheets();
+
+    expect(batchUpdateCount()).toBe(0);
+  });
+
   it("sends no batch update when there is nothing to save", () => {
     const { batchUpdateCount } = stubSheetsService();
 
@@ -848,7 +936,7 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
   it("still reads table column properties after a flushed row delete, while the table end throws", () => {
     const raw = sheetAfterFlushedDataRowDelete();
 
-    const table = raw.sheet(111).activeTable;
+    const table = raw.sheet(111);
     expect(table.tableId).toBe("fake-table-111");
     expect(table.startRowIndex).toBe(tableHeaderRowIndex);
     expect(table.startColumnIndex).toBe(startTableColIndex);
@@ -931,7 +1019,7 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
     raw.fetchAllSheetProperties();
 
     expect(raw.sheet(111).rowIndexesAreStale).toBe(true);
-    expect(() => raw.sheet(111).activeTable.dataRowCount).toThrow(
+    expect(() => raw.sheet(111).dataRowCount).toThrow(
       staleRowIndexes,
     );
   });
@@ -944,7 +1032,7 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
     raw.sheet(111).clearRowIndexStale();
 
     expect(raw.sheet(111).rowIndexesAreStale).toBe(false);
-    expect(raw.sheet(111).activeTable.dataRowCount).toBe(7);
+    expect(raw.sheet(111).dataRowCount).toBe(7);
     expect(() => cell.updateValue("painted")).not.toThrow();
   });
 
@@ -1361,12 +1449,12 @@ describe("RowRaw.rowIsActive", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    const countBefore = raw.sheet(111).activeTable.dataRowCount;
+    const countBefore = raw.sheet(111).dataRowCount;
 
     const row = raw.sheet(111).appendDataRow();
 
     expect(row.rowIsActive()).toBe(true);
-    expect(raw.sheet(111).activeTable.dataRowCount).toBe(countBefore + 1);
+    expect(raw.sheet(111).dataRowCount).toBe(countBefore + 1);
   });
 
   it("drops a removed row from the working view before the flush, leaving table indexes unmoved", () => {
@@ -1386,12 +1474,12 @@ describe("RowRaw.rowIsActive", () => {
     raw.sheet(111).row(1).gatherFetchFull();
     raw.fetchAllGathered();
     expect(raw.sheet(111).row(1).rowIsActive()).toBe(true);
-    const countBefore = raw.sheet(111).activeTable.dataRowCount;
+    const countBefore = raw.sheet(111).dataRowCount;
 
     raw.sheet(111).row(1).delete();
 
     expect(raw.sheet(111).row(1).rowIsActive()).toBe(false);
-    expect(raw.sheet(111).activeTable.dataRowCount).toBe(countBefore);
+    expect(raw.sheet(111).dataRowCount).toBe(countBefore);
     expect(raw.sheet(111).dataRowCountAfterFlush).toBe(6);
   });
 
@@ -1416,7 +1504,7 @@ describe("RowRaw.rowIsActive", () => {
 
     expect(raw.sheet(111).row(1).rowIsActive()).toBe(false);
     expect(raw.sheet(111).rowIndexesAreStale).toBe(true);
-    expect(() => raw.sheet(111).activeTable.dataRowCount).toThrow(
+    expect(() => raw.sheet(111).dataRowCount).toThrow(
       /Row indexes are stale/,
     );
   });
@@ -1667,10 +1755,8 @@ describe("queued writes outlive a same-run re-fetch", () => {
     raw.sheet(111).updateTableName("renamedRecords");
     raw.fetchAllSheetProperties();
 
-    expect(raw.sheet(111).activeTable.name).toBe("renamedRecords");
-    expect(raw.sheet(111).tables).toEqual([
-      { tableId: "fake-table-111", name: "renamedRecords" },
-    ]);
+    expect(raw.sheet(111).name).toBe("renamedRecords");
+    expect(raw.sheet(111).tableIds()).toEqual(["fake-table-111"]);
   });
 
   it("keeps a queued column type after a re-fetch of the sheet properties", () => {
@@ -1705,7 +1791,7 @@ describe("queued writes outlive a same-run re-fetch", () => {
     raw.sheet(111).updateTableName("secondRecords");
     raw.fetchAllSheetProperties();
 
-    expect(raw.sheet(111).activeTable.name).toBe("secondRecords");
+    expect(raw.sheet(111).name).toBe("secondRecords");
   });
 
   it("leaves another sheet's queued title alone on a re-fetch of one sheet", () => {
@@ -1746,7 +1832,7 @@ describe("queued writes outlive a same-run re-fetch", () => {
     raw.fetchAllSheetProperties();
 
     expect(raw.sheet(111).title).toBe("Records");
-    expect(raw.sheet(111).activeTable.name).toBe("records");
+    expect(raw.sheet(111).name).toBe("records");
   });
 });
 
@@ -1871,7 +1957,7 @@ describe("SheetMetaRaw.insertColumnAtEnd", () => {
     raw.batchUpdateGSheets();
 
     expect(insertedIndex).toBe(3);
-    expect(raw.sheet(111).activeTable.columnCount).toBe(4);
+    expect(raw.sheet(111).columnCount).toBe(4);
     expect(grid.sheet(111).tables[0]?.range?.endColumnIndex).toBe(4);
     expect(tableColumnNames(grid)).toEqual(["ID", "Left", "Right", "New"]);
     expect(
@@ -1891,7 +1977,7 @@ describe("SheetMetaRaw.insertColumnAtEnd", () => {
     raw.batchUpdateGSheets();
 
     expect(raw.sheet(111).rowIndexesAreStale).toBe(false);
-    expect(raw.sheet(111).activeTable.dataRowCount).toBe(7);
+    expect(raw.sheet(111).dataRowCount).toBe(7);
     expect(() =>
       raw.sheet(111).row(1).cell(2).updateValue("kept"),
     ).not.toThrow();
@@ -1913,7 +1999,7 @@ describe("SheetMetaRaw.insertColumnAtEnd", () => {
     raw.batchUpdateGSheets();
 
     expect([first, second]).toEqual([3, 4]);
-    expect(raw.sheet(111).activeTable.columnCount).toBe(5);
+    expect(raw.sheet(111).columnCount).toBe(5);
     expect(grid.sheet(111).tables[0]?.range?.endColumnIndex).toBe(5);
     expect(tableColumnNames(grid)).toEqual([
       "ID",
@@ -1997,7 +2083,7 @@ describe("SpreadsheetRaw.discardQueuedChanges", () => {
 
     expect(batchUpdateCount()).toBe(0);
     expect(raw.sheet(111).rowIndexesAreStale).toBe(false);
-    expect(raw.sheet(111).activeTable.dataRowCount).toBe(7);
+    expect(raw.sheet(111).dataRowCount).toBe(7);
   });
 
   it("empties the spreadsheet and per-sheet write queues, so a later flush sends no batch update", () => {
@@ -2381,7 +2467,7 @@ describe("ColumnRaw.updateActiveCells", () => {
   });
 });
 
-describe("SheetRaw.removeRowsExcept", () => {
+describe("TableRaw.removeRowsExcept", () => {
   function stubPrunableSheet() {
     return stubSheetsService({
       sheets: [
@@ -2657,14 +2743,14 @@ describe("SpreadsheetRaw navigation", () => {
     const column = sheet.column(0);
     const columnMeta = sheetMeta.column(0);
 
-    assertType<IsExactly<typeof sheet, SheetRaw>>(true);
+    assertType<IsExactly<typeof sheet, TableRaw>>(true);
     assertType<IsExactly<typeof sheetMeta, SheetMetaRaw>>(true);
     assertType<IsExactly<typeof sheet.meta, SheetMetaRaw>>(true);
-    assertType<IsExactly<typeof sheetMeta.primary, SheetRaw>>(true);
+    assertType<IsExactly<typeof sheetMeta.primary, TableRaw>>(true);
     assertType<IsExactly<typeof column, ColumnRaw>>(true);
     assertType<IsExactly<typeof columnMeta, ColumnMetaRaw>>(true);
-    assertType<IsExactly<typeof column.sheet, SheetRaw>>(true);
-    assertType<IsExactly<typeof columnMeta.sheet, SheetMetaRaw>>(true);
+    assertType<IsExactly<typeof column.table, TableRaw>>(true);
+    assertType<IsExactly<typeof columnMeta.table, SheetMetaRaw>>(true);
     assertType<IsExactly<typeof column.meta, ColumnMetaRaw>>(true);
     assertType<IsExactly<typeof columnMeta.primary, ColumnRaw>>(true);
     assertType<IsExactly<ReturnType<typeof sheet.row>, RowRaw>>(true);
@@ -2673,11 +2759,11 @@ describe("SpreadsheetRaw navigation", () => {
     );
 
     expect(sheet.meta).toBeInstanceOf(SheetMetaRaw);
-    expect(sheetMeta.primary).toBeInstanceOf(SheetRaw);
+    expect(sheetMeta.primary).toBeInstanceOf(TableRaw);
     expect(column).toBeInstanceOf(ColumnRaw);
     expect(columnMeta).toBeInstanceOf(ColumnMetaRaw);
-    expect(column.sheet).toBeInstanceOf(SheetRaw);
-    expect(columnMeta.sheet).toBeInstanceOf(SheetMetaRaw);
+    expect(column.table).toBeInstanceOf(TableRaw);
+    expect(columnMeta.table).toBeInstanceOf(SheetMetaRaw);
     expect(column.meta).toBeInstanceOf(ColumnMetaRaw);
     expect(columnMeta.primary).toBeInstanceOf(ColumnRaw);
     expect(sheet.row(0)).toBeInstanceOf(RowRaw);
@@ -2969,7 +3055,7 @@ describe("SheetMetaRaw.activeColumnIds", () => {
   });
 });
 
-describe("SheetRaw.activeTable", () => {
+describe("TableRaw.dataRowCount", () => {
   function fetchedSheet(endRowIndex: number) {
     stubSheetsService({
       sheets: [
@@ -2986,13 +3072,13 @@ describe("SheetRaw.activeTable", () => {
   }
 
   it("throws when the exclusive end row is the first data row", () => {
-    expect(() => fetchedSheet(topDataRowIndex).activeTable).toThrow(
+    expect(() => fetchedSheet(topDataRowIndex).dataRowCount).toThrow(
       /Records.*at least one data row/,
     );
   });
 
   it("accepts a Table whose exclusive end is one past the first data row", () => {
-    expect(fetchedSheet(topDataRowIndex + 1).activeTable.dataRowCount).toBe(1);
+    expect(fetchedSheet(topDataRowIndex + 1).dataRowCount).toBe(1);
   });
 });
 
@@ -3293,5 +3379,124 @@ describe("SpreadsheetRaw over a Table placed lower on its sheet", () => {
     expect(() => raw.sheet(scratchGid).row(5).valueOrEmpty(0)).toThrowError(
       "No value is set in row 16 for column index 0.",
     );
+  });
+});
+
+describe("SpreadsheetRaw fetch integration routes each cell to its Table", () => {
+  const leftStart = startTableColIndex;
+  const rightStart = startTableColIndex + 3;
+  function stubSideBySideTables(tableIds = ["left", "right"]) {
+    return stubSheetsService({
+      sheets: [
+        {
+          sheetId: scratchGid,
+          title: "Byron's Scratch Sheet",
+          rows: buildGridRows({
+            [colIdRowIndex - 1]: ["loose-above"],
+            [tableHeaderRowIndex]: ["ID", "Name", "", "Code", "Qty"],
+            [topDataRowIndex]: ["r1", "a", "loose-between", "c1", 5],
+            [topDataRowIndex + 1]: ["r2", "b", "", "c2", 6],
+            [topDataRowIndex + 3]: ["loose-below"],
+          }),
+          tables: [
+            {
+              tableId: "left",
+              headRows: { 3: ["lft:1", "lft:2"] },
+              startColumnIndex: leftStart,
+              endColumnIndex: leftStart + 2,
+              endRowIndex: topDataRowIndex + 2,
+            },
+            {
+              tableId: "right",
+              headRows: { 3: ["rgt:1", "rgt:2"] },
+              startColumnIndex: rightStart,
+              endColumnIndex: rightStart + 2,
+              endRowIndex: topDataRowIndex + 2,
+            },
+          ].filter(({ tableId }) => tableIds.includes(tableId)),
+        },
+      ],
+    });
+  }
+
+  it("keeps each Table's cells in its own state, counted from its own first column", () => {
+    stubSideBySideTables();
+
+    const raw = SpreadsheetRaw.init();
+    raw.fetchSheetUsedGrid(scratchGid);
+
+    expect(raw.sheet(scratchGid).tableIds()).toEqual(["left", "right"]);
+    expect(raw.table("left").row(0).activeValueArr).toEqual(["r1", "a"]);
+    expect(raw.table("right").row(0).activeValueArr).toEqual(["c1", 5]);
+    expect(raw.table("right").row(1).valueOrEmpty(1)).toBe(6);
+    expect(raw.table("left").meta.colIdRow.activeValueArr).toEqual([
+      "lft:1",
+      "lft:2",
+    ]);
+    expect(raw.table("right").meta.colIdRow.activeValueArr).toEqual([
+      "rgt:1",
+      "rgt:2",
+    ]);
+  });
+
+  it("keeps each Table's queued writes apart, landing in its own columns", () => {
+    const { grid } = stubSideBySideTables();
+
+    const raw = SpreadsheetRaw.init();
+    raw.fetchSheetUsedGrid(scratchGid);
+    raw.table("left").column(1).updateAllCells({ value: "x" });
+    raw.table("right").column(1).updateAllCells({ value: 0 });
+    raw.table("right").row(0).updateValue(0, "c9");
+    raw.batchUpdateGSheets();
+
+    expect(
+      grid.sheet(scratchGid).values({
+        startRowIndex: topDataRowIndex,
+        endRowIndex: topDataRowIndex + 2,
+      }),
+    ).toEqual([
+      ["r1", "x", "loose-between", "c9", 0],
+      ["r2", "x", "", "c2", 0],
+    ]);
+  });
+
+  it("marks every Table on the sheet stale once a row delete there is sent", () => {
+    stubSideBySideTables();
+
+    const raw = SpreadsheetRaw.init();
+    raw.fetchSheetUsedGrid(scratchGid);
+    raw.table("left").row(0).delete();
+    raw.batchUpdateGSheets();
+
+    expect(() => raw.table("left").dataRowCount).toThrow(/stale/);
+    expect(() => raw.table("right").dataRowCount).toThrow(/stale/);
+  });
+
+  it("refuses a re-fetch that drops a Table still holding queued writes", () => {
+    stubSideBySideTables();
+
+    const raw = SpreadsheetRaw.init();
+    raw.fetchSheetUsedGrid(scratchGid);
+    raw.table("right").row(0).updateValue(0, "c9");
+    stubSideBySideTables(["left"]);
+    // The same run now reads a spreadsheet where the right Table is gone.
+    raw.spreadsheetRawProps.spreadsheetStateRaw.rawSource =
+      installedRawSource();
+
+    expect(() => raw.fetchSheetUsedGrid(scratchGid)).toThrow(
+      /Table right is no longer on .*queued writes/,
+    );
+  });
+
+  it("drops a loose cell beside, above or below the Tables", () => {
+    stubSideBySideTables();
+
+    const raw = SpreadsheetRaw.init();
+    raw.fetchSheetUsedGrid(scratchGid);
+
+    const headAndBodyRowIndexes = [-4, -3, -2, -1, 0, 1];
+    expect(raw.table("left").activeRowIndexes).toEqual(headAndBodyRowIndexes);
+    expect(raw.table("right").activeRowIndexes).toEqual(headAndBodyRowIndexes);
+    expect(raw.table("left").row(0).cell(2).isActive).toBe(false);
   });
 });

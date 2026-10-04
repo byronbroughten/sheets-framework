@@ -24,8 +24,8 @@ import { CellRaw, validateFormulaString } from "./CellRaw";
 import { ColumnBaseRaw } from "./ClassBases/ColumnBaseRaw";
 import type { CellFill, FindReplaceTerms } from "./ClassTypes/StateRaw";
 import { ColumnMetaRaw } from "./ColumnMetaRaw";
-import { SheetRaw } from "./SheetRaw";
 import { SpreadsheetRaw } from "./SpreadsheetRaw";
+import { TableRaw } from "./TableRaw";
 
 export class ColumnRaw<
   VN extends CellValueName = CellValueName,
@@ -33,14 +33,14 @@ export class ColumnRaw<
   get ss(): SpreadsheetRaw {
     return new SpreadsheetRaw(this.spreadsheetRawProps);
   }
-  get sheet(): SheetRaw {
-    return new SheetRaw(this.sheetRawProps);
+  get table(): TableRaw {
+    return new TableRaw(this.tableRawProps);
   }
   get meta(): ColumnMetaRaw<VN> {
     return new ColumnMetaRaw<VN>(this.columnRawProps);
   }
   get valueArrOrEmpty(): (CellValue<VN> | "")[] {
-    return this.sheet.rowIndexesActive.map((rowIndex) =>
+    return this.table.rowIndexesActive.map((rowIndex) =>
       this.valueOrEmpty(rowIndex),
     );
   }
@@ -53,7 +53,7 @@ export class ColumnRaw<
     return this.cell(0);
   }
   dataGridRange(): BoundedGridRange {
-    const { origin, dataRowCount } = this.sheet.activeTable;
+    const { origin, dataRowCount } = this.table;
     return {
       sheetId: this.sheetGid,
       startRowIndex: origin.sheetRowIndex(0),
@@ -68,10 +68,10 @@ export class ColumnRaw<
     );
   }
   get cellIndexesActive(): number[] {
-    return this.sheet.rowIndexesActive;
+    return this.table.rowIndexesActive;
   }
   get cellIndexesFull(): number[] {
-    return this.sheet.rowIndexesFull;
+    return this.table.rowIndexesFull;
   }
   cell(rowIndex: number): CellRaw<VN> {
     return new CellRaw<VN>({
@@ -88,18 +88,18 @@ export class ColumnRaw<
   }
   // State is still mirrored row by row; only the queued request collapses.
   updateAllCells(change: Omit<CellFill<VN>, "formula">): this {
-    this.sheet.activeTable.assertRowIndexesNotStale();
-    this.sheet.validateNotPrunedToSelection();
-    const { dataRowCount } = this.sheet.activeTable;
+    this.table.assertRowIndexesNotStale();
+    this.table.validateNotPrunedToSelection();
+    const { dataRowCount } = this.table;
     const { value } = change;
-    this.sheet.rowIndexesFull.forEach((rowIndex) => {
-      const row = this.sheet.row(rowIndex);
+    this.table.rowIndexesFull.forEach((rowIndex) => {
+      const row = this.table.row(rowIndex);
       row.validateIsWritable();
       if (value !== undefined && row.rowIsActive()) {
         this.cell(rowIndex).setValueState(value);
       }
     });
-    this.sheet.queueSheetWrite({
+    this.table.queueTableWrite({
       action: "fillColumn",
       colIndex: this.colIndex,
       startRowIndex: 0,
@@ -109,14 +109,14 @@ export class ColumnRaw<
     return this;
   }
   updateAllFormulas(formula: string): this {
-    this.sheet.activeTable.assertRowIndexesNotStale();
+    this.table.assertRowIndexesNotStale();
     validateFormulaString(formula);
-    this.sheet.validateNotPrunedToSelection();
-    const { dataRowCount } = this.sheet.activeTable;
-    this.sheet.rowIndexesFull.forEach((rowIndex) => {
-      this.sheet.row(rowIndex).validateIsWritable();
+    this.table.validateNotPrunedToSelection();
+    const { dataRowCount } = this.table;
+    this.table.rowIndexesFull.forEach((rowIndex) => {
+      this.table.row(rowIndex).validateIsWritable();
     });
-    this.sheet.queueSheetWrite({
+    this.table.queueTableWrite({
       action: "fillColumn",
       colIndex: this.colIndex,
       startRowIndex: 0,
@@ -126,7 +126,7 @@ export class ColumnRaw<
     return this;
   }
   updateActiveCells(change: Omit<CellFill<VN>, "formula">): this {
-    this.sheet.activeTable.assertRowIndexesNotStale();
+    this.table.assertRowIndexesNotStale();
     const rowIndexes = this.cellIndexesActive;
     const { value } = change;
     if (value !== undefined) {
@@ -135,7 +135,7 @@ export class ColumnRaw<
       });
     }
     Arr.contiguousRanges(rowIndexes).forEach(({ startIndex, endIndex }) => {
-      this.sheet.queueSheetWrite({
+      this.table.queueTableWrite({
         action: "fillColumn",
         colIndex: this.colIndex,
         startRowIndex: startIndex,
@@ -146,11 +146,11 @@ export class ColumnRaw<
     return this;
   }
   updateActiveFormulas(formula: string): this {
-    this.sheet.activeTable.assertRowIndexesNotStale();
+    this.table.assertRowIndexesNotStale();
     validateFormulaString(formula);
     Arr.contiguousRanges(this.cellIndexesActive).forEach(
       ({ startIndex, endIndex }) => {
-        this.sheet.queueSheetWrite({
+        this.table.queueTableWrite({
           action: "fillColumn",
           colIndex: this.colIndex,
           startRowIndex: startIndex,
@@ -163,58 +163,58 @@ export class ColumnRaw<
   }
   // Reaches every data row like a whole-column fill, so it takes the same guards.
   findReplace(terms: FindReplaceTerms): this {
-    this.sheet.validateNotPrunedToSelection();
+    this.table.validateNotPrunedToSelection();
     this.ss.findReplace({ ...terms, scope: { range: this.dataGridRange() } });
     return this;
   }
   addConditionalFormatRule(declaration: ConditionalFormatDeclaration): this {
-    this.sheet.addConditionalFormatRuleAt(this.dataGridRange(), declaration);
+    this.table.addConditionalFormatRuleAt(this.dataGridRange(), declaration);
     return this;
   }
   removeConditionalFormatRules(): this {
-    this.sheet.removeConditionalFormatRulesAt(this.dataGridRange());
+    this.table.removeConditionalFormatRulesAt(this.dataGridRange());
     return this;
   }
   removeConditionalFormatRule(rule: ConditionalFormatRule): this {
-    this.sheet.removeConditionalFormatRule(rule);
+    this.table.removeConditionalFormatRule(rule);
     return this;
   }
   addEditWarning(declaration: EditWarningDeclaration = {}): this {
-    this.sheet.addEditWarningAt(this.dataGridRange(), declaration);
+    this.table.addEditWarningAt(this.dataGridRange(), declaration);
     return this;
   }
   addEditWarningFromRow(
     startRowIndex: number,
     declaration: EditWarningDeclaration = {},
   ): this {
-    this.sheet.addEditWarningAt(
+    this.table.addEditWarningAt(
       this.gridRangeFromRow(startRowIndex),
       declaration,
     );
     return this;
   }
   addEditWarningWholeColumn(declaration: EditWarningDeclaration = {}): this {
-    this.sheet.addEditWarningAt(this._wholeColumnGridRange(), declaration);
+    this.table.addEditWarningAt(this._wholeColumnGridRange(), declaration);
     return this;
   }
   addEditLock(declaration: EditLockDeclaration = {}): this {
-    this.sheet.addEditLockAt(this.dataGridRange(), declaration);
+    this.table.addEditLockAt(this.dataGridRange(), declaration);
     return this;
   }
   addEditLockWholeColumn(declaration: EditLockDeclaration = {}): this {
-    this.sheet.addEditLockAt(this._wholeColumnGridRange(), declaration);
+    this.table.addEditLockAt(this._wholeColumnGridRange(), declaration);
     return this;
   }
   removeEditProtections(): this {
-    this.sheet.removeEditProtectionsAt(this.dataGridRange());
+    this.table.removeEditProtectionsAt(this.dataGridRange());
     return this;
   }
   removeEditProtectionsWholeColumn(): this {
-    this.sheet.removeEditProtectionsAt(this._wholeColumnGridRange());
+    this.table.removeEditProtectionsAt(this._wholeColumnGridRange());
     return this;
   }
   removeEditProtection(protection: EditProtection): this {
-    this.sheet.removeEditProtection(protection);
+    this.table.removeEditProtection(protection);
     return this;
   }
   gatherFetchActive(): this {
@@ -224,21 +224,16 @@ export class ColumnRaw<
     return this;
   }
   gatherFetchFull(): this {
-    const origin = this.tableOrigin();
-    this.sheet.gatherFetchRange({
-      startRowIndex: origin.sheetRowIndex(0),
-      startColumnIndex: origin.sheetColIndex(this.colIndex),
-      endColumnIndex: origin.sheetColIndex(this.colIndex + 1),
-    });
-    this.sheetState.fetchQueue.toFinalize.columns.add(this.colIndex);
+    this.table.gatherFetchRange(this.table.fullColumnFetchRange(this.colIndex));
+    this.tableState.fetchQueue.toFinalize.columns.add(this.colIndex);
     return this;
   }
   // A full-column fetch can hit rows that are entirely blank across every
   // column, which Sheets omits from the response — ensureStateExists
   // backfills those before ensureActive tries to touch a cell in them.
   ensureFullActiveDataCells(): void {
-    this.sheet.rowIndexesFull.forEach((rowIndex) => {
-      this.sheet.row(rowIndex).ensureStateExists();
+    this.table.rowIndexesFull.forEach((rowIndex) => {
+      this.table.row(rowIndex).ensureStateExists();
       this.cell(rowIndex).ensureActive();
     });
   }

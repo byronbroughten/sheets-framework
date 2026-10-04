@@ -33,7 +33,7 @@ export class ColumnMetaNamed<
   }
   get identified(): ColumnMetaIdentified<ColumnValueName<SN, CN>> {
     return new ColumnMetaIdentified<ColumnValueName<SN, CN>>({
-      ...this.sheet.identified.sheetIdentifiedProps,
+      ...this.sheet.identified.tableIdentifiedProps,
       columnId: this.columnId,
     });
   }

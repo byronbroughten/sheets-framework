@@ -27,6 +27,7 @@ export interface StateRaw {
   fetchQueue: SpreadsheetFetchQueueRaw;
   writeQueue: SpreadsheetWriteQueueRaw;
   sheets: SheetsStateRaw;
+  tables: TablesStateRaw;
 }
 
 export interface SpreadsheetFetchQueueRaw {
@@ -50,36 +51,20 @@ export type WriteOperations = {
     LocalWriteOperation,
     { kind: KD }
   >[];
-} & { setTableColumnType: SetTableColumnTypeOperation[] };
-
-// Queue-only: the sheet gathers each Table's into one setTableColumnProperties.
-export interface SetTableColumnTypeOperation {
-  kind: "setTableColumnType";
-  sheetId: number;
-  tableId: string;
-  columnIndex: number;
-  columnType: TableColumnType;
-}
+};
 
 export type SheetsStateRaw = Map<SheetId, SheetStateRaw>;
 
 export interface SheetStateRaw {
   working: SheetWorkingStateRaw;
   fetchQueue: SheetFetchQueueRaw;
-  writeQueue: SheetWriteQueueRaw;
+  // Stage 1 reaches a Table through its sheet, so what is queued before the Table is known waits here.
+  tableBeforeProperties: TableStateRaw;
 }
 
 export interface SheetWorkingStateRaw {
   title: string | undefined;
-  knownTable: KnownTableRaw | undefined;
-  tables: TableIdentityRaw[];
-  hasExtraTables: boolean;
-  // A findReplace matches by content, so what it changed is unknowable locally.
-  cellStateIsStale: boolean;
-  hasFetchedColumnIds: boolean;
-  isPrunedToSelection: boolean;
-  rowStates: RowStatesRaw;
-  columnStates: ColumnStatesRaw;
+  rowCount: number | undefined;
   conditionalFormats: ConditionalFormatsStateRaw;
   editProtections: EditProtectionsStateRaw;
 }
@@ -97,17 +82,51 @@ export interface EditProtectionsStateRaw {
 export interface SheetFetchQueueRaw {
   gatherConditionalFormats: boolean;
   gatherEditProtections: boolean;
-  toFinalize: SheetFinalizeQueueRaw;
 }
 
-export interface SheetFinalizeQueueRaw {
+export type TablesStateRaw = Map<TableId, TableStateRaw>;
+
+export interface TableStateRaw {
+  sheetGid: number;
+  // Absent until a fetch brings the Table's properties.
+  properties: TablePropertiesRaw | undefined;
+  working: TableWorkingStateRaw;
+  fetchQueue: TableFetchQueueRaw;
+  writeQueue: TableWriteQueueRaw;
+}
+
+export interface TablePropertiesRaw {
+  tableId: string;
+  name: string;
+  startRowIndex: SheetRowIndex; // the header row
+  endRowIndex: SheetRowIndex; // last row + 1
+  startColumnIndex: SheetColIndex;
+  endColumnIndex: SheetColIndex; // last column + 1
+  columnProperties: TableColumnSnapshot[];
+  rowIndexesAreStale: boolean;
+}
+
+export interface TableWorkingStateRaw {
+  // A findReplace matches by content, so what it changed is unknowable locally.
+  cellStateIsStale: boolean;
+  hasFetchedColumnIds: boolean;
+  isPrunedToSelection: boolean;
+  rowStates: RowStatesRaw;
+  columnStates: ColumnStatesRaw;
+}
+
+export interface TableFetchQueueRaw {
+  toFinalize: TableFinalizeQueueRaw;
+}
+
+export interface TableFinalizeQueueRaw {
   rows: Set<RowIndex>;
   columns: Set<ColIndex>;
   cells: Map<RowIndex, Set<ColIndex>>;
 }
 
-export interface SheetWriteQueueRaw {
-  sheet: SheetWrites;
+export interface TableWriteQueueRaw {
+  table: TableWrites;
   rows: Map<RowIndex, RowWrites>;
   // A row an append has handed out, so a second append can't reuse it.
   reservedRowIndexes: Set<RowIndex>;
@@ -134,23 +153,8 @@ export interface ActiveFactsRaw {
   topValue: CellValue;
 }
 
-export interface KnownTableRaw {
-  tableId: string;
-  name: string;
-  startRowIndex: SheetRowIndex; // the header row
-  endRowIndex: SheetRowIndex; // last row + 1
-  startColumnIndex: SheetColIndex;
-  endColumnIndex: SheetColIndex; // last column + 1
-  columnProperties: TableColumnSnapshot[];
-  rowIndexesAreStale: boolean;
-}
-
-export interface TableIdentityRaw {
-  tableId: string;
-  name: string;
-}
-
 type SheetId = number;
+type TableId = string;
 type RowIndex = number;
 type ColIndex = number;
 
@@ -177,10 +181,12 @@ export interface TableEndColumnUniformCells {
   header: string;
   colGroupName?: string;
 }
-export interface SheetWrites {
+export interface TableWrites {
   sort: SortParameters | undefined;
   insertTableEndColumnCount: number;
   fillColumns: ColumnFill[];
+  // Gathered into the Table's one setTableColumnProperties.
+  columnTypes: Map<ColIndex, TableColumnType>;
 }
 // One contiguous run of a column's cells: value/colour as repeatCell, formula as pasteData.
 export interface ColumnFill extends CellFill {
@@ -190,7 +196,7 @@ export interface ColumnFill extends CellFill {
   endRowIndex: number;
 }
 
-export interface SheetWriteSortProps extends SortParameters {
+export interface TableWriteSortProps extends SortParameters {
   action: "sort";
 }
 
@@ -205,12 +211,17 @@ export type AddedSheetCell = Required<
 > &
   ({ value: CellValue } | { formula: string });
 
-export interface SheetWritePropsObj {
-  sort: SheetWriteSortProps;
+export interface TableWritePropsObj {
+  sort: TableWriteSortProps;
   insertTableEndColumn: { action: "insertTableEndColumn" };
   fillColumn: { action: "fillColumn" } & ColumnFill;
+  updateColumnType: {
+    action: "updateColumnType";
+    colIndex: ColIndex;
+    columnType: TableColumnType;
+  };
 }
-export type SheetWriteProps = SheetWritePropsObj[keyof SheetWritePropsObj];
+export type TableWriteProps = TableWritePropsObj[keyof TableWritePropsObj];
 
 export type RowWriteFillCellProps = {
   action: "fillCell";

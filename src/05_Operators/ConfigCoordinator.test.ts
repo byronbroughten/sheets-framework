@@ -957,7 +957,7 @@ describe("ConfigCoordinator.syncConfigSheetRows Let api access", () => {
     });
 
     expect(() => ConfigCoordinator.init().syncConfigSheetRows()).toThrow(
-      /Active table is null/,
+      /Table is unknown/,
     );
   });
 

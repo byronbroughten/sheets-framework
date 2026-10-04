@@ -21,25 +21,25 @@ export class UniformRowRaw<
     return this;
   }
   addEditWarning(declaration: EditWarningDeclaration = {}): this {
-    this.sheet.addEditWarningAt(
-      this.sheet.rowGridRange(this.rowIndex),
+    this.table.addEditWarningAt(
+      this.table.rowGridRange(this.rowIndex),
       declaration,
     );
     return this;
   }
   addEditLock(declaration: EditLockDeclaration = {}): this {
-    this.sheet.addEditLockAt(
-      this.sheet.rowGridRange(this.rowIndex),
+    this.table.addEditLockAt(
+      this.table.rowGridRange(this.rowIndex),
       declaration,
     );
     return this;
   }
   removeEditProtections(): this {
-    this.sheet.removeEditProtectionsAt(this.sheet.rowGridRange(this.rowIndex));
+    this.table.removeEditProtectionsAt(this.table.rowGridRange(this.rowIndex));
     return this;
   }
   removeEditProtection(protection: EditProtection): this {
-    this.sheet.removeEditProtection(protection);
+    this.table.removeEditProtection(protection);
     return this;
   }
 }

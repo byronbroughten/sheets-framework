@@ -1,12 +1,13 @@
 import type {
   RowWrites,
-  SheetFetchQueueRaw,
   SheetStateRaw,
-  SheetWorkingStateRaw,
-  SheetWriteQueueRaw,
-  SheetWrites,
   SpreadsheetFetchQueueRaw,
   SpreadsheetWriteQueueRaw,
+  TableFetchQueueRaw,
+  TableStateRaw,
+  TableWorkingStateRaw,
+  TableWriteQueueRaw,
+  TableWrites,
   WriteOperations,
 } from "./StateRaw";
 
@@ -28,7 +29,6 @@ export const emptyStateRaw = {
       addProtectedRange: [],
       renameSheet: [],
       renameTable: [],
-      setTableColumnType: [],
       setTableColumnProperties: [],
       addCheckboxValidation: [],
       raw: [],
@@ -40,52 +40,65 @@ export const emptyStateRaw = {
   spreadsheetWriteQueue(): SpreadsheetWriteQueueRaw {
     return { operations: emptyStateRaw.writeOperations() };
   },
-  sheetWrites(): SheetWrites {
-    return { sort: undefined, insertTableEndColumnCount: 0, fillColumns: [] };
+  tableWrites(): TableWrites {
+    return {
+      sort: undefined,
+      insertTableEndColumnCount: 0,
+      fillColumns: [],
+      columnTypes: new Map(),
+    };
   },
   rowWrites(): RowWrites {
     return { appendRow: false, deleteRow: false, fillCells: new Map() };
   },
-  sheetWriteQueue(): SheetWriteQueueRaw {
+  tableWriteQueue(): TableWriteQueueRaw {
     return {
-      sheet: emptyStateRaw.sheetWrites(),
+      table: emptyStateRaw.tableWrites(),
       rows: new Map(),
       reservedRowIndexes: new Set(),
     };
   },
-  sheetState(): SheetStateRaw {
+  tableFetchQueue(): TableFetchQueueRaw {
     return {
-      working: emptySheetWorkingState(),
-      fetchQueue: emptySheetFetchQueue(),
-      writeQueue: emptyStateRaw.sheetWriteQueue(),
+      toFinalize: {
+        rows: new Set(),
+        columns: new Set(),
+        cells: new Map(),
+      },
+    };
+  },
+  tableState(sheetGid: number): TableStateRaw {
+    return {
+      sheetGid,
+      properties: undefined,
+      working: emptyTableWorkingState(),
+      fetchQueue: emptyStateRaw.tableFetchQueue(),
+      writeQueue: emptyStateRaw.tableWriteQueue(),
+    };
+  },
+  sheetState(sheetGid: number): SheetStateRaw {
+    return {
+      working: {
+        title: undefined,
+        rowCount: undefined,
+        conditionalFormats: { rules: undefined, isStale: false },
+        editProtections: { protections: undefined, isStale: false },
+      },
+      fetchQueue: {
+        gatherConditionalFormats: false,
+        gatherEditProtections: false,
+      },
+      tableBeforeProperties: emptyStateRaw.tableState(sheetGid),
     };
   },
 };
 
-function emptySheetFetchQueue(): SheetFetchQueueRaw {
+function emptyTableWorkingState(): TableWorkingStateRaw {
   return {
-    gatherConditionalFormats: false,
-    gatherEditProtections: false,
-    toFinalize: {
-      rows: new Set(),
-      columns: new Set(),
-      cells: new Map(),
-    },
-  };
-}
-
-function emptySheetWorkingState(): SheetWorkingStateRaw {
-  return {
-    title: undefined,
-    knownTable: undefined,
-    tables: [],
-    hasExtraTables: false,
     cellStateIsStale: false,
     hasFetchedColumnIds: false,
     isPrunedToSelection: false,
     rowStates: new Map(),
     columnStates: new Map(),
-    conditionalFormats: { rules: undefined, isStale: false },
-    editProtections: { protections: undefined, isStale: false },
   };
 }

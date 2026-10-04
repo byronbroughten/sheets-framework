@@ -24,8 +24,8 @@ import { SheetMetaRaw } from "./SheetMetaRaw";
 export class ColumnMetaRaw<
   VN extends CellValueName = CellValueName,
 > extends ColumnBaseRaw {
-  get sheet(): SheetMetaRaw {
-    return new SheetMetaRaw(this.sheetRawProps);
+  get table(): SheetMetaRaw {
+    return new SheetMetaRaw(this.tableRawProps);
   }
   get primary(): ColumnRaw<VN> {
     return new ColumnRaw<VN>(this.columnRawProps);
@@ -66,11 +66,10 @@ export class ColumnMetaRaw<
     return this._tableColumnState()?.columnType;
   }
   updateColumnType(columnType: TableColumnType): this {
-    this.writeOperations.setTableColumnType.push({
-      kind: "setTableColumnType",
-      sheetId: this.sheetGid,
-      tableId: this.sheet.activeTable.tableId,
-      columnIndex: this.colIndex,
+    this.table.assertTableIsKnown();
+    this.table.queueTableWrite({
+      action: "updateColumnType",
+      colIndex: this.colIndex,
       columnType,
     });
     this._ensureColumnState(this.colIndex).columnType = columnType;
@@ -78,7 +77,7 @@ export class ColumnMetaRaw<
   }
   // Table column properties are only trustworthy once the Table itself is known.
   private _tableColumnState(): ColumnStateRaw | undefined {
-    this.sheet.activeTable.assertKnown();
+    this.table.assertTableIsKnown();
     return this.columnState;
   }
   uniformCell<UN extends UniformRowName>(

@@ -13,6 +13,7 @@ import {
 } from "../00_Source/RawSource/EditProtection";
 import type {
   BoundedGridRange,
+  GridBlockSnapshot,
   GridRangeProps,
   SheetSnapshot,
   TableColumnPropertiesUpdate,
@@ -23,53 +24,48 @@ import { Arr } from "../utils/Arr";
 import { Val } from "../utils/Val";
 import { assertValueAndFormulaExclusive } from "./CellRaw";
 import type { RowCommonRaw } from "./ClassBases/RowCommonRaw";
-import { SheetCommonRaw } from "./ClassBases/SheetCommonRaw";
+import { originOf } from "./ClassBases/TableBaseRaw";
+import { TableCommonRaw } from "./ClassBases/TableCommonRaw";
 import {
   type ColumnFill,
   type FindReplaceTerms,
-  type SetTableColumnTypeOperation,
   type SortParameters,
-  type TableIdentityRaw,
+  type TableWrites,
 } from "./ClassTypes/StateRaw";
 import { ColumnRaw } from "./ColumnRaw";
 import { RowRaw } from "./RowRaw";
 import { SheetMetaRaw } from "./SheetMetaRaw";
-import { SheetConditionalFormatsRaw } from "./SheetRaw/SheetConditionalFormatsRaw";
-import { SheetEditProtectionsRaw } from "./SheetRaw/SheetEditProtectionsRaw";
 import { SpreadsheetRaw } from "./SpreadsheetRaw";
+import { SheetConditionalFormatsRaw } from "./TableRaw/SheetConditionalFormatsRaw";
+import { SheetEditProtectionsRaw } from "./TableRaw/SheetEditProtectionsRaw";
 
 /**
- * One sheet's grid state by index: rows, columns, table geometry, pruning,
- * queued sheet-level requests, and integrating fetched sheet data into rows,
- * cells and Meta column facts. Conditional format rules and edit protections
- * live in SheetRaw/ and are reached through one-line delegations here.
+ * One Table's state by Table-relative index: rows, columns, pruning, queued
+ * Table-level requests, and integrating fetched cells into its rows, cells and
+ * Meta column facts. Stage 1 also reaches it through its sheet, so sheet-level
+ * title, conditional format rules and edit protections live here too, the
+ * latter two in TableRaw/ behind one-line delegations.
  * Uniform rows and column facts are SheetMetaRaw; spreadsheet-wide fetch and
  * flush are SpreadsheetRaw. By-name and columnId resolution are Identified/Named.
  */
-export class SheetRaw extends SheetCommonRaw {
+export class TableRaw extends TableCommonRaw {
   get ss(): SpreadsheetRaw {
     return new SpreadsheetRaw(this.spreadsheetRawProps);
   }
   get meta(): SheetMetaRaw {
-    return new SheetMetaRaw(this.sheetRawProps);
+    return new SheetMetaRaw(this.tableRawProps);
   }
   private get conditionalFormats(): SheetConditionalFormatsRaw {
-    return new SheetConditionalFormatsRaw(this.sheetRawProps);
+    return new SheetConditionalFormatsRaw(this.tableRawProps);
   }
   private get protections(): SheetEditProtectionsRaw {
-    return new SheetEditProtectionsRaw(this.sheetRawProps);
-  }
-  get rowIndexesAreStale(): boolean {
-    return (
-      this.sheetState.working.knownTable !== undefined &&
-      this.activeTable.rowIndexesAreStale
-    );
+    return new SheetEditProtectionsRaw(this.tableRawProps);
   }
   get hasFetchedProperties(): boolean {
-    return this.sheetState.working.knownTable !== undefined;
+    return this.tableProperties !== undefined;
   }
   dataGridRange(): GridRangeProps {
-    const { origin, dataRowCount, columnCount } = this.activeTable;
+    const { origin, dataRowCount, columnCount } = this;
     return {
       sheetId: this.sheetGid,
       startRowIndex: origin.sheetRowIndex(0),
@@ -106,11 +102,8 @@ export class SheetRaw extends SheetCommonRaw {
     this.sheetState.working.title = title;
     return this;
   }
-  get tables(): TableIdentityRaw[] {
-    return this.sheetState.working.tables;
-  }
   updateTableName(name: string): this {
-    const tableId = this.activeTable.tableId;
+    const tableId = this.tableId;
     this.writeOperations.renameTable.push({
       kind: "renameTable",
       tableId,
@@ -120,11 +113,11 @@ export class SheetRaw extends SheetCommonRaw {
     return this;
   }
   get activeRowIndexes(): number[] {
-    const indexes = Array.from(this.sheetState.working.rowStates.keys());
+    const indexes = Array.from(this.rowStates.keys());
     return Arr.sortAscending(indexes);
   }
   get activeRowCount(): number {
-    return this.sheetState.working.rowStates.size;
+    return this.rowStates.size;
   }
   get lastActiveRowIndex(): number {
     return Math.max(...this.rowStates.keys());
@@ -133,7 +126,7 @@ export class SheetRaw extends SheetCommonRaw {
     return this.activeRowIndexes.filter((rowIndex) => rowIndex >= 0);
   }
   get rowIndexesFull(): number[] {
-    return Arr.indexesFromUntil(0, this.activeTable.dataRowCount);
+    return Arr.indexesFromUntil(0, this.dataRowCount);
   }
   get rowsFull(): RowRaw[] {
     return this.rowIndexesFull.map((rowIndex) => this.row(rowIndex));
@@ -153,36 +146,30 @@ export class SheetRaw extends SheetCommonRaw {
   }
   // Local row state holds only fetched rows, so the table's extent is the source.
   get dataRowCountAfterFlush(): number {
-    return this.activeTable.dataRowCount - this._queuedRowDeleteCount();
+    return this.dataRowCount - this._queuedRowDeleteCount();
   }
   private _queuedRowDeleteCount(): number {
     let count = 0;
-    this.sheetState.writeQueue.rows.forEach((writes) => {
+    this.tableState.writeQueue.rows.forEach((writes) => {
       if (writes.deleteRow) count++;
     });
     return count;
   }
   get cellStateIsStale(): boolean {
-    return this.sheetState.working.cellStateIsStale;
-  }
-  markRowIndexesStale(): void {
-    this.activeTable.markRowIndexesStale();
+    return this.tableState.working.cellStateIsStale;
   }
   invalidateCellState(): void {
-    this.sheetState.working.rowStates.clear();
-    this.sheetState.working.cellStateIsStale = true;
+    this.rowStates.clear();
+    this.tableState.working.cellStateIsStale = true;
   }
   findReplace(terms: FindReplaceTerms): this {
     this.ss.findReplace({ ...terms, scope: { sheetId: this.sheetGid } });
     return this;
   }
-  clearRowIndexStale(): void {
-    this.activeTable.clearRowIndexStale();
-  }
   row(rowIndex: number): RowRaw {
     return new RowRaw({
       rowIndex,
-      ...this.sheetRawProps,
+      ...this.tableRawProps,
     });
   }
   // Every guess this sheet's columns made from a sample had none behind it.
@@ -210,7 +197,7 @@ export class SheetRaw extends SheetCommonRaw {
   ): ColumnRaw<VN> {
     return new ColumnRaw<VN>({
       colIndex,
-      ...this.sheetRawProps,
+      ...this.tableRawProps,
     });
   }
   columnByHeader<VN extends CellValueName = CellValueName>(
@@ -235,10 +222,28 @@ export class SheetRaw extends SheetCommonRaw {
     return this;
   }
   hasQueuedFullRowFetch(rowIndex: number): boolean {
-    return this.sheetState.fetchQueue.toFinalize.rows.has(rowIndex);
+    return this.tableState.fetchQueue.toFinalize.rows.has(rowIndex);
   }
-  finalizeFetchedCells(): void {
-    this.sheetState.fetchQueue.toFinalize.cells.forEach(
+  // Backfills every range fetched this cycle, since Sheets omits empty cells and whole blank rows.
+  finalizeFetches(): void {
+    const { toFinalize } = this.tableState.fetchQueue;
+    this._finalizeFetchedCells();
+    if (toFinalize.rows.size === 0 && toFinalize.columns.size === 0) return;
+    if (toFinalize.rows.has(this.schema.colIdRowIndex)) {
+      this.tableState.working.hasFetchedColumnIds = true;
+    }
+    toFinalize.rows.forEach((rowIndex) => {
+      this.rowCommon(rowIndex).ensureFullActiveDataCells();
+    });
+    toFinalize.columns.forEach((colIndex) => {
+      this.column(colIndex).ensureFullActiveDataCells();
+    });
+    this._ensureFetchedActiveFacts();
+    toFinalize.rows.clear();
+    toFinalize.columns.clear();
+  }
+  private _finalizeFetchedCells(): void {
+    this.tableState.fetchQueue.toFinalize.cells.forEach(
       (colIndexes, rowIndex) => {
         const row = this.rowCommon(rowIndex);
         row.ensureStateExists();
@@ -247,11 +252,11 @@ export class SheetRaw extends SheetCommonRaw {
         });
       },
     );
-    this.sheetState.fetchQueue.toFinalize.cells.clear();
+    this.tableState.fetchQueue.toFinalize.cells.clear();
   }
   // After the backfills above, so a blank fact is sampled rather than built.
-  ensureFetchedActiveFacts(): void {
-    const { toFinalize } = this.sheetState.fetchQueue;
+  private _ensureFetchedActiveFacts(): void {
+    const { toFinalize } = this.tableState.fetchQueue;
     if (toFinalize.rows.has(0)) {
       this.meta.ensureTableColumnsActiveFacts();
     }
@@ -261,22 +266,29 @@ export class SheetRaw extends SheetCommonRaw {
     });
   }
   integrateSheetState(sheet: SheetSnapshot): void {
-    this._initSheetState(sheet);
-    this.sheetState.working.cellStateIsStale = false;
-    if (sheet.gridBlocks) {
-      this._integrateSheetData(sheet.gridBlocks);
-    }
+    this._integrateSheetProperties(sheet);
+    this.tableIds().forEach((tableId) => {
+      this.ss.table(tableId).integrateGridBlocks(sheet.gridBlocks ?? []);
+    });
   }
-  private _integrateSheetData(
-    gridBlocks: NonNullable<SheetSnapshot["gridBlocks"]>,
-  ): void {
-    const origin = this.tableOrigin();
+  // Each Table takes only the cells inside its own area, so a loose cell reaches no state.
+  integrateGridBlocks(gridBlocks: GridBlockSnapshot[]): void {
+    this.tableState.working.cellStateIsStale = false;
+    const properties = Val.assert(
+      this.tableProperties,
+      `Table properties for ${this.sheetLabel}`,
+    );
+    const origin = originOf(properties);
+    const bodyRowCount = properties.endRowIndex - properties.startRowIndex - 1;
+    const columnCount = properties.endColumnIndex - properties.startColumnIndex;
     gridBlocks.forEach((block) => {
       const firstColIndex = origin.colIndex(block.startColumn);
       const firstRowIndex = origin.rowIndex(block.startRow);
       block.rows.forEach((rowSnapshot, rowOffset) => {
         const rowIndex = firstRowIndex + rowOffset;
-        if (!this._isHeadOrBodyRowIndex(rowIndex)) return;
+        // The column ID row is the topmost head row.
+        if (rowIndex < this.schema.colIdRowIndex) return;
+        if (rowIndex >= bodyRowCount) return;
         const row = this.rowCommon(rowIndex);
         row.ensureStateExists();
         for (
@@ -285,21 +297,17 @@ export class SheetRaw extends SheetCommonRaw {
           colIdxOffset++
         ) {
           const colIndex = firstColIndex + colIdxOffset;
-          if (colIndex < 0) continue;
+          if (colIndex < 0 || colIndex >= columnCount) continue;
           const cellData = rowSnapshot.cells[colIdxOffset];
           if (row.rowIsActive()) {
             row.cell(colIndex).integrateSnapshot(cellData);
           }
-          if (rowIndex === 0 && this.isTableColIndex(colIndex)) {
+          if (rowIndex === 0) {
             this.meta.column(colIndex).integrateActiveFacts(cellData);
           }
         }
       });
     });
-  }
-  // A row above the head rows belongs to no row Raw can name.
-  private _isHeadOrBodyRowIndex(rowIndex: number): boolean {
-    return rowIndex >= 0 || this.schema.isUniformRowIndex(rowIndex);
   }
   gatherFetchConditionalFormatRules(): this {
     this.conditionalFormats.gatherFetchConditionalFormatRules();
@@ -417,18 +425,18 @@ export class SheetRaw extends SheetCommonRaw {
         this.rowCommon(rowIndex).remove();
       }
     });
-    this.sheetState.working.isPrunedToSelection = true;
+    this.tableState.working.isPrunedToSelection = true;
   }
   // A whole-column fill ignores active rows, so it would rewrite what a prune excluded.
   validateNotPrunedToSelection(): void {
-    if (this.sheetState.working.isPrunedToSelection) {
+    if (this.tableState.working.isPrunedToSelection) {
       throw new Error(
         `Sheet ${this.sheetGid} has been pruned to a selection. A whole-column write would reach the rows the prune excluded.`,
       );
     }
   }
   requestSortGSheet({ colIdxToSortBy, sortOrder }: SortParameters): void {
-    this.queueSheetWrite({
+    this.queueTableWrite({
       action: "sort",
       colIdxToSortBy,
       sortOrder,
@@ -455,50 +463,47 @@ export class SheetRaw extends SheetCommonRaw {
     });
   }
   addCheckboxValidationAt(range: BoundedGridRange): this {
-    this.activeTable.assertRowIndexesNotStale();
+    this.assertRowIndexesNotStale();
     this.writeOperations.addCheckboxValidation.push({
       kind: "addCheckboxValidation",
       range,
     });
     return this;
   }
+  gatherQueuedTableWrites(): void {
+    const { writes } = this;
+    this.gatherInsertTableEndColumnOperations(writes.insertTableEndColumnCount);
+    if (writes.sort !== undefined) {
+      this.gatherSortOperation(writes.sort);
+    }
+    writes.fillColumns.forEach((fill) => {
+      this.gatherFillColumnOperation(fill);
+    });
+  }
   gatherInsertTableEndColumnOperations(insertCount: number): void {
     Array.from({ length: insertCount }).forEach(() => {
-      const { origin, columnCount } = this.activeTable;
+      const { origin, columnCount } = this;
       this.writeOperations.insertTableEndColumn.push({
         kind: "insertTableEndColumn",
         sheetId: this.sheetGid,
         startColumnIndex: origin.sheetColIndex(columnCount),
       });
-      this.activeTable.growColumnCount();
+      this.growColumnCount();
     });
   }
-  gatherSetTableColumnPropertiesOperation(
-    ops: SetTableColumnTypeOperation[],
-  ): void {
-    this._assertColumnTypesUpdateAllowed(ops);
+  gatherSetTableColumnPropertiesOperation(): void {
+    const { columnTypes } = this.writes;
+    if (columnTypes.size === 0) return;
+    this._assertColumnTypesUpdateAllowed(columnTypes);
     this.writeOperations.setTableColumnProperties.push({
       kind: "setTableColumnProperties",
-      tableId: this.activeTable.tableId,
-      columnProperties: this._columnTypesColumnProperties(ops),
+      tableId: this.tableId,
+      columnProperties: this._columnTypesColumnProperties(columnTypes),
     });
   }
-  markColumnPropertiesStale(): void {
-    this.activeTable.markColumnPropertiesStale();
-  }
-  private _assertColumnTypesUpdateAllowed(
-    ops: SetTableColumnTypeOperation[],
-  ): void {
-    const tableId = Val.assert(ops[0], "queued column type").tableId;
-    const tableLabel = this._tableLabel(tableId);
-    if (
-      this.sheetState.working.knownTable === undefined ||
-      this.activeTable.tableId !== tableId ||
-      ops.some((operation) => operation.tableId !== tableId)
-    ) {
-      throw new Error(`${tableLabel} is not the fetched Table on that sheet.`);
-    }
-    const fetched = this.activeTable.columnProperties;
+  private _assertColumnTypesUpdateAllowed(columnTypes: ColumnTypes): void {
+    const tableLabel = this._tableLabel(this.tableId);
+    const fetched = this.columnProperties;
     if (fetched.length === 0) {
       throw new Error(
         `${tableLabel} has no fetched column properties; refetch it before setting a column type.`,
@@ -523,7 +528,7 @@ export class SheetRaw extends SheetCommonRaw {
         `Refusing to set column types on ${tableLabel}: it would reset the dropdown style and colours on its validated columns ${validated.map(columnLabel).join(", ")}.`,
       );
     }
-    ops.forEach(({ columnIndex }) => {
+    columnTypes.forEach((_, columnIndex) => {
       if (!fetched.some((column) => column.columnIndex === columnIndex)) {
         throw new Error(
           `${tableLabel} has no fetched ${tableColumnLabel(columnIndex)}.`,
@@ -533,19 +538,16 @@ export class SheetRaw extends SheetCommonRaw {
   }
   // Full list, since a partial columnProperties replaces the rest.
   private _columnTypesColumnProperties(
-    ops: SetTableColumnTypeOperation[],
+    columnTypes: ColumnTypes,
   ): TableColumnPropertiesUpdate[] {
-    const typeByIndex = new Map<number, string>(
-      ops.map((operation) => [operation.columnIndex, operation.columnType]),
-    );
-    return this.activeTable.columnProperties.map((column) => {
+    return this.columnProperties.map((column) => {
       const { columnIndex } = column;
       if (column.columnName === undefined) {
         throw new Error(
-          `${this._tableLabel(this.activeTable.tableId)} ${tableColumnLabel(columnIndex)} has no columnName; refusing to replace column properties.`,
+          `${this._tableLabel(this.tableId)} ${tableColumnLabel(columnIndex)} has no columnName; refusing to replace column properties.`,
         );
       }
-      const columnType = typeByIndex.get(columnIndex) ?? column.columnType;
+      const columnType = columnTypes.get(columnIndex) ?? column.columnType;
       return {
         columnIndex,
         columnName: column.columnName,
@@ -568,7 +570,7 @@ export class SheetRaw extends SheetCommonRaw {
     });
   }
   appendDataRow(): RowRaw {
-    return this.row(this.activeTable.dataRowCount).append();
+    return this.row(this.dataRowCount).append();
   }
   appendDataRowValues(colValues: Map<number, Value>): RowRaw {
     const row = this.appendDataRow();
@@ -578,6 +580,8 @@ export class SheetRaw extends SheetCommonRaw {
     return row;
   }
 }
+
+type ColumnTypes = TableWrites["columnTypes"];
 
 function columnLabel(column: TableColumnSnapshot): string {
   return column.columnName ?? tableColumnLabel(column.columnIndex);

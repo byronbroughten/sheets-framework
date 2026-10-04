@@ -1,14 +1,14 @@
 import { SheetSchema } from "../../01_SpreadsheetSchema/SheetSchema";
 import {
-  SheetBaseIdentified,
-  type SheetIdentifiedProps,
-} from "./SheetBaseIdentified";
+  TableBaseIdentified,
+  type TableIdentifiedProps,
+} from "./TableBaseIdentified";
 
-export interface RowIdentifiedProps extends SheetIdentifiedProps {
+export interface RowIdentifiedProps extends TableIdentifiedProps {
   rowIndex: number;
 }
 
-export class RowBaseIdentified extends SheetBaseIdentified {
+export class RowBaseIdentified extends TableBaseIdentified {
   readonly rowIndex: number;
   constructor({ rowIndex, ...rest }: RowIdentifiedProps) {
     super(rest);
@@ -20,7 +20,7 @@ export class RowBaseIdentified extends SheetBaseIdentified {
   get rowIdentifiedProps(): RowIdentifiedProps {
     return {
       rowIndex: this.rowIndex,
-      ...this.sheetIdentifiedProps,
+      ...this.tableIdentifiedProps,
     };
   }
 }

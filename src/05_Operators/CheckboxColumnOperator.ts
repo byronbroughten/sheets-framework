@@ -29,7 +29,7 @@ export class CheckboxColumnOperator<
   // Named can't re-derive `checkbox` while SN is generic, so the write is pinned here.
   get identified(): ColumnIdentified<"checkbox"> {
     return new ColumnIdentified<"checkbox">({
-      ...this.sheet.identified.sheetIdentifiedProps,
+      ...this.sheet.identified.tableIdentifiedProps,
       columnId: this.column.columnId,
     });
   }

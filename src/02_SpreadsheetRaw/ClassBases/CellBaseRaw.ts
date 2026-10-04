@@ -2,9 +2,7 @@ import { Val } from "../../utils/Val";
 import type { CellStateRaw, RowStateRaw } from "../ClassTypes/StateRaw";
 import { ColumnBaseRaw, type ColumnRawProps } from "./ColumnBaseRaw";
 
-export interface CellRawProps extends ColumnRawProps {
-  rowIndex: number;
-}
+export type CellRawProps = ColumnRawProps & { rowIndex: number };
 
 export class CellBaseRaw extends ColumnBaseRaw {
   readonly rowIndex: number;

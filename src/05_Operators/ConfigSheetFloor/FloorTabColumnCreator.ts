@@ -27,7 +27,7 @@ export class FloorTabColumnCreator<
   hasFloorTable(): boolean {
     const sheetGid = getSheetTraitByName(this.sheetName, "sheetGid");
     if (!this.ss.raw.gidIsActive(sheetGid)) return false;
-    return this.sheet.raw.tables.length === 1;
+    return this.sheet.raw.tableIds().length === 1;
   }
   assertMissingAreRecreatable(): void {
     this._assertTableMenuSpaceIsFirst();

@@ -1,5 +1,5 @@
-// First, out of order: entering the RowCommonRaw <-> SheetRaw cycle here loads UniformRowBaseRaw before its base class, in the bundle.
-import "./SheetRaw";
+// First, out of order: entering the RowCommonRaw <-> TableRaw cycle here loads UniformRowBaseRaw before its base class, in the bundle.
+import "./TableRaw";
 
 import type {
   CellValue,
@@ -29,11 +29,11 @@ export class RowRaw extends RowCommonRaw {
     }
   }
   delete(): void {
-    this.sheet.activeTable.assertRowIndexesNotStale();
+    this.table.assertRowIndexesNotStale();
     this.validateSheetKeepsADataRow();
     this.remove();
     this.queueRowWrite({ action: "deleteRow" });
-    // this.activeTable.endRowIndex--;
+    // this.endRowIndex--;
     // TODO: technically, there should should be activeTable and workingTable; active table gets updated only at the update flush. workingTable gets updated immediately.
   }
   append(): this {
@@ -42,14 +42,14 @@ export class RowRaw extends RowCommonRaw {
         `Cannot append ${this.rowLabel(this.rowIndex)} because it is already active.`,
       );
     }
-    this.sheetState.working.rowStates.set(this.rowIndex, new Map());
+    this.tableState.working.rowStates.set(this.rowIndex, new Map());
     this.queueRowWrite({ action: "appendRow" });
-    this.sheet.activeTable.growDataRowCount();
+    this.table.growDataRowCount();
     return this;
   }
   // A new row copies its formulas from the rows already there, so one must survive.
   private validateSheetKeepsADataRow(): void {
-    if (!this.sheet.isDownToLastDataRow) return;
+    if (!this.table.isDownToLastDataRow) return;
     throw new Error(
       `Cannot delete ${this.rowLabel(this.rowIndex)} of sheetGid ${this.sheetGid}: it is the sheet's last data row, and a sheet may never be left with none. Clear the row instead.`,
     );

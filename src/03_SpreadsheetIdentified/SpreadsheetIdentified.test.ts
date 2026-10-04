@@ -20,9 +20,9 @@ import type { FetchTargetIdentified } from "./ClassTypes/StateIdentified";
 import { ColumnIdentified } from "./ColumnIdentified";
 import { ColumnMetaIdentified } from "./ColumnMetaIdentified";
 import { RowIdentified } from "./RowIdentified";
-import { SheetIdentified } from "./SheetIdentified";
 import { SheetMetaIdentified } from "./SheetMetaIdentified";
 import { SpreadsheetIdentified } from "./SpreadsheetIdentified";
+import { TableIdentified } from "./TableIdentified";
 
 const itemGid = getSheetTraitByName("item", "sheetGid");
 const itemIdColumnId = getColumnTraitByName("item", "id", "columnId");
@@ -39,23 +39,23 @@ describe("SpreadsheetIdentified navigation", () => {
     const column = sheet.column(itemIdColumnId);
     const columnMeta = sheetMeta.column(itemIdColumnId);
 
-    assertType<IsExactly<typeof sheet, SheetIdentified>>(true);
+    assertType<IsExactly<typeof sheet, TableIdentified>>(true);
     assertType<IsExactly<typeof sheetMeta, SheetMetaIdentified>>(true);
     assertType<IsExactly<typeof sheet.meta, SheetMetaIdentified>>(true);
-    assertType<IsExactly<typeof sheetMeta.primary, SheetIdentified>>(true);
+    assertType<IsExactly<typeof sheetMeta.primary, TableIdentified>>(true);
     assertType<IsExactly<typeof column, ColumnIdentified>>(true);
     assertType<IsExactly<typeof columnMeta, ColumnMetaIdentified>>(true);
-    assertType<IsExactly<typeof column.sheet, SheetIdentified>>(true);
+    assertType<IsExactly<typeof column.sheet, TableIdentified>>(true);
     assertType<IsExactly<typeof columnMeta.sheet, SheetMetaIdentified>>(true);
     assertType<IsExactly<typeof column.meta, ColumnMetaIdentified>>(true);
     assertType<IsExactly<typeof columnMeta.primary, ColumnIdentified>>(true);
     assertType<IsExactly<ReturnType<typeof sheet.row>, RowIdentified>>(true);
 
     expect(sheet.meta).toBeInstanceOf(SheetMetaIdentified);
-    expect(sheetMeta.primary).toBeInstanceOf(SheetIdentified);
+    expect(sheetMeta.primary).toBeInstanceOf(TableIdentified);
     expect(column).toBeInstanceOf(ColumnIdentified);
     expect(columnMeta).toBeInstanceOf(ColumnMetaIdentified);
-    expect(column.sheet).toBeInstanceOf(SheetIdentified);
+    expect(column.sheet).toBeInstanceOf(TableIdentified);
     expect(columnMeta.sheet).toBeInstanceOf(SheetMetaIdentified);
     expect(column.meta).toBeInstanceOf(ColumnMetaIdentified);
     expect(columnMeta.primary).toBeInstanceOf(ColumnIdentified);
@@ -96,7 +96,7 @@ function stubValueTypesWithBlankRow() {
   });
 }
 
-function fetchedValueTypesSheet(): SheetIdentified {
+function fetchedValueTypesSheet(): TableIdentified {
   const ssi = new SpreadsheetIdentified(
     SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
   );
@@ -171,7 +171,7 @@ describe("Identified value accessors", () => {
   it("reads an untouched checkbox as unchecked through every accessor", () => {
     const sheet = fetchedValueTypesSheet();
     const column = new ColumnIdentified<"checkbox">({
-      ...sheet.sheetIdentifiedProps,
+      ...sheet.tableIdentifiedProps,
       columnId: checkboxColumnId,
     });
 
@@ -230,7 +230,7 @@ function stubSheetConfigWithUnreadTopRow() {
   return stubSheetConfigSheet({ 4: blankSheetConfigRow }, [4]);
 }
 
-function fetchedSheetConfig(): SheetIdentified {
+function fetchedSheetConfig(): TableIdentified {
   const ssi = new SpreadsheetIdentified(
     SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
   );
@@ -240,7 +240,7 @@ function fetchedSheetConfig(): SheetIdentified {
   return sheet;
 }
 
-function unfetchedSheetConfig(): SheetIdentified {
+function unfetchedSheetConfig(): TableIdentified {
   const ssi = new SpreadsheetIdentified(
     SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
   );
@@ -278,7 +278,7 @@ describe("RowIdentified.isBlank / isReusable", () => {
   });
 });
 
-describe("SheetIdentified.hasNoData", () => {
+describe("TableIdentified.hasNoData", () => {
   it("is true for a sheet whose one row is blank", () => {
     stubSheetConfigSheet({ 4: blankSheetConfigRow });
 
@@ -302,7 +302,7 @@ const runStatusColumnId = getColumnTraitByName(
   "columnId",
 );
 
-function runItemWithOneRow(topRow: (string | null)[]): SheetIdentified {
+function runItemWithOneRow(topRow: (string | null)[]): TableIdentified {
   stubSheetsService({
     sheets: [
       {
@@ -445,7 +445,7 @@ describe("RowIdentified.clearValues", () => {
   });
 });
 
-describe("SheetIdentified.appendRowDefault", () => {
+describe("TableIdentified.appendRowDefault", () => {
   it("throws when the sheet's one data row was never fetched, naming the prefetch owed", () => {
     stubSheetConfigWithUnreadTopRow();
 
@@ -596,12 +596,13 @@ describe("SpreadsheetIdentified.fetchAllPrepped / FetchTargetIdentified", () => 
           startRowIndex: 4,
           endRowIndex: 5,
           startColumnIndex: 0,
+          endColumnIndex: 2,
         },
       ]),
     );
   });
 
-  it("resolves a full-data-column target to that column's data rows", () => {
+  it("resolves a full-data-column target to that column from the column ID row to the last row", () => {
     const { getByDataFilterCalls } = valueTypesWithTwoColumns();
     const ssi = new SpreadsheetIdentified(
       SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
@@ -613,7 +614,8 @@ describe("SpreadsheetIdentified.fetchAllPrepped / FetchTargetIdentified", () => 
       expect.arrayContaining([
         {
           sheetId: valueTypesGid,
-          startRowIndex: 4,
+          startRowIndex: 0,
+          endRowIndex: 6,
           startColumnIndex: 0,
           endColumnIndex: 1,
         },
