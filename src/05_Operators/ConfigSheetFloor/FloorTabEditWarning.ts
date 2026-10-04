@@ -60,7 +60,7 @@ export class FloorTabEditWarning<
     const sheetGid = getSheetTraitByName(this.sheetName, "sheetGid");
     if (!this.ss.raw.gidIsActive(sheetGid)) return undefined;
     const sheet = this.sheet;
-    if (sheet.raw.tableIds().length !== 1) return undefined;
+    if (!sheet.raw.hasOneTable()) return undefined;
     const table = sheet.raw;
     const colIndexes = rule.identityColumns.flatMap((columnName) => {
       const header = getColumnTraitByName(this.sheetName, columnName, "header");

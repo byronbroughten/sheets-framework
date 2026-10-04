@@ -3488,6 +3488,23 @@ describe("SpreadsheetRaw fetch integration routes each cell to its Table", () =>
     );
   });
 
+  it("refuses a re-fetch down to one known Table while writes queued through the sheet wait", () => {
+    stubSideBySideTables();
+
+    const raw = SpreadsheetRaw.init();
+    raw.fetchSheetUsedGrid(scratchGid);
+    raw
+      .sheet(scratchGid)
+      .requestSortGSheet({ colIdxToSortBy: 0, sortOrder: "DESCENDING" });
+    stubSideBySideTables(["left"]);
+    raw.spreadsheetRawProps.spreadsheetStateRaw.rawSource =
+      installedRawSource();
+
+    expect(() => raw.fetchSheetUsedGrid(scratchGid)).toThrow(
+      /queued through .* while it had several Tables/,
+    );
+  });
+
   it("drops a loose cell beside, above or below the Tables", () => {
     stubSideBySideTables();
 

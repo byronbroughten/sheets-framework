@@ -21,7 +21,7 @@ import {
   type SpreadsheetRawProps,
 } from "./SpreadsheetBaseRaw";
 
-// Stage 1 also reaches a Table through its sheet, meaning the sheet's one Table.
+// `ss.sheet(gid)` still reaches a Table through its sheet, meaning the sheet's one Table.
 export type TableAddressRaw = { sheetGid: number } | { tableId: string };
 export type TableRawProps = SpreadsheetRawProps & TableAddressRaw;
 
@@ -41,6 +41,71 @@ export class TableBaseRaw extends SpreadsheetBaseRaw {
         emptyStateRaw.sheetState(this.sheetGid),
       );
     }
+  }
+  protected get sheetState(): SheetStateRaw {
+    return Val.assert(
+      this.sheetsStateRaw.get(this.sheetGid),
+      `sheetState for sheetGid ${this.sheetGid}`,
+    );
+  }
+  protected get tableState(): TableStateRaw {
+    return this._resolveTableState();
+  }
+  private _resolveTableState(): TableStateRaw {
+    if ("tableId" in this.tableAddress) {
+      return tableStateOf(this.tablesStateRaw, this.tableAddress.tableId);
+    }
+    const tableId = this.onlyTableId();
+    if (tableId === undefined) return this.sheetState.tableBeforeProperties;
+    return tableStateOf(this.tablesStateRaw, tableId);
+  }
+  // Absent until fetched, and for a sheet that holds no Table or several.
+  protected get tableProperties(): TablePropertiesRaw | undefined {
+    return this.tableState.properties;
+  }
+  get columnStates(): ColumnStatesRaw {
+    return this.tableState.working.columnStates;
+  }
+  get rowStates(): RowStatesRaw {
+    return this.tableState.working.rowStates;
+  }
+  get sheetLabel(): string {
+    return `"${this.sheetState.working.title ?? "(untitled)"}" (gid ${this.sheetGid})`;
+  }
+  get tableRawProps(): TableRawProps {
+    return {
+      ...this.tableAddress,
+      ...this.spreadsheetRawProps,
+    };
+  }
+  tableIds(): string[] {
+    return Array.from(this.tablesStateRaw.entries())
+      .filter(([, tableState]) => tableState.sheetGid === this.sheetGid)
+      .map(([tableId]) => tableId);
+  }
+  // Absent for a sheet that holds no Table or several.
+  onlyTableId(): string | undefined {
+    const [tableId, ...otherTableIds] = this.tableIds();
+    if (otherTableIds.length > 0) return undefined;
+    return tableId;
+  }
+  hasOneTable(): boolean {
+    return this.onlyTableId() !== undefined;
+  }
+  getRowState(rowIndex: number): RowStateRaw {
+    return Val.assert(
+      this.rowStates.get(rowIndex),
+      `rowState for ${this.rowLabel(rowIndex)} on sheetGid ${this.sheetGid}`,
+    );
+  }
+  // The live Table once fetched; before that, where the layout expects it.
+  tableOrigin(): TableOrigin {
+    const properties = this.tableProperties;
+    if (properties === undefined) return TableOrigin.expected();
+    return originOf(properties);
+  }
+  rowLabel(rowIndex: number): string {
+    return `row ${this.tableOrigin().rowNumber(rowIndex)}`;
   }
   protected _integrateSheetProperties(sheet: SheetSnapshot): void {
     if (sheet.title) {
@@ -96,13 +161,24 @@ export class TableBaseRaw extends SpreadsheetBaseRaw {
     isSheetsOneTable: boolean,
   ): TableStateRaw {
     const existing = this.tablesStateRaw.get(tableId);
-    if (existing !== undefined) return existing;
+    if (existing !== undefined) {
+      if (isSheetsOneTable) this._validateNoWritesQueuedThroughSheet();
+      return existing;
+    }
     if (!isSheetsOneTable) return emptyStateRaw.tableState(this.sheetGid);
     const adopted = this.sheetState.tableBeforeProperties;
     this.sheetState.tableBeforeProperties = emptyStateRaw.tableState(
       this.sheetGid,
     );
     return adopted;
+  }
+  // Once the sheet resolves to a Table it already knew, the flush no longer reads what was queued through the sheet.
+  private _validateNoWritesQueuedThroughSheet(): void {
+    if (hasQueuedWrites(this.sheetState.tableBeforeProperties.writeQueue)) {
+      throw new Error(
+        `Writes were queued through ${this.sheetLabel} while it had several Tables, and it now has one; refetch before queuing writes to it.`,
+      );
+    }
   }
   // Queued properties outlive a re-fetch until the flush sends them.
   private _integrateQueuedSheetProperties(): void {
@@ -119,64 +195,6 @@ export class TableBaseRaw extends SpreadsheetBaseRaw {
   }
   protected _ensureColumnState(colIndex: number): ColumnStateRaw {
     return ensureColumnState(this.tableState, colIndex);
-  }
-  protected get sheetState(): SheetStateRaw {
-    return Val.assert(
-      this.sheetsStateRaw.get(this.sheetGid),
-      `sheetState for sheetGid ${this.sheetGid}`,
-    );
-  }
-  protected get tableState(): TableStateRaw {
-    return this._resolveTableState();
-  }
-  private _resolveTableState(): TableStateRaw {
-    if ("tableId" in this.tableAddress) {
-      return tableStateOf(this.tablesStateRaw, this.tableAddress.tableId);
-    }
-    const [tableId, ...otherTableIds] = this.tableIds();
-    if (tableId === undefined || otherTableIds.length > 0) {
-      return this.sheetState.tableBeforeProperties;
-    }
-    return tableStateOf(this.tablesStateRaw, tableId);
-  }
-  // Absent until fetched, and for a sheet that holds no Table or several.
-  protected get tableProperties(): TablePropertiesRaw | undefined {
-    return this.tableState.properties;
-  }
-  tableIds(): string[] {
-    return Array.from(this.tablesStateRaw.entries())
-      .filter(([, tableState]) => tableState.sheetGid === this.sheetGid)
-      .map(([tableId]) => tableId);
-  }
-  getRowState(rowIndex: number): RowStateRaw {
-    return Val.assert(
-      this.rowStates.get(rowIndex),
-      `rowState for ${this.rowLabel(rowIndex)} on sheetGid ${this.sheetGid}`,
-    );
-  }
-  get columnStates(): ColumnStatesRaw {
-    return this.tableState.working.columnStates;
-  }
-  // The live Table once fetched; before that, where the layout expects it.
-  tableOrigin(): TableOrigin {
-    const properties = this.tableProperties;
-    if (properties === undefined) return TableOrigin.expected();
-    return originOf(properties);
-  }
-  rowLabel(rowIndex: number): string {
-    return `row ${this.tableOrigin().rowNumber(rowIndex)}`;
-  }
-  get sheetLabel(): string {
-    return `"${this.sheetState.working.title ?? "(untitled)"}" (gid ${this.sheetGid})`;
-  }
-  get rowStates(): RowStatesRaw {
-    return this.tableState.working.rowStates;
-  }
-  get tableRawProps(): TableRawProps {
-    return {
-      ...this.tableAddress,
-      ...this.spreadsheetRawProps,
-    };
   }
 }
 

@@ -42,9 +42,9 @@ import { SheetEditProtectionsRaw } from "./TableRaw/SheetEditProtectionsRaw";
 /**
  * One Table's state by Table-relative index: rows, columns, pruning, queued
  * Table-level requests, and integrating fetched cells into its rows, cells and
- * Meta column facts. Stage 1 also reaches it through its sheet, so sheet-level
- * title, conditional format rules and edit protections live here too, the
- * latter two in TableRaw/ behind one-line delegations.
+ * Meta column facts. `ss.sheet(gid)` also reaches it through its sheet, so
+ * sheet-level title, conditional format rules and edit protections live here
+ * too, the latter two in TableRaw/ behind one-line delegations.
  * Uniform rows and column facts are SheetMetaRaw; spreadsheet-wide fetch and
  * flush are SpreadsheetRaw. By-name and columnId resolution are Identified/Named.
  */

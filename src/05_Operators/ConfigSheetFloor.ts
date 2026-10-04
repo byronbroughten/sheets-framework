@@ -107,7 +107,7 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
         titleLines.push(`"${sheet.title}" → ${seed.title}`);
         sheet.updateTitle(seed.title);
       }
-      if (sheet.tableIds().length !== 1) return;
+      if (!sheet.hasOneTable()) return;
       if (sheet.name === seed.tableName) return;
       tableNameLines.push(
         `${seed.title}'s Table "${sheet.name}" → ${seed.tableName}`,
@@ -159,7 +159,7 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
       const sheetGid = getSheetTraitByName(sheetName, "sheetGid");
       if (!this.ss.raw.gidIsActive(sheetGid)) return;
       const sheet = this.ss.sheet(sheetName);
-      if (sheet.raw.tableIds().length !== 1) return;
+      if (!sheet.raw.hasOneTable()) return;
       const meta = sheet.raw.meta;
       floorColumnsToRestore(sheetName).forEach((floorColumn) => {
         const colIndex = liveColIndex(meta, floorColumn);
@@ -212,7 +212,7 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
     const sheetGid = getSheetTraitByName(sheetName, "sheetGid");
     if (!this.ss.raw.gidIsActive(sheetGid)) return [];
     const sheet = this.ss.sheet(sheetName);
-    if (sheet.raw.tableIds().length !== 1) return [];
+    if (!sheet.raw.hasOneTable()) return [];
     const row = sheet.raw.row(0);
     const restoredLines: string[] = [];
     floorDataValueColumns(sheetName).forEach((seedColumn) => {

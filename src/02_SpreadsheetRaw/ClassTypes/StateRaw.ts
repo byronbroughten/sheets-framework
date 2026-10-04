@@ -58,7 +58,7 @@ export type SheetsStateRaw = Map<SheetId, SheetStateRaw>;
 export interface SheetStateRaw {
   working: SheetWorkingStateRaw;
   fetchQueue: SheetFetchQueueRaw;
-  // Stage 1 reaches a Table through its sheet, so what is queued before the Table is known waits here.
+  // `ss.sheet(gid)` reaches a Table through its sheet, so what is queued before that Table is known waits here.
   tableBeforeProperties: TableStateRaw;
 }
 
