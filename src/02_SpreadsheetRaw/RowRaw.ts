@@ -34,7 +34,6 @@ export class RowRaw extends RowCommonRaw {
     this.remove();
     this.queueRowWrite({ action: "deleteRow" });
     // this.endRowIndex--;
-    // TODO: technically, there should should be activeTable and workingTable; active table gets updated only at the update flush. workingTable gets updated immediately.
   }
   append(): this {
     if (this.rowIsActive()) {
