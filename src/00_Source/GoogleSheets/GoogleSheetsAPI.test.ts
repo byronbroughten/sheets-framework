@@ -5,9 +5,11 @@ import type {
   AddCheckboxValidationOperation,
   AddSheetOperation,
   AddTableOperation,
+  BoundedGridRange,
   LocalWriteOperation,
 } from "../RawSource/RawSource";
 import type { RgbColor } from "../RawSource/RgbColor";
+import { SheetIndex } from "../RawSource/SheetIndex";
 import {
   googleRawRequest,
   type GoogleRequest,
@@ -30,10 +32,10 @@ const addTableOperation: AddTableOperation = {
   name: "spreadsheetConfig",
   range: {
     sheetId: 555,
-    startRowIndex: 2,
-    endRowIndex: 5,
-    startColumnIndex: 1,
-    endColumnIndex: 3,
+    startRowIndex: SheetIndex.row(2),
+    endRowIndex: SheetIndex.row(5),
+    startColumnIndex: SheetIndex.col(1),
+    endColumnIndex: SheetIndex.col(3),
   },
   columnProperties: [
     { columnIndex: 1, columnName: "Name", columnType: "TEXT" },
@@ -44,10 +46,10 @@ const checkboxValidationOperation: AddCheckboxValidationOperation = {
   kind: "addCheckboxValidation",
   range: {
     sheetId: 555,
-    startRowIndex: 1,
-    endRowIndex: 2,
-    startColumnIndex: 3,
-    endColumnIndex: 4,
+    startRowIndex: SheetIndex.row(1),
+    endRowIndex: SheetIndex.row(2),
+    startColumnIndex: SheetIndex.col(3),
+    endColumnIndex: SheetIndex.col(4),
   },
 };
 
@@ -112,36 +114,40 @@ describe("GoogleSheetsAPI write mapping", () => {
         tableId: "tbl",
         emptyRowCount: 2,
       },
-      { kind: "insertTableEndColumn", sheetId: 111, startColumnIndex: 3 },
+      {
+        kind: "insertTableEndColumn",
+        sheetId: 111,
+        startColumnIndex: SheetIndex.col(3),
+      },
       {
         kind: "fillColumn",
         sheetId: 111,
-        colIndex: 2,
-        startRowIndex: 4,
-        endRowIndex: 6,
+        colIndex: SheetIndex.col(2),
+        startRowIndex: SheetIndex.row(4),
+        endRowIndex: SheetIndex.row(6),
         value: "x",
         backgroundColor: lightGreen,
       },
       {
         kind: "fillColumn",
         sheetId: 111,
-        colIndex: 2,
-        startRowIndex: 4,
-        endRowIndex: 6,
+        colIndex: SheetIndex.col(2),
+        startRowIndex: SheetIndex.row(4),
+        endRowIndex: SheetIndex.row(6),
         formula: "=A4",
       },
       {
         kind: "fillCell",
         sheetId: 111,
-        rowIndex: 5,
-        colIndex: 2,
+        rowIndex: SheetIndex.row(5),
+        colIndex: SheetIndex.col(2),
         value: "y",
       },
       {
         kind: "fillCell",
         sheetId: 111,
-        rowIndex: 5,
-        colIndex: 2,
+        rowIndex: SheetIndex.row(5),
+        colIndex: SheetIndex.col(2),
         formula: "=B5",
         backgroundColor: lightGreen,
       },
@@ -150,13 +156,18 @@ describe("GoogleSheetsAPI write mapping", () => {
         terms: { find: "a", replacement: "b" },
         scope: { sheetId: 111 },
       },
-      { kind: "deleteRows", sheetId: 111, startIndex: 8, endIndex: 9 },
+      {
+        kind: "deleteRows",
+        sheetId: 111,
+        startIndex: SheetIndex.row(8),
+        endIndex: SheetIndex.row(9),
+      },
       {
         kind: "sort",
         sheetId: 111,
-        startRowIndex: 4,
-        startColumnIndex: 0,
-        colIdxToSortBy: 1,
+        startRowIndex: SheetIndex.row(4),
+        startColumnIndex: SheetIndex.col(0),
+        colIdxToSortBy: SheetIndex.col(1),
         sortOrder: "ASCENDING",
       },
       {
@@ -165,10 +176,10 @@ describe("GoogleSheetsAPI write mapping", () => {
           kind: "warning",
           range: {
             sheetId: 111,
-            startRowIndex: 4,
-            endRowIndex: 5,
-            startColumnIndex: 0,
-            endColumnIndex: 1,
+            startRowIndex: SheetIndex.row(4),
+            endRowIndex: SheetIndex.row(5),
+            startColumnIndex: SheetIndex.col(0),
+            endColumnIndex: SheetIndex.col(1),
           },
           description: "floor",
           users: [],
@@ -372,10 +383,10 @@ describe("GoogleSheetsAPI write mapping", () => {
           ranges: [
             {
               sheetId: 111,
-              startRowIndex: 4,
-              endRowIndex: 11,
-              startColumnIndex: 2,
-              endColumnIndex: 3,
+              startRowIndex: SheetIndex.row(4),
+              endRowIndex: SheetIndex.row(11),
+              startColumnIndex: SheetIndex.col(2),
+              endColumnIndex: SheetIndex.col(3),
             },
           ],
           condition: { type: "NUMBER_EQ", value: true },
@@ -435,10 +446,10 @@ describe("GoogleSheetsAPI write mapping", () => {
           ranges: [
             {
               sheetId: 111,
-              startRowIndex: 4,
-              endRowIndex: 5,
-              startColumnIndex: 0,
-              endColumnIndex: 1,
+              startRowIndex: SheetIndex.row(4),
+              endRowIndex: SheetIndex.row(5),
+              startColumnIndex: SheetIndex.col(0),
+              endColumnIndex: SheetIndex.col(1),
             },
           ],
           condition: { type: "NUMBER_EQ", value: false },
@@ -470,10 +481,10 @@ describe("GoogleSheetsAPI write mapping", () => {
           ranges: [
             {
               sheetId: 111,
-              startRowIndex: 4,
-              endRowIndex: 5,
-              startColumnIndex: 0,
-              endColumnIndex: 1,
+              startRowIndex: SheetIndex.row(4),
+              endRowIndex: SheetIndex.row(5),
+              startColumnIndex: SheetIndex.col(0),
+              endColumnIndex: SheetIndex.col(1),
             },
           ],
           condition: { type: "CUSTOM_FORMULA", formula: "=$B5=FALSE" },
@@ -519,8 +530,8 @@ describe("GoogleSheetsAPI write mapping", () => {
       {
         kind: "fillCell",
         sheetId: 111,
-        rowIndex: 1,
-        colIndex: 0,
+        rowIndex: SheetIndex.row(1),
+        colIndex: SheetIndex.col(0),
         value: "a",
       },
       {
@@ -623,14 +634,18 @@ describe("GoogleSheetsAPI write mapping", () => {
 });
 
 describe("GoogleSheetsAPI Table-bounded write mapping", () => {
-  const tableBand = {
+  const tableBand: BoundedGridRange = {
     sheetId: 111,
-    startRowIndex: 6,
-    endRowIndex: 8,
-    startColumnIndex: 0,
-    endColumnIndex: 3,
+    startRowIndex: SheetIndex.row(6),
+    endRowIndex: SheetIndex.row(8),
+    startColumnIndex: SheetIndex.col(0),
+    endColumnIndex: SheetIndex.col(3),
   };
-  const modelRow = { ...tableBand, startRowIndex: 5, endRowIndex: 6 };
+  const modelRow: BoundedGridRange = {
+    ...tableBand,
+    startRowIndex: SheetIndex.row(5),
+    endRowIndex: SheetIndex.row(6),
+  };
 
   it("maps grid growth, a bounded insert and delete, and both copies onto Google's requests in order", () => {
     const { api, batchUpdateCalls } = recordingSheets();
@@ -997,8 +1012,12 @@ describe("GoogleSheetsAPI time zone read", () => {
     const masks = [getCalls[0]?.fields, ...getByDataFilterFields];
     expect(masks).toHaveLength(3);
     masks.forEach((mask) => {
-      expect(mask).toContain("properties(sheetId,title,gridProperties(rowCount))");
-      expect(mask).toMatch(/tables\(tableId,name,range,columnProperties\(columnIndex,[^)]*columnType/);
+      expect(mask).toContain(
+        "properties(sheetId,title,gridProperties(rowCount))",
+      );
+      expect(mask).toMatch(
+        /tables\(tableId,name,range,columnProperties\(columnIndex,[^)]*columnType/,
+      );
     });
   });
 
@@ -1292,10 +1311,10 @@ describe("GoogleSheetsAPI protected range write", () => {
           kind: "lock",
           range: {
             sheetId: 111,
-            startRowIndex: 4,
-            endRowIndex: 5,
-            startColumnIndex: 0,
-            endColumnIndex: 1,
+            startRowIndex: SheetIndex.row(4),
+            endRowIndex: SheetIndex.row(5),
+            startColumnIndex: SheetIndex.col(0),
+            endColumnIndex: SheetIndex.col(1),
           },
           description: "cell lock",
           users: ["editor@example.com"],
@@ -1314,10 +1333,10 @@ describe("GoogleSheetsAPI protected range write", () => {
           unprotectedRanges: [
             {
               sheetId: 111,
-              startRowIndex: 4,
-              endRowIndex: 5,
-              startColumnIndex: 1,
-              endColumnIndex: 2,
+              startRowIndex: SheetIndex.row(4),
+              endRowIndex: SheetIndex.row(5),
+              startColumnIndex: SheetIndex.col(1),
+              endColumnIndex: SheetIndex.col(2),
             },
           ],
         },
@@ -1374,9 +1393,9 @@ describe("GoogleSheetsAPI protected range write", () => {
           kind: "warning",
           range: {
             sheetId: 111,
-            startRowIndex: 0,
-            startColumnIndex: 4,
-            endColumnIndex: 5,
+            startRowIndex: SheetIndex.row(0),
+            startColumnIndex: SheetIndex.col(4),
+            endColumnIndex: SheetIndex.col(5),
           },
           description: "column warning",
           users: [],
@@ -1463,8 +1482,8 @@ describe("GoogleSheetsAPI colour mapping", () => {
       {
         kind: "fillCell",
         sheetId: 1,
-        rowIndex: 0,
-        colIndex: 0,
+        rowIndex: SheetIndex.row(0),
+        colIndex: SheetIndex.col(0),
         backgroundColor: lightGreen,
       },
     ]);
@@ -1563,8 +1582,8 @@ describe("GoogleSheetsAPI HTTP transport", () => {
       {
         kind: "fillCell",
         sheetId: 111,
-        rowIndex: 5,
-        colIndex: 2,
+        rowIndex: SheetIndex.row(5),
+        colIndex: SheetIndex.col(2),
         value: "x",
       },
     ]);
@@ -1582,8 +1601,8 @@ describe("GoogleSheetsAPI HTTP transport", () => {
       {
         kind: "fillCell",
         sheetId: 111,
-        rowIndex: 5,
-        colIndex: 2,
+        rowIndex: SheetIndex.row(5),
+        colIndex: SheetIndex.col(2),
         value: "x",
       },
     ]);
@@ -1597,7 +1616,7 @@ describe("GoogleSheetsAPI HTTP transport", () => {
     const { api, transport } = seedApi({ isDryRun: true });
 
     api.fetchSheetProperties();
-    api.fetchGrid([{ sheetId: 111, startRowIndex: 0 }], {
+    api.fetchGrid([{ sheetId: 111, startRowIndex: SheetIndex.row(0) }], {
       includeProgrammaticFacts: false,
     });
 
@@ -1610,15 +1629,15 @@ describe("GoogleSheetsAPI spreadsheet binding", () => {
     const { api, requestedIds } = recordingSheets();
 
     api.fetchSheetProperties();
-    api.fetchGrid([{ sheetId: 111, startRowIndex: 0 }], {
+    api.fetchGrid([{ sheetId: 111, startRowIndex: SheetIndex.row(0) }], {
       includeProgrammaticFacts: false,
     });
     api.flush([
       {
         kind: "fillCell",
         sheetId: 111,
-        rowIndex: 5,
-        colIndex: 2,
+        rowIndex: SheetIndex.row(5),
+        colIndex: SheetIndex.col(2),
         value: "x",
       },
     ]);

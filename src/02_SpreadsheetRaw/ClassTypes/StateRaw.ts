@@ -14,6 +14,10 @@ import type {
   TableColumnType,
 } from "../../00_Source/RawSource/RawSource";
 import type { RgbColor } from "../../00_Source/RawSource/RgbColor";
+import type {
+  SheetColIndex,
+  SheetRowIndex,
+} from "../../00_Source/RawSource/SheetIndex";
 import type { GridRangeProps } from "./AccessorsRaw";
 
 export interface StateRaw {
@@ -133,10 +137,10 @@ export interface ActiveFactsRaw {
 export interface KnownTableRaw {
   tableId: string;
   name: string;
-  startRowIndex: number; // tableHeaderRowIndex
-  endRowIndex: number; // lastRowIndex + 1
-  startColumnIndex: number;
-  endColumnIndex: number; // lastColumnIndex + 1
+  startRowIndex: SheetRowIndex; // the header row
+  endRowIndex: SheetRowIndex; // last row + 1
+  startColumnIndex: SheetColIndex;
+  endColumnIndex: SheetColIndex; // last column + 1
   columnProperties: TableColumnSnapshot[];
   rowIndexesAreStale: boolean;
 }

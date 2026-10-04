@@ -232,7 +232,7 @@ function prepFetchRowSpecifier(
       column.prepFetchFull();
       break;
     case "topDatum":
-      column.cell(schema.topDataRowIdx).prepFetch();
+      column.cell(0).prepFetch();
       break;
     case "actions":
       column.cell(schema.actionRowIndex).prepFetch();

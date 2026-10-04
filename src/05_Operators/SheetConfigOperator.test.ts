@@ -179,7 +179,7 @@ describe("SheetConfigOperator.newSheetConfigs / toFileSource", () => {
     const operator = SheetConfigOperator.init();
 
     expect(() => syncSheetConfigOperator(operator)).not.toThrow();
-    expect(operator.sheet.row(5).isBlank).toBe(true);
+    expect(operator.sheet.row(1).isBlank).toBe(true);
     expect(operator.newSheetConfigs().widget).toBeUndefined();
     expect(operator.newSheetConfigs().sheetConfig).toEqual({
       sheetGid: sheetConfigGid,
@@ -245,7 +245,7 @@ describe("SheetConfigOperator.newSheetConfigs / toFileSource", () => {
     const operator = SheetConfigOperator.init();
     syncSheetConfigOperator(operator);
 
-    expect(operator.sheet.column("sheetTitle").value(4)).toBe("Widget");
+    expect(operator.sheet.column("sheetTitle").value(0)).toBe("Widget");
     expect(operator.newSheetConfigs().widget?.hasIdColumn).toBe(false);
   });
 
@@ -273,7 +273,7 @@ describe("SheetConfigOperator.newSheetConfigs / toFileSource", () => {
     const operator = SheetConfigOperator.init();
     syncSheetConfigOperator(operator);
 
-    expect(operator.sheet.column("sheetTitle").value(4)).toBe("Widget");
+    expect(operator.sheet.column("sheetTitle").value(0)).toBe("Widget");
     expect(operator.newSheetConfigs().widget).toBeUndefined();
   });
 

@@ -65,7 +65,7 @@ export class SheetNamed<
     return this.identified.rows.map((row) => this.row(row.rowIndex));
   }
   get topRow(): RowNamed<SN> {
-    return this.row(this.schema.topDataRowIdx);
+    return this.row(0);
   }
   row(rowIndex: number): RowNamed<SN> {
     return new RowNamed({

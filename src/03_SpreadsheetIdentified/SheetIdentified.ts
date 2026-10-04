@@ -31,7 +31,7 @@ export class SheetIdentified extends SheetCommonIdentified {
     return this.raw.rows.map((row) => this.row(row.rowIndex));
   }
   get topRow(): RowIdentified {
-    return this.row(this.schema.topDataRowIdx);
+    return this.row(0);
   }
   get rowCount(): number {
     return this.raw.rowCount;
@@ -124,7 +124,11 @@ export class SheetIdentified extends SheetCommonIdentified {
     return this;
   }
   anchoredA1(colIndex: number): string {
-    return this.schema.anchoredA1(colIndex, this.schema.topDataRowIdx);
+    const origin = this.raw.tableOrigin();
+    return this.schema.anchoredA1(
+      origin.sheetColIndex(colIndex),
+      origin.sheetRowIndex(0),
+    );
   }
   // Feedback columns only report on a row, so a row holding nothing else is still blank.
   blankTestColumnIds(): string[] {

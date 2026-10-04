@@ -11,6 +11,7 @@ import {
   floorTabSeedByGid,
 } from "../../01_SpreadsheetSchema/configSheetFloorSeed";
 import { getSheetTraitByName } from "../../01_SpreadsheetSchema/sheetConfigsTypes";
+import type { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin";
 import { SheetBaseNamed } from "../../04_SpreadsheetNamed/ClassBases/SheetBaseNamed";
 import type { SheetNamed } from "../../04_SpreadsheetNamed/SheetNamed";
 import { SpreadsheetNamed } from "../../04_SpreadsheetNamed/SpreadsheetNamed";
@@ -66,9 +67,7 @@ export class FloorTabEditWarning<
       const column = table.columnProperties.find(
         (colProps) => colProps.columnName === header,
       );
-      return column === undefined
-        ? []
-        : [table.startColumnIndex + column.columnIndex];
+      return column === undefined ? [] : [column.columnIndex];
     });
     if (colIndexes.length !== rule.identityColumns.length) return undefined;
     colIndexes.forEach((colIndex) => {
@@ -129,9 +128,11 @@ export class FloorTabEditWarning<
     );
     const sheet = this.sheet;
     const sheetId = sheet.schema.sheetGid;
+    const origin = sheet.raw.tableOrigin();
     const ranges = [
       ...columnEditableRanges({
         sheetId,
+        origin,
         startRowIndex: sheet.schema.actionRowIndex,
         endRowIndex: sheet.schema.actionRowIndex + 1,
         colIndexes: liveColIndexesOf(
@@ -141,7 +142,8 @@ export class FloorTabEditWarning<
       }),
       ...columnEditableRanges({
         sheetId,
-        startRowIndex: sheet.schema.topDataRowIdx,
+        origin,
+        startRowIndex: 0,
         colIndexes: [
           ...liveColIndexesOf(liveIndexes, editableDataColumns),
           ...this._addedColIndexes(),
@@ -235,8 +237,10 @@ function liveColIndexesOf<SN extends FloorSheetName>(
   });
 }
 
+// Table-relative rows and columns, converted to the sheet's by origin.
 interface ColumnEditableRangeProps {
   sheetId: number;
+  origin: TableOrigin;
   startRowIndex: number;
   endRowIndex?: number;
   colIndexes: number[];
@@ -250,6 +254,7 @@ interface RowSpan {
 
 function columnEditableRanges({
   sheetId,
+  origin,
   startRowIndex,
   endRowIndex,
   colIndexes,
@@ -274,12 +279,12 @@ function columnEditableRanges({
     Arr.contiguousRanges(group.colIndexes).flatMap((range) =>
       group.spans.map((span) => ({
         sheetId,
-        startRowIndex: span.startRowIndex,
+        startRowIndex: origin.sheetRowIndex(span.startRowIndex),
         ...(span.endRowIndex === undefined
           ? {}
-          : { endRowIndex: span.endRowIndex }),
-        startColumnIndex: range.startIndex,
-        endColumnIndex: range.endIndex,
+          : { endRowIndex: origin.sheetRowIndex(span.endRowIndex) }),
+        startColumnIndex: origin.sheetColIndex(range.startIndex),
+        endColumnIndex: origin.sheetColIndex(range.endIndex),
       })),
     ),
   );

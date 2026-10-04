@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { SheetEdit } from "../00_Source/PlatformEvents/sheetEdit";
+import { SheetIndex } from "../00_Source/RawSource/SheetIndex";
 import { getColumnTraitByName } from "../01_SpreadsheetSchema/columnConfigsTypes";
 import { installedConfigs } from "../01_SpreadsheetSchema/configRegister";
 import { getSheetTraitByName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
-import { sheetLayout } from "../01_SpreadsheetSchema/sheetLayout";
+import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {
   buildGridRows,
@@ -27,7 +28,7 @@ const idColIndex = 0;
 const twoWayColIndex = 1;
 const buttonColIndex = 2;
 const blankIdColIndex = 3;
-const actionRowIndex = sheetLayout.actionRowIndex;
+const actionRowIndex = expectedSheetLayout.actionRowIndex;
 const endRowIndex = 7;
 
 function stubRunItemSheet(actionRowAsClicked: FakeCell[] = []) {
@@ -57,8 +58,8 @@ function tickedAt(colIndex: number): FakeCell[] {
 function actionRowEdit(colIndex: number, value: string): SheetEdit {
   return {
     sheetGid: runItemGid,
-    rowIndexBase0: sheetLayout.actionRowIndex,
-    colIndexBase0: colIndex,
+    rowIndexBase0: expectedSheetLayout.actionRowIndex,
+    colIndexBase0: SheetIndex.col(colIndex),
     value,
   };
 }
@@ -102,7 +103,7 @@ describe("Api.handleSheetEdit, the entry call", () => {
         { configs, endpoints: {} },
         {
           ...actionRowEdit(twoWayColIndex, "TRUE"),
-          rowIndexBase0: endRowIndex,
+          rowIndexBase0: SheetIndex.row(endRowIndex),
         },
         installSource,
       ),

@@ -18,7 +18,7 @@ export class RowBaseRaw extends SheetBaseRaw {
     }
   }
   get isDataRow(): boolean {
-    return this.rowIndex >= this.schema.topDataRowIdx;
+    return this.rowIndex >= 0;
   }
   get rowState(): RowStateRaw {
     return this.getRowState(this.rowIndex);
@@ -39,14 +39,14 @@ export class RowBaseRaw extends SheetBaseRaw {
     if (!this.isDataRow || this.rowIsActive()) return;
     if (this.sheetState.working.knownTable === undefined) {
       throw new Error(
-        `Cannot write to row ${this.rowIndex} of sheetGid ${this.sheetGid} before its sheet properties have been fetched.`,
+        `Cannot write to ${this.rowLabel(this.rowIndex)} of sheetGid ${this.sheetGid} before its sheet properties have been fetched.`,
       );
     }
   }
   validateIsActive(): void {
     if (!this.rowIsActive()) {
       throw new Error(
-        `Row ${this.rowIndex} is not active. Cannot perform this operation.`,
+        `Cannot perform this operation: ${this.rowLabel(this.rowIndex)} is not active.`,
       );
     }
   }
@@ -57,7 +57,7 @@ export class RowBaseRaw extends SheetBaseRaw {
       }
     }
     throw new Error(
-      `Value ${value} not found in row ${this.rowIndex}. Cannot find column index.`,
+      `Value ${value} not found in ${this.rowLabel(this.rowIndex)}. Cannot find column index.`,
     );
   }
   get rowRawProps(): RowRawProps {

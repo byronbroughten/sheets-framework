@@ -66,8 +66,8 @@ export interface FakeTable {
    */
   endColumnIndex?: number;
   /**
-   * Where the Table's range starts, defaulting to the layout every sheet
-   * is required to follow (`sheetLayout.tableHeaderRowIndex`/`startTableColIndex`).
+   * Where the Table's range starts, defaulting to where the layout expects
+   * every managed Table (`TableOrigin.expected()`).
    * Override either one only to build a deliberately misplaced Table, which
    * `SpreadsheetRaw`'s post-fetch placement check refuses.
    */

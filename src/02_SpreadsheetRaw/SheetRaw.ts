@@ -68,23 +68,25 @@ export class SheetRaw extends SheetCommonRaw {
   get hasFetchedProperties(): boolean {
     return this.sheetState.working.knownTable !== undefined;
   }
-  get dataGridRange(): GridRangeProps {
+  dataGridRange(): GridRangeProps {
+    const { origin, dataRowCount, columnCount } = this.activeTable;
     return {
       sheetId: this.sheetGid,
-      startRowIndex: this.schema.topDataRowIdx,
-      endRowIndex: this.activeTable.endRowIndex,
-      startColumnIndex: this.activeTable.startColumnIndex,
-      endColumnIndex: this.activeTable.endColumnIndex,
+      startRowIndex: origin.sheetRowIndex(0),
+      endRowIndex: origin.sheetRowIndex(dataRowCount),
+      startColumnIndex: origin.sheetColIndex(0),
+      endColumnIndex: origin.sheetColIndex(columnCount),
     };
   }
   get wholeSheetGridRange(): ProtectionGridRange {
     return { sheetId: this.sheetGid };
   }
   rowGridRange(rowIndex: number): GridRangeProps {
+    const origin = this.tableOrigin();
     return {
       sheetId: this.sheetGid,
-      startRowIndex: rowIndex,
-      endRowIndex: rowIndex + 1,
+      startRowIndex: origin.sheetRowIndex(rowIndex),
+      endRowIndex: origin.sheetRowIndex(rowIndex + 1),
     };
   }
   get title(): string {
@@ -128,15 +130,10 @@ export class SheetRaw extends SheetCommonRaw {
     return Math.max(...this.rowStates.keys());
   }
   get rowIndexesActive(): number[] {
-    return this.activeRowIndexes.filter((rowIndex) =>
-      this.schema.isDataRowIndex(rowIndex),
-    );
+    return this.activeRowIndexes.filter((rowIndex) => rowIndex >= 0);
   }
   get rowIndexesFull(): number[] {
-    return Arr.indexesFromUntil(
-      this.schema.topDataRowIdx,
-      this.activeTable.endRowIndex,
-    );
+    return Arr.indexesFromUntil(0, this.activeTable.dataRowCount);
   }
   get rowsFull(): RowRaw[] {
     return this.rowIndexesFull.map((rowIndex) => this.row(rowIndex));
@@ -145,10 +142,10 @@ export class SheetRaw extends SheetCommonRaw {
     return this.rowIndexesActive.map((index) => this.row(index));
   }
   get topRow(): RowRaw {
-    return this.row(this.schema.topDataRowIdx);
+    return this.row(0);
   }
   get rowCount(): number {
-    return this.activeRowCount - this.schema.topDataRowIdx;
+    return this.rowIndexesActive.length;
   }
   // The one place the invariant's threshold is written, so no tier can drift from it.
   get isDownToLastDataRow(): boolean {
@@ -156,10 +153,7 @@ export class SheetRaw extends SheetCommonRaw {
   }
   // Local row state holds only fetched rows, so the table's extent is the source.
   get dataRowCountAfterFlush(): number {
-    const { endRowIndex } = this.activeTable;
-    return (
-      endRowIndex - this.schema.topDataRowIdx - this._queuedRowDeleteCount()
-    );
+    return this.activeTable.dataRowCount - this._queuedRowDeleteCount();
   }
   private _queuedRowDeleteCount(): number {
     let count = 0;
@@ -235,9 +229,9 @@ export class SheetRaw extends SheetCommonRaw {
       {} as Record<HD, ColumnRaw>,
     );
   }
-  gatherFetchProperties(startTableColIndex: number): this {
-    // The live start is unknown until this probe comes back, so aim the layout constant.
-    this.meta.tableHeaderRow.cell(startTableColIndex).gatherFetchRange();
+  gatherFetchProperties(): this {
+    // The live start is unknown until this probe comes back, so it aims where the layout expects the Table.
+    this.meta.tableHeaderRow.cell(0).gatherFetchRange();
     return this;
   }
   hasQueuedFullRowFetch(rowIndex: number): boolean {
@@ -258,7 +252,7 @@ export class SheetRaw extends SheetCommonRaw {
   // After the backfills above, so a blank fact is sampled rather than built.
   ensureFetchedActiveFacts(): void {
     const { toFinalize } = this.sheetState.fetchQueue;
-    if (toFinalize.rows.has(this.schema.topDataRowIdx)) {
+    if (toFinalize.rows.has(0)) {
       this.meta.ensureTableColumnsActiveFacts();
     }
     toFinalize.columns.forEach((colIndex) => {
@@ -276,10 +270,13 @@ export class SheetRaw extends SheetCommonRaw {
   private _integrateSheetData(
     gridBlocks: NonNullable<SheetSnapshot["gridBlocks"]>,
   ): void {
+    const origin = this.tableOrigin();
     gridBlocks.forEach((block) => {
-      const colIdxBase = block.startColumn;
-      block.rows.forEach((rowSnapshot, rowIdxBase) => {
-        const rowIndex = rowIdxBase + block.startRow;
+      const firstColIndex = origin.colIndex(block.startColumn);
+      const firstRowIndex = origin.rowIndex(block.startRow);
+      block.rows.forEach((rowSnapshot, rowOffset) => {
+        const rowIndex = firstRowIndex + rowOffset;
+        if (!this._isHeadOrBodyRowIndex(rowIndex)) return;
         const row = this.rowCommon(rowIndex);
         row.ensureStateExists();
         for (
@@ -287,20 +284,22 @@ export class SheetRaw extends SheetCommonRaw {
           colIdxOffset < block.columnCount;
           colIdxOffset++
         ) {
-          const colIndex = colIdxBase + colIdxOffset;
+          const colIndex = firstColIndex + colIdxOffset;
+          if (colIndex < 0) continue;
           const cellData = rowSnapshot.cells[colIdxOffset];
           if (row.rowIsActive()) {
             row.cell(colIndex).integrateSnapshot(cellData);
           }
-          if (
-            rowIndex === this.schema.topDataRowIdx &&
-            this.isTableColIndex(colIndex)
-          ) {
+          if (rowIndex === 0 && this.isTableColIndex(colIndex)) {
             this.meta.column(colIndex).integrateActiveFacts(cellData);
           }
         }
       });
     });
+  }
+  // A row above the head rows belongs to no row Raw can name.
+  private _isHeadOrBodyRowIndex(rowIndex: number): boolean {
+    return rowIndex >= 0 || this.schema.isUniformRowIndex(rowIndex);
   }
   gatherFetchConditionalFormatRules(): this {
     this.conditionalFormats.gatherFetchConditionalFormatRules();
@@ -444,12 +443,13 @@ export class SheetRaw extends SheetCommonRaw {
     ...change
   }: ColumnFill): void {
     assertValueAndFormulaExclusive(change.value, formula);
+    const origin = this.tableOrigin();
     this.writeOperations.fillColumn.push({
       kind: "fillColumn",
       sheetId: this.sheetGid,
-      colIndex,
-      startRowIndex,
-      endRowIndex,
+      colIndex: origin.sheetColIndex(colIndex),
+      startRowIndex: origin.sheetRowIndex(startRowIndex),
+      endRowIndex: origin.sheetRowIndex(endRowIndex),
       ...change,
       ...(formula !== undefined ? { formula } : {}),
     });
@@ -464,12 +464,13 @@ export class SheetRaw extends SheetCommonRaw {
   }
   gatherInsertTableEndColumnOperations(insertCount: number): void {
     Array.from({ length: insertCount }).forEach(() => {
+      const { origin, columnCount } = this.activeTable;
       this.writeOperations.insertTableEndColumn.push({
         kind: "insertTableEndColumn",
         sheetId: this.sheetGid,
-        startColumnIndex: this.activeTable.endColumnIndex,
+        startColumnIndex: origin.sheetColIndex(columnCount),
       });
-      this.activeTable.growEndColumnIndex();
+      this.activeTable.growColumnCount();
     });
   }
   gatherSetTableColumnPropertiesOperation(
@@ -556,18 +557,18 @@ export class SheetRaw extends SheetCommonRaw {
     return `Table ${tableId} on "${this.title}"`;
   }
   gatherSortOperation({ colIdxToSortBy, sortOrder }: SortParameters): void {
+    const origin = this.tableOrigin();
     this.writeOperations.sort.push({
       kind: "sort",
       sheetId: this.sheetGid,
-      startRowIndex: this.schema.topDataRowIdx,
-      startColumnIndex: 0,
-      colIdxToSortBy,
+      startRowIndex: origin.sheetRowIndex(0),
+      startColumnIndex: origin.sheetColIndex(0),
+      colIdxToSortBy: origin.sheetColIndex(colIdxToSortBy),
       sortOrder,
     });
   }
   appendDataRow(): RowRaw {
-    const idx = this.activeTable.endRowIndex;
-    return this.row(idx).append();
+    return this.row(this.activeTable.dataRowCount).append();
   }
   appendDataRowValues(colValues: Map<number, Value>): RowRaw {
     const row = this.appendDataRow();

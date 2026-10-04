@@ -4,10 +4,10 @@ import type { SheetsHttpRequest } from "../00_Source/GoogleSheets/GoogleSheetsAP
 import { getColumnTraitByName } from "../01_SpreadsheetSchema/columnConfigsTypes";
 import { installedConfigs } from "../01_SpreadsheetSchema/configRegister";
 import { getSheetTraitByName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
-import { sheetLayout } from "../01_SpreadsheetSchema/sheetLayout";
 import { SpreadsheetRaw } from "../02_SpreadsheetRaw/SpreadsheetRaw";
 import type { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
 import type { Endpoints } from "../06_API/Endpoints";
+import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
 import {
   buildGridRows,
   type FakeCell,
@@ -26,9 +26,9 @@ const gadgetsPayload = {
         {
           tableId: "fake-table",
           range: {
-            startRowIndex: sheetLayout.tableHeaderRowIndex,
+            startRowIndex: expectedSheetLayout.tableHeaderRowIndex,
             endRowIndex: 11,
-            startColumnIndex: sheetLayout.startTableColIndex,
+            startColumnIndex: expectedSheetLayout.startTableColIndex,
             endColumnIndex: 5,
           },
         },
@@ -52,7 +52,7 @@ function seedHost(isDryRun: boolean) {
 function writeOneCell(): SpreadsheetRaw {
   const raw = SpreadsheetRaw.init();
   raw.fetchAllSheetProperties();
-  raw.sheet(gadgetsGid).row(5).cell(2).updateValue("Processing...");
+  raw.sheet(gadgetsGid).row(1).cell(2).updateValue("Processing...");
   raw.batchUpdateGSheets();
   return raw;
 }

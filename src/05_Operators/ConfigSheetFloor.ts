@@ -146,7 +146,7 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
       sheet.meta.uniformRow("tableHeader").prepFetchFull();
       sheet.meta.uniformRow("colGroupName").prepFetchFull();
       if (floorDataValueColumns(sheetName).length > 0) {
-        sheet.row(sheet.schema.topDataRowIdx).prepFetchFull();
+        sheet.row(0).prepFetchFull();
       }
       sheet.prepFetchEditProtections();
     });
@@ -215,7 +215,7 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
     if (!this.ss.raw.gidIsActive(sheetGid)) return [];
     const sheet = this.ss.sheet(sheetName);
     if (sheet.raw.tables.length !== 1) return [];
-    const row = sheet.raw.row(sheet.schema.topDataRowIdx);
+    const row = sheet.raw.row(0);
     const restoredLines: string[] = [];
     floorDataValueColumns(sheetName).forEach((seedColumn) => {
       const colIndex = liveColIndex(

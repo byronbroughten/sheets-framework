@@ -21,9 +21,9 @@ export abstract class RowCommonRaw extends RowBaseRaw {
   validateIsWritable(): void {
     super.validateIsWritable();
     if (!this.isDataRow || this.rowIsActive()) return;
-    if (this.rowIndex >= this.sheet.activeTable.endRowIndex) {
+    if (this.rowIndex >= this.sheet.activeTable.dataRowCount) {
       throw new Error(
-        `Cannot write to row ${this.rowIndex} because it is past the last row of sheetGid ${this.sheetGid}'s table. Append the row first.`,
+        `Cannot write to ${this.rowLabel(this.rowIndex)} because it is past the last row of sheetGid ${this.sheetGid}'s table. Append the row first.`,
       );
     }
   }
@@ -62,10 +62,11 @@ export abstract class RowCommonRaw extends RowBaseRaw {
     return this;
   }
   gatherFetchFull(): this {
+    const { origin } = this.sheet.activeTable;
     this.sheet.gatherFetchRange({
-      startRowIndex: this.rowIndex,
-      endRowIndex: this.rowIndex + 1,
-      startColumnIndex: this.sheet.activeTable.startColumnIndex,
+      startRowIndex: origin.sheetRowIndex(this.rowIndex),
+      endRowIndex: origin.sheetRowIndex(this.rowIndex + 1),
+      startColumnIndex: origin.sheetColIndex(0),
     });
     this.sheetState.fetchQueue.toFinalize.rows.add(this.rowIndex);
     return this;

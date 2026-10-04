@@ -57,7 +57,7 @@ export class CellIdentified<
     const value = this.valueOrEmpty();
     if (value === "") {
       throw new Error(
-        `Value for column "${this.columnId}" in row ${this.rowIndex} is empty.`,
+        `Value for column "${this.columnId}" in ${this.raw.rowLabel(this.rowIndex)} is empty.`,
       );
     } else {
       return value as NotEmpty<Value<VN>>;
@@ -114,7 +114,11 @@ export class CellIdentified<
     return this;
   }
   anchoredA1(colIndex = this.column.colIndex): string {
-    return this.schema.anchoredA1(colIndex, this.rowIndex);
+    const origin = this.raw.tableOrigin();
+    return this.schema.anchoredA1(
+      origin.sheetColIndex(colIndex),
+      origin.sheetRowIndex(this.rowIndex),
+    );
   }
   updateToDefault(): this {
     if (!this.schema.isFormula) {

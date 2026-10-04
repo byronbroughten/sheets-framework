@@ -220,7 +220,7 @@ export class EndpointRun<
   private _validateIsDataRow(rowIndex: number): void {
     if (this.sheet.raw.rowIndexesFull.includes(rowIndex)) return;
     throw new Error(
-      `Row ${rowIndex} is not a data row of "${this.sheet.raw.title}", so this run cannot report into it.`,
+      `This run cannot report into ${this.sheet.raw.rowLabel(rowIndex)}: it is not a data row of "${this.sheet.raw.title}".`,
     );
   }
   private _updateFeedbackCell(

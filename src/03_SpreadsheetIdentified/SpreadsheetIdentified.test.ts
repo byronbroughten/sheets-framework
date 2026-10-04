@@ -59,7 +59,7 @@ describe("SpreadsheetIdentified navigation", () => {
     expect(columnMeta.sheet).toBeInstanceOf(SheetMetaIdentified);
     expect(column.meta).toBeInstanceOf(ColumnMetaIdentified);
     expect(columnMeta.primary).toBeInstanceOf(ColumnIdentified);
-    expect(sheet.row(sheet.schema.topDataRowIdx)).toBeInstanceOf(RowIdentified);
+    expect(sheet.row(0)).toBeInstanceOf(RowIdentified);
   });
 });
 
@@ -74,10 +74,10 @@ const checkboxColumnId = getColumnTraitByName(
   "checkbox",
   "columnId",
 );
-const filledRowIndex = 4;
-const blankRowIndex = 5;
+const filledRowIndex = 0;
+const blankRowIndex = 1;
 
-// Row 5 is the blank row; its checkbox is untouched, so it reads blank not false.
+// Body row 1 (sheet row 5) is the blank row; its checkbox is untouched, so it reads blank not false.
 function stubValueTypesWithBlankRow() {
   return stubSheetsService({
     sheets: [
@@ -118,7 +118,7 @@ describe("Identified value accessors", () => {
       .cell(blankRowIndex);
 
     expect(() => cell.valueNotEmpty()).toThrowError(
-      new RegExp(`${valueTypesIdColumnId}.*${blankRowIndex}`),
+      new RegExp(`${valueTypesIdColumnId}.*row 6`),
     );
   });
 
@@ -142,7 +142,7 @@ describe("Identified value accessors", () => {
             4: ["r:vty:row4", true],
             5: [null, null],
           }),
-          rowsWithNoGridData: [blankRowIndex],
+          rowsWithNoGridData: [5],
           table: { endRowIndex: 6 },
         },
       ],
@@ -593,8 +593,8 @@ describe("SpreadsheetIdentified.fetchAllPrepped / FetchTargetIdentified", () => 
       expect.arrayContaining([
         {
           sheetId: valueTypesGid,
-          startRowIndex: filledRowIndex,
-          endRowIndex: filledRowIndex + 1,
+          startRowIndex: 4,
+          endRowIndex: 5,
           startColumnIndex: 0,
         },
       ]),
@@ -613,7 +613,7 @@ describe("SpreadsheetIdentified.fetchAllPrepped / FetchTargetIdentified", () => 
       expect.arrayContaining([
         {
           sheetId: valueTypesGid,
-          startRowIndex: filledRowIndex,
+          startRowIndex: 4,
           startColumnIndex: 0,
           endColumnIndex: 1,
         },
@@ -637,8 +637,8 @@ describe("SpreadsheetIdentified.fetchAllPrepped / FetchTargetIdentified", () => 
       expect.arrayContaining([
         {
           sheetId: valueTypesGid,
-          startRowIndex: filledRowIndex,
-          endRowIndex: filledRowIndex + 1,
+          startRowIndex: 4,
+          endRowIndex: 5,
           startColumnIndex: 0,
           endColumnIndex: 1,
         },

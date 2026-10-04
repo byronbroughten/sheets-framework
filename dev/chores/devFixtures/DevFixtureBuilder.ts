@@ -1,6 +1,8 @@
+import type { SheetColIndex } from "../../../src/00_Source/RawSource/SheetIndex";
 import { dimensionIds } from "../../../src/01_SpreadsheetSchema/dimensionIds";
 import { getSheetTraitByName } from "../../../src/01_SpreadsheetSchema/sheetConfigsTypes";
-import { sheetLayout } from "../../../src/01_SpreadsheetSchema/sheetLayout";
+import { TableOrigin } from "../../../src/01_SpreadsheetSchema/TableOrigin";
+import { uniformRows } from "../../../src/01_SpreadsheetSchema/uniformRows";
 import { SpreadsheetBaseNamed } from "../../../src/04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
 import { SpreadsheetNamed } from "../../../src/04_SpreadsheetNamed/SpreadsheetNamed";
 import {
@@ -54,11 +56,10 @@ export class DevFixtureBuilder extends SpreadsheetBaseNamed {
   }
   private _addFixtureSheet(fixture: DevFixtureSheet): void {
     const { sheetGid, columns } = fixture;
-    const headerRowIdx = sheetLayout.tableHeaderRowIndex;
-    const startColIdx = sheetLayout.startTableColIndex;
+    const origin = TableOrigin.expected();
     const rowCount = Math.max(...columns.map((column) => column.values.length));
-    const endRowIdx = headerRowIdx + 1 + rowCount;
-    const endColIdx = startColIdx + columns.length;
+    const endRowIdx = origin.sheetRowIndex(rowCount);
+    const endColIdx = origin.sheetColIndex(columns.length);
     this.ss.raw
       .gatherAddSheetOperation({
         sheetId: sheetGid,
@@ -70,9 +71,9 @@ export class DevFixtureBuilder extends SpreadsheetBaseNamed {
         name: fixture.tableName,
         range: {
           sheetId: sheetGid,
-          startRowIndex: headerRowIdx,
+          startRowIndex: origin.headerRowIndex,
           endRowIndex: endRowIdx,
-          startColumnIndex: startColIdx,
+          startColumnIndex: origin.startColIndex,
           endColumnIndex: endColIdx,
         },
         columnProperties: columns.map((column, columnIndex) => ({
@@ -82,10 +83,10 @@ export class DevFixtureBuilder extends SpreadsheetBaseNamed {
         })),
       });
     columns.forEach((column, columnIndex) => {
-      const colIndex = startColIdx + columnIndex;
+      const colIndex = origin.sheetColIndex(columnIndex);
       this.ss.raw.gatherAddedSheetFillCellOperation({
         sheetId: sheetGid,
-        rowIndex: sheetLayout.colIdRowIndex,
+        rowIndex: origin.headSheetRowIndex("columnId"),
         colIndex,
         value: dimensionIds.col(fixture.idPrefix, column.key),
       });
@@ -97,19 +98,19 @@ export class DevFixtureBuilder extends SpreadsheetBaseNamed {
   }
   private _seedColumnRows(
     sheetId: number,
-    colIndex: number,
+    colIndex: SheetColIndex,
     column: DevFixtureColumn,
     rowCount: number,
   ): void {
-    const topDataRowIdx = sheetLayout.tableHeaderRowIndex + 1;
-    for (let rowOffset = 0; rowOffset < rowCount; rowOffset++) {
+    const origin = TableOrigin.expected();
+    for (let rowIndex = 0; rowIndex < rowCount; rowIndex++) {
       const position = {
         sheetId,
-        rowIndex: topDataRowIdx + rowOffset,
+        rowIndex: origin.sheetRowIndex(rowIndex),
         colIndex,
       };
       const { formula } = column;
-      const value = column.values[rowOffset];
+      const value = column.values[rowIndex];
       if (formula !== undefined) {
         this.ss.raw.gatherAddedSheetFillCellOperation({ ...position, formula });
       } else if (value !== undefined && value !== "") {
@@ -124,8 +125,10 @@ export class DevFixtureBuilder extends SpreadsheetBaseNamed {
     if (columnIndex === -1) {
       throw new Error(`${fixture.title} has no "${columnKey}" column.`);
     }
-    const rowIndex = sheetLayout.actionRowIndex;
-    const colIndex = sheetLayout.startTableColIndex + columnIndex;
+    const origin = TableOrigin.expected();
+    const actionRowIndex = uniformRows.index("action");
+    const rowIndex = origin.sheetRowIndex(actionRowIndex);
+    const colIndex = origin.sheetColIndex(columnIndex);
     this.ss.raw
       .gatherAddedSheetFillCellOperation({
         sheetId: fixture.sheetGid,
@@ -136,9 +139,9 @@ export class DevFixtureBuilder extends SpreadsheetBaseNamed {
       .gatherAddedSheetCheckboxValidationOperation({
         sheetId: fixture.sheetGid,
         startRowIndex: rowIndex,
-        endRowIndex: rowIndex + 1,
+        endRowIndex: origin.sheetRowIndex(actionRowIndex + 1),
         startColumnIndex: colIndex,
-        endColumnIndex: colIndex + 1,
+        endColumnIndex: origin.sheetColIndex(columnIndex + 1),
       });
   }
   private _ensureLetApiAccess(fixture: DevFixtureSheet): void {

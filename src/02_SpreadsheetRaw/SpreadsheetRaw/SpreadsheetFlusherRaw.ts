@@ -88,11 +88,12 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
     if (writes.appendRow && writes.deleteRow) {
       return;
     } else if (writes.deleteRow) {
+      const origin = this.ss.sheet(sheetGid).tableOrigin();
       this.writeOperations.deleteRows.push({
         kind: "deleteRows",
         sheetId: sheetGid,
-        startIndex: rowIndex,
-        endIndex: rowIndex + 1,
+        startIndex: origin.sheetRowIndex(rowIndex),
+        endIndex: origin.sheetRowIndex(rowIndex + 1),
       });
     } else {
       const row = this.ss.sheet(sheetGid).rowCommon(rowIndex);

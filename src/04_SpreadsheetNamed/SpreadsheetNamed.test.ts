@@ -8,7 +8,7 @@ import {
   getSheetTraitByName,
   type SheetName,
 } from "../01_SpreadsheetSchema/sheetConfigsTypes";
-import { sheetLayout } from "../01_SpreadsheetSchema/sheetLayout";
+import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {
   blankSheetConfigRow,
@@ -121,7 +121,7 @@ describe("SpreadsheetNamed navigation", () => {
     expect(columnMeta.sheet).toBeInstanceOf(SheetMetaNamed);
     expect(column.meta).toBeInstanceOf(ColumnMetaNamed);
     expect(columnMeta.primary).toBeInstanceOf(ColumnNamed);
-    expect(sheet.row(sheet.schema.topDataRowIdx)).toBeInstanceOf(RowNamed);
+    expect(sheet.row(0)).toBeInstanceOf(RowNamed);
   });
 });
 
@@ -138,7 +138,7 @@ describe("SpreadsheetNamed.fetch", () => {
   });
 });
 
-const topDataRowIndex = sheetLayout.tableHeaderRowIndex + 1;
+const topDataRowIndex = expectedSheetLayout.tableHeaderRowIndex + 1;
 const datesGid = getSheetTraitByName("dates", "sheetGid");
 const valueTypesGid = getSheetTraitByName("valueTypes", "sheetGid");
 const idColumnId = getColumnTraitByName("dates", "id", "columnId");
@@ -154,10 +154,10 @@ const optionalDateColumnId = getColumnTraitByName(
 );
 const requiredDateSerial = 45000;
 const optionalDateSerial = 45365;
-const filledRowIndex = 4;
-const blankRowIndex = 5;
+const filledRowIndex = 0;
+const blankRowIndex = 1;
 
-// Row 5 is the blank row; the checkbox is untouched, so it reads blank not false.
+// Body row 1 (sheet row 5) is the blank row; the checkbox is untouched, so it reads blank not false.
 function stubDatesAndValueTypesWithBlankRow() {
   return stubSheetsService({
     sheets: [
@@ -212,9 +212,7 @@ describe("Named value accessors", () => {
   it("names the sheet, the column and the row when CellNamed.value hits a blank cell", () => {
     const cell = fetchedDatesSheet().column("id").cell(blankRowIndex);
 
-    expect(() => cell.value()).toThrowError(
-      new RegExp(`"id".*"dates".*${blankRowIndex}`),
-    );
+    expect(() => cell.value()).toThrowError(new RegExp(`"id".*"dates".*row 6`));
   });
 
   it("keeps the generated column id out of the Named message", () => {
@@ -286,7 +284,7 @@ describe("Named value accessors", () => {
     const cell = fetchedDatesSheet().column("id").cell(blankRowIndex);
 
     expect(() => cell.valueNotEmpty()).toThrowError(
-      new RegExp(`"id".*"dates".*${blankRowIndex}`),
+      new RegExp(`"id".*"dates".*row 6`),
     );
   });
 
@@ -295,7 +293,7 @@ describe("Named value accessors", () => {
     const column = sheet.column("requiredDate");
 
     expect(() => column.value(blankRowIndex)).toThrowError(
-      new RegExp(`"requiredDate".*"dates".*${blankRowIndex}`),
+      new RegExp(`"requiredDate".*"dates".*row 6`),
     );
     expect(() => column.valueNotEmpty(blankRowIndex)).toThrowError(/is empty/);
     expect(() => column.valueArr).toThrowError(/is empty/);
@@ -437,7 +435,9 @@ function tableDataRows(
 }
 
 function sheetConfigTitles(service: FakeSheetsService): FakeCellValue[] {
-  return tableDataRows(service, sheetConfigGid).map((row) => row[sheetTitleColIndex] ?? null);
+  return tableDataRows(service, sheetConfigGid).map(
+    (row) => row[sheetTitleColIndex] ?? null,
+  );
 }
 
 describe("SheetNamed.rowByValue", () => {
@@ -534,7 +534,7 @@ describe("SheetNamed.appendRowWithVals", () => {
     });
     ss.batchUpdateGSheets();
 
-    expect(row.rowIndex).toBe(topDataRowIndex);
+    expect(row.rowIndex).toBe(0);
     expect(sheetConfigTitles(service)).toEqual(["Item"]);
     expect(row.value("sheetTitle")).toBe("Item");
   });
@@ -550,7 +550,7 @@ describe("SheetNamed.appendRowWithVals", () => {
       .appendRowWithVals({ sheetTitle: "Log" });
     ss.batchUpdateGSheets();
 
-    expect(row.rowIndex).toBe(topDataRowIndex + 1);
+    expect(row.rowIndex).toBe(1);
     expect(sheetConfigTitles(service)).toEqual(["Item", "Log"]);
   });
 
@@ -565,10 +565,7 @@ describe("SheetNamed.appendRowWithVals", () => {
     const second = sheet.appendRowWithVals({ sheetTitle: "two" });
     ss.batchUpdateGSheets();
 
-    expect([first.rowIndex, second.rowIndex]).toEqual([
-      topDataRowIndex,
-      topDataRowIndex + 1,
-    ]);
+    expect([first.rowIndex, second.rowIndex]).toEqual([0, 1]);
     expect(sheetConfigTitles(service)).toEqual(["one", "two"]);
   });
 
@@ -585,7 +582,7 @@ describe("SheetNamed.appendRowWithVals", () => {
     const rebuilt = sheet.appendRowWithVals({ sheetTitle: "two" });
     ss.batchUpdateGSheets();
 
-    expect(rebuilt.rowIndex).toBe(topDataRowIndex);
+    expect(rebuilt.rowIndex).toBe(0);
     expect(sheetConfigTitles(service)).toEqual(["two"]);
     expect(rebuilt.value("sheetTitle")).toBe("two");
   });
@@ -602,7 +599,7 @@ describe("SheetNamed.appendRowWithVals", () => {
     const row = sheet.appendRowWithVals({ sheetTitle: "new" });
     ss.batchUpdateGSheets();
 
-    expect(row.rowIndex).toBe(topDataRowIndex);
+    expect(row.rowIndex).toBe(0);
     expect(sheetConfigTitles(service)).toEqual(["new"]);
   });
 });
@@ -704,7 +701,7 @@ describe("SheetNamed.appendRowWithAllVals", () => {
       .appendRowWithAllVals(completeValueTypesRow);
     ss.batchUpdateGSheets();
 
-    expect(row.rowIndex).toBe(topDataRowIndex);
+    expect(row.rowIndex).toBe(0);
     const rows = tableDataRows(service, valueTypesGid);
     expect(rows).toHaveLength(1);
     expect(rows[0]).toEqual(
@@ -778,7 +775,7 @@ function fetchedBlankDatesRow(): RowNamed<"dates"> {
   const ss = SpreadsheetNamed.init();
   ss.sheet("dates").prepFetchColumnsFull("id", "requiredDate", "optionalDate");
   ss.fetchAllPrepped();
-  return ss.sheet("dates").row(topDataRowIndex);
+  return ss.sheet("dates").row(0);
 }
 
 describe("RowNamed.blankRequiredColumnNames", () => {
@@ -863,10 +860,7 @@ describe("Named formula writes", () => {
 
     const ss = SpreadsheetNamed.init();
     ss.fetchAllSheetProperties();
-    ss.sheet("computed")
-      .column("rowNumber")
-      .cell(topDataRowIndex)
-      .updateFormula(testFormula);
+    ss.sheet("computed").column("rowNumber").cell(0).updateFormula(testFormula);
     ss.batchUpdateGSheets();
 
     expect(rowNumberCells(grid)).toEqual([testFormula, 21]);
@@ -878,7 +872,7 @@ describe("Named formula writes", () => {
     const ss = SpreadsheetNamed.init();
     ss.sheet("computed").prepFetchColumnsFull("rowNumber");
     ss.fetchAllPrepped();
-    ss.sheet("computed").raw.removeRowsExcept(topDataRowIndex);
+    ss.sheet("computed").raw.removeRowsExcept(0);
     ss.sheet("computed").column("rowNumber").updateActiveFormulas(testFormula);
     ss.batchUpdateGSheets();
 
@@ -919,11 +913,7 @@ describe("Named formula writes", () => {
     ss.fetchAllSheetProperties();
 
     expect(() =>
-      ss
-        .sheet("computed")
-        .column("rowNumber")
-        .cell(topDataRowIndex)
-        .updateValue(99),
+      ss.sheet("computed").column("rowNumber").cell(0).updateValue(99),
     ).toThrowError(/formula column/);
   });
 
@@ -933,7 +923,7 @@ describe("Named formula writes", () => {
 
     const ss = SpreadsheetNamed.init();
     ss.fetchAllSheetProperties();
-    const cell = ss.sheet("computed").column("rowNumber").cell(topDataRowIndex);
+    const cell = ss.sheet("computed").column("rowNumber").cell(0);
     cell.updateFormula(testFormula);
     cell.updateBackgroundColor(backgroundColor);
     ss.batchUpdateGSheets();
@@ -950,7 +940,7 @@ describe("Named formula writes", () => {
     const ss = SpreadsheetNamed.init();
     ss.sheet("computed").prepFetchColumnsFull("rowNumber");
     ss.fetchAllPrepped();
-    ss.sheet("computed").raw.removeRowsExcept(topDataRowIndex);
+    ss.sheet("computed").raw.removeRowsExcept(0);
 
     expect(() =>
       ss.sheet("computed").column("rowNumber").updateAllFormulas(testFormula),
@@ -967,13 +957,13 @@ describe("Named formula writes", () => {
     ) {
       formulaColumn.updateAllFormulas(testFormula);
       formulaColumn.updateActiveFormulas(testFormula);
-      formulaColumn.cell(topDataRowIndex).updateFormula(testFormula);
+      formulaColumn.cell(0).updateFormula(testFormula);
       // @ts-expect-error Amount is not a formula column
       numColumn.updateAllFormulas(testFormula);
       // @ts-expect-error Amount is not a formula column
       numColumn.updateActiveFormulas(testFormula);
       // @ts-expect-error Amount is not a formula column
-      numColumn.cell(topDataRowIndex).updateFormula(testFormula);
+      numColumn.cell(0).updateFormula(testFormula);
     }
 
     expect(formulaWriteTypeGate).toEqual(expect.any(Function));

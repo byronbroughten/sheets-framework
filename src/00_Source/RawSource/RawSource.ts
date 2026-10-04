@@ -5,13 +5,14 @@ import type {
 } from "./ConditionalFormat";
 import type { EditProtection, EditProtectionContent } from "./EditProtection";
 import type { RgbColor } from "./RgbColor";
+import type { SheetColIndex, SheetRowIndex } from "./SheetIndex";
 
 export interface GridRangeProps {
   sheetId: number;
-  startRowIndex: number;
-  endRowIndex?: number;
-  startColumnIndex?: number;
-  endColumnIndex?: number;
+  startRowIndex: SheetRowIndex;
+  endRowIndex?: SheetRowIndex;
+  startColumnIndex?: SheetColIndex;
+  endColumnIndex?: SheetColIndex;
 }
 
 export type BoundedGridRange = Required<GridRangeProps>;
@@ -68,10 +69,10 @@ export interface SheetEditProtectionSnapshot {
 export interface TableSnapshot {
   tableId: string;
   name: string;
-  startRowIndex: number;
-  endRowIndex: number;
-  startColumnIndex: number;
-  endColumnIndex: number;
+  startRowIndex: SheetRowIndex;
+  endRowIndex: SheetRowIndex;
+  startColumnIndex: SheetColIndex;
+  endColumnIndex: SheetColIndex;
   columnProperties: TableColumnSnapshot[];
 }
 
@@ -102,8 +103,8 @@ export type TableColumnType =
   | "RATINGS_CHIP";
 
 export interface GridBlockSnapshot {
-  startColumn: number;
-  startRow: number;
+  startColumn: SheetColIndex;
+  startRow: SheetRowIndex;
   columnCount: number;
   rows: GridRowSnapshot[];
 }
@@ -208,15 +209,15 @@ export interface CopyPasteOperation {
 export interface InsertTableEndColumnOperation {
   kind: "insertTableEndColumn";
   sheetId: number;
-  startColumnIndex: number;
+  startColumnIndex: SheetColIndex;
 }
 
 export interface FillColumnOperation {
   kind: "fillColumn";
   sheetId: number;
-  colIndex: number;
-  startRowIndex: number;
-  endRowIndex: number;
+  colIndex: SheetColIndex;
+  startRowIndex: SheetRowIndex;
+  endRowIndex: SheetRowIndex;
   value?: CellValue;
   formula?: string;
   backgroundColor?: RgbColor;
@@ -225,8 +226,8 @@ export interface FillColumnOperation {
 export interface FillCellOperation {
   kind: "fillCell";
   sheetId: number;
-  rowIndex: number;
-  colIndex: number;
+  rowIndex: SheetRowIndex;
+  colIndex: SheetColIndex;
   value?: CellValue;
   formula?: string;
   backgroundColor?: RgbColor;
@@ -241,16 +242,16 @@ export interface FindReplaceOperation {
 export interface DeleteRowsOperation {
   kind: "deleteRows";
   sheetId: number;
-  startIndex: number;
-  endIndex: number;
+  startIndex: SheetRowIndex;
+  endIndex: SheetRowIndex;
 }
 
 export interface SortOperation {
   kind: "sort";
   sheetId: number;
-  startRowIndex: number;
-  startColumnIndex: number;
-  colIdxToSortBy: number;
+  startRowIndex: SheetRowIndex;
+  startColumnIndex: SheetColIndex;
+  colIdxToSortBy: SheetColIndex;
   sortOrder: SortOrder;
 }
 

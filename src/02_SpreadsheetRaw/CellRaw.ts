@@ -30,17 +30,18 @@ export class CellRaw<
   get row(): RowCommonRaw {
     return this.sheet.rowCommon(this.rowIndex);
   }
-  get gridRange(): BoundedGridRange {
+  gridRange(): BoundedGridRange {
+    const origin = this.tableOrigin();
     return {
       sheetId: this.sheetGid,
-      startRowIndex: this.rowIndex,
-      endRowIndex: this.rowIndex + 1,
-      startColumnIndex: this.colIndex,
-      endColumnIndex: this.colIndex + 1,
+      startRowIndex: origin.sheetRowIndex(this.rowIndex),
+      endRowIndex: origin.sheetRowIndex(this.rowIndex + 1),
+      startColumnIndex: origin.sheetColIndex(this.colIndex),
+      endColumnIndex: origin.sheetColIndex(this.colIndex + 1),
     };
   }
   gatherFetchRange(): this {
-    this.sheet.gatherFetchRange(this.gridRange);
+    this.sheet.gatherFetchRange(this.gridRange());
     // Sheets omits a never-written cell; finalize treats that as empty.
     const colIndexes =
       this.sheetState.fetchQueue.toFinalize.cells.get(this.rowIndex) ??
@@ -52,11 +53,12 @@ export class CellRaw<
   gatherFillCellOperation(cellFill: CellFill): void {
     const { formula, ...cellData } = cellFill;
     assertValueAndFormulaExclusive(cellData.value, formula);
+    const origin = this.tableOrigin();
     this.writeOperations.fillCell.push({
       kind: "fillCell",
       sheetId: this.sheetGid,
-      rowIndex: this.rowIndex,
-      colIndex: this.colIndex,
+      rowIndex: origin.sheetRowIndex(this.rowIndex),
+      colIndex: origin.sheetColIndex(this.colIndex),
       ...cellData,
       ...(formula !== undefined ? { formula } : {}),
     });
@@ -64,7 +66,7 @@ export class CellRaw<
   setValueState(value: CellValue): void {
     if (!this.row.rowIsActive()) {
       throw new Error(
-        `Cannot set value for row ${this.rowIndex} because it is not active.`,
+        `Cannot set value for ${this.rowLabel(this.rowIndex)} because it is not active.`,
       );
     }
     this.rowState.set(this.colIndex, { value });
@@ -77,11 +79,11 @@ export class CellRaw<
     if (this.isActive) return;
     if (this.sheet.cellStateIsStale) {
       throw new Error(
-        `Cell values went stale when a findReplace was sent; re-fetch before reading row ${this.rowIndex}, column index ${this.colIndex}.`,
+        `Cell values went stale when a findReplace was sent; re-fetch before reading ${this.rowLabel(this.rowIndex)}, column index ${this.colIndex}.`,
       );
     }
     throw new Error(
-      `Row ${this.rowIndex} does not have a value set for column index ${this.colIndex}.`,
+      `No value is set in ${this.rowLabel(this.rowIndex)} for column index ${this.colIndex}.`,
     );
   }
   get isActive(): boolean {
@@ -136,15 +138,15 @@ export class CellRaw<
     return this;
   }
   addCheckboxValidation(): this {
-    this.sheet.addCheckboxValidationAt(this.gridRange);
+    this.sheet.addCheckboxValidationAt(this.gridRange());
     return this;
   }
   addConditionalFormatRule(declaration: ConditionalFormatDeclaration): this {
-    this.sheet.addConditionalFormatRuleAt(this.gridRange, declaration);
+    this.sheet.addConditionalFormatRuleAt(this.gridRange(), declaration);
     return this;
   }
   removeConditionalFormatRules(): this {
-    this.sheet.removeConditionalFormatRulesAt(this.gridRange);
+    this.sheet.removeConditionalFormatRulesAt(this.gridRange());
     return this;
   }
   removeConditionalFormatRule(rule: ConditionalFormatRule): this {
@@ -152,15 +154,15 @@ export class CellRaw<
     return this;
   }
   addEditWarning(declaration: EditWarningDeclaration = {}): this {
-    this.sheet.addEditWarningAt(this.gridRange, declaration);
+    this.sheet.addEditWarningAt(this.gridRange(), declaration);
     return this;
   }
   addEditLock(declaration: EditLockDeclaration = {}): this {
-    this.sheet.addEditLockAt(this.gridRange, declaration);
+    this.sheet.addEditLockAt(this.gridRange(), declaration);
     return this;
   }
   removeEditProtections(): this {
-    this.sheet.removeEditProtectionsAt(this.gridRange);
+    this.sheet.removeEditProtectionsAt(this.gridRange());
     return this;
   }
   removeEditProtection(protection: EditProtection): this {

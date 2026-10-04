@@ -22,7 +22,7 @@ export abstract class SheetCommonRaw extends SheetBaseRaw {
         `Active table is null for sheetGid ${this.sheetGid}. Ensure that the sheet properties have been fetched.`,
       );
     }
-    if (knownTable.endRowIndex <= this.schema.topDataRowIdx) {
+    if (knownTable.endRowIndex <= knownTable.startRowIndex + 1) {
       throw new Error(
         `Sheet ${this.sheetLabel} Table must have at least one data row.`,
       );
@@ -30,10 +30,7 @@ export abstract class SheetCommonRaw extends SheetBaseRaw {
     return new ActiveTableRaw(this.sheetRawProps);
   }
   get fullTableColIndexes(): number[] {
-    return Arr.indexesFromUntil(
-      this.activeTable.startColumnIndex,
-      this.activeTable.endColumnIndex,
-    );
+    return Arr.indexesFromUntil(0, this.activeTable.columnCount);
   }
   get writes(): SheetWrites {
     return this.sheetState.writeQueue.sheet;
@@ -41,8 +38,7 @@ export abstract class SheetCommonRaw extends SheetBaseRaw {
   // The table's own range, not the layout's: no table means no table columns.
   isTableColIndex(colIndex: number): boolean {
     if (this.sheetState.working.knownTable === undefined) return false;
-    const { startColumnIndex, endColumnIndex } = this.activeTable;
-    return colIndex >= startColumnIndex && colIndex < endColumnIndex;
+    return colIndex >= 0 && colIndex < this.activeTable.columnCount;
   }
   gatherFetchRange(gr: SheetGridRangeProps): this {
     this.spreadsheetStateRaw.fetchQueue.gridRanges.push({

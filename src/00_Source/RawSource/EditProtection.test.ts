@@ -12,6 +12,7 @@ import {
   type WholeSheetEditLockDeclaration,
   type WholeSheetEditWarningDeclaration,
 } from "./EditProtection";
+import { SheetIndex } from "./SheetIndex";
 
 type HasUnprotectedRanges<T> = "unprotectedRanges" extends keyof T
   ? true
@@ -41,9 +42,9 @@ describe("EditProtection identity", () => {
       protectionRangeEqual(
         {
           sheetId: 1,
-          startRowIndex: 0,
-          startColumnIndex: 4,
-          endColumnIndex: 5,
+          startRowIndex: SheetIndex.row(0),
+          startColumnIndex: SheetIndex.col(4),
+          endColumnIndex: SheetIndex.col(5),
         },
         { sheetId: 1 },
       ),
@@ -55,15 +56,15 @@ describe("EditProtection identity", () => {
       protectionRangeEqual(
         {
           sheetId: 1,
-          startRowIndex: 0,
-          startColumnIndex: 4,
-          endColumnIndex: 5,
+          startRowIndex: SheetIndex.row(0),
+          startColumnIndex: SheetIndex.col(4),
+          endColumnIndex: SheetIndex.col(5),
         },
         {
           sheetId: 1,
-          startRowIndex: 0,
-          startColumnIndex: 5,
-          endColumnIndex: 6,
+          startRowIndex: SheetIndex.row(0),
+          startColumnIndex: SheetIndex.col(5),
+          endColumnIndex: SheetIndex.col(6),
         },
       ),
     ).toBe(false);
