@@ -34,7 +34,7 @@ export const sheetReplays = {
         sheetId,
         title,
         rows: [],
-        extraTables: [],
+        tables: [],
         rowCount,
         columnCount,
         hiddenRowIndexes: [],

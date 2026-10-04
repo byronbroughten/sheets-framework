@@ -13,6 +13,7 @@ import {
   buildGridRows,
   type FakeCell,
   type FakeSheetProperties,
+  type FakeTable,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
 import { ConfigSheetFloor } from "./ConfigSheetFloor";
@@ -291,9 +292,7 @@ function floorFixture(
     omitSheetGids?: readonly number[];
     isDryRun?: boolean;
     omitSpreadsheetConfigTable?: boolean;
-    spreadsheetConfigExtraTables?: NonNullable<
-      FakeSheetProperties["extraTables"]
-    >;
+    spreadsheetConfigExtraTables?: FakeTable[];
     extraSpreadsheetConfigColumn?: {
       columnId: string;
       header: string;
@@ -351,28 +350,32 @@ function floorFixture(
           3: pad(withExtraColumn(sscHeaders, extraColumn?.header)),
           4: pad(withExtraColumn(dataRow, "")),
         }),
-        table: options.omitSpreadsheetConfigTable
-          ? undefined
-          : {
-              name:
-                options.spreadsheetConfigTableName ??
-                configSheetFloorSeed.spreadsheetConfig.tableName,
-              startColumnIndex: startTableColIndex,
-              endRowIndex: 5,
-              endColumnIndex:
-                startTableColIndex +
-                sscOrder.length +
-                (extraColumn === undefined ? 0 : 1),
-              columnTypes: sheetAbsoluteTypes(
-                spreadsheetConfigFixtureColumnTypes(
-                  sscOrder,
-                  sscHeaders,
-                  options,
-                ),
-                startTableColIndex,
-              ),
-            },
-        extraTables: options.spreadsheetConfigExtraTables,
+        tables: [
+          ...(options.omitSpreadsheetConfigTable
+            ? []
+            : [
+                {
+                  name:
+                    options.spreadsheetConfigTableName ??
+                    configSheetFloorSeed.spreadsheetConfig.tableName,
+                  startColumnIndex: startTableColIndex,
+                  endRowIndex: 5,
+                  endColumnIndex:
+                    startTableColIndex +
+                    sscOrder.length +
+                    (extraColumn === undefined ? 0 : 1),
+                  columnTypes: sheetAbsoluteTypes(
+                    spreadsheetConfigFixtureColumnTypes(
+                      sscOrder,
+                      sscHeaders,
+                      options,
+                    ),
+                    startTableColIndex,
+                  ),
+                },
+              ]),
+          ...(options.spreadsheetConfigExtraTables ?? []),
+        ],
         protectedRanges: options.spreadsheetConfigProtections,
       },
       {

@@ -17,6 +17,8 @@ const cellFieldPaths = {
 
 type CellFact = (typeof cellFieldPaths)[keyof typeof cellFieldPaths][number];
 
+export type PastedFact = keyof Omit<FakeRichCellValue, "value" | "isFormula">;
+
 export type CellFields = ReadonlySet<CellFact>;
 
 export const fakeCells = {
@@ -71,6 +73,20 @@ export const fakeCells = {
     const { value: _value, isFormula: _isFormula, ...facts } = toRich(neighbour);
     const value = facts.dataValidationConditionType === "BOOLEAN" ? false : null;
     return normalized({ value, ...facts });
+  },
+  // A format or validation paste replaces only its own facts, never the value.
+  withPastedFacts(
+    cell: FakeCell,
+    source: FakeCell,
+    facts: readonly PastedFact[],
+  ): FakeCell {
+    const from = toRich(source);
+    return normalized(
+      Object.assign(
+        toRich(cell),
+        Object.fromEntries(facts.map((fact) => [fact, from[fact]])),
+      ),
+    );
   },
   withValue(
     cell: FakeCell,

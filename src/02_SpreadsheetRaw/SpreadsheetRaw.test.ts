@@ -102,8 +102,10 @@ function extraTablesSheet(sheet: {
   title: string;
 }): FakeSheetProperties {
   return {
-    ...placedTableSheet(sheet),
-    extraTables: [
+    ...sheet,
+    rows: buildGridRows({ [tableHeaderRowIndex]: ["ID"] }),
+    tables: [
+      { endRowIndex: tableEndRowIndex },
       {
         startRowIndex: tableHeaderRowIndex + 10,
         endRowIndex: tableHeaderRowIndex + 12,

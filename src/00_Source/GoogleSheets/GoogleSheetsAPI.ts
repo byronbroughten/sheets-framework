@@ -28,8 +28,12 @@ function unwrapRawRequest(request: OpaqueRawRequest): GoogleRequest {
 // Naming a verb here obliges UpdateRequestSummary to give it a line format.
 export type ModeledRequestVerb =
   | "appendCells"
+  | "appendDimension"
   | "insertDimension"
   | "deleteDimension"
+  | "insertRange"
+  | "deleteRange"
+  | "copyPaste"
   | "findReplace"
   | "sortRange"
   | "addConditionalFormatRule"
@@ -64,27 +68,29 @@ interface FieldsArg {
 const sheetsApiBase = "https://sheets.googleapis.com/v4/spreadsheets";
 
 const timeZoneMask = "properties(timeZone)";
+const sheetPropertiesMask = "properties(sheetId,title,gridProperties(rowCount))";
 
-// The time zone rides every standing fetch, so reading it rarely costs its own get.
+// The time zone, row count and column types ride every standing fetch, so none costs its own get.
 const fieldMasks = {
   timeZone: timeZoneMask,
   sheetProperties:
     `${timeZoneMask},` +
-    "sheets(properties(sheetId,title),tables(tableId,name,range))",
+    `sheets(${sheetPropertiesMask},` +
+    "tables(tableId,name,range,columnProperties(columnIndex,columnType)))",
   conditionalFormats: "sheets(properties(sheetId),conditionalFormats)",
   protectedRanges: "sheets(properties(sheetId),protectedRanges)",
   gridWithProgrammaticFacts:
     `${timeZoneMask},` +
     "sheets(" +
-    "properties(sheetId,title)," +
+    `${sheetPropertiesMask},` +
     "tables(tableId,name,range,columnProperties(columnIndex,columnName,columnType,dataValidationRule(condition(type,values(userEnteredValue)))))," +
     "data(startColumn,startRow,columnMetadata,rowData(values(effectiveValue,userEnteredValue,effectiveFormat(numberFormat(type)),dataValidation(condition(type)))))" +
     ")",
   gridWithoutProgrammaticFacts:
     `${timeZoneMask},` +
     "sheets(" +
-    "properties(sheetId,title)," +
-    "tables(tableId,name,range)," +
+    `${sheetPropertiesMask},` +
+    "tables(tableId,name,range,columnProperties(columnIndex,columnType))," +
     "data(startColumn,startRow,columnMetadata,rowData(values(effectiveValue)))" +
     ")",
 } as const;
@@ -289,6 +295,45 @@ function modeledOperationToGoogleRequests(
             tableId: operation.tableId,
             rows: Array.from({ length: operation.emptyRowCount }, () => ({})),
             fields: "userEnteredValue",
+          },
+        },
+      ];
+    case "appendDimension":
+      return [
+        {
+          appendDimension: {
+            sheetId: operation.sheetId,
+            dimension: "ROWS",
+            length: operation.addedRowCount,
+          },
+        },
+      ];
+    case "insertRange":
+      return [
+        {
+          insertRange: {
+            range: operation.range,
+            shiftDimension: operation.shiftDimension,
+          },
+        },
+      ];
+    case "deleteRange":
+      return [
+        {
+          deleteRange: {
+            range: operation.range,
+            shiftDimension: operation.shiftDimension,
+          },
+        },
+      ];
+    case "copyPaste":
+      return [
+        {
+          copyPaste: {
+            source: operation.source,
+            destination: operation.destination,
+            pasteType: operation.pasteType,
+            pasteOrientation: "NORMAL",
           },
         },
       ];

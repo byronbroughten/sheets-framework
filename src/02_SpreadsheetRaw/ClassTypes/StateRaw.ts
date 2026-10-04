@@ -33,9 +33,16 @@ export interface SpreadsheetWriteQueueRaw {
   operations: WriteOperations;
 }
 
+// Built from a Table's growth or delete as the flush gathers it, so never queued itself.
+type GatheredOnlyKind =
+  | "appendDimension"
+  | "insertRange"
+  | "deleteRange"
+  | "copyPaste";
+
 // A key equals its operation's kind, so the compiler rejects one that matches none.
 export type WriteOperations = {
-  [KD in LocalWriteOperation["kind"]]: Extract<
+  [KD in Exclude<LocalWriteOperation["kind"], GatheredOnlyKind>]: Extract<
     LocalWriteOperation,
     { kind: KD }
   >[];

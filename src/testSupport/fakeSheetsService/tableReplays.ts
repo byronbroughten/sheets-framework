@@ -30,15 +30,11 @@ export const tableReplays = {
     const tableState: FakeTableState = {
       tableId:
         table.tableId ??
-        `fake-table-${sheet.sheetId}-added-${fakeSpreadsheet.tables(sheet).length}`,
+        `fake-table-${sheet.sheetId}-added-${sheet.tables.length}`,
       ...(table.name !== undefined ? { name: table.name } : {}),
       ...bounded,
     };
-    if (sheet.table === undefined) {
-      sheet.table = tableState;
-    } else {
-      sheet.extraTables.push(tableState);
-    }
+    sheet.tables.push(tableState);
     return {};
   },
   // Measured live: a field mask replaces only its fields.

@@ -24,6 +24,8 @@ export type GridFetchRange = GridRangeProps | UsedGridRange;
 
 export type SortOrder = "ASCENDING" | "DESCENDING";
 
+export type GridDimension = "ROWS" | "COLUMNS";
+
 export type FindReplaceScope =
   { range: GridRangeProps } | { sheetId: number } | { allSheets: true };
 
@@ -48,6 +50,7 @@ export interface SpreadsheetSnapshot {
 export interface SheetSnapshot {
   sheetGid: number;
   title: string | null;
+  rowCount: number | undefined;
   tables: TableSnapshot[] | undefined;
   gridBlocks: GridBlockSnapshot[] | undefined;
 }
@@ -121,6 +124,10 @@ export type LocalWriteOperation =
   | AddSheetOperation
   | AddTableOperation
   | AppendRowsOperation
+  | AppendDimensionOperation
+  | InsertRangeOperation
+  | DeleteRangeOperation
+  | CopyPasteOperation
   | InsertTableEndColumnOperation
   | FillColumnOperation
   | FillCellOperation
@@ -165,6 +172,36 @@ export interface AppendRowsOperation {
   sheetId: number;
   tableId: string;
   emptyRowCount: number;
+}
+
+// Adds rows past the grid's last row, so it can't split a Table (sheets-framework#59).
+export interface AppendDimensionOperation {
+  kind: "appendDimension";
+  sheetId: number;
+  addedRowCount: number;
+}
+
+// Shifts only the range's own cells, so a Table beside it is spared (sheets-framework#53).
+export interface InsertRangeOperation {
+  kind: "insertRange";
+  range: BoundedGridRange;
+  shiftDimension: GridDimension;
+}
+
+export interface DeleteRangeOperation {
+  kind: "deleteRange";
+  range: BoundedGridRange;
+  shiftDimension: GridDimension;
+}
+
+export type CopyPasteType = "PASTE_FORMAT" | "PASTE_DATA_VALIDATION";
+
+// One source row tiles over every destination row (sheets-framework#61).
+export interface CopyPasteOperation {
+  kind: "copyPaste";
+  source: BoundedGridRange;
+  destination: BoundedGridRange;
+  pasteType: CopyPasteType;
 }
 
 // Table-end only: a mid-Table insert needs its own measured inheritFromBefore.

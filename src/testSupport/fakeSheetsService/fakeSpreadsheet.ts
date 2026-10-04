@@ -14,11 +14,10 @@ export interface FakeTableState extends FakeTable {
 
 export interface FakeSheetState extends Omit<
   FakeSheetProperties,
-  "rows" | "table" | "extraTables"
+  "rows" | "table" | "tables"
 > {
   rows: FakeCell[][];
-  table?: FakeTableState;
-  extraTables: FakeTableState[];
+  tables: FakeTableState[];
   rowCount: number;
   columnCount: number;
   hiddenRowIndexes: number[];
@@ -56,19 +55,14 @@ export const fakeSpreadsheet = {
     }
     return sheet;
   },
-  tables(sheet: FakeSheetState): FakeTableState[] {
-    return sheet.table === undefined
-      ? [...sheet.extraTables]
-      : [sheet.table, ...sheet.extraTables];
-  },
   table(
     spreadsheet: FakeSpreadsheet,
     tableId: string | undefined,
   ): { sheet: FakeSheetState; table: FakeTableState } {
     for (const sheet of spreadsheet.sheets) {
-      const table = fakeSpreadsheet
-        .tables(sheet)
-        .find((candidate) => candidate.tableId === tableId);
+      const table = sheet.tables.find(
+        (candidate) => candidate.tableId === tableId,
+      );
       if (table !== undefined) return { sheet, table };
     }
     throw new Error(`The fake spreadsheet has no Table with id ${tableId}.`);
@@ -76,26 +70,34 @@ export const fakeSpreadsheet = {
 };
 
 function sheetState(fixture: FakeSheetProperties): FakeSheetState {
-  const copy = JSON.parse(JSON.stringify(fixture)) as FakeSheetProperties;
-  const rows = (copy.rows ?? []).map((row) => [...row]);
-  const widestRow = Math.max(0, ...rows.map((row) => row.length));
-  const table =
-    copy.table === undefined
-      ? undefined
-      : tableState(copy.table, `fake-table-${copy.sheetId}`, widestRow);
-  const extraTables = (copy.extraTables ?? []).map((extraTable, extraIndex) =>
-    tableState(
-      extraTable,
-      `fake-table-${copy.sheetId}-extra-${extraIndex}`,
-      widestRow,
-    ),
+  const {
+    table,
+    tables: fixtureTables,
+    ...copy
+  } = JSON.parse(JSON.stringify(fixture)) as FakeSheetProperties;
+  if (table !== undefined && fixtureTables !== undefined) {
+    throw new Error(
+      `Fixture sheet ${copy.sheetId} gives both table and tables; give one.`,
+    );
+  }
+  const placed = (fixtureTables ?? (table === undefined ? [] : [table])).map(
+    (fixtureTable, tableIndex) =>
+      placedTable(fixtureTable, defaultTableId(copy.sheetId, tableIndex)),
   );
-  const tables = table === undefined ? extraTables : [table, ...extraTables];
+  const rows = placed.reduce(
+    withHeadRows,
+    (copy.rows ?? []).map((row) => [...row]),
+  );
+  const widestRow = Math.max(0, ...rows.map((row) => row.length));
+  // Resolved once, so a later write right of the Table never widens it.
+  const tables = placed.map(({ headRows: _headRows, ...tableState }) => ({
+    ...tableState,
+    endColumnIndex: tableState.endColumnIndex ?? widestRow,
+  }));
   return {
     ...copy,
     rows,
-    table,
-    extraTables,
+    tables,
     rowCount: Math.max(rows.length, ...tables.map((t) => t.endRowIndex)),
     columnCount: Math.max(widestRow, ...tables.map((t) => t.endColumnIndex)),
     hiddenRowIndexes: [],
@@ -103,17 +105,47 @@ function sheetState(fixture: FakeSheetProperties): FakeSheetState {
   };
 }
 
-// Resolved once, so a later write right of the Table never widens it.
-function tableState(
-  table: FakeTable,
-  defaultTableId: string,
-  widestRow: number,
-): FakeTableState {
+function defaultTableId(sheetId: number, tableIndex: number): string {
+  return tableIndex === 0
+    ? `fake-table-${sheetId}`
+    : `fake-table-${sheetId}-${tableIndex}`;
+}
+
+type PlacedTable = FakeTable &
+  Pick<FakeTableState, "tableId" | "startRowIndex" | "startColumnIndex">;
+
+function placedTable(table: FakeTable, defaultId: string): PlacedTable {
   return {
     ...table,
-    tableId: table.tableId ?? defaultTableId,
+    tableId: table.tableId ?? defaultId,
     startRowIndex: table.startRowIndex ?? sheetLayout.tableHeaderRowIndex,
     startColumnIndex: table.startColumnIndex ?? sheetLayout.startTableColIndex,
-    endColumnIndex: table.endColumnIndex ?? widestRow,
   };
+}
+
+// A head-row cell `rows` already holds is a fixture typo, so it throws rather than picking one.
+function withHeadRows(rows: FakeCell[][], table: PlacedTable): FakeCell[][] {
+  Object.entries(table.headRows ?? {}).forEach(([offsetKey, cells]) => {
+    const offset = Number(offsetKey);
+    const rowIndex = table.startRowIndex - offset;
+    if (rowIndex < 0) {
+      throw new Error(
+        `Table ${table.tableId}'s head row ${offset} above its header would sit above row 0.`,
+      );
+    }
+    while (rows.length <= rowIndex) rows.push([]);
+    const row = rows[rowIndex] ?? [];
+    (cells ?? []).forEach((cell, colOffset) => {
+      const colIndex = table.startColumnIndex + colOffset;
+      if ((row[colIndex] ?? null) !== null) {
+        throw new Error(
+          `Table ${table.tableId}'s head row ${offset} and rows both give a cell at row ${rowIndex}, column ${colIndex}.`,
+        );
+      }
+      while (row.length < colIndex) row.push(null);
+      row[colIndex] = cell;
+    });
+    rows[rowIndex] = row;
+  });
+  return rows;
 }

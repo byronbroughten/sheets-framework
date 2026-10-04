@@ -6,6 +6,7 @@ import { installRawSource } from "../00_Source/RawSource/RawSource";
 import { Obj } from "../utils/Obj";
 import { cellReplays } from "./fakeSheetsService/cellReplays";
 import { dimensionReplays } from "./fakeSheetsService/dimensionReplays";
+import { FakeGoogleRefusal } from "./fakeSheetsService/FakeGoogleRefusal";
 import {
   type FakeSheetState,
   type FakeSpreadsheet,
@@ -13,6 +14,7 @@ import {
 } from "./fakeSheetsService/fakeSpreadsheet";
 import { fakeTables } from "./fakeSheetsService/fakeTables";
 import { type FakeGridView, gridView } from "./fakeSheetsService/gridView";
+import { rangeReplays } from "./fakeSheetsService/rangeReplays";
 import { ruleReplays } from "./fakeSheetsService/ruleReplays";
 import { sheetReplays } from "./fakeSheetsService/sheetReplays";
 import { tableReplays } from "./fakeSheetsService/tableReplays";
@@ -48,9 +50,14 @@ export interface FakeRichCellValue {
 }
 export type FakeCell = FakeCellValue | FakeRichCellValue;
 
+// Rows counted up from a Table's header, base 0: 3 is its column ID row, 1 its action row.
+export type FakeHeadRowOffset = 0 | 1 | 2 | 3;
+
 export interface FakeTable {
-  /** Omit for `fake-table-<gid>` (`-extra-<i>` for an extra Table). */
+  /** Omit for `fake-table-<gid>`, or `fake-table-<gid>-<i>` for the sheet's Table at index i > 0. */
   tableId?: string;
+  /** Head-row cells keyed by offset above the header, written from the Table's first column. */
+  headRows?: Partial<Record<FakeHeadRowOffset, readonly FakeCell[]>>;
   endRowIndex: number;
   /**
    * The exclusive bound of the Table's columns, defaulting to the widest
@@ -112,7 +119,7 @@ export interface FakeSheetProperties {
    */
   rows?: readonly (readonly FakeCell[])[];
   /**
-   * The sheet's Table range. Required for any test that reads/appends
+   * The sheet's one Table, shorthand for `tables: [table]`. Required for any test that reads/appends
    * *data* rows on this sheet (`SheetRaw`'s `rowIndexesActive`/
    * `appendDataRow` etc. read `activeTable`, which throws if no table was
    * ever integrated) — not needed for sheets only read via a uniform row
@@ -121,7 +128,7 @@ export interface FakeSheetProperties {
    * row; a replayed Table append grows it, as the live API does.
    */
   table?: FakeTable;
-  extraTables?: readonly FakeTable[]; // Extra Tables besides `table`; the filter hatch still withholds every Table.
+  tables?: readonly FakeTable[]; // Every Table on the sheet, in place of `table`; the filter hatch withholds them all.
   /**
    * The sheet's conditional format rules, in Sheets order. Returned by
    * `get` only, as live. Adds insert at the requested index and
@@ -327,11 +334,19 @@ export function stubSheetsService(
     const includeTimeZone =
       timeZone !== null &&
       (fields === undefined || fields.includes("timeZone"));
+    const includeRowCount =
+      fields === undefined || fields.includes("gridProperties(rowCount)");
     return {
       ...(includeTimeZone ? { properties: { timeZone } } : {}),
       sheets: spreadsheet.sheets.map(
         (s): GoogleAppsScript.Sheets.Schema.Sheet => ({
-          properties: { sheetId: s.sheetId, title: s.title },
+          properties: {
+            sheetId: s.sheetId,
+            title: s.title,
+            ...(includeRowCount
+              ? { gridProperties: { rowCount: s.rowCount } }
+              : {}),
+          },
           data: fakeRowsToGoogleSheetData(s),
           tables: fakeTables.googleTables(s, isFilteredFetch),
           ...(includeConditionalFormats && s.conditionalFormats?.length
@@ -386,6 +401,7 @@ export function stubSheetsService(
 const requestReplays = {
   ...cellReplays,
   ...dimensionReplays,
+  ...rangeReplays,
   ...sheetReplays,
   ...tableReplays,
   ...ruleReplays,
@@ -402,7 +418,9 @@ function replayBatch(
   const before = JSON.stringify(spreadsheet);
   try {
     return {
-      replies: requests.map((request) => replayRequest(spreadsheet, request)),
+      replies: requests.map((request, index) =>
+        replayRequest(spreadsheet, request, index),
+      ),
     };
   } catch (error) {
     Object.assign(spreadsheet, JSON.parse(before));
@@ -413,6 +431,7 @@ function replayBatch(
 function replayRequest(
   spreadsheet: FakeSpreadsheet,
   request: Request,
+  index: number,
 ): Response {
   const kinds = Obj.keys(request).filter((kind) => request[kind] !== undefined);
   const [kind] = kinds;
@@ -426,7 +445,12 @@ function replayRequest(
   }
   // Each replay takes its own kind's body, which the lookup can't express.
   const replay = requestReplays[kind] as RequestReplay;
-  return replay(spreadsheet, request[kind]);
+  try {
+    return replay(spreadsheet, request[kind]);
+  } catch (error) {
+    if (!(error instanceof FakeGoogleRefusal)) throw error;
+    throw new Error(`Invalid requests[${index}].${kind}: ${error.message}`);
+  }
 }
 
 function isReplayedKind(kind: string): kind is ReplayedKind {

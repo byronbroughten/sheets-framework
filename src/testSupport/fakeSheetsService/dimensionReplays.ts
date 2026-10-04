@@ -42,6 +42,24 @@ export const dimensionReplays = {
     });
     return {};
   },
+  // Measured live: rows or columns land past the grid's edge, so nothing on the sheet moves.
+  appendDimension(
+    spreadsheet: FakeSpreadsheet,
+    request: GoogleAppsScript.Sheets.Schema.AppendDimensionRequest,
+  ): Response {
+    const sheet = fakeSpreadsheet.sheet(spreadsheet, request.sheetId);
+    const length = request.length ?? 0;
+    if (request.dimension === "ROWS") {
+      sheet.rowCount += length;
+    } else if (request.dimension === "COLUMNS") {
+      sheet.columnCount += length;
+    } else {
+      throw new Error(
+        `appendDimension needs ROWS or COLUMNS, not ${request.dimension}.`,
+      );
+    }
+    return {};
+  },
   insertDimension(
     spreadsheet: FakeSpreadsheet,
     request: GoogleAppsScript.Sheets.Schema.InsertDimensionRequest,
