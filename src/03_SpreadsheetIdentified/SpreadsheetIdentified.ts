@@ -35,7 +35,7 @@ export class SpreadsheetIdentified extends SpreadsheetBaseIdentified {
   get activeSheets(): TableIdentified[] {
     return this.raw.activeSheetGids.map((sheetGid) => this.sheet(sheetGid));
   }
-  // Sheets first: building a sheet's handle hands its queue to its Table once that Table is known.
+  // Sheets first: building a sheet's handle hands its queue to its known Table.
   get tablesPreppedForFetch(): SheetMetaIdentified[] {
     return [...this._sheetsWaitingOnTable(), ...this._knownTables()].filter(
       (table) => table.isPreppedToFetch,
@@ -64,12 +64,14 @@ export class SpreadsheetIdentified extends SpreadsheetBaseIdentified {
       .filter((sheet) => sheet.knownTableId() === undefined);
   }
   private _knownTables(): SheetMetaIdentified[] {
-    return [...this.tablesStateIdentified.keys()].map(
-      (tableId) =>
-        new SheetMetaIdentified({
-          ...this.spreadsheetIdentifiedProps,
-          tableId,
-        }),
+    return [...this.tablesStateIdentified.keys()].map((tableId) =>
+      this._tableMeta(tableId),
     );
+  }
+  private _tableMeta(tableId: string): SheetMetaIdentified {
+    return new SheetMetaIdentified({
+      ...this.spreadsheetIdentifiedProps,
+      tableId,
+    });
   }
 }

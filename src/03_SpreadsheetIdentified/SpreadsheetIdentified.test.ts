@@ -15,6 +15,7 @@ import {
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
 import { assertType, type IsExactly } from "../testSupport/typeAssertions";
+import { Val } from "../utils/Val";
 import { SpreadsheetBaseIdentified } from "./ClassBases/SpreadsheetBaseIdentified";
 import type { FetchTargetIdentified } from "./ClassTypes/StateIdentified";
 import { ColumnIdentified } from "./ColumnIdentified";
@@ -337,6 +338,17 @@ describe("the blank test, on a sheet with a feedback column", () => {
 
     expect(sheet.topRow.isBlank).toBe(false);
     expect(sheet.hasNoData).toBe(false);
+  });
+
+  it("leaves the feedback column out of a Table reached by its tableId", () => {
+    const sheet = runItemWithOneRow([null, null, "Succeeded"]);
+    const tableId = Val.assert(sheet.knownTableId(), "runItem tableId");
+    const table = new SpreadsheetIdentified(
+      sheet.spreadsheetIdentifiedProps,
+    ).table(tableId);
+
+    expect(table.blankTestColumnIds()).not.toContain(runStatusColumnId);
+    expect(table.topRow.isBlank).toBe(true);
   });
 });
 

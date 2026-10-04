@@ -18,6 +18,7 @@ export type TableIdentifiedProps = SpreadsheetIdentifiedProps & TableAddressRaw;
 export class TableBaseIdentified extends SpreadsheetBaseIdentified {
   readonly sheetGid: number;
   private readonly tableAddress: TableAddressRaw;
+  private readonly rawTable: TableBaseRaw;
   constructor({
     spreadsheetStateRaw,
     spreadsheetStateIdentified,
@@ -30,6 +31,10 @@ export class TableBaseIdentified extends SpreadsheetBaseIdentified {
       feedbackColumnIds,
     });
     this.tableAddress = tableAddress;
+    this.rawTable = new TableBaseRaw({
+      ...this.spreadsheetRawProps,
+      ...tableAddress,
+    });
     this.sheetGid = this.rawTable.sheetGid;
     this._ensureTableState();
   }
@@ -38,12 +43,6 @@ export class TableBaseIdentified extends SpreadsheetBaseIdentified {
       ...this.spreadsheetIdentifiedProps,
       ...this.tableAddress,
     };
-  }
-  private get rawTable(): TableBaseRaw {
-    return new TableBaseRaw({
-      ...this.spreadsheetRawProps,
-      ...this.tableAddress,
-    });
   }
   private get tableStateBeforeProperties(): TableStateIdentified | undefined {
     return this.tableBeforePropertiesBySheet.get(this.sheetGid);
@@ -54,11 +53,11 @@ export class TableBaseIdentified extends SpreadsheetBaseIdentified {
   get fetchTargets(): FetchTargetIdentified[] {
     return this.tableState.fetchQueue.targets;
   }
-  // A rule or protection fetch still needs the Table's properties and column IDs.
+  // Rule and protection fetches still need the Table's column IDs.
   get isPreppedToFetch(): boolean {
     return this.fetchTargets.length > 0 || this.rawTable.hasGatheredSheetFetch;
   }
-  // Absent while the sheet's one Table is unfetched, or when the sheet holds several.
+  // Absent until the sheet's one Table is fetched.
   knownTableId(): string | undefined {
     if ("tableId" in this.tableAddress) return this.tableAddress.tableId;
     return this.rawTable.onlyTableId();
@@ -66,7 +65,7 @@ export class TableBaseIdentified extends SpreadsheetBaseIdentified {
   clearFetchTargets(): void {
     this.tableState.fetchQueue.targets = [];
   }
-  // A handle built before its Table was known reads the sheet's queue until another handle adopts it.
+  // Before its Table is known, a handle reads the sheet's queue.
   private _resolveTableState(): TableStateIdentified {
     const tableId = this.knownTableId();
     const tableState =
@@ -98,7 +97,7 @@ export class TableBaseIdentified extends SpreadsheetBaseIdentified {
       emptyTableStateIdentified(),
     );
   }
-  // The sheet's one Table takes over what was prepped through the sheet before it was known.
+  // The sheet's one Table takes over what was prepped before it was known.
   private _adoptTableStateBeforeProperties(tableId: string): void {
     const adopted = this.tableStateBeforeProperties;
     if (adopted === undefined) return;
