@@ -1,6 +1,7 @@
 import { Val } from "../../utils/Val";
 import type { SheetChange } from "../PlatformEvents/sheetChange";
 import type { SheetEdit } from "../PlatformEvents/sheetEdit";
+import { SheetIndex } from "../RawSource/SheetIndex";
 
 interface ToastOptions {
   title: string;
@@ -26,8 +27,8 @@ export class AppsScript {
   static sheetEdit(e: GoogleAppsScript.Events.SheetsOnEdit): SheetEdit {
     return {
       sheetGid: e.range.getSheet().getSheetId(),
-      rowIndexBase0: e.range.getRow() - 1,
-      colIndexBase0: e.range.getColumn() - 1,
+      rowIndexBase0: SheetIndex.row(e.range.getRow() - 1),
+      colIndexBase0: SheetIndex.col(e.range.getColumn() - 1),
       value: e.value,
     };
   }

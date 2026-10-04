@@ -50,16 +50,15 @@ export class SheetMetaIdentified extends SheetCommonIdentified {
   _gatherDataPrerequisites({
     skipFetchingProperties,
   }: GatherDataPrerequisitesProps = {}): void {
-    const startTableColIndex = this.schema.startTableColIndex;
     if (!skipFetchingProperties && !this.raw.primary.hasFetchedProperties) {
-      this.raw.primary.gatherFetchProperties(startTableColIndex);
+      this.raw.primary.gatherFetchProperties();
     }
     // Skip if a prior full-row fetch on the columnId row already covers this row.
     if (
       !this.raw.hasFetchedColumnIds &&
       !this.raw.primary.hasQueuedFullRowFetch(this.schema.colIdRowIndex)
     ) {
-      this.raw.gatherFetchColumnIdsInit(startTableColIndex);
+      this.raw.gatherFetchColumnIdsInit();
     }
     if (this.sheetState.fetchQueue.gatherConditionalFormats) {
       this.raw.primary.gatherFetchConditionalFormatRules();

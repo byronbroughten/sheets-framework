@@ -2,8 +2,9 @@ import type {
   SheetSnapshot,
   TableSnapshot,
 } from "../../00_Source/RawSource/RawSource";
-import { Obj } from "../../utils/Obj";
+import { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin";
 import { Val } from "../../utils/Val";
+import { ActiveTableRaw } from "../ActiveTableRaw";
 import { emptyStateRaw } from "../ClassTypes/emptyStateRaw";
 import type {
   ColumnStateRaw,
@@ -62,23 +63,18 @@ export class SheetBaseRaw extends SpreadsheetBaseRaw {
       return;
     }
     const table = Val.assert(tables[0], "table");
-    const range = Obj.validatePick(
-      table,
-      "number",
-      "startRowIndex",
-      "endRowIndex",
-      "startColumnIndex",
-      "endColumnIndex",
-    );
     const previous = this.sheetState.working.knownTable;
     this.sheetState.working.knownTable = {
       tableId: table.tableId,
       name: table.name,
-      ...range,
+      startRowIndex: table.startRowIndex,
+      endRowIndex: table.endRowIndex,
+      startColumnIndex: table.startColumnIndex,
+      endColumnIndex: table.endColumnIndex,
       columnProperties: table.columnProperties,
       rowIndexesAreStale: previous?.rowIndexesAreStale ?? false,
     };
-    this._parseColumnProperties(table, range.startColumnIndex);
+    this._parseColumnProperties(table);
   }
   // Queued properties outlive a re-fetch until the flush sends them.
   private _integrateQueuedSheetProperties(): void {
@@ -94,9 +90,7 @@ export class SheetBaseRaw extends SpreadsheetBaseRaw {
     this.writeOperations.setTableColumnType.forEach(
       ({ tableId, columnIndex, columnType }) => {
         if (tableId !== knownTable.tableId) return;
-        this._ensureColumnState(
-          knownTable.startColumnIndex + columnIndex,
-        ).columnType = columnType;
+        this._ensureColumnState(columnIndex).columnType = columnType;
       },
     );
   }
@@ -116,15 +110,11 @@ export class SheetBaseRaw extends SpreadsheetBaseRaw {
       delete columnState.columnType;
     });
   }
-  private _parseColumnProperties(
-    table: TableSnapshot,
-    startColumnIndex: number,
-  ): void {
+  private _parseColumnProperties(table: TableSnapshot): void {
     this._clearColumnPropertyFields();
     table.columnProperties.forEach((colProps) => {
-      // The API states columnIndex table-relative.
-      const colIndex = startColumnIndex + colProps.columnIndex;
-      const columnState = this._ensureColumnState(colIndex);
+      // The API states columnIndex table-relative, as Raw does.
+      const columnState = this._ensureColumnState(colProps.columnIndex);
       if (colProps.dataValidationValues.length > 0) {
         columnState.validationValues = colProps.dataValidationValues;
       }
@@ -153,11 +143,21 @@ export class SheetBaseRaw extends SpreadsheetBaseRaw {
   getRowState(rowIndex: number): RowStateRaw {
     return Val.assert(
       this.sheetState.working.rowStates.get(rowIndex),
-      `rowState for row ${rowIndex} on sheetGid ${this.sheetGid}`,
+      `rowState for ${this.rowLabel(rowIndex)} on sheetGid ${this.sheetGid}`,
     );
   }
   get columnStates(): SheetStateRaw["working"]["columnStates"] {
     return this.sheetState.working.columnStates;
+  }
+  // The live Table once fetched; before that, where the layout expects it.
+  tableOrigin(): TableOrigin {
+    if (this.sheetState.working.knownTable === undefined) {
+      return TableOrigin.expected();
+    }
+    return new ActiveTableRaw(this.sheetRawProps).origin;
+  }
+  rowLabel(rowIndex: number): string {
+    return `row ${this.tableOrigin().rowNumber(rowIndex)}`;
   }
   get sheetLabel(): string {
     return `"${this.sheetState.working.title ?? "(untitled)"}" (gid ${this.sheetGid})`;

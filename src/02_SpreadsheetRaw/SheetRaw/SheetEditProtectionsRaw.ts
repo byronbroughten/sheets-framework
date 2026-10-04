@@ -37,10 +37,10 @@ export class SheetEditProtectionsRaw extends SheetCommonRaw {
     return protections;
   }
   addEditWarning(declaration: EditWarningDeclaration = {}): void {
-    this.addEditWarningAt(this.sheet.dataGridRange, declaration);
+    this.addEditWarningAt(this.sheet.dataGridRange(), declaration);
   }
   addEditLock(declaration: EditLockDeclaration = {}): void {
-    this.addEditLockAt(this.sheet.dataGridRange, declaration);
+    this.addEditLockAt(this.sheet.dataGridRange(), declaration);
   }
   addEditWarningWholeSheet(
     declaration: WholeSheetEditWarningDeclaration = {},
@@ -133,7 +133,7 @@ export class SheetEditProtectionsRaw extends SheetCommonRaw {
     ];
   }
   removeEditProtections(): void {
-    this.removeEditProtectionsAt(this.sheet.dataGridRange);
+    this.removeEditProtectionsAt(this.sheet.dataGridRange());
   }
   removeEditProtectionsAt(range: ProtectionGridRange): void {
     this._assertProtectionWriteRowIndexesNotStale(range, []);

@@ -6,7 +6,7 @@ import {
 } from "../../01_SpreadsheetSchema/configSheetFloorSeed";
 import { dimensionIds } from "../../01_SpreadsheetSchema/dimensionIds";
 import { getSheetTraitByName } from "../../01_SpreadsheetSchema/sheetConfigsTypes";
-import { sheetLayout } from "../../01_SpreadsheetSchema/sheetLayout";
+import { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin";
 import { SpreadsheetBaseNamed } from "../../04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
 import { SpreadsheetNamed } from "../../04_SpreadsheetNamed/SpreadsheetNamed";
 import { type FloorSheetName, floorSheetNames } from "./floorSeedLookups";
@@ -53,15 +53,14 @@ export class ConfigSheetFloorCreator extends SpreadsheetBaseNamed {
     return report;
   }
   private _createMissingTabs(): string[] {
-    const headerRowIdx = sheetLayout.tableHeaderRowIndex;
-    const startColIdx = sheetLayout.startTableColIndex;
+    const origin = TableOrigin.expected();
     return creatableFloorTabNames.flatMap((sheetName) => {
       const sheetGid = getSheetTraitByName(sheetName, "sheetGid");
       if (this.ss.raw.gidIsActive(sheetGid)) return [];
       const seed = configSheetFloorSeed[sheetName];
       const columns = createdTableColumns(sheetName);
-      const endRowIdx = headerRowIdx + 1 + createdDataRowCount(sheetName);
-      const endColIdx = startColIdx + columns.length;
+      const endRowIdx = origin.sheetRowIndex(createdDataRowCount(sheetName));
+      const endColIdx = origin.sheetColIndex(columns.length);
       this.ss.raw
         .gatherAddSheetOperation({
           sheetId: sheetGid,
@@ -73,9 +72,9 @@ export class ConfigSheetFloorCreator extends SpreadsheetBaseNamed {
           name: seed.tableName,
           range: {
             sheetId: sheetGid,
-            startRowIndex: headerRowIdx,
+            startRowIndex: origin.headerRowIndex,
             endRowIndex: endRowIdx,
-            startColumnIndex: startColIdx,
+            startColumnIndex: origin.startColIndex,
             endColumnIndex: endColIdx,
           },
           columnProperties: columns.map((column, columnIndex) => ({
@@ -85,25 +84,25 @@ export class ConfigSheetFloorCreator extends SpreadsheetBaseNamed {
           })),
         });
       if (sheetName === "valueConfig") {
-        this._seedExampleColumn(sheetGid, headerRowIdx + 1);
+        this._seedExampleColumn(sheetGid, origin);
       }
       return [seed.title];
     });
   }
   // The add-Table's columnName writes the header, so no header cell is written.
-  private _seedExampleColumn(sheetGid: number, topDataRowIdx: number): void {
-    const colIndex = sheetLayout.startTableColIndex;
+  private _seedExampleColumn(sheetGid: number, origin: TableOrigin): void {
+    const colIndex = origin.sheetColIndex(0);
     const idPrefix = getSheetTraitByName("valueConfig", "idPrefix");
     this.ss.raw.gatherAddedSheetFillCellOperation({
       sheetId: sheetGid,
-      rowIndex: sheetLayout.colIdRowIndex,
+      rowIndex: origin.headSheetRowIndex("columnId"),
       colIndex,
       value: dimensionIds.col(idPrefix),
     });
     exampleColumn.seededValues.forEach((value, memberIndex) => {
       this.ss.raw.gatherAddedSheetFillCellOperation({
         sheetId: sheetGid,
-        rowIndex: topDataRowIdx + memberIndex,
+        rowIndex: origin.sheetRowIndex(memberIndex),
         colIndex,
         value,
       });

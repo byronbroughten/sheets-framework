@@ -15,6 +15,10 @@ import type {
   BoundedGridRange,
   GridRangeProps,
 } from "../00_Source/RawSource/RawSource";
+import {
+  SheetIndex,
+  type SheetRowIndex,
+} from "../00_Source/RawSource/SheetIndex";
 import { Arr } from "../utils/Arr";
 import { CellRaw, validateFormulaString } from "./CellRaw";
 import { ColumnBaseRaw } from "./ClassBases/ColumnBaseRaw";
@@ -46,24 +50,22 @@ export class ColumnRaw<
     );
   }
   get topCell(): CellRaw<VN> {
-    return this.cell(this.schema.topDataRowIdx);
+    return this.cell(0);
   }
-  get dataGridRange(): BoundedGridRange {
+  dataGridRange(): BoundedGridRange {
+    const { origin, dataRowCount } = this.sheet.activeTable;
     return {
       sheetId: this.sheetGid,
-      startRowIndex: this.schema.topDataRowIdx,
-      endRowIndex: this.sheet.activeTable.endRowIndex,
-      startColumnIndex: this.colIndex,
-      endColumnIndex: this.colIndex + 1,
+      startRowIndex: origin.sheetRowIndex(0),
+      endRowIndex: origin.sheetRowIndex(dataRowCount),
+      startColumnIndex: origin.sheetColIndex(this.colIndex),
+      endColumnIndex: origin.sheetColIndex(this.colIndex + 1),
     };
   }
   gridRangeFromRow(startRowIndex: number): GridRangeProps {
-    return {
-      sheetId: this.sheetGid,
-      startRowIndex,
-      startColumnIndex: this.colIndex,
-      endColumnIndex: this.colIndex + 1,
-    };
+    return this._gridRangeFromSheetRow(
+      this.tableOrigin().sheetRowIndex(startRowIndex),
+    );
   }
   get cellIndexesActive(): number[] {
     return this.sheet.rowIndexesActive;
@@ -88,7 +90,7 @@ export class ColumnRaw<
   updateAllCells(change: Omit<CellFill<VN>, "formula">): this {
     this.sheet.activeTable.assertRowIndexesNotStale();
     this.sheet.validateNotPrunedToSelection();
-    const { endRowIndex } = this.sheet.activeTable;
+    const { dataRowCount } = this.sheet.activeTable;
     const { value } = change;
     this.sheet.rowIndexesFull.forEach((rowIndex) => {
       const row = this.sheet.row(rowIndex);
@@ -100,8 +102,8 @@ export class ColumnRaw<
     this.sheet.queueSheetWrite({
       action: "fillColumn",
       colIndex: this.colIndex,
-      startRowIndex: this.schema.topDataRowIdx,
-      endRowIndex,
+      startRowIndex: 0,
+      endRowIndex: dataRowCount,
       ...change,
     });
     return this;
@@ -110,15 +112,15 @@ export class ColumnRaw<
     this.sheet.activeTable.assertRowIndexesNotStale();
     validateFormulaString(formula);
     this.sheet.validateNotPrunedToSelection();
-    const { endRowIndex } = this.sheet.activeTable;
+    const { dataRowCount } = this.sheet.activeTable;
     this.sheet.rowIndexesFull.forEach((rowIndex) => {
       this.sheet.row(rowIndex).validateIsWritable();
     });
     this.sheet.queueSheetWrite({
       action: "fillColumn",
       colIndex: this.colIndex,
-      startRowIndex: this.schema.topDataRowIdx,
-      endRowIndex,
+      startRowIndex: 0,
+      endRowIndex: dataRowCount,
       formula,
     });
     return this;
@@ -162,15 +164,15 @@ export class ColumnRaw<
   // Reaches every data row like a whole-column fill, so it takes the same guards.
   findReplace(terms: FindReplaceTerms): this {
     this.sheet.validateNotPrunedToSelection();
-    this.ss.findReplace({ ...terms, scope: { range: this.dataGridRange } });
+    this.ss.findReplace({ ...terms, scope: { range: this.dataGridRange() } });
     return this;
   }
   addConditionalFormatRule(declaration: ConditionalFormatDeclaration): this {
-    this.sheet.addConditionalFormatRuleAt(this.dataGridRange, declaration);
+    this.sheet.addConditionalFormatRuleAt(this.dataGridRange(), declaration);
     return this;
   }
   removeConditionalFormatRules(): this {
-    this.sheet.removeConditionalFormatRulesAt(this.dataGridRange);
+    this.sheet.removeConditionalFormatRulesAt(this.dataGridRange());
     return this;
   }
   removeConditionalFormatRule(rule: ConditionalFormatRule): this {
@@ -178,7 +180,7 @@ export class ColumnRaw<
     return this;
   }
   addEditWarning(declaration: EditWarningDeclaration = {}): this {
-    this.sheet.addEditWarningAt(this.dataGridRange, declaration);
+    this.sheet.addEditWarningAt(this.dataGridRange(), declaration);
     return this;
   }
   addEditWarningFromRow(
@@ -192,23 +194,23 @@ export class ColumnRaw<
     return this;
   }
   addEditWarningWholeColumn(declaration: EditWarningDeclaration = {}): this {
-    this.sheet.addEditWarningAt(this.gridRangeFromRow(0), declaration);
+    this.sheet.addEditWarningAt(this._wholeColumnGridRange(), declaration);
     return this;
   }
   addEditLock(declaration: EditLockDeclaration = {}): this {
-    this.sheet.addEditLockAt(this.dataGridRange, declaration);
+    this.sheet.addEditLockAt(this.dataGridRange(), declaration);
     return this;
   }
   addEditLockWholeColumn(declaration: EditLockDeclaration = {}): this {
-    this.sheet.addEditLockAt(this.gridRangeFromRow(0), declaration);
+    this.sheet.addEditLockAt(this._wholeColumnGridRange(), declaration);
     return this;
   }
   removeEditProtections(): this {
-    this.sheet.removeEditProtectionsAt(this.dataGridRange);
+    this.sheet.removeEditProtectionsAt(this.dataGridRange());
     return this;
   }
   removeEditProtectionsWholeColumn(): this {
-    this.sheet.removeEditProtectionsAt(this.gridRangeFromRow(0));
+    this.sheet.removeEditProtectionsAt(this._wholeColumnGridRange());
     return this;
   }
   removeEditProtection(protection: EditProtection): this {
@@ -222,10 +224,11 @@ export class ColumnRaw<
     return this;
   }
   gatherFetchFull(): this {
+    const origin = this.tableOrigin();
     this.sheet.gatherFetchRange({
-      startRowIndex: this.schema.topDataRowIdx,
-      startColumnIndex: this.colIndex,
-      endColumnIndex: this.colIndex + 1,
+      startRowIndex: origin.sheetRowIndex(0),
+      startColumnIndex: origin.sheetColIndex(this.colIndex),
+      endColumnIndex: origin.sheetColIndex(this.colIndex + 1),
     });
     this.sheetState.fetchQueue.toFinalize.columns.add(this.colIndex);
     return this;
@@ -238,5 +241,17 @@ export class ColumnRaw<
       this.sheet.row(rowIndex).ensureStateExists();
       this.cell(rowIndex).ensureActive();
     });
+  }
+  private _wholeColumnGridRange(): GridRangeProps {
+    return this._gridRangeFromSheetRow(SheetIndex.row(0));
+  }
+  private _gridRangeFromSheetRow(startRowIndex: SheetRowIndex): GridRangeProps {
+    const origin = this.tableOrigin();
+    return {
+      sheetId: this.sheetGid,
+      startRowIndex,
+      startColumnIndex: origin.sheetColIndex(this.colIndex),
+      endColumnIndex: origin.sheetColIndex(this.colIndex + 1),
+    };
   }
 }

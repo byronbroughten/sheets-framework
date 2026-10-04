@@ -7,7 +7,7 @@ import {
   floorSeedColumns,
 } from "../01_SpreadsheetSchema/configSheetFloorSeed";
 import { getSheetTraitByName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
-import { sheetLayout } from "../01_SpreadsheetSchema/sheetLayout";
+import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {
   buildGridRows,
@@ -30,8 +30,8 @@ const spreadsheetConfigGid = getSheetTraitByName(
 const sheetConfigGid = getSheetTraitByName("sheetConfig", "sheetGid");
 const columnConfigGid = getSheetTraitByName("columnConfig", "sheetGid");
 const valueConfigGid = getSheetTraitByName("valueConfig", "sheetGid");
-const actionRowIndex = sheetLayout.actionRowIndex;
-const topDataRowIndex = sheetLayout.tableHeaderRowIndex + 1;
+const actionRowIndex = expectedSheetLayout.actionRowIndex;
+const topDataRowIndex = expectedSheetLayout.tableHeaderRowIndex + 1;
 const floorWarningPrefix = "Config-sheet floor";
 const ssc = columnConfigs.spreadsheetConfig;
 const sc = columnConfigs.sheetConfig;
@@ -301,7 +301,7 @@ function floorFixture(
     extraColumnConfigColumn?: { columnId: string; header: string };
   } = {},
 ) {
-  const startTableColIndex = sheetLayout.startTableColIndex;
+  const startTableColIndex = expectedSheetLayout.startTableColIndex;
   const pad = (row: readonly FakeCell[]) =>
     padLeadingColumns(row, startTableColIndex);
   const sscOrder = options.spreadsheetConfigColumnOrder ?? sscColumns;
@@ -1182,7 +1182,7 @@ describe("ConfigSheetFloor", () => {
     const { report } = applyFloor();
 
     expect(
-      rowValues(grid, columnConfigGid, sheetLayout.tableHeaderRowIndex),
+      rowValues(grid, columnConfigGid, expectedSheetLayout.tableHeaderRowIndex),
     ).toEqual([
       cc.sheetGid.header,
       cc.columnId.header,
@@ -1192,7 +1192,7 @@ describe("ConfigSheetFloor", () => {
     ]);
     expect(
       grid.sheet(columnConfigGid).values({
-        endRowIndex: sheetLayout.tableHeaderRowIndex,
+        endRowIndex: expectedSheetLayout.tableHeaderRowIndex,
         startColumnIndex: 4,
         endColumnIndex: 5,
       }),
@@ -1209,7 +1209,7 @@ describe("ConfigSheetFloor", () => {
     applyFloor();
 
     expect(
-      rowValues(grid, columnConfigGid, sheetLayout.tableHeaderRowIndex),
+      rowValues(grid, columnConfigGid, expectedSheetLayout.tableHeaderRowIndex),
     ).toEqual([
       cc.sheetGid.header,
       cc.columnId.header,
@@ -1247,7 +1247,7 @@ describe("ConfigSheetFloor", () => {
     const { report } = applyFloor();
 
     expect(
-      rowValues(grid, sheetConfigGid, sheetLayout.tableHeaderRowIndex),
+      rowValues(grid, sheetConfigGid, expectedSheetLayout.tableHeaderRowIndex),
     ).toEqual(defaultSheetConfigHeaders);
     expect(report).not.toContain("Recreated columns:");
     expect(report).toContain("Restored headers:");
@@ -1374,7 +1374,7 @@ describe("ConfigSheetFloor", () => {
       tableColumns(grid, columnConfigGid).map(({ columnName }) => columnName),
     ).toEqual(headers);
     expect(
-      rowValues(grid, columnConfigGid, sheetLayout.tableHeaderRowIndex),
+      rowValues(grid, columnConfigGid, expectedSheetLayout.tableHeaderRowIndex),
     ).toEqual(headers);
   });
 
@@ -1426,8 +1426,8 @@ describe("ConfigSheetFloor", () => {
     });
     applyFloor();
 
-    const headerRowIndex = sheetLayout.tableHeaderRowIndex;
-    const startColIndex = sheetLayout.startTableColIndex;
+    const headerRowIndex = expectedSheetLayout.tableHeaderRowIndex;
+    const startColIndex = expectedSheetLayout.startTableColIndex;
     expect(grid.sheet(sheetConfigGid).tables[0]?.range).toEqual({
       startRowIndex: headerRowIndex,
       endRowIndex: headerRowIndex + 2,
@@ -1536,8 +1536,8 @@ describe("ConfigSheetFloor", () => {
     expect(tableColumns(grid, valueConfigGid)).toEqual([
       { columnName: "Example value", columnType: "TEXT" },
     ]);
-    const headerRowIndex = sheetLayout.tableHeaderRowIndex;
-    const startColIndex = sheetLayout.startTableColIndex;
+    const headerRowIndex = expectedSheetLayout.tableHeaderRowIndex;
+    const startColIndex = expectedSheetLayout.startTableColIndex;
     expect(tables[0]?.range).toEqual({
       startRowIndex: headerRowIndex,
       endRowIndex: headerRowIndex + 3,
@@ -1554,7 +1554,7 @@ describe("ConfigSheetFloor", () => {
     applyFloor();
 
     const { seededValues } = configSheetFloorSeed.valueConfig.exampleColumn;
-    const startColIndex = sheetLayout.startTableColIndex;
+    const startColIndex = expectedSheetLayout.startTableColIndex;
     expect(
       grid.sheet(valueConfigGid).values({
         startColumnIndex: startColIndex,

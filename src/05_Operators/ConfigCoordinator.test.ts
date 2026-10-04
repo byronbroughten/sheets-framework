@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { installedConfigs } from "../01_SpreadsheetSchema/configRegister";
 import { configSheetFloorSeed } from "../01_SpreadsheetSchema/configSheetFloorSeed";
 import { getSheetTraitByName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
-import { sheetLayout } from "../01_SpreadsheetSchema/sheetLayout";
+import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {
   buildGridRows,
@@ -19,9 +19,9 @@ const sheetConfigGid = 210603630;
 const columnConfigGid = 2034522667;
 const draftGid = 777000111;
 const draftTitle = "Add Widget Order";
-const headerOnlyTableEndRowIndex = sheetLayout.tableHeaderRowIndex + 1;
-const tableHeaderRowIndex = sheetLayout.tableHeaderRowIndex;
-const startTableColIndex = sheetLayout.startTableColIndex;
+const headerOnlyTableEndRowIndex = expectedSheetLayout.tableHeaderRowIndex + 1;
+const tableHeaderRowIndex = expectedSheetLayout.tableHeaderRowIndex;
+const startTableColIndex = expectedSheetLayout.startTableColIndex;
 const spreadsheetConfigGid = getSheetTraitByName(
   "spreadsheetConfig",
   "sheetGid",
@@ -351,7 +351,7 @@ function rowsFromFirstDataRow(
 ): Record<number, readonly FakeCellValue[]> {
   return rows.reduce<Record<number, readonly FakeCellValue[]>>(
     (byIndex, row, offset) => {
-      byIndex[sheetLayout.tableHeaderRowIndex + 1 + offset] = row;
+      byIndex[expectedSheetLayout.tableHeaderRowIndex + 1 + offset] = row;
       return byIndex;
     },
     {},

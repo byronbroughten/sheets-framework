@@ -1,4 +1,4 @@
-import { sheetLayout } from "../../01_SpreadsheetSchema/sheetLayout";
+import { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin";
 import type {
   FakeCell,
   FakeSheetProperties,
@@ -115,11 +115,12 @@ type PlacedTable = FakeTable &
   Pick<FakeTableState, "tableId" | "startRowIndex" | "startColumnIndex">;
 
 function placedTable(table: FakeTable, defaultId: string): PlacedTable {
+  const expected = TableOrigin.expected();
   return {
     ...table,
     tableId: table.tableId ?? defaultId,
-    startRowIndex: table.startRowIndex ?? sheetLayout.tableHeaderRowIndex,
-    startColumnIndex: table.startColumnIndex ?? sheetLayout.startTableColIndex,
+    startRowIndex: table.startRowIndex ?? expected.headerRowIndex,
+    startColumnIndex: table.startColumnIndex ?? expected.startColIndex,
   };
 }
 

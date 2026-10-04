@@ -18,7 +18,7 @@ export class CellBaseRaw extends ColumnBaseRaw {
   get cellState(): CellStateRaw {
     return Val.assert(
       this.rowState.get(this.colIndex),
-      `cellState for row ${this.rowIndex}, column ${this.colIndex} on sheetGid ${this.sheetGid}`,
+      `cellState for ${this.rowLabel(this.rowIndex)}, column index ${this.colIndex} on sheetGid ${this.sheetGid}`,
     );
   }
   get cellRawProps(): CellRawProps {

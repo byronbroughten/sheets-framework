@@ -431,17 +431,17 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> _updateProgrammaticValues", 
     const identity = operator.sheet.columns("sheetTitle", "header");
     const emitted = operator.newColumnConfigs().item;
 
-    expect(identity.sheetTitle.value(4)).toBe("Item");
-    expect(identity.header.value(4)).toBe("Amount");
+    expect(identity.sheetTitle.value(0)).toBe("Item");
+    expect(identity.header.value(0)).toBe("Amount");
     expect(emitted?.amount).toMatchObject({
       valueName: "number",
       isFormula: false,
       emptyValueAllowed: true,
     });
-    expect(operator.sheet.column("emptyValueAllowed").value(4)).toBe(true);
+    expect(operator.sheet.column("emptyValueAllowed").value(0)).toBe(true);
 
-    expect(identity.sheetTitle.value(5)).toBe("Item");
-    expect(identity.header.value(5)).toBe("ID");
+    expect(identity.sheetTitle.value(1)).toBe("Item");
+    expect(identity.header.value(1)).toBe("ID");
     expect(emitted?.id).toMatchObject({
       valueName: "id",
       isFormula: false,
@@ -479,8 +479,8 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> _updateProgrammaticValues", 
     syncColumnConfigOperator(operator);
     const identity = operator.sheet.columns("sheetTitle", "header");
 
-    expect(identity.sheetTitle.value(4)).toBe("Item");
-    expect(identity.header.value(4)).toBe("Amount");
+    expect(identity.sheetTitle.value(0)).toBe("Item");
+    expect(identity.header.value(0)).toBe("Amount");
     expect(operator.newColumnConfigs().item?.amount).toMatchObject({
       valueName: "number",
       isFormula: false,
@@ -597,8 +597,8 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> _updateProgrammaticValues", 
     expect(operator.newColumnConfigs().item?.description?.valueName).toBe(
       "transactionDescription",
     );
-    expect(identity.sheetTitle.value(4)).toBe("Item");
-    expect(identity.header.value(4)).toBe("Description");
+    expect(identity.sheetTitle.value(0)).toBe("Item");
+    expect(identity.header.value(0)).toBe("Description");
   });
 
   it("detects a live formula and a date-formatted number", () => {
@@ -1149,10 +1149,10 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> a sheet whose only data row 
     const col = operator.sheet.columns("sheetTitle", "header");
     const emitted = operator.newColumnConfigs().item;
 
-    expect(col.sheetTitle.value(4)).toBe("Item");
-    expect(col.header.value(4)).toBe("Supplier Name");
+    expect(col.sheetTitle.value(0)).toBe("Item");
+    expect(col.header.value(0)).toBe("Supplier Name");
     expect(emitted?.supplierName?.valueName).toBe("string");
-    expect(col.header.value(5)).toBe("Amount");
+    expect(col.header.value(1)).toBe("Amount");
     expect(emitted?.amount?.valueName).toBe("number");
   });
 
@@ -1189,7 +1189,7 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> a sheet whose only data row 
     });
     const col = operator.sheet.columns("header");
 
-    expect(col.header.value(4)).toBe("Supplier Name");
+    expect(col.header.value(0)).toBe("Supplier Name");
     expect(operator.newColumnConfigs().item?.supplierName?.valueName).toBe(
       "string",
     );
@@ -1398,9 +1398,9 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> _pruneColumnRows", () => {
     const col = operator.sheet.columns("sheetTitle", "header");
     const emitted = operator.newColumnConfigs().columnConfig;
 
-    expect(operator.sheet.rowIndexesActive).not.toContain(4);
-    expect(col.sheetTitle.value(5)).toBe("Column Config");
-    expect(col.header.value(5)).toBe("Sheet GID");
+    expect(operator.sheet.rowIndexesActive).not.toContain(0);
+    expect(col.sheetTitle.value(1)).toBe("Column Config");
+    expect(col.header.value(1)).toBe("Sheet GID");
     expect(emitted?.sheetGid).toMatchObject({
       valueName: "number",
       isFormula: false,

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { getColumnTraitByName } from "../01_SpreadsheetSchema/columnConfigsTypes";
 import { getSheetTraitByName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
-import { sheetLayout } from "../01_SpreadsheetSchema/sheetLayout";
+import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
 import {
   buildGridRows,
   type FakeSheetsService,
@@ -11,7 +11,7 @@ import {
 import { Val } from "../utils/Val";
 import { SpreadsheetNamed } from "./SpreadsheetNamed";
 
-const topDataRowIndex = sheetLayout.tableHeaderRowIndex + 1;
+const topDataRowIndex = expectedSheetLayout.tableHeaderRowIndex + 1;
 const runItemGid = getSheetTraitByName("runItem", "sheetGid");
 const idColumnId = getColumnTraitByName("runItem", "id", "columnId");
 const selectColumnId = getColumnTraitByName("runItem", "selected", "columnId");
@@ -246,7 +246,7 @@ describe("SheetNamed conditional format rules", () => {
     expect(
       sheet
         .column("id")
-        .cell(topDataRowIndex + 1)
+        .cell(1)
         .anchoredA1("id"),
     ).toBe("$A6");
   });
@@ -261,11 +261,11 @@ describe("SheetNamed conditional format rules", () => {
     });
     sheet
       .column("id")
-      .cell(topDataRowIndex)
+      .cell(0)
       .addConditionalFormatRule({
         condition: {
           type: "CUSTOM_FORMULA",
-          formula: `=${sheet.column("id").cell(topDataRowIndex).anchoredA1()}=FALSE`,
+          formula: `=${sheet.column("id").cell(0).anchoredA1()}=FALSE`,
         },
         format: { backgroundColor: pink },
       });
@@ -521,7 +521,7 @@ describe("SheetNamed edit warnings and edit locks", () => {
   it("refuses a coordinate-bearing protection write while row indexes are stale", () => {
     const { ss, sheet } = fetchedRunItemProtections();
 
-    sheet.row(topDataRowIndex + 1).delete();
+    sheet.row(1).delete();
     ss.batchUpdateGSheets();
 
     expect(() => sheet.column("id").addEditWarning()).toThrowError(
@@ -600,7 +600,7 @@ describe("SheetNamed edit warnings and edit locks", () => {
     sheet.meta.column("id").addEditWarningOn("colGroupName", {
       description: "id group heading",
     });
-    sheet.column("id").cell(topDataRowIndex).addEditWarning({
+    sheet.column("id").cell(0).addEditWarning({
       description: "id cell",
     });
     ss.batchUpdateGSheets();
@@ -617,7 +617,7 @@ describe("SheetNamed edit warnings and edit locks", () => {
   it("adds an open-ended column warning from a start row with no end row", () => {
     const { protections, ss, sheet } = fetchedRunItemProtections();
 
-    sheet.column("id").addEditWarningFromRow(topDataRowIndex, {
+    sheet.column("id").addEditWarningFromRow(0, {
       description: "open-ended id",
     });
     ss.batchUpdateGSheets();
@@ -750,7 +750,7 @@ describe("SheetNamed edit warnings and edit locks", () => {
   it("allows a whole-column protection write while row indexes are stale", () => {
     const { ss, sheet } = fetchedRunItemProtections();
 
-    sheet.row(topDataRowIndex + 1).delete();
+    sheet.row(1).delete();
     ss.batchUpdateGSheets();
 
     expect(() =>
@@ -809,7 +809,7 @@ describe("SheetNamed.rowIdByName", () => {
     expect(sheet.rowIdByName("Widget B")).toEqual({
       found: "one",
       rowId: "r:itm:bbbbbbb",
-      rowIndex: topDataRowIndex + 1,
+      rowIndex: 1,
     });
   });
 
@@ -838,7 +838,7 @@ describe("SheetNamed.rowIdByName", () => {
     const match = sheet.rowIdByName("Widget A");
     ss.batchUpdateGSheets();
 
-    expect(match).toMatchObject({ found: "one", rowIndex: topDataRowIndex });
+    expect(match).toMatchObject({ found: "one", rowIndex: 0 });
     const rowId = match.found === "one" ? match.rowId : "";
     expect(rowId).toMatch(/^r:itm:/);
     expect(grid.sheet(itemGid).cell(topDataRowIndex, 0)).toBe(rowId);

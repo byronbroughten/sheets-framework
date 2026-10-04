@@ -91,7 +91,7 @@ export class SheetMetaRaw extends SheetCommonRaw {
     const colIndex = this._tableColumnIds().findIndex((id) => id === columnId);
     if (colIndex === -1) {
       throw new Error(
-        `Value ${columnId} not found in row ${this.schema.colIdRowIndex}. Cannot find column index.`,
+        `Value ${columnId} not found in ${this.rowLabel(this.schema.colIdRowIndex)}. Cannot find column index.`,
       );
     }
     return Val.assert(tableColIndexes[colIndex], "Table column index");
@@ -110,7 +110,7 @@ export class SheetMetaRaw extends SheetCommonRaw {
   // Past the inserts already queued, since each lands at the Table end as it stands then.
   insertColumnAtEnd(uniformCells: TableEndColumnUniformCells): number {
     const colIndex =
-      this.activeTable.endColumnIndex + this.writes.insertTableEndColumnCount;
+      this.activeTable.columnCount + this.writes.insertTableEndColumnCount;
     this.queueSheetWrite({ action: "insertTableEndColumn" });
     this.column(colIndex).initUniformCells(uniformCells);
     return colIndex;
@@ -121,13 +121,15 @@ export class SheetMetaRaw extends SheetCommonRaw {
       this.column(colIndex).ensureActiveFacts();
     });
   }
-  gatherFetchColumnIdsInit(startTableColIndex: number): this {
+  gatherFetchColumnIdsInit(): this {
+    const origin = this.tableOrigin();
+    const colIdRowIndex = this.schema.colIdRowIndex;
     this.gatherFetchRange({
-      startRowIndex: this.schema.colIdRowIndex,
-      endRowIndex: this.schema.colIdRowIndex + 1,
-      startColumnIndex: startTableColIndex,
+      startRowIndex: origin.sheetRowIndex(colIdRowIndex),
+      endRowIndex: origin.sheetRowIndex(colIdRowIndex + 1),
+      startColumnIndex: origin.sheetColIndex(0),
     });
-    this.sheetState.fetchQueue.toFinalize.rows.add(this.schema.colIdRowIndex);
+    this.sheetState.fetchQueue.toFinalize.rows.add(colIdRowIndex);
     return this;
   }
   private _columnIdInTable(colIndex: number): string {

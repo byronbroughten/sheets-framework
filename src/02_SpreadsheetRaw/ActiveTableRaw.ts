@@ -1,4 +1,10 @@
 import type { TableColumnSnapshot } from "../00_Source/RawSource/RawSource";
+import {
+  type SheetColIndex,
+  SheetIndex,
+  type SheetRowIndex,
+} from "../00_Source/RawSource/SheetIndex";
+import { TableOrigin } from "../01_SpreadsheetSchema/TableOrigin";
 import { Val } from "../utils/Val";
 import type { SheetRawProps } from "./ClassBases/SheetBaseRaw";
 import type {
@@ -20,25 +26,26 @@ export class ActiveTableRaw {
   get name(): string {
     return this._knownTable().name;
   }
-  get startRowIndex(): number {
+  get origin(): TableOrigin {
+    return new TableOrigin({
+      headerRowIndex: this.startRowIndex,
+      startColIndex: this.startColumnIndex,
+    });
+  }
+  get startRowIndex(): SheetRowIndex {
     return this._knownTable().startRowIndex;
   }
-  get endRowIndex(): number {
-    this.assertRowIndexesNotStale();
-    return this._knownTable().endRowIndex;
-  }
-  set endRowIndex(endRowIndex: number) {
-    this.assertRowIndexesNotStale();
-    this._knownTable().endRowIndex = endRowIndex;
-  }
-  get startColumnIndex(): number {
+  get startColumnIndex(): SheetColIndex {
     return this._knownTable().startColumnIndex;
   }
-  get endColumnIndex(): number {
-    return this._knownTable().endColumnIndex;
+  get dataRowCount(): number {
+    this.assertRowIndexesNotStale();
+    const { startRowIndex, endRowIndex } = this._knownTable();
+    return endRowIndex - startRowIndex - 1;
   }
-  set endColumnIndex(endColumnIndex: number) {
-    this._knownTable().endColumnIndex = endColumnIndex;
+  get columnCount(): number {
+    const { startColumnIndex, endColumnIndex } = this._knownTable();
+    return endColumnIndex - startColumnIndex;
   }
   get columnProperties(): TableColumnSnapshot[] {
     return this._knownTable().columnProperties;
@@ -46,11 +53,14 @@ export class ActiveTableRaw {
   get rowIndexesAreStale(): boolean {
     return this._knownTable().rowIndexesAreStale;
   }
-  growEndRowIndex(): void {
-    this.endRowIndex++;
+  growDataRowCount(): void {
+    this.assertRowIndexesNotStale();
+    const knownTable = this._knownTable();
+    knownTable.endRowIndex = SheetIndex.row(knownTable.endRowIndex + 1);
   }
-  growEndColumnIndex(): void {
-    this.endColumnIndex++;
+  growColumnCount(): void {
+    const knownTable = this._knownTable();
+    knownTable.endColumnIndex = SheetIndex.col(knownTable.endColumnIndex + 1);
   }
   markRowIndexesStale(): void {
     this._knownTable().rowIndexesAreStale = true;

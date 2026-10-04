@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { SheetIndex } from "../00_Source/RawSource/SheetIndex";
 import { assertType, type IsExactly } from "../testSupport/typeAssertions";
 import {
   type ColumnFullName,
@@ -22,6 +23,7 @@ import {
 } from "./sheetConfigsTypes";
 import { SheetSchema } from "./SheetSchema";
 import { SpreadsheetSchema } from "./SpreadsheetSchema";
+import { TableOrigin } from "./TableOrigin";
 import type { ValueName } from "./valueSchemas";
 
 describe("SpreadsheetSchema", () => {
@@ -70,42 +72,31 @@ describe("SpreadsheetSchema", () => {
   });
 
   describe("table placement", () => {
-    it("accepts only the configured Table header row and start column as a Table's start", () => {
-      const { tableHeaderRowIndex, startTableColIndex } = schema;
-      expect(schema.isTableStart(tableHeaderRowIndex, startTableColIndex)).toBe(
-        true,
-      );
-      expect(
-        schema.isTableStart(tableHeaderRowIndex - 1, startTableColIndex),
-      ).toBe(false);
-      expect(
-        schema.isTableStart(tableHeaderRowIndex, startTableColIndex + 1),
-      ).toBe(false);
+    const { headerRowIndex, startColIndex } = TableOrigin.expected();
+    const rowAbove = SheetIndex.row(headerRowIndex - 1);
+    const colRight = SheetIndex.col(startColIndex + 1);
+
+    it("accepts only the expected Table header row and start column as a Table's start", () => {
+      expect(schema.isTableStart(headerRowIndex, startColIndex)).toBe(true);
+      expect(schema.isTableStart(rowAbove, startColIndex)).toBe(false);
+      expect(schema.isTableStart(headerRowIndex, colRight)).toBe(false);
     });
 
     it("validateTableStart only throws for a start the layout does not allow", () => {
-      const { tableHeaderRowIndex, startTableColIndex } = schema;
       expect(() =>
-        schema.validateTableStart(tableHeaderRowIndex, startTableColIndex),
+        schema.validateTableStart(headerRowIndex, startColIndex),
       ).not.toThrow();
       expect(() =>
-        schema.validateTableStart(tableHeaderRowIndex - 1, startTableColIndex),
+        schema.validateTableStart(rowAbove, startColIndex),
       ).toThrowError(/row 3, column A.*row 4, column A/);
     });
 
     it("labels a position in the numbering Sheets shows the operator", () => {
-      expect(schema.positionLabel(0, 0)).toBe("row 1, column A");
-      expect(schema.positionLabel(3, 1)).toBe("row 4, column B");
-      expect(schema.positionLabel(3, 26)).toBe("row 4, column AA");
-    });
-  });
-
-  describe("isDataRowIndex", () => {
-    it("is false above the Table header row and true at/after the first data row", () => {
-      const topDataRowIdx = schema.topDataRowIdx;
-      expect(schema.isDataRowIndex(topDataRowIdx - 1)).toBe(false);
-      expect(schema.isDataRowIndex(topDataRowIdx)).toBe(true);
-      expect(schema.topDataRowIdx).toBe(schema.tableHeaderRowIndex + 1);
+      const row = SheetIndex.row;
+      const col = SheetIndex.col;
+      expect(schema.positionLabel(row(0), col(0))).toBe("row 1, column A");
+      expect(schema.positionLabel(row(3), col(1))).toBe("row 4, column B");
+      expect(schema.positionLabel(row(3), col(26))).toBe("row 4, column AA");
     });
   });
 
@@ -121,11 +112,9 @@ describe("SpreadsheetSchema", () => {
   describe("config", () => {
     it("exposes the hand-authored spreadsheet layout constants", () => {
       expect(schema.idDelimiter).toBe(":");
-      expect(schema.startTableColIndex).toBe(0);
-      expect(schema.colIdRowIndex).toBe(0);
-      expect(schema.actionRowIndex).toBe(2);
-      expect(schema.tableHeaderRowIndex).toBe(3);
-      expect(schema.topDataRowIdx).toBe(4);
+      expect(schema.colIdRowIndex).toBe(-4);
+      expect(schema.actionRowIndex).toBe(-2);
+      expect(schema.tableHeaderRowIndex).toBe(-1);
     });
   });
 });

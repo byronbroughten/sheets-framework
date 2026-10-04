@@ -70,8 +70,7 @@ export class ColumnMetaRaw<
       kind: "setTableColumnType",
       sheetId: this.sheetGid,
       tableId: this.sheet.activeTable.tableId,
-      // Google's Table columnIndex is table-relative; colIndex is sheet-absolute.
-      columnIndex: this.colIndex - this.sheet.activeTable.startColumnIndex,
+      columnIndex: this.colIndex,
       columnType,
     });
     this._ensureColumnState(this.colIndex).columnType = columnType;

@@ -31,6 +31,7 @@ const resultColIndex = 4;
 const actionRowIndex = 2;
 const topDataRowIndex = 4;
 const endRowIndex = 9;
+const pastLastRowIndex = endRowIndex - topDataRowIndex;
 
 const lightYellow = { red: 1, green: 0.949, blue: 0.8 };
 const lightGreen = { red: 0.851, green: 0.918, blue: 0.827 };
@@ -193,7 +194,7 @@ function noOp() {}
 
 function appendRow(ss: SpreadsheetNamed): void {
   const sheet = ss.sheet("runItem");
-  sheet.row(topDataRowIndex).prepFetchFull();
+  sheet.row(0).prepFetchFull();
   ss.fetchAllPrepped();
   sheet.appendRowWithVals({ result: "appended" });
 }
@@ -321,7 +322,7 @@ describe("EndpointRun.run, an endpoint with a selector", () => {
       }),
     );
 
-    expect(received).toEqual([4, 6]);
+    expect(received).toEqual([0, 2]);
   });
 
   it("shows the run state on every selected row's start-time cell", () => {
@@ -403,7 +404,7 @@ describe("EndpointRun.run, the selection a successful run consumes", () => {
 
     runEndpoint(
       selectiveEndpoint((ss) => {
-        ss.sheet("runItem").row(4).updateValue("selected", true);
+        ss.sheet("runItem").row(0).updateValue("selected", true);
       }),
     );
 
@@ -454,7 +455,7 @@ describe("EndpointRun.run, an endpoint with no selector", () => {
       }),
     );
 
-    expect(received).toEqual([4, 5, 6, 7, 8]);
+    expect(received).toEqual([0, 1, 2, 3, 4]);
   });
 
   it("costs no read of its own, since nothing is prepped", () => {
@@ -475,7 +476,7 @@ describe("EndpointRun.run, an endpoint with no selector", () => {
       }),
     );
 
-    expect(received).toEqual([4, 5, 7, 8]);
+    expect(received).toEqual([0, 1, 3, 4]);
   });
 
   it("shows its outcome on the row left by an action that empties the sheet, and reuses that row", () => {
@@ -643,8 +644,8 @@ describe("EndpointRun.run, an endpoint declaring no feedback columns", () => {
 describe("EndpointRun.run, a run that fails", () => {
   // Reading a row past the table's last one is a real read on real state.
   function failingAction(ss: Parameters<Endpoint<"runItem">["action"]>[0]) {
-    ss.sheet("runItem").row(4).cell("id").updateValue("r:rit:written");
-    ss.sheet("runItem").row(endRowIndex).value("id");
+    ss.sheet("runItem").row(0).cell("id").updateValue("r:rit:written");
+    ss.sheet("runItem").row(pastLastRowIndex).value("id");
   }
 
   it("writes the error text and red to the selected rows only", () => {
@@ -743,7 +744,7 @@ describe("EndpointRun.run, a selector that requires one row", () => {
       }),
     );
 
-    expect(received).toEqual([6]);
+    expect(received).toEqual([2]);
   });
 
   it("succeeds on that one row", () => {
@@ -805,8 +806,8 @@ describe("EndpointRun.run, a run report naming rows", () => {
   function twoRowsFailed() {
     return {
       rows: new Map([
-        [5, { runState: "failure" as const, message: "No such row" }],
-        [7, { runState: "failure" as const, message: "Amount is blank" }],
+        [1, { runState: "failure" as const, message: "No such row" }],
+        [3, { runState: "failure" as const, message: "Amount is blank" }],
       ]),
     };
   }
@@ -816,8 +817,8 @@ describe("EndpointRun.run, a run report naming rows", () => {
 
     runEndpoint(
       reportingEndpoint((ss) => {
-        ss.sheet("runItem").row(4).updateValue("runStatus", "mine");
-        ss.sheet("runItem").row(5).updateValue("runStatus", "mine");
+        ss.sheet("runItem").row(0).updateValue("runStatus", "mine");
+        ss.sheet("runItem").row(1).updateValue("runStatus", "mine");
         return twoRowsFailed();
       }),
     );
@@ -897,7 +898,7 @@ describe("EndpointRun.run, a run report naming rows", () => {
     runEndpoint(
       reportingEndpoint(() => ({
         rows: new Map([
-          [5, { runState: "warning" as const, message: "Check this one" }],
+          [1, { runState: "warning" as const, message: "Check this one" }],
         ]),
       })),
     );
@@ -912,7 +913,7 @@ describe("EndpointRun.run, a run report naming rows", () => {
 
     runEndpoint(
       reportingEndpoint((ss) => {
-        ss.sheet("runItem").row(4).cell("id").updateValue("r:rit:written");
+        ss.sheet("runItem").row(0).cell("id").updateValue("r:rit:written");
         return twoRowsFailed();
       }),
     );
@@ -926,7 +927,7 @@ describe("EndpointRun.run, a run report naming rows", () => {
     runEndpoint(
       selectiveEndpoint(() => ({
         rows: new Map([
-          [6, { runState: "failure" as const, message: "No such row" }],
+          [2, { runState: "failure" as const, message: "No such row" }],
         ]),
       })),
     );
@@ -946,7 +947,7 @@ describe("EndpointRun.run, a run report naming rows", () => {
     runEndpoint(
       reportingEndpoint(() => ({
         rows: new Map([
-          [endRowIndex, { runState: "failure" as const, message: "Nowhere" }],
+          [pastLastRowIndex, { runState: "failure" as const, message: "Nowhere" }],
         ]),
       })),
     );
@@ -954,7 +955,7 @@ describe("EndpointRun.run, a run report naming rows", () => {
     expect(columnCells(grid, runStatusColIndex)).toEqual(
       allRows(
         stamp(
-          `Error: Row ${endRowIndex} is not a data row of "Run item", so this run cannot report into it.`,
+          `Error: This run cannot report into row ${endRowIndex + 1}: it is not a data row of "Run item".`,
           lightRed,
         ),
       ),
@@ -975,7 +976,7 @@ describe("EndpointRun.run, a run report naming rows", () => {
 
     runEndpoint(
       reportingEndpoint((ss) => {
-        ss.sheet("runItem").row(5).delete();
+        ss.sheet("runItem").row(1).delete();
         return twoRowsFailed();
       }),
     );

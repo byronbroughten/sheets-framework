@@ -24,7 +24,7 @@ export class RowRaw extends RowCommonRaw {
   private validateIsDataRow(): void {
     if (!this.isDataRow) {
       throw new Error(
-        `Row ${this.rowIndex} is not a data row. Cannot perform this operation.`,
+        `Cannot perform this operation: ${this.rowLabel(this.rowIndex)} is not a data row.`,
       );
     }
   }
@@ -39,19 +39,19 @@ export class RowRaw extends RowCommonRaw {
   append(): this {
     if (this.rowIsActive()) {
       throw new Error(
-        `Cannot append row ${this.rowIndex} because it is already active.`,
+        `Cannot append ${this.rowLabel(this.rowIndex)} because it is already active.`,
       );
     }
     this.sheetState.working.rowStates.set(this.rowIndex, new Map());
     this.queueRowWrite({ action: "appendRow" });
-    this.sheet.activeTable.growEndRowIndex();
+    this.sheet.activeTable.growDataRowCount();
     return this;
   }
   // A new row copies its formulas from the rows already there, so one must survive.
   private validateSheetKeepsADataRow(): void {
     if (!this.sheet.isDownToLastDataRow) return;
     throw new Error(
-      `Cannot delete row ${this.rowIndex} of sheetGid ${this.sheetGid}: it is the sheet's last data row, and a sheet may never be left with none. Clear the row instead.`,
+      `Cannot delete ${this.rowLabel(this.rowIndex)} of sheetGid ${this.sheetGid}: it is the sheet's last data row, and a sheet may never be left with none. Clear the row instead.`,
     );
   }
 }

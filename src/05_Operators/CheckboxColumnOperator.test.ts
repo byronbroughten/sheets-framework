@@ -76,12 +76,12 @@ beforeEach(() => {
 describe("CheckboxColumnOperator.rowIndexesChecked", () => {
   it("returns only the row indexes whose checkbox is checked", () => {
     seedSelectedColumn([true, false, true]);
-    expect(initOperatorWithFetchedColumn().rowIndexesChecked).toEqual([4, 6]);
+    expect(initOperatorWithFetchedColumn().rowIndexesChecked).toEqual([0, 2]);
   });
 
   it("counts an empty cell as unchecked", () => {
     seedSelectedColumn([null, null, true]);
-    expect(initOperatorWithFetchedColumn().rowIndexesChecked).toEqual([6]);
+    expect(initOperatorWithFetchedColumn().rowIndexesChecked).toEqual([2]);
   });
 });
 
@@ -90,7 +90,7 @@ describe("CheckboxColumnOperator.uncheckActiveCells", () => {
     const { grid } = seedSelectedColumn([true, true, true]);
     const operator = initOperatorWithFetchedColumn();
 
-    operator.sheet.raw.removeRowsExcept(4, 6);
+    operator.sheet.raw.removeRowsExcept(0, 2);
     operator.uncheckActiveCells();
     operator.ss.batchUpdateGSheets();
 
@@ -105,7 +105,7 @@ describe("CheckboxColumnOperator.uncheckActiveCells", () => {
     const { grid } = seedSelectedColumn([true, null, null]);
     const operator = initOperatorWithFetchedColumn();
 
-    operator.sheet.raw.removeRowsExcept(5, 6);
+    operator.sheet.raw.removeRowsExcept(1, 2);
     operator.uncheckActiveCells();
     operator.ss.batchUpdateGSheets();
 

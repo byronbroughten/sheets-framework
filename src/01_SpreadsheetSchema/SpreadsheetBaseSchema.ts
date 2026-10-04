@@ -5,9 +5,14 @@ import {
   type UniformRowName,
   type UniformRowValueName,
 } from "../00_Source/CellValues/cellValues";
+import type {
+  SheetColIndex,
+  SheetRowIndex,
+} from "../00_Source/RawSource/SheetIndex";
 import { Obj } from "../utils/Obj";
 import { Str } from "../utils/Str";
 import { sheetLayout } from "./sheetLayout";
+import { TableOrigin } from "./TableOrigin";
 import { uniformRows } from "./uniformRows";
 
 export class SpreadsheetBaseSchema {
@@ -65,13 +70,21 @@ export class SpreadsheetBaseSchema {
       );
     }
   }
-  isTableStart(startRowIndex: number, startColumnIndex: number): boolean {
-    return (
-      startRowIndex === this.tableHeaderRowIndex &&
-      startColumnIndex === this.startTableColIndex
+  isTableStart(
+    startRowIndex: SheetRowIndex,
+    startColumnIndex: SheetColIndex,
+  ): boolean {
+    return TableOrigin.expected().equals(
+      new TableOrigin({
+        headerRowIndex: startRowIndex,
+        startColIndex: startColumnIndex,
+      }),
     );
   }
-  validateTableStart(startRowIndex: number, startColumnIndex: number): void {
+  validateTableStart(
+    startRowIndex: SheetRowIndex,
+    startColumnIndex: SheetColIndex,
+  ): void {
     if (!this.isTableStart(startRowIndex, startColumnIndex)) {
       throw new Error(
         `A Table starting at ${this.positionLabel(
@@ -82,31 +95,23 @@ export class SpreadsheetBaseSchema {
     }
   }
   get tableStartLabel(): string {
-    return this.positionLabel(
-      this.tableHeaderRowIndex,
-      this.startTableColIndex,
-    );
+    const { headerRowIndex, startColIndex } = TableOrigin.expected();
+    return this.positionLabel(headerRowIndex, startColIndex);
   }
-  positionLabel(rowIndex: number, colIndex: number): string {
+  positionLabel(rowIndex: SheetRowIndex, colIndex: SheetColIndex): string {
     return `row ${rowIndex + 1}, column ${this.columnLetter(colIndex)}`;
   }
-  columnLetter(colIndex: number): string {
+  columnLetter(colIndex: SheetColIndex): string {
     let letters = "";
-    let remaining = colIndex;
+    let remaining: number = colIndex;
     while (remaining >= 0) {
       letters = String.fromCharCode(65 + (remaining % 26)) + letters;
       remaining = Math.floor(remaining / 26) - 1;
     }
     return letters;
   }
-  anchoredA1(colIndex: number, rowIndex: number): string {
+  anchoredA1(colIndex: SheetColIndex, rowIndex: SheetRowIndex): string {
     return `$${this.columnLetter(colIndex)}${rowIndex + 1}`;
-  }
-  isDataRowIndex(rowIndex: number): boolean {
-    return rowIndex >= this.topDataRowIdx;
-  }
-  get startTableColIndex(): number {
-    return sheetLayout.startTableColIndex;
   }
   get colIdRowIndex(): number {
     return uniformRows.indexes().columnId;
@@ -116,9 +121,6 @@ export class SpreadsheetBaseSchema {
   }
   get actionRowIndex(): number {
     return uniformRows.indexes().action;
-  }
-  get topDataRowIdx(): number {
-    return this.tableHeaderRowIndex + 1;
   }
   get idDelimiter(): string {
     return sheetLayout.idDelimiter;

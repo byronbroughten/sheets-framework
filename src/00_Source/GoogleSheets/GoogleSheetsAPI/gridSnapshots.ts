@@ -8,6 +8,7 @@ import type {
   TableColumnSnapshot,
   TableSnapshot,
 } from "../../RawSource/RawSource";
+import { SheetIndex } from "../../RawSource/SheetIndex";
 import { googleColor } from "./googleColor";
 
 type GoogleSpreadsheet = GoogleAppsScript.Sheets.Schema.Spreadsheet;
@@ -29,13 +30,13 @@ export const googleGrid = {
     // Google omits zero-valued fields, so a gid-0 sheet or column A arrives absent.
     return {
       sheetId: range.sheetId ?? 0,
-      startRowIndex: range.startRowIndex ?? 0,
+      startRowIndex: SheetIndex.row(range.startRowIndex ?? 0),
       ...(range.endRowIndex !== undefined
-        ? { endRowIndex: range.endRowIndex }
+        ? { endRowIndex: SheetIndex.row(range.endRowIndex) }
         : {}),
-      startColumnIndex: range.startColumnIndex ?? 0,
+      startColumnIndex: SheetIndex.col(range.startColumnIndex ?? 0),
       ...(range.endColumnIndex !== undefined
-        ? { endColumnIndex: range.endColumnIndex }
+        ? { endColumnIndex: SheetIndex.col(range.endColumnIndex) }
         : {}),
     };
   },
@@ -49,8 +50,8 @@ function toSheetSnapshot(sheet: GoogleSheet): SheetSnapshot {
     rowCount: properties.gridProperties?.rowCount,
     tables: sheet.tables?.map(toTableSnapshot),
     gridBlocks: sheet.data?.map((block) => ({
-      startColumn: block.startColumn ?? 0,
-      startRow: block.startRow ?? 0,
+      startColumn: SheetIndex.col(block.startColumn ?? 0),
+      startRow: SheetIndex.row(block.startRow ?? 0),
       columnCount: (block.columnMetadata || []).length,
       rows: (block.rowData || []).map((row) => ({
         cells: Array.from(
@@ -69,10 +70,16 @@ function toTableSnapshot(
   return {
     tableId: Val.assert(table.tableId, "tableId"),
     name: table.name ?? "",
-    startRowIndex: Val.assert(range?.startRowIndex, "startRowIndex"),
-    endRowIndex: Val.assert(range?.endRowIndex, "endRowIndex"),
-    startColumnIndex: Val.assert(range?.startColumnIndex, "startColumnIndex"),
-    endColumnIndex: Val.assert(range?.endColumnIndex, "endColumnIndex"),
+    startRowIndex: SheetIndex.row(
+      Val.assert(range?.startRowIndex, "startRowIndex"),
+    ),
+    endRowIndex: SheetIndex.row(Val.assert(range?.endRowIndex, "endRowIndex")),
+    startColumnIndex: SheetIndex.col(
+      Val.assert(range?.startColumnIndex, "startColumnIndex"),
+    ),
+    endColumnIndex: SheetIndex.col(
+      Val.assert(range?.endColumnIndex, "endColumnIndex"),
+    ),
     columnProperties: (table.columnProperties ?? []).map(toTableColumnSnapshot),
   };
 }

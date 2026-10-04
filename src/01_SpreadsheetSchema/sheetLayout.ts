@@ -1,12 +1,13 @@
-// Every sheet's layout and ID conventions; indexes are base 0.
+// Every sheet's layout and ID conventions; head-row offsets count up from the Table's header row, base 0.
 export const sheetLayout = {
   idDelimiter: ":",
   idHeader: "ID",
   nameHeader: "Name",
-  startTableColIndex: 0,
-  colIdRowIndex: 0,
-  groupHeading1RowIndex: 1,
-  groupHeading2RowIndex: 2,
-  actionRowIndex: 2,
-  tableHeaderRowIndex: 3,
+  headRowOffsets: {
+    header: 0,
+    action: 1,
+    groupHeading2: 1,
+    groupHeading1: 2,
+    columnId: 3,
+  },
 } as const;

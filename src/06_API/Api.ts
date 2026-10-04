@@ -5,8 +5,8 @@ import {
   type Configs,
   installConfigs,
 } from "../01_SpreadsheetSchema/configRegister";
-import { sheetLayout } from "../01_SpreadsheetSchema/sheetLayout";
 import { SpreadsheetSchema } from "../01_SpreadsheetSchema/SpreadsheetSchema";
+import { TableOrigin } from "../01_SpreadsheetSchema/TableOrigin";
 import { SpreadsheetIdentified } from "../03_SpreadsheetIdentified/SpreadsheetIdentified";
 import {
   SpreadsheetBaseNamed,
@@ -72,7 +72,7 @@ export class Api extends SpreadsheetBaseNamed {
   static isSuspectedApiCall(edit: SheetEdit): boolean {
     return (
       (edit.value === "TRUE" || edit.value === "FALSE") &&
-      edit.rowIndexBase0 === sheetLayout.actionRowIndex
+      edit.rowIndexBase0 === TableOrigin.expected().headSheetRowIndex("action")
     );
   }
   handleSheetEdit({ sheetGid, colIndexBase0, value }: SheetEdit): void {
@@ -80,10 +80,11 @@ export class Api extends SpreadsheetBaseNamed {
       return;
     }
     const sheet = this.ssi.sheetMeta(sheetGid).ensureColumnIdsAreFetched();
-    if (!sheet.isTableColIndex(colIndexBase0)) {
+    const colIndex = sheet.raw.tableOrigin().colIndex(colIndexBase0);
+    if (!sheet.isTableColIndex(colIndex)) {
       return;
     }
-    const columnId = sheet.columnIdByIndex(colIndexBase0);
+    const columnId = sheet.columnIdByIndex(colIndex);
     if (columnId === "") {
       return;
     }

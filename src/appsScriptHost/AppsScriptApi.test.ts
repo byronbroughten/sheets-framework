@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getColumnTraitByName } from "../01_SpreadsheetSchema/columnConfigsTypes";
 import { installedConfigs } from "../01_SpreadsheetSchema/configRegister";
 import { getSheetTraitByName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
-import { sheetLayout } from "../01_SpreadsheetSchema/sheetLayout";
+import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
 import {
   stubLogger,
   stubScriptAndSpreadsheetApp,
@@ -78,7 +78,7 @@ describe("AppsScriptApi.handleSheetEdit", () => {
       },
       onEditEvent(
         runItemGid,
-        sheetLayout.actionRowIndex,
+        expectedSheetLayout.actionRowIndex,
         resultColIndex,
         "TRUE",
       ),
@@ -97,7 +97,7 @@ describe("AppsScriptApi.handleSheetEdit, with no source installed", () => {
         { configs, endpoints: {} },
         onEditEvent(
           runItemGid,
-          sheetLayout.actionRowIndex,
+          expectedSheetLayout.actionRowIndex,
           resultColIndex,
           "TRUE",
         ),

@@ -1,3 +1,7 @@
+import type {
+  SheetColIndex,
+  SheetRowIndex,
+} from "../../00_Source/RawSource/SheetIndex";
 import { SpreadsheetSchema } from "../../01_SpreadsheetSchema/SpreadsheetSchema";
 import { SpreadsheetBaseRaw } from "../ClassBases/SpreadsheetBaseRaw";
 import { SpreadsheetRaw } from "../SpreadsheetRaw";
@@ -6,8 +10,8 @@ export interface SheetIdentity {
   sheetGid: number;
 }
 export interface MisplacedTable extends SheetIdentity {
-  startRowIndex: number;
-  startColumnIndex: number;
+  startRowIndex: SheetRowIndex;
+  startColumnIndex: SheetColIndex;
 }
 interface TablePlacementObservations {
   misplacedTables: MisplacedTable[];
@@ -39,14 +43,12 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
     if (state.working.hasExtraTables) {
       return { kind: "extra" };
     }
-    if (
-      state.working.knownTable === undefined ||
-      !this.schema.isInSheetGids(sheetGid)
-    ) {
+    const knownTable = state.working.knownTable;
+    if (knownTable === undefined || !this.schema.isInSheetGids(sheetGid)) {
       return { kind: "none" };
     }
-    const { startRowIndex, startColumnIndex } =
-      this.ss.sheet(sheetGid).activeTable;
+    // Read off the state, since activeTable refuses a header-only Table before placement is judged.
+    const { startRowIndex, startColumnIndex } = knownTable;
     if (this.schema.isTableStart(startRowIndex, startColumnIndex)) {
       return { kind: "well-placed" };
     }

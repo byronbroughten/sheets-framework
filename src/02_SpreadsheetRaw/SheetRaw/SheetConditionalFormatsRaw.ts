@@ -29,10 +29,10 @@ export class SheetConditionalFormatsRaw extends SheetCommonRaw {
     return rules;
   }
   addConditionalFormatRule(declaration: ConditionalFormatDeclaration): void {
-    this.addConditionalFormatRuleAt(this.sheet.dataGridRange, declaration);
+    this.addConditionalFormatRuleAt(this.sheet.dataGridRange(), declaration);
   }
   removeConditionalFormatRules(): void {
-    this.removeConditionalFormatRulesAt(this.sheet.dataGridRange);
+    this.removeConditionalFormatRulesAt(this.sheet.dataGridRange());
   }
   addConditionalFormatRuleAt(
     range: GridRangeProps,
