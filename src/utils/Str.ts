@@ -64,14 +64,18 @@ type RemoveChar<
 
 type RemoveApostrophes<S extends string> = RemoveChar<RemoveChar<S, "'">, "’">;
 
-type SplitWords<
+type SplitSentenceWords<
   S extends string,
   Current extends string = "",
   Words extends string[] = [],
 > = S extends `${infer C}${infer Rest}`
   ? C extends AlphaNumericChar
-    ? SplitWords<Rest, `${Current}${C}`, Words>
-    : SplitWords<Rest, "", Current extends "" ? Words : [...Words, Current]>
+    ? SplitSentenceWords<Rest, `${Current}${C}`, Words>
+    : SplitSentenceWords<
+        Rest,
+        "",
+        Current extends "" ? Words : [...Words, Current]
+      >
   : Current extends ""
     ? Words
     : [...Words, Current];
@@ -90,7 +94,33 @@ type JoinCamelWords<
   : "";
 
 type UpperAlpha = Uppercase<LowerAlpha>;
-type Whitespace = " " | "\t" | "\n" | "\r";
+// What \s and trim() match, so a type-level sentence is a runtime one.
+type Whitespace =
+  | " "
+  | "\t"
+  | "\n"
+  | "\v"
+  | "\f"
+  | "\r"
+  | "\u00a0"
+  | "\u1680"
+  | "\u2000"
+  | "\u2001"
+  | "\u2002"
+  | "\u2003"
+  | "\u2004"
+  | "\u2005"
+  | "\u2006"
+  | "\u2007"
+  | "\u2008"
+  | "\u2009"
+  | "\u200a"
+  | "\u2028"
+  | "\u2029"
+  | "\u202f"
+  | "\u205f"
+  | "\u3000"
+  | "\ufeff";
 
 type Trim<S extends string> = S extends `${Whitespace}${infer Rest}`
   ? Trim<Rest>
@@ -105,7 +135,7 @@ type StartsLowerAlpha<S extends string> = S extends `${LowerAlpha}${string}`
   ? true
   : false;
 
-// Mirrors splitOnCase: a lone trailing s pluralizes the acronym.
+// Mirrors splitOnCase.
 type IsCaseBoundary<
   Prev extends string,
   C extends string,
@@ -143,7 +173,9 @@ type SplitTokenWords<
     : [...Words, Current];
 
 type SentenceOrTokenWords<S extends string> =
-  IsSentence<S> extends true ? SplitWords<Lowercase<S>> : SplitTokenWords<S>;
+  IsSentence<S> extends true
+    ? SplitSentenceWords<Lowercase<S>>
+    : SplitTokenWords<S>;
 
 // Mirrors Str.sentenceToCamelCase, so apostrophes are removed rather than split on.
 export type SentenceToCamelCase<S extends string> = string extends S
@@ -169,11 +201,11 @@ export const Str = {
   ): TakeFirstN<T, N> {
     return str.split("").slice(0, n).join("") as TakeFirstN<T, N>;
   },
-  // A sentence splits only on non-alphanumerics, so "CapEx budget" keeps its key; one token also splits on case.
   words(text: string): string[] {
-    const unpunctuated = text.trim().replace(/['’]/g, ""); // remove straight & curly apostrophes
-    const isSentence = /\s/.test(unpunctuated);
-    return (isSentence ? unpunctuated : splitOnCase(unpunctuated))
+    let spaced = text.trim().replace(/['’]/g, ""); // remove straight & curly apostrophes
+    // Splitting a sentence on case would turn "CapEx budget" into capExBudget.
+    if (!/\s/.test(spaced)) spaced = splitOnCase(spaced);
+    return spaced
       .split(/[^a-zA-Z0-9]+/)
       .filter(Boolean)
       .map((word) => word.toLowerCase());

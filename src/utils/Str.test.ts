@@ -28,6 +28,12 @@ describe("Str.takeFirstN", () => {
   });
 });
 
+describe("Str.words", () => {
+  it("lowercases the words of a token split on case", () => {
+    expect(Str.words("parseHTMLTable")).toEqual(["parse", "html", "table"]);
+  });
+});
+
 describe("Str.sentenceToCamelCase", () => {
   it("camelCases a header sentence", () => {
     expect(Str.sentenceToCamelCase("Column ID")).toBe("columnId");
@@ -45,20 +51,23 @@ describe("Str.sentenceToCamelCase", () => {
   });
 
   it("gives one key for sentence, title, snake and camel spellings", () => {
-    ["add occ charge", "Add Occ Charge", "add_occ_charge", "addOccCharge"].forEach(
-      (spelling) => {
-        expect(Str.sentenceToCamelCase(spelling)).toBe("addOccCharge");
-      },
-    );
+    [
+      "add occ charge",
+      "Add Occ Charge",
+      "add_occ_charge",
+      "addOccCharge",
+    ].forEach((spelling) => {
+      expect(Str.sentenceToCamelCase(spelling)).toBe("addOccCharge");
+    });
   });
 
   it("ends an acronym before the capital that starts the next word", () => {
     expect(Str.sentenceToCamelCase("parseHTMLTable")).toBe("parseHtmlTable");
-    expect(Str.sentenceToCamelCase("Unit ID")).toBe("unitId");
   });
 
   it("keeps a mixed-case word whole inside a sentence", () => {
     expect(Str.sentenceToCamelCase("CapEx budget")).toBe("capexBudget");
+    expect(Str.sentenceToCamelCase("CapEx\u00a0budget")).toBe("capexBudget");
   });
 
   it("gives back a camelCase key unchanged", () => {
@@ -99,33 +108,42 @@ describe("SentenceToCamelCase", () => {
   });
 
   it("gives one key for sentence, title, snake and camel spellings", () => {
-    assertType<IsExactly<SentenceToCamelCase<"add occ charge">, "addOccCharge">>(
-      true,
-    );
-    assertType<IsExactly<SentenceToCamelCase<"Add Occ Charge">, "addOccCharge">>(
-      true,
-    );
-    assertType<IsExactly<SentenceToCamelCase<"add_occ_charge">, "addOccCharge">>(
-      true,
-    );
+    assertType<
+      IsExactly<SentenceToCamelCase<"add occ charge">, "addOccCharge">
+    >(true);
+    assertType<
+      IsExactly<SentenceToCamelCase<"Add Occ Charge">, "addOccCharge">
+    >(true);
+    assertType<
+      IsExactly<SentenceToCamelCase<"add_occ_charge">, "addOccCharge">
+    >(true);
     assertType<IsExactly<SentenceToCamelCase<"addOccCharge">, "addOccCharge">>(
       true,
     );
   });
 
-  it("splits a token on case like the runtime, and a sentence only on punctuation", () => {
+  it("splits a token on camelCase and acronym boundaries", () => {
     assertType<
       IsExactly<SentenceToCamelCase<"parseHTMLTable">, "parseHtmlTable">
     >(true);
     assertType<IsExactly<SentenceToCamelCase<"unitIDsCount">, "unitIdsCount">>(
       true,
     );
+  });
+
+  it("treats a token with whitespace only at its ends as a token", () => {
     assertType<IsExactly<SentenceToCamelCase<" unit2Rent ">, "unit2Rent">>(
       true,
     );
+  });
+
+  it("keeps a mixed-case word whole inside a sentence", () => {
     assertType<IsExactly<SentenceToCamelCase<"CapEx budget">, "capexBudget">>(
       true,
     );
+    assertType<
+      IsExactly<SentenceToCamelCase<"CapEx\u00a0budget">, "capexBudget">
+    >(true);
     assertType<IsExactly<SentenceToCamelCase<"Unit IDs">, "unitIds">>(true);
   });
 
