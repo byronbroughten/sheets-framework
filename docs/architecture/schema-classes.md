@@ -10,7 +10,7 @@ The Schema tier root, `src/01_SpreadsheetSchema/`, holds the four schema classes
 
 ## Sibling classes may import each other
 
-The converse is worth knowing, because it looks like the same hazard and isn't: **two sibling classes may import each other as values and instantiate each other in getter bodies.** `SheetSchema`/`ColumnSchema`, `SheetRaw`/`SheetMetaRaw` and `ColumnRaw`/`ColumnMetaRaw` already do, in both directions. Only `extends` runs at module init, so a cycle whose imports are used exclusively inside method and getter bodies is safe. When a cycle would close through an `extends` clause, move the shared members to a base that imports no subclass, as `SpreadsheetBaseSchema` does, or use an `abstract` member implemented on each subclass, as `SheetCommonRaw` does with `ss`.
+The converse is worth knowing, because it looks like the same hazard and isn't: **two sibling classes may import each other as values and instantiate each other in getter bodies.** `SheetSchema`/`ColumnSchema`, `TableRaw`/`SheetMetaRaw` and `ColumnRaw`/`ColumnMetaRaw` already do, in both directions. Only `extends` runs at module init, so a cycle whose imports are used exclusively inside method and getter bodies is safe. When a cycle would close through an `extends` clause, move the shared members to a base that imports no subclass, as `SpreadsheetBaseSchema` does, or use an `abstract` member implemented on each subclass, as `TableCommonRaw` does with `ss`.
 
 ## What each class answers
 

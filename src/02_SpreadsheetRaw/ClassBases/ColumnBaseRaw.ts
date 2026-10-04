@@ -1,11 +1,9 @@
 import type { ColumnStateRaw } from "../ClassTypes/StateRaw";
-import { SheetBaseRaw, type SheetRawProps } from "./SheetBaseRaw";
+import { TableBaseRaw, type TableRawProps } from "./TableBaseRaw";
 
-export interface ColumnRawProps extends SheetRawProps {
-  colIndex: number;
-}
+export type ColumnRawProps = TableRawProps & { colIndex: number };
 
-export class ColumnBaseRaw extends SheetBaseRaw {
+export class ColumnBaseRaw extends TableBaseRaw {
   readonly colIndex: number;
   constructor({ colIndex, ...rest }: ColumnRawProps) {
     super(rest);
@@ -13,12 +11,12 @@ export class ColumnBaseRaw extends SheetBaseRaw {
   }
   // Absent until a fetch records a fact about this column.
   get columnState(): ColumnStateRaw | undefined {
-    return this.sheetState.working.columnStates.get(this.colIndex);
+    return this.tableState.working.columnStates.get(this.colIndex);
   }
   get columnRawProps(): ColumnRawProps {
     return {
       colIndex: this.colIndex,
-      ...this.sheetRawProps,
+      ...this.tableRawProps,
     };
   }
 }

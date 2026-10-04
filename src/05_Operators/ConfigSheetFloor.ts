@@ -8,12 +8,11 @@ import {
   floorTabSeedByGid,
 } from "../01_SpreadsheetSchema/configSheetFloorSeed";
 import { getSheetTraitByName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
-import type { SheetRaw } from "../02_SpreadsheetRaw/SheetRaw";
+import type { TableRaw } from "../02_SpreadsheetRaw/TableRaw";
 import { SpreadsheetBaseNamed } from "../04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
 import type { ColumnNamed } from "../04_SpreadsheetNamed/ColumnNamed";
 import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
 import { Obj } from "../utils/Obj";
-import { Val } from "../utils/Val";
 import { ConfigSheetFloorCreator } from "./ConfigSheetFloor/ConfigSheetFloorCreator";
 import {
   ConfigSheetFloorEditWarnings,
@@ -108,11 +107,10 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
         titleLines.push(`"${sheet.title}" → ${seed.title}`);
         sheet.updateTitle(seed.title);
       }
-      if (sheet.tables.length !== 1) return;
-      const table = Val.assert(sheet.tables[0], "floor table");
-      if (table.name === seed.tableName) return;
+      if (!sheet.hasOneTable()) return;
+      if (sheet.name === seed.tableName) return;
       tableNameLines.push(
-        `${seed.title}'s Table "${table.name}" → ${seed.tableName}`,
+        `${seed.title}'s Table "${sheet.name}" → ${seed.tableName}`,
       );
       sheet.updateTableName(seed.tableName);
     });
@@ -161,7 +159,7 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
       const sheetGid = getSheetTraitByName(sheetName, "sheetGid");
       if (!this.ss.raw.gidIsActive(sheetGid)) return;
       const sheet = this.ss.sheet(sheetName);
-      if (sheet.raw.tables.length !== 1) return;
+      if (!sheet.raw.hasOneTable()) return;
       const meta = sheet.raw.meta;
       floorColumnsToRestore(sheetName).forEach((floorColumn) => {
         const colIndex = liveColIndex(meta, floorColumn);
@@ -214,7 +212,7 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
     const sheetGid = getSheetTraitByName(sheetName, "sheetGid");
     if (!this.ss.raw.gidIsActive(sheetGid)) return [];
     const sheet = this.ss.sheet(sheetName);
-    if (sheet.raw.tables.length !== 1) return [];
+    if (!sheet.raw.hasOneTable()) return [];
     const row = sheet.raw.row(0);
     const restoredLines: string[] = [];
     floorDataValueColumns(sheetName).forEach((seedColumn) => {
@@ -285,13 +283,13 @@ function floorDataValueColumns(
   );
 }
 
-function assertFloorTable(sheet: SheetRaw, tableName: string): void {
-  if (sheet.tables.length === 0) {
+function assertFloorTable(sheet: TableRaw, tableName: string): void {
+  if (sheet.tableIds().length === 0) {
     throw new Error(`Floor tab "${sheet.title}" has no Table.`);
   }
   if (
-    sheet.tables.length > 1 &&
-    !sheet.tables.some((table) => table.name === tableName)
+    sheet.tableIds().length > 1 &&
+    !sheet.tableIds().some((tableId) => sheet.ss.table(tableId).name === tableName)
   ) {
     throw new Error(
       `Floor tab "${sheet.title}" has several Tables and none is named ${tableName}.`,

@@ -2,11 +2,11 @@ import { SpreadsheetSchema } from "../01_SpreadsheetSchema/SpreadsheetSchema";
 import { SpreadsheetRaw } from "../02_SpreadsheetRaw/SpreadsheetRaw";
 import { SpreadsheetBaseIdentified } from "./ClassBases/SpreadsheetBaseIdentified";
 import { type ColumnIdentified } from "./ColumnIdentified";
-import { SheetIdentified } from "./SheetIdentified";
 import {
   type GatherDataPrerequisitesProps,
   SheetMetaIdentified,
 } from "./SheetMetaIdentified";
+import { TableIdentified } from "./TableIdentified";
 
 export class SpreadsheetIdentified extends SpreadsheetBaseIdentified {
   get schema(): SpreadsheetSchema {
@@ -15,8 +15,8 @@ export class SpreadsheetIdentified extends SpreadsheetBaseIdentified {
   get raw(): SpreadsheetRaw {
     return new SpreadsheetRaw(this.spreadsheetRawProps);
   }
-  sheet(sheetGid: number): SheetIdentified {
-    return new SheetIdentified({
+  sheet(sheetGid: number): TableIdentified {
+    return new TableIdentified({
       ...this.spreadsheetIdentifiedProps,
       sheetGid,
     });
@@ -30,7 +30,7 @@ export class SpreadsheetIdentified extends SpreadsheetBaseIdentified {
   column(sheetGid: number, columnId: string): ColumnIdentified {
     return this.sheet(sheetGid).column(columnId);
   }
-  get activeSheets(): SheetIdentified[] {
+  get activeSheets(): TableIdentified[] {
     return this.raw.activeSheetGids.map((sheetGid) => this.sheet(sheetGid));
   }
   get sheetsPreppedForFetch(): SheetMetaIdentified[] {

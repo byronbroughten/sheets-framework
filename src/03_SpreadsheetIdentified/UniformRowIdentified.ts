@@ -13,7 +13,7 @@ import { UniformRowRaw } from "../02_SpreadsheetRaw/UniformRowRaw";
 import type { StrictOmit } from "../utils/Obj";
 import type { RowIdentifiedProps } from "./ClassBases/RowBaseIdentified";
 import { RowCommonIdentified } from "./ClassBases/RowCommonIdentified";
-import { SheetIdentified } from "./SheetIdentified";
+import { TableIdentified } from "./TableIdentified";
 
 export interface UniformRowIdentifiedProps<
   UN extends UniformRowName,
@@ -33,8 +33,8 @@ export class UniformRowIdentified<
     this.uniformRowName = uniformRowName;
     this.schema.validateUniformRowIndex(this.rowIndex, this.uniformRowName);
   }
-  get sheet(): SheetIdentified {
-    return new SheetIdentified(this.sheetIdentifiedProps);
+  get sheet(): TableIdentified {
+    return new TableIdentified(this.tableIdentifiedProps);
   }
   get raw(): UniformRowRaw<UN> {
     return new UniformRowRaw({

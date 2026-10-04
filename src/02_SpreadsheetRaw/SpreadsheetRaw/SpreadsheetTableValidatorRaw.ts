@@ -3,6 +3,7 @@ import type {
   SheetRowIndex,
 } from "../../00_Source/RawSource/SheetIndex";
 import { SpreadsheetSchema } from "../../01_SpreadsheetSchema/SpreadsheetSchema";
+import { Val } from "../../utils/Val";
 import { SpreadsheetBaseRaw } from "../ClassBases/SpreadsheetBaseRaw";
 import { SpreadsheetRaw } from "../SpreadsheetRaw";
 
@@ -36,19 +37,21 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
   }
   // A sheet outside the config never promised to follow the layout.
   tablePlacement(sheetGid: number): TablePlacement {
-    const state = this.spreadsheetStateRaw.sheets.get(sheetGid);
-    if (!state) {
+    if (!this.spreadsheetStateRaw.sheets.has(sheetGid)) {
       return { kind: "none" };
     }
-    if (state.working.hasExtraTables) {
+    const [tableId, ...otherTableIds] = this.ss.sheet(sheetGid).tableIds();
+    if (otherTableIds.length > 0) {
       return { kind: "extra" };
     }
-    const knownTable = state.working.knownTable;
-    if (knownTable === undefined || !this.schema.isInSheetGids(sheetGid)) {
+    if (tableId === undefined || !this.schema.isInSheetGids(sheetGid)) {
       return { kind: "none" };
     }
-    // Read off the state, since activeTable refuses a header-only Table before placement is judged.
-    const { startRowIndex, startColumnIndex } = knownTable;
+    // Read off the state, since the Table refuses a header-only body before placement is judged.
+    const { startRowIndex, startColumnIndex } = Val.assert(
+      this.spreadsheetStateRaw.tables.get(tableId)?.properties,
+      `properties of Table ${tableId}`,
+    );
     if (this.schema.isTableStart(startRowIndex, startColumnIndex)) {
       return { kind: "well-placed" };
     }
@@ -105,9 +108,9 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
   }
   private _sheetsWithExtraTables(): SheetIdentity[] {
     const extraTables: SheetIdentity[] = [];
-    this.spreadsheetStateRaw.sheets.forEach((state, sheetGid) => {
+    this.spreadsheetStateRaw.sheets.forEach((_, sheetGid) => {
       if (
-        !state.working.hasExtraTables ||
+        this.ss.sheet(sheetGid).tableIds().length <= 1 ||
         !this.schema.isInSheetGids(sheetGid)
       ) {
         return;

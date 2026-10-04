@@ -39,7 +39,7 @@ export class ColumnNamed<
   }
   get identified(): ColumnIdentified<ColumnValueName<SN, CN>> {
     return new ColumnIdentified<ColumnValueName<SN, CN>>({
-      ...this.sheet.identified.sheetIdentifiedProps,
+      ...this.sheet.identified.tableIdentifiedProps,
       columnId: this.columnId,
     });
   }

@@ -24,20 +24,20 @@ import { CellIdentified } from "./CellIdentified";
 import { ColumnCommonIdentified } from "./ClassBases/ColumnCommonIdentified";
 import type { CellChange } from "./ClassTypes/StateIdentified";
 import { ColumnMetaIdentified } from "./ColumnMetaIdentified";
-import { SheetIdentified } from "./SheetIdentified";
+import { TableIdentified } from "./TableIdentified";
 
 export class ColumnIdentified<
   VN extends ValueName = ValueName,
 > extends ColumnCommonIdentified<VN> {
-  get sheet(): SheetIdentified {
-    return new SheetIdentified(this.sheetIdentifiedProps);
+  get sheet(): TableIdentified {
+    return new TableIdentified(this.tableIdentifiedProps);
   }
   get meta(): ColumnMetaIdentified<VN> {
     return new ColumnMetaIdentified(this.columnIdentifiedProps);
   }
   get raw(): ColumnRaw<VnToCvn<VN>> {
     return new ColumnRaw({
-      ...this.sheetIdentifiedProps,
+      ...this.tableIdentifiedProps,
       colIndex: this.colIndex,
     });
   }

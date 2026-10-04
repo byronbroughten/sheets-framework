@@ -9,17 +9,17 @@ import {
   type SpreadsheetIdentifiedProps,
 } from "./SpreadsheetBaseIdentified";
 
-export interface SheetIdentifiedProps extends SpreadsheetIdentifiedProps {
+export interface TableIdentifiedProps extends SpreadsheetIdentifiedProps {
   sheetGid: number;
 }
-export class SheetBaseIdentified extends SpreadsheetBaseIdentified {
+export class TableBaseIdentified extends SpreadsheetBaseIdentified {
   readonly sheetGid: number;
-  constructor(props: SheetIdentifiedProps) {
+  constructor(props: TableIdentifiedProps) {
     super(props);
     this.sheetGid = props.sheetGid;
     this._ensureSheetState();
   }
-  get sheetIdentifiedProps(): SheetIdentifiedProps {
+  get tableIdentifiedProps(): TableIdentifiedProps {
     return {
       ...this.spreadsheetIdentifiedProps,
       sheetGid: this.sheetGid,

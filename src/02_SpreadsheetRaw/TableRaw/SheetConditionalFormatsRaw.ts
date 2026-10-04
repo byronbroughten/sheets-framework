@@ -5,16 +5,16 @@ import {
   rangeEqual,
 } from "../../00_Source/RawSource/ConditionalFormat";
 import type { GridRangeProps } from "../../00_Source/RawSource/RawSource";
-import { SheetCommonRaw } from "../ClassBases/SheetCommonRaw";
-import { SheetRaw } from "../SheetRaw";
+import { TableCommonRaw } from "../ClassBases/TableCommonRaw";
 import { SpreadsheetRaw } from "../SpreadsheetRaw";
+import { TableRaw } from "../TableRaw";
 
-export class SheetConditionalFormatsRaw extends SheetCommonRaw {
+export class SheetConditionalFormatsRaw extends TableCommonRaw {
   get ss(): SpreadsheetRaw {
     return new SpreadsheetRaw(this.spreadsheetRawProps);
   }
-  get sheet(): SheetRaw {
-    return new SheetRaw(this.sheetRawProps);
+  get table(): TableRaw {
+    return new TableRaw(this.tableRawProps);
   }
   gatherFetchConditionalFormatRules(): void {
     this.sheetState.fetchQueue.gatherConditionalFormats = true;
@@ -29,16 +29,16 @@ export class SheetConditionalFormatsRaw extends SheetCommonRaw {
     return rules;
   }
   addConditionalFormatRule(declaration: ConditionalFormatDeclaration): void {
-    this.addConditionalFormatRuleAt(this.sheet.dataGridRange(), declaration);
+    this.addConditionalFormatRuleAt(this.table.dataGridRange(), declaration);
   }
   removeConditionalFormatRules(): void {
-    this.removeConditionalFormatRulesAt(this.sheet.dataGridRange());
+    this.removeConditionalFormatRulesAt(this.table.dataGridRange());
   }
   addConditionalFormatRuleAt(
     range: GridRangeProps,
     declaration: ConditionalFormatDeclaration,
   ): void {
-    this.activeTable.assertRowIndexesNotStale();
+    this.assertRowIndexesNotStale();
     this.assertConditionalFormatIndexesNotStale();
     const rule: Extract<ConditionalFormatRule, { kind: "boolean" }> = {
       kind: "boolean",
@@ -87,7 +87,7 @@ export class SheetConditionalFormatsRaw extends SheetCommonRaw {
   private _removeRulesWhere(
     matches: (rule: ConditionalFormatRule) => boolean,
   ): void {
-    this.activeTable.assertRowIndexesNotStale();
+    this.assertRowIndexesNotStale();
     this.assertConditionalFormatIndexesNotStale();
     this.conditionalFormatRules().forEach((existing, index) => {
       if (!matches(existing)) return;

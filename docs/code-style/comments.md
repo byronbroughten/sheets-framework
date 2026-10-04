@@ -7,7 +7,7 @@ Disclosed from [`docs/code-style.md`](../code-style.md), "Comments". The general
 The shape of a navigation block is in the general reasoning file. Six framework files have one:
 
 - `src/02_SpreadsheetRaw/SpreadsheetRaw.ts`
-- `src/02_SpreadsheetRaw/SheetRaw.ts`
+- `src/02_SpreadsheetRaw/TableRaw.ts`
 - `src/04_SpreadsheetNamed/SheetNamed.ts`
 - `src/05_Operators/ConfigCoordinator.ts`
 - `src/05_Operators/ConfigSheetFloor/ConfigSheetFloorEditWarnings.ts`

@@ -4,16 +4,13 @@ import type {
 } from "../../00_Source/RawSource/RawSource";
 import { SpreadsheetBaseRaw } from "../ClassBases/SpreadsheetBaseRaw";
 import { emptyStateRaw } from "../ClassTypes/emptyStateRaw";
-import type {
-  RowWrites,
-  SetTableColumnTypeOperation,
-  SheetWrites,
-} from "../ClassTypes/StateRaw";
+import type { RowWrites } from "../ClassTypes/StateRaw";
 import { SpreadsheetRaw } from "../SpreadsheetRaw";
+import type { TableRaw } from "../TableRaw";
 
-interface SheetRowRef {
-  sheetGid: number;
+interface QueuedRowWrites {
   rowIndex: number;
+  writes: RowWrites;
 }
 
 export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
@@ -21,6 +18,8 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
     return new SpreadsheetRaw(this.spreadsheetRawProps);
   }
   flush(): void {
+    // Before the gather, which empties the Table queues it reads.
+    const tableIdsWithColumnTypeUpdates = this._tableIdsWithColumnTypeUpdates();
     this._gatherWriteOperations();
     const sheetGidsWithRowDeletes = this._sheetGidsWithRowDeletes();
     const sheetGidsWithConditionalFormatMutations =
@@ -28,16 +27,16 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
     const sheetGidsWithEditProtectionMutations =
       this._sheetGidsWithEditProtectionMutations();
     const hasFindReplace = this.writeOperations.findReplace.length > 0;
-    const sheetGidsWithColumnTypeUpdates = new Set(
-      this.writeOperations.setTableColumnType.map(({ sheetId }) => sheetId),
-    );
     this._sendWriteOperations();
-    sheetGidsWithColumnTypeUpdates.forEach((sheetGid) =>
-      this.ss.sheet(sheetGid).markColumnPropertiesStale(),
+    tableIdsWithColumnTypeUpdates.forEach((tableId) =>
+      this.ss.table(tableId).markColumnPropertiesStale(),
     );
-    // Row indexes only actually shift once the deletes have been sent.
+    // Row indexes only actually shift once the deletes have been sent, and a sheet-row delete shifts every Table on the sheet.
     sheetGidsWithRowDeletes.forEach((sheetGid) =>
-      this.ss.sheet(sheetGid).markRowIndexesStale(),
+      this.ss
+        .sheet(sheetGid)
+        .tableIds()
+        .forEach((tableId) => this.ss.table(tableId).markRowIndexesStale()),
     );
     sheetGidsWithConditionalFormatMutations.forEach((sheetGid) =>
       this.ss.sheet(sheetGid).markConditionalFormatIndexesStale(),
@@ -47,56 +46,52 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
     );
     if (hasFindReplace) this._invalidateFetchedCellState();
   }
+  private _tableIdsWithColumnTypeUpdates(): string[] {
+    return Array.from(this.tablesStateRaw.entries())
+      .filter(([, state]) => state.writeQueue.table.columnTypes.size > 0)
+      .map(([tableId]) => tableId);
+  }
   private _gatherWriteOperations(): void {
-    this.sheetsStateRaw.forEach((state, sheetGid) => {
-      this._gatherSheetWrites(sheetGid, state.writeQueue.sheet);
-      for (const [rowIndex, writes] of state.writeQueue.rows) {
-        this._gatherRowWrites(writes, { sheetGid, rowIndex });
+    const tables = this._tablesWithWriteQueues();
+    tables.forEach((table) => {
+      table.gatherQueuedTableWrites();
+      for (const [rowIndex, writes] of table.rowWrites) {
+        this._gatherRowWrites(table, { rowIndex, writes });
       }
-      state.writeQueue.sheet = emptyStateRaw.sheetWrites();
-      state.writeQueue.rows = new Map();
     });
-    // After the sheet queues, so the insert-column refusal sees this flush's inserts.
-    this._gatherSetTableColumnPropertiesOperations();
+    // After the Table queues, so the insert-column refusal sees this flush's inserts.
+    tables.forEach((table) => {
+      table.gatherSetTableColumnPropertiesOperation();
+      table._clearWriteQueue();
+    });
   }
-  private _gatherSetTableColumnPropertiesOperations(): void {
-    const opsBySheet = new Map<number, SetTableColumnTypeOperation[]>();
-    this.writeOperations.setTableColumnType.forEach((operation) => {
-      const ops = opsBySheet.get(operation.sheetId) ?? [];
-      ops.push(operation);
-      opsBySheet.set(operation.sheetId, ops);
-    });
-    opsBySheet.forEach((ops, sheetGid) =>
-      this.ss.sheet(sheetGid).gatherSetTableColumnPropertiesOperation(ops),
+  // A Table not yet fetched holds its queue on its sheet, aimed where the layout expects it.
+  private _tablesWithWriteQueues(): TableRaw[] {
+    const knownTables = Array.from(this.tablesStateRaw.keys(), (tableId) =>
+      this.ss.table(tableId),
     );
-  }
-  private _gatherSheetWrites(sheetGid: number, writes: SheetWrites): void {
-    this.ss
-      .sheet(sheetGid)
-      .gatherInsertTableEndColumnOperations(writes.insertTableEndColumnCount);
-    if (writes.sort !== undefined) {
-      this.ss.sheet(sheetGid).gatherSortOperation(writes.sort);
-    }
-    writes.fillColumns.forEach((fill) => {
-      this.ss.sheet(sheetGid).gatherFillColumnOperation(fill);
-    });
+    const tablesBeforeProperties = Array.from(
+      this.sheetsStateRaw.keys(),
+      (sheetGid) => this.ss.sheet(sheetGid),
+    ).filter((sheet) => !sheet.hasFetchedProperties);
+    return [...knownTables, ...tablesBeforeProperties];
   }
   private _gatherRowWrites(
-    writes: RowWrites,
-    { sheetGid, rowIndex }: SheetRowRef,
+    table: TableRaw,
+    { rowIndex, writes }: QueuedRowWrites,
   ): void {
     if (writes.appendRow && writes.deleteRow) {
       return;
     } else if (writes.deleteRow) {
-      const origin = this.ss.sheet(sheetGid).tableOrigin();
+      const origin = table.tableOrigin();
       this.writeOperations.deleteRows.push({
         kind: "deleteRows",
-        sheetId: sheetGid,
+        sheetId: table.sheetGid,
         startIndex: origin.sheetRowIndex(rowIndex),
         endIndex: origin.sheetRowIndex(rowIndex + 1),
       });
     } else {
-      const row = this.ss.sheet(sheetGid).rowCommon(rowIndex);
+      const row = table.rowCommon(rowIndex);
       if (writes.appendRow) {
         row.gatherAppendRowsOperation();
       }
@@ -184,10 +179,10 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
       },
     );
   }
-  // Scope can be allSheets, so one rule: every sheet's fetched cells go stale.
+  // Scope can be allSheets, so one rule: every Table's fetched cells go stale.
   private _invalidateFetchedCellState(): void {
-    this.sheetsStateRaw.forEach((_, sheetGid) =>
-      this.ss.sheet(sheetGid).invalidateCellState(),
+    this.tablesStateRaw.forEach((_, tableId) =>
+      this.ss.table(tableId).invalidateCellState(),
     );
   }
 }

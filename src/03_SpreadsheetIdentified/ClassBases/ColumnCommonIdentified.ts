@@ -6,7 +6,7 @@ export abstract class ColumnCommonIdentified<
   VN extends ValueName = ValueName,
 > extends ColumnBaseIdentified<VN> {
   get colIndex(): number {
-    return new SheetMetaRaw(this.sheetIdentifiedProps).colIndexOfActiveColumnId(
+    return new SheetMetaRaw(this.tableIdentifiedProps).colIndexOfActiveColumnId(
       this.columnId,
     );
   }

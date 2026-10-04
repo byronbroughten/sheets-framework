@@ -10,18 +10,18 @@ import type {
   RowWriteProps,
   RowWrites,
 } from "../ClassTypes/StateRaw";
-import { SheetRaw } from "../SheetRaw";
+import { TableRaw } from "../TableRaw";
 import { RowBaseRaw } from "./RowBaseRaw";
 
 export abstract class RowCommonRaw extends RowBaseRaw {
-  get sheet(): SheetRaw {
-    return new SheetRaw(this.sheetRawProps);
+  get table(): TableRaw {
+    return new TableRaw(this.tableRawProps);
   }
   // A data row past the table's last row doesn't exist yet — append it instead.
   validateIsWritable(): void {
     super.validateIsWritable();
     if (!this.isDataRow || this.rowIsActive()) return;
-    if (this.rowIndex >= this.sheet.activeTable.dataRowCount) {
+    if (this.rowIndex >= this.table.dataRowCount) {
       throw new Error(
         `Cannot write to ${this.rowLabel(this.rowIndex)} because it is past the last row of sheetGid ${this.sheetGid}'s table. Append the row first.`,
       );
@@ -34,7 +34,7 @@ export abstract class RowCommonRaw extends RowBaseRaw {
   }
   ensureFullActiveDataCells(): void {
     this.ensureStateExists();
-    this.sheet.fullTableColIndexes.forEach((colIndex) => {
+    this.table.fullTableColIndexes.forEach((colIndex) => {
       this.cell(colIndex).ensureActive();
     });
   }
@@ -42,7 +42,7 @@ export abstract class RowCommonRaw extends RowBaseRaw {
     colIndex: number,
   ): CellRaw<VN> {
     return new CellRaw<VN>({
-      ...this.sheetRawProps,
+      ...this.tableRawProps,
       rowIndex: this.rowIndex,
       colIndex: colIndex,
     });
@@ -62,26 +62,22 @@ export abstract class RowCommonRaw extends RowBaseRaw {
     return this;
   }
   gatherFetchFull(): this {
-    const { origin } = this.sheet.activeTable;
-    this.sheet.gatherFetchRange({
-      startRowIndex: origin.sheetRowIndex(this.rowIndex),
-      endRowIndex: origin.sheetRowIndex(this.rowIndex + 1),
-      startColumnIndex: origin.sheetColIndex(0),
-    });
-    this.sheetState.fetchQueue.toFinalize.rows.add(this.rowIndex);
+    this.table.assertTableIsKnown();
+    this.table.gatherFetchRange(this.table.fullRowFetchRange(this.rowIndex));
+    this.tableState.fetchQueue.toFinalize.rows.add(this.rowIndex);
     return this;
   }
   get isQueuedForDelete(): boolean {
     return (
-      this.sheetState.writeQueue.rows.get(this.rowIndex)?.deleteRow === true
+      this.tableState.writeQueue.rows.get(this.rowIndex)?.deleteRow === true
     );
   }
   get writes(): RowWrites {
     this._ensureWritesExist();
-    return this.sheetState.writeQueue.rows.get(this.rowIndex) as RowWrites;
+    return this.tableState.writeQueue.rows.get(this.rowIndex) as RowWrites;
   }
   private _ensureWritesExist(): void {
-    const rowWrites = this.sheetState.writeQueue.rows;
+    const rowWrites = this.tableState.writeQueue.rows;
     if (!rowWrites.has(this.rowIndex)) {
       rowWrites.set(this.rowIndex, emptyStateRaw.rowWrites());
     }
@@ -120,7 +116,7 @@ export abstract class RowCommonRaw extends RowBaseRaw {
     this.writeOperations.appendRows.push({
       kind: "appendRows",
       sheetId: this.sheetGid,
-      tableId: `${this.sheet.activeTable.tableId}`,
+      tableId: `${this.table.tableId}`,
       emptyRowCount: 1,
     });
   }

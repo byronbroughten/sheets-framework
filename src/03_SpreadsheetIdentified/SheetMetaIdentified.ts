@@ -1,8 +1,8 @@
 import type { UniformRowName } from "../00_Source/CellValues/cellValues";
 import { SheetMetaRaw } from "../02_SpreadsheetRaw/SheetMetaRaw";
-import { SheetCommonIdentified } from "./ClassBases/SheetCommonIdentified";
+import { TableCommonIdentified } from "./ClassBases/TableCommonIdentified";
 import { ColumnMetaIdentified } from "./ColumnMetaIdentified";
-import { SheetIdentified } from "./SheetIdentified";
+import { TableIdentified } from "./TableIdentified";
 import { UniformRowIdentified } from "./UniformRowIdentified";
 
 export interface GatherDataPrerequisitesProps {
@@ -10,16 +10,16 @@ export interface GatherDataPrerequisitesProps {
   includeProgrammaticFacts?: boolean;
 }
 
-export class SheetMetaIdentified extends SheetCommonIdentified {
+export class SheetMetaIdentified extends TableCommonIdentified {
   get raw(): SheetMetaRaw {
-    return new SheetMetaRaw(this.sheetIdentifiedProps);
+    return new SheetMetaRaw(this.tableIdentifiedProps);
   }
-  get primary(): SheetIdentified {
-    return new SheetIdentified(this.sheetIdentifiedProps);
+  get primary(): TableIdentified {
+    return new TableIdentified(this.tableIdentifiedProps);
   }
   column(columnId: string): ColumnMetaIdentified {
     return new ColumnMetaIdentified({
-      ...this.sheetIdentifiedProps,
+      ...this.tableIdentifiedProps,
       columnId,
     });
   }
@@ -31,7 +31,7 @@ export class SheetMetaIdentified extends SheetCommonIdentified {
   }
   uniformRow<UN extends UniformRowName>(rowName: UN): UniformRowIdentified<UN> {
     return new UniformRowIdentified({
-      ...this.sheetIdentifiedProps,
+      ...this.tableIdentifiedProps,
       uniformRowName: rowName,
     });
   }

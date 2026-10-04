@@ -4,16 +4,12 @@ import type {
   UniformRowValueName,
 } from "../../00_Source/CellValues/cellValues";
 import { uniformRows } from "../../01_SpreadsheetSchema/uniformRows";
-import type { StrictOmit } from "../../utils/Obj";
-import type { RowRawProps } from "./RowBaseRaw";
 import { RowCommonRaw } from "./RowCommonRaw";
+import type { TableRawProps } from "./TableBaseRaw";
 
-export interface RowUniformProps<UN extends UniformRowName> extends StrictOmit<
-  RowRawProps,
-  "rowIndex"
-> {
+export type RowUniformProps<UN extends UniformRowName> = TableRawProps & {
   uniformRowName: UN;
-}
+};
 
 export class UniformRowBaseRaw<
   UN extends UniformRowName,

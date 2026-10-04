@@ -26,7 +26,7 @@ export class RowNamed<SN extends SheetName> extends RowBaseNamed<SN> {
   }
   get raw(): RowRaw {
     return new RowRaw({
-      ...this.sheet.raw.sheetRawProps,
+      ...this.sheet.raw.tableRawProps,
       rowIndex: this.rowIndex,
     });
   }

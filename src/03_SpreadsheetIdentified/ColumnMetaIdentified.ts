@@ -15,12 +15,12 @@ export class ColumnMetaIdentified<
 > extends ColumnCommonIdentified<VN> {
   get raw(): ColumnMetaRaw<VnToCvn<VN>> {
     return new ColumnMetaRaw({
-      ...this.sheetIdentifiedProps,
+      ...this.tableIdentifiedProps,
       colIndex: this.colIndex,
     });
   }
   get sheet(): SheetMetaIdentified {
-    return new SheetMetaIdentified(this.sheetIdentifiedProps);
+    return new SheetMetaIdentified(this.tableIdentifiedProps);
   }
   get primary(): ColumnIdentified<VN> {
     return new ColumnIdentified(this.columnIdentifiedProps);

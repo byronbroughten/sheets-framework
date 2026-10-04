@@ -1,12 +1,10 @@
 import type { CellValue } from "../../00_Source/CellValues/cellValues";
 import type { RowStateRaw } from "../ClassTypes/StateRaw";
-import { SheetBaseRaw, type SheetRawProps } from "./SheetBaseRaw";
+import { TableBaseRaw, type TableRawProps } from "./TableBaseRaw";
 
-export interface RowRawProps extends SheetRawProps {
-  rowIndex: number;
-}
+export type RowRawProps = TableRawProps & { rowIndex: number };
 
-export class RowBaseRaw extends SheetBaseRaw {
+export class RowBaseRaw extends TableBaseRaw {
   readonly rowIndex;
   constructor({ rowIndex, ...rest }: RowRawProps) {
     super(rest);
@@ -24,20 +22,20 @@ export class RowBaseRaw extends SheetBaseRaw {
     return this.getRowState(this.rowIndex);
   }
   rowIsActive(): boolean {
-    return this.sheetState.working.rowStates.has(this.rowIndex);
+    return this.tableState.working.rowStates.has(this.rowIndex);
   }
   get isReserved(): boolean {
-    return this.sheetState.writeQueue.reservedRowIndexes.has(this.rowIndex);
+    return this.tableState.writeQueue.reservedRowIndexes.has(this.rowIndex);
   }
   reserve(): void {
-    this.sheetState.writeQueue.reservedRowIndexes.add(this.rowIndex);
+    this.tableState.writeQueue.reservedRowIndexes.add(this.rowIndex);
   }
   release(): void {
-    this.sheetState.writeQueue.reservedRowIndexes.delete(this.rowIndex);
+    this.tableState.writeQueue.reservedRowIndexes.delete(this.rowIndex);
   }
   validateIsWritable(): void {
     if (!this.isDataRow || this.rowIsActive()) return;
-    if (this.sheetState.working.knownTable === undefined) {
+    if (this.tableProperties === undefined) {
       throw new Error(
         `Cannot write to ${this.rowLabel(this.rowIndex)} of sheetGid ${this.sheetGid} before its sheet properties have been fetched.`,
       );
@@ -62,7 +60,7 @@ export class RowBaseRaw extends SheetBaseRaw {
   }
   get rowRawProps(): RowRawProps {
     return {
-      ...this.sheetRawProps,
+      ...this.tableRawProps,
       rowIndex: this.rowIndex,
     };
   }

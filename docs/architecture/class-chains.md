@@ -2,7 +2,7 @@
 
 Map fragment. Sibling headings live in this folder.
 
-The shape every tier's sheet and column classes share, the extra sheet-level class the Raw tier needs, and the guard that keeps the widened column type from collapsing to `never`.
+The shape every tier's sheet and column classes share, the extra Table-level class the Raw tier needs, and the guard that keeps the widened column type from collapsing to `never`.
 
 ## The three-level shape
 
@@ -21,22 +21,24 @@ There is no base class for the primary column alone: a class that wants to sit b
 
 **Rows and cells have base classes too, and an operator may hang off either.** The Named tier's `ClassBases/` holds `SpreadsheetBaseNamed`, `SheetBaseNamed` (adds `sheetName`), `RowBaseNamed` (adds `rowIndex`) and `CellBaseNamed` beside the column chain's classes. The chains above show sheets and columns because those two needed explaining, not because they are the set an operator may extend. The house style's class-shape reasoning covers choosing between them.
 
-## The Raw tier's two sheet-level classes
+## The Raw tier's two Table-level classes
 
-The Raw tier needs **two** sheet-level classes above its concrete pair, and both earn their place:
+The Raw tier needs **two** Table-level classes above its concrete pair, and both earn their place:
 
 ```
-SheetBaseRaw                     // sheetGid, sheet state, schema
-  ├─ SheetCommonRaw              // abstract; ss, activeTable, fetch-range gatherers, sheet change queue, fullTableColIndexes
-  │    ├─ SheetRaw
+TableBaseRaw                     // the address (a tableId, or in stage 1 a sheet GID), sheet and Table state, schema
+  ├─ TableCommonRaw              // abstract; ss, the Table's identity and bounds, fetch ranges, the Table write queue
+  │    ├─ TableRaw
   │    └─ SheetMetaRaw
   ├─ RowBaseRaw
   └─ ColumnBaseRaw
-
-ActiveTableRaw                   // collaborator beside the chain, not a SheetBaseRaw subclass
 ```
 
-`SheetBaseRaw` cannot hold `SheetCommonRaw`'s members, because the row and column base classes hang off it: `RowCommonRaw` already declares a `writes` of an incompatible type and `CellRaw` a `gatherFetchRange` of a different signature, so either would be an illegal override, and the rest would be inherited by classes with no use for them. Don't fold `SheetCommonRaw` back into `SheetBaseRaw`. `ss` is declared `abstract` on `SheetCommonRaw` and implemented on each concrete class — importing `SpreadsheetRaw` as a value there would close a module-init cycle through the two subclasses' `extends` clauses, which is the crash class described under [The schema classes](./schema-classes.md). `RowCommonRaw → SheetRaw → RowRaw extends RowCommonRaw` has that shape latent today: it loads only because every current entry point reaches `SheetRaw` or `RowRaw` before `RowCommonRaw`. Rows, columns, and cells reach the Table through `this.sheet.activeTable`; there is no Table getter on those classes and no `sheet` getter on `RowBaseRaw`. Identified extends Raw's spreadsheet base, so one instance holds both tiers' spreadsheet-level state; the members carry the tier suffix (`spreadsheetStateRaw`, `spreadsheetStateIdentified`) rather than overriding one name.
+`TableCommonRaw` holds the Table's identity and geometry: `tableId`, `name`, the bounds, `dataRowCount`, `columnCount` and the stale flag. Its state is `TableStateRaw`, keyed by `tableId`, which holds the Table's properties, rows, columns and fetch and write queues; `SheetStateRaw` keeps only per-sheet facts. Identified's chain is `TableBaseIdentified` → `TableCommonIdentified` → `TableIdentified`. Meta, the Named classes and uniform rows keep their Sheet names.
+
+**Raw addresses a Table by its live `tableId`** (`ss.table(tableId)`). Stage 1 keeps `ss.sheet(gid)`, which resolves the sheet's one Table. Before that Table's properties are fetched, `ss.sheet(gid)` queues into the sheet's `tableBeforeProperties` state, and the Table adopts it when its properties arrive.
+
+`TableBaseRaw` cannot hold `TableCommonRaw`'s members, because the row and column base classes hang off it: `RowCommonRaw` already declares a `writes` of an incompatible type and `CellRaw` a `gatherFetchRange` of a different signature, so either would be an illegal override, and the rest would be inherited by classes with no use for them. Don't fold `TableCommonRaw` back into `TableBaseRaw`. `ss` is declared `abstract` on `TableCommonRaw` and implemented on each concrete class — importing `SpreadsheetRaw` as a value there would close a module-init cycle through the two subclasses' `extends` clauses, which is the crash class described under [The schema classes](./schema-classes.md). `RowCommonRaw → TableRaw → RowRaw extends RowCommonRaw` has that shape latent today: it loads only because every current entry point reaches `TableRaw` or `RowRaw` before `RowCommonRaw`. Rows, columns, and cells reach their Table through a `table` getter; there is no `sheet` getter on those classes. Identified extends Raw's spreadsheet base, so one instance holds both tiers' spreadsheet-level state; the members carry the tier suffix (`spreadsheetStateRaw`, `spreadsheetStateIdentified`) rather than overriding one name.
 
 ## The widened instantiation never collapses to `never`
 

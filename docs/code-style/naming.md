@@ -6,7 +6,7 @@ One heading per naming rule, in docs/code-style.md's order: grep `^## ` for the 
 
 ## The `active` prefix marks a live read
 
-**Prefix a getter `active` when it reads live/fetched sheet state that has a same-named counterpart sourced from schema/generated-config data** — disambiguates the live read from the committed one. `ColumnMetaRaw.activeIsFormula` (this run's live sheet data) vs. `ColumnSchema.isFormula` (the committed `columnConfigs.ts` trait) — same underlying concept, two different sources of truth. Matches the existing `active` vocabulary for "what's actually in the fetched state right now": `activeTable`, `activeColumnIds`, `activeSheetGids`, `activeRowIndexes`.
+**Prefix a getter `active` when it reads live/fetched sheet state that has a same-named counterpart sourced from schema/generated-config data** — disambiguates the live read from the committed one. `ColumnMetaRaw.activeIsFormula` (this run's live sheet data) vs. `ColumnSchema.isFormula` (the committed `columnConfigs.ts` trait) — same underlying concept, two different sources of truth. Matches the existing `active` vocabulary for "what's actually in the fetched state right now": `activeColumnIds`, `activeSheetGids`, `activeRowIndexes`.
 
 ## `_actualX` becomes `activeX` when a helper moves down
 
@@ -26,7 +26,7 @@ One heading per naming rule, in docs/code-style.md's order: grep `^## ` for the 
 
 ## A multi-row delete is `SHOUTING_SNAKE_CASE`
 
-**A method that deletes more than one row takes a `SHOUTING_SNAKE_CASE` name** (`SheetIdentified.DELETE_ALL_DATA_ROWS` and the `SheetNamed` method that delegates to it). Nothing else in the codebase is spelled that way, so the shout is the warning: a caller can't reach one by reflex. It stays shouty even once a guard makes the operation safe — the point is that the reader stops, not that the operation is unguarded.
+**A method that deletes more than one row takes a `SHOUTING_SNAKE_CASE` name** (`TableIdentified.DELETE_ALL_DATA_ROWS` and the `SheetNamed` method that delegates to it). Nothing else in the codebase is spelled that way, so the shout is the warning: a caller can't reach one by reflex. It stays shouty even once a guard makes the operation safe — the point is that the reader stops, not that the operation is unguarded.
 
 ## The controlled verb vocabulary
 
