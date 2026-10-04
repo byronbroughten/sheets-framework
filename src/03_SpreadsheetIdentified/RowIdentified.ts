@@ -81,7 +81,7 @@ export class RowIdentified extends RowCommonIdentified {
   }
   private get _blankTestCellsActive(): CellIdentified[] {
     return this.sheet
-      .blankTestColumnIds()
+      .blankTestColumnIds
       .map((columnId) => this.cell(columnId))
       .filter((cell) => cell.isActive);
   }

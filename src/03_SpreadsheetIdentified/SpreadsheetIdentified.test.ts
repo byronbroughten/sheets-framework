@@ -342,12 +342,12 @@ describe("the blank test, on a sheet with a feedback column", () => {
 
   it("leaves the feedback column out of a Table reached by its tableId", () => {
     const sheet = runItemWithOneRow([null, null, "Succeeded"]);
-    const tableId = Val.assert(sheet.knownTableId(), "runItem tableId");
+    const tableId = Val.assert(sheet.knownTableId, "runItem tableId");
     const table = new SpreadsheetIdentified(
       sheet.spreadsheetIdentifiedProps,
     ).table(tableId);
 
-    expect(table.blankTestColumnIds()).not.toContain(runStatusColumnId);
+    expect(table.blankTestColumnIds).not.toContain(runStatusColumnId);
     expect(table.topRow.isBlank).toBe(true);
   });
 });

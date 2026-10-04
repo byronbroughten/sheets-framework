@@ -18,7 +18,6 @@ export type TableIdentifiedProps = SpreadsheetIdentifiedProps & TableAddressRaw;
 export class TableBaseIdentified extends SpreadsheetBaseIdentified {
   readonly sheetGid: number;
   private readonly tableAddress: TableAddressRaw;
-  private readonly rawTable: TableBaseRaw;
   constructor({
     spreadsheetStateRaw,
     spreadsheetStateIdentified,
@@ -31,10 +30,6 @@ export class TableBaseIdentified extends SpreadsheetBaseIdentified {
       feedbackColumnIds,
     });
     this.tableAddress = tableAddress;
-    this.rawTable = new TableBaseRaw({
-      ...this.spreadsheetRawProps,
-      ...tableAddress,
-    });
     this.sheetGid = this.rawTable.sheetGid;
     this._ensureTableState();
   }
@@ -43,6 +38,12 @@ export class TableBaseIdentified extends SpreadsheetBaseIdentified {
       ...this.spreadsheetIdentifiedProps,
       ...this.tableAddress,
     };
+  }
+  private get rawTable(): TableBaseRaw {
+    return new TableBaseRaw({
+      ...this.spreadsheetRawProps,
+      ...this.tableAddress,
+    });
   }
   private get tableStateBeforeProperties(): TableStateIdentified | undefined {
     return this.tableBeforePropertiesBySheet.get(this.sheetGid);
@@ -58,7 +59,7 @@ export class TableBaseIdentified extends SpreadsheetBaseIdentified {
     return this.fetchTargets.length > 0 || this.rawTable.hasGatheredSheetFetch;
   }
   // Absent until the sheet's one Table is fetched.
-  knownTableId(): string | undefined {
+  get knownTableId(): string | undefined {
     if ("tableId" in this.tableAddress) return this.tableAddress.tableId;
     return this.rawTable.onlyTableId();
   }
@@ -67,7 +68,7 @@ export class TableBaseIdentified extends SpreadsheetBaseIdentified {
   }
   // Before its Table is known, a handle reads the sheet's queue.
   private _resolveTableState(): TableStateIdentified {
-    const tableId = this.knownTableId();
+    const tableId = this.knownTableId;
     const tableState =
       tableId === undefined
         ? undefined
@@ -78,7 +79,7 @@ export class TableBaseIdentified extends SpreadsheetBaseIdentified {
     );
   }
   private _ensureTableState(): void {
-    const tableId = this.knownTableId();
+    const tableId = this.knownTableId;
     if (tableId === undefined) {
       this._ensureTableStateBeforeProperties();
       return;

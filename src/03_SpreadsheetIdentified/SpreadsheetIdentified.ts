@@ -61,7 +61,7 @@ export class SpreadsheetIdentified extends SpreadsheetBaseIdentified {
   private _sheetsWaitingOnTable(): SheetMetaIdentified[] {
     return [...this.tableBeforePropertiesBySheet.keys()]
       .map((sheetGid) => this.sheetMeta(sheetGid))
-      .filter((sheet) => sheet.knownTableId() === undefined);
+      .filter((sheet) => sheet.knownTableId === undefined);
   }
   private _knownTables(): SheetMetaIdentified[] {
     return [...this.tablesStateIdentified.keys()].map((tableId) =>

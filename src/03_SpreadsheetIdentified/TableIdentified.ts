@@ -53,6 +53,13 @@ export class TableIdentified extends TableCommonIdentified {
       this.meta.isActiveColumnId(columnId),
     );
   }
+  // Feedback columns only report on a row, so a row holding nothing else is still blank.
+  get blankTestColumnIds(): string[] {
+    const feedbackColumnIds = this.feedbackColumnIds.get(this.sheetName);
+    return this.nonFormulaColumnIds.filter(
+      (columnId) => !feedbackColumnIds?.has(columnId),
+    );
+  }
   column(columnId: string): ColumnIdentified {
     return new ColumnIdentified({
       ...this.tableIdentifiedProps,
@@ -128,13 +135,6 @@ export class TableIdentified extends TableCommonIdentified {
     return this.schema.anchoredA1(
       origin.sheetColIndex(colIndex),
       origin.sheetRowIndex(0),
-    );
-  }
-  // Feedback columns only report on a row, so a row holding nothing else is still blank.
-  blankTestColumnIds(): string[] {
-    const feedbackColumnIds = this.feedbackColumnIds.get(this.sheetName);
-    return this.nonFormulaColumnIds.filter(
-      (columnId) => !feedbackColumnIds?.has(columnId),
     );
   }
   row(rowIndex: number): RowIdentified {
