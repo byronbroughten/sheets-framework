@@ -1,10 +1,7 @@
 import type { FakeCell } from "../fakeSheetsService";
 import { fakeCells } from "./fakeCells";
-import {
-  type FakeSheetState,
-  fakeSpreadsheet,
-  type FakeTableState,
-} from "./fakeSpreadsheet";
+import { FakeGoogleRefusal } from "./FakeGoogleRefusal";
+import { type FakeSheetState, type FakeTableState } from "./fakeSpreadsheet";
 
 type GridRange = GoogleAppsScript.Sheets.Schema.GridRange;
 export type Dimension = "ROWS" | "COLUMNS";
@@ -21,6 +18,15 @@ export interface DimensionChange {
   startIndex: number;
   count: number;
 }
+
+// A change bounded across its dimension, e.g. to some columns for a ROWS shift.
+export interface BandChange extends DimensionChange {
+  crossStartIndex: number;
+  crossEndIndex: number;
+}
+
+const partOfTableRefusal =
+  "You cannot insert or delete cells over part of a table.";
 
 export const fakeGrid = {
   cell(sheet: FakeSheetState, rowIndex: number, colIndex: number): FakeCell {
@@ -59,6 +65,23 @@ export const fakeGrid = {
       endRowIndex: range.endRowIndex ?? sheet.rowCount,
       startColumnIndex: range.startColumnIndex ?? 0,
       endColumnIndex: range.endColumnIndex ?? sheet.columnCount,
+    };
+  },
+  // Measured live: a range starting past the grid's edge is refused, and one running past it is clipped.
+  rangeInGrid(sheet: FakeSheetState, range: GridRange): BoundedRange {
+    const bounded = fakeGrid.boundedRange(sheet, range);
+    if (
+      bounded.startRowIndex >= sheet.rowCount ||
+      bounded.startColumnIndex >= sheet.columnCount
+    ) {
+      throw new FakeGoogleRefusal(
+        `Range ('${sheet.title}'!${a1Range(bounded)}) exceeds grid limits. Max rows: ${sheet.rowCount}, max columns: ${sheet.columnCount}`,
+      );
+    }
+    return {
+      ...bounded,
+      endRowIndex: Math.min(bounded.endRowIndex, sheet.rowCount),
+      endColumnIndex: Math.min(bounded.endColumnIndex, sheet.columnCount),
     };
   },
   forEachCell(
@@ -108,7 +131,7 @@ export const fakeGrid = {
       sheet.columnCount += count;
     }
     const shift = insertShift(change, isInheritingFromBefore);
-    fakeSpreadsheet.tables(sheet).forEach((table) => {
+    sheet.tables.forEach((table) => {
       const hasGrown = shiftTable(table, dimension, shift);
       if (hasGrown && dimension === "COLUMNS") {
         nameNewColumns(sheet, table, change);
@@ -126,12 +149,190 @@ export const fakeGrid = {
       sheet.columnCount -= count;
     }
     const shift = removeShift(change);
-    fakeSpreadsheet.tables(sheet).forEach((table) => {
+    sheet.tables.forEach((table) => {
       shiftTable(table, dimension, shift);
     });
     shiftSheetRanges(sheet, dimension, shift);
   },
+  // Measured live: only the band's cells move, and a Table it would split is refused (sheets-framework#53, #56, #59).
+  insertBand(sheet: FakeSheetState, change: BandChange): void {
+    const shift = insertShift(change, false);
+    validateBandTables(sheet, change);
+    moveBandCells(sheet, change, (line) => {
+      line.splice(
+        Math.min(change.startIndex, line.length),
+        0,
+        ...Array.from({ length: change.count }, (): FakeCell => null),
+      );
+    });
+    bandTables(sheet, change).forEach((table) => {
+      const hasGrown = shiftTable(table, change.dimension, shift);
+      if (hasGrown && change.dimension === "COLUMNS") {
+        nameNewColumns(sheet, table, change);
+      }
+    });
+    shiftBandRanges(sheet, change, shift);
+    growGridToContent(sheet, change.dimension);
+  },
+  // Measured live: the grid keeps its size, and a Table may shrink to its header but never lose it.
+  removeBand(sheet: FakeSheetState, change: BandChange): void {
+    validateBandTables(sheet, change);
+    validateNoHeaderRemoved(sheet, change);
+    moveBandCells(sheet, change, (line) => {
+      line.splice(change.startIndex, change.count);
+    });
+    const shift = removeShift(change);
+    bandTables(sheet, change).forEach((table) => {
+      shiftTable(table, change.dimension, shift);
+    });
+    shiftBandRanges(sheet, change, shift);
+  },
 };
+
+function a1Range(range: BoundedRange): string {
+  return `${columnLetters(range.startColumnIndex)}${range.startRowIndex + 1}:${columnLetters(range.endColumnIndex - 1)}${range.endRowIndex}`;
+}
+
+function columnLetters(colIndex: number): string {
+  const letter = String.fromCharCode(65 + (colIndex % 26));
+  if (colIndex < 26) return letter;
+  return columnLetters(Math.floor(colIndex / 26) - 1) + letter;
+}
+
+function validateBandTables(sheet: FakeSheetState, change: BandChange): void {
+  sheet.tables.forEach((table) => {
+    const [, end] = tableSpan(table, change.dimension);
+    const [crossStart, crossEnd] = tableSpan(table, crossDimension(change));
+    const isReached = end > change.startIndex;
+    if (isReached && bandOverlap(change, crossStart, crossEnd) === "part") {
+      throw new FakeGoogleRefusal(partOfTableRefusal);
+    }
+  });
+}
+
+function validateNoHeaderRemoved(
+  sheet: FakeSheetState,
+  change: BandChange,
+): void {
+  if (change.dimension !== "ROWS") return;
+  const removesHeader = bandTables(sheet, change).some(
+    (table) =>
+      change.startIndex <= table.startRowIndex &&
+      table.startRowIndex < change.startIndex + change.count,
+  );
+  if (removesHeader) {
+    throw new FakeGoogleRefusal(
+      "Cannot delete a table header row. Consider hiding the row instead.",
+    );
+  }
+}
+
+// The Tables a band holds whole across its dimension; validateBandTables refuses the rest it reaches.
+function bandTables(
+  sheet: FakeSheetState,
+  change: BandChange,
+): FakeTableState[] {
+  return sheet.tables.filter((table) => {
+    const [crossStart, crossEnd] = tableSpan(table, crossDimension(change));
+    return bandOverlap(change, crossStart, crossEnd) === "whole";
+  });
+}
+
+function tableSpan(
+  table: FakeTableState,
+  dimension: Dimension,
+): [number, number] {
+  if (dimension === "ROWS") return [table.startRowIndex, table.endRowIndex];
+  return [table.startColumnIndex, table.endColumnIndex];
+}
+
+function crossDimension(change: BandChange): Dimension {
+  return change.dimension === "ROWS" ? "COLUMNS" : "ROWS";
+}
+
+function bandOverlap(
+  change: BandChange,
+  crossStart: number,
+  crossEnd: number,
+): "none" | "part" | "whole" {
+  if (crossEnd <= change.crossStartIndex) return "none";
+  if (crossStart >= change.crossEndIndex) return "none";
+  if (
+    change.crossStartIndex <= crossStart &&
+    crossEnd <= change.crossEndIndex
+  ) {
+    return "whole";
+  }
+  return "part";
+}
+
+// Each line runs along the shift, one per index across the band.
+function moveBandCells(
+  sheet: FakeSheetState,
+  change: BandChange,
+  edit: (line: FakeCell[]) => void,
+): void {
+  indexes(change.crossStartIndex, change.crossEndIndex).forEach((cross) => {
+    const line = bandLine(sheet, change.dimension, cross);
+    const lineLength = line.length;
+    edit(line);
+    indexes(0, Math.max(lineLength, line.length)).forEach((along) => {
+      const [rowIndex, colIndex] =
+        change.dimension === "ROWS" ? [along, cross] : [cross, along];
+      placeCell(sheet, rowIndex, colIndex, line[along] ?? null);
+    });
+  });
+}
+
+function indexes(start: number, end: number): number[] {
+  return Array.from({ length: Math.max(0, end - start) }, (_, i) => start + i);
+}
+
+function bandLine(
+  sheet: FakeSheetState,
+  dimension: Dimension,
+  cross: number,
+): FakeCell[] {
+  if (dimension === "ROWS") {
+    return sheet.rows.map((row) => row[cross] ?? null);
+  }
+  return [...(sheet.rows[cross] ?? [])];
+}
+
+// Unlike setCell, it leaves the grid's size alone; growGridToContent settles that after the move.
+function placeCell(
+  sheet: FakeSheetState,
+  rowIndex: number,
+  colIndex: number,
+  cell: FakeCell,
+): void {
+  const row = sheet.rows[rowIndex];
+  if (cell === null && (row === undefined || row.length <= colIndex)) return;
+  while (sheet.rows.length <= rowIndex) sheet.rows.push([]);
+  const target = sheet.rows[rowIndex] ?? [];
+  while (target.length < colIndex) target.push(null);
+  target[colIndex] = cell;
+}
+
+// Measured live: an insert grows the grid only as far as the cells it pushes past the edge.
+function growGridToContent(sheet: FakeSheetState, dimension: Dimension): void {
+  if (dimension === "ROWS") {
+    const lastFilled = sheet.rows.findLastIndex((row) =>
+      row.some((cell) => cell !== null),
+    );
+    sheet.rowCount = Math.max(
+      sheet.rowCount,
+      lastFilled + 1,
+      ...sheet.tables.map((table) => table.endRowIndex),
+    );
+    return;
+  }
+  sheet.columnCount = Math.max(
+    sheet.columnCount,
+    ...sheet.rows.map((row) => row.findLastIndex((cell) => cell !== null) + 1),
+    ...sheet.tables.map((table) => table.endColumnIndex),
+  );
+}
 
 // Where a dimension change moves a span, and a single index (undefined once removed).
 interface DimensionShift {
@@ -261,6 +462,56 @@ function shiftSheetRanges(
     });
     return ranges.length === 0 ? [] : [{ ...rule, ranges }];
   });
+}
+
+// Rules and protections the band holds whole move with it; one it cuts across is beyond what was measured.
+function shiftBandRanges(
+  sheet: FakeSheetState,
+  change: BandChange,
+  shift: DimensionShift,
+): void {
+  function shifted(range: GridRange, owner: string): GridRange | undefined {
+    const [crossStart, crossEnd] = gridRangeSpan(range, crossDimension(change));
+    const [, end] = gridRangeSpan(range, change.dimension);
+    const overlap = bandOverlap(change, crossStart, crossEnd);
+    if (overlap === "none" || end <= change.startIndex) return range;
+    if (overlap === "part") {
+      throw new Error(
+        `The fake Sheets service does not replay a range shift over part of a ${owner}.`,
+      );
+    }
+    return shiftGridRange(range, change.dimension, shift);
+  }
+  sheet.protectedRanges = sheet.protectedRanges?.flatMap((protection) => {
+    const range =
+      protection.range === undefined
+        ? undefined
+        : shifted(protection.range, "protected range");
+    return range === undefined ? [] : [{ ...protection, range }];
+  });
+  sheet.conditionalFormats = sheet.conditionalFormats?.flatMap((rule) => {
+    const ranges = (rule.ranges ?? []).flatMap((range) => {
+      const moved = shifted(range, "conditional-format rule");
+      return moved === undefined ? [] : [moved];
+    });
+    return ranges.length === 0 ? [] : [{ ...rule, ranges }];
+  });
+}
+
+function gridRangeSpan(
+  range: GridRange,
+  dimension: Dimension,
+): [number, number] {
+  if (dimension === "ROWS") {
+    return [
+      range.startRowIndex ?? 0,
+      range.endRowIndex ?? Number.MAX_SAFE_INTEGER,
+    ];
+  }
+  return [
+    range.startColumnIndex ?? 0,
+    range.endColumnIndex ?? Number.MAX_SAFE_INTEGER,
+  ];
 }
 
 function shiftIndexes(indexes: number[], shift: DimensionShift): number[] {

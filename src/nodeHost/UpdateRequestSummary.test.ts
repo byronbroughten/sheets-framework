@@ -121,6 +121,59 @@ describe("UpdateRequestSummary.lines", () => {
     ).toBe("insertDimension item!AB:AB insert 1 columns");
   });
 
+  it("states grid growth as the rows it adds past the edge", () => {
+    expect(
+      onlyLine({
+        appendDimension: { sheetId: itemGid, dimension: "ROWS", length: 3 },
+      }),
+    ).toBe("appendDimension item append 3 rows");
+  });
+
+  it("states a bounded insert and delete as their range and the rows or columns they shift", () => {
+    const range = {
+      sheetId: itemGid,
+      startRowIndex: 6,
+      endRowIndex: 8,
+      startColumnIndex: 0,
+      endColumnIndex: 3,
+    };
+
+    expect(
+      [
+        onlyLine({ insertRange: { range, shiftDimension: "ROWS" } }),
+        onlyLine({ deleteRange: { range, shiftDimension: "COLUMNS" } }),
+      ],
+    ).toEqual([
+      "insertRange item!A7:C8 insert 2 rows",
+      "deleteRange item!A7:C8 delete 3 columns",
+    ]);
+  });
+
+  it("names a copy's destination, cell count, source and paste type", () => {
+    expect(
+      onlyLine({
+        copyPaste: {
+          source: {
+            sheetId: itemGid,
+            startRowIndex: 5,
+            endRowIndex: 6,
+            startColumnIndex: 0,
+            endColumnIndex: 3,
+          },
+          destination: {
+            sheetId: itemGid,
+            startRowIndex: 6,
+            endRowIndex: 8,
+            startColumnIndex: 0,
+            endColumnIndex: 3,
+          },
+          pasteType: "PASTE_FORMAT",
+          pasteOrientation: "NORMAL",
+        },
+      }),
+    ).toBe("copyPaste item!A7:C8 6 cell(s) from item!A6:C6 PASTE_FORMAT");
+  });
+
   it("states a sort by its column and direction", () => {
     expect(
       onlyLine({

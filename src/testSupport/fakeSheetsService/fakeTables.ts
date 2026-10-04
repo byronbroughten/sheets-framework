@@ -1,10 +1,6 @@
 import type { FakeCell } from "../fakeSheetsService";
 import { fakeCells } from "./fakeCells";
-import {
-  type FakeSheetState,
-  fakeSpreadsheet,
-  type FakeTableState,
-} from "./fakeSpreadsheet";
+import { type FakeSheetState, type FakeTableState } from "./fakeSpreadsheet";
 
 type Table = GoogleAppsScript.Sheets.Schema.Table;
 type TableColumnProperties =
@@ -16,12 +12,11 @@ export const fakeTables = {
     sheet: FakeSheetState,
     isFilteredFetch: boolean,
   ): Table[] | undefined {
-    const tables = fakeSpreadsheet.tables(sheet);
-    if (tables.length === 0) return undefined;
+    if (sheet.tables.length === 0) return undefined;
     if (sheet.isTableHiddenFromFilteredFetch && isFilteredFetch) {
       return undefined;
     }
-    return tables.map((table) => ({
+    return sheet.tables.map((table) => ({
       tableId: table.tableId,
       ...(table.name !== undefined ? { name: table.name } : {}),
       range: {

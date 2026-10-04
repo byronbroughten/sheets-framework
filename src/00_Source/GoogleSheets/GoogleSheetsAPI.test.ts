@@ -622,6 +622,67 @@ describe("GoogleSheetsAPI write mapping", () => {
   });
 });
 
+describe("GoogleSheetsAPI Table-bounded write mapping", () => {
+  const tableBand = {
+    sheetId: 111,
+    startRowIndex: 6,
+    endRowIndex: 8,
+    startColumnIndex: 0,
+    endColumnIndex: 3,
+  };
+  const modelRow = { ...tableBand, startRowIndex: 5, endRowIndex: 6 };
+
+  it("maps grid growth, a bounded insert and delete, and both copies onto Google's requests in order", () => {
+    const { api, batchUpdateCalls } = recordingSheets();
+
+    api.flush([
+      { kind: "appendDimension", sheetId: 111, addedRowCount: 2 },
+      { kind: "insertRange", range: tableBand, shiftDimension: "ROWS" },
+      {
+        kind: "copyPaste",
+        source: modelRow,
+        destination: tableBand,
+        pasteType: "PASTE_FORMAT",
+      },
+      {
+        kind: "copyPaste",
+        source: modelRow,
+        destination: tableBand,
+        pasteType: "PASTE_DATA_VALIDATION",
+      },
+      { kind: "deleteRange", range: tableBand, shiftDimension: "COLUMNS" },
+    ]);
+
+    expect(batchUpdateCalls).toEqual([
+      {
+        requests: [
+          {
+            appendDimension: { sheetId: 111, dimension: "ROWS", length: 2 },
+          },
+          { insertRange: { range: tableBand, shiftDimension: "ROWS" } },
+          {
+            copyPaste: {
+              source: modelRow,
+              destination: tableBand,
+              pasteType: "PASTE_FORMAT",
+              pasteOrientation: "NORMAL",
+            },
+          },
+          {
+            copyPaste: {
+              source: modelRow,
+              destination: tableBand,
+              pasteType: "PASTE_DATA_VALIDATION",
+              pasteOrientation: "NORMAL",
+            },
+          },
+          { deleteRange: { range: tableBand, shiftDimension: "COLUMNS" } },
+        ],
+      },
+    ]);
+  });
+});
+
 describe("GoogleSheetsAPI payload mapping", () => {
   it("maps a Google spreadsheet payload onto the Raw-facing snapshot", () => {
     const { api } = recordingSheets({
@@ -727,6 +788,19 @@ describe("GoogleSheetsAPI payload mapping", () => {
         },
       ],
     });
+  });
+
+  it("reads a sheet's row count from its grid properties, and leaves it out when Google does", () => {
+    const { api } = recordingSheets({
+      sheets: [
+        { properties: { sheetId: 111, gridProperties: { rowCount: 514 } } },
+        { properties: { sheetId: 222 } },
+      ],
+    });
+
+    expect(
+      api.fetchSheetProperties().sheets.map((sheet) => sheet.rowCount),
+    ).toEqual([514, undefined]);
   });
 
   it("reads a Table column with no columnIndex as index 0", () => {
@@ -910,6 +984,21 @@ describe("GoogleSheetsAPI time zone read", () => {
     expect(masks).toHaveLength(3);
     masks.forEach((mask) => {
       expect(mask?.startsWith(`${timeZoneMask},sheets(`)).toBe(true);
+    });
+  });
+
+  it("asks for each sheet's row count and each Table column's type in all three standing field masks", () => {
+    const { api, getCalls, getByDataFilterFields } = recordingSheets();
+
+    api.fetchSheetProperties();
+    api.fetchGrid([{ sheetId: 1 }], { includeProgrammaticFacts: false });
+    api.fetchGrid([{ sheetId: 1 }], { includeProgrammaticFacts: true });
+
+    const masks = [getCalls[0]?.fields, ...getByDataFilterFields];
+    expect(masks).toHaveLength(3);
+    masks.forEach((mask) => {
+      expect(mask).toContain("properties(sheetId,title,gridProperties(rowCount))");
+      expect(mask).toMatch(/tables\(tableId,name,range,columnProperties\(columnIndex,[^)]*columnType/);
     });
   });
 
@@ -1438,7 +1527,7 @@ describe("GoogleSheetsAPI HTTP transport", () => {
   it("sends one GET for sheet properties, carrying the field mask", () => {
     const { api, transport } = seedApi();
     const fields =
-      "properties(timeZone),sheets(properties(sheetId,title),tables(tableId,name,range))";
+      "properties(timeZone),sheets(properties(sheetId,title,gridProperties(rowCount)),tables(tableId,name,range,columnProperties(columnIndex,columnType)))";
 
     api.fetchSheetProperties();
 

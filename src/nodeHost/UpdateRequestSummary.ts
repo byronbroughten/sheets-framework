@@ -125,6 +125,37 @@ const requestBody: {
       label.fields(appendCells?.fields),
     );
   },
+  appendDimension(
+    append: GoogleAppsScript.Sheets.Schema.AppendDimensionRequest | undefined,
+  ): string {
+    const dimension = (append?.dimension ?? "ROWS").toLowerCase();
+    return columns(
+      label.sheet(append?.sheetId),
+      `append ${append?.length ?? 0} ${dimension}`,
+      "",
+      "",
+    );
+  },
+  insertRange(
+    insert: GoogleAppsScript.Sheets.Schema.InsertRangeRequest | undefined,
+  ): string {
+    return rangeShiftBody(insert, "insert");
+  },
+  deleteRange(
+    remove: GoogleAppsScript.Sheets.Schema.DeleteRangeRequest | undefined,
+  ): string {
+    return rangeShiftBody(remove, "delete");
+  },
+  copyPaste(
+    copy: GoogleAppsScript.Sheets.Schema.CopyPasteRequest | undefined,
+  ): string {
+    return columns(
+      label.range(copy?.destination),
+      `${rangeCellCount(copy?.destination)} cell(s)`,
+      `from ${label.range(copy?.source)}`,
+      copy?.pasteType ?? "",
+    );
+  },
   insertDimension(
     insert: GoogleAppsScript.Sheets.Schema.InsertDimensionRequest | undefined,
   ): string {
@@ -283,7 +314,6 @@ const requestBody: {
 };
 
 // The opening's own line format: no type layer to read it through.
-// The opening's own line format: no type layer to read it through.
 function rawBody(request: GoogleUpdateRequest, verb: RequestVerb): string {
   const inner = request[verb];
   const json = JSON.stringify(inner ?? {});
@@ -308,6 +338,23 @@ function dimensionBody(
   return columns(
     `${label.sheet(range?.sheetId)}!${span}`,
     `${verb} ${endIndex - startIndex} ${dimension}`,
+    "",
+    "",
+  );
+}
+
+function rangeShiftBody(
+  shift: { range?: GoogleGridRange; shiftDimension?: string } | undefined,
+  verb: "insert" | "delete",
+): string {
+  const range = shift?.range;
+  const isColumns = shift?.shiftDimension === "COLUMNS";
+  const count = isColumns
+    ? (range?.endColumnIndex ?? 0) - (range?.startColumnIndex ?? 0)
+    : (range?.endRowIndex ?? 0) - (range?.startRowIndex ?? 0);
+  return columns(
+    label.range(range),
+    `${verb} ${count} ${isColumns ? "columns" : "rows"}`,
     "",
     "",
   );

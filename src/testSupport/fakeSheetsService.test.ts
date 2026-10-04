@@ -5,8 +5,11 @@ import { installedRawSource } from "../00_Source/RawSource/RawSource";
 import {
   buildGridRows,
   type FakeSheetProperties,
+  type FakeTable,
   stubSheetsService,
 } from "./fakeSheetsService";
+import type { BoundedRange } from "./fakeSheetsService/fakeGrid";
+import type { FakeGridView } from "./fakeSheetsService/gridView";
 
 type Request = GoogleAppsScript.Sheets.Schema.Request;
 
@@ -533,6 +536,568 @@ describe("stubSheetsService replays cell writes", () => {
       ["header 1", "header 2", "header 3"],
       [1, "x", "p"],
     ]);
+  });
+});
+
+const bandGid = 9;
+const partOfTable = "You cannot insert or delete cells over part of a table.";
+const modelGreen = { red: 0, green: 1, blue: 0 };
+
+interface BandTables {
+  side?: FakeTable;
+  lower?: FakeTable;
+}
+
+// Mirrors the live probes (sheets-framework#53, #56, #59): Table A at A4:C6 with its head rows, markers below and beside it.
+function bandSheet({ side, lower }: BandTables = {}): FakeSheetProperties {
+  return {
+    sheetId: bandGid,
+    title: "Band",
+    rows: buildGridRows({
+      4: [1, 2, 3],
+      5: [
+        { value: 4, backgroundColor: modelGreen, numberFormatType: "CURRENCY" },
+        { value: 5, dataValidationConditionType: "BOOLEAN" },
+        6,
+      ],
+      6: ["belowA", null, null, null, "beside"],
+    }),
+    tables: [
+      {
+        tableId: "a",
+        name: "A",
+        startRowIndex: 3,
+        startColumnIndex: 0,
+        endRowIndex: 6,
+        endColumnIndex: 3,
+        headRows: { 3: ["a:1", "a:2", "a:3"], 0: ["One", "Two", "Three"] },
+      },
+      ...(side === undefined ? [] : [side]),
+      ...(lower === undefined ? [] : [lower]),
+    ],
+  };
+}
+
+function sideTable(endRowIndex: number): FakeTable {
+  return {
+    tableId: "b",
+    name: "B",
+    startRowIndex: 3,
+    startColumnIndex: 5,
+    endRowIndex,
+    endColumnIndex: 7,
+    headRows: { 0: ["Left", "Right"] },
+  };
+}
+
+function lowerTable(endColumnIndex: number): FakeTable {
+  return {
+    tableId: "c",
+    name: "C",
+    startRowIndex: 10,
+    startColumnIndex: 0,
+    endRowIndex: 12,
+    endColumnIndex,
+    headRows: { 3: ["c:1"], 0: ["Low"] },
+  };
+}
+
+function bandRange(
+  range: BoundedRange,
+): GoogleAppsScript.Sheets.Schema.GridRange {
+  return { sheetId: bandGid, ...range };
+}
+
+function tableRange(
+  grid: FakeGridView,
+  tableId: string,
+): GoogleAppsScript.Sheets.Schema.GridRange | undefined {
+  return grid
+    .sheet(bandGid)
+    .tables.find((table) => table.tableId === tableId)?.range;
+}
+
+describe("stubSheetsService places each fixture Table with its own head rows", () => {
+  it("writes a Table's head rows above its own header, from its first column", () => {
+    const { grid } = stubSheetsService({
+      sheets: [bandSheet({ lower: lowerTable(1) })],
+    });
+
+    const sheet = grid.sheet(bandGid);
+    expect(sheet.values({ endRowIndex: 1, endColumnIndex: 3 })).toEqual([
+      ["a:1", "a:2", "a:3"],
+    ]);
+    expect(sheet.values({ startRowIndex: 7, endRowIndex: 11, endColumnIndex: 1 })).toEqual([
+      ["c:1"],
+      [null],
+      [null],
+      ["Low"],
+    ]);
+    expect(sheet.tables.map((table) => table.tableId)).toEqual(["a", "c"]);
+  });
+
+  it("names unnamed Tables by their place on the sheet", () => {
+    const { grid } = stubSheetsService({
+      sheets: [
+        {
+          sheetId: bandGid,
+          title: "Band",
+          tables: [{ endRowIndex: 5 }, { startRowIndex: 8, endRowIndex: 9 }],
+        },
+      ],
+    });
+
+    expect(grid.sheet(bandGid).tables.map((table) => table.tableId)).toEqual([
+      "fake-table-9",
+      "fake-table-9-1",
+    ]);
+  });
+
+  it("throws on a head-row cell the fixture's rows already hold", () => {
+    expect(() =>
+      stubSheetsService({
+        sheets: [
+          {
+            ...bandSheet(),
+            rows: buildGridRows({ 0: ["clash"] }),
+          },
+        ],
+      }),
+    ).toThrowError(/head row 3 and rows both give a cell at row 0, column 0/);
+  });
+});
+
+describe("stubSheetsService replays Table-bounded inserts and deletes", () => {
+  it("grows the grid by appended rows without moving a cell", () => {
+    const { grid } = stubSheetsService({ sheets: [bandSheet()] });
+    const before = grid.sheet(bandGid).values();
+
+    send({
+      appendDimension: { sheetId: bandGid, dimension: "ROWS", length: 3 },
+    });
+
+    expect(grid.sheet(bandGid).rowCount).toBe(10);
+    expect(grid.sheet(bandGid).values()).toEqual(before);
+  });
+
+  it("answers a fetch with the row count appended rows left", () => {
+    stubSheetsService({ sheets: [bandSheet()] });
+
+    send({
+      appendDimension: { sheetId: bandGid, dimension: "ROWS", length: 3 },
+    });
+
+    expect(
+      installedRawSource().fetchSheetProperties().sheets[0]?.rowCount,
+    ).toBe(10);
+  });
+
+  it("pushes down only the cells in an inserted range's columns, and grows no Table the insert sits just below", () => {
+    const { grid } = stubSheetsService({ sheets: [bandSheet()] });
+
+    send(
+      { appendDimension: { sheetId: bandGid, dimension: "ROWS", length: 2 } },
+      {
+      insertRange: {
+        range: bandRange({
+          startRowIndex: 6,
+          endRowIndex: 8,
+          startColumnIndex: 0,
+          endColumnIndex: 3,
+        }),
+        shiftDimension: "ROWS",
+      },
+      },
+    );
+
+    const sheet = grid.sheet(bandGid);
+    expect(sheet.values({ startRowIndex: 6, endRowIndex: 9 })).toEqual([
+      [null, null, null, null, "beside"],
+      [null, null, null, null, null],
+      ["belowA", null, null, null, null],
+    ]);
+    expect(tableRange(grid, "a")?.endRowIndex).toBe(6);
+    expect(sheet.rowCount).toBe(9);
+  });
+
+  it("grows a Table by a row range inserted inside it", () => {
+    const { grid } = stubSheetsService({ sheets: [bandSheet()] });
+
+    send({
+      insertRange: {
+        range: bandRange({
+          startRowIndex: 5,
+          endRowIndex: 6,
+          startColumnIndex: 0,
+          endColumnIndex: 3,
+        }),
+        shiftDimension: "ROWS",
+      },
+    });
+
+    expect(tableRange(grid, "a")?.endRowIndex).toBe(7);
+  });
+
+  it("grows the grid as far as the cells an insert pushes past its edge", () => {
+    const { grid } = stubSheetsService({ sheets: [bandSheet()] });
+
+    send({
+      insertRange: {
+        range: bandRange({
+          startRowIndex: 4,
+          endRowIndex: 6,
+          startColumnIndex: 0,
+          endColumnIndex: 3,
+        }),
+        shiftDimension: "ROWS",
+      },
+    });
+
+    expect(grid.sheet(bandGid).cell(8, 0)).toBe("belowA");
+    expect(grid.sheet(bandGid).rowCount).toBe(9);
+  });
+
+  it("clips a range that runs past the grid's edge to the grid, as live", () => {
+    const { grid } = stubSheetsService({ sheets: [bandSheet()] });
+
+    send({
+      insertRange: {
+        range: bandRange({
+          startRowIndex: 6,
+          endRowIndex: 8,
+          startColumnIndex: 0,
+          endColumnIndex: 3,
+        }),
+        shiftDimension: "ROWS",
+      },
+    });
+
+    expect(grid.sheet(bandGid).cell(7, 0)).toBe("belowA");
+    expect(grid.sheet(bandGid).rowCount).toBe(8);
+  });
+
+  it("refuses, as live, a range that starts past the grid's edge", () => {
+    stubSheetsService({ sheets: [bandSheet()] });
+
+    expect(() =>
+      send({
+        deleteRange: {
+          range: bandRange({
+            startRowIndex: 7,
+            endRowIndex: 9,
+            startColumnIndex: 0,
+            endColumnIndex: 3,
+          }),
+          shiftDimension: "ROWS",
+        },
+      }),
+    ).toThrowError(
+      "Invalid requests[0].deleteRange: Range ('Band'!A8:C9) exceeds grid limits. Max rows: 7, max columns: 5",
+    );
+  });
+
+  it("pushes a narrower Table below down intact, head rows included", () => {
+    const { grid } = stubSheetsService({
+      sheets: [bandSheet({ lower: lowerTable(1) })],
+    });
+
+    send({
+      insertRange: {
+        range: bandRange({
+          startRowIndex: 6,
+          endRowIndex: 8,
+          startColumnIndex: 0,
+          endColumnIndex: 3,
+        }),
+        shiftDimension: "ROWS",
+      },
+    });
+
+    expect(tableRange(grid, "c")).toEqual({
+      startRowIndex: 12,
+      endRowIndex: 14,
+      startColumnIndex: 0,
+      endColumnIndex: 1,
+    });
+    expect(grid.sheet(bandGid).cell(9, 0)).toBe("c:1");
+  });
+
+  it("refuses, as live, a row insert that would split a wider Table below", () => {
+    const { grid } = stubSheetsService({
+      sheets: [bandSheet({ lower: lowerTable(5) })],
+    });
+
+    expect(() =>
+      send({
+        insertRange: {
+          range: bandRange({
+            startRowIndex: 6,
+            endRowIndex: 7,
+            startColumnIndex: 0,
+            endColumnIndex: 3,
+          }),
+          shiftDimension: "ROWS",
+        },
+      }),
+    ).toThrowError(`Invalid requests[0].insertRange: ${partOfTable}`);
+    expect(grid.sheet(bandGid).cell(6, 0)).toBe("belowA");
+  });
+
+  it("shifts a column range right past a Table without widening it, carrying a side Table no taller", () => {
+    const { grid } = stubSheetsService({
+      sheets: [bandSheet({ side: sideTable(6) })],
+    });
+
+    send({
+      insertRange: {
+        range: bandRange({
+          startRowIndex: 0,
+          endRowIndex: 6,
+          startColumnIndex: 3,
+          endColumnIndex: 4,
+        }),
+        shiftDimension: "COLUMNS",
+      },
+    });
+
+    const sheet = grid.sheet(bandGid);
+    expect(tableRange(grid, "a")?.endColumnIndex).toBe(3);
+    expect(tableRange(grid, "b")).toEqual({
+      startRowIndex: 3,
+      endRowIndex: 6,
+      startColumnIndex: 6,
+      endColumnIndex: 8,
+    });
+    expect(sheet.values({ startRowIndex: 3, endRowIndex: 4 })).toEqual([
+      ["One", "Two", "Three", null, null, null, "Left", "Right"],
+    ]);
+    expect(sheet.cell(6, 4)).toBe("beside");
+  });
+
+  it("refuses, as live, a column insert beside a taller Table", () => {
+    stubSheetsService({ sheets: [bandSheet({ side: sideTable(9) })] });
+
+    expect(() =>
+      send({
+        insertRange: {
+          range: bandRange({
+            startRowIndex: 0,
+            endRowIndex: 6,
+            startColumnIndex: 3,
+            endColumnIndex: 4,
+          }),
+          shiftDimension: "COLUMNS",
+        },
+      }),
+    ).toThrowError(`Invalid requests[0].insertRange: ${partOfTable}`);
+  });
+
+  it("shrinks a Table by a row range deleted over its columns, sparing the Table beside it", () => {
+    const { grid } = stubSheetsService({
+      sheets: [bandSheet({ side: sideTable(6) })],
+    });
+
+    send({
+      deleteRange: {
+        range: bandRange({
+          startRowIndex: 4,
+          endRowIndex: 5,
+          startColumnIndex: 0,
+          endColumnIndex: 3,
+        }),
+        shiftDimension: "ROWS",
+      },
+    });
+
+    const sheet = grid.sheet(bandGid);
+    expect(tableRange(grid, "a")?.endRowIndex).toBe(5);
+    expect(tableRange(grid, "b")?.endRowIndex).toBe(6);
+    expect(sheet.values({ startRowIndex: 4, endRowIndex: 7, endColumnIndex: 5 })).toEqual([
+      [4, 5, 6, null, null],
+      ["belowA", null, null, null, null],
+      [null, null, null, null, "beside"],
+    ]);
+    expect(sheet.rowCount).toBe(7);
+  });
+
+  it("leaves a Table header only when a delete takes its every body row", () => {
+    const { grid } = stubSheetsService({ sheets: [bandSheet()] });
+
+    send({
+      deleteRange: {
+        range: bandRange({
+          startRowIndex: 4,
+          endRowIndex: 6,
+          startColumnIndex: 0,
+          endColumnIndex: 3,
+        }),
+        shiftDimension: "ROWS",
+      },
+    });
+
+    expect(tableRange(grid, "a")).toEqual({
+      startRowIndex: 3,
+      endRowIndex: 4,
+      startColumnIndex: 0,
+      endColumnIndex: 3,
+    });
+  });
+
+  it("refuses, as live, a delete of a Table's header row", () => {
+    stubSheetsService({ sheets: [bandSheet()] });
+
+    expect(() =>
+      send({
+        deleteRange: {
+          range: bandRange({
+            startRowIndex: 3,
+            endRowIndex: 4,
+            startColumnIndex: 0,
+            endColumnIndex: 3,
+          }),
+          shiftDimension: "ROWS",
+        },
+      }),
+    ).toThrowError(
+      "Invalid requests[0].deleteRange: Cannot delete a table header row. Consider hiding the row instead.",
+    );
+  });
+
+  it("refuses, as live, a delete over part of a Table's columns", () => {
+    stubSheetsService({ sheets: [bandSheet({ side: sideTable(6) })] });
+
+    expect(() =>
+      send({
+        deleteRange: {
+          range: bandRange({
+            startRowIndex: 4,
+            endRowIndex: 5,
+            startColumnIndex: 0,
+            endColumnIndex: 6,
+          }),
+          shiftDimension: "ROWS",
+        },
+      }),
+    ).toThrowError(`Invalid requests[0].deleteRange: ${partOfTable}`);
+  });
+});
+
+describe("stubSheetsService replays copyPaste of format and validation", () => {
+  const modelRow = bandRange({
+    startRowIndex: 5,
+    endRowIndex: 6,
+    startColumnIndex: 0,
+    endColumnIndex: 3,
+  });
+  const newRows = bandRange({
+    startRowIndex: 6,
+    endRowIndex: 8,
+    startColumnIndex: 0,
+    endColumnIndex: 3,
+  });
+
+  it("tiles the model row's format over the new rows, leaving their values and validation", () => {
+    const { grid } = stubSheetsService({
+      sheets: [
+        {
+          ...bandSheet(),
+          conditionalFormats: [
+            {
+              ranges: [
+                bandRange({
+                  startRowIndex: 4,
+                  endRowIndex: 6,
+                  startColumnIndex: 0,
+                  endColumnIndex: 1,
+                }),
+              ],
+            },
+            { ranges: [{ sheetId: bandGid, startColumnIndex: 1, endColumnIndex: 2 }] },
+          ],
+        },
+      ],
+    });
+
+    send(
+      { appendDimension: { sheetId: bandGid, dimension: "ROWS", length: 1 } },
+      {
+        copyPaste: {
+          source: modelRow,
+          destination: newRows,
+          pasteType: "PASTE_FORMAT",
+          pasteOrientation: "NORMAL",
+        },
+      },
+    );
+
+    const sheet = grid.sheet(bandGid);
+    expect(sheet.rows({ startRowIndex: 6, endRowIndex: 8, endColumnIndex: 2 })).toEqual([
+      [{ value: "belowA", backgroundColor: modelGreen, numberFormatType: "CURRENCY" }, null],
+      [{ value: null, backgroundColor: modelGreen, numberFormatType: "CURRENCY" }, null],
+    ]);
+    expect(sheet.conditionalFormats.map((rule) => rule.ranges)).toEqual([
+      [
+        bandRange({
+          startRowIndex: 4,
+          endRowIndex: 8,
+          startColumnIndex: 0,
+          endColumnIndex: 1,
+        }),
+      ],
+      [{ sheetId: bandGid, startColumnIndex: 1, endColumnIndex: 2 }],
+    ]);
+  });
+
+  it("tiles the model row's cell validation over the new rows, and nothing else", () => {
+    const { grid } = stubSheetsService({ sheets: [bandSheet()] });
+
+    send(
+      { appendDimension: { sheetId: bandGid, dimension: "ROWS", length: 1 } },
+      {
+        copyPaste: {
+          source: modelRow,
+          destination: newRows,
+          pasteType: "PASTE_DATA_VALIDATION",
+          pasteOrientation: "NORMAL",
+        },
+      },
+    );
+
+    expect(
+      grid.sheet(bandGid).rows({ startRowIndex: 6, endRowIndex: 8, endColumnIndex: 2 }),
+    ).toEqual([
+      ["belowA", { value: null, dataValidationConditionType: "BOOLEAN" }],
+      [null, { value: null, dataValidationConditionType: "BOOLEAN" }],
+    ]);
+  });
+
+  it("clips a copy's destination to the grid, as live", () => {
+    const { grid } = stubSheetsService({ sheets: [bandSheet()] });
+
+    send({
+      copyPaste: {
+        source: modelRow,
+        destination: newRows,
+        pasteType: "PASTE_FORMAT",
+        pasteOrientation: "NORMAL",
+      },
+    });
+
+    expect(grid.sheet(bandGid).rowCount).toBe(7);
+  });
+
+  it("throws naming a paste type it does not replay", () => {
+    stubSheetsService({ sheets: [bandSheet()] });
+
+    expect(() =>
+      send({
+        copyPaste: {
+          source: modelRow,
+          destination: newRows,
+          pasteType: "PASTE_NORMAL",
+        },
+      }),
+    ).toThrowError("The fake Sheets service does not replay copyPaste type PASTE_NORMAL.");
   });
 });
 
