@@ -10,6 +10,12 @@ export {
   type FakeSheetProperties,
   type FakeSheetsService,
 } from "./testSupport/fakeSheetsService";
+export {
+  type FakeBodyRow,
+  type FakeTableColumn,
+  type FakeTableSheetProps,
+  fakeTableSheet,
+} from "./testSupport/fakeSheetsService/fakeTableSheet";
 export type {
   FakeGridRange,
   FakeGridView,

@@ -1,6 +1,13 @@
-import type { FakeCell } from "../fakeSheetsService";
+import { SheetIndex } from "../../00_Source/RawSource/SheetIndex";
+import { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin";
+import type { FakeCell, FakeTable } from "../fakeSheetsService";
 import { fakeCells } from "./fakeCells";
 import { type FakeSheetState, type FakeTableState } from "./fakeSpreadsheet";
+
+export type FakeTablePlacement = Pick<
+  FakeTable,
+  "startRowIndex" | "startColumnIndex"
+>;
 
 type Table = GoogleAppsScript.Sheets.Schema.Table;
 type TableColumnProperties =
@@ -27,6 +34,13 @@ export const fakeTables = {
       },
       columnProperties: columnProperties(sheet, table),
     }));
+  },
+  origin({ startRowIndex, startColumnIndex }: FakeTablePlacement): TableOrigin {
+    const expected = TableOrigin.expected();
+    return new TableOrigin({
+      headerRowIndex: SheetIndex.row(startRowIndex ?? expected.headerRowIndex),
+      startColIndex: SheetIndex.col(startColumnIndex ?? expected.startColIndex),
+    });
   },
 };
 

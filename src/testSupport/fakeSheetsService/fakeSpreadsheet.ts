@@ -1,9 +1,9 @@
-import { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin";
 import type {
   FakeCell,
   FakeSheetProperties,
   FakeTable,
 } from "../fakeSheetsService";
+import { fakeTables } from "./fakeTables";
 
 export interface FakeTableState extends FakeTable {
   tableId: string;
@@ -115,12 +115,12 @@ type PlacedTable = FakeTable &
   Pick<FakeTableState, "tableId" | "startRowIndex" | "startColumnIndex">;
 
 function placedTable(table: FakeTable, defaultId: string): PlacedTable {
-  const expected = TableOrigin.expected();
+  const origin = fakeTables.origin(table);
   return {
     ...table,
     tableId: table.tableId ?? defaultId,
-    startRowIndex: table.startRowIndex ?? expected.headerRowIndex,
-    startColumnIndex: table.startColumnIndex ?? expected.startColIndex,
+    startRowIndex: origin.headerRowIndex,
+    startColumnIndex: origin.startColIndex,
   };
 }
 
