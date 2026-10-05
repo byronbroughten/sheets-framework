@@ -31,7 +31,7 @@ export interface FakeSheetView {
   // A rectangle of cells, `null` where empty; with no range, row 0 and column 0 to the last cell holding anything.
   rows(range?: FakeGridRange): FakeCell[][];
   values(range?: FakeGridRange): FakeCellValue[][];
-  // The sheet's one Table's body, counted from its first body row and first column; with no range, all of it.
+  // The sheet's one Table's body, counted from its first body row and first column; with no range, to the Table's end or the last cell holding anything.
   bodyRows(range?: FakeGridRange): FakeCell[][];
   bodyValues(range?: FakeGridRange): FakeCellValue[][];
 }
@@ -109,11 +109,16 @@ function bodySheetRange(
 ): FakeGridRange {
   const table = onlyTable(sheet);
   const origin = fakeTables.origin(table);
-  const bodyRowCount = origin.rowIndex(SheetIndex.row(table.endRowIndex));
-  const colCount = origin.colIndex(SheetIndex.col(table.endColumnIndex));
+  // Past the Table too, so a write that strays below or beside it still shows.
+  const rowCount = origin.rowIndex(
+    SheetIndex.row(Math.max(table.endRowIndex, filledEndRowIndex(sheet))),
+  );
+  const colCount = origin.colIndex(
+    SheetIndex.col(Math.max(table.endColumnIndex, filledEndColumnIndex(sheet))),
+  );
   return {
     startRowIndex: origin.sheetRowIndex(range.startRowIndex ?? 0),
-    endRowIndex: origin.sheetRowIndex(range.endRowIndex ?? bodyRowCount),
+    endRowIndex: origin.sheetRowIndex(range.endRowIndex ?? rowCount),
     startColumnIndex: origin.sheetColIndex(range.startColumnIndex ?? 0),
     endColumnIndex: origin.sheetColIndex(range.endColumnIndex ?? colCount),
   };

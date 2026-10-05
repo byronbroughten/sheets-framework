@@ -1119,7 +1119,10 @@ function gadgetSheet(
     title: "Gadget",
     columnConfigs: gadgetColumnConfigs,
     columnNames: ["size", "colour"],
-    bodyRows: [{ size: 1, colour: "red" }, { size: 2 }],
+    bodyRows: [
+      { size: 1, colour: "red" },
+      { size: { value: 2, numberFormatType: "NUMBER" } },
+    ],
     ...placement,
   });
 }
@@ -1129,17 +1132,24 @@ describe("fakeTableSheet builds a one-Table sheet from the layout", () => {
     const { grid } = stubSheetsService({ sheets: [gadgetSheet()] });
 
     const sheet = grid.sheet(gadgetGid);
-    const layout = expectedSheetLayout;
     expect(sheet.title).toBe("Gadget");
-    expect(sheet.values()[layout.colIdRowIndex]).toEqual(["g:size", "g:colour"]);
-    expect(sheet.values()[layout.tableHeaderRowIndex]).toEqual(["Size", "Colour"]);
-    expect(sheet.values({ startRowIndex: layout.topDataRowIndex })).toEqual([
+    expect(sheet.values()[expectedSheetLayout.colIdRowIndex]).toEqual([
+      "g:size",
+      "g:colour",
+    ]);
+    expect(sheet.values()[expectedSheetLayout.tableHeaderRowIndex]).toEqual([
+      "Size",
+      "Colour",
+    ]);
+    expect(
+      sheet.values({ startRowIndex: expectedSheetLayout.topDataRowIndex }),
+    ).toEqual([
       [1, "red"],
       [2, null],
     ]);
     expect(sheet.tables[0]?.range).toMatchObject({
-      startRowIndex: layout.tableHeaderRowIndex,
-      endRowIndex: layout.topDataRowIndex + 2,
+      startRowIndex: expectedSheetLayout.tableHeaderRowIndex,
+      endRowIndex: expectedSheetLayout.topDataRowIndex + 2,
       startColumnIndex: 0,
       endColumnIndex: 2,
     });
@@ -1179,18 +1189,38 @@ describe("FakeSheetView reads a Table's body", () => {
       [1, "red"],
       [2, null],
     ]);
-    expect(sheet.bodyRows({ startRowIndex: 1, startColumnIndex: 1 })).toEqual([[null]]);
+    expect(sheet.bodyRows({ startRowIndex: 1, endColumnIndex: 1 })).toEqual([
+      [{ value: 2, numberFormatType: "NUMBER" }],
+    ]);
   });
 
-  it("ends at the Table's last row, not at the last row holding anything", () => {
-    const fixture = gadgetSheet();
+  it("keeps a blank body row at the Table's end", () => {
     const { grid } = stubSheetsService({
-      sheets: [{ ...fixture, rows: [...(fixture.rows ?? []), [], ["below"]] }],
+      sheets: [
+        fakeTableSheet.build({
+          sheetId: gadgetGid,
+          title: "Gadget",
+          columnConfigs: gadgetColumnConfigs,
+          columnNames: ["size"],
+          bodyRows: [{ size: 1 }, {}],
+        }),
+      ],
     });
 
+    expect(grid.sheet(gadgetGid).bodyValues()).toEqual([[1], [null]]);
+  });
+
+  it("reaches past the Table to a cell a write left below or beside it", () => {
+    const fixture = gadgetSheet();
+    const rows = (fixture.rows ?? []).map((row) => [...row]);
+    rows.push([], [null, null, "beside"]);
+    const { grid } = stubSheetsService({ sheets: [{ ...fixture, rows }] });
+
     expect(grid.sheet(gadgetGid).bodyValues()).toEqual([
-      [1, "red"],
-      [2, null],
+      [1, "red", null],
+      [2, null, null],
+      [null, null, null],
+      [null, null, "beside"],
     ]);
   });
 

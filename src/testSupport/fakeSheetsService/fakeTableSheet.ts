@@ -18,12 +18,11 @@ export interface FakeTableSheetProps<CN extends string>
   sheetId: number;
   title: string;
   columnConfigs: Record<CN, FakeTableColumn>;
-  columnNames: readonly CN[]; // The Table's columns, in sheet order; a column left out isn't on the sheet.
+  columnNames: readonly CN[]; // Only these are on the sheet, so a fixture needn't list every configured column.
   bodyRows: readonly FakeBodyRow<CN>[];
 }
 
 export const fakeTableSheet = {
-  // A sheet holding one Table, its column ID and header rows where the layout puts them.
   build<CN extends string>({
     sheetId,
     title,
