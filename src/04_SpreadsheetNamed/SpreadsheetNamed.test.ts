@@ -13,12 +13,14 @@ import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {
   blankSheetConfigRow,
   filledSheetConfigRow,
+  sheetConfigColumnIdRow,
   sheetConfigGid,
   sheetTitleColIndex,
   stubSheetConfigSheet,
 } from "../testSupport/fakeSheetConfigSheet";
 import {
   buildGridRows,
+  type FakeCell,
   type FakeCellValue,
   type FakeSheetsService,
   stubSheetsService,
@@ -601,6 +603,77 @@ describe("SheetNamed.appendRowWithVals", () => {
 
     expect(row.rowIndex).toBe(0);
     expect(sheetConfigTitles(service)).toEqual(["new"]);
+  });
+});
+
+describe("growth into a lone blank row", () => {
+  const blankRowColour = { red: 0.851, green: 0.918, blue: 0.827 };
+  const looseRowIndex = topDataRowIndex + 2;
+  // The inserted rows should copy the blank row's colour; the loose cell below shows any insert.
+  function stubColouredBlankRowAboveLooseCell(): FakeSheetsService {
+    const blankRow = blankSheetConfigRow.map(
+      (cell, colIndex): FakeCell =>
+        colIndex === sheetTitleColIndex
+          ? { value: null, backgroundColor: blankRowColour }
+          : cell,
+    );
+    return stubSheetsService({
+      sheets: [
+        {
+          sheetId: sheetConfigGid,
+          title: "Sheet Config",
+          rows: buildGridRows({
+            0: sheetConfigColumnIdRow,
+            [topDataRowIndex]: blankRow,
+            [looseRowIndex]: ["loose"],
+          }),
+          table: { endRowIndex: topDataRowIndex + 1 },
+        },
+      ],
+    });
+  }
+
+  it("writes the blank row in place and inserts the rest beneath it, modelled on it", () => {
+    const service = stubColouredBlankRowAboveLooseCell();
+
+    const ss = fetchedSheetConfig();
+    const sheet = ss.sheet("sheetConfig");
+    const rows = ["one", "two", "three"].map((sheetTitle) =>
+      sheet.appendRowWithVals({ sheetTitle }),
+    );
+    ss.batchUpdateGSheets();
+
+    const grid = service.grid.sheet(sheetConfigGid);
+    expect(rows.map((row) => row.rowIndex)).toEqual([0, 1, 2]);
+    expect(grid.tables[0]?.range?.endRowIndex).toBe(topDataRowIndex + 3);
+    expect(
+      grid.rows({
+        startRowIndex: topDataRowIndex,
+        endRowIndex: topDataRowIndex + 3,
+        startColumnIndex: sheetTitleColIndex,
+        endColumnIndex: sheetTitleColIndex + 1,
+      }),
+    ).toEqual(
+      ["one", "two", "three"].map((value) => [
+        { value, backgroundColor: blankRowColour },
+      ]),
+    );
+    expect(grid.cell(looseRowIndex + 2, 0)).toBe("loose");
+  });
+
+  it("only fills the blank row when growing by one, inserting nothing", () => {
+    const service = stubColouredBlankRowAboveLooseCell();
+    const rowCountBefore = service.grid.sheet(sheetConfigGid).rowCount;
+
+    const ss = fetchedSheetConfig();
+    ss.sheet("sheetConfig").appendRowWithVals({ sheetTitle: "one" });
+    ss.batchUpdateGSheets();
+
+    const grid = service.grid.sheet(sheetConfigGid);
+    expect(sheetConfigTitles(service)).toEqual(["one"]);
+    expect(grid.tables[0]?.range?.endRowIndex).toBe(topDataRowIndex + 1);
+    expect(grid.rowCount).toBe(rowCountBefore);
+    expect(grid.cell(looseRowIndex, 0)).toBe("loose");
   });
 });
 
