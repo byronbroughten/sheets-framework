@@ -508,6 +508,9 @@ export class TableRaw extends TableCommonRaw {
       this.gatherFillColumnOperation(fill);
     });
   }
+  columnInsertSplitting(neighbourName: string): string {
+    return `Inserting a column at the end of Table "${this.name}" on sheet "${this.sheetTitle}" would shift only part of Table "${neighbourName}"`;
+  }
   // From the column ID row down, so the head rows move with the Table; the widen is what grows it.
   gatherInsertTableEndColumnsOperation(): void {
     const insertCount = this.writes.insertTableEndColumnCount;
@@ -548,7 +551,7 @@ export class TableRaw extends TableCommonRaw {
       .find((neighbour) => neighbour.isSplitBy(band));
     if (split === undefined) return;
     throw new Error(
-      `Inserting a column at the end of Table "${this.name}" on sheet "${this.sheetTitle}" would shift only part of Table "${split.name}" with its head rows. Move "${split.name}" so that it and its head rows sit entirely within rows ${band.startRowIndex + 1}–${band.endRowIndex}, or entirely outside them.`,
+      `${this.columnInsertSplitting(split.name)} with its head rows. Move "${split.name}" so that it and its head rows sit entirely within rows ${band.startRowIndex + 1}–${band.endRowIndex}, or entirely outside them.`,
     );
   }
   private _queueGridColumnsThrough(endColumnIndex: SheetColIndex): void {

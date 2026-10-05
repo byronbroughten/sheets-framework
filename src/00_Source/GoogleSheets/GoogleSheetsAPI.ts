@@ -1,4 +1,5 @@
 import { Val } from "../../utils/Val";
+import { PartialTableRefusal } from "../RawSource/PartialTableRefusal";
 import type {
   GridFetchOptions,
   GridFetchRange,
@@ -66,6 +67,9 @@ interface FieldsArg {
 }
 
 const sheetsApiBase = "https://sheets.googleapis.com/v4/spreadsheets";
+
+const partOfTableRefusalText =
+  "You cannot insert or delete cells over part of a table.";
 
 const timeZoneMask = "properties(timeZone)";
 const sheetPropertiesMask =
@@ -221,14 +225,39 @@ export class GoogleSheetsAPI implements RawSource {
     );
   }
   flush(operations: LocalWriteOperation[]): void {
-    const requests = operations.flatMap(localOperationToGoogleRequests);
-    if (requests.length === 0) return;
-    const response = this.sheets.Spreadsheets.batchUpdate(
-      { requests },
-      this.spreadsheetId,
+    const sentRequests = operations.flatMap((operation) =>
+      localOperationToGoogleRequests(operation).map((request) => ({
+        request,
+        operation,
+      })),
     );
-    googleProtectedRange.validateAddReplies(response, requests);
+    const requests = sentRequests.map(({ request }) => request);
+    const requestOperations = sentRequests.map(({ operation }) => operation);
+    if (requests.length === 0) return;
+    try {
+      const response = this.sheets.Spreadsheets.batchUpdate(
+        { requests },
+        this.spreadsheetId,
+      );
+      googleProtectedRange.validateAddReplies(response, requests);
+    } catch (error) {
+      throw partialTableRefusal(error, requestOperations) ?? error;
+    }
   }
+}
+
+// Google prefixes its refusal with the request: "Invalid requests[3].insertRange: …".
+function partialTableRefusal(
+  error: unknown,
+  requestOperations: LocalWriteOperation[],
+): PartialTableRefusal | undefined {
+  if (!(error instanceof Error)) return undefined;
+  if (!error.message.includes(partOfTableRefusalText)) return undefined;
+  const requestIndex = /requests\[(\d+)\]/.exec(error.message)?.[1];
+  if (requestIndex === undefined) return undefined;
+  const operation = requestOperations[Number(requestIndex)];
+  if (operation === undefined) return undefined;
+  return new PartialTableRefusal(error.message, operation);
 }
 
 function httpSheetsTransport(

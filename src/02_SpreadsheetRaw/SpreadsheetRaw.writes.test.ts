@@ -590,6 +590,50 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
           /Table "Lower" on "Records" \(gid 111\).*refetch/,
         );
       });
+
+      it("rewords Google's refusal of a growth blocked by a wider Table below, naming both Tables, the sheet and the fix", () => {
+        const { grid } = stubSheetsService({
+          sheets: [
+            {
+              sheetId: 111,
+              title: "Records",
+              rows: buildGridRows({
+                [tableHeaderRowIndex]: ["ID", "Name"],
+                [topDataRowIndex]: ["t1", "a"],
+                [lowerHeaderRowIndex]: ["ID", "Name", "Code"],
+                [lowerHeaderRowIndex + 1]: ["b1", "x", "c1"],
+              }),
+              tables: [
+                {
+                  tableId: "top",
+                  name: "Top",
+                  endColumnIndex: startTableColIndex + 2,
+                  endRowIndex: topDataRowIndex + 1,
+                },
+                {
+                  tableId: "wide",
+                  name: "Wide",
+                  startRowIndex: lowerHeaderRowIndex,
+                  endColumnIndex: startTableColIndex + 3,
+                  endRowIndex: lowerHeaderRowIndex + 2,
+                },
+              ],
+            },
+          ],
+        });
+
+        const raw = SpreadsheetRaw.init();
+        raw.fetchAllSheetProperties();
+        raw.table("top").appendDataRow().updateValue(0, "t2");
+
+        expect(() => raw.batchUpdateGSheets()).toThrow(
+          'Growing Table "Top" on sheet "Records" would insert cells over part of Table "Wide" below it. Make the lower Table, "Wide", no wider than "Top", or move it.',
+        );
+        expect(tableRows(grid)).toEqual({
+          top: [tableHeaderRowIndex, topDataRowIndex + 1],
+          wide: [lowerHeaderRowIndex, lowerHeaderRowIndex + 2],
+        });
+      });
     });
   });
 

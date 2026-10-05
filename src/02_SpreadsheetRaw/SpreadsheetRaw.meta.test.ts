@@ -575,7 +575,7 @@ describe("SheetMetaRaw.insertColumnAtEnd", () => {
         });
       });
 
-      it("leaves a Table added after the fetch, which the app doesn't know about, to Google's refusal", () => {
+      it("rewords Google's refusal for a Table added after the fetch, which the app doesn't know about, naming both Tables", () => {
         const { grid } = stubLeftBeside();
         const raw = fetchedRawInsertingOnLeft();
         const operator = SpreadsheetRaw.init();
@@ -598,9 +598,71 @@ describe("SheetMetaRaw.insertColumnAtEnd", () => {
         operator.batchUpdateGSheets();
 
         expect(() => raw.batchUpdateGSheets()).toThrow(
-          "You cannot insert or delete cells over part of a table.",
+          `Inserting a column at the end of Table "Left" on sheet "Records" would shift only part of Table "Right". Move "Right" so that it sits entirely within rows ${columnIdRow + 1}–${lastRow + 1}, or entirely outside them.`,
         );
         expect(tableColumns(grid)).toMatchObject({ left: [0, 2] });
+      });
+
+      it("names the Table split after growth in the same batch pushes both Tables down", () => {
+        stubSheetsService({
+          sheets: [
+            {
+              sheetId: 111,
+              title: "Records",
+              rows: buildGridRows({
+                3: ["ID", "Name", "", "", ""],
+                4: ["t1", "a"],
+                9: ["ID", "Name"],
+                10: ["l1", "a"],
+              }),
+              tables: [
+                {
+                  tableId: "top",
+                  name: "Top",
+                  startRowIndex: 3,
+                  endColumnIndex: 5,
+                  endRowIndex: 5,
+                },
+                {
+                  tableId: "left",
+                  name: "Left",
+                  startRowIndex: 9,
+                  endColumnIndex: 2,
+                  endRowIndex: 11,
+                  headRows: { 3: ["c:lft:a", "c:lft:b"] },
+                },
+              ],
+            },
+          ],
+        });
+        const raw = SpreadsheetRaw.init();
+        raw.fetchAllSheetProperties();
+        const operator = SpreadsheetRaw.init();
+        operator.gatherRawOperation(
+          googleRawRequest({
+            addTable: {
+              table: {
+                name: "Right",
+                range: {
+                  sheetId: 111,
+                  startRowIndex: 7,
+                  endRowIndex: 12,
+                  startColumnIndex: 3,
+                  endColumnIndex: 5,
+                },
+              },
+            },
+          }),
+        );
+        operator.batchUpdateGSheets();
+        raw.table("top").appendDataRow().updateValue(0, "t2");
+        raw
+          .table("left")
+          .meta.insertColumnAtEnd({ columnId: "c:lft:new", header: "New" });
+
+        expect(() => raw.batchUpdateGSheets()).toThrow(
+          'Inserting a column at the end of Table "Left" on sheet "Records" would shift only part of Table "Right". Move "Right" so that it sits entirely within rows 8–12, or entirely outside them.',
+        );
       });
     });
   });
