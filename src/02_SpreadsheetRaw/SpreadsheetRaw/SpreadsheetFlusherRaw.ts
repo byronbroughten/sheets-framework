@@ -1,9 +1,15 @@
+import { PartialTableRefusal } from "../../00_Source/RawSource/PartialTableRefusal";
 import type {
   AppendDimensionOperation,
   DeleteConditionalFormatRuleOperation,
   DeleteTableRowsOperation,
+  InsertRangeOperation,
+  LocalWriteOperation,
+  TableSnapshot,
 } from "../../00_Source/RawSource/RawSource";
+import { SheetIndex } from "../../00_Source/RawSource/SheetIndex";
 import { SpreadsheetBaseRaw } from "../ClassBases/SpreadsheetBaseRaw";
+import { rowShiftFrom } from "../ClassBases/TableCommonRaw";
 import { emptyStateRaw } from "../ClassTypes/emptyStateRaw";
 import type {
   AppendTableRows,
@@ -184,12 +190,57 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
       // Outside the ordering rules the queue was built around, so last.
       ...queued.raw,
     ];
-    this.spreadsheetStateRaw.rawSource.flush(operations);
+    this._flush(operations);
     this.spreadsheetStateRaw.writeQueue.operations =
       emptyStateRaw.writeOperations();
     this.sheetsStateRaw.forEach((state) => {
       state.writeQueue = emptyStateRaw.sheetWriteQueue();
     });
+  }
+  private _flush(operations: LocalWriteOperation[]): void {
+    try {
+      this.spreadsheetStateRaw.rawSource.flush(operations);
+    } catch (error) {
+      if (!(error instanceof PartialTableRefusal)) throw error;
+      throw this._rewordedRefusal(error);
+    }
+  }
+  // Google names neither Table, so the Table refused is the one the operation was gathered for.
+  private _rewordedRefusal(refusal: PartialTableRefusal): Error {
+    const { operation } = refusal;
+    if (operation.kind !== "insertRange") return refusal;
+    const split = this._fetchTableSplitBy(operation);
+    if (split === undefined) return refusal;
+    const growth = this.writeOperations.appendTableRows.find(
+      ({ operations }) => operations.includes(operation),
+    );
+    if (growth !== undefined) {
+      const grown = this.ss.table(growth.tableId);
+      return new Error(
+        `Growing Table "${grown.name}" on sheet "${grown.sheetTitle}" would insert cells over part of Table "${split.name}" below it. Make the lower Table, "${split.name}", no wider than "${grown.name}", or move it.`,
+      );
+    }
+    const insert = this.writeOperations.insertTableEndColumns.find(
+      ({ operations }) => operations.includes(operation),
+    );
+    if (insert === undefined) return refusal;
+    const { startRowIndex, endRowIndex } = operation.range;
+    return new Error(
+      `${this.ss.table(insert.tableId).columnInsertSplitting(split.name)}. Move "${split.name}" so that it sits entirely within rows ${startRowIndex + 1}–${endRowIndex}, or entirely outside them.`,
+    );
+  }
+  // Refused whole, so the live layout is from before this batch's growth, which a column insert is measured after.
+  private _fetchTableSplitBy(
+    insert: InsertRangeOperation,
+  ): TableSnapshot | undefined {
+    const { sheetId } = insert.range;
+    const sheet = this.spreadsheetStateRaw.rawSource
+      .fetchSheetProperties()
+      .sheets.find(({ sheetGid }) => sheetGid === sheetId);
+    const growths = this.writeOperations.appendTableRows;
+    return sheet?.tables
+      ?.map((table) => shiftedDownBy(growths, { ...table, sheetId }))
+      .find((table) => isPartlyShiftedBy(insert, table));
   }
   // Sent before any insert, which can't start past the grid's edge.
   private _appendDimensionOperations(): AppendDimensionOperation[] {
@@ -240,6 +291,50 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
       this.ss.table(tableId).invalidateCellState(),
     );
   }
+}
+
+function shiftedDownBy(
+  growths: AppendTableRows[],
+  table: TableSnapshot & { sheetId: number },
+): TableSnapshot {
+  const rowCount = rowShiftFrom(growths, table);
+  return {
+    ...table,
+    startRowIndex: SheetIndex.row(table.startRowIndex + rowCount),
+    endRowIndex: SheetIndex.row(table.endRowIndex + rowCount),
+  };
+}
+
+// Google's rule: an insert reaching a Table must span all of it across the shift.
+function isPartlyShiftedBy(
+  { range, shiftDimension }: InsertRangeOperation,
+  table: TableSnapshot,
+): boolean {
+  if (shiftDimension === "ROWS") {
+    return (
+      table.endRowIndex > range.startRowIndex &&
+      coversPartOf(
+        [range.startColumnIndex, range.endColumnIndex],
+        [table.startColumnIndex, table.endColumnIndex],
+      )
+    );
+  }
+  return (
+    table.endColumnIndex > range.startColumnIndex &&
+    coversPartOf(
+      [range.startRowIndex, range.endRowIndex],
+      [table.startRowIndex, table.endRowIndex],
+    )
+  );
+}
+
+function coversPartOf(
+  [bandStart, bandEnd]: [number, number],
+  [start, end]: [number, number],
+): boolean {
+  const overlaps = bandStart < end && start < bandEnd;
+  const coversAll = bandStart <= start && end <= bandEnd;
+  return overlaps && !coversAll;
 }
 
 function gridAppends(

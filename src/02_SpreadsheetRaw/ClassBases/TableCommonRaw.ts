@@ -92,14 +92,7 @@ export abstract class TableCommonRaw extends TableBaseRaw {
   rowShiftFrom(growths: AppendTableRows[]): number {
     const properties = this.tableProperties;
     if (properties === undefined) return 0;
-    return growths
-      .filter(({ newRows }) => newRows.sheetId === this.sheetGid)
-      .filter(({ newRows }) => isPushedDownBy(newRows, properties))
-      .reduce(
-        (rowCount, { newRows }) =>
-          rowCount + newRows.endRowIndex - newRows.startRowIndex,
-        0,
-      );
+    return rowShiftFrom(growths, { ...properties, sheetId: this.sheetGid });
   }
   shiftRowsDown(rowCount: number): void {
     const properties = this._knownTableProperties();
@@ -269,9 +262,24 @@ export abstract class TableCommonRaw extends TableBaseRaw {
   }
 }
 
+// Also measures a Table the app doesn't know, from a fresh fetch.
+export function rowShiftFrom(
+  growths: AppendTableRows[],
+  tableRange: BoundedGridRange,
+): number {
+  return growths
+    .filter(({ newRows }) => newRows.sheetId === tableRange.sheetId)
+    .filter(({ newRows }) => isPushedDownBy(newRows, tableRange))
+    .reduce(
+      (rowCount, { newRows }) =>
+        rowCount + newRows.endRowIndex - newRows.startRowIndex,
+      0,
+    );
+}
+
 function isPushedDownBy(
   newRows: BoundedGridRange,
-  properties: TablePropertiesRaw,
+  properties: BoundedGridRange,
 ): boolean {
   return (
     properties.startRowIndex >= newRows.startRowIndex &&
