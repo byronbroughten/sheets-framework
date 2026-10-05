@@ -42,7 +42,7 @@ export interface SpreadsheetWriteQueueRaw {
   operations: WriteOperations;
 }
 
-// Built from a Table's growth or delete as the flush gathers it, so never queued itself.
+// Built from a Table's growth, column insert or delete as the flush gathers it, so never queued itself.
 type GatheredOnlyKind =
   | "appendDimension"
   | "insertRange"
@@ -56,7 +56,10 @@ export type WriteOperations = {
     LocalWriteOperation,
     { kind: KD }
   >[];
-} & { appendTableRows: AppendTableRows[] };
+} & {
+  appendTableRows: AppendTableRows[];
+  insertTableEndColumns: InsertTableEndColumns[];
+};
 
 // One Table's growth, expanded at gathering; the flusher sends a sheet's growths bottom-up.
 export interface AppendTableRows {
@@ -68,6 +71,17 @@ export interface AppendTableRows {
 
 export type TableGrowthOperation =
   InsertRangeOperation | UpdateTableRangeOperation | CopyPasteOperation;
+
+// One Table's column inserts, expanded at gathering; the flusher sends a sheet's inserts right to left.
+export interface InsertTableEndColumns {
+  tableId: string;
+  // From the column ID row to the last row, in the layout before any of the batch's column inserts.
+  newColumns: BoundedGridRange;
+  operations: TableColumnInsertOperation[];
+}
+
+export type TableColumnInsertOperation =
+  InsertRangeOperation | UpdateTableRangeOperation;
 
 export type SheetsStateRaw = Map<SheetId, SheetStateRaw>;
 
@@ -82,6 +96,7 @@ export interface SheetStateRaw {
 export interface SheetWorkingStateRaw {
   title: string | undefined;
   rowCount: number | undefined;
+  columnCount: number | undefined;
   conditionalFormats: ConditionalFormatsStateRaw;
   editProtections: EditProtectionsStateRaw;
 }
@@ -102,9 +117,10 @@ export interface SheetFetchQueueRaw {
   gatherPlacementStrip: boolean;
 }
 
-// Summed over every growth on the sheet, and sent as its one appendDimension.
+// Summed over every growth or column insert on the sheet, and sent as one appendDimension each.
 export interface SheetWriteQueueRaw {
   appendedRowCount: number;
+  appendedColumnCount: number;
 }
 
 export type TablesStateRaw = Map<TableId, TableStateRaw>;

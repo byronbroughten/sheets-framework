@@ -334,8 +334,9 @@ export function stubSheetsService(
     const includeTimeZone =
       timeZone !== null &&
       (fields === undefined || fields.includes("timeZone"));
-    const includeRowCount =
-      fields === undefined || fields.includes("gridProperties(rowCount)");
+    const includeGridSize =
+      fields === undefined ||
+      fields.includes("gridProperties(rowCount,columnCount)");
     return {
       ...(includeTimeZone ? { properties: { timeZone } } : {}),
       sheets: spreadsheet.sheets.map(
@@ -343,8 +344,13 @@ export function stubSheetsService(
           properties: {
             sheetId: s.sheetId,
             title: s.title,
-            ...(includeRowCount
-              ? { gridProperties: { rowCount: s.rowCount } }
+            ...(includeGridSize
+              ? {
+                  gridProperties: {
+                    rowCount: s.rowCount,
+                    columnCount: s.columnCount,
+                  },
+                }
               : {}),
           },
           data: fakeRowsToGoogleSheetData(s),

@@ -57,7 +57,7 @@ export class CellRaw<
   gatherFillCellOperation(cellFill: CellFill): void {
     const { formula, ...cellData } = cellFill;
     assertValueAndFormulaExclusive(cellData.value, formula);
-    const origin = this.tableOrigin();
+    const origin = this.table.originAtGathering();
     this.writeOperations.fillCell.push({
       kind: "fillCell",
       sheetId: this.sheetGid,

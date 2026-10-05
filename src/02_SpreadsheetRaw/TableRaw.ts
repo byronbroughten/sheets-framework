@@ -21,6 +21,7 @@ import type {
   TableColumnSnapshot,
 } from "../00_Source/RawSource/RawSource";
 import {
+  type SheetColIndex,
   SheetIndex,
   type SheetRowIndex,
 } from "../00_Source/RawSource/SheetIndex";
@@ -93,7 +94,8 @@ export class TableRaw extends TableCommonRaw {
   }
   // The live Table's columns only, so a range built on it never reaches a neighbour.
   dataRowGridRange(rowIndex: number): BoundedGridRange {
-    const { origin, columnCount } = this;
+    const origin = this.originAtGathering();
+    const { columnCount } = this;
     return {
       sheetId: this.sheetGid,
       startRowIndex: origin.sheetRowIndex(rowIndex),
@@ -478,7 +480,7 @@ export class TableRaw extends TableCommonRaw {
     ...change
   }: ColumnFill): void {
     assertValueAndFormulaExclusive(change.value, formula);
-    const origin = this.tableOrigin();
+    const origin = this.originAtGathering();
     this.writeOperations.fillColumn.push({
       kind: "fillColumn",
       sheetId: this.sheetGid,
@@ -499,7 +501,6 @@ export class TableRaw extends TableCommonRaw {
   }
   gatherQueuedTableWrites(): void {
     const { writes } = this;
-    this.gatherInsertTableEndColumnOperations(writes.insertTableEndColumnCount);
     if (writes.sort !== undefined) {
       this.gatherSortOperation(writes.sort);
     }
@@ -507,22 +508,52 @@ export class TableRaw extends TableCommonRaw {
       this.gatherFillColumnOperation(fill);
     });
   }
-  gatherInsertTableEndColumnOperations(insertCount: number): void {
-    Array.from({ length: insertCount }).forEach(() => {
-      const { origin, columnCount } = this;
-      this.writeOperations.insertTableEndColumn.push({
-        kind: "insertTableEndColumn",
-        sheetId: this.sheetGid,
-        startColumnIndex: origin.sheetColIndex(columnCount),
-      });
-      this.growColumnCount();
+  // From the column ID row down, so the head rows move with the Table; the widen is what grows it.
+  gatherInsertTableEndColumnsOperation(): void {
+    const insertCount = this.writes.insertTableEndColumnCount;
+    if (insertCount === 0) return;
+    const origin = this.originAtGathering();
+    const { columnCount, dataRowCount } = this;
+    const newColumns: BoundedGridRange = {
+      sheetId: this.sheetGid,
+      startRowIndex: origin.headSheetRowIndex("columnId"),
+      endRowIndex: origin.sheetRowIndex(dataRowCount),
+      startColumnIndex: origin.sheetColIndex(columnCount),
+      endColumnIndex: origin.sheetColIndex(columnCount + insertCount),
+    };
+    this._queueGridColumnsThrough(newColumns.endColumnIndex);
+    this.writeOperations.insertTableEndColumns.push({
+      tableId: this.tableId,
+      newColumns,
+      operations: [
+        { kind: "insertRange", range: newColumns, shiftDimension: "COLUMNS" },
+        {
+          kind: "updateTableRange",
+          tableId: this.tableId,
+          range: {
+            ...newColumns,
+            startRowIndex: this.startRowIndex,
+            startColumnIndex: this.startColumnIndex,
+          },
+        },
+      ],
     });
+    this.growColumnCount(insertCount);
+  }
+  private _queueGridColumnsThrough(endColumnIndex: SheetColIndex): void {
+    const { working, writeQueue } = this.sheetState;
+    const columnCount = Val.assert(
+      working.columnCount,
+      `${this.sheetLabel}'s column count`,
+    );
+    if (endColumnIndex <= columnCount) return;
+    writeQueue.appendedColumnCount += endColumnIndex - columnCount;
+    working.columnCount = endColumnIndex;
   }
   // Before the Table-end column inserts are counted, since growth is sent ahead of them.
   gatherAppendTableRowsOperation(): void {
     const appendedRowIndexes = this._queuedRowAppendIndexes();
     if (appendedRowIndexes.length === 0) return;
-    this.assertRowIndexesNotStale();
     const appendedRowCount = appendedRowIndexes.length;
     // Not dataRowCount: a same-run re-fetch resets the Table's end but keeps the queued appends.
     const modelRow = this.dataRowGridRange(Math.min(...appendedRowIndexes) - 1);
@@ -632,8 +663,8 @@ export class TableRaw extends TableCommonRaw {
       );
     }
     if (
-      this.writeOperations.insertTableEndColumn.some(
-        ({ sheetId }) => sheetId === this.sheetGid,
+      this.writeOperations.insertTableEndColumns.some(
+        ({ newColumns }) => newColumns.sheetId === this.sheetGid,
       )
     ) {
       throw new Error(
@@ -681,7 +712,7 @@ export class TableRaw extends TableCommonRaw {
     return `Table ${tableId} on "${this.title}"`;
   }
   gatherSortOperation({ colIdxToSortBy, sortOrder }: SortParameters): void {
-    const origin = this.tableOrigin();
+    const origin = this.originAtGathering();
     this.writeOperations.sort.push({
       kind: "sort",
       sheetId: this.sheetGid,

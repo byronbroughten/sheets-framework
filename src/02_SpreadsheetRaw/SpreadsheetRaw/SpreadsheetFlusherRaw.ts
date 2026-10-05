@@ -7,7 +7,10 @@ import { SpreadsheetBaseRaw } from "../ClassBases/SpreadsheetBaseRaw";
 import { emptyStateRaw } from "../ClassTypes/emptyStateRaw";
 import type {
   AppendTableRows,
+  InsertTableEndColumns,
   RowWrites,
+  SheetWriteQueueRaw,
+  TableColumnInsertOperation,
   TableGrowthOperation,
 } from "../ClassTypes/StateRaw";
 import { SpreadsheetRaw } from "../SpreadsheetRaw";
@@ -60,6 +63,10 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
     const tables = this._tablesWithWriteQueues();
     tables.forEach((table) => table.gatherAppendTableRowsOperation());
     this._shiftTablesBelowGrowth(this.writeOperations.appendTableRows);
+    tables.forEach((table) => table.gatherInsertTableEndColumnsOperation());
+    this._shiftTablesRightOfColumnInserts(
+      this.writeOperations.insertTableEndColumns,
+    );
     tables.forEach((table) => {
       table.gatherQueuedTableWrites();
       for (const [rowIndex, writes] of table.rowWrites) {
@@ -72,15 +79,26 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
       table._clearWriteQueue();
     });
   }
-  // Measured against the layout before growth, then applied, so no shift sees another.
   private _shiftTablesBelowGrowth(growths: AppendTableRows[]): void {
-    const shifts = Array.from(this.tablesStateRaw.keys(), (tableId) => ({
-      tableId,
-      rowCount: this.ss.table(tableId).rowShiftFrom(growths),
-    })).filter(({ rowCount }) => rowCount > 0);
-    shifts.forEach(({ tableId, rowCount }) =>
-      this.ss.table(tableId).shiftRowsDown(rowCount),
+    this._measuredShifts((table) => table.rowShiftFrom(growths)).forEach(
+      ({ table, shiftCount }) => table.shiftRowsDown(shiftCount),
     );
+  }
+  private _shiftTablesRightOfColumnInserts(
+    inserts: InsertTableEndColumns[],
+  ): void {
+    this._measuredShifts((table) => table.columnShiftFrom(inserts)).forEach(
+      ({ table, shiftCount }) => table.shiftColumnsRight(shiftCount),
+    );
+  }
+  // Measured against the layout before the batch's shifting operations, then applied, so no shift sees another.
+  private _measuredShifts(
+    shiftOf: (table: TableRaw) => number,
+  ): { table: TableRaw; shiftCount: number }[] {
+    return Array.from(this.tablesStateRaw.keys(), (tableId) => {
+      const table = this.ss.table(tableId);
+      return { table, shiftCount: shiftOf(table) };
+    }).filter(({ shiftCount }) => shiftCount > 0);
   }
   // A Table not yet fetched holds its queue on its sheet, aimed where the layout expects it.
   private _tablesWithWriteQueues(): TableRaw[] {
@@ -149,7 +167,7 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
       ...queued.setTableColumnProperties,
       ...this._appendDimensionOperations(),
       ...this._appendTableRowsOperationsBottomUp(),
-      ...queued.insertTableEndColumn,
+      ...this._insertTableEndColumnsOperationsRightToLeft(),
       // Column fills go before cell writes; a later-queued fill already erased the cell writes it covers.
       ...queued.fillColumn,
       ...queued.fillCell,
@@ -173,19 +191,13 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
       state.writeQueue = emptyStateRaw.sheetWriteQueue();
     });
   }
-  // Sent before any insert, which can't reach past the grid's last row.
+  // Sent before any insert, which can't start past the grid's edge.
   private _appendDimensionOperations(): AppendDimensionOperation[] {
     return Array.from(this.sheetsStateRaw).flatMap(
-      ([sheetId, { writeQueue }]): AppendDimensionOperation[] => {
-        if (writeQueue.appendedRowCount === 0) return [];
-        return [
-          {
-            kind: "appendDimension",
-            sheetId,
-            addedRowCount: writeQueue.appendedRowCount,
-          },
-        ];
-      },
+      ([sheetId, { writeQueue }]) =>
+        gridAppends(sheetId, writeQueue).filter(
+          ({ addedCount }) => addedCount > 0,
+        ),
     );
   }
   // Bottom Table first within a sheet, so no insert shifts a Table whose growth is still to come.
@@ -194,6 +206,15 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
       .sort(({ newRows: a }, { newRows: b }) => {
         if (a.sheetId !== b.sheetId) return a.sheetId - b.sheetId;
         return b.startRowIndex - a.startRowIndex;
+      })
+      .flatMap(({ operations }) => operations);
+  }
+  // Rightmost Table first within a sheet, so no insert shifts a Table whose insert is still to come.
+  private _insertTableEndColumnsOperationsRightToLeft(): TableColumnInsertOperation[] {
+    return [...this.writeOperations.insertTableEndColumns]
+      .sort(({ newColumns: a }, { newColumns: b }) => {
+        if (a.sheetId !== b.sheetId) return a.sheetId - b.sheetId;
+        return b.startColumnIndex - a.startColumnIndex;
       })
       .flatMap(({ operations }) => operations);
   }
@@ -219,4 +240,24 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
       this.ss.table(tableId).invalidateCellState(),
     );
   }
+}
+
+function gridAppends(
+  sheetId: number,
+  writeQueue: SheetWriteQueueRaw,
+): AppendDimensionOperation[] {
+  return [
+    {
+      kind: "appendDimension",
+      sheetId,
+      dimension: "ROWS",
+      addedCount: writeQueue.appendedRowCount,
+    },
+    {
+      kind: "appendDimension",
+      sheetId,
+      dimension: "COLUMNS",
+      addedCount: writeQueue.appendedColumnCount,
+    },
+  ];
 }

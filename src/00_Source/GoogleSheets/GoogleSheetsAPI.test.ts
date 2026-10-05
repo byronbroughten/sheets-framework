@@ -109,11 +109,6 @@ describe("GoogleSheetsAPI write mapping", () => {
 
     const operations: LocalWriteOperation[] = [
       {
-        kind: "insertTableEndColumn",
-        sheetId: 111,
-        startColumnIndex: SheetIndex.col(3),
-      },
-      {
         kind: "fillColumn",
         sheetId: 111,
         colIndex: SheetIndex.col(2),
@@ -212,24 +207,6 @@ describe("GoogleSheetsAPI write mapping", () => {
     api.flush(operations);
 
     expect(batchUpdateCalls[0]?.requests).toEqual([
-      {
-        insertDimension: {
-          range: {
-            sheetId: 111,
-            dimension: "COLUMNS",
-            startIndex: 3,
-            endIndex: 4,
-          },
-          inheritFromBefore: true,
-        },
-      },
-      {
-        repeatCell: {
-          range: { sheetId: 111, startColumnIndex: 3, endColumnIndex: 4 },
-          cell: {},
-          fields: "userEnteredValue,userEnteredFormat,dataValidation",
-        },
-      },
       {
         repeatCell: {
           range: {
@@ -643,11 +620,22 @@ describe("GoogleSheetsAPI Table-bounded write mapping", () => {
     startRowIndex: SheetIndex.row(3),
   };
 
-  it("maps grid growth, a bounded insert, a Table widen, a bounded delete, and both copies onto Google's requests in order", () => {
+  it("maps row and column grid growth, a bounded insert, a Table widen, a bounded delete, and both copies onto Google's requests in order", () => {
     const { api, batchUpdateCalls } = recordingSheets();
 
     api.flush([
-      { kind: "appendDimension", sheetId: 111, addedRowCount: 2 },
+      {
+        kind: "appendDimension",
+        sheetId: 111,
+        dimension: "ROWS",
+        addedCount: 2,
+      },
+      {
+        kind: "appendDimension",
+        sheetId: 111,
+        dimension: "COLUMNS",
+        addedCount: 1,
+      },
       { kind: "insertRange", range: tableBand, shiftDimension: "ROWS" },
       { kind: "updateTableRange", tableId: "tbl", range: widenedTable },
       {
@@ -670,6 +658,9 @@ describe("GoogleSheetsAPI Table-bounded write mapping", () => {
         requests: [
           {
             appendDimension: { sheetId: 111, dimension: "ROWS", length: 2 },
+          },
+          {
+            appendDimension: { sheetId: 111, dimension: "COLUMNS", length: 1 },
           },
           { insertRange: { range: tableBand, shiftDimension: "ROWS" } },
           {
@@ -1005,7 +996,7 @@ describe("GoogleSheetsAPI time zone read", () => {
     });
   });
 
-  it("asks for each sheet's row count and each Table column's type in all three standing field masks", () => {
+  it("asks for each sheet's row and column counts and each Table column's type in all three standing field masks", () => {
     const { api, getCalls, getByDataFilterFields } = recordingSheets();
 
     api.fetchSheetProperties();
@@ -1016,7 +1007,7 @@ describe("GoogleSheetsAPI time zone read", () => {
     expect(masks).toHaveLength(3);
     masks.forEach((mask) => {
       expect(mask).toContain(
-        "properties(sheetId,title,gridProperties(rowCount))",
+        "properties(sheetId,title,gridProperties(rowCount,columnCount))",
       );
       expect(mask).toMatch(
         /tables\(tableId,name,range,columnProperties\(columnIndex,[^)]*columnType/,
@@ -1549,7 +1540,7 @@ describe("GoogleSheetsAPI HTTP transport", () => {
   it("sends one GET for sheet properties, carrying the field mask", () => {
     const { api, transport } = seedApi();
     const fields =
-      "properties(timeZone),sheets(properties(sheetId,title,gridProperties(rowCount)),tables(tableId,name,range,columnProperties(columnIndex,columnType)))";
+      "properties(timeZone),sheets(properties(sheetId,title,gridProperties(rowCount,columnCount)),tables(tableId,name,range,columnProperties(columnIndex,columnType)))";
 
     api.fetchSheetProperties();
 

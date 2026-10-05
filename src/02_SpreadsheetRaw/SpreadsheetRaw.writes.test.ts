@@ -703,6 +703,24 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
     expect(() => raw.sheet(111).row(2).delete()).toThrow(staleRowIndexes);
   });
 
+  it("refuses at the flush a sort queued after a flushed row delete", () => {
+    const raw = sheetAfterFlushedDataRowDelete();
+
+    raw
+      .sheet(111)
+      .requestSortGSheet({ colIdxToSortBy: 0, sortOrder: "ASCENDING" });
+
+    expect(() => raw.batchUpdateGSheets()).toThrow(staleRowIndexes);
+  });
+
+  it("refuses a column insert after a flushed row delete", () => {
+    const raw = sheetAfterFlushedDataRowDelete();
+
+    expect(() =>
+      raw.sheetMeta(111).insertColumnAtEnd({ columnId: "c:x:new", header: "New" }),
+    ).toThrow(staleRowIndexes);
+  });
+
   it("still reads an already-fetched cell after a flushed row delete", () => {
     const raw = sheetAfterFlushedDataRowDelete(true);
 
