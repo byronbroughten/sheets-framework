@@ -87,6 +87,17 @@ export class TableRaw extends TableCommonRaw {
       endRowIndex: origin.sheetRowIndex(rowIndex + 1),
     };
   }
+  // The live Table's columns only, so a range built on it never reaches a neighbour.
+  dataRowGridRange(rowIndex: number): BoundedGridRange {
+    const { origin, columnCount } = this;
+    return {
+      sheetId: this.sheetGid,
+      startRowIndex: origin.sheetRowIndex(rowIndex),
+      endRowIndex: origin.sheetRowIndex(rowIndex + 1),
+      startColumnIndex: origin.sheetColIndex(0),
+      endColumnIndex: origin.sheetColIndex(columnCount),
+    };
+  }
   get title(): string {
     if (this.sheetState.working.title === undefined) {
       throw new Error(

@@ -333,7 +333,7 @@ describe("SpreadsheetRaw.gatherRawOperation", () => {
 
   it("applies a raw request after every write the framework models, so it lands on the sheet those writes left", () => {
     const { grid } = stubSheetsService({
-      sheets: [{ sheetId: 111, title: "Records", table: { endRowIndex: 11 } }],
+      sheets: [{ sheetId: 111, title: "Records", table: { endRowIndex: 11, endColumnIndex: 3 } }],
     });
 
     const raw = SpreadsheetRaw.init();

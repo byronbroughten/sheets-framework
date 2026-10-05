@@ -1,6 +1,6 @@
 import type {
   DeleteConditionalFormatRuleOperation,
-  DeleteRowsOperation,
+  DeleteTableRowsOperation,
 } from "../../00_Source/RawSource/RawSource";
 import { SpreadsheetBaseRaw } from "../ClassBases/SpreadsheetBaseRaw";
 import { emptyStateRaw } from "../ClassTypes/emptyStateRaw";
@@ -31,7 +31,7 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
     tableIdsWithColumnTypeUpdates.forEach((tableId) =>
       this.ss.table(tableId).markColumnPropertiesStale(),
     );
-    // Row indexes only actually shift once the deletes have been sent, and a sheet-row delete shifts every Table on the sheet.
+    // Row indexes only actually shift once the deletes have been sent, and a Table below the deleted rows shifts with them.
     sheetGidsWithRowDeletes.forEach((sheetGid) =>
       this.ss
         .sheet(sheetGid)
@@ -80,18 +80,11 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
     table: TableRaw,
     { rowIndex, writes }: QueuedRowWrites,
   ): void {
-    if (writes.appendRow && writes.deleteRow) {
-      return;
-    } else if (writes.deleteRow) {
-      const origin = table.tableOrigin();
-      this.writeOperations.deleteRows.push({
-        kind: "deleteRows",
-        sheetId: table.sheetGid,
-        startIndex: origin.sheetRowIndex(rowIndex),
-        endIndex: origin.sheetRowIndex(rowIndex + 1),
-      });
+    if (writes.appendRow && writes.deleteRow) return;
+    const row = table.rowCommon(rowIndex);
+    if (writes.deleteRow) {
+      row.gatherDeleteTableRowsOperation();
     } else {
-      const row = table.rowCommon(rowIndex);
       if (writes.appendRow) {
         row.gatherAppendRowsOperation();
       }
@@ -102,7 +95,7 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
   }
   private _sheetGidsWithRowDeletes(): Set<number> {
     return new Set(
-      this.writeOperations.deleteRows.map(({ sheetId }) => sheetId),
+      this.writeOperations.deleteTableRows.map(({ range }) => range.sheetId),
     );
   }
   private _sheetGidsWithConditionalFormatMutations(): Set<number> {
@@ -165,10 +158,10 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
   }
   // Deletes within one batchUpdate apply sequentially and each shifts the
   // row indices below it, so same-sheet deletes must go highest-index-first
-  // or a later request's pre-computed startIndex lands on the wrong row.
-  private _deleteOperationsDescending(): DeleteRowsOperation[] {
-    return [...this.writeOperations.deleteRows].sort(
-      (a, b) => b.startIndex - a.startIndex,
+  // or a later request's pre-computed startRowIndex lands on the wrong row.
+  private _deleteOperationsDescending(): DeleteTableRowsOperation[] {
+    return [...this.writeOperations.deleteTableRows].sort(
+      (a, b) => b.range.startRowIndex - a.range.startRowIndex,
     );
   }
   private _deleteConditionalFormatOperationsDescending(): DeleteConditionalFormatRuleOperation[] {

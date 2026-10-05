@@ -10,7 +10,13 @@ import {
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
 import { SpreadsheetRaw } from "./SpreadsheetRaw";
-import { formulaCell, topDataRowIndex } from "./spreadsheetRawTestSupport";
+import {
+  formulaCell,
+  scratchGid,
+  startTableColIndex,
+  tableHeaderRowIndex,
+  topDataRowIndex,
+} from "./spreadsheetRawTestSupport";
 
 describe("SpreadsheetRaw add sheet and add Table", () => {
   const addSheetProps = {
@@ -305,6 +311,108 @@ describe("RowRaw.delete", () => {
 
     expect(raw.sheet(222).dataRowCountAfterFlush).toBe(unitsBefore);
     expect(raw.sheet(111).dataRowCountAfterFlush).toBe(6);
+  });
+
+  it("spans a column inserted at the Table end in the same flush, so the delete never covers part of the Table", () => {
+    const { grid } = stubSheetWithDataRows(2);
+
+    const raw = SpreadsheetRaw.init();
+    raw.fetchAllSheetProperties();
+    raw.sheetMeta(111).insertColumnAtEnd({ columnId: "c:x:new", header: "New" });
+    raw.sheet(111).row(0).delete();
+    raw.batchUpdateGSheets();
+
+    expect(
+      grid.sheet(111).values({
+        startRowIndex: topDataRowIndex,
+        endRowIndex: topDataRowIndex + 1,
+      }),
+    ).toEqual([["r2", null]]);
+  });
+
+  describe("beside a neighbouring Table", () => {
+    const leftStart = startTableColIndex;
+    const rightStart = startTableColIndex + 3;
+    const bothTablesBand = {
+      startRowIndex: topDataRowIndex,
+      endRowIndex: topDataRowIndex + 3,
+      startColumnIndex: leftStart,
+      endColumnIndex: rightStart + 2,
+    };
+    function stubSideBySideTables() {
+      return stubSheetsService({
+        sheets: [
+          {
+            sheetId: scratchGid,
+            title: "Byron's Scratch Sheet",
+            rows: buildGridRows({
+              [tableHeaderRowIndex]: ["ID", "Name", "", "Code", "Qty"],
+              [topDataRowIndex]: ["r1", "a", "loose", "c1", 5],
+              [topDataRowIndex + 1]: ["r2", "b", "", "c2", 6],
+              [topDataRowIndex + 2]: ["r3", "c", "", "c3", 7],
+            }),
+            tables: [
+              {
+                tableId: "left",
+                startColumnIndex: leftStart,
+                endColumnIndex: leftStart + 2,
+                endRowIndex: topDataRowIndex + 3,
+              },
+              {
+                tableId: "right",
+                startColumnIndex: rightStart,
+                endColumnIndex: rightStart + 2,
+                endRowIndex: topDataRowIndex + 3,
+              },
+            ],
+          },
+        ],
+      });
+    }
+
+    it("shifts up only the deleting Table's columns, leaving the neighbour and the cells between untouched", () => {
+      const { grid } = stubSideBySideTables();
+
+      const raw = SpreadsheetRaw.init();
+      raw.fetchAllSheetProperties();
+      raw.table("left").row(0).delete();
+      raw.batchUpdateGSheets();
+
+      expect(grid.sheet(scratchGid).values(bothTablesBand)).toEqual([
+        ["r2", "b", "loose", "c1", 5],
+        ["r3", "c", "", "c2", 6],
+        [null, null, "", "c3", 7],
+      ]);
+    });
+
+    it("lands several deletes in one Table on the rows they named", () => {
+      const { grid } = stubSideBySideTables();
+
+      const raw = SpreadsheetRaw.init();
+      raw.fetchAllSheetProperties();
+      raw.table("right").row(0).delete();
+      raw.table("right").row(2).delete();
+      raw.batchUpdateGSheets();
+
+      expect(grid.sheet(scratchGid).values(bothTablesBand)).toEqual([
+        ["r1", "a", "loose", "c2", 6],
+        ["r2", "b", "", null, null],
+        ["r3", "c", "", null, null],
+      ]);
+    });
+
+    it("flags the delete on its own Table only, keyed by Table and row index", () => {
+      stubSideBySideTables();
+
+      const raw = SpreadsheetRaw.init();
+      raw.fetchAllSheetProperties();
+      raw.table("left").row(1).delete();
+
+      expect(raw.table("left").row(1).isQueuedForDelete).toBe(true);
+      expect(raw.table("right").row(1).isQueuedForDelete).toBe(false);
+      expect(raw.table("left").dataRowCountAfterFlush).toBe(2);
+      expect(raw.table("right").dataRowCountAfterFlush).toBe(3);
+    });
   });
 });
 

@@ -18,7 +18,7 @@ export const emptyStateRaw = {
       addTable: [],
       appendRows: [],
       fillCell: [],
-      deleteRows: [],
+      deleteTableRows: [],
       sort: [],
       insertTableEndColumn: [],
       fillColumn: [],

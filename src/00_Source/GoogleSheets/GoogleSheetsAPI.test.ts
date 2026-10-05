@@ -157,10 +157,14 @@ describe("GoogleSheetsAPI write mapping", () => {
         scope: { sheetId: 111 },
       },
       {
-        kind: "deleteRows",
-        sheetId: 111,
-        startIndex: SheetIndex.row(8),
-        endIndex: SheetIndex.row(9),
+        kind: "deleteTableRows",
+        range: {
+          sheetId: 111,
+          startRowIndex: SheetIndex.row(8),
+          endRowIndex: SheetIndex.row(9),
+          startColumnIndex: SheetIndex.col(1),
+          endColumnIndex: SheetIndex.col(4),
+        },
       },
       {
         kind: "sort",
@@ -304,13 +308,15 @@ describe("GoogleSheetsAPI write mapping", () => {
       },
       { findReplace: { find: "a", replacement: "b", sheetId: 111 } },
       {
-        deleteDimension: {
+        deleteRange: {
           range: {
             sheetId: 111,
-            dimension: "ROWS",
-            startIndex: 8,
-            endIndex: 9,
+            startRowIndex: 8,
+            endRowIndex: 9,
+            startColumnIndex: 1,
+            endColumnIndex: 4,
           },
+          shiftDimension: "ROWS",
         },
       },
       {

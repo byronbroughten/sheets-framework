@@ -120,4 +120,10 @@ export abstract class RowCommonRaw extends RowBaseRaw {
       emptyRowCount: 1,
     });
   }
+  gatherDeleteTableRowsOperation(): void {
+    this.writeOperations.deleteTableRows.push({
+      kind: "deleteTableRows",
+      range: this.table.dataRowGridRange(this.rowIndex),
+    });
+  }
 }

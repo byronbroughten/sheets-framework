@@ -471,6 +471,7 @@ function shiftBandRanges(
   shift: DimensionShift,
 ): void {
   function shifted(range: GridRange, owner: string): GridRange | undefined {
+    if (isWholeSheetRange(range)) return range;
     const [crossStart, crossEnd] = gridRangeSpan(range, crossDimension(change));
     const [, end] = gridRangeSpan(range, change.dimension);
     const overlap = bandOverlap(change, crossStart, crossEnd);
@@ -496,6 +497,16 @@ function shiftBandRanges(
     });
     return ranges.length === 0 ? [] : [{ ...rule, ranges }];
   });
+}
+
+// A whole-sheet range has no coordinates for a shift to move or cut.
+function isWholeSheetRange(range: GridRange): boolean {
+  return (
+    range.startRowIndex === undefined &&
+    range.endRowIndex === undefined &&
+    range.startColumnIndex === undefined &&
+    range.endColumnIndex === undefined
+  );
 }
 
 function gridRangeSpan(
