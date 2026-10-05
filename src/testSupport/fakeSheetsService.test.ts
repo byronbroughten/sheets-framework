@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { googleRawRequest } from "../00_Source/GoogleSheets/GoogleSheetsAPI";
 import { installedRawSource } from "../00_Source/RawSource/RawSource";
+import { expectedSheetLayout } from "./expectedSheetLayout";
 import {
   buildGridRows,
   type FakeSheetProperties,
@@ -9,6 +10,8 @@ import {
   stubSheetsService,
 } from "./fakeSheetsService";
 import type { BoundedRange } from "./fakeSheetsService/fakeGrid";
+import type { FakeTablePlacement } from "./fakeSheetsService/fakeTables";
+import { fakeTableSheet } from "./fakeSheetsService/fakeTableSheet";
 import type { FakeGridView } from "./fakeSheetsService/gridView";
 
 type Request = GoogleAppsScript.Sheets.Schema.Request;
@@ -1098,6 +1101,107 @@ describe("stubSheetsService replays copyPaste of format and validation", () => {
         },
       }),
     ).toThrowError("The fake Sheets service does not replay copyPaste type PASTE_NORMAL.");
+  });
+});
+
+const gadgetGid = 11;
+const gadgetColumnConfigs = {
+  size: { columnId: "g:size", header: "Size" },
+  colour: { columnId: "g:colour", header: "Colour" },
+  unused: { columnId: "g:unused", header: "Unused" },
+};
+
+function gadgetSheet(
+  placement: FakeTablePlacement = {},
+): FakeSheetProperties {
+  return fakeTableSheet.build({
+    sheetId: gadgetGid,
+    title: "Gadget",
+    columnConfigs: gadgetColumnConfigs,
+    columnNames: ["size", "colour"],
+    bodyRows: [{ size: 1, colour: "red" }, { size: 2 }],
+    ...placement,
+  });
+}
+
+describe("fakeTableSheet builds a one-Table sheet from the layout", () => {
+  it("puts the column IDs and headers on their head rows and the body below", () => {
+    const { grid } = stubSheetsService({ sheets: [gadgetSheet()] });
+
+    const sheet = grid.sheet(gadgetGid);
+    const layout = expectedSheetLayout;
+    expect(sheet.title).toBe("Gadget");
+    expect(sheet.values()[layout.colIdRowIndex]).toEqual(["g:size", "g:colour"]);
+    expect(sheet.values()[layout.tableHeaderRowIndex]).toEqual(["Size", "Colour"]);
+    expect(sheet.values({ startRowIndex: layout.topDataRowIndex })).toEqual([
+      [1, "red"],
+      [2, null],
+    ]);
+    expect(sheet.tables[0]?.range).toMatchObject({
+      startRowIndex: layout.tableHeaderRowIndex,
+      endRowIndex: layout.topDataRowIndex + 2,
+      startColumnIndex: 0,
+      endColumnIndex: 2,
+    });
+  });
+
+  it("moves the head rows and body with a Table placed lower and to the right", () => {
+    const { grid } = stubSheetsService({
+      sheets: [gadgetSheet({ startRowIndex: 6, startColumnIndex: 1 })],
+    });
+
+    const sheet = grid.sheet(gadgetGid);
+    expect(sheet.values({ startRowIndex: 3 })).toEqual([
+      [null, "g:size", "g:colour"],
+      [null, null, null],
+      [null, null, null],
+      [null, "Size", "Colour"],
+      [null, 1, "red"],
+      [null, 2, null],
+    ]);
+    expect(sheet.tables[0]?.range).toMatchObject({
+      startRowIndex: 6,
+      endRowIndex: 9,
+      startColumnIndex: 1,
+      endColumnIndex: 3,
+    });
+  });
+});
+
+describe("FakeSheetView reads a Table's body", () => {
+  it("counts rows from the first body row and columns from the Table's first column", () => {
+    const { grid } = stubSheetsService({
+      sheets: [gadgetSheet({ startRowIndex: 6, startColumnIndex: 1 })],
+    });
+
+    const sheet = grid.sheet(gadgetGid);
+    expect(sheet.bodyValues()).toEqual([
+      [1, "red"],
+      [2, null],
+    ]);
+    expect(sheet.bodyRows({ startRowIndex: 1, startColumnIndex: 1 })).toEqual([[null]]);
+  });
+
+  it("ends at the Table's last row, not at the last row holding anything", () => {
+    const fixture = gadgetSheet();
+    const { grid } = stubSheetsService({
+      sheets: [{ ...fixture, rows: [...(fixture.rows ?? []), [], ["below"]] }],
+    });
+
+    expect(grid.sheet(gadgetGid).bodyValues()).toEqual([
+      [1, "red"],
+      [2, null],
+    ]);
+  });
+
+  it("throws on a sheet that doesn't hold exactly one Table", () => {
+    const { grid } = stubSheetsService({
+      sheets: [bandSheet({ lower: lowerTable(1) })],
+    });
+
+    expect(() => grid.sheet(bandGid).bodyRows()).toThrowError(
+      /Band holds 2 Tables; a body read needs exactly one/,
+    );
   });
 });
 

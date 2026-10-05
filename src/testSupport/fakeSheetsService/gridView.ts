@@ -1,3 +1,4 @@
+import { SheetIndex } from "../../00_Source/RawSource/SheetIndex";
 import type { FakeCell, FakeCellValue } from "../fakeSheetsService";
 import { fakeCells } from "./fakeCells";
 import { fakeGrid } from "./fakeGrid";
@@ -5,6 +6,7 @@ import {
   type FakeSheetState,
   type FakeSpreadsheet,
   fakeSpreadsheet,
+  type FakeTableState,
 } from "./fakeSpreadsheet";
 import { fakeTables } from "./fakeTables";
 
@@ -29,6 +31,9 @@ export interface FakeSheetView {
   // A rectangle of cells, `null` where empty; with no range, row 0 and column 0 to the last cell holding anything.
   rows(range?: FakeGridRange): FakeCell[][];
   values(range?: FakeGridRange): FakeCellValue[][];
+  // The sheet's one Table's body, counted from its first body row and first column; with no range, all of it.
+  bodyRows(range?: FakeGridRange): FakeCell[][];
+  bodyValues(range?: FakeGridRange): FakeCellValue[][];
 }
 
 export interface FakeGridView {
@@ -72,6 +77,9 @@ function sheetView(state: FakeSheetState): FakeSheetView {
         ),
     );
   }
+  function bodyRows(range: FakeGridRange = {}): FakeCell[][] {
+    return rows(bodySheetRange(sheet, range));
+  }
   return {
     title: sheet.title,
     rowCount: sheet.rowCount,
@@ -88,7 +96,37 @@ function sheetView(state: FakeSheetState): FakeSheetView {
     values(range) {
       return rows(range).map((row) => row.map(fakeCells.value));
     },
+    bodyRows,
+    bodyValues(range) {
+      return bodyRows(range).map((row) => row.map(fakeCells.value));
+    },
   };
+}
+
+function bodySheetRange(
+  sheet: FakeSheetState,
+  range: FakeGridRange,
+): FakeGridRange {
+  const table = onlyTable(sheet);
+  const origin = fakeTables.origin(table);
+  const bodyRowCount = origin.rowIndex(SheetIndex.row(table.endRowIndex));
+  const colCount = origin.colIndex(SheetIndex.col(table.endColumnIndex));
+  return {
+    startRowIndex: origin.sheetRowIndex(range.startRowIndex ?? 0),
+    endRowIndex: origin.sheetRowIndex(range.endRowIndex ?? bodyRowCount),
+    startColumnIndex: origin.sheetColIndex(range.startColumnIndex ?? 0),
+    endColumnIndex: origin.sheetColIndex(range.endColumnIndex ?? colCount),
+  };
+}
+
+function onlyTable(sheet: FakeSheetState): FakeTableState {
+  const [table, ...others] = sheet.tables;
+  if (table === undefined || others.length > 0) {
+    throw new Error(
+      `Sheet ${sheet.title} holds ${sheet.tables.length} Tables; a body read needs exactly one.`,
+    );
+  }
+  return table;
 }
 
 function copied(sheet: FakeSheetState): FakeSheetState {
