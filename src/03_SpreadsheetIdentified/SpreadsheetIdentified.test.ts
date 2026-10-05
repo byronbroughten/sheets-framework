@@ -458,11 +458,11 @@ describe("RowIdentified.clearValues", () => {
 });
 
 describe("TableIdentified.appendRowDefault", () => {
-  it("throws when the sheet's one data row was never fetched, naming the prefetch owed", () => {
+  it("throws when the Table's one data row was never fetched, naming the Table and the prefetch owed", () => {
     stubSheetConfigWithUnreadTopRow();
 
     expect(() => unfetchedSheetConfig().appendRowDefault()).toThrowError(
-      /never fetched.*Prefetch that row first/,
+      /Table ".*" on "Sheet Config".*never fetched.*Prefetch its top data row/,
     );
   });
 

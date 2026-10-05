@@ -176,7 +176,7 @@ export class TableIdentified extends TableCommonIdentified {
     if (!this._isTopRowTheOnlyRow) return false;
     if (!this.topRow.isActive) {
       throw new Error(
-        `Cannot append to sheetGid ${this.sheetGid}: its one data row was never fetched, so whether the append may reuse it is unknown. Prefetch that row first.`,
+        `Cannot append to ${this.raw.tableLabel}: its one data row was never fetched, so whether the append may reuse it is unknown. Prefetch its top data row first.`,
       );
     }
     return this.topRow.isReusable;
