@@ -500,17 +500,88 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
         ).toEqual([["ID"], ["b2"]]);
       });
 
-      function flushedGrowthOf(tableId: string): SpreadsheetRaw {
-        stubStackedTables();
+      function flushedGrowthOfTop() {
+        const { grid } = stubStackedTables();
         const raw = SpreadsheetRaw.init();
         raw.fetchAllSheetProperties();
-        raw.table(tableId).appendDataRow().updateValue(0, "new");
+        raw.table("top").appendDataRow().updateValue(0, "new");
         raw.batchUpdateGSheets();
-        return raw;
+        return { raw, grid };
       }
 
-      it("refuses a write to the grown Table and to an overlapping Table below it after the flush, naming each", () => {
-        const raw = flushedGrowthOf("top");
+      it("lands a later flush's writes on the grown Table and on the Table it pushed down", () => {
+        const { raw, grid } = flushedGrowthOfTop();
+
+        raw.table("top").row(2).cell(1).updateValue("c");
+        raw.table("lower").row(0).cell(1).updateValue("w");
+        raw.table("lower").row(1).delete();
+        raw.batchUpdateGSheets();
+
+        expect(
+          grid.sheet(111).values({
+            startRowIndex: tableHeaderRowIndex,
+            endRowIndex: lowerHeaderRowIndex + 3,
+            endColumnIndex: startTableColIndex + 2,
+          }),
+        ).toEqual([
+          ["ID", "Name"],
+          ["t1", "a"],
+          ["t2", "b"],
+          ["new", "c"],
+          [null, null],
+          ["ID", "Name"],
+          ["b1", "w"],
+        ]);
+      });
+
+      it("grows the grown Table again in a later flush, pushing the Table below down again", () => {
+        const { raw, grid } = flushedGrowthOfTop();
+
+        raw.table("top").appendDataRow().updateValue(0, "again");
+        raw.table("lower").row(1).cell(1).updateValue("z");
+        raw.batchUpdateGSheets();
+
+        expect(tableRows(grid)).toMatchObject({
+          top: [tableHeaderRowIndex, topDataRowIndex + 4],
+          lower: [lowerHeaderRowIndex + 2, lowerHeaderRowIndex + 5],
+        });
+        expect(
+          grid.sheet(111).values({
+            startRowIndex: topDataRowIndex + 2,
+            endRowIndex: lowerHeaderRowIndex + 5,
+            endColumnIndex: startTableColIndex + 2,
+          }),
+        ).toEqual([
+          ["new", null],
+          ["again", null],
+          [null, null],
+          ["ID", "Name"],
+          ["b1", "x"],
+          ["b2", "z"],
+        ]);
+      });
+
+      it("flags no Table's row indexes stale after growth", () => {
+        const { raw } = flushedGrowthOfTop();
+
+        expect(raw.table("top").rowIndexesAreStale).toBe(false);
+        expect(raw.table("lower").rowIndexesAreStale).toBe(false);
+        expect(raw.table("aside").rowIndexesAreStale).toBe(false);
+      });
+
+      it("still refuses a row write through the sheet, which resolves to no fetched Table, after growth pushed its Tables down", () => {
+        const { raw } = flushedGrowthOfTop();
+
+        expect(() =>
+          raw.sheet(111).row(0).cell(0).updateValue("late"),
+        ).toThrow(/sheet properties have been fetched/);
+      });
+
+      it("still flags the sheet's Tables stale after a flushed row delete that follows growth, naming each", () => {
+        const { raw } = flushedGrowthOfTop();
+
+        raw.table("top").row(0).delete();
+        raw.batchUpdateGSheets();
 
         expect(() =>
           raw.table("top").row(0).cell(0).updateValue("late"),
@@ -518,23 +589,6 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
         expect(() => raw.table("lower").row(0).delete()).toThrow(
           /Table "Lower" on "Records" \(gid 111\).*refetch/,
         );
-      });
-
-      it("flags neither a Table below whose columns don't overlap nor a Table above", () => {
-        const raw = flushedGrowthOf("lower");
-
-        expect(raw.table("lower").rowIndexesAreStale).toBe(true);
-        expect(raw.table("aside").rowIndexesAreStale).toBe(false);
-        expect(raw.table("top").rowIndexesAreStale).toBe(false);
-        expect(() =>
-          raw.table("aside").row(0).cell(0).updateValue("c9"),
-        ).not.toThrow();
-      });
-
-      it("leaves a Table below a non-overlapping growth unflagged", () => {
-        const raw = flushedGrowthOf("top");
-
-        expect(raw.table("aside").rowIndexesAreStale).toBe(false);
       });
     });
   });
