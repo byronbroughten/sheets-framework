@@ -48,6 +48,7 @@ function toSheetSnapshot(sheet: GoogleSheet): SheetSnapshot {
     sheetGid: Val.assert(properties.sheetId, "sheetId"),
     title: properties.title ?? null,
     rowCount: properties.gridProperties?.rowCount,
+    columnCount: properties.gridProperties?.columnCount,
     tables: sheet.tables?.map(toTableSnapshot),
     gridBlocks: sheet.data?.map((block) => ({
       startColumn: SheetIndex.col(block.startColumn ?? 0),

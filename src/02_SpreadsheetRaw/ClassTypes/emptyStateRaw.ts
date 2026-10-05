@@ -21,7 +21,7 @@ export const emptyStateRaw = {
       fillCell: [],
       deleteTableRows: [],
       sort: [],
-      insertTableEndColumn: [],
+      insertTableEndColumns: [],
       fillColumn: [],
       findReplace: [],
       deleteConditionalFormatRule: [],
@@ -60,7 +60,7 @@ export const emptyStateRaw = {
     };
   },
   sheetWriteQueue(): SheetWriteQueueRaw {
-    return { appendedRowCount: 0 };
+    return { appendedRowCount: 0, appendedColumnCount: 0 };
   },
   tableFetchQueue(): TableFetchQueueRaw {
     return {
@@ -85,6 +85,7 @@ export const emptyStateRaw = {
       working: {
         title: undefined,
         rowCount: undefined,
+        columnCount: undefined,
         conditionalFormats: { rules: undefined, isStale: false },
         editProtections: { protections: undefined, isStale: false },
       },

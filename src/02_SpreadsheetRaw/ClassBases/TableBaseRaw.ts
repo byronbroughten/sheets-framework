@@ -121,6 +121,9 @@ export class TableBaseRaw extends SpreadsheetBaseRaw {
     if (sheet.rowCount !== undefined) {
       this.sheetState.working.rowCount = sheet.rowCount;
     }
+    if (sheet.columnCount !== undefined) {
+      this.sheetState.working.columnCount = sheet.columnCount;
+    }
     if (sheet.tables !== undefined) {
       this._integrateTables(sheet.tables);
     }

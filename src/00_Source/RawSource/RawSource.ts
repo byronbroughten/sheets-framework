@@ -52,6 +52,7 @@ export interface SheetSnapshot {
   sheetGid: number;
   title: string | null;
   rowCount: number | undefined;
+  columnCount: number | undefined;
   tables: TableSnapshot[] | undefined;
   gridBlocks: GridBlockSnapshot[] | undefined;
 }
@@ -129,7 +130,6 @@ export type LocalWriteOperation =
   | UpdateTableRangeOperation
   | DeleteRangeOperation
   | CopyPasteOperation
-  | InsertTableEndColumnOperation
   | FillColumnOperation
   | FillCellOperation
   | FindReplaceOperation
@@ -168,11 +168,12 @@ export interface TableColumnPropertiesAdd {
   columnType: TableColumnType;
 }
 
-// Adds rows past the grid's last row, so it can't split a Table (sheets-framework#59).
+// Adds rows or columns past the grid's edge, so it can't split a Table (sheets-framework#59).
 export interface AppendDimensionOperation {
   kind: "appendDimension";
   sheetId: number;
-  addedRowCount: number;
+  dimension: GridDimension;
+  addedCount: number;
 }
 
 // Shifts only the range's own cells, so a Table beside it is spared (sheets-framework#53).
@@ -203,13 +204,6 @@ export interface CopyPasteOperation {
   source: BoundedGridRange;
   destination: BoundedGridRange;
   pasteType: CopyPasteType;
-}
-
-// Table-end only: a mid-Table insert needs its own measured inheritFromBefore.
-export interface InsertTableEndColumnOperation {
-  kind: "insertTableEndColumn";
-  sheetId: number;
-  startColumnIndex: SheetColIndex;
 }
 
 export interface FillColumnOperation {

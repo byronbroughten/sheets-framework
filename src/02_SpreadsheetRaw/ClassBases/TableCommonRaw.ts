@@ -16,6 +16,7 @@ import type {
   AppendTableRows,
   CellFill,
   ColumnFill,
+  InsertTableEndColumns,
   TablePropertiesRaw,
   TableWriteProps,
   TableWriteQueueRaw,
@@ -59,8 +60,7 @@ export abstract class TableCommonRaw extends TableBaseRaw {
     return endRowIndex - startRowIndex - 1;
   }
   get columnCount(): number {
-    const { startColumnIndex, endColumnIndex } =
-      this._workingTableProperties();
+    const { startColumnIndex, endColumnIndex } = this._workingTableProperties();
     return endColumnIndex - startColumnIndex;
   }
   get columnProperties(): TableColumnSnapshot[] {
@@ -83,9 +83,11 @@ export abstract class TableCommonRaw extends TableBaseRaw {
     const properties = this._workingTableProperties();
     properties.endRowIndex = SheetIndex.row(properties.endRowIndex + 1);
   }
-  growColumnCount(): void {
+  growColumnCount(addedCount: number): void {
     const properties = this._workingTableProperties();
-    properties.endColumnIndex = SheetIndex.col(properties.endColumnIndex + 1);
+    properties.endColumnIndex = SheetIndex.col(
+      properties.endColumnIndex + addedCount,
+    );
   }
   rowShiftFrom(growths: AppendTableRows[]): number {
     const properties = this.tableProperties;
@@ -106,6 +108,27 @@ export abstract class TableCommonRaw extends TableBaseRaw {
     );
     properties.endRowIndex = SheetIndex.row(properties.endRowIndex + rowCount);
   }
+  columnShiftFrom(inserts: InsertTableEndColumns[]): number {
+    const properties = this.tableProperties;
+    if (properties === undefined) return 0;
+    return inserts
+      .filter(({ newColumns }) => newColumns.sheetId === this.sheetGid)
+      .filter(({ newColumns }) => isPushedRightBy(newColumns, properties))
+      .reduce(
+        (columnCount, { newColumns }) =>
+          columnCount + newColumns.endColumnIndex - newColumns.startColumnIndex,
+        0,
+      );
+  }
+  shiftColumnsRight(columnCount: number): void {
+    const properties = this._knownTableProperties();
+    properties.startColumnIndex = SheetIndex.col(
+      properties.startColumnIndex + columnCount,
+    );
+    properties.endColumnIndex = SheetIndex.col(
+      properties.endColumnIndex + columnCount,
+    );
+  }
   markRowIndexesStale(): void {
     this._knownTableProperties().rowIndexesAreStale = true;
   }
@@ -121,9 +144,14 @@ export abstract class TableCommonRaw extends TableBaseRaw {
   }
   assertRowIndexesNotStale(): void {
     if (!this._workingTableProperties().rowIndexesAreStale) return;
-    throw new Error(
-      `Row indexes are stale for ${this.tableLabel}: a flush has moved its rows, so it needs a refetch, in a new run, before another row write.`,
-    );
+    throw new Error(rowIndexesStaleMessage(this.tableLabel));
+  }
+  // Every gathered write converts its rows here; unlike the queue-time assert, it allows a Table not yet fetched.
+  originAtGathering(): TableOrigin {
+    if (this.rowIndexesAreStale) {
+      throw new Error(rowIndexesStaleMessage(this.tableLabel));
+    }
+    return this.tableOrigin();
   }
   // The table's own range, not the layout's: no table means no table columns.
   isTableColIndex(colIndex: number): boolean {
@@ -239,6 +267,21 @@ function isPushedDownBy(
     properties.startColumnIndex < newRows.endColumnIndex &&
     newRows.startColumnIndex < properties.endColumnIndex
   );
+}
+
+function isPushedRightBy(
+  newColumns: BoundedGridRange,
+  properties: TablePropertiesRaw,
+): boolean {
+  return (
+    properties.startColumnIndex >= newColumns.startColumnIndex &&
+    properties.startRowIndex < newColumns.endRowIndex &&
+    newColumns.startRowIndex < properties.endRowIndex
+  );
+}
+
+function rowIndexesStaleMessage(tableLabel: string): string {
+  return `Row indexes are stale for ${tableLabel}: a flush has moved its rows, so it needs a refetch, in a new run, before another row write.`;
 }
 
 function cellFieldsLeftUnder(fill: ColumnFill, cellFill: CellFill): CellFill {

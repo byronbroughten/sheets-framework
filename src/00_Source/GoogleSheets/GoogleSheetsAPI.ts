@@ -68,9 +68,10 @@ interface FieldsArg {
 const sheetsApiBase = "https://sheets.googleapis.com/v4/spreadsheets";
 
 const timeZoneMask = "properties(timeZone)";
-const sheetPropertiesMask = "properties(sheetId,title,gridProperties(rowCount))";
+const sheetPropertiesMask =
+  "properties(sheetId,title,gridProperties(rowCount,columnCount))";
 
-// The time zone, row count and column types ride every standing fetch, so none costs its own get.
+// The time zone, grid size and column types ride every standing fetch, so none costs its own get.
 const fieldMasks = {
   timeZone: timeZoneMask,
   sheetProperties:
@@ -292,8 +293,8 @@ function modeledOperationToGoogleRequests(
         {
           appendDimension: {
             sheetId: operation.sheetId,
-            dimension: "ROWS",
-            length: operation.addedRowCount,
+            dimension: operation.dimension,
+            length: operation.addedCount,
           },
         },
       ];
@@ -332,32 +333,6 @@ function modeledOperationToGoogleRequests(
             destination: operation.destination,
             pasteType: operation.pasteType,
             pasteOrientation: "NORMAL",
-          },
-        },
-      ];
-    case "insertTableEndColumn":
-      return [
-        {
-          insertDimension: {
-            range: {
-              sheetId: operation.sheetId,
-              dimension: "COLUMNS",
-              startIndex: operation.startColumnIndex,
-              endIndex: operation.startColumnIndex + 1,
-            },
-            inheritFromBefore: true, // Only then does a Table-end insert grow the Table (docs/testing.md).
-          },
-        },
-        {
-          // Clears what inheriting copied from the neighbour, so the column starts plain.
-          repeatCell: {
-            range: {
-              sheetId: operation.sheetId,
-              startColumnIndex: operation.startColumnIndex,
-              endColumnIndex: operation.startColumnIndex + 1,
-            },
-            cell: {},
-            fields: "userEnteredValue,userEnteredFormat,dataValidation",
           },
         },
       ];

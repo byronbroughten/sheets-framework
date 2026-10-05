@@ -332,6 +332,172 @@ describe("SheetMetaRaw.insertColumnAtEnd", () => {
       columnName: "New",
     });
   });
+
+  describe("beside other Tables", () => {
+    const headerRow = tableHeaderRowIndex + 2;
+    const columnIdRow = headerRow - 3;
+    const lastRow = headerRow + 2;
+    const underHeaderRow = lastRow + 5;
+    const rightStart = 3;
+    function stubTablesAround() {
+      return stubSheetsService({
+        sheets: [
+          {
+            sheetId: 111,
+            title: "Records",
+            rows: buildGridRows({
+              [columnIdRow - 1]: ["", "", "above"],
+              [headerRow]: ["ID", "Name", "", "ID", "Code"],
+              [headerRow + 1]: ["l1", "a", "", "r1", "x"],
+              [headerRow + 2]: ["l2", "b", "", "r2", "y"],
+              [lastRow + 1]: ["", "", "below"],
+              [underHeaderRow]: ["ID", "Name", "Qty", "Code"],
+              [underHeaderRow + 1]: ["u1", "p", 1, "q"],
+            }),
+            tables: [
+              {
+                tableId: "left",
+                name: "Left",
+                startRowIndex: headerRow,
+                endColumnIndex: 2,
+                endRowIndex: lastRow + 1,
+                headRows: { 3: ["c:lft:a", "c:lft:b"] },
+              },
+              {
+                tableId: "right",
+                name: "Right",
+                startRowIndex: headerRow,
+                startColumnIndex: rightStart,
+                endColumnIndex: rightStart + 2,
+                endRowIndex: lastRow + 1,
+                headRows: { 3: ["c:rgt:a", "c:rgt:b"] },
+              },
+              {
+                tableId: "under",
+                name: "Under",
+                startRowIndex: underHeaderRow,
+                endColumnIndex: 4,
+                endRowIndex: underHeaderRow + 2,
+                headRows: { 3: ["c:und:a"] },
+              },
+            ],
+          },
+        ],
+      });
+    }
+    function tableColumns(
+      grid: ReturnType<typeof stubSheetsService>["grid"],
+    ): Record<string, [number | undefined, number | undefined]> {
+      return Object.fromEntries(
+        grid
+          .sheet(111)
+          .tables.map(({ tableId, range }) => [
+            tableId,
+            [range?.startColumnIndex, range?.endColumnIndex],
+          ]),
+      );
+    }
+    function fetchedTablesAround() {
+      const { grid } = stubTablesAround();
+      const raw = SpreadsheetRaw.init();
+      raw.fetchAllSheetProperties();
+      return { raw, grid };
+    }
+
+    it("widens the Table and moves its head rows, leaving the cells above and below it and the Table under it untouched", () => {
+      const { raw, grid } = fetchedTablesAround();
+
+      raw
+        .table("left")
+        .meta.insertColumnAtEnd({ columnId: "c:lft:new", header: "New" });
+      raw.batchUpdateGSheets();
+
+      expect(tableColumns(grid)).toMatchObject({ left: [0, 3], under: [0, 4] });
+      expect(
+        grid.sheet(111).values({
+          startRowIndex: columnIdRow - 1,
+          endRowIndex: lastRow + 2,
+          startColumnIndex: 2,
+          endColumnIndex: 3,
+        }),
+      ).toEqual([
+        ["above"],
+        ["c:lft:new"],
+        [null],
+        [null],
+        ["New"],
+        [null],
+        [null],
+        ["below"],
+      ]);
+      expect(
+        grid.sheet(111).values({
+          startRowIndex: underHeaderRow - 3,
+          endRowIndex: underHeaderRow + 2,
+          endColumnIndex: 4,
+        }),
+      ).toEqual([
+        ["c:und:a", null, null, null],
+        [null, null, null, null],
+        [null, null, null, null],
+        ["ID", "Name", "Qty", "Code"],
+        ["u1", "p", 1, "q"],
+      ]);
+    });
+
+    it("shifts a Table to the right whose rows it spans, head rows included, and lands a write to it in the same batch at its new columns", () => {
+      const { raw, grid } = fetchedTablesAround();
+
+      raw
+        .table("left")
+        .meta.insertColumnAtEnd({ columnId: "c:lft:new", header: "New" });
+      raw.table("right").row(0).cell(1).updateValue("moved");
+      raw.batchUpdateGSheets();
+
+      expect(tableColumns(grid)).toMatchObject({
+        right: [rightStart + 1, rightStart + 3],
+      });
+      expect(
+        grid.sheet(111).values({
+          startRowIndex: columnIdRow,
+          endRowIndex: lastRow + 1,
+          startColumnIndex: rightStart + 1,
+          endColumnIndex: rightStart + 3,
+        }),
+      ).toEqual([
+        ["c:rgt:a", "c:rgt:b"],
+        [null, null],
+        [null, null],
+        ["ID", "Code"],
+        ["r1", "moved"],
+        ["r2", "y"],
+      ]);
+    });
+
+    it("lands inserts on two side-by-side Tables in one batch, each at its own end", () => {
+      const { raw, grid } = fetchedTablesAround();
+
+      raw
+        .table("left")
+        .meta.insertColumnAtEnd({ columnId: "c:lft:new", header: "New" });
+      raw
+        .table("right")
+        .meta.insertColumnAtEnd({ columnId: "c:rgt:new", header: "Extra" });
+      raw.batchUpdateGSheets();
+
+      expect(tableColumns(grid)).toMatchObject({
+        left: [0, 3],
+        right: [rightStart + 1, rightStart + 4],
+      });
+      expect(
+        grid.sheet(111).values({
+          startRowIndex: headerRow,
+          endRowIndex: headerRow + 1,
+          endColumnIndex: rightStart + 4,
+        }),
+      ).toEqual([["ID", "Name", "New", "", "ID", "Code", "Extra"]]);
+    });
+  });
 });
 
 describe("SheetMetaRaw.activeColumnIds", () => {
