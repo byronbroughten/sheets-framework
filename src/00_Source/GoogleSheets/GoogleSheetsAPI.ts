@@ -452,7 +452,7 @@ function modeledOperationToGoogleRequests(
         {
           addTable: {
             table: {
-              tableId: operation.name,
+              tableId: operation.tableId,
               name: operation.name,
               range: operation.range,
             },
@@ -461,7 +461,7 @@ function modeledOperationToGoogleRequests(
         {
           updateTable: {
             table: {
-              tableId: operation.name,
+              tableId: operation.tableId,
               columnProperties: operation.columnProperties,
             },
             fields: "columnProperties",
