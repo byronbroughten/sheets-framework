@@ -243,6 +243,25 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
       ).toEqual([["r1"], ["r2"], ["r3"]]);
     });
 
+    it("leaves no gap when an appended row is deleted in the same flush", () => {
+      const { grid } = stubGrowingTable();
+
+      const raw = SpreadsheetRaw.init();
+      raw.fetchAllSheetProperties();
+      const deleted = raw.sheet(111).appendDataRow().updateValue(0, "gone");
+      raw.sheet(111).appendDataRow().updateValue(0, "r2");
+      deleted.delete();
+      raw.batchUpdateGSheets();
+
+      expect(firstTableEndRowIndex(grid, 111)).toBe(topDataRowIndex + 2);
+      expect(
+        grid.sheet(111).values({
+          startRowIndex: topDataRowIndex,
+          endColumnIndex: startTableColIndex + 1,
+        }),
+      ).toEqual([["r1"], ["r2"]]);
+    });
+
     it("needs no appendDimension when the grid already reaches past the new rows", () => {
       const { grid } = stubSheetsService({
         sheets: [

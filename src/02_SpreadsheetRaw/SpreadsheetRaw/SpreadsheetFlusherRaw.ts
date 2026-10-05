@@ -85,7 +85,6 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
     table: TableRaw,
     { rowIndex, writes }: QueuedRowWrites,
   ): void {
-    if (writes.appendRow && writes.deleteRow) return;
     const row = table.rowCommon(rowIndex);
     if (writes.deleteRow) {
       row.gatherDeleteTableRowsOperation();

@@ -559,9 +559,10 @@ export class TableRaw extends TableCommonRaw {
       ],
     });
   }
+  // An appended row deleted this flush still grows, then goes with the deletes, so the rows after it keep their place.
   private _queuedRowAppendIndexes(): number[] {
     return Array.from(this.rowWrites).flatMap(([rowIndex, writes]) =>
-      writes.appendRow && !writes.deleteRow ? [rowIndex] : [],
+      writes.appendRow ? [rowIndex] : [],
     );
   }
   private _queueGridRowsThrough(endRowIndex: SheetRowIndex): void {
