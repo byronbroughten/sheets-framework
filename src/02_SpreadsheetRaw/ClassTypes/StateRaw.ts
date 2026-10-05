@@ -5,6 +5,7 @@ import type {
 import type { ConditionalFormatRule } from "../../00_Source/RawSource/ConditionalFormat";
 import type { EditProtection } from "../../00_Source/RawSource/EditProtection";
 import type {
+  BoundedGridRange,
   CopyPasteOperation,
   FillCellOperation,
   FindReplaceScope as BaseFindReplaceScope,
@@ -59,8 +60,9 @@ export type WriteOperations = {
 
 // One Table's growth, expanded at gathering; the flusher sends a sheet's growths bottom-up.
 export interface AppendTableRows {
-  sheetId: number;
-  startRowIndex: SheetRowIndex;
+  tableId: string;
+  // Where the rows go in, in the layout before any of the batch's growth.
+  newRows: BoundedGridRange;
   operations: TableGrowthOperation[];
 }
 

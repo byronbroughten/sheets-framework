@@ -378,9 +378,169 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
       expect(getCalls.length + getByDataFilterCalls.length).toBe(fetchCount);
       expect(batchUpdateCount()).toBe(1);
     });
+
+    describe("stacked Tables", () => {
+      const lowerHeaderRowIndex = topDataRowIndex + 3;
+      const asideStart = startTableColIndex + 3;
+      function stubStackedTables() {
+        return stubSheetsService({
+          sheets: [
+            {
+              sheetId: 111,
+              title: "Records",
+              rows: buildGridRows({
+                [tableHeaderRowIndex]: ["ID", "Name"],
+                [topDataRowIndex]: ["t1", "a"],
+                [topDataRowIndex + 1]: ["t2", "b"],
+                [lowerHeaderRowIndex]: ["ID", "Name", "", "Code", "Qty"],
+                [lowerHeaderRowIndex + 1]: ["b1", "x", "", "c1", 5],
+                [lowerHeaderRowIndex + 2]: ["b2", "y", "", "c2", 6],
+              }),
+              tables: [
+                {
+                  tableId: "top",
+                  name: "Top",
+                  endColumnIndex: startTableColIndex + 2,
+                  endRowIndex: topDataRowIndex + 2,
+                },
+                {
+                  tableId: "lower",
+                  name: "Lower",
+                  startRowIndex: lowerHeaderRowIndex,
+                  endColumnIndex: startTableColIndex + 2,
+                  endRowIndex: lowerHeaderRowIndex + 3,
+                },
+                {
+                  tableId: "aside",
+                  name: "Aside",
+                  startRowIndex: lowerHeaderRowIndex,
+                  startColumnIndex: asideStart,
+                  endColumnIndex: asideStart + 2,
+                  endRowIndex: lowerHeaderRowIndex + 3,
+                },
+              ],
+            },
+          ],
+        });
+      }
+      function tableRows(
+        grid: ReturnType<typeof stubSheetsService>["grid"],
+      ): Record<string, [number | undefined, number | undefined]> {
+        return Object.fromEntries(
+          grid
+            .sheet(111)
+            .tables.map(({ tableId, range }) => [
+              tableId,
+              [range?.startRowIndex, range?.endRowIndex],
+            ]),
+        );
+      }
+
+      it("pushes a Table below a grown one down intact, and lands a later write in the batch on its rows after growth", () => {
+        const { grid } = stubStackedTables();
+
+        const raw = SpreadsheetRaw.init();
+        raw.fetchAllSheetProperties();
+        raw.table("top").appendDataRow().updateValue(0, "t3");
+        raw.table("lower").row(1).cell(1).updateValue("z");
+        raw.batchUpdateGSheets();
+
+        expect(tableRows(grid)).toEqual({
+          top: [tableHeaderRowIndex, topDataRowIndex + 3],
+          lower: [lowerHeaderRowIndex + 1, lowerHeaderRowIndex + 4],
+          aside: [lowerHeaderRowIndex, lowerHeaderRowIndex + 3],
+        });
+        expect(
+          grid.sheet(111).values({
+            startRowIndex: lowerHeaderRowIndex + 1,
+            endColumnIndex: startTableColIndex + 2,
+          }),
+        ).toEqual([
+          ["ID", "Name"],
+          ["b1", "x"],
+          ["b2", "z"],
+        ]);
+      });
+
+      it("grows the lower Table too, filling its new row below its pushed-down rows", () => {
+        const { grid } = stubStackedTables();
+
+        const raw = SpreadsheetRaw.init();
+        raw.fetchAllSheetProperties();
+        raw.table("lower").appendDataRow().updateValue(0, "b3");
+        raw.table("top").appendDataRow().updateValue(0, "t3");
+        raw.batchUpdateGSheets();
+
+        expect(tableRows(grid)).toMatchObject({
+          top: [tableHeaderRowIndex, topDataRowIndex + 3],
+          lower: [lowerHeaderRowIndex + 1, lowerHeaderRowIndex + 5],
+        });
+        expect(
+          grid.sheet(111).values({
+            startRowIndex: lowerHeaderRowIndex + 2,
+            endColumnIndex: startTableColIndex + 1,
+          }),
+        ).toEqual([["b1"], ["b2"], ["b3"]]);
+      });
+
+      it("deletes a lower Table's row at its rows after growth", () => {
+        const { grid } = stubStackedTables();
+
+        const raw = SpreadsheetRaw.init();
+        raw.fetchAllSheetProperties();
+        raw.table("top").appendDataRow().updateValue(0, "t3");
+        raw.table("lower").row(0).delete();
+        raw.batchUpdateGSheets();
+
+        expect(
+          grid.sheet(111).values({
+            startRowIndex: lowerHeaderRowIndex + 1,
+            endColumnIndex: startTableColIndex + 1,
+          }),
+        ).toEqual([["ID"], ["b2"]]);
+      });
+
+      function flushedGrowthOf(tableId: string): SpreadsheetRaw {
+        stubStackedTables();
+        const raw = SpreadsheetRaw.init();
+        raw.fetchAllSheetProperties();
+        raw.table(tableId).appendDataRow().updateValue(0, "new");
+        raw.batchUpdateGSheets();
+        return raw;
+      }
+
+      it("refuses a write to the grown Table and to an overlapping Table below it after the flush, naming each", () => {
+        const raw = flushedGrowthOf("top");
+
+        expect(() =>
+          raw.table("top").row(0).cell(0).updateValue("late"),
+        ).toThrow(/Table "Top" on "Records" \(gid 111\).*refetch/);
+        expect(() => raw.table("lower").row(0).delete()).toThrow(
+          /Table "Lower" on "Records" \(gid 111\).*refetch/,
+        );
+      });
+
+      it("flags neither a Table below whose columns don't overlap nor a Table above", () => {
+        const raw = flushedGrowthOf("lower");
+
+        expect(raw.table("lower").rowIndexesAreStale).toBe(true);
+        expect(raw.table("aside").rowIndexesAreStale).toBe(false);
+        expect(raw.table("top").rowIndexesAreStale).toBe(false);
+        expect(() =>
+          raw.table("aside").row(0).cell(0).updateValue("c9"),
+        ).not.toThrow();
+      });
+
+      it("leaves a Table below a non-overlapping growth unflagged", () => {
+        const raw = flushedGrowthOf("top");
+
+        expect(raw.table("aside").rowIndexesAreStale).toBe(false);
+      });
+    });
   });
 
-  const staleRowIndexes = "Row indexes are stale for sheetGid 111.";
+  const staleRowIndexes =
+    'Row indexes are stale for Table "" on "Records" (gid 111): a flush has moved its rows, so it needs a refetch';
 
   function sheetAfterFlushedDataRowDelete(fetchKeptRow = false) {
     stubSheetsService({

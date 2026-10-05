@@ -533,8 +533,8 @@ export class TableRaw extends TableCommonRaw {
     };
     this._queueGridRowsThrough(newRows.endRowIndex);
     this.writeOperations.appendTableRows.push({
-      sheetId: this.sheetGid,
-      startRowIndex: newRows.startRowIndex,
+      tableId: this.tableId,
+      newRows,
       operations: [
         { kind: "insertRange", range: newRows, shiftDimension: "ROWS" },
         {

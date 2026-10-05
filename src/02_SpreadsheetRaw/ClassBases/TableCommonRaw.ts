@@ -1,4 +1,7 @@
-import type { TableColumnSnapshot } from "../../00_Source/RawSource/RawSource";
+import type {
+  BoundedGridRange,
+  TableColumnSnapshot,
+} from "../../00_Source/RawSource/RawSource";
 import {
   type SheetColIndex,
   SheetIndex,
@@ -10,6 +13,7 @@ import { Obj } from "../../utils/Obj";
 import type { SheetGridRangeProps } from "../ClassTypes/AccessorsRaw";
 import { emptyStateRaw } from "../ClassTypes/emptyStateRaw";
 import type {
+  AppendTableRows,
   CellFill,
   ColumnFill,
   TablePropertiesRaw,
@@ -83,8 +87,28 @@ export abstract class TableCommonRaw extends TableBaseRaw {
     const properties = this._workingTableProperties();
     properties.endColumnIndex = SheetIndex.col(properties.endColumnIndex + 1);
   }
+  // An insert over any of this Table's columns, at or above its header, pushes it down.
+  rowShiftFrom(growths: AppendTableRows[]): number {
+    const properties = this.tableProperties;
+    if (properties === undefined) return 0;
+    return growths
+      .filter(({ newRows }) => newRows.sheetId === this.sheetGid)
+      .filter(({ newRows }) => isBelow(properties, newRows))
+      .reduce(
+        (rowCount, { newRows }) =>
+          rowCount + newRows.endRowIndex - newRows.startRowIndex,
+        0,
+      );
+  }
+  shiftRowsDown(rowCount: number): void {
+    const properties = this._knownTableProperties();
+    properties.startRowIndex = SheetIndex.row(
+      properties.startRowIndex + rowCount,
+    );
+    properties.endRowIndex = SheetIndex.row(properties.endRowIndex + rowCount);
+  }
   markRowIndexesStale(): void {
-    this._workingTableProperties().rowIndexesAreStale = true;
+    this._knownTableProperties().rowIndexesAreStale = true;
   }
   clearRowIndexStale(): void {
     this._workingTableProperties().rowIndexesAreStale = false;
@@ -98,7 +122,9 @@ export abstract class TableCommonRaw extends TableBaseRaw {
   }
   assertRowIndexesNotStale(): void {
     if (!this._workingTableProperties().rowIndexesAreStale) return;
-    throw new Error(`Row indexes are stale for sheetGid ${this.sheetGid}.`);
+    throw new Error(
+      `Row indexes are stale for ${this.tableLabel}: a flush has moved its rows, so it needs a refetch, in a new run, before another row write.`,
+    );
   }
   // The table's own range, not the layout's: no table means no table columns.
   isTableColIndex(colIndex: number): boolean {
@@ -203,6 +229,17 @@ export abstract class TableCommonRaw extends TableBaseRaw {
     if (this.isHeaderOnly) throw new Error(this.headerOnlyFix);
     return this._knownTableProperties();
   }
+}
+
+function isBelow(
+  properties: TablePropertiesRaw,
+  newRows: BoundedGridRange,
+): boolean {
+  return (
+    properties.startRowIndex >= newRows.startRowIndex &&
+    properties.startColumnIndex < newRows.endColumnIndex &&
+    newRows.startColumnIndex < properties.endColumnIndex
+  );
 }
 
 function cellFieldsLeftUnder(fill: ColumnFill, cellFill: CellFill): CellFill {
