@@ -109,12 +109,6 @@ describe("GoogleSheetsAPI write mapping", () => {
 
     const operations: LocalWriteOperation[] = [
       {
-        kind: "appendRows",
-        sheetId: 111,
-        tableId: "tbl",
-        emptyRowCount: 2,
-      },
-      {
         kind: "insertTableEndColumn",
         sheetId: 111,
         startColumnIndex: SheetIndex.col(3),
@@ -218,14 +212,6 @@ describe("GoogleSheetsAPI write mapping", () => {
     api.flush(operations);
 
     expect(batchUpdateCalls[0]?.requests).toEqual([
-      {
-        appendCells: {
-          sheetId: 111,
-          tableId: "tbl",
-          rows: [{}, {}],
-          fields: "userEnteredValue",
-        },
-      },
       {
         insertDimension: {
           range: {
@@ -652,13 +638,18 @@ describe("GoogleSheetsAPI Table-bounded write mapping", () => {
     startRowIndex: SheetIndex.row(5),
     endRowIndex: SheetIndex.row(6),
   };
+  const widenedTable: BoundedGridRange = {
+    ...tableBand,
+    startRowIndex: SheetIndex.row(3),
+  };
 
-  it("maps grid growth, a bounded insert and delete, and both copies onto Google's requests in order", () => {
+  it("maps grid growth, a bounded insert, a Table widen, a bounded delete, and both copies onto Google's requests in order", () => {
     const { api, batchUpdateCalls } = recordingSheets();
 
     api.flush([
       { kind: "appendDimension", sheetId: 111, addedRowCount: 2 },
       { kind: "insertRange", range: tableBand, shiftDimension: "ROWS" },
+      { kind: "updateTableRange", tableId: "tbl", range: widenedTable },
       {
         kind: "copyPaste",
         source: modelRow,
@@ -681,6 +672,12 @@ describe("GoogleSheetsAPI Table-bounded write mapping", () => {
             appendDimension: { sheetId: 111, dimension: "ROWS", length: 2 },
           },
           { insertRange: { range: tableBand, shiftDimension: "ROWS" } },
+          {
+            updateTable: {
+              table: { tableId: "tbl", range: widenedTable },
+              fields: "range",
+            },
+          },
           {
             copyPaste: {
               source: modelRow,

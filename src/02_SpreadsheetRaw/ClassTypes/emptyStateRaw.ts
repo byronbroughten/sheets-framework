@@ -1,6 +1,7 @@
 import type {
   RowWrites,
   SheetStateRaw,
+  SheetWriteQueueRaw,
   SpreadsheetFetchQueueRaw,
   SpreadsheetWriteQueueRaw,
   TableFetchQueueRaw,
@@ -16,7 +17,7 @@ export const emptyStateRaw = {
     return {
       addSheet: [],
       addTable: [],
-      appendRows: [],
+      appendTableRows: [],
       fillCell: [],
       deleteTableRows: [],
       sort: [],
@@ -58,6 +59,9 @@ export const emptyStateRaw = {
       reservedRowIndexes: new Set(),
     };
   },
+  sheetWriteQueue(): SheetWriteQueueRaw {
+    return { appendedRowCount: 0 };
+  },
   tableFetchQueue(): TableFetchQueueRaw {
     return {
       toFinalize: {
@@ -89,6 +93,7 @@ export const emptyStateRaw = {
         gatherEditProtections: false,
         gatherPlacementStrip: false,
       },
+      writeQueue: emptyStateRaw.sheetWriteQueue(),
       tableBeforeProperties: emptyStateRaw.tableState(sheetGid),
     };
   },

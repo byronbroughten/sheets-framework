@@ -103,23 +103,6 @@ export abstract class RowCommonRaw extends RowBaseRaw {
     actions[props.action](props);
     return this;
   }
-  gatherAppendRowsOperation(): void {
-    // One request per table: Sheets treats each appendCells as targeting the
-    // same first free row, so N one-row requests only grow the table by one.
-    const existing = this.writeOperations.appendRows.find(
-      (operation) => operation.sheetId === this.sheetGid,
-    );
-    if (existing) {
-      existing.emptyRowCount += 1;
-      return;
-    }
-    this.writeOperations.appendRows.push({
-      kind: "appendRows",
-      sheetId: this.sheetGid,
-      tableId: `${this.table.tableId}`,
-      emptyRowCount: 1,
-    });
-  }
   gatherDeleteTableRowsOperation(): void {
     this.writeOperations.deleteTableRows.push({
       kind: "deleteTableRows",

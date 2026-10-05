@@ -13,13 +13,17 @@ import {
 } from "../00_Source/RawSource/EditProtection";
 import type {
   BoundedGridRange,
+  CopyPasteOperation,
   GridBlockSnapshot,
   GridRangeProps,
   SheetSnapshot,
   TableColumnPropertiesUpdate,
   TableColumnSnapshot,
 } from "../00_Source/RawSource/RawSource";
-import { SheetIndex } from "../00_Source/RawSource/SheetIndex";
+import {
+  SheetIndex,
+  type SheetRowIndex,
+} from "../00_Source/RawSource/SheetIndex";
 import { TableOrigin } from "../01_SpreadsheetSchema/TableOrigin";
 import type { Value } from "../01_SpreadsheetSchema/valueSchemas";
 import { Arr } from "../utils/Arr";
@@ -514,6 +518,100 @@ export class TableRaw extends TableCommonRaw {
       this.growColumnCount();
     });
   }
+  // Before the Table-end column inserts are counted, since growth is sent ahead of them.
+  gatherAppendTableRowsOperation(): void {
+    const appendedRowIndexes = this._queuedRowAppendIndexes();
+    if (appendedRowIndexes.length === 0) return;
+    this.assertRowIndexesNotStale();
+    const appendedRowCount = appendedRowIndexes.length;
+    // Not dataRowCount: a same-run re-fetch resets the Table's end but keeps the queued appends.
+    const modelRow = this.dataRowGridRange(Math.min(...appendedRowIndexes) - 1);
+    const newRows: BoundedGridRange = {
+      ...modelRow,
+      startRowIndex: modelRow.endRowIndex,
+      endRowIndex: SheetIndex.row(modelRow.endRowIndex + appendedRowCount),
+    };
+    this._queueGridRowsThrough(newRows.endRowIndex);
+    this.writeOperations.appendTableRows.push({
+      sheetId: this.sheetGid,
+      startRowIndex: newRows.startRowIndex,
+      operations: [
+        { kind: "insertRange", range: newRows, shiftDimension: "ROWS" },
+        {
+          kind: "updateTableRange",
+          tableId: this.tableId,
+          range: { ...newRows, startRowIndex: this.startRowIndex },
+        },
+        {
+          kind: "copyPaste",
+          source: modelRow,
+          destination: newRows,
+          pasteType: "PASTE_FORMAT",
+        },
+        ...this._untypedColumnRuns().map(
+          ([startColIndex, endColIndex]): CopyPasteOperation => ({
+            kind: "copyPaste",
+            source: columnRun(modelRow, startColIndex, endColIndex),
+            destination: columnRun(newRows, startColIndex, endColIndex),
+            pasteType: "PASTE_DATA_VALIDATION",
+          }),
+        ),
+      ],
+    });
+  }
+  private _queuedRowAppendIndexes(): number[] {
+    return Array.from(this.rowWrites).flatMap(([rowIndex, writes]) =>
+      writes.appendRow && !writes.deleteRow ? [rowIndex] : [],
+    );
+  }
+  private _queueGridRowsThrough(endRowIndex: SheetRowIndex): void {
+    const { working, writeQueue } = this.sheetState;
+    const rowCount = Val.assert(
+      working.rowCount,
+      `${this.sheetLabel}'s row count`,
+    );
+    if (endRowIndex <= rowCount) return;
+    writeQueue.appendedRowCount += endRowIndex - rowCount;
+    working.rowCount = endRowIndex;
+  }
+  // A typed column's validation is the Table's own, so only Automatic columns get theirs copied.
+  private _untypedColumnRuns(): [number, number][] {
+    const columnTypes = this._columnTypesAfterFlush();
+    return this.fullTableColIndexes.reduce<[number, number][]>(
+      (runs, colIndex) => {
+        if (columnTypes.get(colIndex) !== undefined) return runs;
+        const lastRun = runs.at(-1);
+        if (lastRun !== undefined && lastRun[1] === colIndex) {
+          lastRun[1] = colIndex + 1;
+        } else {
+          runs.push([colIndex, colIndex + 1]);
+        }
+        return runs;
+      },
+      [],
+    );
+  }
+  // A column type queued this flush is sent before growth, so it is the one the new rows meet.
+  private _columnTypesAfterFlush(): Map<number, string | undefined> {
+    const columnTypes = new Map(
+      this.columnProperties.map(({ columnIndex, columnType }) => [
+        columnIndex,
+        columnType,
+      ]),
+    );
+    const unfetched = this.fullTableColIndexes.find(
+      (colIndex) => !columnTypes.has(colIndex),
+    );
+    if (unfetched !== undefined) {
+      throw new Error(
+        `${this.tableLabel} has no fetched type for ${tableColumnLabel(unfetched)}; refetch it before appending a row.`,
+      );
+    }
+    this.writes.columnTypes.forEach((columnType, colIndex) =>
+      columnTypes.set(colIndex, columnType),
+    );
+    return columnTypes;
+  }
   gatherSetTableColumnPropertiesOperation(): void {
     const { columnTypes } = this.writes;
     if (columnTypes.size === 0) return;
@@ -605,6 +703,18 @@ export class TableRaw extends TableCommonRaw {
 }
 
 type ColumnTypes = TableWrites["columnTypes"];
+
+function columnRun(
+  rows: BoundedGridRange,
+  startColIndex: number,
+  endColIndex: number,
+): BoundedGridRange {
+  return {
+    ...rows,
+    startColumnIndex: SheetIndex.col(rows.startColumnIndex + startColIndex),
+    endColumnIndex: SheetIndex.col(rows.startColumnIndex + endColIndex),
+  };
+}
 
 function columnLabel(column: TableColumnSnapshot): string {
   return column.columnName ?? tableColumnLabel(column.columnIndex);

@@ -124,9 +124,9 @@ export interface GridCellSnapshot {
 export type LocalWriteOperation =
   | AddSheetOperation
   | AddTableOperation
-  | AppendRowsOperation
   | AppendDimensionOperation
   | InsertRangeOperation
+  | UpdateTableRangeOperation
   | DeleteRangeOperation
   | CopyPasteOperation
   | InsertTableEndColumnOperation
@@ -168,13 +168,6 @@ export interface TableColumnPropertiesAdd {
   columnType: TableColumnType;
 }
 
-export interface AppendRowsOperation {
-  kind: "appendRows";
-  sheetId: number;
-  tableId: string;
-  emptyRowCount: number;
-}
-
 // Adds rows past the grid's last row, so it can't split a Table (sheets-framework#59).
 export interface AppendDimensionOperation {
   kind: "appendDimension";
@@ -187,6 +180,13 @@ export interface InsertRangeOperation {
   kind: "insertRange";
   range: BoundedGridRange;
   shiftDimension: GridDimension;
+}
+
+// An insertRange below a Table leaves its range as it was, so growth widens it (sheets-framework#59).
+export interface UpdateTableRangeOperation {
+  kind: "updateTableRange";
+  tableId: string;
+  range: BoundedGridRange;
 }
 
 export interface DeleteRangeOperation {

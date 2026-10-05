@@ -1,10 +1,14 @@
 import type {
+  AppendDimensionOperation,
   DeleteConditionalFormatRuleOperation,
   DeleteTableRowsOperation,
 } from "../../00_Source/RawSource/RawSource";
 import { SpreadsheetBaseRaw } from "../ClassBases/SpreadsheetBaseRaw";
 import { emptyStateRaw } from "../ClassTypes/emptyStateRaw";
-import type { RowWrites } from "../ClassTypes/StateRaw";
+import type {
+  RowWrites,
+  TableGrowthOperation,
+} from "../ClassTypes/StateRaw";
 import { SpreadsheetRaw } from "../SpreadsheetRaw";
 import type { TableRaw } from "../TableRaw";
 
@@ -54,6 +58,7 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
   private _gatherWriteOperations(): void {
     const tables = this._tablesWithWriteQueues();
     tables.forEach((table) => {
+      table.gatherAppendTableRowsOperation();
       table.gatherQueuedTableWrites();
       for (const [rowIndex, writes] of table.rowWrites) {
         this._gatherRowWrites(table, { rowIndex, writes });
@@ -85,9 +90,6 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
     if (writes.deleteRow) {
       row.gatherDeleteTableRowsOperation();
     } else {
-      if (writes.appendRow) {
-        row.gatherAppendRowsOperation();
-      }
       for (const [colIndex, cellFill] of writes.fillCells) {
         row.cell(colIndex).gatherFillCellOperation(cellFill);
       }
@@ -134,7 +136,8 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
       ...queued.renameTable,
       // First among column writes, so a header write in the same batch renames the column rather than being reverted.
       ...queued.setTableColumnProperties,
-      ...queued.appendRows,
+      ...this._appendDimensionOperations(),
+      ...this._appendTableRowsOperationsBottomUp(),
       ...queued.insertTableEndColumn,
       // Column fills go before cell writes; a later-queued fill already erased the cell writes it covers.
       ...queued.fillColumn,
@@ -155,6 +158,33 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
     this.spreadsheetStateRaw.rawSource.flush(operations);
     this.spreadsheetStateRaw.writeQueue.operations =
       emptyStateRaw.writeOperations();
+    this.sheetsStateRaw.forEach((state) => {
+      state.writeQueue = emptyStateRaw.sheetWriteQueue();
+    });
+  }
+  // Sent before any insert, which can't reach past the grid's last row.
+  private _appendDimensionOperations(): AppendDimensionOperation[] {
+    return Array.from(this.sheetsStateRaw).flatMap(
+      ([sheetId, { writeQueue }]): AppendDimensionOperation[] => {
+        if (writeQueue.appendedRowCount === 0) return [];
+        return [
+          {
+            kind: "appendDimension",
+            sheetId,
+            addedRowCount: writeQueue.appendedRowCount,
+          },
+        ];
+      },
+    );
+  }
+  // Bottom Table first within a sheet, so no insert shifts a Table whose growth is still to come.
+  private _appendTableRowsOperationsBottomUp(): TableGrowthOperation[] {
+    return [...this.writeOperations.appendTableRows]
+      .sort((a, b) => {
+        if (a.sheetId !== b.sheetId) return a.sheetId - b.sheetId;
+        return b.startRowIndex - a.startRowIndex;
+      })
+      .flatMap(({ operations }) => operations);
   }
   // Deletes within one batchUpdate apply sequentially and each shifts the
   // row indices below it, so same-sheet deletes must go highest-index-first
