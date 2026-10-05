@@ -42,6 +42,10 @@ export class CellRaw<
   }
   gatherFetchRange(): this {
     this.table.gatherFetchRange(this.gridRange());
+    return this.prepFetchBackfill();
+  }
+  // Marks the cell for finalize's blank backfill without gathering its own range.
+  prepFetchBackfill(): this {
     // Sheets omits a never-written cell; finalize treats that as empty.
     const colIndexes =
       this.tableState.fetchQueue.toFinalize.cells.get(this.rowIndex) ??

@@ -39,6 +39,9 @@ export class SpreadsheetBaseSchema {
   ): UniformRowValueName<UN> {
     return getUniformRowValueName(name);
   }
+  get uniformRowNames(): UniformRowName[] {
+    return Obj.keys(uniformRows.indexes());
+  }
   uniformRowIndex(name: UniformRowName): number {
     return uniformRows.index(name);
   }

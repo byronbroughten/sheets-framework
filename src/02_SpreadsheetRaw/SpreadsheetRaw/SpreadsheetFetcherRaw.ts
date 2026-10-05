@@ -8,8 +8,7 @@ import { SpreadsheetBaseRaw } from "../ClassBases/SpreadsheetBaseRaw";
 import { emptyStateRaw } from "../ClassTypes/emptyStateRaw";
 import { SpreadsheetRaw } from "../SpreadsheetRaw";
 import {
-  type MisplacedTable,
-  type SheetIdentity,
+  type Misplacement,
   SpreadsheetTableValidatorRaw,
 } from "./SpreadsheetTableValidatorRaw";
 
@@ -77,26 +76,20 @@ export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
   // response that omits empty cells (or whole blank rows) never leaves
   // them looking merely "not yet fetched" to callers.
   private _finalizeGatheredFetches(): void {
-    const misplacedTables: MisplacedTable[] = [];
-    const absentTables: SheetIdentity[] = [];
+    const misplacements: Misplacement[] = [];
     const finalizedSheetGids: number[] = [];
     this.spreadsheetStateRaw.sheets.forEach((state, sheetGid) => {
       // Above the early return, so a range that arrived incidentally is still judged.
       const placement = this.tableValidator.tablePlacement(sheetGid);
-      const { toFinalize } = state.tableBeforeProperties.fetchQueue;
-      const isWaitingOnTable =
-        toFinalize.rows.size > 0 || toFinalize.columns.size > 0;
       state.tableBeforeProperties.fetchQueue =
         emptyStateRaw.tableFetchQueue();
+      state.fetchQueue.gatherPlacementStrip = false;
       if (placement.kind === "extra") {
         return;
       }
       if (placement.kind === "misplaced") {
-        misplacedTables.push(placement);
+        misplacements.push(placement.misplacement);
         return;
-      }
-      if (isWaitingOnTable) {
-        absentTables.push({ sheetGid });
       }
       finalizedSheetGids.push(sheetGid);
     });
@@ -104,14 +97,7 @@ export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
       if (!finalizedSheetGids.includes(state.sheetGid)) return;
       this.ss.table(tableId).finalizeFetches();
     });
-    if (absentTables.length > 0) {
-      // The probe is built from the constants under test, so a moved Table looks absent.
-      this.ensureAllSheetPropertiesAreFetched();
-    }
-    this.tableValidator.validateTablePlacement({
-      misplacedTables,
-      absentTables,
-    });
+    this.tableValidator.validateTablePlacement(misplacements);
   }
   // isFormula/numberFormatType (from rowData.values.userEnteredValue/
   // effectiveFormat) and column validation values/declared types (from

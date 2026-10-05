@@ -1,16 +1,28 @@
-# Table placement: a moved or extra Table stops the run
+# Table placement: a moved or missing Table stops the run
 
 Map fragment. Sibling headings live in this folder. The operator-facing word is **Table** in [`CONTEXT.md`](../../CONTEXT.md).
 
-A run checks where each Let api access sheet's Table starts, and refuses to go on when it has drifted or has company. It never moves, rebuilds or picks a Table.
+A run checks each managed Table against where the configs record it, and stops with a message to regenerate the configs when it isn't there. It never moves, rebuilds or picks a Table.
 
-## A moved Table
+## The placement check
 
-Deleting a row above a Table or inserting a column to its left moves it, so the app checks where it starts on every run and refuses to go on if it has drifted, naming where the Table is and where it belongs.
+It runs per Table in `SpreadsheetRaw`'s post-fetch step, on each Let api access sheet whose placement strip rode the fetch:
+
+- the sheet has a Table
+- its header sits at the recorded row and column
+- the column ID row (header −3) holds only blanks or this Table's own prefixed column IDs, and at least one ID, across the Table's columns as far as the fetch reached
+
+Any failure stops the run and names the sheet. For example, deleting a row above a Table or inserting a column to its left moves its header, and a Table moved out of the strip's sight reads as missing. A band of head rows shifted by an inserted row, with the header left in place, fails the column ID row test.
+
+Until each Table's position is recorded in the configs, "recorded" means the layout's fixed spot (`TableOrigin.expected()`) and the GID in the sheet's config. The edit trigger and the fetches sent before a Table's properties arrive still assume that spot, so the check accepts only it until those move onto recorded positions (sheets-framework#82).
+
+## The strip costs no round trip
+
+`TableRaw.gatherFetchProperties` gathers one strip: from row 0 down to the recorded header, in the recorded start column. It overlaps the header cell, so Sheets returns the Table's properties with it, and it carries the column ID row's first cell. It rides the run's first fetch, so the check needs no fetch of its own; the old reclassifying sheet-properties fetch is gone ([round trips](./round-trips.md#table-ranges-and-table-bounded-reads)).
 
 ## More than one Table on a sheet
 
-If a fetch finds more than one Table on a sheet with **Let api access**, it refuses the same way and names those sheets, so you can delete the extras; it never picks one for you.
+If a fetch finds more than one Table on a sheet with **Let api access**, it refuses and names those sheets, so you can delete the extras; it never picks one for you. This one-Table-per-sheet refusal stays until several managed Tables may share a sheet.
 
 ## Why the app never repairs a Table
 

@@ -7,24 +7,22 @@ import { Val } from "../../utils/Val";
 import { SpreadsheetBaseRaw } from "../ClassBases/SpreadsheetBaseRaw";
 import { SpreadsheetRaw } from "../SpreadsheetRaw";
 
-export interface SheetIdentity {
+interface SheetIdentity {
   sheetGid: number;
 }
-export interface MisplacedTable extends SheetIdentity {
-  startRowIndex: SheetRowIndex;
-  startColumnIndex: SheetColIndex;
-}
-interface TablePlacementObservations {
-  misplacedTables: MisplacedTable[];
-  absentTables: SheetIdentity[];
-}
-const noObservations: TablePlacementObservations = {
-  misplacedTables: [],
-  absentTables: [],
-};
+export type Misplacement = SheetIdentity &
+  (
+    | { kind: "missing" }
+    | {
+        kind: "moved";
+        startRowIndex: SheetRowIndex;
+        startColumnIndex: SheetColIndex;
+      }
+    | { kind: "band-shifted" }
+  );
 export type TablePlacement =
   | { kind: "extra" }
-  | (MisplacedTable & { kind: "misplaced" })
+  | { kind: "misplaced"; misplacement: Misplacement }
   | { kind: "none" }
   | { kind: "well-placed" };
 
@@ -37,74 +35,60 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
   }
   // A sheet outside the config never promised to follow the layout.
   tablePlacement(sheetGid: number): TablePlacement {
-    if (!this.spreadsheetStateRaw.sheets.has(sheetGid)) {
+    const sheetState = this.spreadsheetStateRaw.sheets.get(sheetGid);
+    if (sheetState === undefined) {
       return { kind: "none" };
     }
     const [tableId, ...otherTableIds] = this.ss.sheet(sheetGid).tableIds();
     if (otherTableIds.length > 0) {
       return { kind: "extra" };
     }
-    if (tableId === undefined || !this.schema.isInSheetGids(sheetGid)) {
+    if (!this.schema.isInSheetGids(sheetGid)) {
       return { kind: "none" };
+    }
+    const isStripFetched = sheetState.fetchQueue.gatherPlacementStrip;
+    if (tableId === undefined && !isStripFetched) {
+      return { kind: "none" };
+    }
+    if (tableId === undefined) {
+      return { kind: "misplaced", misplacement: { kind: "missing", sheetGid } };
     }
     // Read off the state, since the Table refuses a header-only body before placement is judged.
     const { startRowIndex, startColumnIndex } = Val.assert(
       this.spreadsheetStateRaw.tables.get(tableId)?.properties,
       `properties of Table ${tableId}`,
     );
-    if (this.schema.isTableStart(startRowIndex, startColumnIndex)) {
-      return { kind: "well-placed" };
+    if (!this.schema.isTableStart(startRowIndex, startColumnIndex)) {
+      return {
+        kind: "misplaced",
+        misplacement: { kind: "moved", sheetGid, startRowIndex, startColumnIndex },
+      };
     }
-    return { kind: "misplaced", sheetGid, startRowIndex, startColumnIndex };
+    if (isStripFetched && !this._holdsOwnColumnIds(sheetGid)) {
+      return {
+        kind: "misplaced",
+        misplacement: { kind: "band-shifted", sheetGid },
+      };
+    }
+    return { kind: "well-placed" };
   }
-  validateTablePlacement({
-    misplacedTables,
-    absentTables,
-  }: TablePlacementObservations = noObservations): void {
-    const reclassified = this._reclassifyAbsentTables({
-      misplacedTables,
-      absentTables,
-    });
+  validateTablePlacement(misplacements: Misplacement[] = []): void {
     const extraTables = this._sheetsWithExtraTables();
-    if (
-      reclassified.misplacedTables.length === 0 &&
-      reclassified.absentTables.length === 0 &&
-      extraTables.length === 0
-    ) {
+    if (misplacements.length === 0 && extraTables.length === 0) {
       return;
     }
     const sentences: string[] = [];
-    if (reclassified.misplacedTables.length > 0) {
-      sentences.push(
-        this._misplacedTableSentence(reclassified.misplacedTables),
-      );
-    }
-    if (reclassified.absentTables.length > 0) {
-      sentences.push(this._absentTableSentence(reclassified.absentTables));
+    if (misplacements.length > 0) {
+      sentences.push(this._misplacementsSentence(misplacements));
     }
     if (extraTables.length > 0) {
       sentences.push(this._extraTablesSentence(extraTables));
     }
     throw new Error(sentences.join(" "));
   }
-  private _reclassifyAbsentTables({
-    misplacedTables,
-    absentTables,
-  }: TablePlacementObservations): TablePlacementObservations {
-    const stillMisplaced = [...misplacedTables];
-    const stillAbsent: SheetIdentity[] = [];
-    absentTables.forEach((absentTable) => {
-      const placement = this.tablePlacement(absentTable.sheetGid);
-      if (placement.kind === "extra") {
-        return;
-      }
-      if (placement.kind === "misplaced") {
-        stillMisplaced.push(placement);
-        return;
-      }
-      stillAbsent.push(absentTable);
-    });
-    return { misplacedTables: stillMisplaced, absentTables: stillAbsent };
+  private _holdsOwnColumnIds(sheetGid: number): boolean {
+    const { idPrefix } = this.schema.sheetByGid(sheetGid);
+    return this.ss.sheetMeta(sheetGid).holdsOnlyColumnIdsOf(idPrefix);
   }
   private _sheetsWithExtraTables(): SheetIdentity[] {
     const extraTables: SheetIdentity[] = [];
@@ -119,23 +103,32 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
     });
     return extraTables;
   }
-  private _misplacedTableSentence(misplacedTables: MisplacedTable[]): string {
-    const positions = misplacedTables
+  private _misplacementsSentence(misplacements: Misplacement[]): string {
+    const reasons = misplacements
       .map(
-        (misplacedTable) =>
-          `${this._sheetLabel(misplacedTable)} starts at ${this.schema.positionLabel(
-            misplacedTable.startRowIndex,
-            misplacedTable.startColumnIndex,
-          )} but must start at ${this.schema.tableStartLabel}`,
+        (misplacement) =>
+          `${this._sheetLabel(misplacement)} ${this._misplacementReason(misplacement)}`,
       )
       .join("; ");
-    return `${misplacedTables.length} sheet(s) have a Table that does not start where the layout requires — move each Table to where it must start, and do not rebuild it: ${positions}`;
+    return `${misplacements.length} managed Table(s) are not where the configs record them — regenerate the configs with sheets-framework gen-configs: ${reasons}`;
   }
-  private _absentTableSentence(absentTables: SheetIdentity[]): string {
-    const names = absentTables
-      .map((absentTable) => this._sheetLabel(absentTable))
-      .join(", ");
-    return `${absentTables.length} sheet(s) need a full row/column fetch but have no Table object — apply Insert > Table over their data range in Sheets: ${names}`;
+  private _misplacementReason(misplacement: Misplacement): string {
+    if (misplacement.kind === "missing") {
+      return `has no Table starting at ${this.schema.tableStartLabel}`;
+    } else if (misplacement.kind === "moved") {
+      return `has a Table that starts at ${this.schema.positionLabel(
+        misplacement.startRowIndex,
+        misplacement.startColumnIndex,
+      )}, not ${this.schema.tableStartLabel}`;
+    } else if (misplacement.kind === "band-shifted") {
+      const { idPrefix } = this.schema.sheetByGid(misplacement.sheetGid);
+      const colIdRowLabel = this.ss
+        .sheetMeta(misplacement.sheetGid)
+        .rowLabel(this.schema.colIdRowIndex);
+      return `needs its own "${idPrefix}" column IDs, and only those, in ${colIdRowLabel}`;
+    } else {
+      throw new Error(`Unknown misplacement ${JSON.stringify(misplacement)}.`);
+    }
   }
   private _extraTablesSentence(extraTables: SheetIdentity[]): string {
     const names = extraTables

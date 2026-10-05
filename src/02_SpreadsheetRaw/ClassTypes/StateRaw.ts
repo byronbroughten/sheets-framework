@@ -82,6 +82,7 @@ export interface EditProtectionsStateRaw {
 export interface SheetFetchQueueRaw {
   gatherConditionalFormats: boolean;
   gatherEditProtections: boolean;
+  gatherPlacementStrip: boolean;
 }
 
 export type TablesStateRaw = Map<TableId, TableStateRaw>;
