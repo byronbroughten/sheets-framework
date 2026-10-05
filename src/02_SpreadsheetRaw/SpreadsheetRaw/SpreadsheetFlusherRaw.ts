@@ -34,6 +34,7 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
   flush(): void {
     // Before the gather, which empties the Table queues it reads.
     const tableIdsWithColumnTypeUpdates = this._tableIdsWithColumnTypeUpdates();
+    const tableIdsWithSorts = this._tableIdsWithSorts();
     this._gatherWriteOperations();
     const sheetGidsWithRowDeletes = this._sheetGidsWithRowDeletes();
     const sheetGidsWithConditionalFormatMutations =
@@ -52,6 +53,9 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
         .tableIds()
         .forEach((tableId) => this.ss.table(tableId).markRowIndexesStale()),
     );
+    tableIdsWithSorts.forEach((tableId) =>
+      this.ss.table(tableId).markRowIndexesStale(),
+    );
     sheetGidsWithConditionalFormatMutations.forEach((sheetGid) =>
       this.ss.sheet(sheetGid).markConditionalFormatIndexesStale(),
     );
@@ -63,6 +67,11 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
   private _tableIdsWithColumnTypeUpdates(): string[] {
     return Array.from(this.tablesStateRaw.entries())
       .filter(([, state]) => state.writeQueue.table.columnTypes.size > 0)
+      .map(([tableId]) => tableId);
+  }
+  private _tableIdsWithSorts(): string[] {
+    return Array.from(this.tablesStateRaw.entries())
+      .filter(([, state]) => state.writeQueue.table.sort !== undefined)
       .map(([tableId]) => tableId);
   }
   private _gatherWriteOperations(): void {
@@ -182,7 +191,7 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
       // Reads the text as it stands mid-batch, so it must follow what writes it.
       ...queued.findReplace,
       ...this._deleteOperationsDescending(),
-      ...queued.sort,
+      ...queued.sortTable,
       ...this._deleteConditionalFormatOperationsDescending(),
       ...queued.addConditionalFormatRule,
       ...queued.deleteProtectedRange,

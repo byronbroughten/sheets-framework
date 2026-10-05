@@ -27,8 +27,8 @@ export type SortOrder = "ASCENDING" | "DESCENDING";
 
 export type GridDimension = "ROWS" | "COLUMNS";
 
-export type FindReplaceScope =
-  { range: GridRangeProps } | { sheetId: number } | { allSheets: true };
+// No sheet scope: it would reach a Table's head rows (sheets-framework#54).
+export type FindReplaceScope = { range: GridRangeProps } | { allSheets: true };
 
 export interface FindReplaceTerms {
   find: string;
@@ -134,7 +134,7 @@ export type LocalWriteOperation =
   | FillCellOperation
   | FindReplaceOperation
   | DeleteTableRowsOperation
-  | SortOperation
+  | SortTableOperation
   | AddConditionalFormatRuleOperation
   | DeleteConditionalFormatRuleOperation
   | AddProtectedRangeOperation
@@ -239,11 +239,10 @@ export interface DeleteTableRowsOperation {
   range: BoundedGridRange;
 }
 
-export interface SortOperation {
-  kind: "sort";
-  sheetId: number;
-  startRowIndex: SheetRowIndex;
-  startColumnIndex: SheetColIndex;
+// The Table's body only, so its head rows and neighbours never move (sheets-framework#95).
+export interface SortTableOperation {
+  kind: "sortTable";
+  range: BoundedGridRange;
   colIdxToSortBy: SheetColIndex;
   sortOrder: SortOrder;
 }

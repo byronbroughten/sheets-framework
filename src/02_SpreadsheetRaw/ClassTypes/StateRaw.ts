@@ -224,6 +224,7 @@ export interface TableWrites {
   sort: SortParameters | undefined;
   insertTableEndColumnCount: number;
   fillColumns: ColumnFill[];
+  findReplaces: TableFindReplace[];
   // Gathered into the Table's one setTableColumnProperties.
   columnTypes: Map<ColIndex, TableColumnType>;
 }
@@ -233,6 +234,13 @@ export interface ColumnFill extends CellFill {
   startRowIndex: number;
   // Snapshotted when queued, so a fill never reaches a row appended after it.
   endRowIndex: number;
+}
+
+// Over the body rows of a run of the Table's columns, bounded at gathering.
+export interface TableFindReplace {
+  terms: FindReplaceTerms;
+  startColIndex: ColIndex;
+  endColIndex: ColIndex;
 }
 
 export interface TableWriteSortProps extends SortParameters {
@@ -254,6 +262,7 @@ export interface TableWritePropsObj {
   sort: TableWriteSortProps;
   insertTableEndColumn: { action: "insertTableEndColumn" };
   fillColumn: { action: "fillColumn" } & ColumnFill;
+  findReplace: { action: "findReplace" } & TableFindReplace;
   updateColumnType: {
     action: "updateColumnType";
     colIndex: ColIndex;

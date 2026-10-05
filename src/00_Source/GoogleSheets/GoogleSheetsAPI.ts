@@ -381,15 +381,11 @@ function modeledOperationToGoogleRequests(
           deleteRange: { range: operation.range, shiftDimension: "ROWS" },
         },
       ];
-    case "sort":
+    case "sortTable":
       return [
         {
           sortRange: {
-            range: {
-              sheetId: operation.sheetId,
-              startRowIndex: operation.startRowIndex,
-              startColumnIndex: operation.startColumnIndex,
-            },
+            range: operation.range,
             sortSpecs: [
               {
                 dimensionIndex: operation.colIdxToSortBy,

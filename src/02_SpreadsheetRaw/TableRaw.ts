@@ -37,6 +37,7 @@ import {
   type ColumnFill,
   type FindReplaceTerms,
   type SortParameters,
+  type TableFindReplace,
   type TableWrites,
 } from "./ClassTypes/StateRaw";
 import { ColumnRaw } from "./ColumnRaw";
@@ -181,9 +182,16 @@ export class TableRaw extends TableCommonRaw {
     this.rowStates.clear();
     this.tableState.working.cellStateIsStale = true;
   }
+  // Reaches every body row like a whole-column fill, so it takes the same guards.
   findReplace(terms: FindReplaceTerms): this {
-    this.ss.findReplace({ ...terms, scope: { sheetId: this.sheetGid } });
-    return this;
+    this.assertRowIndexesNotStale();
+    this.validateNotPrunedToSelection();
+    return this.queueTableWrite({
+      action: "findReplace",
+      terms,
+      startColIndex: 0,
+      endColIndex: this.columnCount,
+    });
   }
   row(rowIndex: number): RowRaw {
     return new RowRaw({
@@ -502,10 +510,34 @@ export class TableRaw extends TableCommonRaw {
   gatherQueuedTableWrites(): void {
     const { writes } = this;
     if (writes.sort !== undefined) {
-      this.gatherSortOperation(writes.sort);
+      this.gatherSortTableOperation(writes.sort);
     }
     writes.fillColumns.forEach((fill) => {
       this.gatherFillColumnOperation(fill);
+    });
+    writes.findReplaces.forEach((findReplace) => {
+      this.gatherFindReplaceOperation(findReplace);
+    });
+  }
+  // Sent before the row deletes, so it spans the body as it stands before them.
+  gatherFindReplaceOperation({
+    terms,
+    startColIndex,
+    endColIndex,
+  }: TableFindReplace): void {
+    const origin = this.originAtGathering();
+    this.writeOperations.findReplace.push({
+      kind: "findReplace",
+      terms,
+      scope: {
+        range: {
+          sheetId: this.sheetGid,
+          startRowIndex: origin.sheetRowIndex(0),
+          endRowIndex: origin.sheetRowIndex(this.dataRowCount),
+          startColumnIndex: origin.sheetColIndex(startColIndex),
+          endColumnIndex: origin.sheetColIndex(endColIndex),
+        },
+      },
     });
   }
   columnInsertSplitting(neighbourName: string): string {
@@ -725,13 +757,21 @@ export class TableRaw extends TableCommonRaw {
   private _tableLabel(tableId: string): string {
     return `Table ${tableId} on "${this.title}"`;
   }
-  gatherSortOperation({ colIdxToSortBy, sortOrder }: SortParameters): void {
+  // Sent after the row deletes, so it spans only the body rows they leave.
+  gatherSortTableOperation({
+    colIdxToSortBy,
+    sortOrder,
+  }: SortParameters): void {
     const origin = this.originAtGathering();
-    this.writeOperations.sort.push({
-      kind: "sort",
-      sheetId: this.sheetGid,
-      startRowIndex: origin.sheetRowIndex(0),
-      startColumnIndex: origin.sheetColIndex(0),
+    this.writeOperations.sortTable.push({
+      kind: "sortTable",
+      range: {
+        sheetId: this.sheetGid,
+        startRowIndex: origin.sheetRowIndex(0),
+        endRowIndex: origin.sheetRowIndex(this.dataRowCountAfterFlush),
+        startColumnIndex: origin.sheetColIndex(0),
+        endColumnIndex: origin.sheetColIndex(this.columnCount),
+      },
       colIdxToSortBy: origin.sheetColIndex(colIdxToSortBy),
       sortOrder,
     });
