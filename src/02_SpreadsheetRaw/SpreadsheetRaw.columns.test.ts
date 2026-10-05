@@ -418,7 +418,7 @@ describe("SpreadsheetRaw.findReplace", () => {
     ]);
   });
 
-  it("replaces across the whole of that sheet and no other", () => {
+  it("replaces across the Table's body only, leaving its head rows and other sheets", () => {
     const { grid } = stubFilledSheet();
 
     const raw = SpreadsheetRaw.init();
@@ -429,12 +429,65 @@ describe("SpreadsheetRaw.findReplace", () => {
     expect(
       grid.sheet(111).values({ startRowIndex: tableHeaderRowIndex }),
     ).toEqual([
-      ["ID", "Total", "Total"],
+      ["ID", "Currency", "Currency"],
       ["r:lse:1", "Total", "Total"],
       ["r:lse:2", "Caretaking", "Total"],
       ["r:lse:3", "Total", "Total"],
     ]);
     expect(grid.sheet(222).values()).toEqual([["Currency", '="Currency"']]);
+  });
+
+  it("replaces within a Table's body where a same-flush growth above has pushed it, and nowhere else", () => {
+    const lowerHeaderRowIndex = topDataRowIndex + 2;
+    const { grid } = stubSheetsService({
+      sheets: [
+        {
+          sheetId: 111,
+          title: "Records",
+          rows: buildGridRows({
+            [tableHeaderRowIndex]: ["ID", "Name"],
+            [topDataRowIndex]: ["t1", "x"],
+            [lowerHeaderRowIndex]: ["ID", "x"],
+            [lowerHeaderRowIndex + 1]: ["b1", "x"],
+            [lowerHeaderRowIndex + 2]: ["b2", "x"],
+            [lowerHeaderRowIndex + 4]: ["below", "x"],
+          }),
+          tables: [
+            {
+              tableId: "top",
+              name: "Top",
+              endColumnIndex: 2,
+              endRowIndex: topDataRowIndex + 1,
+            },
+            {
+              tableId: "lower",
+              name: "Lower",
+              startRowIndex: lowerHeaderRowIndex,
+              endColumnIndex: 2,
+              endRowIndex: lowerHeaderRowIndex + 3,
+            },
+          ],
+        },
+      ],
+    });
+
+    const raw = SpreadsheetRaw.init();
+    raw.fetchAllSheetProperties();
+    raw.table("lower").findReplace({ find: "x", replacement: "z" });
+    raw.table("top").appendDataRow().updateValue(1, "x");
+    raw.batchUpdateGSheets();
+
+    expect(grid.sheet(111).values({ startRowIndex: tableHeaderRowIndex })).toEqual([
+      ["ID", "Name"],
+      ["t1", "x"],
+      [null, "x"],
+      [null, null],
+      ["ID", "x"],
+      ["b1", "z"],
+      ["b2", "z"],
+      [null, null],
+      ["below", "x"],
+    ]);
   });
 
   it("replaces across every sheet, formulas included when asked", () => {

@@ -215,12 +215,15 @@ export abstract class TableCommonRaw extends TableBaseRaw {
         writes.fillColumns.push(fill);
         break;
       }
+      case "findReplace":
+        writes.findReplaces.push(Obj.strictOmit(props, "action"));
+        break;
       case "updateColumnType":
         writes.columnTypes.set(props.colIndex, props.columnType);
         break;
       default:
         throw new Error(
-          `Invalid action: ${(props as TableWriteProps).action}. Must be one of "sort", "insertTableEndColumn", "fillColumn" or "updateColumnType".`,
+          `Invalid action: ${(props as TableWriteProps).action}. Must be one of "sort", "insertTableEndColumn", "fillColumn", "findReplace" or "updateColumnType".`,
         );
     }
     return this;

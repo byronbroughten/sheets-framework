@@ -163,8 +163,14 @@ export class ColumnRaw<
   }
   // Reaches every data row like a whole-column fill, so it takes the same guards.
   findReplace(terms: FindReplaceTerms): this {
+    this.table.assertRowIndexesNotStale();
     this.table.validateNotPrunedToSelection();
-    this.ss.findReplace({ ...terms, scope: { range: this.dataGridRange() } });
+    this.table.queueTableWrite({
+      action: "findReplace",
+      terms,
+      startColIndex: this.colIndex,
+      endColIndex: this.colIndex + 1,
+    });
     return this;
   }
   addConditionalFormatRule(declaration: ConditionalFormatDeclaration): this {

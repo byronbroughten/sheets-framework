@@ -232,6 +232,7 @@ function hasQueuedWrites({ table, rows }: TableWriteQueueRaw): boolean {
     table.sort !== undefined ||
     table.insertTableEndColumnCount > 0 ||
     table.fillColumns.length > 0 ||
+    table.findReplaces.length > 0 ||
     table.columnTypes.size > 0
   );
 }

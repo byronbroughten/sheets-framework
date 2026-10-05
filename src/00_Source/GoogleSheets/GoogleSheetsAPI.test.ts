@@ -143,7 +143,7 @@ describe("GoogleSheetsAPI write mapping", () => {
       {
         kind: "findReplace",
         terms: { find: "a", replacement: "b" },
-        scope: { sheetId: 111 },
+        scope: { allSheets: true },
       },
       {
         kind: "deleteTableRows",
@@ -156,10 +156,14 @@ describe("GoogleSheetsAPI write mapping", () => {
         },
       },
       {
-        kind: "sort",
-        sheetId: 111,
-        startRowIndex: SheetIndex.row(4),
-        startColumnIndex: SheetIndex.col(0),
+        kind: "sortTable",
+        range: {
+          sheetId: 111,
+          startRowIndex: SheetIndex.row(4),
+          endRowIndex: SheetIndex.row(7),
+          startColumnIndex: SheetIndex.col(0),
+          endColumnIndex: SheetIndex.col(3),
+        },
         colIdxToSortBy: SheetIndex.col(1),
         sortOrder: "ASCENDING",
       },
@@ -269,7 +273,7 @@ describe("GoogleSheetsAPI write mapping", () => {
           fields: "userEnteredFormat.backgroundColor",
         },
       },
-      { findReplace: { find: "a", replacement: "b", sheetId: 111 } },
+      { findReplace: { find: "a", replacement: "b", allSheets: true } },
       {
         deleteRange: {
           range: {
@@ -284,7 +288,13 @@ describe("GoogleSheetsAPI write mapping", () => {
       },
       {
         sortRange: {
-          range: { sheetId: 111, startRowIndex: 4, startColumnIndex: 0 },
+          range: {
+            sheetId: 111,
+            startRowIndex: 4,
+            endRowIndex: 7,
+            startColumnIndex: 0,
+            endColumnIndex: 3,
+          },
           sortSpecs: [{ dimensionIndex: 1, sortOrder: "ASCENDING" }],
         },
       },
