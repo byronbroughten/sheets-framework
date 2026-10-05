@@ -113,12 +113,23 @@ export abstract class TableCommonRaw extends TableBaseRaw {
     if (properties === undefined) return 0;
     return inserts
       .filter(({ newColumns }) => newColumns.sheetId === this.sheetGid)
-      .filter(({ newColumns }) => isPushedRightBy(newColumns, properties))
+      .filter(({ newColumns }) =>
+        isPushedRightBy(newColumns, headAndTableRange(properties)),
+      )
       .reduce(
         (columnCount, { newColumns }) =>
           columnCount + newColumns.endColumnIndex - newColumns.startColumnIndex,
         0,
       );
+  }
+  // Google sees a Table's range but not its head rows, so it lets this split through.
+  isSplitBy(band: BoundedGridRange): boolean {
+    const properties = this.tableProperties;
+    if (properties === undefined || band.sheetId !== this.sheetGid) {
+      return false;
+    }
+    const range = headAndTableRange(properties);
+    return isPushedRightBy(band, range) && !fitsWithinRowsOf(range, band);
   }
   shiftColumnsRight(columnCount: number): void {
     const properties = this._knownTableProperties();
@@ -277,6 +288,25 @@ function isPushedRightBy(
     properties.startColumnIndex >= newColumns.startColumnIndex &&
     properties.startRowIndex < newColumns.endRowIndex &&
     newColumns.startRowIndex < properties.endRowIndex
+  );
+}
+
+function headAndTableRange(
+  properties: TablePropertiesRaw,
+): TablePropertiesRaw {
+  return {
+    ...properties,
+    startRowIndex: originOf(properties).headSheetRowIndex("columnId"),
+  };
+}
+
+function fitsWithinRowsOf(
+  properties: TablePropertiesRaw,
+  band: BoundedGridRange,
+): boolean {
+  return (
+    properties.startRowIndex >= band.startRowIndex &&
+    properties.endRowIndex <= band.endRowIndex
   );
 }
 

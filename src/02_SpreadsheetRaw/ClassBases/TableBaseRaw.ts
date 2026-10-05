@@ -76,8 +76,11 @@ export class TableBaseRaw extends SpreadsheetBaseRaw {
       this.sheetState.fetchQueue.gatherEditProtections
     );
   }
+  get sheetTitle(): string {
+    return this.sheetState.working.title ?? "(untitled)";
+  }
   get sheetLabel(): string {
-    return `"${this.sheetState.working.title ?? "(untitled)"}" (gid ${this.sheetGid})`;
+    return `"${this.sheetTitle}" (gid ${this.sheetGid})`;
   }
   get tableRawProps(): TableRawProps {
     return {
