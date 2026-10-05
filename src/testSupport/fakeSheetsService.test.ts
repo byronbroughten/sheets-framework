@@ -923,6 +923,27 @@ describe("stubSheetsService replays Table-bounded inserts and deletes", () => {
     expect(sheet.rowCount).toBe(7);
   });
 
+  it("keeps a whole-sheet protection whole under a row delete over some columns", () => {
+    const wholeSheet = { protectedRangeId: 7, range: { sheetId: bandGid } };
+    const { grid } = stubSheetsService({
+      sheets: [{ ...bandSheet(), protectedRanges: [wholeSheet] }],
+    });
+
+    send({
+      deleteRange: {
+        range: bandRange({
+          startRowIndex: 4,
+          endRowIndex: 5,
+          startColumnIndex: 0,
+          endColumnIndex: 3,
+        }),
+        shiftDimension: "ROWS",
+      },
+    });
+
+    expect(grid.sheet(bandGid).protectedRanges).toEqual([wholeSheet]);
+  });
+
   it("leaves a Table header only when a delete takes its every body row", () => {
     const { grid } = stubSheetsService({ sheets: [bandSheet()] });
 

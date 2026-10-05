@@ -373,17 +373,10 @@ function modeledOperationToGoogleRequests(
           findReplace: { ...operation.terms, ...operation.scope },
         },
       ];
-    case "deleteRows":
+    case "deleteTableRows":
       return [
         {
-          deleteDimension: {
-            range: {
-              sheetId: operation.sheetId,
-              dimension: "ROWS",
-              startIndex: operation.startIndex,
-              endIndex: operation.endIndex,
-            },
-          },
+          deleteRange: { range: operation.range, shiftDimension: "ROWS" },
         },
       ];
     case "sort":

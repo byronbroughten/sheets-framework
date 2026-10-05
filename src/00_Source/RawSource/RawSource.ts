@@ -133,7 +133,7 @@ export type LocalWriteOperation =
   | FillColumnOperation
   | FillCellOperation
   | FindReplaceOperation
-  | DeleteRowsOperation
+  | DeleteTableRowsOperation
   | SortOperation
   | AddConditionalFormatRuleOperation
   | DeleteConditionalFormatRuleOperation
@@ -239,11 +239,10 @@ export interface FindReplaceOperation {
   scope: FindReplaceScope;
 }
 
-export interface DeleteRowsOperation {
-  kind: "deleteRows";
-  sheetId: number;
-  startIndex: SheetRowIndex;
-  endIndex: SheetRowIndex;
+// Over the Table's columns only, so a side-by-side neighbour is never cut (sheets-framework#52).
+export interface DeleteTableRowsOperation {
+  kind: "deleteTableRows";
+  range: BoundedGridRange;
 }
 
 export interface SortOperation {
