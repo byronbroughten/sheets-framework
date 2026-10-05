@@ -39,6 +39,16 @@ export abstract class TableCommonRaw extends TableBaseRaw {
   get startColumnIndex(): SheetColIndex {
     return this._workingTableProperties().startColumnIndex;
   }
+  get isHeaderOnly(): boolean {
+    const { startRowIndex, endRowIndex } = this._knownTableProperties();
+    return endRowIndex <= startRowIndex + 1;
+  }
+  get tableLabel(): string {
+    return `Table "${this.name}" on ${this.sheetLabel}`;
+  }
+  get headerOnlyFix(): string {
+    return `${this.tableLabel} has only its header: add a row below it holding its formulas.`;
+  }
   get dataRowCount(): number {
     this.assertRowIndexesNotStale();
     const { startRowIndex, endRowIndex } = this._workingTableProperties();
@@ -190,13 +200,8 @@ export abstract class TableCommonRaw extends TableBaseRaw {
   }
   // A Table met with only its header has no row to work in.
   private _workingTableProperties(): TablePropertiesRaw {
-    const properties = this._knownTableProperties();
-    if (properties.endRowIndex <= properties.startRowIndex + 1) {
-      throw new Error(
-        `Sheet ${this.sheetLabel} Table must have at least one data row.`,
-      );
-    }
-    return properties;
+    if (this.isHeaderOnly) throw new Error(this.headerOnlyFix);
+    return this._knownTableProperties();
   }
 }
 

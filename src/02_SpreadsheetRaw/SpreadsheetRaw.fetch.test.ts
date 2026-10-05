@@ -186,6 +186,64 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     );
   });
 
+  it("stops on a managed Table met with only its header, naming the Table and the fix", () => {
+    stubSheetsService({
+      sheets: [
+        {
+          ...placedTableSheet({ sheetId: itemGid, title: "Item" }),
+          table: { endRowIndex: topDataRowIndex, name: "Items" },
+        },
+      ],
+    });
+
+    const raw = SpreadsheetRaw.init();
+    raw.sheet(itemGid).gatherFetchProperties();
+
+    expect(thrownMessage(() => raw.fetchAllGathered())).toMatch(
+      /^Table "Items" on "Item" \(gid \d+\) has only its header: add a row below it holding its formulas\.$/,
+    );
+  });
+
+  it("names a misplaced Table and a header-only one in one error", () => {
+    stubSheetsService({
+      sheets: [
+        misplacedTableSheet({
+          sheetId: itemGid,
+          title: "Item",
+          startRowIndex: tableHeaderRowIndex - 1,
+        }),
+        {
+          ...placedTableSheet({ sheetId: logGid, title: "Log" }),
+          table: { endRowIndex: topDataRowIndex, name: "Logs" },
+        },
+      ],
+    });
+
+    const raw = SpreadsheetRaw.init();
+    raw.sheet(itemGid).gatherFetchProperties();
+    raw.sheet(logGid).gatherFetchProperties();
+
+    expect(() => raw.fetchAllGathered()).toThrowError(
+      /regenerate the configs.*"Item".*Table "Logs" on "Log" \(gid \d+\) has only its header/,
+    );
+  });
+
+  it("leaves a header-only Table on a sheet the config does not know to the code that reaches it", () => {
+    stubSheetsService({
+      sheets: [
+        {
+          ...placedTableSheet({ sheetId: scratchGid, title: "Scratch" }),
+          table: { endRowIndex: topDataRowIndex },
+        },
+      ],
+    });
+
+    const raw = SpreadsheetRaw.init();
+    raw.sheet(scratchGid).gatherFetchProperties();
+
+    expect(() => raw.fetchAllGathered()).not.toThrow();
+  });
+
   it("leaves a sheet the config does not know alone, however its Table is placed", () => {
     stubSheetsService({
       sheets: [

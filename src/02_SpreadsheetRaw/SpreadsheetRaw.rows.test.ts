@@ -413,6 +413,31 @@ describe("RowRaw.delete", () => {
       expect(raw.table("left").dataRowCountAfterFlush).toBe(2);
       expect(raw.table("right").dataRowCountAfterFlush).toBe(3);
     });
+
+    it("refuses a Table's last data row while its neighbour still has rows", () => {
+      stubSideBySideTables();
+
+      const raw = SpreadsheetRaw.init();
+      raw.fetchAllSheetProperties();
+      raw.table("left").row(0).delete();
+      raw.table("left").row(1).delete();
+
+      expect(() => raw.table("left").row(2).delete()).toThrowError(
+        /Table's last data row, and a Table may never be left with none/,
+      );
+      expect(() => raw.table("right").row(2).delete()).not.toThrow();
+    });
+
+    it("reserves a row on its own Table only", () => {
+      stubSideBySideTables();
+
+      const raw = SpreadsheetRaw.init();
+      raw.fetchAllSheetProperties();
+      raw.table("left").row(0).reserve();
+
+      expect(raw.table("left").row(0).isReserved).toBe(true);
+      expect(raw.table("right").row(0).isReserved).toBe(false);
+    });
   });
 });
 
@@ -558,7 +583,7 @@ describe("TableRaw.dataRowCount", () => {
 
   it("throws when the exclusive end row is the first data row", () => {
     expect(() => fetchedSheet(topDataRowIndex).dataRowCount).toThrow(
-      /Records.*at least one data row/,
+      /Records.*has only its header: add a row below it holding its formulas/,
     );
   });
 

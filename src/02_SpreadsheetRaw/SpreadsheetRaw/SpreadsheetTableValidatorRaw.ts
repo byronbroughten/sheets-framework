@@ -22,6 +22,7 @@ export type Misplacement = SheetIdentity &
   );
 export type TablePlacement =
   | { kind: "extra" }
+  | { kind: "header-only"; tableId: string }
   | { kind: "misplaced"; misplacement: Misplacement }
   | { kind: "none" }
   | { kind: "well-placed" };
@@ -64,6 +65,10 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
         misplacement: { kind: "moved", sheetGid, startRowIndex, startColumnIndex },
       };
     }
+    // Before the band test, which reads the column ID row through the Table's body origin.
+    if (this.ss.table(tableId).isHeaderOnly) {
+      return { kind: "header-only", tableId };
+    }
     if (isStripFetched && !this._holdsOwnColumnIds(sheetGid)) {
       return {
         kind: "misplaced",
@@ -72,9 +77,16 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
     }
     return { kind: "well-placed" };
   }
-  validateTablePlacement(misplacements: Misplacement[] = []): void {
+  validateTablePlacement(
+    misplacements: Misplacement[] = [],
+    headerOnlyTableIds: string[] = [],
+  ): void {
     const extraTables = this._sheetsWithExtraTables();
-    if (misplacements.length === 0 && extraTables.length === 0) {
+    if (
+      misplacements.length === 0 &&
+      extraTables.length === 0 &&
+      headerOnlyTableIds.length === 0
+    ) {
       return;
     }
     const sentences: string[] = [];
@@ -84,6 +96,9 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
     if (extraTables.length > 0) {
       sentences.push(this._extraTablesSentence(extraTables));
     }
+    headerOnlyTableIds.forEach((tableId) => {
+      sentences.push(this.ss.table(tableId).headerOnlyFix);
+    });
     throw new Error(sentences.join(" "));
   }
   private _holdsOwnColumnIds(sheetGid: number): boolean {

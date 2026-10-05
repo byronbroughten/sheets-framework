@@ -780,7 +780,7 @@ describe("ConfigCoordinator.syncConfigSheetRows Let api access", () => {
     });
 
     expect(() => ConfigCoordinator.init().syncConfigSheetRows()).toThrow(
-      /Add Widget Order.*at least one data row/,
+      /Add Widget Order.*has only its header/,
     );
   });
 

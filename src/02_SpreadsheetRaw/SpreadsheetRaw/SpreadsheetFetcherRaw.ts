@@ -77,6 +77,7 @@ export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
   // them looking merely "not yet fetched" to callers.
   private _finalizeGatheredFetches(): void {
     const misplacements: Misplacement[] = [];
+    const headerOnlyTableIds: string[] = [];
     const finalizedSheetGids: number[] = [];
     this.spreadsheetStateRaw.sheets.forEach((state, sheetGid) => {
       // Above the early return, so a range that arrived incidentally is still judged.
@@ -91,13 +92,20 @@ export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
         misplacements.push(placement.misplacement);
         return;
       }
+      if (placement.kind === "header-only") {
+        headerOnlyTableIds.push(placement.tableId);
+        return;
+      }
       finalizedSheetGids.push(sheetGid);
     });
     this.spreadsheetStateRaw.tables.forEach((state, tableId) => {
       if (!finalizedSheetGids.includes(state.sheetGid)) return;
       this.ss.table(tableId).finalizeFetches();
     });
-    this.tableValidator.validateTablePlacement(misplacements);
+    this.tableValidator.validateTablePlacement(
+      misplacements,
+      headerOnlyTableIds,
+    );
   }
   // isFormula/numberFormatType (from rowData.values.userEnteredValue/
   // effectiveFormat) and column validation values/declared types (from
