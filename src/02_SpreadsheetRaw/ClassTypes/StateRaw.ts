@@ -236,7 +236,6 @@ export interface ColumnFill extends CellFill {
   endRowIndex: number;
 }
 
-// Over the body rows of a run of the Table's columns, bounded at gathering.
 export interface TableFindReplace {
   terms: FindReplaceTerms;
   startColIndex: ColIndex;

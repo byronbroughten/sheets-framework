@@ -525,19 +525,11 @@ export class TableRaw extends TableCommonRaw {
     startColIndex,
     endColIndex,
   }: TableFindReplace): void {
-    const origin = this.originAtGathering();
+    const body = this._bodyGridRangeAtGathering(this.dataRowCount);
     this.writeOperations.findReplace.push({
       kind: "findReplace",
       terms,
-      scope: {
-        range: {
-          sheetId: this.sheetGid,
-          startRowIndex: origin.sheetRowIndex(0),
-          endRowIndex: origin.sheetRowIndex(this.dataRowCount),
-          startColumnIndex: origin.sheetColIndex(startColIndex),
-          endColumnIndex: origin.sheetColIndex(endColIndex),
-        },
-      },
+      scope: { range: columnRun(body, startColIndex, endColIndex) },
     });
   }
   columnInsertSplitting(neighbourName: string): string {
@@ -762,19 +754,23 @@ export class TableRaw extends TableCommonRaw {
     colIdxToSortBy,
     sortOrder,
   }: SortParameters): void {
-    const origin = this.originAtGathering();
+    const body = this._bodyGridRangeAtGathering(this.dataRowCountAfterFlush);
     this.writeOperations.sortTable.push({
       kind: "sortTable",
-      range: {
-        sheetId: this.sheetGid,
-        startRowIndex: origin.sheetRowIndex(0),
-        endRowIndex: origin.sheetRowIndex(this.dataRowCountAfterFlush),
-        startColumnIndex: origin.sheetColIndex(0),
-        endColumnIndex: origin.sheetColIndex(this.columnCount),
-      },
-      colIdxToSortBy: origin.sheetColIndex(colIdxToSortBy),
+      range: body,
+      colIdxToSortBy: SheetIndex.col(body.startColumnIndex + colIdxToSortBy),
       sortOrder,
     });
+  }
+  private _bodyGridRangeAtGathering(dataRowCount: number): BoundedGridRange {
+    const origin = this.originAtGathering();
+    return {
+      sheetId: this.sheetGid,
+      startRowIndex: origin.sheetRowIndex(0),
+      endRowIndex: origin.sheetRowIndex(dataRowCount),
+      startColumnIndex: origin.sheetColIndex(0),
+      endColumnIndex: origin.sheetColIndex(this.columnCount),
+    };
   }
   appendDataRow(): RowRaw {
     return this.row(this.dataRowCount).append();
