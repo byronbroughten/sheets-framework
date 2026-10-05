@@ -87,13 +87,12 @@ export abstract class TableCommonRaw extends TableBaseRaw {
     const properties = this._workingTableProperties();
     properties.endColumnIndex = SheetIndex.col(properties.endColumnIndex + 1);
   }
-  // An insert over any of this Table's columns, at or above its header, pushes it down.
   rowShiftFrom(growths: AppendTableRows[]): number {
     const properties = this.tableProperties;
     if (properties === undefined) return 0;
     return growths
       .filter(({ newRows }) => newRows.sheetId === this.sheetGid)
-      .filter(({ newRows }) => isBelow(properties, newRows))
+      .filter(({ newRows }) => isPushedDownBy(newRows, properties))
       .reduce(
         (rowCount, { newRows }) =>
           rowCount + newRows.endRowIndex - newRows.startRowIndex,
@@ -231,9 +230,9 @@ export abstract class TableCommonRaw extends TableBaseRaw {
   }
 }
 
-function isBelow(
-  properties: TablePropertiesRaw,
+function isPushedDownBy(
   newRows: BoundedGridRange,
+  properties: TablePropertiesRaw,
 ): boolean {
   return (
     properties.startRowIndex >= newRows.startRowIndex &&

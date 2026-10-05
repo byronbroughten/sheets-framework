@@ -59,7 +59,7 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
       .filter(([, state]) => state.writeQueue.table.columnTypes.size > 0)
       .map(([tableId]) => tableId);
   }
-  // Returns the Tables the batch's growth moves: each grown one and each it pushes down.
+  // Returns the grown Tables and the Tables they push down.
   private _gatherWriteOperations(): Set<string> {
     const tables = this._tablesWithWriteQueues();
     tables.forEach((table) => table.gatherAppendTableRowsOperation());
@@ -81,7 +81,7 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
       ...tableIdsPushedDown,
     ]);
   }
-  // Every shift is measured against the layout before growth, then applied, so the writes gathered after it land where growth leaves them.
+  // Measured against the layout before growth, then applied, so no shift sees another.
   private _shiftTablesBelowGrowth(growths: AppendTableRows[]): string[] {
     const shifts = Array.from(this.tablesStateRaw.keys(), (tableId) => ({
       tableId,
