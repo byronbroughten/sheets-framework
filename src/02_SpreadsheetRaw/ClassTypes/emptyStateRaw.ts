@@ -87,6 +87,7 @@ export const emptyStateRaw = {
       fetchQueue: {
         gatherConditionalFormats: false,
         gatherEditProtections: false,
+        gatherPlacementStrip: false,
       },
       tableBeforeProperties: emptyStateRaw.tableState(sheetGid),
     };

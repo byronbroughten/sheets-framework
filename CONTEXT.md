@@ -7,7 +7,7 @@ A Google Sheets spreadsheet that a person operates directly, with an Apps Script
 ### Sheet layout
 
 **Table**:
-The Google Table (Insert > Table) laid over a sheet's data. Every sheet with **Let api access** must have exactly one, starting on the Table header row in the first column, with at least one data row (a **blank row** counts). What a run does about a moved or extra Table: [`docs/architecture/table-placement.md`](./docs/architecture/table-placement.md).
+The Google Table (Insert > Table) laid over a sheet's data. Every sheet with **Let api access** must have exactly one, starting on the Table header row in the first column, with at least one data row (a **blank row** counts). What a run does about a moved, missing or extra Table: [`docs/architecture/table-placement.md`](./docs/architecture/table-placement.md).
 _Avoid_: range, data range, grid
 
 **Table reference**:

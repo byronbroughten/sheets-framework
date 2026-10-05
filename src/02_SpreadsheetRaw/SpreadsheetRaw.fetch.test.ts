@@ -15,6 +15,7 @@ import {
   lightGreen,
   logGid,
   misplacedTableSheet,
+  ownColumnId,
   placedTableSheet,
   recordedGridRanges,
   scratchGid,
@@ -89,23 +90,33 @@ describe("SpreadsheetRaw.timeZone", () => {
 });
 
 describe("SpreadsheetRaw.fetchAllGathered", () => {
-  it("throws one aggregate error naming every sheet queued for a full fetch that has no Table", () => {
+  it("stops naming every managed sheet whose strip found no Table, and says to regenerate", () => {
     stubSheetsService({
       sheets: [
-        { sheetId: 111, title: "Task Generic" },
-        { sheetId: 222, title: "Task Material" },
+        { sheetId: itemGid, title: "Item" },
+        { sheetId: logGid, title: "Log" },
       ],
     });
 
     const raw = SpreadsheetRaw.init();
-    raw.sheet(111).gatherFetchProperties();
-    raw.sheetMeta(111).gatherFetchColumnIdsInit();
-    raw.sheet(222).gatherFetchProperties();
-    raw.sheetMeta(222).gatherFetchColumnIdsInit();
+    raw.sheet(itemGid).gatherFetchProperties();
+    raw.sheetMeta(itemGid).gatherFetchColumnIdsInit();
+    raw.sheet(logGid).gatherFetchProperties();
 
     expect(() => raw.fetchAllGathered()).toThrowError(
-      /"Task Generic" \(gid 111\).*"Task Material" \(gid 222\)/,
+      /regenerate the configs.*"Item" \(gid \d+\) has no Table starting at row 4, column A.*"Log" \(gid \d+\) has no Table/,
     );
+  });
+
+  it("leaves a sheet the config does not know alone when its strip finds no Table", () => {
+    stubSheetsService({
+      sheets: [{ sheetId: scratchGid, title: "Byron's Scratch Sheet" }],
+    });
+
+    const raw = SpreadsheetRaw.init();
+    raw.sheet(scratchGid).gatherFetchProperties();
+
+    expect(() => raw.fetchAllGathered()).not.toThrow();
   });
 
   it("does not throw for a sheet with a Table", () => {
@@ -152,7 +163,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     raw.sheet(itemGid).gatherFetchProperties();
 
     expect(() => raw.fetchAllGathered()).toThrowError(
-      /"Item".*starts at row 3, column A.*must start at row 4, column A/,
+      /regenerate the configs.*"Item".*starts at row 3, column A, not row 4, column A/,
     );
   });
 
@@ -171,7 +182,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     raw.sheet(itemGid).gatherFetchProperties();
 
     expect(() => raw.fetchAllGathered()).toThrowError(
-      /"Item".*starts at row 4, column B.*must start at row 4, column A/,
+      /"Item".*starts at row 4, column B, not row 4, column A/,
     );
   });
 
@@ -214,8 +225,8 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     expect(() => raw.fetchAllGathered()).toThrowError(/"Item".*"Log"/);
   });
 
-  it("reports a Table the filtered fetch could not see as misplaced rather than absent", () => {
-    stubSheetsService({
+  it("stops on a Table moved out of the strip's sight as missing, in the one round trip", () => {
+    const { getByDataFilterCalls, getCalls } = stubSheetsService({
       sheets: [
         {
           ...misplacedTableSheet({
@@ -232,11 +243,90 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     raw.sheet(itemGid).gatherFetchProperties();
     raw.sheetMeta(itemGid).gatherFetchColumnIdsInit();
 
-    const message = thrownMessage(() => raw.fetchAllGathered());
-    expect(message).toMatch(
-      /"Item".*starts at row 6, column A.*must start at row 4, column A/,
+    expect(() => raw.fetchAllGathered()).toThrowError(
+      /regenerate the configs.*"Item" \(gid \d+\) has no Table starting at row 4, column A/,
     );
-    expect(message).not.toMatch(/Insert > Table/);
+    expect(getByDataFilterCalls).toHaveLength(1);
+    expect(getCalls).toEqual([]);
+  });
+
+  it("checks a well-placed Table's column IDs in the one round trip", () => {
+    const { getByDataFilterCalls, getCalls } = stubSheetsService({
+      sheets: [placedTableSheet({ sheetId: itemGid, title: "Item" })],
+    });
+
+    const raw = SpreadsheetRaw.init();
+    raw.sheet(itemGid).gatherFetchProperties();
+    raw.sheetMeta(itemGid).gatherFetchColumnIdsInit();
+    raw.fetchAllGathered();
+
+    expect(getByDataFilterCalls).toHaveLength(1);
+    expect(getCalls).toEqual([]);
+  });
+
+  it("stops on a head band shifted down by an inserted row while the header stayed put", () => {
+    stubSheetsService({
+      sheets: [
+        {
+          ...placedTableSheet({ sheetId: itemGid, title: "Item" }),
+          rows: buildGridRows({
+            [colIdRowIndex + 1]: [ownColumnId(itemGid)],
+            [tableHeaderRowIndex]: ["ID"],
+          }),
+        },
+      ],
+    });
+
+    const raw = SpreadsheetRaw.init();
+    raw.sheet(itemGid).gatherFetchProperties();
+
+    expect(() => raw.fetchAllGathered()).toThrowError(
+      /regenerate the configs.*"Item" \(gid \d+\) needs its own "itm" column IDs, and only those, in row 1/,
+    );
+  });
+
+  it("stops on another Table's column ID in the column ID row", () => {
+    stubSheetsService({
+      sheets: [
+        {
+          ...placedTableSheet({ sheetId: itemGid, title: "Item" }),
+          rows: buildGridRows({
+            [colIdRowIndex]: [ownColumnId(itemGid), ownColumnId(logGid)],
+            [tableHeaderRowIndex]: ["ID", "Name"],
+          }),
+          table: { endRowIndex: tableEndRowIndex, endColumnIndex: 2 },
+        },
+      ],
+    });
+
+    const raw = SpreadsheetRaw.init();
+    raw.sheet(itemGid).gatherFetchProperties();
+    raw.sheetMeta(itemGid).gatherFetchColumnIdsInit();
+
+    expect(() => raw.fetchAllGathered()).toThrowError(
+      /"Item" \(gid \d+\) needs its own "itm" column IDs, and only those, in row 1/,
+    );
+  });
+
+  it("accepts a blank beside the Table's own column IDs", () => {
+    stubSheetsService({
+      sheets: [
+        {
+          ...placedTableSheet({ sheetId: itemGid, title: "Item" }),
+          rows: buildGridRows({
+            [colIdRowIndex]: [ownColumnId(itemGid), ""],
+            [tableHeaderRowIndex]: ["ID", "Name"],
+          }),
+          table: { endRowIndex: tableEndRowIndex, endColumnIndex: 2 },
+        },
+      ],
+    });
+
+    const raw = SpreadsheetRaw.init();
+    raw.sheet(itemGid).gatherFetchProperties();
+    raw.sheetMeta(itemGid).gatherFetchColumnIdsInit();
+
+    expect(() => raw.fetchAllGathered()).not.toThrow();
   });
 
   it("throws naming a known sheet whose gathered payload has more than one Table, and does not keep the first as active", () => {
@@ -300,7 +390,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
 
     const message = thrownMessage(() => raw.fetchAllGathered());
     expect(message).toMatch(/more than one Table.*"Item"/);
-    expect(message).toMatch(/Insert > Table.*"Log"/);
+    expect(message).toMatch(/"Log" \(gid \d+\) has no Table/);
   });
 
   it("names extra Tables and a misplaced Table in one error", () => {
@@ -321,11 +411,11 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
 
     const message = thrownMessage(() => raw.fetchAllGathered());
     expect(message).toMatch(/more than one Table.*"Item"/);
-    expect(message).toMatch(/does not start where the layout requires.*"Log"/);
+    expect(message).toMatch(/not where the configs record them.*"Log"/);
   });
 
-  it("reports extra Tables the filtered fetch could not see as extras rather than absent", () => {
-    stubSheetsService({
+  it("stops on extra Tables the strip could not see as missing, without fetching sheet properties", () => {
+    const { getCalls } = stubSheetsService({
       sheets: [
         {
           ...extraTablesSheet({ sheetId: itemGid, title: "Item" }),
@@ -338,9 +428,10 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     raw.sheet(itemGid).gatherFetchProperties();
     raw.sheetMeta(itemGid).gatherFetchColumnIdsInit();
 
-    const message = thrownMessage(() => raw.fetchAllGathered());
-    expect(message).toMatch(/more than one Table.*"Item"/);
-    expect(message).not.toMatch(/Insert > Table/);
+    expect(() => raw.fetchAllGathered()).toThrowError(
+      /"Item" \(gid \d+\) has no Table/,
+    );
+    expect(getCalls).toEqual([]);
   });
 
   it("sends no request when no ranges were gathered, since empty dataFilters would fetch the whole spreadsheet", () => {
@@ -362,7 +453,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     expect(raw.activeSheetGids).toEqual([]);
   });
 
-  it("aims the properties probe at one header cell on the layout start column", () => {
+  it("aims the placement strip from row 0 down to the header in the layout start column", () => {
     const { getByDataFilterCalls } = stubSheetsService({
       sheets: [placedTableSheet({ sheetId: itemGid, title: "Item" })],
     });
@@ -374,7 +465,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     expect(recordedGridRanges(getByDataFilterCalls)).toEqual([
       {
         sheetId: itemGid,
-        startRowIndex: tableHeaderRowIndex,
+        startRowIndex: 0,
         endRowIndex: tableHeaderRowIndex + 1,
         startColumnIndex: startTableColIndex,
         endColumnIndex: startTableColIndex + 1,

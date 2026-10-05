@@ -19,6 +19,8 @@ import type {
   TableColumnPropertiesUpdate,
   TableColumnSnapshot,
 } from "../00_Source/RawSource/RawSource";
+import { SheetIndex } from "../00_Source/RawSource/SheetIndex";
+import { TableOrigin } from "../01_SpreadsheetSchema/TableOrigin";
 import type { Value } from "../01_SpreadsheetSchema/valueSchemas";
 import { Arr } from "../utils/Arr";
 import { Val } from "../utils/Val";
@@ -218,7 +220,17 @@ export class TableRaw extends TableCommonRaw {
   }
   gatherFetchProperties(): this {
     // The live start is unknown until this probe comes back, so it aims where the layout expects the Table.
-    this.meta.tableHeaderRow.cell(0).gatherFetchRange();
+    const origin = TableOrigin.expected();
+    this.gatherFetchRange({
+      startRowIndex: SheetIndex.row(0),
+      endRowIndex: SheetIndex.row(origin.headerRowIndex + 1),
+      startColumnIndex: origin.startColIndex,
+      endColumnIndex: SheetIndex.col(origin.startColIndex + 1),
+    });
+    this.schema.uniformRowNames.forEach((name) => {
+      this.meta.uniformRow(name).cell(0).prepFetchBackfill();
+    });
+    this.sheetState.fetchQueue.gatherPlacementStrip = true;
     return this;
   }
   hasQueuedFullRowFetch(rowIndex: number): boolean {

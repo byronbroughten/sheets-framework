@@ -1,4 +1,6 @@
+import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
 import { getSheetTraitByName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
+import { SpreadsheetSchema } from "../01_SpreadsheetSchema/SpreadsheetSchema";
 import { TableOrigin } from "../01_SpreadsheetSchema/TableOrigin";
 import { uniformRows } from "../01_SpreadsheetSchema/uniformRows";
 import {
@@ -65,9 +67,19 @@ export function placedTableSheet(sheet: {
 }): FakeSheetProperties {
   return {
     ...sheet,
-    rows: buildGridRows({ [tableHeaderRowIndex]: ["ID"] }),
+    rows: buildGridRows({
+      [colIdRowIndex]: [ownColumnId(sheet.sheetId)],
+      [tableHeaderRowIndex]: ["ID"],
+    }),
     table: { endRowIndex: tableEndRowIndex },
   };
+}
+
+// A sheet the config doesn't know has no prefix of its own, so any well-formed ID does.
+export function ownColumnId(sheetGid: number): string {
+  const schema = new SpreadsheetSchema();
+  if (!schema.isInSheetGids(sheetGid)) return dimensionIds.col("x", "id");
+  return dimensionIds.col(schema.sheetByGid(sheetGid).idPrefix, "id");
 }
 
 export function misplacedTableSheet({

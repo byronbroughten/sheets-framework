@@ -33,6 +33,22 @@ export class SheetMetaRaw extends TableCommonRaw {
   get activeColumnIds(): string[] {
     return this._tableColumnIds().filter((columnId) => columnId !== "");
   }
+  // Fetched cells only: the placement strip carries just the first column's.
+  holdsOnlyColumnIdsOf(idPrefix: string): boolean {
+    const columnIds = this.fullTableColIndexes
+      .map((colIndex) => this.colIdRow.cell(colIndex))
+      .filter((cell) => cell.isActive)
+      .map((cell) => cell.valueOrEmpty())
+      .filter((value) => value !== "");
+    return (
+      columnIds.length > 0 &&
+      columnIds.every(
+        (columnId) =>
+          typeof columnId === "string" &&
+          dimensionIds.colIdPrefixOrUndefined(columnId) === idPrefix,
+      )
+    );
+  }
   activeIdPrefix(): string | undefined {
     const columnIdsByPrefix = this._columnIdsByIdPrefix();
     if (columnIdsByPrefix.size === 0) return undefined;

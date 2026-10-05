@@ -19,6 +19,7 @@ import {
   gridRanges,
   itemGid,
   lightGreen,
+  ownColumnId,
   startTableColIndex,
   tableEndRowIndex,
   tableHeaderRowIndex,
@@ -125,7 +126,10 @@ describe("ColumnMetaRaw active facts", () => {
         {
           sheetId: itemGid,
           title: "Item",
-          rows: buildGridRows({ [tableHeaderRowIndex]: ["Purchase Price"] }),
+          rows: buildGridRows({
+            [colIdRowIndex]: [ownColumnId(itemGid)],
+            [tableHeaderRowIndex]: ["Purchase Price"],
+          }),
           table: { endRowIndex: tableEndRow },
         },
       ],
