@@ -565,6 +565,37 @@ describe("EndpointRun.run, a blank row another endpoint stamped", () => {
   });
 });
 
+describe("EndpointRun.run, a Table met with only its header", () => {
+  it("stops before the action, naming the Table and the row to add", () => {
+    stubSheetsService({
+      sheets: [
+        {
+          sheetId: runItemGid,
+          title: "Run item",
+          rows: buildGridRows({
+            0: columnIds,
+            [actionRowIndex]: actionRowWithEntryTicked,
+            3: headers,
+          }),
+          table: { endRowIndex: topDataRowIndex, name: "Run items" },
+        },
+      ],
+    });
+    let isActionReached = false;
+
+    expect(() =>
+      runEndpoint(
+        reportingEndpoint(() => {
+          isActionReached = true;
+        }),
+      ),
+    ).toThrowError(
+      /^Table "Run items" on "Run item" \(gid \d+\) has only its header: add a row below it holding its formulas\.$/,
+    );
+    expect(isActionReached).toBe(false);
+  });
+});
+
 describe("EndpointRun.run, the run status message", () => {
   it("writes the action's returned string", () => {
     const { grid } = stubRunItemSheet();

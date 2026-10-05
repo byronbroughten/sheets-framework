@@ -30,7 +30,7 @@ export class RowRaw extends RowCommonRaw {
   }
   delete(): void {
     this.table.assertRowIndexesNotStale();
-    this.validateSheetKeepsADataRow();
+    this.validateTableKeepsADataRow();
     this.remove();
     this.queueRowWrite({ action: "deleteRow" });
     // this.endRowIndex--;
@@ -47,10 +47,10 @@ export class RowRaw extends RowCommonRaw {
     return this;
   }
   // A new row copies its formulas from the rows already there, so one must survive.
-  private validateSheetKeepsADataRow(): void {
+  private validateTableKeepsADataRow(): void {
     if (!this.table.isDownToLastDataRow) return;
     throw new Error(
-      `Cannot delete ${this.rowLabel(this.rowIndex)} of sheetGid ${this.sheetGid}: it is the sheet's last data row, and a sheet may never be left with none. Clear the row instead.`,
+      `Cannot delete ${this.rowLabel(this.rowIndex)} of ${this.table.tableLabel}: it is the Table's last data row, and a Table may never be left with none. Clear the row instead.`,
     );
   }
 }

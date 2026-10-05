@@ -12,7 +12,7 @@ It runs per Table in `SpreadsheetRaw`'s post-fetch step, on each Let api access 
 - its header sits at the recorded row and column
 - the column ID row (header −3) holds only blanks or this Table's own prefixed column IDs, and at least one ID, across the Table's columns as far as the fetch reached
 
-Any failure stops the run and names the sheet. For example, deleting a row above a Table or inserting a column to its left moves its header, and a Table moved out of the strip's sight reads as missing. A band of head rows shifted by an inserted row, with the header left in place, fails the column ID row test.
+Any failure stops the run and names the sheet. The same step stops on a Table met with only its header, once its header is in place ([blank row](./blank-row.md#a-table-met-with-only-its-header-stops-the-run)). For example, deleting a row above a Table or inserting a column to its left moves its header, and a Table moved out of the strip's sight reads as missing. A band of head rows shifted by an inserted row, with the header left in place, fails the column ID row test.
 
 Until each Table's position is recorded in the configs, "recorded" means the layout's fixed spot (`TableOrigin.expected()`) and the GID in the sheet's config. The edit trigger and the fetches sent before a Table's properties arrive still assume that spot, so the check accepts only it until those move onto recorded positions (sheets-framework#82).
 
