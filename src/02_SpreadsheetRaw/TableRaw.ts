@@ -521,6 +521,7 @@ export class TableRaw extends TableCommonRaw {
       startColumnIndex: origin.sheetColIndex(columnCount),
       endColumnIndex: origin.sheetColIndex(columnCount + insertCount),
     };
+    this._validateNoNeighbourSplitBy(newColumns);
     this._queueGridColumnsThrough(newColumns.endColumnIndex);
     this.writeOperations.insertTableEndColumns.push({
       tableId: this.tableId,
@@ -539,6 +540,16 @@ export class TableRaw extends TableCommonRaw {
       ],
     });
     this.growColumnCount(insertCount);
+  }
+  private _validateNoNeighbourSplitBy(band: BoundedGridRange): void {
+    const split = this.tableIds()
+      .filter((tableId) => tableId !== this.tableId)
+      .map((tableId) => this.ss.table(tableId))
+      .find((neighbour) => neighbour.isSplitBy(band));
+    if (split === undefined) return;
+    throw new Error(
+      `Inserting a column at the end of Table "${this.name}" on sheet "${this.sheetTitle}" would shift only part of Table "${split.name}" with its head rows. Move "${split.name}" so that it and its head rows sit entirely within rows ${band.startRowIndex + 1}–${band.endRowIndex}, or entirely outside them.`,
+    );
   }
   private _queueGridColumnsThrough(endColumnIndex: SheetColIndex): void {
     const { working, writeQueue } = this.sheetState;

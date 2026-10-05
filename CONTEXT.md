@@ -14,12 +14,16 @@ _Avoid_: range, data range, grid
 A formula that names a Table column by the Table's name and the column header — `test[Number]`, usually wrapped in `SINGLE(...)` when one cell is wanted — so the formula stays readable when columns move. It is not an A1 address like `$C5`.
 _Avoid_: structured reference, A1, cell address
 
+**Head rows**:
+The rows above a Table's header row that belong to that Table: the column ID row, the column-group heading and the action row. They span the Table's columns and move with it, so nothing may shift some of them, or the Table, without the rest. A Table the app doesn't know about has none.
+_Avoid_: bookkeeping rows, uniform rows, meta rows
+
 **Column ID row**:
-The bookkeeping row of generated column identifiers, above the other two bookkeeping rows. You never edit it by hand; the app fills a blank when a Table column has none.
+The head row of generated column identifiers, above the other two head rows. You never edit it by hand; the app fills a blank when a Table column has none.
 _Avoid_: ID row, metadata row, row 1
 
 **Column-group heading**:
-The bookkeeping row of group names, between the column ID row and the action row. You never edit it by hand.
+The head row of group names, between the column ID row and the action row. You never edit it by hand.
 _Avoid_: group row, section header
 
 **Action row**:
@@ -27,7 +31,7 @@ The row above the Table header row where an endpoint is triggered. Most of its c
 _Avoid_: control row, button row, trigger row
 
 **Table header row**:
-The row of column titles you read across the top of a sheet's data, directly above the first data row, and the row the Table starts on. Three bookkeeping rows sit above it that you never edit by hand: the column ID row, the column-group heading, and the action row.
+The row of column titles you read across the top of a sheet's data, directly above the first data row, and the row the Table starts on. Its three head rows sit above it: the column ID row, the column-group heading, and the action row.
 _Avoid_: header row, title row, top row, row 1
 
 **First data row**:

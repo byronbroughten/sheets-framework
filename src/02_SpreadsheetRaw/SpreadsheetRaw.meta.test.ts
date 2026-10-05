@@ -497,6 +497,112 @@ describe("SheetMetaRaw.insertColumnAtEnd", () => {
         }),
       ).toEqual([["ID", "Name", "New", "", "ID", "Code", "Extra"]]);
     });
+
+    describe("a neighbour the band would split", () => {
+      const left: FakeTable = {
+        tableId: "left",
+        name: "Left",
+        startRowIndex: headerRow,
+        endColumnIndex: 2,
+        endRowIndex: lastRow + 1,
+        headRows: { 3: ["c:lft:a", "c:lft:b"] },
+      };
+      function neighbour(
+        rows: Pick<FakeTable, "startRowIndex" | "endRowIndex">,
+      ): FakeTable {
+        return {
+          tableId: "right",
+          name: "Right",
+          startColumnIndex: rightStart,
+          endColumnIndex: rightStart + 2,
+          headRows: { 3: ["c:rgt:a", "c:rgt:b"] },
+          ...rows,
+        };
+      }
+      function stubLeftBeside(...tables: FakeTable[]) {
+        return stubSheetsService({
+          sheets: [
+            {
+              sheetId: 111,
+              title: "Records",
+              rows: buildGridRows({ [headerRow]: ["ID", "Name"] }),
+              tables: [left, ...tables],
+            },
+          ],
+        });
+      }
+      function fetchedRawInsertingOnLeft(): SpreadsheetRaw {
+        const raw = SpreadsheetRaw.init();
+        raw.fetchAllSheetProperties();
+        raw
+          .table("left")
+          .meta.insertColumnAtEnd({ columnId: "c:lft:new", header: "New" });
+        return raw;
+      }
+      const refusal = `Inserting a column at the end of Table "Left" on sheet "Records" would shift only part of Table "Right" with its head rows. Move "Right" so that it and its head rows sit entirely within rows ${columnIdRow + 1}–${lastRow + 1}, or entirely outside them.`;
+
+      it.each([
+        [
+          "whose head rows dip into the band's bottom edge",
+          { startRowIndex: lastRow + 1, endRowIndex: lastRow + 3 },
+        ],
+        [
+          "whose head rows overhang the band's top edge",
+          { startRowIndex: headerRow - 1, endRowIndex: lastRow + 1 },
+        ],
+        [
+          "that is taller than the band",
+          { startRowIndex: headerRow, endRowIndex: lastRow + 3 },
+        ],
+      ])("refuses for a neighbour %s, naming both Tables and sending nothing", (_, rows) => {
+        const { batchUpdateCount } = stubLeftBeside(neighbour(rows));
+        const raw = fetchedRawInsertingOnLeft();
+
+        expect(() => raw.batchUpdateGSheets()).toThrow(refusal);
+        expect(batchUpdateCount()).toBe(0);
+      });
+
+      it("leaves a neighbour wholly below the band, head rows included, where it is", () => {
+        const { grid } = stubLeftBeside(
+          neighbour({ startRowIndex: lastRow + 4, endRowIndex: lastRow + 6 }),
+        );
+        const raw = fetchedRawInsertingOnLeft();
+        raw.batchUpdateGSheets();
+
+        expect(tableColumns(grid)).toMatchObject({
+          left: [0, 3],
+          right: [rightStart, rightStart + 2],
+        });
+      });
+
+      it("leaves a Table added after the fetch, which the app doesn't know about, to Google's refusal", () => {
+        const { grid } = stubLeftBeside();
+        const raw = fetchedRawInsertingOnLeft();
+        const operator = SpreadsheetRaw.init();
+        operator.gatherRawOperation(
+          googleRawRequest({
+            addTable: {
+              table: {
+                name: "Right",
+                range: {
+                  sheetId: 111,
+                  startRowIndex: headerRow,
+                  endRowIndex: lastRow + 3,
+                  startColumnIndex: rightStart,
+                  endColumnIndex: rightStart + 2,
+                },
+              },
+            },
+          }),
+        );
+        operator.batchUpdateGSheets();
+
+        expect(() => raw.batchUpdateGSheets()).toThrow(
+          "You cannot insert or delete cells over part of a table.",
+        );
+        expect(tableColumns(grid)).toMatchObject({ left: [0, 2] });
+      });
+    });
   });
 });
 
