@@ -126,7 +126,7 @@ describe("SpreadsheetRaw add sheet and add Table", () => {
         range: { ...addTableProps.range, endRowIndex: SheetIndex.row(3) },
       }),
     ).toThrow(
-      "Add-Table refused: spreadsheetConfig's range holds only its header; a created Table starts with one blank body row.",
+      "Add-Table refused: spreadsheetConfig's range holds only its header; a created Table needs a body row.",
     );
     expect(raw.writeOperations.addTable).toEqual([]);
   });

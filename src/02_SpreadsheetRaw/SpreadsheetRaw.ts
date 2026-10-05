@@ -99,7 +99,7 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
     const { startRowIndex, endRowIndex } = props.range;
     if (endRowIndex <= startRowIndex + 1) {
       throw new Error(
-        `Add-Table refused: ${props.name}'s range holds only its header; a created Table starts with one blank body row.`,
+        `Add-Table refused: ${props.name}'s range holds only its header; a created Table needs a body row.`,
       );
     }
     this.writeOperations.addTable.push({
