@@ -11,7 +11,7 @@ import { type ValueName } from "../01_SpreadsheetSchema/valueSchemas";
 import type { ColumnMetaRaw } from "../02_SpreadsheetRaw/ColumnMetaRaw";
 import { Str } from "../utils/Str";
 import { columnConfigsFileSource } from "./configFileSource";
-import { GenericSheetOperator } from "./GenericSheetOperator";
+import { GenericTableOperator } from "./GenericTableOperator";
 import { SheetConfigOperator } from "./SheetConfigOperator";
 import {
   type ConfigSyncState,
@@ -26,7 +26,7 @@ interface ColumnIdentity {
   columnId: string;
 }
 
-export class ColumnConfigOperator extends GenericSheetOperator<"columnConfig"> {
+export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
   constructor(props: OperatorProps) {
     super({
       sheetName: "columnConfig",

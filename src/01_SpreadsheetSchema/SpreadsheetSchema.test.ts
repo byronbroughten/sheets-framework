@@ -21,9 +21,9 @@ import {
   sheetConfigsByGid,
   type TableName,
 } from "./sheetConfigsTypes";
-import { SheetSchema } from "./SheetSchema";
 import { SpreadsheetSchema } from "./SpreadsheetSchema";
 import { TableOrigin } from "./TableOrigin";
+import { TableSchema } from "./TableSchema";
 import type { ValueName } from "./valueSchemas";
 
 describe("SpreadsheetSchema", () => {
@@ -152,8 +152,8 @@ describe("type-level precision", () => {
   });
 
   it("keeps the sheet trait accessor's shape at both instantiations", () => {
-    const byName = SheetSchema.fromSheetName("sheetConfig");
-    const byGid = SheetSchema.fromSheetGid(byName.sheetGid);
+    const byName = TableSchema.fromSheetName("sheetConfig");
+    const byGid = TableSchema.fromSheetGid(byName.sheetGid);
     assertType<IsExactly<typeof byName.sheetName, "sheetConfig">>(true);
     assertType<IsExactly<typeof byGid.sheetName, TableName>>(true);
     assertType<
@@ -170,14 +170,14 @@ describe("type-level precision", () => {
     const ss = new SpreadsheetSchema();
     const byName = ss.sheetByName("sheetConfig");
     const byGid = ss.sheetByGid(byName.sheetGid);
-    assertType<IsExactly<typeof byName, SheetSchema<"sheetConfig">>>(true);
-    assertType<IsExactly<typeof byGid, SheetSchema>>(true);
+    assertType<IsExactly<typeof byName, TableSchema<"sheetConfig">>>(true);
+    assertType<IsExactly<typeof byGid, TableSchema>>(true);
     expect(byGid.sheetGid).toBe(byName.sheetGid);
   });
 
   it("navigates from a column schema back to its own sheet", () => {
     const sheet = ColumnSchema.fromColumnName("sheetConfig", "sheetGid").sheet;
-    assertType<IsExactly<typeof sheet, SheetSchema<"sheetConfig">>>(true);
+    assertType<IsExactly<typeof sheet, TableSchema<"sheetConfig">>>(true);
     expect(sheet.sheetName).toBe("sheetConfig");
   });
 });

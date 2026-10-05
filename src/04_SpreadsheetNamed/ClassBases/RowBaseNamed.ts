@@ -1,5 +1,5 @@
 import type { TableName } from "../../01_SpreadsheetSchema/sheetConfigsTypes";
-import { SheetSchema } from "../../01_SpreadsheetSchema/SheetSchema";
+import { TableSchema } from "../../01_SpreadsheetSchema/TableSchema";
 import { SheetBaseNamed, type SheetNamedProps } from "./SheetBaseNamed";
 
 export interface RowNamedProps<
@@ -14,8 +14,8 @@ export class RowBaseNamed<TN extends TableName> extends SheetBaseNamed<TN> {
     super(props);
     this.rowIndex = rowIndex;
   }
-  get schema(): SheetSchema<TN> {
-    return SheetSchema.fromSheetName(this.sheetName);
+  get schema(): TableSchema<TN> {
+    return TableSchema.fromSheetName(this.sheetName);
   }
   get rowNamedProps(): RowNamedProps<TN> {
     return {

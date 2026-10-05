@@ -1,10 +1,10 @@
 import type { TableName } from "../../01_SpreadsheetSchema/sheetConfigsTypes";
-import { SheetSchema } from "../../01_SpreadsheetSchema/SheetSchema";
+import { TableSchema } from "../../01_SpreadsheetSchema/TableSchema";
 import { TableBaseIdentified } from "./TableBaseIdentified";
 
 export abstract class TableCommonIdentified extends TableBaseIdentified {
-  get schema(): SheetSchema {
-    return SheetSchema.fromSheetGid(this.sheetGid);
+  get schema(): TableSchema {
+    return TableSchema.fromSheetGid(this.sheetGid);
   }
   get sheetName(): TableName {
     return this.schema.sheetName;

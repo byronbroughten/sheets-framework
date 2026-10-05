@@ -9,14 +9,14 @@ import {
   type MakeColumnFullName,
 } from "./columnConfigsTypes";
 import type { TableName } from "./sheetConfigsTypes";
-import { SheetSchema, type SheetSchemaProps } from "./SheetSchema";
 import { SpreadsheetBaseSchema } from "./SpreadsheetBaseSchema";
+import { TableSchema, type TableSchemaProps } from "./TableSchema";
 import { getValTrait, type ValueSchema } from "./valueSchemas";
 
 interface ColumnSchemaProps<
   TN extends TableName,
   CN extends ColumnName<TN>,
-> extends SheetSchemaProps<TN> {
+> extends TableSchemaProps<TN> {
   columnId: string;
   columnName: CN;
 }
@@ -45,13 +45,13 @@ export class ColumnSchema<
     sheetName: TN,
     columnName: CN,
   ): ColumnSchema<TN, CN> {
-    return SheetSchema.fromSheetName(sheetName).columnByName(columnName);
+    return TableSchema.fromSheetName(sheetName).columnByName(columnName);
   }
   static fromColumnId(sheetGid: number, columnId: string): ColumnSchema {
-    return SheetSchema.fromSheetGid(sheetGid).columnById(columnId);
+    return TableSchema.fromSheetGid(sheetGid).columnById(columnId);
   }
-  get sheet(): SheetSchema<TN> {
-    return new SheetSchema({
+  get sheet(): TableSchema<TN> {
+    return new TableSchema({
       sheetGid: this.sheetGid,
       sheetName: this.sheetName,
     });

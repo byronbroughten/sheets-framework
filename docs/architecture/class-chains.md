@@ -15,7 +15,7 @@ ColumnBaseNamed<SN, CN>          // the base: columnName, schema, columnNamedPro
        └─ ColumnMetaNamed<SN, CN>
 ```
 
-There is no base class for the primary column alone: a class that wants to sit beside `ColumnNamed` rather than under it extends `ColumnBaseNamed` and reaches the column through a getter — which is what `GenericSheetOperator` does one level up (`extends SheetBaseNamed`), and what the column-scoped endpoint classes in `06_API` already do. Spreadsheet-scoped Operators that own config-sync state extend `SpreadsheetBaseOperator` instead (`ConfigCoordinator`), which is the Named spreadsheet base plus `configSyncState`.
+There is no base class for the primary column alone: a class that wants to sit beside `ColumnNamed` rather than under it extends `ColumnBaseNamed` and reaches the column through a getter — which is what `GenericTableOperator` does one level up (`extends SheetBaseNamed`), and what the column-scoped endpoint classes in `06_API` already do. Spreadsheet-scoped Operators that own config-sync state extend `SpreadsheetBaseOperator` instead (`ConfigCoordinator`), which is the Named spreadsheet base plus `configSyncState`.
 
 ## Row and cell base classes
 

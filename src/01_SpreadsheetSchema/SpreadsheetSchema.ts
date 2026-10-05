@@ -4,8 +4,8 @@ import {
   sheetConfigsByGid,
   type TableName,
 } from "./sheetConfigsTypes";
-import { SheetSchema } from "./SheetSchema";
 import { SpreadsheetBaseSchema } from "./SpreadsheetBaseSchema";
+import { TableSchema } from "./TableSchema";
 
 export class SpreadsheetSchema extends SpreadsheetBaseSchema {
   isInSheetGids(sheetGid: number): boolean {
@@ -14,18 +14,18 @@ export class SpreadsheetSchema extends SpreadsheetBaseSchema {
   get sheetNames(): TableName[] {
     return configSheetNames();
   }
-  sheetByName<TN extends TableName>(sheetName: TN): SheetSchema<TN> {
-    return SheetSchema.fromSheetName(sheetName);
+  sheetByName<TN extends TableName>(sheetName: TN): TableSchema<TN> {
+    return TableSchema.fromSheetName(sheetName);
   }
-  sheetByGid(sheetGid: number): SheetSchema {
-    return SheetSchema.fromSheetGid(sheetGid);
+  sheetByGid(sheetGid: number): TableSchema {
+    return TableSchema.fromSheetGid(sheetGid);
   }
   // The inverse of `ColumnSchema.fullName`; a camelCase sheet name never holds the delimiter.
-  sheetByColumnFullName(fullName: string): SheetSchema {
+  sheetByColumnFullName(fullName: string): TableSchema {
     const sheetName = this.sheetNames.find((name) =>
       fullName.startsWith(this.combineNames(name, "")),
     );
-    return SheetSchema.fromSheetName(
+    return TableSchema.fromSheetName(
       Val.assert(sheetName, `sheet of column full name ${fullName}`),
     );
   }

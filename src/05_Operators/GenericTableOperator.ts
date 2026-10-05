@@ -1,6 +1,6 @@
 import type { ColumnName } from "../01_SpreadsheetSchema/columnConfigsTypes";
 import type { TableNameSimple } from "../01_SpreadsheetSchema/sheetConfigsTypes";
-import { SheetSchema } from "../01_SpreadsheetSchema/SheetSchema";
+import { TableSchema } from "../01_SpreadsheetSchema/TableSchema";
 import { SheetBaseNamed } from "../04_SpreadsheetNamed/ClassBases/SheetBaseNamed";
 import type { ColumnNamed } from "../04_SpreadsheetNamed/ColumnNamed";
 import type { SheetNamed } from "../04_SpreadsheetNamed/SheetNamed";
@@ -13,7 +13,7 @@ export interface SheetOperatorProps<
   sheetName: TN;
 }
 
-export class GenericSheetOperator<
+export class GenericTableOperator<
   TN extends TableNameSimple,
 > extends SheetBaseNamed<TN> {
   protected configSyncState: ConfigSyncState;
@@ -33,8 +33,8 @@ export class GenericSheetOperator<
   get sheet(): SheetNamed<TN> {
     return this.ss.sheet(this.sheetName);
   }
-  get schema(): SheetSchema<TN> {
-    return SheetSchema.fromSheetName(this.sheetName);
+  get schema(): TableSchema<TN> {
+    return TableSchema.fromSheetName(this.sheetName);
   }
   column<CN extends ColumnName<TN>>(columnName: CN): ColumnNamed<TN, CN> {
     return this.sheet.column(columnName);

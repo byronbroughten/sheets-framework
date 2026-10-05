@@ -16,5 +16,5 @@ Map fragments, one file per heading. Open the file the task needs.
 | Sheets round trips | [round-trips.md](./architecture/round-trips.md) |
 | Instantiation budget, the template-literal cliff | [type-check-cost.md](./architecture/type-check-cost.md) |
 | Relative `<SN, CN>` vs `ColumnFullName` | [column-addressing.md](./architecture/column-addressing.md) |
-| `SpreadsheetBaseSchema` / `SpreadsheetSchema` / `SheetSchema` / `ColumnSchema` | [schema-classes.md](./architecture/schema-classes.md) |
+| `SpreadsheetBaseSchema` / `SpreadsheetSchema` / `TableSchema` / `ColumnSchema` | [schema-classes.md](./architecture/schema-classes.md) |
 | Meta/primary class chains, `TableCommonRaw` | [class-chains.md](./architecture/class-chains.md) |

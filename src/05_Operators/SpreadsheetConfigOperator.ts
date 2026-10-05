@@ -1,10 +1,10 @@
-import { GenericSheetOperator } from "./GenericSheetOperator";
+import { GenericTableOperator } from "./GenericTableOperator";
 import {
   type OperatorProps,
   SpreadsheetBaseOperator,
 } from "./SpreadsheetBaseOperator";
 
-export class SpreadsheetConfigOperator extends GenericSheetOperator<"spreadsheetConfig"> {
+export class SpreadsheetConfigOperator extends GenericTableOperator<"spreadsheetConfig"> {
   constructor(props: OperatorProps) {
     super({
       sheetName: "spreadsheetConfig",

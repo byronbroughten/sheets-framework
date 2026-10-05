@@ -4,14 +4,14 @@ import {
   type ValueConfigsBase,
 } from "../01_SpreadsheetSchema/makeConfigs";
 import { ColumnConfigOperator } from "./ColumnConfigOperator";
-import { GenericSheetOperator } from "./GenericSheetOperator";
+import { GenericTableOperator } from "./GenericTableOperator";
 import {
   type ConfigSyncState,
   type OperatorProps,
   SpreadsheetBaseOperator,
 } from "./SpreadsheetBaseOperator";
 
-export class ValueConfigOperator extends GenericSheetOperator<"valueConfig"> {
+export class ValueConfigOperator extends GenericTableOperator<"valueConfig"> {
   constructor(props: OperatorProps) {
     super({
       sheetName: "valueConfig",

@@ -14,14 +14,14 @@ import {
 import { sheetConfigsByGid } from "../01_SpreadsheetSchema/sheetConfigsTypes";
 import { Val } from "../utils/Val";
 import { sheetConfigsFileSource } from "./configFileSource";
-import { GenericSheetOperator } from "./GenericSheetOperator";
+import { GenericTableOperator } from "./GenericTableOperator";
 import {
   type ConfigSyncState,
   type OperatorProps,
   SpreadsheetBaseOperator,
 } from "./SpreadsheetBaseOperator";
 
-export class SheetConfigOperator extends GenericSheetOperator<"sheetConfig"> {
+export class SheetConfigOperator extends GenericTableOperator<"sheetConfig"> {
   constructor(props: OperatorProps) {
     super({
       sheetName: "sheetConfig",

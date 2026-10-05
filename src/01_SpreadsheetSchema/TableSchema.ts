@@ -26,29 +26,29 @@ function sheetNameFromGid(sheetGid: number): TableName {
   return getSheetTraitByGid(sheetGid, "sheetName") as TableName;
 }
 
-export interface SheetSchemaProps<TN extends TableName> {
+export interface TableSchemaProps<TN extends TableName> {
   sheetGid: number;
   sheetName: TN;
 }
 
-export class SheetSchema<
+export class TableSchema<
   TN extends TableName = TableName,
 > extends SpreadsheetBaseSchema {
   readonly sheetGid: number;
   readonly sheetName: TN;
-  constructor({ sheetGid, sheetName }: SheetSchemaProps<TN>) {
+  constructor({ sheetGid, sheetName }: TableSchemaProps<TN>) {
     super();
     this.sheetGid = sheetGid;
     this.sheetName = sheetName;
   }
-  static fromSheetName<TN extends TableName>(sheetName: TN): SheetSchema<TN> {
-    return new SheetSchema({
+  static fromSheetName<TN extends TableName>(sheetName: TN): TableSchema<TN> {
+    return new TableSchema({
       sheetName,
       sheetGid: getSheetTraitByName(sheetName, "sheetGid"),
     });
   }
-  static fromSheetGid(sheetGid: number): SheetSchema {
-    return new SheetSchema({
+  static fromSheetGid(sheetGid: number): TableSchema {
+    return new TableSchema({
       sheetGid,
       sheetName: sheetNameFromGid(sheetGid),
     });
@@ -117,7 +117,7 @@ export class SheetSchema<
       return [columnSpecifier];
     }
   }
-  private get sheetSchemaProps(): SheetSchemaProps<TN> {
+  private get sheetSchemaProps(): TableSchemaProps<TN> {
     return { sheetGid: this.sheetGid, sheetName: this.sheetName };
   }
 }

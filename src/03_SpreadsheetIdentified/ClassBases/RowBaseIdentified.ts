@@ -1,4 +1,4 @@
-import { SheetSchema } from "../../01_SpreadsheetSchema/SheetSchema";
+import { TableSchema } from "../../01_SpreadsheetSchema/TableSchema";
 import {
   TableBaseIdentified,
   type TableIdentifiedProps,
@@ -12,8 +12,8 @@ export class RowBaseIdentified extends TableBaseIdentified {
     super(rest);
     this.rowIndex = rowIndex;
   }
-  get schema(): SheetSchema {
-    return SheetSchema.fromSheetGid(this.sheetGid);
+  get schema(): TableSchema {
+    return TableSchema.fromSheetGid(this.sheetGid);
   }
   get rowIdentifiedProps(): RowIdentifiedProps {
     return {
