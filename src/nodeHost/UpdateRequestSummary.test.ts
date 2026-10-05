@@ -332,6 +332,26 @@ describe("UpdateRequestSummary.lines", () => {
     ).toBe("deleteProtectedRange (no sheet) id 11");
   });
 
+  it("states a Table widen as the range it now covers", () => {
+    expect(
+      onlyLine({
+        updateTable: {
+          table: {
+            tableId: "t1",
+            range: {
+              sheetId: itemGid,
+              startRowIndex: 3,
+              endRowIndex: 8,
+              startColumnIndex: 0,
+              endColumnIndex: 3,
+            },
+          },
+          fields: "range",
+        },
+      }),
+    ).toBe("updateTable t1 range item!A4:C8 [range]");
+  });
+
   it("lists every column of a table column properties update in index order as Name: TYPE", () => {
     expect(
       onlyLine({

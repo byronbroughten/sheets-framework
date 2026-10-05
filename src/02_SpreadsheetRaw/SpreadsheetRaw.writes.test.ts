@@ -77,7 +77,13 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
 
   it("grows the Table by every appended row rather than by one", () => {
     const { grid } = stubSheetsService({
-      sheets: [{ sheetId: 111, title: "Records", table: { endRowIndex: 11 } }],
+      sheets: [
+        {
+          sheetId: 111,
+          title: "Records",
+          table: { endRowIndex: 11, endColumnIndex: 2 },
+        },
+      ],
     });
 
     const raw = SpreadsheetRaw.init();
@@ -93,8 +99,16 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
   it("grows each sheet's Table by the rows appended to that sheet, however the appends interleave", () => {
     const { grid } = stubSheetsService({
       sheets: [
-        { sheetId: 111, title: "Records", table: { endRowIndex: 11 } },
-        { sheetId: 222, title: "Entries", table: { endRowIndex: 6 } },
+        {
+          sheetId: 111,
+          title: "Records",
+          table: { endRowIndex: 11, endColumnIndex: 2 },
+        },
+        {
+          sheetId: 222,
+          title: "Entries",
+          table: { endRowIndex: 6, endColumnIndex: 2 },
+        },
       ],
     });
 
@@ -133,6 +147,218 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
     ]);
     expect(firstTableEndRowIndex(grid, 111)).toBe(11);
     expect(raw.sheet(111).rowIndexesAreStale).toBe(true);
+  });
+
+  describe("Table growth", () => {
+    const dateColIndex = startTableColIndex + 3;
+    function stubGrowingTable() {
+      return stubSheetsService({
+        sheets: [
+          {
+            sheetId: 111,
+            title: "Records",
+            rows: buildGridRows({
+              [tableHeaderRowIndex]: ["ID", "Amount", "Done", "When"],
+              [topDataRowIndex]: [
+                "r1",
+                {
+                  value: 5,
+                  backgroundColor: lightGreen,
+                  numberFormatType: "CURRENCY",
+                },
+                { value: false, dataValidationConditionType: "BOOLEAN" },
+                { value: 1, dataValidationConditionType: "DATE_IS_VALID" },
+              ],
+            }),
+            table: {
+              endRowIndex: topDataRowIndex + 1,
+              columnTypes: { [dateColIndex]: "DATE" },
+            },
+          },
+        ],
+      });
+    }
+
+    it("extends the grid by exactly the rows needed, widens the Table over them, carries format and untyped validation down, and fills them", () => {
+      const { grid } = stubGrowingTable();
+      expect(grid.sheet(111).rowCount).toBe(topDataRowIndex + 1);
+
+      const raw = SpreadsheetRaw.init();
+      raw.fetchAllSheetProperties();
+      raw.sheet(111).appendDataRow().updateValue(0, "r2");
+      raw.sheet(111).appendDataRow().cell(1).updateFormula("=1+1");
+      raw.batchUpdateGSheets();
+
+      const sheet = grid.sheet(111);
+      expect(sheet.rowCount).toBe(topDataRowIndex + 3);
+      expect(firstTableEndRowIndex(grid, 111)).toBe(topDataRowIndex + 3);
+      expect(
+        sheet.rows({
+          startRowIndex: topDataRowIndex + 1,
+          endRowIndex: topDataRowIndex + 3,
+          startColumnIndex: startTableColIndex,
+          endColumnIndex: startTableColIndex + 4,
+        }),
+      ).toEqual([
+        [
+          "r2",
+          {
+            value: null,
+            backgroundColor: lightGreen,
+            numberFormatType: "CURRENCY",
+          },
+          { value: null, dataValidationConditionType: "BOOLEAN" },
+          null,
+        ],
+        [
+          null,
+          {
+            value: "=1+1",
+            isFormula: true,
+            backgroundColor: lightGreen,
+            numberFormatType: "CURRENCY",
+          },
+          { value: null, dataValidationConditionType: "BOOLEAN" },
+          null,
+        ],
+      ]);
+    });
+
+    it("grows from the last body row even after a same-run re-fetch resets the Table's end", () => {
+      const { grid } = stubGrowingTable();
+
+      const raw = SpreadsheetRaw.init();
+      raw.fetchAllSheetProperties();
+      raw.sheet(111).appendDataRow().updateValue(0, "r2");
+      raw.sheet(111).appendDataRow().updateValue(0, "r3");
+      raw.fetchAllSheetProperties();
+      raw.batchUpdateGSheets();
+
+      expect(firstTableEndRowIndex(grid, 111)).toBe(topDataRowIndex + 3);
+      expect(
+        grid.sheet(111).values({
+          startRowIndex: topDataRowIndex,
+          endColumnIndex: startTableColIndex + 1,
+        }),
+      ).toEqual([["r1"], ["r2"], ["r3"]]);
+    });
+
+    it("needs no appendDimension when the grid already reaches past the new rows", () => {
+      const { grid } = stubSheetsService({
+        sheets: [
+          {
+            sheetId: 111,
+            title: "Records",
+            rows: buildGridRows({ [topDataRowIndex + 5]: ["below"] }),
+            table: { endRowIndex: topDataRowIndex + 1 },
+          },
+        ],
+      });
+
+      const raw = SpreadsheetRaw.init();
+      raw.fetchAllSheetProperties();
+      raw.sheet(111).appendDataRow();
+      raw.batchUpdateGSheets();
+
+      expect(grid.sheet(111).rowCount).toBe(topDataRowIndex + 7);
+      expect(grid.sheet(111).cell(topDataRowIndex + 6, 0)).toBe("below");
+    });
+
+    const leftStart = startTableColIndex;
+    const rightStart = startTableColIndex + 3;
+    function stubSideBySideTables() {
+      return stubSheetsService({
+        sheets: [
+          {
+            sheetId: 111,
+            title: "Records",
+            rows: buildGridRows({
+              [tableHeaderRowIndex]: ["ID", "Name", "", "Code", "Qty"],
+              [topDataRowIndex]: ["r1", "a", "loose", "c1", 5],
+              [topDataRowIndex + 1]: ["r2", "b", "", "c2", 6],
+            }),
+            tables: [
+              {
+                tableId: "left",
+                startColumnIndex: leftStart,
+                endColumnIndex: leftStart + 2,
+                endRowIndex: topDataRowIndex + 2,
+              },
+              {
+                tableId: "right",
+                startColumnIndex: rightStart,
+                endColumnIndex: rightStart + 2,
+                endRowIndex: topDataRowIndex + 2,
+              },
+            ],
+          },
+        ],
+      });
+    }
+    function tableEndRowIndexes(
+      grid: ReturnType<typeof stubSheetsService>["grid"],
+    ): (number | undefined)[] {
+      return grid.sheet(111).tables.map(({ range }) => range?.endRowIndex);
+    }
+
+    it("gives a side-by-side neighbour and the cells between no blank rows", () => {
+      const { grid } = stubSideBySideTables();
+
+      const raw = SpreadsheetRaw.init();
+      raw.fetchAllSheetProperties();
+      raw.table("left").appendDataRow().updateValue(0, "r3");
+      raw.batchUpdateGSheets();
+
+      expect(
+        grid.sheet(111).values({ startRowIndex: topDataRowIndex }),
+      ).toEqual([
+        ["r1", "a", "loose", "c1", 5],
+        ["r2", "b", "", "c2", 6],
+        ["r3", null, null, null, null],
+      ]);
+      expect(tableEndRowIndexes(grid)).toEqual([
+        topDataRowIndex + 3,
+        topDataRowIndex + 2,
+      ]);
+    });
+
+    it("grows two Tables on one sheet each by its own rows, not as one merged append", () => {
+      const { grid } = stubSideBySideTables();
+
+      const raw = SpreadsheetRaw.init();
+      raw.fetchAllSheetProperties();
+      raw.table("right").appendDataRow().updateValue(0, "c3");
+      raw.table("left").appendDataRow().updateValue(0, "r3");
+      raw.table("right").appendDataRow().updateValue(0, "c4");
+      raw.batchUpdateGSheets();
+
+      expect(tableEndRowIndexes(grid)).toEqual([
+        topDataRowIndex + 3,
+        topDataRowIndex + 4,
+      ]);
+      expect(grid.sheet(111).rowCount).toBe(topDataRowIndex + 4);
+      expect(
+        grid.sheet(111).values({ startRowIndex: topDataRowIndex + 2 }),
+      ).toEqual([
+        ["r3", null, null, "c3", null],
+        [null, null, null, "c4", null],
+      ]);
+    });
+
+    it("costs no round trip beyond the one batch update", () => {
+      const { batchUpdateCount, getCalls, getByDataFilterCalls } =
+        stubSideBySideTables();
+
+      const raw = SpreadsheetRaw.init();
+      raw.fetchAllSheetProperties();
+      const fetchCount = getCalls.length + getByDataFilterCalls.length;
+      raw.table("left").appendDataRow();
+      raw.table("right").appendDataRow();
+      raw.batchUpdateGSheets();
+
+      expect(getCalls.length + getByDataFilterCalls.length).toBe(fetchCount);
+      expect(batchUpdateCount()).toBe(1);
+    });
   });
 
   const staleRowIndexes = "Row indexes are stale for sheetGid 111.";

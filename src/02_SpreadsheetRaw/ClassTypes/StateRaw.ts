@@ -5,13 +5,16 @@ import type {
 import type { ConditionalFormatRule } from "../../00_Source/RawSource/ConditionalFormat";
 import type { EditProtection } from "../../00_Source/RawSource/EditProtection";
 import type {
+  CopyPasteOperation,
   FillCellOperation,
   FindReplaceScope as BaseFindReplaceScope,
   FindReplaceTerms as BaseFindReplaceTerms,
+  InsertRangeOperation,
   LocalWriteOperation,
   RawSource,
   TableColumnSnapshot,
   TableColumnType,
+  UpdateTableRangeOperation,
 } from "../../00_Source/RawSource/RawSource";
 import type { RgbColor } from "../../00_Source/RawSource/RgbColor";
 import type {
@@ -42,6 +45,7 @@ export interface SpreadsheetWriteQueueRaw {
 type GatheredOnlyKind =
   | "appendDimension"
   | "insertRange"
+  | "updateTableRange"
   | "deleteRange"
   | "copyPaste";
 
@@ -51,13 +55,24 @@ export type WriteOperations = {
     LocalWriteOperation,
     { kind: KD }
   >[];
-};
+} & { appendTableRows: AppendTableRows[] };
+
+// One Table's growth, expanded at gathering; the flusher sends a sheet's growths bottom-up.
+export interface AppendTableRows {
+  sheetId: number;
+  startRowIndex: SheetRowIndex;
+  operations: TableGrowthOperation[];
+}
+
+export type TableGrowthOperation =
+  InsertRangeOperation | UpdateTableRangeOperation | CopyPasteOperation;
 
 export type SheetsStateRaw = Map<SheetId, SheetStateRaw>;
 
 export interface SheetStateRaw {
   working: SheetWorkingStateRaw;
   fetchQueue: SheetFetchQueueRaw;
+  writeQueue: SheetWriteQueueRaw;
   // `ss.sheet(gid)` reaches a Table through its sheet, so what is queued before that Table is known waits here.
   tableBeforeProperties: TableStateRaw;
 }
@@ -83,6 +98,11 @@ export interface SheetFetchQueueRaw {
   gatherConditionalFormats: boolean;
   gatherEditProtections: boolean;
   gatherPlacementStrip: boolean;
+}
+
+// Summed over every growth on the sheet, and sent as its one appendDimension.
+export interface SheetWriteQueueRaw {
+  appendedRowCount: number;
 }
 
 export type TablesStateRaw = Map<TableId, TableStateRaw>;

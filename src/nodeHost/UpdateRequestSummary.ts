@@ -292,6 +292,14 @@ const requestBody: {
         label.fields(update.fields),
       );
     }
+    if (update?.fields === "range") {
+      return columns(
+        table?.tableId ?? "(no table)",
+        "range",
+        label.range(table?.range),
+        label.fields(update.fields),
+      );
+    }
     return columns(
       table?.tableId ?? "(no table)",
       `${table?.columnProperties?.length ?? 0} cols`,

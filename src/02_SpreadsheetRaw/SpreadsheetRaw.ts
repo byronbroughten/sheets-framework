@@ -132,6 +132,7 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
       state.writeQueue = emptyStateRaw.tableWriteQueue();
     });
     this.sheetsStateRaw.forEach((state) => {
+      state.writeQueue = emptyStateRaw.sheetWriteQueue();
       state.tableBeforeProperties.writeQueue = emptyStateRaw.tableWriteQueue();
     });
     return this;

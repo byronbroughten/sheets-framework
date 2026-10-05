@@ -287,17 +287,6 @@ function modeledOperationToGoogleRequests(
   operation: Exclude<LocalWriteOperation, { kind: "raw" }>,
 ): ModeledRequest[] {
   switch (operation.kind) {
-    case "appendRows":
-      return [
-        {
-          appendCells: {
-            sheetId: operation.sheetId,
-            tableId: operation.tableId,
-            rows: Array.from({ length: operation.emptyRowCount }, () => ({})),
-            fields: "userEnteredValue",
-          },
-        },
-      ];
     case "appendDimension":
       return [
         {
@@ -314,6 +303,15 @@ function modeledOperationToGoogleRequests(
           insertRange: {
             range: operation.range,
             shiftDimension: operation.shiftDimension,
+          },
+        },
+      ];
+    case "updateTableRange":
+      return [
+        {
+          updateTable: {
+            table: { tableId: operation.tableId, range: operation.range },
+            fields: "range",
           },
         },
       ];
