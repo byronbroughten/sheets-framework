@@ -8,7 +8,7 @@ One line per term. The elaboration is one file away. Open a reasoning file only 
 
 | When | File |
 | --- | --- |
-| Source, Platform, Raw, Identified, Named | [`docs/vocabulary/tiers.md`](./vocabulary/tiers.md) |
+| Source, Platform, Raw, Identified, Named, `rowIndex` | [`docs/vocabulary/tiers.md`](./vocabulary/tiers.md) |
 | Tier word, State, Base, Operator, Collaborator | [`docs/vocabulary/class-names.md`](./vocabulary/class-names.md) |
 | `xConfigs` / `XConfig` / trait, the config-sheet floor | [`docs/vocabulary/config.md`](./vocabulary/config.md) |
 | Meta vs primary, crossing views, which class a member belongs to, Active, Active facts | [`docs/vocabulary/meta-primary.md`](./vocabulary/meta-primary.md) |
@@ -18,9 +18,10 @@ One line per term. The elaboration is one file away. Open a reasoning file only 
 
 - **Source** is the tier below everything that knows this spreadsheet: the `RawSource` port, the platform module (`GoogleSheets/`), and the cell values that cross the port.
 - **Platform** is the spreadsheet product (Google Sheets); **host** is where the code runs (Apps Script or Node). Platform-neutral code imports nothing from `src/00_Source/GoogleSheets/` and names no `GoogleAppsScript.*` type.
-- **Raw** is positional: it addresses sheets, rows and cells by GID and index, and never resolves a column by name or `columnId`. Lint holds Raw files to that.
-- **Identified** addresses a column by generated identity (sheet GID + column ID), knows each column's config, and resolves the column's index live from the "columnId" row.
-- **Named** is config-dependent and addresses things by sheet name and column name.
+- **Raw** is positional: it addresses a sheet by GID, a Table by its live `tableId`, and rows and columns by Table-relative index (`rowIndex` 0 is the first body row; head rows by role). It never resolves a column by name or `columnId`, and sheet coordinates appear only at gathering.
+- **Identified** addresses a Table by its live `tableId` and a column by its column ID, knows each column's config, and resolves the column's Table-relative index live from the Table's column ID row.
+- **Named** addresses a Table by Table name and a column by header, and a sheet only by its title, as a container.
+- **`rowIndex` is the body index**: 0 is the Table's first body row, and a row counted from the sheet's top is a `SheetRowIndex`.
 - **Schema** (`01_SpreadsheetSchema`) is everything that reads the generated configs, and sits below Raw. The spreadsheet schema classes and the value schema are two unrelated families sharing the word.
 
 ## Class names
