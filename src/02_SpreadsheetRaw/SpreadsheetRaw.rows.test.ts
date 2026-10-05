@@ -1,14 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  type AddTableOperation,
-  type BoundedGridRange,
-} from "../00_Source/RawSource/RawSource";
+import { type BoundedGridRange } from "../00_Source/RawSource/RawSource";
 import { SheetIndex } from "../00_Source/RawSource/SheetIndex";
 import {
   buildGridRows,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
+import type { AddTableProps } from "./ClassTypes/StateRaw";
 import { SpreadsheetRaw } from "./SpreadsheetRaw";
 import {
   formulaCell,
@@ -25,7 +23,7 @@ describe("SpreadsheetRaw add sheet and add Table", () => {
     rowCount: 20,
     columnCount: 6,
   };
-  const addTableProps: Omit<AddTableOperation, "kind"> = {
+  const addTableProps: AddTableProps = {
     name: "spreadsheetConfig",
     range: {
       sheetId: 555,
@@ -39,8 +37,10 @@ describe("SpreadsheetRaw add sheet and add Table", () => {
     ],
   };
 
+  const mintedTableId = expect.stringMatching(/^tbl-[0-9a-f]{10}$/);
+
   const addedTable = {
-    tableId: "spreadsheetConfig",
+    tableId: mintedTableId,
     name: "spreadsheetConfig",
     range: {
       startRowIndex: 2,
@@ -84,8 +84,51 @@ describe("SpreadsheetRaw add sheet and add Table", () => {
       { kind: "addSheet", ...addSheetProps },
     ]);
     expect(raw.writeOperations.addTable).toEqual([
-      { kind: "addTable", ...addTableProps },
+      { kind: "addTable", tableId: mintedTableId, ...addTableProps },
     ]);
+  });
+
+  it("gives each added Table its own random tableId, unrelated to its name", () => {
+    stubSheetsService();
+
+    const raw = SpreadsheetRaw.init();
+    raw.gatherAddTableOperation(addTableProps);
+    raw.gatherAddTableOperation(addTableProps);
+
+    const [first, second] = raw.writeOperations.addTable.map(
+      (operation) => operation.tableId,
+    );
+    expect(first).not.toContain(addTableProps.name);
+    expect(first).not.toBe(second);
+  });
+
+  it("keeps a tableId its caller supplies", () => {
+    const { grid } = stubSheetsService();
+
+    const raw = SpreadsheetRaw.init();
+    raw.gatherAddSheetOperation(addSheetProps);
+    raw.gatherAddTableOperation({ ...addTableProps, tableId: "tbl-recorded" });
+    raw.batchUpdateGSheets();
+
+    expect(grid.sheet(555).tables).toEqual([
+      { ...addedTable, tableId: "tbl-recorded" },
+    ]);
+  });
+
+  it("refuses a Table whose range holds only its header, naming it, and queues nothing", () => {
+    stubSheetsService();
+
+    const raw = SpreadsheetRaw.init();
+
+    expect(() =>
+      raw.gatherAddTableOperation({
+        ...addTableProps,
+        range: { ...addTableProps.range, endRowIndex: SheetIndex.row(3) },
+      }),
+    ).toThrow(
+      "Add-Table refused: spreadsheetConfig's range holds only its header; a created Table starts with one blank body row.",
+    );
+    expect(raw.writeOperations.addTable).toEqual([]);
   });
 
   it("empties both lists on a flush", () => {

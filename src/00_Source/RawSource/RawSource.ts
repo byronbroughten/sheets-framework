@@ -154,11 +154,12 @@ export interface AddSheetOperation {
   columnCount: number;
 }
 
-// Carries no tableId: the adapter keys the Table by its name, which the floor matches it by.
+// Google's own tableId arrives only in the reply, too late for the same-batch updateTable (sheets-framework#59).
 export interface AddTableOperation {
   kind: "addTable";
+  tableId: string;
   name: string;
-  range: GridRangeProps;
+  range: BoundedGridRange;
   columnProperties: TableColumnPropertiesAdd[];
 }
 

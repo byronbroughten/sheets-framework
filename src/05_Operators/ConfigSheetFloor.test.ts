@@ -1437,6 +1437,17 @@ describe("ConfigSheetFloor", () => {
     });
   });
 
+  it("gives a created Table a random tableId, not its name", () => {
+    const { grid } = floorFixture({
+      omitSheetGids: [sheetConfigGid],
+    });
+    applyFloor();
+
+    expect(grid.sheet(sheetConfigGid).tables[0]?.tableId).toMatch(
+      /^tbl-[0-9a-f]{10}$/,
+    );
+  });
+
   it("creates a missing Spreadsheet Config at its GID with a Table carrying every seed column, the endpoint feedback columns included, and reports it", () => {
     const { grid } = floorFixture({
       omitSheetGids: [spreadsheetConfigGid],

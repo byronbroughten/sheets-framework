@@ -5,6 +5,7 @@ import type {
 import type { ConditionalFormatRule } from "../../00_Source/RawSource/ConditionalFormat";
 import type { EditProtection } from "../../00_Source/RawSource/EditProtection";
 import type {
+  AddTableOperation,
   BoundedGridRange,
   CopyPasteOperation,
   FillCellOperation,
@@ -251,6 +252,10 @@ export type FindReplaceTerms = BaseFindReplaceTerms;
 export interface FindReplaceProps extends FindReplaceTerms {
   scope: FindReplaceScope;
 }
+
+// A caller supplies a tableId only to recreate a Table at its recorded one.
+export type AddTableProps = Omit<AddTableOperation, "kind" | "tableId"> &
+  Partial<Pick<AddTableOperation, "tableId">>;
 
 export type AddedSheetCell = Required<
   Pick<FillCellOperation, "sheetId" | "rowIndex" | "colIndex">

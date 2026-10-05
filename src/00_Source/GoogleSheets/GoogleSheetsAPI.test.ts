@@ -29,6 +29,7 @@ const addSheetOperation: AddSheetOperation = {
 };
 const addTableOperation: AddTableOperation = {
   kind: "addTable",
+  tableId: "tbl-0a1b2c3d4e",
   name: "spreadsheetConfig",
   range: {
     sheetId: 555,
@@ -544,7 +545,7 @@ describe("GoogleSheetsAPI write mapping", () => {
     ]);
   });
 
-  it("maps an add-Table operation onto an addTable keyed by its name, then an updateTable carrying its columns", () => {
+  it("maps an add-Table operation onto an addTable keyed by its tableId, then an updateTable carrying its columns", () => {
     const { api, batchUpdateCalls } = recordingSheets();
 
     api.flush([addTableOperation]);
@@ -553,7 +554,7 @@ describe("GoogleSheetsAPI write mapping", () => {
       {
         addTable: {
           table: {
-            tableId: "spreadsheetConfig",
+            tableId: "tbl-0a1b2c3d4e",
             name: "spreadsheetConfig",
             range: addTableOperation.range,
           },
@@ -562,7 +563,7 @@ describe("GoogleSheetsAPI write mapping", () => {
       {
         updateTable: {
           table: {
-            tableId: "spreadsheetConfig",
+            tableId: "tbl-0a1b2c3d4e",
             columnProperties: addTableOperation.columnProperties,
           },
           fields: "columnProperties",

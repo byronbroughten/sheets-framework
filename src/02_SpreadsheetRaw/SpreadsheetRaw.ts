@@ -1,6 +1,5 @@
 import type {
   AddSheetOperation,
-  AddTableOperation,
   BoundedGridRange,
   OpaqueRawRequest,
 } from "../00_Source/RawSource/RawSource";
@@ -8,7 +7,11 @@ import { SpreadsheetSchema } from "../01_SpreadsheetSchema/SpreadsheetSchema";
 import { validateFormulaString } from "./CellRaw";
 import { SpreadsheetBaseRaw } from "./ClassBases/SpreadsheetBaseRaw";
 import { emptyStateRaw } from "./ClassTypes/emptyStateRaw";
-import type { AddedSheetCell, FindReplaceProps } from "./ClassTypes/StateRaw";
+import type {
+  AddedSheetCell,
+  AddTableProps,
+  FindReplaceProps,
+} from "./ClassTypes/StateRaw";
 import { SheetMetaRaw } from "./SheetMetaRaw";
 import { SpreadsheetFetcherRaw } from "./SpreadsheetRaw/SpreadsheetFetcherRaw";
 import { SpreadsheetFlusherRaw } from "./SpreadsheetRaw/SpreadsheetFlusherRaw";
@@ -91,8 +94,19 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
     this.writeOperations.addSheet.push({ kind: "addSheet", ...props });
     return this;
   }
-  gatherAddTableOperation(props: Omit<AddTableOperation, "kind">): this {
-    this.writeOperations.addTable.push({ kind: "addTable", ...props });
+  // A created Table starts with a blank body row, the model growth copies from.
+  gatherAddTableOperation({ tableId, ...props }: AddTableProps): this {
+    const { startRowIndex, endRowIndex } = props.range;
+    if (endRowIndex <= startRowIndex + 1) {
+      throw new Error(
+        `Add-Table refused: ${props.name}'s range holds only its header; a created Table starts with one blank body row.`,
+      );
+    }
+    this.writeOperations.addTable.push({
+      kind: "addTable",
+      tableId: tableId ?? randomTableId(),
+      ...props,
+    });
     return this;
   }
   // A seeded value on a tab this flush adds; an existing tab writes through CellRaw.
@@ -145,4 +159,13 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
       `Added-sheet ${write} refused: no addSheet for GID ${sheetId} is queued in this flush.`,
     );
   }
+}
+
+function randomTableId(): string {
+  const hexDigitCount = 10;
+  let hexDigits = "";
+  for (let i = 0; i < hexDigitCount; i++) {
+    hexDigits += Math.floor(Math.random() * 16).toString(16);
+  }
+  return `tbl-${hexDigits}`;
 }
