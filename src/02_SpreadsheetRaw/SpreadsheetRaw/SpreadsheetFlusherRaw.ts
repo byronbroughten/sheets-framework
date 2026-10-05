@@ -25,7 +25,7 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
   flush(): void {
     // Before the gather, which empties the Table queues it reads.
     const tableIdsWithColumnTypeUpdates = this._tableIdsWithColumnTypeUpdates();
-    const tableIdsMovedByGrowth = this._gatherWriteOperations();
+    this._gatherWriteOperations();
     const sheetGidsWithRowDeletes = this._sheetGidsWithRowDeletes();
     const sheetGidsWithConditionalFormatMutations =
       this._sheetGidsWithConditionalFormatMutations();
@@ -43,9 +43,6 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
         .tableIds()
         .forEach((tableId) => this.ss.table(tableId).markRowIndexesStale()),
     );
-    tableIdsMovedByGrowth.forEach((tableId) =>
-      this.ss.table(tableId).markRowIndexesStale(),
-    );
     sheetGidsWithConditionalFormatMutations.forEach((sheetGid) =>
       this.ss.sheet(sheetGid).markConditionalFormatIndexesStale(),
     );
@@ -59,12 +56,10 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
       .filter(([, state]) => state.writeQueue.table.columnTypes.size > 0)
       .map(([tableId]) => tableId);
   }
-  // Returns the grown Tables and the Tables they push down.
-  private _gatherWriteOperations(): Set<string> {
+  private _gatherWriteOperations(): void {
     const tables = this._tablesWithWriteQueues();
     tables.forEach((table) => table.gatherAppendTableRowsOperation());
-    const growths = this.writeOperations.appendTableRows;
-    const tableIdsPushedDown = this._shiftTablesBelowGrowth(growths);
+    this._shiftTablesBelowGrowth(this.writeOperations.appendTableRows);
     tables.forEach((table) => {
       table.gatherQueuedTableWrites();
       for (const [rowIndex, writes] of table.rowWrites) {
@@ -76,13 +71,9 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
       table.gatherSetTableColumnPropertiesOperation();
       table._clearWriteQueue();
     });
-    return new Set([
-      ...growths.map(({ tableId }) => tableId),
-      ...tableIdsPushedDown,
-    ]);
   }
   // Measured against the layout before growth, then applied, so no shift sees another.
-  private _shiftTablesBelowGrowth(growths: AppendTableRows[]): string[] {
+  private _shiftTablesBelowGrowth(growths: AppendTableRows[]): void {
     const shifts = Array.from(this.tablesStateRaw.keys(), (tableId) => ({
       tableId,
       rowCount: this.ss.table(tableId).rowShiftFrom(growths),
@@ -90,7 +81,6 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
     shifts.forEach(({ tableId, rowCount }) =>
       this.ss.table(tableId).shiftRowsDown(rowCount),
     );
-    return shifts.map(({ tableId }) => tableId);
   }
   // A Table not yet fetched holds its queue on its sheet, aimed where the layout expects it.
   private _tablesWithWriteQueues(): TableRaw[] {
