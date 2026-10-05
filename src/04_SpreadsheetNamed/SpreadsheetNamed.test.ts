@@ -606,7 +606,7 @@ describe("SheetNamed.appendRowWithVals", () => {
   });
 });
 
-describe("growth into a lone blank row", () => {
+describe("SheetNamed.appendRowWithVals, growing a lone blank row", () => {
   const blankRowColour = { red: 0.851, green: 0.918, blue: 0.827 };
   const looseRowIndex = topDataRowIndex + 2;
   // The inserted rows should copy the blank row's colour; the loose cell below shows any insert.
@@ -638,7 +638,8 @@ describe("growth into a lone blank row", () => {
 
     const ss = fetchedSheetConfig();
     const sheet = ss.sheet("sheetConfig");
-    const rows = ["one", "two", "three"].map((sheetTitle) =>
+    const titles = ["one", "two", "three"];
+    const rows = titles.map((sheetTitle) =>
       sheet.appendRowWithVals({ sheetTitle }),
     );
     ss.batchUpdateGSheets();
@@ -654,7 +655,7 @@ describe("growth into a lone blank row", () => {
         endColumnIndex: sheetTitleColIndex + 1,
       }),
     ).toEqual(
-      ["one", "two", "three"].map((value) => [
+      titles.map((value) => [
         { value, backgroundColor: blankRowColour },
       ]),
     );
