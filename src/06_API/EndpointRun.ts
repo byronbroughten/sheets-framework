@@ -1,6 +1,6 @@
 import type { RgbColor } from "../00_Source/RawSource/RgbColor";
 import type { ColumnName } from "../01_SpreadsheetSchema/columnConfigsTypes";
-import type { SheetNameSimple } from "../01_SpreadsheetSchema/sheetConfigsTypes";
+import type { TableNameSimple } from "../01_SpreadsheetSchema/sheetConfigsTypes";
 import type { CellChange } from "../03_SpreadsheetIdentified/ClassTypes/StateIdentified";
 import {
   SheetBaseNamed,
@@ -55,10 +55,10 @@ interface RunStateProps {
 }
 
 export interface EndpointRunProps<
-  SN extends SheetNameSimple,
-> extends SheetNamedProps<SN> {
-  entryColumnName: ColumnName<SN>;
-  endpoint: EndpointDispatched<SN>;
+  TN extends TableNameSimple,
+> extends SheetNamedProps<TN> {
+  entryColumnName: ColumnName<TN>;
+  endpoint: EndpointDispatched<TN>;
 }
 
 /**
@@ -70,11 +70,11 @@ export interface EndpointRunProps<
  * docs/architecture/endpoint-dispatch.md
  */
 export class EndpointRun<
-  SN extends SheetNameSimple = SheetNameSimple,
-> extends SheetBaseNamed<SN> {
-  readonly entryColumnName: ColumnName<SN>;
-  readonly endpoint: EndpointDispatched<SN>;
-  constructor({ entryColumnName, endpoint, ...props }: EndpointRunProps<SN>) {
+  TN extends TableNameSimple = TableNameSimple,
+> extends SheetBaseNamed<TN> {
+  readonly entryColumnName: ColumnName<TN>;
+  readonly endpoint: EndpointDispatched<TN>;
+  constructor({ entryColumnName, endpoint, ...props }: EndpointRunProps<TN>) {
     super(props);
     this.entryColumnName = entryColumnName;
     this.endpoint = endpoint;
@@ -82,7 +82,7 @@ export class EndpointRun<
   get ss(): SpreadsheetNamed {
     return new SpreadsheetNamed(this.spreadsheetNamedProps);
   }
-  get sheet(): SheetNamed<SN> {
+  get sheet(): SheetNamed<TN> {
     return this.ss.sheet(this.sheetName);
   }
   run(isChecked: boolean): void {
@@ -112,8 +112,8 @@ export class EndpointRun<
     }
   }
   private _checkboxColumn(
-    columnName: CheckboxColumnName<SN>,
-  ): CheckboxColumnOperator<SN, CheckboxColumnName<SN>> {
+    columnName: CheckboxColumnName<TN>,
+  ): CheckboxColumnOperator<TN, CheckboxColumnName<TN>> {
     return new CheckboxColumnOperator({
       ...this.sheetNamedProps,
       columnName,
@@ -191,7 +191,7 @@ export class EndpointRun<
     });
   }
   private _fillFeedbackColumn(
-    columnName: FeedbackColumnName<SN> | undefined,
+    columnName: FeedbackColumnName<TN> | undefined,
     change: CellChange<"string">,
   ): void {
     if (!columnName) return;
@@ -224,7 +224,7 @@ export class EndpointRun<
     );
   }
   private _updateFeedbackCell(
-    columnName: FeedbackColumnName<SN> | undefined,
+    columnName: FeedbackColumnName<TN> | undefined,
     rowIndex: number,
     change: CellChange<"string">,
   ): void {

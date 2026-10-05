@@ -1,4 +1,4 @@
-import type { SheetName } from "../01_SpreadsheetSchema/sheetConfigsTypes.js";
+import type { TableName } from "../01_SpreadsheetSchema/sheetConfigsTypes.js";
 import { SpreadsheetSchema } from "../01_SpreadsheetSchema/SpreadsheetSchema";
 import type { FindReplaceProps } from "../02_SpreadsheetRaw/ClassTypes/StateRaw";
 import { SpreadsheetRaw } from "../02_SpreadsheetRaw/SpreadsheetRaw.js";
@@ -12,7 +12,7 @@ import { Val } from "../utils/Val";
 import { SpreadsheetBaseNamed } from "./ClassBases/SpreadsheetBaseNamed.js";
 import { SheetMetaNamed } from "./SheetMetaNamed.js";
 import { SheetNamed } from "./SheetNamed.js";
-import type { SheetNameByGroup } from "./SheetNameGroups.js";
+import type { SheetNameByGroup } from "./TableNameGroups.js";
 import {
   type ColumnSpecifierNamed,
   type FetchColumnSpecifierNamed,
@@ -45,46 +45,46 @@ export class SpreadsheetNamed extends SpreadsheetBaseNamed {
   get serialDate(): typeof SerialDate & { today(): SerialDate } {
     return { ...SerialDate, today: () => this.today() };
   }
-  sheet<TN extends SheetName>(sheetName: TN): SheetNamed<TN> {
+  sheet<TN extends TableName>(sheetName: TN): SheetNamed<TN> {
     return new SheetNamed({
       sheetName,
       ...this.spreadsheetNamedProps,
     });
   }
-  sheetMeta<TN extends SheetName>(sheetName: TN): SheetMetaNamed<TN> {
+  sheetMeta<TN extends TableName>(sheetName: TN): SheetMetaNamed<TN> {
     return new SheetMetaNamed({
       sheetName,
       ...this.spreadsheetNamedProps,
     });
   }
-  sheets<TN extends SheetName>(...sheetNames: TN[]): NamedSheets<TN> {
+  sheets<TN extends TableName>(...sheetNames: TN[]): NamedSheets<TN> {
     return sheetNames.reduce((acc, sheetName) => {
       acc[sheetName] = this.sheet(sheetName);
       return acc;
     }, {} as NamedSheets<TN>);
   }
-  get activeSheetNames(): SheetName[] {
+  get activeSheetNames(): TableName[] {
     return this.identified.activeSheets.map((sheet) => sheet.sheetName);
   }
-  get activeSheets(): SheetNamed<SheetName>[] {
+  get activeSheets(): SheetNamed<TableName>[] {
     return this.activeSheetNames.map((sheetName) => this.sheet(sheetName));
   }
   fetchAllPrepped(props: GatherDataPrerequisitesProps = {}): SpreadsheetNamed {
     this.identified.fetchAllPrepped(props);
     return this;
   }
-  fetch<SN extends SheetName>(
-    ...props: FetchPropsNamed<SN>[]
-  ): NamedSheets<SN> {
+  fetch<TN extends TableName>(
+    ...props: FetchPropsNamed<TN>[]
+  ): NamedSheets<TN> {
     const standardizedProps = this._standardizeProps(props);
     this._prepFetchStandardizedProps(standardizedProps);
     this.fetchAllPrepped();
     const sheetNames = sheetNamesFromReqProps(standardizedProps);
     return this.sheets(...sheetNames);
   }
-  private _standardizeProps<SN extends SheetName>(
-    propsArr: FetchPropsNamed<SN>[],
-  ): FetchPropsStandardNamed<SN>[] {
+  private _standardizeProps<TN extends TableName>(
+    propsArr: FetchPropsNamed<TN>[],
+  ): FetchPropsStandardNamed<TN>[] {
     return propsArr.map((props) => {
       const { rowSpecifier } = props;
       const columnSpecifiers = this._standardizeColumnSpecifiers(props);
@@ -95,13 +95,13 @@ export class SpreadsheetNamed extends SpreadsheetBaseNamed {
     });
   }
 
-  private _standardizeColumnSpecifiers<SN extends SheetName>(
-    columnSpecifier: FetchColumnSpecifierNamed<SN>,
-  ): SheetColumnNamesStandard<SN> {
+  private _standardizeColumnSpecifiers<TN extends TableName>(
+    columnSpecifier: FetchColumnSpecifierNamed<TN>,
+  ): SheetColumnNamesStandard<TN> {
     if (columnSpecifier.sheetColumnMode === "all") {
       return this._allColumnNamesOf(
         this.schema.sheetNames,
-      ) as SheetColumnNamesStandard<SN>;
+      ) as SheetColumnNamesStandard<TN>;
     } else if (columnSpecifier.sheetColumnMode === "allColumns") {
       const sheetNames = Array.isArray(columnSpecifier.sheetNames)
         ? columnSpecifier.sheetNames
@@ -112,32 +112,32 @@ export class SpreadsheetNamed extends SpreadsheetBaseNamed {
       return Obj.keys(sheetColumnNames).reduce((acc, sheetName) => {
         const schema = this.schema.sheetByName(sheetName);
         acc[sheetName] = schema.columnSpecifierToStandard(
-          Val.assert<ColumnSpecifierNamed<SN>>(
+          Val.assert<ColumnSpecifierNamed<TN>>(
             sheetColumnNames[sheetName],
             `sheetColumnNames[${sheetName}]`,
           ),
         );
         return acc;
-      }, {} as SheetColumnNamesStandard<SN>);
+      }, {} as SheetColumnNamesStandard<TN>);
     } else {
       throw new Error(
         `Invalid sheetColumnMode: ${
-          (columnSpecifier as FetchColumnSpecifierNamed<SN>).sheetColumnMode
+          (columnSpecifier as FetchColumnSpecifierNamed<TN>).sheetColumnMode
         }. Must be a valid ColumnMode.`,
       );
     }
   }
 
-  private _allColumnNamesOf<SN extends SheetName>(
-    sheetNames: readonly SN[],
-  ): SheetColumnNamesStandard<SN> {
+  private _allColumnNamesOf<TN extends TableName>(
+    sheetNames: readonly TN[],
+  ): SheetColumnNamesStandard<TN> {
     return sheetNames.reduce((acc, sheetName) => {
       acc[sheetName] = this.schema.sheetByName(sheetName).columnNames;
       return acc;
-    }, {} as SheetColumnNamesStandard<SN>);
+    }, {} as SheetColumnNamesStandard<TN>);
   }
   private _prepFetchStandardizedProps(
-    propsArr: FetchPropsStandardNamed<SheetName>[],
+    propsArr: FetchPropsStandardNamed<TableName>[],
   ): void {
     propsArr.forEach((props) => this._prepFetchStandardProps(props));
   }
@@ -162,7 +162,7 @@ export class SpreadsheetNamed extends SpreadsheetBaseNamed {
       });
     });
   }
-  get sheetsOfSchema(): SheetNamed<SheetName>[] {
+  get sheetsOfSchema(): SheetNamed<TableName>[] {
     return this.schema.sheetNames.map((sheetName) => this.sheet(sheetName));
   }
   batchUpdateGSheets(): void {
@@ -213,9 +213,9 @@ export class SpreadsheetNamed extends SpreadsheetBaseNamed {
   }
 }
 
-function sheetNamesFromReqProps<SN extends SheetName>(
-  propsArr: FetchPropsStandardNamed<SN>[],
-): Set<SN> {
+function sheetNamesFromReqProps<TN extends TableName>(
+  propsArr: FetchPropsStandardNamed<TN>[],
+): Set<TN> {
   return new Set(propsArr.flatMap((props) => Obj.keys(props.sheetColumnNames)));
 }
 

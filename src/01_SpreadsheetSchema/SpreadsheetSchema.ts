@@ -2,7 +2,7 @@ import { Val } from "../utils/Val";
 import {
   configSheetNames,
   sheetConfigsByGid,
-  type SheetName,
+  type TableName,
 } from "./sheetConfigsTypes";
 import { SheetSchema } from "./SheetSchema";
 import { SpreadsheetBaseSchema } from "./SpreadsheetBaseSchema";
@@ -11,10 +11,10 @@ export class SpreadsheetSchema extends SpreadsheetBaseSchema {
   isInSheetGids(sheetGid: number): boolean {
     return sheetConfigsByGid().has(sheetGid);
   }
-  get sheetNames(): SheetName[] {
+  get sheetNames(): TableName[] {
     return configSheetNames();
   }
-  sheetByName<SN extends SheetName>(sheetName: SN): SheetSchema<SN> {
+  sheetByName<TN extends TableName>(sheetName: TN): SheetSchema<TN> {
     return SheetSchema.fromSheetName(sheetName);
   }
   sheetByGid(sheetGid: number): SheetSchema {

@@ -17,10 +17,10 @@ export interface FloorColumnRestore {
   groupHeading: string;
 }
 
-export function columnNameByHeader<SN extends FloorSheetName>(
-  sheetName: SN,
+export function columnNameByHeader<TN extends FloorSheetName>(
+  sheetName: TN,
   header: string,
-): ColumnName<SN> {
+): ColumnName<TN> {
   const columnName = getSheetColumnNames(sheetName).find(
     (name) => getColumnTraitByName(sheetName, name, "header") === header,
   );
@@ -47,8 +47,8 @@ export function spreadsheetConfigFeedbackColumnNames(): ColumnName<"spreadsheetC
   );
 }
 
-export function floorColumnsToRestore<SN extends FloorSheetName>(
-  sheetName: SN,
+export function floorColumnsToRestore<TN extends FloorSheetName>(
+  sheetName: TN,
 ): FloorColumnRestore[] {
   const seedColumns = configSheetFloorSeed[sheetName].columns.map((column) =>
     floorColumnRestore(sheetName, {
@@ -70,8 +70,8 @@ export function floorColumnsToRestore<SN extends FloorSheetName>(
   return [...seedColumns, ...endpointColumns];
 }
 
-export function floorColumnRestore<SN extends FloorSheetName>(
-  sheetName: SN,
+export function floorColumnRestore<TN extends FloorSheetName>(
+  sheetName: TN,
   { header, groupHeading }: Pick<FloorColumnRestore, "header" | "groupHeading">,
 ): FloorColumnRestore {
   const columnName = columnNameByHeader(sheetName, header);

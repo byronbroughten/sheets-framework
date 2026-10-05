@@ -17,13 +17,13 @@ export type SheetNameWithNameColumn = keyof SubType<
 export type SheetNameWithIdAndNameColumn = SheetNameWithIdColumn &
   SheetNameWithNameColumn;
 
-interface SheetNameGroups {
+interface TableNameGroups {
   hasIdColumn: SheetNameWithIdColumn[];
 }
-export type TnGroupName = keyof SheetNameGroups;
+export type TnGroupName = keyof TableNameGroups;
 
 export type SheetNameByGroup<GN extends TnGroupName> =
-  SheetNameGroups[GN][number];
+  TableNameGroups[GN][number];
 
 export function isInTnGroup<GN extends TnGroupName>(
   groupName: GN,

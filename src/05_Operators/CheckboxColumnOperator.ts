@@ -1,5 +1,5 @@
 import type { ColumnNameFiltered } from "../01_SpreadsheetSchema/columnConfigsTypes";
-import type { SheetNameSimple } from "../01_SpreadsheetSchema/sheetConfigsTypes";
+import type { TableNameSimple } from "../01_SpreadsheetSchema/sheetConfigsTypes";
 import { ColumnIdentified } from "../03_SpreadsheetIdentified/ColumnIdentified";
 import { ColumnBaseNamed } from "../04_SpreadsheetNamed/ClassBases/ColumnBaseNamed";
 import { ColumnNamed } from "../04_SpreadsheetNamed/ColumnNamed";
@@ -7,26 +7,26 @@ import type { SheetNamed } from "../04_SpreadsheetNamed/SheetNamed";
 import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
 
 // `checkbox`, not `boolean`: only a declared checkbox column is never blank.
-export type CheckboxColumnName<SN extends SheetNameSimple> = ColumnNameFiltered<
-  SN,
+export type CheckboxColumnName<TN extends TableNameSimple> = ColumnNameFiltered<
+  TN,
   "checkbox",
   false
 >;
 
 export class CheckboxColumnOperator<
-  SN extends SheetNameSimple,
-  CN extends CheckboxColumnName<SN>,
-> extends ColumnBaseNamed<SN, CN> {
+  TN extends TableNameSimple,
+  CN extends CheckboxColumnName<TN>,
+> extends ColumnBaseNamed<TN, CN> {
   get ss(): SpreadsheetNamed {
     return new SpreadsheetNamed(this.spreadsheetNamedProps);
   }
-  get sheet(): SheetNamed<SN> {
+  get sheet(): SheetNamed<TN> {
     return this.ss.sheet(this.sheetName);
   }
-  get column(): ColumnNamed<SN, CN> {
+  get column(): ColumnNamed<TN, CN> {
     return new ColumnNamed(this.columnNamedProps);
   }
-  // Named can't re-derive `checkbox` while SN is generic, so the write is pinned here.
+  // Named can't re-derive `checkbox` while TN is generic, so the write is pinned here.
   get identified(): ColumnIdentified<"checkbox"> {
     return new ColumnIdentified<"checkbox">({
       ...this.sheet.identified.tableIdentifiedProps,

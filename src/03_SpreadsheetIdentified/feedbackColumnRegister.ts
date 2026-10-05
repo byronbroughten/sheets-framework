@@ -1,7 +1,7 @@
-import type { SheetName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
+import type { TableName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
 
 // Column ids by Table config key; installed as data, since the endpoints that declare them sit tiers above.
-export type FeedbackColumnIds = ReadonlyMap<SheetName, ReadonlySet<string>>;
+export type FeedbackColumnIds = ReadonlyMap<TableName, ReadonlySet<string>>;
 
 let installed: FeedbackColumnIds | undefined;
 

@@ -1,4 +1,4 @@
-import type { SheetName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
+import type { TableName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
 import { SpreadsheetSchema } from "../01_SpreadsheetSchema/SpreadsheetSchema";
 import {
   type FeedbackColumnIds,
@@ -29,5 +29,5 @@ export function feedbackColumnIdsOf(
     // No empty entries, so two maps declaring the same feedback columns install as the same set.
     if (columnIds.size > 0) acc.set(sheet.sheetName, columnIds);
     return acc;
-  }, new Map<SheetName, Set<string>>());
+  }, new Map<TableName, Set<string>>());
 }

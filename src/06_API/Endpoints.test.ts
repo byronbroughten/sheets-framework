@@ -5,15 +5,15 @@ import type {
   ColumnNameFiltered,
 } from "../01_SpreadsheetSchema/columnConfigsTypes";
 import type { FloorTabName } from "../01_SpreadsheetSchema/configSheetFloorSeed";
-import type { SheetNameSimple } from "../01_SpreadsheetSchema/sheetConfigsTypes";
+import type { TableNameSimple } from "../01_SpreadsheetSchema/sheetConfigsTypes";
 import { assertType, type IsExactly } from "../testSupport/typeAssertions";
 import type { Endpoint, Endpoints, EndpointsAll } from "./Endpoints";
 
-type SelectorColumnOf<SN extends SheetNameSimple> = NonNullable<
-  Endpoint<SN>["selector"]
+type SelectorColumnOf<TN extends TableNameSimple> = NonNullable<
+  Endpoint<TN>["selector"]
 >["column"];
-type TimeLastRanOf<SN extends SheetNameSimple> = NonNullable<
-  Endpoint<SN>["timeLastRan"]
+type TimeLastRanOf<TN extends TableNameSimple> = NonNullable<
+  Endpoint<TN>["timeLastRan"]
 >;
 
 describe("Endpoint's column parameters", () => {
@@ -49,13 +49,13 @@ describe("Endpoint at the widened sheet name the dispatch boundary uses", () => 
   it("resolves to the cross-sheet union rather than to never", () => {
     assertType<
       IsExactly<
-        SelectorColumnOf<SheetNameSimple>,
-        ColumnNameFiltered<SheetNameSimple, "checkbox", false>
+        SelectorColumnOf<TableNameSimple>,
+        ColumnNameFiltered<TableNameSimple, "checkbox", false>
       >
     >(true);
     assertType<
       IsExactly<
-        Extract<SelectorColumnOf<SheetNameSimple>, "selected">,
+        Extract<SelectorColumnOf<TableNameSimple>, "selected">,
         "selected"
       >
     >(true);

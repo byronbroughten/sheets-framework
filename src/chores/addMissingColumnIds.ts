@@ -1,4 +1,4 @@
-import type { SheetName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
+import type { TableName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
 import type { Chore } from "./Chore";
 
 export const addMissingColumnIds: Chore = {
@@ -11,7 +11,7 @@ export const addMissingColumnIds: Chore = {
       ss.sheetMeta(sheetName).uniformRow("columnId").prepFetchFull();
     });
     ss.fetchAllPrepped({ skipFetchingProperties: true });
-    const addedBySheet = sheetNames.map((sheetName): [SheetName, number] => [
+    const addedBySheet = sheetNames.map((sheetName): [TableName, number] => [
       sheetName,
       ss.sheetMeta(sheetName).addMissingColumnIds(),
     ]);
@@ -20,7 +20,7 @@ export const addMissingColumnIds: Chore = {
   },
 };
 
-function addedIdsSummary(addedBySheet: [SheetName, number][]): string {
+function addedIdsSummary(addedBySheet: [TableName, number][]): string {
   const touched = addedBySheet.filter(([, added]) => added > 0);
   const total = touched.reduce((count, [, added]) => count + added, 0);
   if (total === 0) {

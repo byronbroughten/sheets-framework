@@ -1,11 +1,11 @@
-import type { SheetName } from "../../01_SpreadsheetSchema/sheetConfigsTypes";
+import type { TableName } from "../../01_SpreadsheetSchema/sheetConfigsTypes";
 import { SheetSchema } from "../../01_SpreadsheetSchema/SheetSchema";
 import { SheetBaseNamed } from "./SheetBaseNamed";
 
 export abstract class SheetCommonNamed<
-  SN extends SheetName,
-> extends SheetBaseNamed<SN> {
-  get schema(): SheetSchema<SN> {
+  TN extends TableName,
+> extends SheetBaseNamed<TN> {
+  get schema(): SheetSchema<TN> {
     return SheetSchema.fromSheetName(this.sheetName);
   }
   get sheetGid(): number {

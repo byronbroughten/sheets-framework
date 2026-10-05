@@ -13,7 +13,7 @@ import type {
   ColumnValueName,
   MakeColumnFullName,
 } from "../01_SpreadsheetSchema/columnConfigsTypes";
-import type { SheetName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
+import type { TableName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
 import type { ColumnMetaRaw } from "../02_SpreadsheetRaw/ColumnMetaRaw";
 import type { CellIdentified } from "../03_SpreadsheetIdentified/CellIdentified";
 import { ColumnMetaIdentified } from "../03_SpreadsheetIdentified/ColumnMetaIdentified";
@@ -22,28 +22,28 @@ import { ColumnNamed } from "./ColumnNamed";
 import { SheetMetaNamed } from "./SheetMetaNamed";
 
 export class ColumnMetaNamed<
-  SN extends SheetName,
-  CN extends ColumnName<SN> = ColumnName<SN>,
-> extends ColumnCommonNamed<SN, CN> {
-  get sheet(): SheetMetaNamed<SN> {
+  TN extends TableName,
+  CN extends ColumnName<TN> = ColumnName<TN>,
+> extends ColumnCommonNamed<TN, CN> {
+  get sheet(): SheetMetaNamed<TN> {
     return new SheetMetaNamed(this.sheetNamedProps);
   }
   get raw(): ColumnMetaRaw {
     return this.sheet.raw.column(this.identified.colIndex);
   }
-  get identified(): ColumnMetaIdentified<ColumnValueName<SN, CN>> {
-    return new ColumnMetaIdentified<ColumnValueName<SN, CN>>({
+  get identified(): ColumnMetaIdentified<ColumnValueName<TN, CN>> {
+    return new ColumnMetaIdentified<ColumnValueName<TN, CN>>({
       ...this.sheet.identified.tableIdentifiedProps,
       columnId: this.columnId,
     });
   }
-  get primary(): ColumnNamed<SN, CN> {
+  get primary(): ColumnNamed<TN, CN> {
     return new ColumnNamed(this.columnNamedProps);
   }
   get colIndex(): number {
     return this.identified.colIndex;
   }
-  get fullName(): MakeColumnFullName<SN, CN> & ColumnFullName {
+  get fullName(): MakeColumnFullName<TN, CN> & ColumnFullName {
     return this.schema.fullName;
   }
   get activeColumnType(): string | undefined {
@@ -64,7 +64,7 @@ export class ColumnMetaNamed<
   ): CellIdentified<UniformRowValueName<UN>> {
     return this.uniformCell(rowName).prepFetch();
   }
-  actionRowToDefault(): ColumnMetaNamed<SN, CN> {
+  actionRowToDefault(): ColumnMetaNamed<TN, CN> {
     this.uniformCell("action").updateValue(false);
     return this;
   }

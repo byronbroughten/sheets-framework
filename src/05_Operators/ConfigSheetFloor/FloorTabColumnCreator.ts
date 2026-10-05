@@ -16,12 +16,12 @@ import {
 } from "./floorSeedLookups";
 
 export class FloorTabColumnCreator<
-  SN extends FloorSheetName,
-> extends SheetBaseNamed<SN> {
+  TN extends FloorSheetName,
+> extends SheetBaseNamed<TN> {
   get ss(): SpreadsheetNamed {
     return new SpreadsheetNamed(this.spreadsheetNamedProps);
   }
-  get sheet(): SheetNamed<SN> {
+  get sheet(): SheetNamed<TN> {
     return this.ss.sheet(this.sheetName);
   }
   hasFloorTable(): boolean {
@@ -83,15 +83,15 @@ export class FloorTabColumnCreator<
   }
 }
 
-export function floorRecreatableColumns<SN extends FloorSheetName>(
-  sheetName: SN,
-): readonly ColumnName<SN>[] {
+export function floorRecreatableColumns<TN extends FloorSheetName>(
+  sheetName: TN,
+): readonly ColumnName<TN>[] {
   return recreatableColumns()[sheetName];
 }
 
 // Only columns the sync or an endpoint refills by itself; recreating any other empty loses what it declared.
 function recreatableColumns(): {
-  [SN in FloorSheetName]: readonly ColumnName<SN>[];
+  [TN in FloorSheetName]: readonly ColumnName<TN>[];
 } {
   return {
     spreadsheetConfig: spreadsheetConfigFeedbackColumnNames(),

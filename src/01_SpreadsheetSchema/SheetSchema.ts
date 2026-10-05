@@ -12,36 +12,36 @@ import {
   getSheetTraitByName,
   type SheetConfig,
   sheetConfigsByGid,
-  type SheetName,
+  type TableName,
 } from "./sheetConfigsTypes";
 import { SpreadsheetBaseSchema } from "./SpreadsheetBaseSchema";
 
-function sheetNameFromGid(sheetGid: number): SheetName {
+function sheetNameFromGid(sheetGid: number): TableName {
   const byGid = sheetConfigsByGid();
   if (!byGid.has(sheetGid)) {
     throw new Error(
       `Invalid sheetGid: ${sheetGid}. Must be one of: ${[...byGid.keys()].join(", ")}`,
     );
   }
-  return getSheetTraitByGid(sheetGid, "sheetName") as SheetName;
+  return getSheetTraitByGid(sheetGid, "sheetName") as TableName;
 }
 
-export interface SheetSchemaProps<SN extends SheetName> {
+export interface SheetSchemaProps<TN extends TableName> {
   sheetGid: number;
-  sheetName: SN;
+  sheetName: TN;
 }
 
 export class SheetSchema<
-  SN extends SheetName = SheetName,
+  TN extends TableName = TableName,
 > extends SpreadsheetBaseSchema {
   readonly sheetGid: number;
-  readonly sheetName: SN;
-  constructor({ sheetGid, sheetName }: SheetSchemaProps<SN>) {
+  readonly sheetName: TN;
+  constructor({ sheetGid, sheetName }: SheetSchemaProps<TN>) {
     super();
     this.sheetGid = sheetGid;
     this.sheetName = sheetName;
   }
-  static fromSheetName<SN extends SheetName>(sheetName: SN): SheetSchema<SN> {
+  static fromSheetName<TN extends TableName>(sheetName: TN): SheetSchema<TN> {
     return new SheetSchema({
       sheetName,
       sheetGid: getSheetTraitByName(sheetName, "sheetGid"),
@@ -65,7 +65,7 @@ export class SheetSchema<
   get columnIds(): MapIterator<string> {
     return getSheetColumnIds(this.sheetGid);
   }
-  get columnNames(): ColumnName<SN>[] {
+  get columnNames(): ColumnName<TN>[] {
     return getSheetColumnNames(this.sheetName);
   }
   get nonFormulaColumnIds(): string[] {
@@ -74,23 +74,23 @@ export class SheetSchema<
     });
   }
   // Goes by gid, the only O(1) columnId -> columnName index; by name would scan the sheet.
-  colNameByColumnId(columnId: string): ColumnName<SN> {
+  colNameByColumnId(columnId: string): ColumnName<TN> {
     return getColumnTraitById(
       this.sheetGid,
       columnId,
       "columnName",
-    ) as ColumnName<SN>;
+    ) as ColumnName<TN>;
   }
-  columnByName<CN extends ColumnName<SN>>(
+  columnByName<CN extends ColumnName<TN>>(
     columnName: CN,
-  ): ColumnSchema<SN, CN> {
+  ): ColumnSchema<TN, CN> {
     return new ColumnSchema({
       ...this.sheetSchemaProps,
       columnName,
       columnId: getColumnTraitByName(this.sheetName, columnName, "columnId"),
     });
   }
-  columnById(columnId: string): ColumnSchema<SN, ColumnName<SN>> {
+  columnById(columnId: string): ColumnSchema<TN, ColumnName<TN>> {
     return new ColumnSchema({
       ...this.sheetSchemaProps,
       columnId,
@@ -107,8 +107,8 @@ export class SheetSchema<
     return columnId;
   }
   columnSpecifierToStandard(
-    columnSpecifier: ColumnName<SN> | ColumnName<SN>[] | "allColumns",
-  ): ColumnName<SN>[] {
+    columnSpecifier: ColumnName<TN> | ColumnName<TN>[] | "allColumns",
+  ): ColumnName<TN>[] {
     if (columnSpecifier === "allColumns") {
       return this.columnNames;
     } else if (Array.isArray(columnSpecifier)) {
@@ -117,7 +117,7 @@ export class SheetSchema<
       return [columnSpecifier];
     }
   }
-  private get sheetSchemaProps(): SheetSchemaProps<SN> {
+  private get sheetSchemaProps(): SheetSchemaProps<TN> {
     return { sheetGid: this.sheetGid, sheetName: this.sheetName };
   }
 }

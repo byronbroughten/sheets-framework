@@ -16,7 +16,7 @@ import type {
   ColumnValueDeclared,
   ColumnValueName,
 } from "../01_SpreadsheetSchema/columnConfigsTypes";
-import type { SheetName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
+import type { TableName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
 import type { VnToCvn } from "../01_SpreadsheetSchema/valueSchemas";
 import type { FindReplaceTerms } from "../02_SpreadsheetRaw/ClassTypes/StateRaw";
 import type { ColumnRaw } from "../02_SpreadsheetRaw/ColumnRaw";
@@ -28,76 +28,76 @@ import { ColumnMetaNamed } from "./ColumnMetaNamed";
 import { SheetNamed } from "./SheetNamed";
 
 export class ColumnNamed<
-  SN extends SheetName,
-  CN extends ColumnName<SN> = ColumnName<SN>,
-> extends ColumnCommonNamed<SN, CN> {
-  get sheet(): SheetNamed<SN> {
+  TN extends TableName,
+  CN extends ColumnName<TN> = ColumnName<TN>,
+> extends ColumnCommonNamed<TN, CN> {
+  get sheet(): SheetNamed<TN> {
     return new SheetNamed(this.sheetNamedProps);
   }
-  get meta(): ColumnMetaNamed<SN, CN> {
+  get meta(): ColumnMetaNamed<TN, CN> {
     return new ColumnMetaNamed(this.columnNamedProps);
   }
-  get identified(): ColumnIdentified<ColumnValueName<SN, CN>> {
-    return new ColumnIdentified<ColumnValueName<SN, CN>>({
+  get identified(): ColumnIdentified<ColumnValueName<TN, CN>> {
+    return new ColumnIdentified<ColumnValueName<TN, CN>>({
       ...this.sheet.identified.tableIdentifiedProps,
       columnId: this.columnId,
     });
   }
-  get raw(): ColumnRaw<VnToCvn<ColumnValueName<SN, CN>>> {
+  get raw(): ColumnRaw<VnToCvn<ColumnValueName<TN, CN>>> {
     return this.identified.raw;
   }
   get rowIndexesActive(): number[] {
     return this.identified.cellIndexesActive;
   }
-  get valueArrOrEmpty(): ColumnValue<SN, CN>[] {
+  get valueArrOrEmpty(): ColumnValue<TN, CN>[] {
     return this.identified.valueArrOrEmpty;
   }
-  get valueArrFilterEmpty(): NotEmpty<ColumnValue<SN, CN>>[] {
+  get valueArrFilterEmpty(): NotEmpty<ColumnValue<TN, CN>>[] {
     return this.identified.valueArrFilterEmpty;
   }
   // Not delegated to Identified, so a blank throws with the Named message.
-  get valueArrNotEmpty(): NotEmpty<ColumnValue<SN, CN>>[] {
+  get valueArrNotEmpty(): NotEmpty<ColumnValue<TN, CN>>[] {
     return this.rowIndexesActive.map((rowIndex) =>
       this.valueNotEmpty(rowIndex),
     );
   }
-  get valueArr(): ColumnValueDeclared<SN, CN>[] {
+  get valueArr(): ColumnValueDeclared<TN, CN>[] {
     return this.rowIndexesActive.map((rowIndex) => this.value(rowIndex));
   }
-  hasValue(value: ColumnValue<SN, CN>): boolean {
+  hasValue(value: ColumnValue<TN, CN>): boolean {
     return this.valueArrOrEmpty.includes(value);
   }
-  valueOrEmpty(rowIndex: number): ColumnValue<SN, CN> {
+  valueOrEmpty(rowIndex: number): ColumnValue<TN, CN> {
     return this.cell(rowIndex).valueOrEmpty();
   }
-  valueNotEmpty(rowIndex: number): NotEmpty<ColumnValue<SN, CN>> {
+  valueNotEmpty(rowIndex: number): NotEmpty<ColumnValue<TN, CN>> {
     return this.cell(rowIndex).valueNotEmpty();
   }
-  value(rowIndex: number): ColumnValueDeclared<SN, CN> {
+  value(rowIndex: number): ColumnValueDeclared<TN, CN> {
     return this.cell(rowIndex).value();
   }
-  cell(rowIndex: number): CellNamed<SN, CN> {
+  cell(rowIndex: number): CellNamed<TN, CN> {
     return new CellNamed({
       ...this.columnNamedProps,
       rowIndex,
     });
   }
-  updateAllCells(change: CellChange<ColumnValueName<SN, CN>>): this {
+  updateAllCells(change: CellChange<ColumnValueName<TN, CN>>): this {
     this.identified.updateAllCells(change);
     return this;
   }
-  updateActiveCells(change: CellChange<ColumnValueName<SN, CN>>): this {
+  updateActiveCells(change: CellChange<ColumnValueName<TN, CN>>): this {
     this.identified.updateActiveCells(change);
     return this;
   }
   updateAllFormulas(
-    formula: ColumnIsFormula<SN, CN> extends true ? string : never,
+    formula: ColumnIsFormula<TN, CN> extends true ? string : never,
   ): this {
     this.identified.updateAllFormulas(formula);
     return this;
   }
   updateActiveFormulas(
-    formula: ColumnIsFormula<SN, CN> extends true ? string : never,
+    formula: ColumnIsFormula<TN, CN> extends true ? string : never,
   ): this {
     this.identified.updateActiveFormulas(formula);
     return this;
@@ -157,7 +157,7 @@ export class ColumnNamed<
     this.identified.removeEditProtection(protection);
     return this;
   }
-  anchoredA1(columnName: ColumnName<SN> = this.columnName): string {
+  anchoredA1(columnName: ColumnName<TN> = this.columnName): string {
     return this.sheet.column(columnName).identified.anchoredA1();
   }
   prepFetchSpecific(rowIndexes: number[]): this {

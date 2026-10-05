@@ -6,11 +6,11 @@ import type { SheetConfigsBase, SheetConfigStored } from "./makeConfigs";
 
 // Post-sheetConfigs
 export type SheetConfigs = Configs["sheetConfigs"];
-export type SheetNameSimple = keyof SheetConfigs & string;
-export function configSheetNames(): SheetNameSimple[] {
-  return Obj.keys(sheetConfigs()) as SheetNameSimple[];
+export type TableNameSimple = keyof SheetConfigs & string;
+export function configSheetNames(): TableNameSimple[] {
+  return Obj.keys(sheetConfigs()) as TableNameSimple[];
 }
-export type SheetName<TN extends SheetNameSimple = SheetNameSimple> = TN;
+export type TableName<TN extends TableNameSimple = TableNameSimple> = TN;
 export interface SheetConfig<
   HI extends boolean = boolean,
 > extends SheetConfigStored<HI> {
@@ -18,7 +18,7 @@ export interface SheetConfig<
 }
 
 export function getSheetTraitByName<
-  TN extends SheetNameSimple,
+  TN extends TableNameSimple,
   TK extends keyof SheetConfig,
 >(sheetName: TN, key: TK): SheetConfig[TK] {
   if (key === "sheetName") {

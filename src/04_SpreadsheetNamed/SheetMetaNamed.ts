@@ -1,6 +1,6 @@
 import type { UniformRowName } from "../00_Source/CellValues/cellValues";
 import type { ColumnName } from "../01_SpreadsheetSchema/columnConfigsTypes";
-import type { SheetName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
+import type { TableName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
 import type { SheetMetaRaw } from "../02_SpreadsheetRaw/SheetMetaRaw";
 import { SheetMetaIdentified } from "../03_SpreadsheetIdentified/SheetMetaIdentified";
 import type { UniformRowIdentified } from "../03_SpreadsheetIdentified/UniformRowIdentified";
@@ -10,8 +10,8 @@ import { SheetNamed } from "./SheetNamed";
 import { SpreadsheetNamed } from "./SpreadsheetNamed";
 
 export class SheetMetaNamed<
-  SN extends SheetName = SheetName,
-> extends SheetCommonNamed<SN> {
+  TN extends TableName = TableName,
+> extends SheetCommonNamed<TN> {
   get spreadsheet(): SpreadsheetNamed {
     return new SpreadsheetNamed(this.spreadsheetNamedProps);
   }
@@ -24,19 +24,19 @@ export class SheetMetaNamed<
       sheetGid: this.sheetGid,
     });
   }
-  get primary(): SheetNamed<SN> {
+  get primary(): SheetNamed<TN> {
     return new SheetNamed(this.sheetNamedProps);
   }
   get activeColumnIds(): string[] {
     return this.raw.activeColumnIds;
   }
-  column<CN extends ColumnName<SN>>(columnName: CN): ColumnMetaNamed<SN, CN> {
+  column<CN extends ColumnName<TN>>(columnName: CN): ColumnMetaNamed<TN, CN> {
     return new ColumnMetaNamed({
       ...this.sheetNamedProps,
       columnName,
     });
   }
-  columnByIndex(colIndex: number): ColumnMetaNamed<SN> {
+  columnByIndex(colIndex: number): ColumnMetaNamed<TN> {
     const columnId = this.identified.columnIdByIndex(colIndex);
     const columnName = this.schema.colNameByColumnId(columnId);
     return this.column(columnName);

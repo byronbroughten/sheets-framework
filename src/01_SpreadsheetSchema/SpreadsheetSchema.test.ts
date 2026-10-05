@@ -19,7 +19,7 @@ import { ColumnSchema } from "./ColumnSchema";
 import {
   getSheetTraitByName,
   sheetConfigsByGid,
-  type SheetName,
+  type TableName,
 } from "./sheetConfigsTypes";
 import { SheetSchema } from "./SheetSchema";
 import { SpreadsheetSchema } from "./SpreadsheetSchema";
@@ -143,7 +143,7 @@ describe("type-level precision", () => {
       getColumnTraitByName("sheetConfig", "sheetGid", "columnId"),
     );
     assertType<IsExactly<typeof column.valueName, ValueName>>(true);
-    assertType<IsExactly<typeof column.columnName, ColumnName<SheetName>>>(
+    assertType<IsExactly<typeof column.columnName, ColumnName<TableName>>>(
       true,
     );
     assertType<IsExactly<typeof column.fullName, ColumnFullName>>(true);
@@ -155,7 +155,7 @@ describe("type-level precision", () => {
     const byName = SheetSchema.fromSheetName("sheetConfig");
     const byGid = SheetSchema.fromSheetGid(byName.sheetGid);
     assertType<IsExactly<typeof byName.sheetName, "sheetConfig">>(true);
-    assertType<IsExactly<typeof byGid.sheetName, SheetName>>(true);
+    assertType<IsExactly<typeof byGid.sheetName, TableName>>(true);
     assertType<
       IsExactly<ReturnType<typeof byName.trait<"hasIdColumn">>, boolean>
     >(true);
@@ -184,7 +184,7 @@ describe("type-level precision", () => {
 
 function columnConfigOf(fullName: ColumnFullName) {
   const column = ColumnSchema.fromColumnName(
-    ...(fullName.split("_") as [SheetName, never]),
+    ...(fullName.split("_") as [TableName, never]),
   );
   return column;
 }
@@ -224,8 +224,8 @@ describe("ColumnFullName, absolute column addressing", () => {
     // Derived through the relative family, so this is an independent check
     // that collapsing the old "simple" union lost nothing.
     type EveryColumnFullName = {
-      [SN in SheetName]: MakeColumnFullName<SN, ColumnName<SN>>;
-    }[SheetName];
+      [TN in TableName]: MakeColumnFullName<TN, ColumnName<TN>>;
+    }[TableName];
     assertType<IsExactly<ColumnFullName, EveryColumnFullName>>(true);
   });
 

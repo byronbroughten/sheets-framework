@@ -206,8 +206,8 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
       this._ensureSheetDataValues(sheetName),
     );
   }
-  private _ensureSheetDataValues<SN extends FloorSheetName>(
-    sheetName: SN,
+  private _ensureSheetDataValues<TN extends FloorSheetName>(
+    sheetName: TN,
   ): string[] {
     const sheetGid = getSheetTraitByName(sheetName, "sheetGid");
     if (!this.ss.raw.gidIsActive(sheetGid)) return [];
@@ -240,8 +240,8 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
     );
     return reportLines("Set column types", typeChangeLines);
   }
-  private _ensureSheetColumnTypes<SN extends FloorSheetName>(
-    sheetName: SN,
+  private _ensureSheetColumnTypes<TN extends FloorSheetName>(
+    sheetName: TN,
     columns: readonly FloorSeedColumn[],
   ): string[] {
     const sheetGid = getSheetTraitByName(sheetName, "sheetGid");
@@ -302,9 +302,9 @@ function reportLines(label: string, lines: string[]): string[] {
 }
 
 function floorColumnIdentity<
-  SN extends FloorSheetName,
-  CN extends ColumnName<SN>,
->(column: ColumnNamed<SN, CN>): string {
+  TN extends FloorSheetName,
+  CN extends ColumnName<TN>,
+>(column: ColumnNamed<TN, CN>): string {
   const header = String(column.meta.uniformCell("tableHeader").valueOrEmpty());
   return `${column.sheet.raw.title} · ${header} (${column.columnId})`;
 }

@@ -6,7 +6,7 @@ import {
 } from "../01_SpreadsheetSchema/columnConfigsTypes";
 import {
   getSheetTraitByName,
-  type SheetName,
+  type TableName,
 } from "../01_SpreadsheetSchema/sheetConfigsTypes";
 import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
@@ -721,8 +721,8 @@ function fetchedValueTypesSpreadsheet(): SpreadsheetNamed {
   return ss;
 }
 
-type CompleteAppendBag<SN extends SheetName> = Parameters<
-  SheetNamed<SN>["appendRowWithAllVals"]
+type CompleteAppendBag<TN extends TableName> = Parameters<
+  SheetNamed<TN>["appendRowWithAllVals"]
 >[0];
 
 const completeValueTypesRow: CompleteAppendBag<"valueTypes"> = {

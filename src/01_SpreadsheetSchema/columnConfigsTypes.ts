@@ -10,7 +10,7 @@ import type { ColumnConfigsGeneric, ColumnConfigStored } from "./makeConfigs";
 import {
   configSheetNames,
   getSheetTraitByName,
-  type SheetNameSimple,
+  type TableNameSimple,
 } from "./sheetConfigsTypes";
 import { type Value, type ValueName, type ValueSchema } from "./valueSchemas";
 
@@ -25,50 +25,50 @@ function columnConfigs(): ColumnConfigs {
   return installedConfigs().columnConfigs;
 }
 
-export type ColumnName<SN extends SheetNameSimple = SheetNameSimple> =
-  SN extends SheetNameSimple ? keyof ColumnConfigs[SN] : never;
+export type ColumnName<TN extends TableNameSimple = TableNameSimple> =
+  TN extends TableNameSimple ? keyof ColumnConfigs[TN] : never;
 
-// Distributes over SN; indexing a union of sheets by a union of column names collapses to never.
+// Distributes over TN; indexing a union of sheets by a union of column names collapses to never.
 export type ColumnValueName<
-  SN extends SheetNameSimple,
-  CN extends ColumnName<SN>,
-> = SN extends SheetNameSimple
-  ? CN extends keyof ColumnConfigs[SN]
-    ? ColumnConfigs[SN][CN]["valueName" & keyof ColumnConfigs[SN][CN]]
+  TN extends TableNameSimple,
+  CN extends ColumnName<TN>,
+> = TN extends TableNameSimple
+  ? CN extends keyof ColumnConfigs[TN]
+    ? ColumnConfigs[TN][CN]["valueName" & keyof ColumnConfigs[TN][CN]]
     : never
   : never;
 
 export type ColumnIsFormula<
-  SN extends SheetNameSimple,
-  CN extends ColumnName<SN>,
-> = SN extends SheetNameSimple
-  ? CN extends keyof ColumnConfigs[SN]
-    ? ColumnConfigs[SN][CN]["isFormula" & keyof ColumnConfigs[SN][CN]]
+  TN extends TableNameSimple,
+  CN extends ColumnName<TN>,
+> = TN extends TableNameSimple
+  ? CN extends keyof ColumnConfigs[TN]
+    ? ColumnConfigs[TN][CN]["isFormula" & keyof ColumnConfigs[TN][CN]]
     : never
   : never;
 
 export type ColumnEmptyValueAllowed<
-  SN extends SheetNameSimple,
-  CN extends ColumnName<SN>,
-> = SN extends SheetNameSimple
-  ? CN extends keyof ColumnConfigs[SN]
-    ? ColumnConfigs[SN][CN]["emptyValueAllowed" & keyof ColumnConfigs[SN][CN]]
+  TN extends TableNameSimple,
+  CN extends ColumnName<TN>,
+> = TN extends TableNameSimple
+  ? CN extends keyof ColumnConfigs[TN]
+    ? ColumnConfigs[TN][CN]["emptyValueAllowed" & keyof ColumnConfigs[TN][CN]]
     : never
   : never;
 
 export type ColumnNameFiltered<
-  SN extends SheetNameSimple,
+  TN extends TableNameSimple,
   VN extends ValueName = ValueName,
   IF extends boolean = boolean,
-> = SN extends SheetNameSimple
+> = TN extends TableNameSimple
   ? {
-      [CN in ColumnName<SN>]: ColumnValueName<SN, CN> extends VN
-        ? ColumnIsFormula<SN, CN> extends IF
+      [CN in ColumnName<TN>]: ColumnValueName<TN, CN> extends VN
+        ? ColumnIsFormula<TN, CN> extends IF
           ? CN
           : never
         : never;
-    }[ColumnName<SN>] &
-      ColumnName<SN>
+    }[ColumnName<TN>] &
+      ColumnName<TN>
   : never;
 
 export interface ColumnConfig<
@@ -77,51 +77,51 @@ export interface ColumnConfig<
   columnName: string;
 }
 export type ColumnConfigAt<
-  SN extends SheetNameSimple,
-  CN extends ColumnName<SN>,
-> = ColumnConfig<ColumnValueName<SN, CN>>;
+  TN extends TableNameSimple,
+  CN extends ColumnName<TN>,
+> = ColumnConfig<ColumnValueName<TN, CN>>;
 
 export type ColumnValueSchema<
-  SN extends SheetNameSimple,
-  CN extends ColumnName<SN>,
-> = ValueSchema<ColumnValueName<SN, CN>>;
+  TN extends TableNameSimple,
+  CN extends ColumnName<TN>,
+> = ValueSchema<ColumnValueName<TN, CN>>;
 
 export type ColumnValue<
-  SN extends SheetNameSimple,
-  CN extends ColumnName<SN>,
-> = Value<ColumnValueName<SN, CN>>;
+  TN extends TableNameSimple,
+  CN extends ColumnName<TN>,
+> = Value<ColumnValueName<TN, CN>>;
 
 // What the column's own Empty value allowed box declares the unmarked read to mean.
 export type ColumnValueDeclared<
-  SN extends SheetNameSimple,
-  CN extends ColumnName<SN>,
+  TN extends TableNameSimple,
+  CN extends ColumnName<TN>,
 > =
-  ColumnEmptyValueAllowed<SN, CN> extends true
-    ? ColumnValue<SN, CN>
-    : NotEmpty<ColumnValue<SN, CN>>;
+  ColumnEmptyValueAllowed<TN, CN> extends true
+    ? ColumnValue<TN, CN>
+    : NotEmpty<ColumnValue<TN, CN>>;
 
 export type SheetDataValues<
-  SN extends SheetNameSimple,
-  CS extends ColumnName<SN> = ColumnName<SN>,
+  TN extends TableNameSimple,
+  CS extends ColumnName<TN> = ColumnName<TN>,
 > = {
-  [CN in CS]: ColumnValue<SN, CN>;
+  [CN in CS]: ColumnValue<TN, CN>;
 };
 
 // Every writable column but the generated id: the bag a complete append must fill.
-export type SheetDataValuesAll<SN extends SheetNameSimple> = SheetDataValues<
-  SN,
-  Exclude<ColumnNameFiltered<SN, ValueName, false>, "id">
+export type SheetDataValuesAll<TN extends TableNameSimple> = SheetDataValues<
+  TN,
+  Exclude<ColumnNameFiltered<TN, ValueName, false>, "id">
 >;
 
-export function getSheetColumnNames<SN extends SheetNameSimple>(
-  sheetName: SN,
-): ColumnName<SN>[] {
-  return Obj.keys(columnConfigs()[sheetName]) as unknown as ColumnName<SN>[];
+export function getSheetColumnNames<TN extends TableNameSimple>(
+  sheetName: TN,
+): ColumnName<TN>[] {
+  return Obj.keys(columnConfigs()[sheetName]) as unknown as ColumnName<TN>[];
 }
 
 // columnConfig isn't actually very unique. The only unique
 export function getColumnTraitByName<
-  TN extends SheetNameSimple,
+  TN extends TableNameSimple,
   CN extends ColumnName<TN>,
   TK extends keyof ColumnConfigAt<TN, CN>,
 >(sheetName: TN, columnName: CN, key: TK): ColumnConfigAt<TN, CN>[TK] {
@@ -172,9 +172,9 @@ export function getSheetColumnIds(sheetGid: number): MapIterator<string> {
 }
 
 export type MakeColumnFullName<
-  SN extends SheetNameSimple,
-  CN extends ColumnName<SN>,
-> = `${SN}${CodebaseNameDelimiter}${CN & string}`;
+  TN extends TableNameSimple,
+  CN extends ColumnName<TN>,
+> = `${TN}${CodebaseNameDelimiter}${CN & string}`;
 
 type ColumnConfigsFlat = FlattenTwoLevels<
   ColumnConfigs,

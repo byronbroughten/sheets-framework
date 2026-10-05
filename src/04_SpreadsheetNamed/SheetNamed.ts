@@ -15,7 +15,7 @@ import type {
   SheetDataValues,
   SheetDataValuesAll,
 } from "../01_SpreadsheetSchema/columnConfigsTypes";
-import type { SheetName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
+import type { TableName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
 import type { FindReplaceTerms } from "../02_SpreadsheetRaw/ClassTypes/StateRaw";
 import type { TableRaw } from "../02_SpreadsheetRaw/TableRaw";
 import { ColumnIdentified } from "../03_SpreadsheetIdentified/ColumnIdentified";
@@ -27,7 +27,7 @@ import { SheetCommonNamed } from "./ClassBases/SheetCommonNamed";
 import { ColumnNamed } from "./ColumnNamed";
 import { RowNamed } from "./RowNamed";
 import { SheetMetaNamed } from "./SheetMetaNamed";
-import type { SheetNameWithIdAndNameColumn } from "./SheetNameGroups";
+import type { SheetNameWithIdAndNameColumn } from "./TableNameGroups";
 import type { RowIdByName } from "./Types/RowIdByName";
 
 /**
@@ -38,9 +38,9 @@ import type { RowIdByName } from "./Types/RowIdByName";
  * docs/architecture/class-chains.md
  */
 export class SheetNamed<
-  SN extends SheetName = SheetName,
-> extends SheetCommonNamed<SN> {
-  get meta(): SheetMetaNamed<SN> {
+  TN extends TableName = TableName,
+> extends SheetCommonNamed<TN> {
+  get meta(): SheetMetaNamed<TN> {
     return new SheetMetaNamed(this.sheetNamedProps);
   }
   get raw(): TableRaw {
@@ -61,67 +61,67 @@ export class SheetNamed<
   get rowIndexesFullWithData(): number[] {
     return this.identified.rowIndexesFullWithData;
   }
-  get rows(): RowNamed<SN>[] {
+  get rows(): RowNamed<TN>[] {
     return this.identified.rows.map((row) => this.row(row.rowIndex));
   }
-  get topRow(): RowNamed<SN> {
+  get topRow(): RowNamed<TN> {
     return this.row(0);
   }
-  row(rowIndex: number): RowNamed<SN> {
+  row(rowIndex: number): RowNamed<TN> {
     return new RowNamed({
       ...this.sheetNamedProps,
       rowIndex,
     });
   }
-  column<CN extends ColumnName<SN>>(columnName: CN): ColumnNamed<SN, CN> {
+  column<CN extends ColumnName<TN>>(columnName: CN): ColumnNamed<TN, CN> {
     return new ColumnNamed({
       ...this.sheetNamedProps,
       columnName,
     });
   }
   // By id, so the column name's value type isn't composed into the result.
-  columnIdentified(columnName: ColumnName<SN>): ColumnIdentified {
+  columnIdentified(columnName: ColumnName<TN>): ColumnIdentified {
     const { columnId } = this.schema.columnByName(columnName);
     return this.identified.column(columnId);
   }
-  columns<CS extends readonly ColumnName<SN>[]>(
+  columns<CS extends readonly ColumnName<TN>[]>(
     ...columnNames: CS
-  ): { [K in CS[number]]: ColumnNamed<SN, K> } {
-    const columns = {} as { [K in CS[number]]: ColumnNamed<SN, K> };
+  ): { [K in CS[number]]: ColumnNamed<TN, K> } {
+    const columns = {} as { [K in CS[number]]: ColumnNamed<TN, K> };
     columnNames.forEach((columnName) => {
       columns[columnName] = this.column(columnName);
     });
     return columns;
   }
-  prepFetchColumnsFull<CS extends readonly ColumnName<SN>[]>(
+  prepFetchColumnsFull<CS extends readonly ColumnName<TN>[]>(
     ...columnNames: CS
-  ): { [K in CS[number]]: ColumnNamed<SN, K> } {
-    const columns = {} as { [K in CS[number]]: ColumnNamed<SN, K> };
+  ): { [K in CS[number]]: ColumnNamed<TN, K> } {
+    const columns = {} as { [K in CS[number]]: ColumnNamed<TN, K> };
     columnNames.forEach((columnName) => {
       columns[columnName] = this.column(columnName).prepFetchFull();
     });
     return columns;
   }
-  prepFetchColumnsSpecific<CS extends readonly ColumnName<SN>[]>(
+  prepFetchColumnsSpecific<CS extends readonly ColumnName<TN>[]>(
     rowIndexes: number[],
     ...columnNames: CS
-  ): { [K in CS[number]]: ColumnNamed<SN, K> } {
-    const columns = {} as { [K in CS[number]]: ColumnNamed<SN, K> };
+  ): { [K in CS[number]]: ColumnNamed<TN, K> } {
+    const columns = {} as { [K in CS[number]]: ColumnNamed<TN, K> };
     columnNames.forEach((columnName) => {
       columns[columnName] =
         this.column(columnName).prepFetchSpecific(rowIndexes);
     });
     return columns;
   }
-  prepFetchColumnsActive<CS extends readonly ColumnName<SN>[]>(
+  prepFetchColumnsActive<CS extends readonly ColumnName<TN>[]>(
     ...columnNames: CS
-  ): { [K in CS[number]]: ColumnNamed<SN, K> } {
+  ): { [K in CS[number]]: ColumnNamed<TN, K> } {
     return this.prepFetchColumnsSpecific(this.rowIndexesActive, ...columnNames);
   }
   sortRowsbyColumnName(
-    rows: RowNamed<SN>[],
-    columnName: ColumnName<SN>,
-  ): RowNamed<SN>[] {
+    rows: RowNamed<TN>[],
+    columnName: ColumnName<TN>,
+  ): RowNamed<TN>[] {
     return rows.sort((a, b) => {
       return Arr.compareForSort(
         a.valueOrEmpty(columnName),
@@ -196,20 +196,20 @@ export class SheetNamed<
     this.identified.removeEditProtectionById(protectionId);
     return this;
   }
-  anchoredA1(columnName: ColumnName<SN>): string {
+  anchoredA1(columnName: ColumnName<TN>): string {
     return this.column(columnName).anchoredA1();
   }
-  rowsFiltered(values: Partial<SheetDataValues<SN>>): RowNamed<SN>[] {
+  rowsFiltered(values: Partial<SheetDataValues<TN>>): RowNamed<TN>[] {
     return this.rows.filter((row) =>
       Obj.keys(values).every(
         (columnName) => row.valueOrEmpty(columnName) === values[columnName],
       ),
     );
   }
-  rowByValue<CN extends ColumnName<SN>>(
+  rowByValue<CN extends ColumnName<TN>>(
     columnName: CN,
-    value: ColumnValue<SN, CN>,
-  ): RowNamed<SN> {
+    value: ColumnValue<TN, CN>,
+  ): RowNamed<TN> {
     const rows = this.rows.filter(
       (row) => row.valueOrEmpty(columnName) === value,
     );
@@ -220,25 +220,25 @@ export class SheetNamed<
     }
     return Val.assert(rows[0], "The matching row");
   }
-  appendRowWithVals(values: Partial<SheetDataValues<SN>>): RowNamed<SN> {
+  appendRowWithVals(values: Partial<SheetDataValues<TN>>): RowNamed<TN> {
     const { rowIndex } = this.identified.appendRowDefault();
     return this.row(rowIndex).updateValues(values);
   }
-  appendRowWithAllVals(values: SheetDataValuesAll<SN>): RowNamed<SN> {
+  appendRowWithAllVals(values: SheetDataValuesAll<TN>): RowNamed<TN> {
     // Checking this subset generically costs ~70k instantiations; the Named suite pins it instead.
     return this.appendRowWithVals(
-      values as unknown as Partial<SheetDataValues<SN>>,
+      values as unknown as Partial<SheetDataValues<TN>>,
     );
   }
   prepFetchRowIdAndName(
-    this: SheetNamed<SN & SheetNameWithIdAndNameColumn>,
-  ): SheetNamed<SN & SheetNameWithIdAndNameColumn> {
+    this: SheetNamed<TN & SheetNameWithIdAndNameColumn>,
+  ): SheetNamed<TN & SheetNameWithIdAndNameColumn> {
     this._idColumn().prepFetchFull();
     this._nameColumn().prepFetchFull();
     return this;
   }
   rowIdByName(
-    this: SheetNamed<SN & SheetNameWithIdAndNameColumn>,
+    this: SheetNamed<TN & SheetNameWithIdAndNameColumn>,
     name: string,
   ): RowIdByName {
     this._validateNameNotBlank(name);
