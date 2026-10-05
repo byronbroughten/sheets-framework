@@ -10,6 +10,7 @@ One line per principle. Each principle's argument and instances are one file awa
 | --- | --- |
 | Two pieces of state could contradict each other | [`docs/design/unrepresentable-disagreement.md`](./design/unrepresentable-disagreement.md) |
 | Choosing the level a fact is stored or exposed at | [`docs/design/concept-granularity.md`](./design/concept-granularity.md) |
+| Choosing which frame an index or coordinate counts in | [`docs/design/concept-frame.md`](./design/concept-frame.md) |
 | A state model with a real condition it can't express | [`docs/design/room-for-real-states.md`](./design/room-for-real-states.md) |
 | An absence in an API response | [`docs/design/payload-is-not-grid.md`](./design/payload-is-not-grid.md) |
 | Adding a call to Sheets or another costly operation | [`docs/design/one-chokepoint.md`](./design/one-chokepoint.md) |
@@ -24,6 +25,7 @@ One line per principle. Each principle's argument and instances are one file awa
 
 - **Make disagreement structurally impossible rather than validating against it.** When two pieces of state can contradict each other, choose a shape where the contradiction is unrepresentable, not a check that catches it after the fact.
 - **Model state at the granularity the concept actually has.** Store and expose a fact at the level it's about, not the level the wire format or the storage medium delivers it at.
+- **Work in the concept's own frame; convert to the platform's only at the boundary, and brand the platform's frame.** An index counts from the thing it's about, and the one conversion sits where requests leave.
 - **Give the model room for the states that actually occur.** A real condition the model can't express gets misreported as one it can; before settling a model, ask which conditions have nowhere to go.
 - **The payload is not the grid.** An absence in a response is not an absence in the world; where a wire format elides the empty case, repair it once at the boundary.
 - **Funnel the expensive thing through one place.** Give the costly operation one chokepoint, so instrumenting or optimizing it covers everything and no new call site adds cost unseen.
@@ -31,7 +33,7 @@ One line per principle. Each principle's argument and instances are one file awa
 - **Give the common case the unmarked name.** The reflexive name is the one wanted most of the time, decided by counting call sites; the rare case costs exactly one word.
 - **Record a deliberate absence as deliberate.** An unexplained gap reads as a to-do and gets filled in; a documented one carries its reason and survives.
 - **A live config-sheet column must identify a row or serve a human on that sheet.** Sampled generated traits do not earn a cell.
-- **Structure is declared in code; identity is recorded from the sheet.** Headers, floor columns and ID shape are declared; GID, column ID and prefix are read.
+- **Structure is declared in code; identity is recorded from the sheet.** Headers, floor columns, head rows and ID shape are declared; GID, `tableId`, column ID and prefix are read.
 
 ## Not yet promoted
 

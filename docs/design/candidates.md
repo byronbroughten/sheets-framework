@@ -16,7 +16,7 @@ _Cited by:_ #49, #51.
 
 ## A tier is named for what it adds, and the layout sits below its first reader
 
-The ladder is Source → Schema → Raw → Identified → Named: Source knows nothing about this spreadsheet, Schema is everything that reads the generated configs, Raw adds positional addressing on top of the layout and sheet list, Identified adds addressing by generated identity (sheet GID + column ID), and Named adds names. Identified was first called Indexed, which contradicted Raw being the positional tier, so "index" now means position everywhere. Raw reads the layout, so Schema sits below it; injecting the layout into Raw as props was rejected, since Raw has no use without one. Raw's column-blindness is a lint rule, not a convention.
+The ladder is Source → Schema → Raw → Identified → Named: Source knows nothing about this spreadsheet, Schema is everything that reads the generated configs, Raw adds positional addressing on top of the layout and Table list, Identified adds addressing by generated identity (`tableId` + column ID), and Named adds names. Identified was first called Indexed, which contradicted Raw being the positional tier, so "index" now means position everywhere. Raw reads the layout, so Schema sits below it; injecting the layout into Raw as props was rejected, since Raw has no use without one. Raw's column-blindness is a lint rule, not a convention.
 
 _Cited by:_ #71, #72.
 

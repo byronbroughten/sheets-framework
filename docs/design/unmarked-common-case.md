@@ -8,7 +8,7 @@ The name a reader reaches for by reflex should be the one they want most of the 
 
 ## Instances
 
-A census showed roughly twice as many call sites reaching for a sheet's or column's data view as for its metadata view, yet the metadata view held the unmarked name and every data chain paid a `.data` hop; swapping primacy made the common case free and the rare case one word (#6). Nearly every cell read is one where a blank means the endpoint cannot do its job, yet `value` handed back `""` typed into the union and the safe read was the longer `valueNotEmpty` — inverting that made the reflexive read the correct one and left `valueOrEmpty` for the caller who has decided what blank means (#8).
+A census showed roughly twice as many call sites reaching for a sheet's or column's data view as for its metadata view, yet the metadata view held the unmarked name and every data chain paid a `.data` hop; swapping primacy made the common case free and the rare case one word (#6). Nearly every cell read is one where a blank means the endpoint cannot do its job, yet `value` handed back `""` typed into the union and the safe read was the longer `valueNotEmpty` — inverting that made the reflexive read the correct one and left `valueOrEmpty` for the caller who has decided what blank means (#8). When row indexes moved to the Table's frame, `rowIndex` kept its name with the new meaning, since nearly every caller means a body row, and the rare sheet coordinate costs one word as the branded `SheetRowIndex` (sheets-framework#55).
 
 ## Corollaries
 
