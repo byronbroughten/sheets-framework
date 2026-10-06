@@ -28,6 +28,8 @@ export const startTableColIndex: number = expectedOrigin.startColIndex;
 export const topDataRowIndex = tableHeaderRowIndex + 1;
 export const scratchGid = 999999;
 export const scratchTableId = fakeTableId(scratchGid, 0);
+export const tableId111 = fakeTableId(111, 0);
+export const tableId222 = fakeTableId(222, 0);
 export const tableEndRowIndex = tableHeaderRowIndex + 3;
 export const gridRanges = {
   columnOneData: {
