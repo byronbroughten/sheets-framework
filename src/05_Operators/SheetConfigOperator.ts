@@ -81,7 +81,7 @@ export class SheetConfigOperator extends GenericTableOperator<"sheetConfig"> {
     let updatedValues = 0;
     this.table.rowIndexesActiveWithData.forEach((rowIndex) => {
       const sheetGid = col.sheetGid.value(rowIndex);
-      const activeSheet = this.ss.raw.sheet(sheetGid);
+      const activeSheet = this.ss.raw.sheetMeta(sheetGid).primary;
       if (col.sheetTitle.valueOrEmpty(rowIndex) !== activeSheet.title) {
         col.sheetTitle.cell(rowIndex).updateValue(activeSheet.title);
         updatedValues++;
@@ -149,7 +149,7 @@ export class SheetConfigOperator extends GenericTableOperator<"sheetConfig"> {
     this.sheetGidsApiAccesses().forEach((sheetGid) => {
       if (assigned.has(sheetGid)) return;
       const generated = idPrefixes.fromTitle(
-        this.ss.raw.sheet(sheetGid).title,
+        this.ss.raw.sheetMeta(sheetGid).primary.title,
         prefixesInUse,
       );
       prefixesInUse.add(generated);
@@ -165,7 +165,7 @@ export class SheetConfigOperator extends GenericTableOperator<"sheetConfig"> {
       const sampled = this.ss.raw.sheetMeta(sheetGid).activeIdPrefix();
       if (sampled === undefined || sampled === previous.idPrefix) return;
       changes.push(
-        `Sheet "${this.ss.raw.sheet(sheetGid).title}" sampled ID prefix "${sampled}" differs from last generated "${previous.idPrefix}".`,
+        `Sheet "${this.ss.raw.sheetMeta(sheetGid).primary.title}" sampled ID prefix "${sampled}" differs from last generated "${previous.idPrefix}".`,
       );
     });
     if (changes.length === 0) return undefined;

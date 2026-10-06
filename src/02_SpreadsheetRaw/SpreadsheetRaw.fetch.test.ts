@@ -872,8 +872,8 @@ describe("SpreadsheetRaw fetch integration routes each cell to its Table", () =>
     const raw = SpreadsheetRaw.init();
     raw.fetchSheetUsedGrid(scratchGid);
     raw
-      .sheet(scratchGid)
-      .requestSortGSheet({ colIdxToSortBy: 0, sortOrder: "DESCENDING" });
+      .sheetMeta(scratchGid)
+      .primary.requestSortGSheet({ colIdxToSortBy: 0, sortOrder: "DESCENDING" });
     stubSideBySideTables(["left"]);
     raw.spreadsheetRawProps.spreadsheetStateRaw.rawSource =
       installedRawSource();

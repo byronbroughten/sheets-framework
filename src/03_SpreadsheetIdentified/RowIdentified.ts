@@ -11,9 +11,6 @@ export class RowIdentified extends RowCommonIdentified {
     super(props);
     void this.raw;
   }
-  get sheet(): TableIdentified {
-    return new TableIdentified(this.tableIdentifiedProps);
-  }
   get table(): TableIdentified {
     return new TableIdentified(this.tableIdentifiedProps);
   }
@@ -45,7 +42,7 @@ export class RowIdentified extends RowCommonIdentified {
   }
   get activeColumnIds(): string[] {
     return [...this.raw.rowState.keys()].map((colIndex) =>
-      this.sheet.meta.columnIdByIndex(colIndex),
+      this.table.meta.columnIdByIndex(colIndex),
     );
   }
   get isActive(): boolean {
@@ -68,7 +65,7 @@ export class RowIdentified extends RowCommonIdentified {
   // A blank row needs no writes, but its reservation must lift either way.
   clearValues(): this {
     if (!this.isBlank) {
-      this.sheet.nonFormulaColumnIds.forEach((columnId) => {
+      this.table.nonFormulaColumnIds.forEach((columnId) => {
         this.updateValue(columnId, "");
       });
     }
@@ -76,14 +73,14 @@ export class RowIdentified extends RowCommonIdentified {
     return this;
   }
   delete(): void {
-    if (this.sheet.raw.isDownToLastDataRow) {
+    if (this.table.raw.isDownToLastDataRow) {
       this.clearValues();
     } else {
       this.raw.delete();
     }
   }
   private get _blankTestCellsActive(): CellIdentified[] {
-    return this.sheet
+    return this.table
       .blankTestColumnIds
       .map((columnId) => this.cell(columnId))
       .filter((cell) => cell.isActive);

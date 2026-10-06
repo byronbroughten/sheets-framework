@@ -12,21 +12,25 @@ import { ColumnRaw } from "./ColumnRaw";
 import { RowRaw } from "./RowRaw";
 import { SheetMetaRaw } from "./SheetMetaRaw";
 import { SpreadsheetRaw } from "./SpreadsheetRaw";
+import { placedTableSheet, tableId111 } from "./spreadsheetRawTestSupport";
 import { TableRaw } from "./TableRaw";
 import { UniformRowRaw } from "./UniformRowRaw";
 
 describe("SpreadsheetRaw navigation", () => {
   it("gives each accessor the class its return type names", () => {
-    stubSheetsService({ sheets: [{ sheetId: 111, title: "Task Generic" }] });
+    stubSheetsService({
+      sheets: [placedTableSheet({ sheetId: 111, title: "Task Generic" })],
+    });
     const raw = SpreadsheetRaw.init();
-    const sheet = raw.sheet(111);
+    raw.fetchAllSheetProperties();
+    const table = raw.table(tableId111);
     const sheetMeta = raw.sheetMeta(111);
-    const column = sheet.column(0);
+    const column = table.column(0);
     const columnMeta = sheetMeta.column(0);
 
-    assertType<IsExactly<typeof sheet, TableRaw>>(true);
+    assertType<IsExactly<typeof table, TableRaw>>(true);
     assertType<IsExactly<typeof sheetMeta, SheetMetaRaw>>(true);
-    assertType<IsExactly<typeof sheet.meta, SheetMetaRaw>>(true);
+    assertType<IsExactly<typeof table.meta, SheetMetaRaw>>(true);
     assertType<IsExactly<typeof sheetMeta.primary, TableRaw>>(true);
     assertType<IsExactly<typeof column, ColumnRaw>>(true);
     assertType<IsExactly<typeof columnMeta, ColumnMetaRaw>>(true);
@@ -34,12 +38,13 @@ describe("SpreadsheetRaw navigation", () => {
     assertType<IsExactly<typeof columnMeta.table, SheetMetaRaw>>(true);
     assertType<IsExactly<typeof column.meta, ColumnMetaRaw>>(true);
     assertType<IsExactly<typeof columnMeta.primary, ColumnRaw>>(true);
-    assertType<IsExactly<ReturnType<typeof sheet.row>, RowRaw>>(true);
-    assertType<IsExactly<ReturnType<typeof sheet.rowCommon>, RowCommonRaw>>(
+    assertType<IsExactly<ReturnType<typeof table.row>, RowRaw>>(true);
+    assertType<IsExactly<ReturnType<typeof table.rowCommon>, RowCommonRaw>>(
       true,
     );
 
-    expect(sheet.meta).toBeInstanceOf(SheetMetaRaw);
+    expect(table).toBeInstanceOf(TableRaw);
+    expect(table.meta).toBeInstanceOf(SheetMetaRaw);
     expect(sheetMeta.primary).toBeInstanceOf(TableRaw);
     expect(column).toBeInstanceOf(ColumnRaw);
     expect(columnMeta).toBeInstanceOf(ColumnMetaRaw);
@@ -47,9 +52,9 @@ describe("SpreadsheetRaw navigation", () => {
     expect(columnMeta.table).toBeInstanceOf(SheetMetaRaw);
     expect(column.meta).toBeInstanceOf(ColumnMetaRaw);
     expect(columnMeta.primary).toBeInstanceOf(ColumnRaw);
-    expect(sheet.row(0)).toBeInstanceOf(RowRaw);
-    expect(sheet.rowCommon(0)).toBeInstanceOf(RowRaw);
-    expect(sheet.rowCommon(-4)).toBeInstanceOf(UniformRowRaw);
+    expect(table.row(0)).toBeInstanceOf(RowRaw);
+    expect(table.rowCommon(0)).toBeInstanceOf(RowRaw);
+    expect(table.rowCommon(-4)).toBeInstanceOf(UniformRowRaw);
   });
 });
 

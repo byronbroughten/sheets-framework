@@ -22,8 +22,8 @@ import { TableRaw } from "./TableRaw";
  * (`fetchAllGathered` / `fetchSheetUsedGrid` via RawSource.fetchGrid,
  * `fetchAllSheetProperties` via RawSource.fetchSheetProperties,
  * `batchUpdateGSheets` via RawSource.flush), delegated to SpreadsheetRaw/.
- * A Table by tableId (or a sheet's one Table by GID), its rows and columns by
- * Table-relative index live on TableRaw / RowRaw / ColumnRaw here;
+ * A Table by tableId, its rows and columns by Table-relative index live on
+ * TableRaw / RowRaw / ColumnRaw here;
  * by-name and columnId resolution are Identified/Named. Schema classes that
  * resolve columns live in Schema/ because they sit below both consumer tiers.
  * docs/architecture/round-trips.md, schema-classes.md, class-chains.md
@@ -50,15 +50,6 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
   get activeSheetGids(): number[] {
     return Array.from(this.spreadsheetStateRaw.sheets.keys());
   }
-  get activeSheets(): TableRaw[] {
-    return Array.from(this.activeSheetGids, (sheetGid) => this.sheet(sheetGid));
-  }
-  sheet(sheetGid: number): TableRaw {
-    return new TableRaw({
-      spreadsheetStateRaw: this.spreadsheetStateRaw,
-      sheetGid: sheetGid,
-    });
-  }
   table(tableId: string): TableRaw {
     return new TableRaw({
       spreadsheetStateRaw: this.spreadsheetStateRaw,
@@ -70,9 +61,6 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
       spreadsheetStateRaw: this.spreadsheetStateRaw,
       sheetGid: sheetGid,
     });
-  }
-  sheets(...sheetGids: number[]): TableRaw[] {
-    return sheetGids.map((sheetGid) => this.sheet(sheetGid));
   }
   ensureAllSheetPropertiesAreFetched(): void {
     this.fetcher.ensureAllSheetPropertiesAreFetched();

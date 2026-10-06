@@ -82,9 +82,6 @@ export class EndpointRun<
   get ss(): SpreadsheetNamed {
     return new SpreadsheetNamed(this.spreadsheetNamedProps);
   }
-  get sheet(): TableNamed<TN> {
-    return this.ss.sheet(this.tableName);
-  }
   get table(): TableNamed<TN> {
     return this.ss.table(this.tableName);
   }

@@ -79,7 +79,7 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
       this.ss.raw.activeSheetGids.flatMap((sheetGid) =>
         floorTabSeedByGid(sheetGid) === undefined
           ? []
-          : [[sheetGid, this.ss.raw.sheet(sheetGid).title] as const],
+          : [[sheetGid, this.ss.raw.sheetMeta(sheetGid).primary.title] as const],
       ),
     );
     return floorChangeNotice(change, liveTitlesByGid);
@@ -92,7 +92,7 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
       if (!this.ss.raw.gidIsActive(sheetGid)) return [];
       return [
         {
-          sheet: this.ss.raw.sheet(sheetGid),
+          sheet: this.ss.raw.sheetMeta(sheetGid).primary,
           seed: configSheetFloorSeed[sheetName],
         },
       ];
@@ -127,7 +127,7 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
       ]),
     );
     this.ss.raw.activeSheetGids.forEach((sheetGid) => {
-      const title = this.ss.raw.sheet(sheetGid).title;
+      const title = this.ss.raw.sheetMeta(sheetGid).primary.title;
       const ownedGid = ownedGidByTitle.get(title);
       if (ownedGid !== undefined && sheetGid !== ownedGid) {
         throw new Error(`A tab titled "${title}" is not the floor tab.`);

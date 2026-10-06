@@ -49,7 +49,7 @@ One line per term. The elaboration is one file away. Open a reasoning file only 
 ## Meta / primary
 
 - **Meta / primary is an axis orthogonal to the tiers, not a fourth tier.** Primary deals in contents and takes the unmarked name; Meta is the structure's own shape and takes a `Meta` stem.
-- **Crossing views takes exactly one word**: `meta` from primary, `primary` from Meta. A sheet's `column(name)` and a column's `sheet` stay in the view you're in.
+- **Crossing views takes exactly one word**: `meta` from primary, `primary` from Meta. A Table's `column(name)` and a column's `table` stay in the view you're in.
 - **A member belongs on the Meta class only if it acts on a uniform row, samples the top data row for a column-wide fact, or reads the table's own column properties.** Everything else is primary.
 - **Active means present in the working view, with row indexes at their pre-flush positions**, not "exists on the sheet".
 - **Active facts are the column-wide facts sampled from a column's top data row** (formula, number format type, top value), held in `ColumnStateRaw` for table columns only.

@@ -14,12 +14,6 @@ export class SpreadsheetIdentified extends SpreadsheetBaseIdentified {
   get raw(): SpreadsheetRaw {
     return new SpreadsheetRaw(this.spreadsheetRawProps);
   }
-  sheet(sheetGid: number): TableIdentified {
-    return new TableIdentified({
-      ...this.spreadsheetIdentifiedProps,
-      sheetGid,
-    });
-  }
   sheetMeta(sheetGid: number): SheetMetaIdentified {
     return new SheetMetaIdentified({
       ...this.spreadsheetIdentifiedProps,
@@ -33,7 +27,9 @@ export class SpreadsheetIdentified extends SpreadsheetBaseIdentified {
     });
   }
   get activeSheets(): TableIdentified[] {
-    return this.raw.activeSheetGids.map((sheetGid) => this.sheet(sheetGid));
+    return this.raw.activeSheetGids.map(
+      (sheetGid) => this.sheetMeta(sheetGid).primary,
+    );
   }
   // Sheets first: building a sheet's handle hands its queue to its known Table.
   get tablesPreppedForFetch(): SheetMetaIdentified[] {

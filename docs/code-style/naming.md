@@ -18,7 +18,7 @@ One heading per naming rule, in docs/code-style.md's order: grep `^## ` for the 
 
 ## A sheet is unmarked, a row takes `Row`
 
-**A sheet takes the unmarked name; a row is marked with a spelled-out `Row` suffix.** `const occupancy = ss.sheet("occupancy")` is the sheet and `occupancyRow` is one of its rows, so the same identifier never means a sheet in one endpoint and a row in another (#22). Sheet locals outnumber row locals across the repo, which is the count "Give the common case the unmarked name" asks for before deciding which case goes unmarked, and a spelled-out `Row` reads to someone who has never opened the codebase where a coined abbreviation does not. A sheet-marking suffix was considered on the analogy of `col`, but that abbreviation marks a single column index rather than a collection, so the analogy doesn't hold.
+**A sheet takes the unmarked name; a row is marked with a spelled-out `Row` suffix.** `const occupancy = ss.table("occupancy")` is the sheet and `occupancyRow` is one of its rows, so the same identifier never means a sheet in one endpoint and a row in another (#22). Sheet locals outnumber row locals across the repo, which is the count "Give the common case the unmarked name" asks for before deciding which case goes unmarked, and a spelled-out `Row` reads to someone who has never opened the codebase where a coined abbreviation does not. A sheet-marking suffix was considered on the analogy of `col`, but that abbreviation marks a single column index rather than a collection, so the analogy doesn't hold.
 
 ## Google's API names stay at the wire
 

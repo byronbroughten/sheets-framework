@@ -29,9 +29,6 @@ import { TableIdentified } from "./TableIdentified";
 export class ColumnIdentified<
   VN extends ValueName = ValueName,
 > extends ColumnCommonIdentified<VN> {
-  get sheet(): TableIdentified {
-    return new TableIdentified(this.tableIdentifiedProps);
-  }
   get table(): TableIdentified {
     return new TableIdentified(this.tableIdentifiedProps);
   }
@@ -71,7 +68,7 @@ export class ColumnIdentified<
   }
   // Through the cells, not straight to Raw, so the value name's blank is read here too.
   get valueArrOrEmpty(): Value<VN>[] {
-    return this.sheet.rowIndexesActive.map((rowIndex) =>
+    return this.table.rowIndexesActive.map((rowIndex) =>
       this.valueOrEmpty(rowIndex),
     );
   }
@@ -81,7 +78,7 @@ export class ColumnIdentified<
     );
   }
   get valueArrNotEmpty(): NotEmpty<Value<VN>>[] {
-    return this.sheet.rowIndexesActive.map((rowIndex) =>
+    return this.table.rowIndexesActive.map((rowIndex) =>
       this.cell(rowIndex).valueNotEmpty(),
     );
   }
@@ -187,7 +184,7 @@ export class ColumnIdentified<
     return this;
   }
   anchoredA1(colIndex = this.colIndex): string {
-    return this.sheet.anchoredA1(colIndex);
+    return this.table.anchoredA1(colIndex);
   }
   // A colour-only write is legitimate on a formula column; a value is not.
   private _rawChange({

@@ -25,15 +25,15 @@ export class ColumnMetaNamed<
   TN extends TableName,
   CN extends ColumnName<TN> = ColumnName<TN>,
 > extends ColumnCommonNamed<TN, CN> {
-  get sheet(): SheetMetaNamed<TN> {
+  get table(): SheetMetaNamed<TN> {
     return new SheetMetaNamed(this.sheetNamedProps);
   }
   get raw(): ColumnMetaRaw {
-    return this.sheet.raw.column(this.identified.colIndex);
+    return this.table.raw.column(this.identified.colIndex);
   }
   get identified(): ColumnMetaIdentified<ColumnValueName<TN, CN>> {
     return new ColumnMetaIdentified<ColumnValueName<TN, CN>>({
-      ...this.sheet.identified.tableIdentifiedProps,
+      ...this.table.identified.tableIdentifiedProps,
       columnId: this.columnId,
     });
   }

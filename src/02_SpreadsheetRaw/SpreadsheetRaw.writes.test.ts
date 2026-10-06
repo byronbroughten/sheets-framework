@@ -544,9 +544,9 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
       it("still refuses a row write through the sheet, which resolves to no fetched Table, after growth pushed its Tables down", () => {
         const { raw } = flushedGrowthOfTop();
 
-        expect(() => raw.sheet(111).row(0).cell(0).updateValue("late")).toThrow(
-          /sheet properties have been fetched/,
-        );
+        expect(() =>
+          raw.sheetMeta(111).primary.row(0).cell(0).updateValue("late"),
+        ).toThrow(/sheet properties have been fetched/);
       });
 
       it("still flags the sheet's Tables stale after a flushed row delete that follows growth, naming each", () => {

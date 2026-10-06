@@ -90,21 +90,21 @@ describe("SpreadsheetNamed navigation", () => {
   it("gives each accessor the class its return type names", () => {
     stubSheetsService();
     const ss = SpreadsheetNamed.init();
-    const sheet = ss.sheet("item");
+    const table = ss.table("item");
     const sheetMeta = ss.sheetMeta("item");
-    const column = sheet.column("id");
+    const column = table.column("id");
     const columnMeta = sheetMeta.column("id");
 
-    assertType<IsExactly<typeof sheet, TableNamed<"item">>>(true);
+    assertType<IsExactly<typeof table, TableNamed<"item">>>(true);
     assertType<IsExactly<typeof sheetMeta, SheetMetaNamed<"item">>>(true);
-    assertType<IsExactly<typeof sheet.meta, SheetMetaNamed<"item">>>(true);
+    assertType<IsExactly<typeof table.meta, SheetMetaNamed<"item">>>(true);
     assertType<IsExactly<typeof sheetMeta.primary, TableNamed<"item">>>(true);
     assertType<IsExactly<typeof column, ColumnNamed<"item", "id">>>(true);
     assertType<IsExactly<typeof columnMeta, ColumnMetaNamed<"item", "id">>>(
       true,
     );
-    assertType<IsExactly<typeof column.sheet, TableNamed<"item">>>(true);
-    assertType<IsExactly<typeof columnMeta.sheet, SheetMetaNamed<"item">>>(
+    assertType<IsExactly<typeof column.table, TableNamed<"item">>>(true);
+    assertType<IsExactly<typeof columnMeta.table, SheetMetaNamed<"item">>>(
       true,
     );
     assertType<IsExactly<typeof column.meta, ColumnMetaNamed<"item", "id">>>(
@@ -113,20 +113,21 @@ describe("SpreadsheetNamed navigation", () => {
     assertType<IsExactly<typeof columnMeta.primary, ColumnNamed<"item", "id">>>(
       true,
     );
-    assertType<IsExactly<ReturnType<typeof sheet.row>, RowNamed<"item">>>(true);
+    assertType<IsExactly<ReturnType<typeof table.row>, RowNamed<"item">>>(true);
 
-    expect(sheet.meta).toBeInstanceOf(SheetMetaNamed);
+    expect(table).toBeInstanceOf(TableNamed);
+    expect(table.meta).toBeInstanceOf(SheetMetaNamed);
     expect(sheetMeta.primary).toBeInstanceOf(TableNamed);
     expect(column).toBeInstanceOf(ColumnNamed);
     expect(columnMeta).toBeInstanceOf(ColumnMetaNamed);
-    expect(column.sheet).toBeInstanceOf(TableNamed);
-    expect(columnMeta.sheet).toBeInstanceOf(SheetMetaNamed);
+    expect(column.table).toBeInstanceOf(TableNamed);
+    expect(columnMeta.table).toBeInstanceOf(SheetMetaNamed);
     expect(column.meta).toBeInstanceOf(ColumnMetaNamed);
     expect(columnMeta.primary).toBeInstanceOf(ColumnNamed);
-    expect(sheet.row(0)).toBeInstanceOf(RowNamed);
+    expect(table.row(0)).toBeInstanceOf(RowNamed);
   });
 
-  it("reaches the same Table through each table accessor as through its sheet one", () => {
+  it("reaches the Table through ss.tables and back through each row's and column's table getter", () => {
     stubSheetsService();
     const ss = SpreadsheetNamed.init();
     const table = ss.table("item");
@@ -148,10 +149,9 @@ describe("SpreadsheetNamed navigation", () => {
     expect(tables.valueTypes).toBeInstanceOf(TableNamed);
     expect(row.table).toBeInstanceOf(TableNamed);
     expect(column.table).toBeInstanceOf(TableNamed);
-    expect(table).toEqual(ss.sheet("item"));
-    expect(tables).toEqual(ss.sheets("item", "valueTypes"));
-    expect(row.table).toEqual(row.sheet);
-    expect(column.table).toEqual(column.sheet);
+    expect(tables.item).toEqual(table);
+    expect(row.table).toEqual(table);
+    expect(column.table).toEqual(table);
   });
 });
 

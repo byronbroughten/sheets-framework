@@ -121,7 +121,7 @@ export class CellNamed<
     return this;
   }
   anchoredA1(columnName: ColumnName<TN> = this.columnName): string {
-    const colIndex = this.column.sheet.column(columnName).identified.colIndex;
+    const colIndex = this.column.table.column(columnName).identified.colIndex;
     return this.identified.anchoredA1(colIndex);
   }
 }

@@ -29,9 +29,6 @@ export class UniformRowIdentified<
     this.uniformRowName = uniformRowName;
     this.schema.validateUniformRowIndex(this.rowIndex, this.uniformRowName);
   }
-  get sheet(): TableIdentified {
-    return new TableIdentified(this.tableIdentifiedProps);
-  }
   get table(): TableIdentified {
     return new TableIdentified(this.tableIdentifiedProps);
   }
@@ -45,13 +42,13 @@ export class UniformRowIdentified<
     return this.schema.uniformValueName(this.uniformRowName);
   }
   valueOrEmpty(columnId: string): UniformRowValue<UN> | "" {
-    return this.raw.valueOrEmpty(this.sheet.column(columnId).colIndex);
+    return this.raw.valueOrEmpty(this.table.column(columnId).colIndex);
   }
   get activeValueArr(): (UniformRowValue<UN> | "")[] {
     return this.raw.activeValueArr;
   }
   updateValue(columnId: string, value: UniformRowValue<UN>): this {
-    this.raw.updateValue(this.sheet.column(columnId).colIndex, value);
+    this.raw.updateValue(this.table.column(columnId).colIndex, value);
     return this;
   }
   addEditWarning(declaration: EditWarningDeclaration = {}): this {

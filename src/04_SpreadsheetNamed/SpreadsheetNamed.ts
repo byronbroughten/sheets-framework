@@ -45,23 +45,11 @@ export class SpreadsheetNamed extends SpreadsheetBaseNamed {
   get serialDate(): typeof SerialDate & { today(): SerialDate } {
     return { ...SerialDate, today: () => this.today() };
   }
-  sheet<TN extends TableName>(tableName: TN): TableNamed<TN> {
-    return new TableNamed({
-      tableName,
-      ...this.spreadsheetNamedProps,
-    });
-  }
   sheetMeta<TN extends TableName>(tableName: TN): SheetMetaNamed<TN> {
     return new SheetMetaNamed({
       tableName,
       ...this.spreadsheetNamedProps,
     });
-  }
-  sheets<TN extends TableName>(...sheetNames: TN[]): NamedSheets<TN> {
-    return sheetNames.reduce((acc, tableName) => {
-      acc[tableName] = this.sheet(tableName);
-      return acc;
-    }, {} as NamedSheets<TN>);
   }
   table<TN extends TableName>(tableName: TN): TableNamed<TN> {
     return new TableNamed({
@@ -79,7 +67,7 @@ export class SpreadsheetNamed extends SpreadsheetBaseNamed {
     return this.identified.activeSheets.map((sheet) => sheet.tableName);
   }
   get activeSheets(): TableNamed<TableName>[] {
-    return this.activeSheetNames.map((tableName) => this.sheet(tableName));
+    return this.activeSheetNames.map((tableName) => this.table(tableName));
   }
   fetchAllPrepped(props: GatherDataPrerequisitesProps = {}): SpreadsheetNamed {
     this.identified.fetchAllPrepped(props);
@@ -92,7 +80,7 @@ export class SpreadsheetNamed extends SpreadsheetBaseNamed {
     this._prepFetchStandardizedProps(standardizedProps);
     this.fetchAllPrepped();
     const sheetNames = sheetNamesFromReqProps(standardizedProps);
-    return this.sheets(...sheetNames);
+    return this.tables(...sheetNames);
   }
   private _standardizeProps<TN extends TableName>(
     propsArr: FetchPropsNamed<TN>[],
@@ -164,7 +152,7 @@ export class SpreadsheetNamed extends SpreadsheetBaseNamed {
         sheetColumnNames[tableName],
         `sheetColumnNames[${tableName}]`,
       );
-      const namedSheet = this.sheet(tableName);
+      const namedSheet = this.table(tableName);
       const identifiedSheet = namedSheet.identified;
       columnNames.forEach((columnName) => {
         const columnId = namedSheet.schema.columnByName(columnName).columnId;
@@ -175,7 +163,7 @@ export class SpreadsheetNamed extends SpreadsheetBaseNamed {
     });
   }
   get sheetsOfSchema(): TableNamed<TableName>[] {
-    return this.schema.sheetNames.map((tableName) => this.sheet(tableName));
+    return this.schema.sheetNames.map((tableName) => this.table(tableName));
   }
   batchUpdateGSheets(): void {
     this.raw.batchUpdateGSheets();

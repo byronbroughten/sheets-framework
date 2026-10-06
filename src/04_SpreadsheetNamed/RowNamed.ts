@@ -15,26 +15,23 @@ import { RowBaseNamed } from "./ClassBases/RowBaseNamed";
 import { TableNamed } from "./TableNamed";
 
 export class RowNamed<TN extends TableName> extends RowBaseNamed<TN> {
-  get sheet(): TableNamed<TN> {
-    return new TableNamed(this.sheetNamedProps);
-  }
   get table(): TableNamed<TN> {
     return new TableNamed(this.sheetNamedProps);
   }
   get identified(): RowIdentified {
     return new RowIdentified({
       ...this.rowNamedProps,
-      sheetGid: this.sheet.sheetGid,
+      sheetGid: this.table.sheetGid,
     });
   }
   get raw(): RowRaw {
     return new RowRaw({
-      ...this.sheet.raw.tableRawProps,
+      ...this.table.raw.tableRawProps,
       rowIndex: this.rowIndex,
     });
   }
   cell<CN extends ColumnName<TN>>(columnName: CN): CellNamed<TN, CN> {
-    return this.sheet.column(columnName).cell(this.rowIndex);
+    return this.table.column(columnName).cell(this.rowIndex);
   }
   cellIsActive<CN extends ColumnName<TN>>(columnName: CN): boolean {
     return this.cell(columnName).isActive;

@@ -31,9 +31,6 @@ export class ColumnNamed<
   TN extends TableName,
   CN extends ColumnName<TN> = ColumnName<TN>,
 > extends ColumnCommonNamed<TN, CN> {
-  get sheet(): TableNamed<TN> {
-    return new TableNamed(this.sheetNamedProps);
-  }
   get table(): TableNamed<TN> {
     return new TableNamed(this.sheetNamedProps);
   }
@@ -42,7 +39,7 @@ export class ColumnNamed<
   }
   get identified(): ColumnIdentified<ColumnValueName<TN, CN>> {
     return new ColumnIdentified<ColumnValueName<TN, CN>>({
-      ...this.sheet.identified.tableIdentifiedProps,
+      ...this.table.identified.tableIdentifiedProps,
       columnId: this.columnId,
     });
   }
@@ -161,7 +158,7 @@ export class ColumnNamed<
     return this;
   }
   anchoredA1(columnName: ColumnName<TN> = this.columnName): string {
-    return this.sheet.column(columnName).identified.anchoredA1();
+    return this.table.column(columnName).identified.anchoredA1();
   }
   prepFetchSpecific(rowIndexes: number[]): this {
     this.identified.prepFetchSpecific(rowIndexes);

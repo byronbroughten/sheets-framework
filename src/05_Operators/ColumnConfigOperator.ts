@@ -80,7 +80,7 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
   fetchAfterSheetConfigSynced(): this {
     this.sheetConfigOperator.assertSyncedToSpreadsheet();
     this.sheetGidsApiAccesses.forEach((sheetGid) => {
-      const sheet = this.ss.raw.sheet(sheetGid);
+      const sheet = this.ss.raw.sheetMeta(sheetGid).primary;
       // hasIdColumn samples this row after Let api access is known.
       sheet.meta.tableHeaderRow.gatherFetchFull();
       sheet.meta.colIdRow.gatherFetchFull();
@@ -133,7 +133,7 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
   private _blankSampleSheetTitles(): string[] {
     const titles: string[] = [];
     this.sheetGidsApiAccesses.forEach((sheetGid) => {
-      const sheet = this.ss.raw.sheet(sheetGid);
+      const sheet = this.ss.raw.sheetMeta(sheetGid).primary;
       if (!this.untypedHeadersBySheetTitle.has(sheet.title)) return;
       if (!sheet.topDataRowIsBlank()) return;
       titles.push(sheet.title);
@@ -219,7 +219,7 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
     this.untypedHeadersBySheetTitle.clear();
     this.table.rowIndexesActiveWithData.forEach((rowIndex) => {
       const identity = this._columnIdentity(rowIndex);
-      const sheetRaw = this.ss.raw.sheet(identity.sheetGid);
+      const sheetRaw = this.ss.raw.sheetMeta(identity.sheetGid).primary;
 
       const actualSheetTitle = sheetRaw.title;
       if (col.sheetTitle.valueOrEmpty(rowIndex) !== actualSheetTitle) {

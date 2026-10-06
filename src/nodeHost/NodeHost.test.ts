@@ -17,6 +17,7 @@ import { NodeHost } from "./NodeHost";
 
 const spreadsheetId = "spreadsheet-under-test";
 const gadgetsGid = 111;
+const gadgetsTableId = "fake-table";
 
 const gadgetsPayload = {
   sheets: [
@@ -24,7 +25,7 @@ const gadgetsPayload = {
       properties: { sheetId: gadgetsGid, title: "Gadgets" },
       tables: [
         {
-          tableId: "fake-table",
+          tableId: gadgetsTableId,
           range: {
             startRowIndex: expectedSheetLayout.tableHeaderRowIndex,
             endRowIndex: 11,
@@ -52,7 +53,7 @@ function seedHost(isDryRun: boolean) {
 function writeOneCell(): SpreadsheetRaw {
   const raw = SpreadsheetRaw.init();
   raw.fetchAllSheetProperties();
-  raw.sheet(gadgetsGid).row(1).cell(2).updateValue("Processing...");
+  raw.table(gadgetsTableId).row(1).cell(2).updateValue("Processing...");
   raw.batchUpdateGSheets();
   return raw;
 }

@@ -4,6 +4,10 @@ import { getColumnTraitByName } from "../01_SpreadsheetSchema/columnConfigsTypes
 import { getSheetTraitByName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
 import type { Value, VnToCvn } from "../01_SpreadsheetSchema/valueSchemas";
 import {
+  itemTableId,
+  placedTableSheet,
+} from "../02_SpreadsheetRaw/spreadsheetRawTestSupport";
+import {
   blankSheetConfigRow,
   filledSheetConfigRow,
   sheetConfigColumnIdRow,
@@ -30,48 +34,57 @@ const itemIdColumnId = getColumnTraitByName("item", "id", "columnId");
 
 // A mis-wired accessor still type-checks; the instance checks catch it.
 describe("SpreadsheetIdentified navigation", () => {
+  function stubItemTable(): void {
+    stubSheetsService({
+      sheets: [placedTableSheet({ sheetId: itemGid, title: "Item" })],
+    });
+  }
+
   it("gives each accessor the class its return type names", () => {
-    stubSheetsService();
+    stubItemTable();
     const ssi = new SpreadsheetIdentified(
       SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
     );
-    const sheet = ssi.sheet(itemGid);
+    ssi.raw.fetchAllSheetProperties();
+    const table = ssi.table(itemTableId);
     const sheetMeta = ssi.sheetMeta(itemGid);
-    const column = sheet.column(itemIdColumnId);
+    const column = table.column(itemIdColumnId);
     const columnMeta = sheetMeta.column(itemIdColumnId);
 
-    assertType<IsExactly<typeof sheet, TableIdentified>>(true);
+    assertType<IsExactly<typeof table, TableIdentified>>(true);
     assertType<IsExactly<typeof sheetMeta, SheetMetaIdentified>>(true);
-    assertType<IsExactly<typeof sheet.meta, SheetMetaIdentified>>(true);
+    assertType<IsExactly<typeof table.meta, SheetMetaIdentified>>(true);
     assertType<IsExactly<typeof sheetMeta.primary, TableIdentified>>(true);
     assertType<IsExactly<typeof column, ColumnIdentified>>(true);
     assertType<IsExactly<typeof columnMeta, ColumnMetaIdentified>>(true);
-    assertType<IsExactly<typeof column.sheet, TableIdentified>>(true);
-    assertType<IsExactly<typeof columnMeta.sheet, SheetMetaIdentified>>(true);
+    assertType<IsExactly<typeof column.table, TableIdentified>>(true);
+    assertType<IsExactly<typeof columnMeta.table, SheetMetaIdentified>>(true);
     assertType<IsExactly<typeof column.meta, ColumnMetaIdentified>>(true);
     assertType<IsExactly<typeof columnMeta.primary, ColumnIdentified>>(true);
-    assertType<IsExactly<ReturnType<typeof sheet.row>, RowIdentified>>(true);
+    assertType<IsExactly<ReturnType<typeof table.row>, RowIdentified>>(true);
 
-    expect(sheet.meta).toBeInstanceOf(SheetMetaIdentified);
+    expect(table).toBeInstanceOf(TableIdentified);
+    expect(table.meta).toBeInstanceOf(SheetMetaIdentified);
     expect(sheetMeta.primary).toBeInstanceOf(TableIdentified);
     expect(column).toBeInstanceOf(ColumnIdentified);
     expect(columnMeta).toBeInstanceOf(ColumnMetaIdentified);
-    expect(column.sheet).toBeInstanceOf(TableIdentified);
-    expect(columnMeta.sheet).toBeInstanceOf(SheetMetaIdentified);
+    expect(column.table).toBeInstanceOf(TableIdentified);
+    expect(columnMeta.table).toBeInstanceOf(SheetMetaIdentified);
     expect(column.meta).toBeInstanceOf(ColumnMetaIdentified);
     expect(columnMeta.primary).toBeInstanceOf(ColumnIdentified);
-    expect(sheet.row(0)).toBeInstanceOf(RowIdentified);
+    expect(table.row(0)).toBeInstanceOf(RowIdentified);
   });
 
-  it("reaches the same Table through each table getter as through its sheet one", () => {
-    stubSheetsService();
+  it("reaches the Table back through each row's and column's table getter", () => {
+    stubItemTable();
     const ssi = new SpreadsheetIdentified(
       SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
     );
-    const sheet = ssi.sheet(itemGid);
-    const row = sheet.row(0);
-    const column = sheet.column(itemIdColumnId);
-    const uniformRow = ssi.sheetMeta(itemGid).uniformRow("tableHeader");
+    ssi.raw.fetchAllSheetProperties();
+    const table = ssi.table(itemTableId);
+    const row = table.row(0);
+    const column = table.column(itemIdColumnId);
+    const uniformRow = table.meta.uniformRow("tableHeader");
 
     assertType<IsExactly<typeof row.table, TableIdentified>>(true);
     assertType<IsExactly<typeof column.table, TableIdentified>>(true);
@@ -80,9 +93,9 @@ describe("SpreadsheetIdentified navigation", () => {
     expect(row.table).toBeInstanceOf(TableIdentified);
     expect(column.table).toBeInstanceOf(TableIdentified);
     expect(uniformRow.table).toBeInstanceOf(TableIdentified);
-    expect(row.table).toEqual(row.sheet);
-    expect(column.table).toEqual(column.sheet);
-    expect(uniformRow.table).toEqual(uniformRow.sheet);
+    expect(row.table).toEqual(table);
+    expect(column.table).toEqual(table);
+    expect(uniformRow.table).toEqual(table);
   });
 });
 

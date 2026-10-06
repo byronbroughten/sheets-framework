@@ -280,7 +280,7 @@ afterEach(() => {
 });
 
 describe("EndpointRun navigation", () => {
-  it("reaches the same Table through table as through sheet", () => {
+  it("reaches its Table through table", () => {
     stubRunItemSheet();
     const endpoint = reportingEndpoint(noOp);
     const run = new EndpointRun({
@@ -295,7 +295,6 @@ describe("EndpointRun navigation", () => {
     assertType<IsExactly<typeof run.table, TableNamed<"runItem">>>(true);
 
     expect(run.table).toBeInstanceOf(TableNamed);
-    expect(run.table).toEqual(run.sheet);
   });
 });
 

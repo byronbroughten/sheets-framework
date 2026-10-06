@@ -19,7 +19,7 @@ export class ColumnMetaIdentified<
       colIndex: this.colIndex,
     });
   }
-  get sheet(): SheetMetaIdentified {
+  get table(): SheetMetaIdentified {
     return new SheetMetaIdentified(this.tableIdentifiedProps);
   }
   get primary(): ColumnIdentified<VN> {
