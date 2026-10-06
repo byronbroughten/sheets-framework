@@ -83,7 +83,7 @@ function runItemRules(grid: FakeSheetsService["grid"]) {
 
 function fetchedRunItem() {
   const ss = SpreadsheetNamed.init();
-  const sheet = ss.sheet("runItem");
+  const sheet = ss.table("runItem");
   sheet.prepFetchConditionalFormatRules();
   ss.fetchAllPrepped();
   return { ss, sheet };
@@ -243,12 +243,7 @@ describe("TableNamed conditional format rules", () => {
 
     expect(sheet.column("id").anchoredA1()).toBe("$A5");
     expect(sheet.column("id").anchoredA1("selected")).toBe("$B5");
-    expect(
-      sheet
-        .column("id")
-        .cell(1)
-        .anchoredA1("id"),
-    ).toBe("$A6");
+    expect(sheet.column("id").cell(1).anchoredA1("id")).toBe("$A6");
   });
 
   it("adds a sheet-wide rule over the live data range and a cell rule over one cell", () => {
@@ -271,9 +266,10 @@ describe("TableNamed conditional format rules", () => {
       });
     ss.batchUpdateGSheets();
 
-    expect(
-      runItemRules(grid).map((rule) => rule.ranges),
-    ).toEqual([[topIdCellRange], [sheetRange]]);
+    expect(runItemRules(grid).map((rule) => rule.ranges)).toEqual([
+      [topIdCellRange],
+      [sheetRange],
+    ]);
   });
 
   it("replaces a column rule in one batch update, so a malformed add cannot leave the column bare", () => {
@@ -342,7 +338,7 @@ function fetchedRunItemProtections(
 ) {
   const service = stubRunItemWithProtections(protectedRanges);
   const ss = SpreadsheetNamed.init();
-  const sheet = ss.sheet("runItem");
+  const sheet = ss.table("runItem");
   sheet.prepFetchEditProtections();
   ss.fetchAllPrepped();
   const protections = () => service.grid.sheet(runItemGid).protectedRanges;
@@ -794,7 +790,7 @@ function fetchedItemNames(
     ],
   });
   const ss = SpreadsheetNamed.init();
-  const sheet = ss.sheet("item").prepFetchRowIdAndName();
+  const sheet = ss.table("item").prepFetchRowIdAndName();
   ss.fetchAllPrepped();
   return { ss, sheet, ...service };
 }
@@ -854,13 +850,13 @@ describe("TableNamed.rowIdByName", () => {
 
   it("is typed only to sheets with both an id and a name column", () => {
     function neverCalled(ss: SpreadsheetNamed): void {
-      ss.sheet("item").rowIdByName("Widget B");
+      ss.table("item").rowIdByName("Widget B");
       // @ts-expect-error valueTypes has an id column but no name column.
-      ss.sheet("valueTypes").rowIdByName("Widget B");
+      ss.table("valueTypes").rowIdByName("Widget B");
       // @ts-expect-error log has neither.
-      ss.sheet("log").rowIdByName("Widget B");
+      ss.table("log").rowIdByName("Widget B");
       // @ts-expect-error spreadsheetConfig has neither.
-      ss.sheet("spreadsheetConfig").prepFetchRowIdAndName();
+      ss.table("spreadsheetConfig").prepFetchRowIdAndName();
     }
     expect(neverCalled).toBeTypeOf("function");
   });

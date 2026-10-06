@@ -499,7 +499,7 @@ function protectionsOf(
   floor: ConfigSheetFloor,
   sheetName: "spreadsheetConfig" | "sheetConfig" | "columnConfig",
 ): ModelableEditProtection[] {
-  const sheet = floor.ss.sheet(sheetName);
+  const sheet = floor.ss.table(sheetName);
   sheet.prepFetchEditProtections();
   floor.ss.fetchAllPrepped({ skipFetchingProperties: true });
   return sheet

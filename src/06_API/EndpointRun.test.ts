@@ -151,7 +151,7 @@ function runEndpoint(
     entryColumnName: "startTime",
     endpoint,
   });
-  run.sheet.identified.meta.ensureColumnIdsAreFetched();
+  run.table.identified.meta.ensureColumnIdsAreFetched();
   run.run(isChecked);
 }
 
@@ -195,7 +195,7 @@ function retainingEndpoint(
 function noOp() {}
 
 function appendRow(ss: SpreadsheetNamed): void {
-  const sheet = ss.sheet("runItem");
+  const sheet = ss.table("runItem");
   sheet.row(0).prepFetchFull();
   ss.fetchAllPrepped();
   sheet.appendRowWithVals({ result: "appended" });
@@ -426,7 +426,7 @@ describe("EndpointRun.run, the selection a successful run consumes", () => {
 
     runEndpoint(
       selectiveEndpoint((ss) => {
-        ss.sheet("runItem").row(0).updateValue("selected", true);
+        ss.table("runItem").row(0).updateValue("selected", true);
       }),
     );
 
@@ -509,7 +509,7 @@ describe("EndpointRun.run, an endpoint with no selector", () => {
 
     runEndpoint(
       reportingEndpoint((ss) => {
-        ss.sheet("runItem").DELETE_ALL_DATA_ROWS();
+        ss.table("runItem").DELETE_ALL_DATA_ROWS();
       }),
     );
     expect(
@@ -697,8 +697,8 @@ describe("EndpointRun.run, an endpoint declaring no feedback columns", () => {
 describe("EndpointRun.run, a run that fails", () => {
   // Reading a row past the table's last one is a real read on real state.
   function failingAction(ss: Parameters<Endpoint<"runItem">["action"]>[0]) {
-    ss.sheet("runItem").row(0).cell("id").updateValue("r:rit:written");
-    ss.sheet("runItem").row(pastLastRowIndex).value("id");
+    ss.table("runItem").row(0).cell("id").updateValue("r:rit:written");
+    ss.table("runItem").row(pastLastRowIndex).value("id");
   }
 
   it("writes the error text and red to the selected rows only", () => {
@@ -870,8 +870,8 @@ describe("EndpointRun.run, a run report naming rows", () => {
 
     runEndpoint(
       reportingEndpoint((ss) => {
-        ss.sheet("runItem").row(0).updateValue("runStatus", "mine");
-        ss.sheet("runItem").row(1).updateValue("runStatus", "mine");
+        ss.table("runItem").row(0).updateValue("runStatus", "mine");
+        ss.table("runItem").row(1).updateValue("runStatus", "mine");
         return twoRowsFailed();
       }),
     );
@@ -966,7 +966,7 @@ describe("EndpointRun.run, a run report naming rows", () => {
 
     runEndpoint(
       reportingEndpoint((ss) => {
-        ss.sheet("runItem").row(0).cell("id").updateValue("r:rit:written");
+        ss.table("runItem").row(0).cell("id").updateValue("r:rit:written");
         return twoRowsFailed();
       }),
     );
@@ -1000,7 +1000,10 @@ describe("EndpointRun.run, a run report naming rows", () => {
     runEndpoint(
       reportingEndpoint(() => ({
         rows: new Map([
-          [pastLastRowIndex, { runState: "failure" as const, message: "Nowhere" }],
+          [
+            pastLastRowIndex,
+            { runState: "failure" as const, message: "Nowhere" },
+          ],
         ]),
       })),
     );
@@ -1029,7 +1032,7 @@ describe("EndpointRun.run, a run report naming rows", () => {
 
     runEndpoint(
       reportingEndpoint((ss) => {
-        ss.sheet("runItem").row(1).delete();
+        ss.table("runItem").row(1).delete();
         return twoRowsFailed();
       }),
     );

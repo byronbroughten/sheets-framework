@@ -172,7 +172,7 @@ const runItemWithStatusOnly = {
   ],
   topRow: [null, null, "Succeeded"],
   append: (ss: SpreadsheetNamed) => {
-    const sheet = ss.sheet("runItem");
+    const sheet = ss.table("runItem");
     sheet.row(topDataRowIndex).prepFetchFull();
     ss.fetchAllPrepped();
     sheet.appendRowWithVals({ result: "appended" });
@@ -223,7 +223,7 @@ describe("NodeHost.ensureGlobals, the endpoints it installs", () => {
       ],
       topRow: [null, "Succeeded"],
       append: (ss) => {
-        const sheet = ss.sheet("spreadsheetConfig");
+        const sheet = ss.table("spreadsheetConfig");
         sheet.row(topDataRowIndex).prepFetchFull();
         ss.fetchAllPrepped();
         sheet.appendRowWithVals({ tableMenuSpace: "space" });

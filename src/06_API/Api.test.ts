@@ -322,7 +322,7 @@ describe("Api.handleSheetEdit, the endpoints it installs", () => {
     );
 
     const ss = SpreadsheetNamed.init();
-    const sheet = ss.sheet("runItem");
+    const sheet = ss.table("runItem");
     sheet.row(4).prepFetchFull();
     ss.fetchAllPrepped();
     sheet.appendRowWithVals({ result: "appended" });

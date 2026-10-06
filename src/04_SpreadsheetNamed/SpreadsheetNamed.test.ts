@@ -222,16 +222,16 @@ function stubDatesAndValueTypesWithBlankRow() {
 
 function fetchedDatesSheet(): TableNamed<"dates"> {
   const ss = SpreadsheetNamed.init();
-  ss.sheet("dates").prepFetchColumnsFull("id", "requiredDate", "optionalDate");
+  ss.table("dates").prepFetchColumnsFull("id", "requiredDate", "optionalDate");
   ss.fetchAllPrepped();
-  return ss.sheet("dates");
+  return ss.table("dates");
 }
 
 function fetchedValueTypesSheet(): TableNamed<"valueTypes"> {
   const ss = SpreadsheetNamed.init();
-  ss.sheet("valueTypes").prepFetchColumnsFull("checkbox", "numberValue");
+  ss.table("valueTypes").prepFetchColumnsFull("checkbox", "numberValue");
   ss.fetchAllPrepped();
-  return ss.sheet("valueTypes");
+  return ss.table("valueTypes");
 }
 
 describe("Named value accessors", () => {
@@ -442,7 +442,7 @@ describe("Named value accessors", () => {
 
 function fetchedSheetConfig(): SpreadsheetNamed {
   const ss = SpreadsheetNamed.init();
-  ss.sheet("sheetConfig").prepFetchColumnsFull(
+  ss.table("sheetConfig").prepFetchColumnsFull(
     "sheetGid",
     "sheetTitle",
     "letApiAccess",
@@ -532,11 +532,11 @@ describe("TableNamed.DELETE_ALL_DATA_ROWS", () => {
     });
 
     const ss = fetchedSheetConfig();
-    ss.sheet("sheetConfig").DELETE_ALL_DATA_ROWS();
+    ss.table("sheetConfig").DELETE_ALL_DATA_ROWS();
     ss.batchUpdateGSheets();
 
     expect(tableDataRows(service, sheetConfigGid)).toEqual([["", "", ""]]);
-    expect(ss.sheet("sheetConfig").topRow.isBlank).toBe(true);
+    expect(ss.table("sheetConfig").topRow.isBlank).toBe(true);
   });
 
   it("sends no batch update for a sheet already down to its blank row", () => {
@@ -545,7 +545,7 @@ describe("TableNamed.DELETE_ALL_DATA_ROWS", () => {
     });
 
     const ss = fetchedSheetConfig();
-    ss.sheet("sheetConfig").DELETE_ALL_DATA_ROWS();
+    ss.table("sheetConfig").DELETE_ALL_DATA_ROWS();
     ss.batchUpdateGSheets();
 
     expect(service.batchUpdateCount()).toBe(0);
@@ -559,7 +559,7 @@ describe("TableNamed.appendRowWithVals", () => {
     });
 
     const ss = fetchedSheetConfig();
-    const row = ss.sheet("sheetConfig").appendRowWithVals({
+    const row = ss.table("sheetConfig").appendRowWithVals({
       sheetTitle: "Item",
     });
     ss.batchUpdateGSheets();
@@ -576,7 +576,7 @@ describe("TableNamed.appendRowWithVals", () => {
 
     const ss = fetchedSheetConfig();
     const row = ss
-      .sheet("sheetConfig")
+      .table("sheetConfig")
       .appendRowWithVals({ sheetTitle: "Log" });
     ss.batchUpdateGSheets();
 
@@ -590,7 +590,7 @@ describe("TableNamed.appendRowWithVals", () => {
     });
 
     const ss = fetchedSheetConfig();
-    const sheet = ss.sheet("sheetConfig");
+    const sheet = ss.table("sheetConfig");
     const first = sheet.appendRowWithVals({ sheetTitle: "one" });
     const second = sheet.appendRowWithVals({ sheetTitle: "two" });
     ss.batchUpdateGSheets();
@@ -606,7 +606,7 @@ describe("TableNamed.appendRowWithVals", () => {
     });
 
     const ss = fetchedSheetConfig();
-    const sheet = ss.sheet("sheetConfig");
+    const sheet = ss.table("sheetConfig");
     sheet.appendRowWithVals({ sheetTitle: "one" });
     sheet.DELETE_ALL_DATA_ROWS();
     const rebuilt = sheet.appendRowWithVals({ sheetTitle: "two" });
@@ -624,7 +624,7 @@ describe("TableNamed.appendRowWithVals", () => {
     });
 
     const ss = fetchedSheetConfig();
-    const sheet = ss.sheet("sheetConfig");
+    const sheet = ss.table("sheetConfig");
     sheet.DELETE_ALL_DATA_ROWS();
     const row = sheet.appendRowWithVals({ sheetTitle: "new" });
     ss.batchUpdateGSheets();
@@ -639,11 +639,10 @@ describe("TableNamed.appendRowWithVals, growing a lone blank row", () => {
   const looseRowIndex = topDataRowIndex + 2;
   // The inserted rows should copy the blank row's colour; the loose cell below shows any insert.
   function stubColouredBlankRowAboveLooseCell(): FakeSheetsService {
-    const blankRow = blankSheetConfigRow.map(
-      (cell, colIndex): FakeCell =>
-        colIndex === sheetTitleColIndex
-          ? { value: null, backgroundColor: blankRowColour }
-          : cell,
+    const blankRow = blankSheetConfigRow.map((cell, colIndex): FakeCell =>
+      colIndex === sheetTitleColIndex
+        ? { value: null, backgroundColor: blankRowColour }
+        : cell,
     );
     return stubSheetsService({
       sheets: [
@@ -665,7 +664,7 @@ describe("TableNamed.appendRowWithVals, growing a lone blank row", () => {
     const service = stubColouredBlankRowAboveLooseCell();
 
     const ss = fetchedSheetConfig();
-    const sheet = ss.sheet("sheetConfig");
+    const sheet = ss.table("sheetConfig");
     const titles = ["one", "two", "three"];
     const rows = titles.map((sheetTitle) =>
       sheet.appendRowWithVals({ sheetTitle }),
@@ -683,9 +682,7 @@ describe("TableNamed.appendRowWithVals, growing a lone blank row", () => {
         endColumnIndex: sheetTitleColIndex + 1,
       }),
     ).toEqual(
-      titles.map((value) => [
-        { value, backgroundColor: blankRowColour },
-      ]),
+      titles.map((value) => [{ value, backgroundColor: blankRowColour }]),
     );
     expect(grid.cell(looseRowIndex + 2, 0)).toBe("loose");
   });
@@ -695,7 +692,7 @@ describe("TableNamed.appendRowWithVals, growing a lone blank row", () => {
     const rowCountBefore = service.grid.sheet(sheetConfigGid).rowCount;
 
     const ss = fetchedSheetConfig();
-    ss.sheet("sheetConfig").appendRowWithVals({ sheetTitle: "one" });
+    ss.table("sheetConfig").appendRowWithVals({ sheetTitle: "one" });
     ss.batchUpdateGSheets();
 
     const grid = service.grid.sheet(sheetConfigGid);
@@ -737,7 +734,7 @@ function stubValueTypesWithBlankRow() {
 
 function fetchedValueTypesSpreadsheet(): SpreadsheetNamed {
   const ss = SpreadsheetNamed.init();
-  ss.sheet("valueTypes").prepFetchColumnsFull(
+  ss.table("valueTypes").prepFetchColumnsFull(
     "id",
     "stringValue",
     "numberValue",
@@ -766,7 +763,7 @@ describe("TableNamed.appendRowWithAllVals", () => {
     stubValueTypesWithBlankRow();
 
     const row = fetchedValueTypesSpreadsheet()
-      .sheet("valueTypes")
+      .table("valueTypes")
       .appendRowWithAllVals(completeValueTypesRow);
 
     expect(row.value("id")).toMatch(/^r:vty:[0-9a-zA-Z_-]{7}$/);
@@ -776,7 +773,7 @@ describe("TableNamed.appendRowWithAllVals", () => {
     stubValueTypesWithBlankRow();
 
     const row = fetchedValueTypesSpreadsheet()
-      .sheet("valueTypes")
+      .table("valueTypes")
       .appendRowWithAllVals(completeValueTypesRow);
 
     expect([
@@ -799,7 +796,7 @@ describe("TableNamed.appendRowWithAllVals", () => {
 
     const ss = fetchedValueTypesSpreadsheet();
     const row = ss
-      .sheet("valueTypes")
+      .table("valueTypes")
       .appendRowWithAllVals(completeValueTypesRow);
     ss.batchUpdateGSheets();
 
@@ -875,9 +872,9 @@ function fetchedBlankDatesRow(): RowNamed<"dates"> {
     ],
   });
   const ss = SpreadsheetNamed.init();
-  ss.sheet("dates").prepFetchColumnsFull("id", "requiredDate", "optionalDate");
+  ss.table("dates").prepFetchColumnsFull("id", "requiredDate", "optionalDate");
   ss.fetchAllPrepped();
-  return ss.sheet("dates").row(0);
+  return ss.table("dates").row(0);
 }
 
 describe("RowNamed.blankRequiredColumnNames", () => {
@@ -951,7 +948,7 @@ describe("Named formula writes", () => {
 
     const ss = SpreadsheetNamed.init();
     ss.fetchAllSheetProperties();
-    ss.sheet("computed").column("rowNumber").updateAllFormulas(testFormula);
+    ss.table("computed").column("rowNumber").updateAllFormulas(testFormula);
     ss.batchUpdateGSheets();
 
     expect(rowNumberCells(grid)).toEqual([testFormula, testFormula]);
@@ -962,7 +959,7 @@ describe("Named formula writes", () => {
 
     const ss = SpreadsheetNamed.init();
     ss.fetchAllSheetProperties();
-    ss.sheet("computed").column("rowNumber").cell(0).updateFormula(testFormula);
+    ss.table("computed").column("rowNumber").cell(0).updateFormula(testFormula);
     ss.batchUpdateGSheets();
 
     expect(rowNumberCells(grid)).toEqual([testFormula, 21]);
@@ -972,10 +969,10 @@ describe("Named formula writes", () => {
     const { grid } = stubComputedForFormulaWrite();
 
     const ss = SpreadsheetNamed.init();
-    ss.sheet("computed").prepFetchColumnsFull("rowNumber");
+    ss.table("computed").prepFetchColumnsFull("rowNumber");
     ss.fetchAllPrepped();
-    ss.sheet("computed").raw.removeRowsExcept(0);
-    ss.sheet("computed").column("rowNumber").updateActiveFormulas(testFormula);
+    ss.table("computed").raw.removeRowsExcept(0);
+    ss.table("computed").column("rowNumber").updateActiveFormulas(testFormula);
     ss.batchUpdateGSheets();
 
     expect(rowNumberCells(grid)).toEqual([testFormula, 21]);
@@ -988,7 +985,7 @@ describe("Named formula writes", () => {
     ss.fetchAllSheetProperties();
 
     expect(() =>
-      ss.sheet("computed").column("rowNumber").updateAllFormulas("2+1"),
+      ss.table("computed").column("rowNumber").updateAllFormulas("2+1"),
     ).toThrowError('Formula must start with "=". Got "2+1".');
   });
 
@@ -996,14 +993,14 @@ describe("Named formula writes", () => {
     stubComputedForFormulaWrite();
 
     const ss = SpreadsheetNamed.init();
-    ss.sheet("computed").prepFetchColumnsFull("rowNumber", "amount");
+    ss.table("computed").prepFetchColumnsFull("rowNumber", "amount");
     ss.fetchAllPrepped();
-    ss.sheet("computed").column("rowNumber").updateAllFormulas(testFormula);
+    ss.table("computed").column("rowNumber").updateAllFormulas(testFormula);
 
-    expect(ss.sheet("computed").column("rowNumber").valueArrOrEmpty).toEqual([
+    expect(ss.table("computed").column("rowNumber").valueArrOrEmpty).toEqual([
       11, 21,
     ]);
-    expect(ss.sheet("computed").column("amount").valueArrOrEmpty).toEqual([
+    expect(ss.table("computed").column("amount").valueArrOrEmpty).toEqual([
       10, 20,
     ]);
   });
@@ -1015,7 +1012,7 @@ describe("Named formula writes", () => {
     ss.fetchAllSheetProperties();
 
     expect(() =>
-      ss.sheet("computed").column("rowNumber").cell(0).updateValue(99),
+      ss.table("computed").column("rowNumber").cell(0).updateValue(99),
     ).toThrowError(/formula column/);
   });
 
@@ -1025,7 +1022,7 @@ describe("Named formula writes", () => {
 
     const ss = SpreadsheetNamed.init();
     ss.fetchAllSheetProperties();
-    const cell = ss.sheet("computed").column("rowNumber").cell(0);
+    const cell = ss.table("computed").column("rowNumber").cell(0);
     cell.updateFormula(testFormula);
     cell.updateBackgroundColor(backgroundColor);
     ss.batchUpdateGSheets();
@@ -1040,12 +1037,12 @@ describe("Named formula writes", () => {
     stubComputedForFormulaWrite();
 
     const ss = SpreadsheetNamed.init();
-    ss.sheet("computed").prepFetchColumnsFull("rowNumber");
+    ss.table("computed").prepFetchColumnsFull("rowNumber");
     ss.fetchAllPrepped();
-    ss.sheet("computed").raw.removeRowsExcept(0);
+    ss.table("computed").raw.removeRowsExcept(0);
 
     expect(() =>
-      ss.sheet("computed").column("rowNumber").updateAllFormulas(testFormula),
+      ss.table("computed").column("rowNumber").updateAllFormulas(testFormula),
     ).toThrowError(/pruned to a selection/);
   });
 
