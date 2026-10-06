@@ -30,13 +30,13 @@ export class GenericTableOperator<
   get ss(): SpreadsheetNamed {
     return new SpreadsheetNamed(this.spreadsheetNamedProps);
   }
-  get sheet(): TableNamed<TN> {
-    return this.ss.sheet(this.sheetName);
+  get table(): TableNamed<TN> {
+    return this.ss.table(this.sheetName);
   }
   get schema(): TableSchema<TN> {
     return TableSchema.fromSheetName(this.sheetName);
   }
   column<CN extends ColumnName<TN>>(columnName: CN): ColumnNamed<TN, CN> {
-    return this.sheet.column(columnName);
+    return this.table.column(columnName);
   }
 }

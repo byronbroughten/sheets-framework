@@ -87,9 +87,9 @@ beforeEach(() => {
 function initSyncedColumnConfigOperator(): ColumnConfigOperator {
   const columnConfigOperator = ColumnConfigOperator.init();
   const sheetConfigOperator = columnConfigOperator.sheetConfigOperator;
-  sheetConfigOperator.sheet.prepFetchColumnsFull("letApiAccess");
+  sheetConfigOperator.table.prepFetchColumnsFull("letApiAccess");
   sheetConfigOperator.prepFetchForSync();
-  columnConfigOperator.sheet.prepFetchColumnsFull(
+  columnConfigOperator.table.prepFetchColumnsFull(
     "sheetGid",
     "columnId",
     "header",
@@ -428,7 +428,7 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> _updateProgrammaticValues", 
 
     const operator = ColumnConfigOperator.init();
     syncColumnConfigOperator(operator);
-    const identity = operator.sheet.columns("sheetTitle", "header");
+    const identity = operator.table.columns("sheetTitle", "header");
     const emitted = operator.newColumnConfigs().item;
 
     expect(identity.sheetTitle.value(0)).toBe("Item");
@@ -438,7 +438,7 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> _updateProgrammaticValues", 
       isFormula: false,
       emptyValueAllowed: true,
     });
-    expect(operator.sheet.column("emptyValueAllowed").value(0)).toBe(true);
+    expect(operator.table.column("emptyValueAllowed").value(0)).toBe(true);
 
     expect(identity.sheetTitle.value(1)).toBe("Item");
     expect(identity.header.value(1)).toBe("ID");
@@ -477,7 +477,7 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> _updateProgrammaticValues", 
 
     const operator = ColumnConfigOperator.init();
     syncColumnConfigOperator(operator);
-    const identity = operator.sheet.columns("sheetTitle", "header");
+    const identity = operator.table.columns("sheetTitle", "header");
 
     expect(identity.sheetTitle.value(0)).toBe("Item");
     expect(identity.header.value(0)).toBe("Amount");
@@ -537,11 +537,11 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> _updateProgrammaticValues", 
 
     const operator = ColumnConfigOperator.init();
     syncColumnConfigOperator(operator);
-    const col = operator.sheet.columns("columnId", "emptyValueAllowed");
-    const businessRow = operator.sheet.rowIndexesActiveWithData.find(
+    const col = operator.table.columns("columnId", "emptyValueAllowed");
+    const businessRow = operator.table.rowIndexesActiveWithData.find(
       (rowIndex) => col.columnId.value(rowIndex) === "c:itm:corr01",
     );
-    const floorRow = operator.sheet.rowIndexesActiveWithData.find(
+    const floorRow = operator.table.rowIndexesActiveWithData.find(
       (rowIndex) => col.columnId.value(rowIndex) === sc.sheetGid.columnId,
     );
 
@@ -591,7 +591,7 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> _updateProgrammaticValues", 
 
     const operator = ColumnConfigOperator.init();
     syncColumnConfigOperator(operator);
-    const identity = operator.sheet.columns("sheetTitle", "header");
+    const identity = operator.table.columns("sheetTitle", "header");
 
     expect(valueTitles(operator, 1)).toEqual(["Transaction Description"]);
     expect(operator.newColumnConfigs().item?.description?.valueName).toBe(
@@ -706,8 +706,8 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> _appendColumnRows", () => {
   }
 
   function identitiesOnTheTwoSheets(operator: ColumnConfigOperator): string[] {
-    const col = operator.sheet.columns("sheetGid", "columnId");
-    return operator.sheet.rowIndexesActiveWithData
+    const col = operator.table.columns("sheetGid", "columnId");
+    return operator.table.rowIndexesActiveWithData
       .map((rowIndex) => [
         col.sheetGid.value(rowIndex),
         col.columnId.value(rowIndex),
@@ -812,8 +812,8 @@ function syncColumnsUnderTest({
 }
 
 function valueTitles(operator: ColumnConfigOperator, count: number) {
-  const col = operator.sheet.columns("sheetGid", "columnId");
-  const titles = operator.sheet.rowIndexesActiveWithData.flatMap((rowIndex) => {
+  const col = operator.table.columns("sheetGid", "columnId");
+  const titles = operator.table.rowIndexesActiveWithData.flatMap((rowIndex) => {
     if (col.sheetGid.valueOrEmpty(rowIndex) !== testSheetGid) return [];
     return [
       operator.ss.raw
@@ -1146,7 +1146,7 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> a sheet whose only data row 
       headers: ["Supplier Name", "Amount"],
       columnTypes: { 1: "CURRENCY" },
     });
-    const col = operator.sheet.columns("sheetTitle", "header");
+    const col = operator.table.columns("sheetTitle", "header");
     const emitted = operator.newColumnConfigs().item;
 
     expect(col.sheetTitle.value(0)).toBe("Item");
@@ -1187,7 +1187,7 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> a sheet whose only data row 
       headers: ["Supplier Name"],
       topDataRowAbsence: "rowsWithNoGridBlock",
     });
-    const col = operator.sheet.columns("header");
+    const col = operator.table.columns("header");
 
     expect(col.header.value(0)).toBe("Supplier Name");
     expect(operator.newColumnConfigs().item?.supplierName?.valueName).toBe(
@@ -1383,8 +1383,8 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> _pruneColumnRows", () => {
     const operator = ColumnConfigOperator.init();
 
     expect(() => syncColumnConfigOperator(operator)).not.toThrow();
-    expect(operator.sheet.column("columnId").hasValue("c:???:eee")).toBe(false);
-    expect(operator.sheet.column("sheetGid").hasValue(columnConfigGid)).toBe(
+    expect(operator.table.column("columnId").hasValue("c:???:eee")).toBe(false);
+    expect(operator.table.column("sheetGid").hasValue(columnConfigGid)).toBe(
       true,
     );
     expect(operator.newColumnConfigs().columnConfig).toBeDefined();
@@ -1395,10 +1395,10 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> _pruneColumnRows", () => {
 
     const operator = ColumnConfigOperator.init();
     syncColumnConfigOperator(operator);
-    const col = operator.sheet.columns("sheetTitle", "header");
+    const col = operator.table.columns("sheetTitle", "header");
     const emitted = operator.newColumnConfigs().columnConfig;
 
-    expect(operator.sheet.rowIndexesActive).not.toContain(0);
+    expect(operator.table.rowIndexesActive).not.toContain(0);
     expect(col.sheetTitle.value(1)).toBe("Column Config");
     expect(col.header.value(1)).toBe("Sheet GID");
     expect(emitted?.sheetGid).toMatchObject({

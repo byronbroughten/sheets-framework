@@ -20,8 +20,8 @@ export class CheckboxColumnOperator<
   get ss(): SpreadsheetNamed {
     return new SpreadsheetNamed(this.spreadsheetNamedProps);
   }
-  get sheet(): TableNamed<TN> {
-    return this.ss.sheet(this.sheetName);
+  get table(): TableNamed<TN> {
+    return this.ss.table(this.sheetName);
   }
   get column(): ColumnNamed<TN, CN> {
     return new ColumnNamed(this.columnNamedProps);
@@ -29,7 +29,7 @@ export class CheckboxColumnOperator<
   // Named can't re-derive `checkbox` while TN is generic, so the write is pinned here.
   get identified(): ColumnIdentified<"checkbox"> {
     return new ColumnIdentified<"checkbox">({
-      ...this.sheet.identified.tableIdentifiedProps,
+      ...this.table.identified.tableIdentifiedProps,
       columnId: this.column.columnId,
     });
   }

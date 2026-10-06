@@ -90,7 +90,7 @@ describe("CheckboxColumnOperator.uncheckActiveCells", () => {
     const { grid } = seedSelectedColumn([true, true, true]);
     const operator = initOperatorWithFetchedColumn();
 
-    operator.sheet.raw.removeRowsExcept(0, 2);
+    operator.table.raw.removeRowsExcept(0, 2);
     operator.uncheckActiveCells();
     operator.ss.batchUpdateGSheets();
 
@@ -105,7 +105,7 @@ describe("CheckboxColumnOperator.uncheckActiveCells", () => {
     const { grid } = seedSelectedColumn([true, null, null]);
     const operator = initOperatorWithFetchedColumn();
 
-    operator.sheet.raw.removeRowsExcept(1, 2);
+    operator.table.raw.removeRowsExcept(1, 2);
     operator.uncheckActiveCells();
     operator.ss.batchUpdateGSheets();
 

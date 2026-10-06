@@ -38,7 +38,7 @@ export class ValueConfigOperator extends GenericTableOperator<"valueConfig"> {
         .filter((valueName) => !isFrameworkValueName(valueName)),
     );
     this.activeHeaders.forEach((header) => {
-      this.sheet.raw.columnByHeader(header).gatherFetchFull();
+      this.table.raw.columnByHeader(header).gatherFetchFull();
     });
     this.ss.fetchAllPrepped({ skipFetchingProperties: true });
   }
@@ -46,7 +46,7 @@ export class ValueConfigOperator extends GenericTableOperator<"valueConfig"> {
     return [...this.activeHeaders].reduce(
       (acc, header) => {
         const valueNameDataCol =
-          this.sheet.raw.columnByHeader<"string">(header);
+          this.table.raw.columnByHeader<"string">(header);
         const valueName = this.schema.titleToName(header);
         acc[valueName] = valueNameDataCol.valueArrFilterEmpty;
         return acc;

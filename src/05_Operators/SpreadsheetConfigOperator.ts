@@ -17,7 +17,7 @@ export class SpreadsheetConfigOperator extends GenericTableOperator<"spreadsheet
     );
   }
   validateExactlyOneDataRow(): void {
-    const dataRowCount = this.sheet.raw.dataRowCountAfterFlush;
+    const dataRowCount = this.table.raw.dataRowCountAfterFlush;
     if (dataRowCount !== 1) {
       throw new Error(
         `Spreadsheet Config Table must have exactly one data row; found ${dataRowCount}.`,

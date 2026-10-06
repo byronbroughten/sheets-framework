@@ -139,7 +139,7 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
     floorSheetNames().forEach((sheetName) => {
       const sheetGid = getSheetTraitByName(sheetName, "sheetGid");
       if (!this.ss.raw.gidIsActive(sheetGid)) return;
-      const sheet = this.ss.sheet(sheetName);
+      const sheet = this.ss.table(sheetName);
       sheet.meta.uniformRow("columnId").prepFetchFull();
       sheet.meta.uniformRow("tableHeader").prepFetchFull();
       sheet.meta.uniformRow("colGroupName").prepFetchFull();
@@ -158,7 +158,7 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
     floorSheetNames().forEach((sheetName) => {
       const sheetGid = getSheetTraitByName(sheetName, "sheetGid");
       if (!this.ss.raw.gidIsActive(sheetGid)) return;
-      const sheet = this.ss.sheet(sheetName);
+      const sheet = this.ss.table(sheetName);
       if (!sheet.raw.hasOneTable()) return;
       const meta = sheet.raw.meta;
       floorColumnsToRestore(sheetName).forEach((floorColumn) => {
@@ -211,7 +211,7 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
   ): string[] {
     const sheetGid = getSheetTraitByName(sheetName, "sheetGid");
     if (!this.ss.raw.gidIsActive(sheetGid)) return [];
-    const sheet = this.ss.sheet(sheetName);
+    const sheet = this.ss.table(sheetName);
     if (!sheet.raw.hasOneTable()) return [];
     const row = sheet.raw.row(0);
     const restoredLines: string[] = [];
@@ -246,7 +246,7 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
   ): string[] {
     const sheetGid = getSheetTraitByName(sheetName, "sheetGid");
     if (!this.ss.raw.gidIsActive(sheetGid)) return [];
-    const sheet = this.ss.sheet(sheetName);
+    const sheet = this.ss.table(sheetName);
     return columns.flatMap((seedColumn) => {
       const colIndex = liveColIndex(
         sheet.raw.meta,
@@ -306,5 +306,5 @@ function floorColumnIdentity<
   CN extends ColumnName<TN>,
 >(column: ColumnNamed<TN, CN>): string {
   const header = String(column.meta.uniformCell("tableHeader").valueOrEmpty());
-  return `${column.sheet.raw.title} · ${header} (${column.columnId})`;
+  return `${column.table.raw.title} · ${header} (${column.columnId})`;
 }

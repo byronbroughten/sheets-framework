@@ -49,7 +49,7 @@ export class SheetConfigOperator extends GenericTableOperator<"sheetConfig"> {
     }
   }
   prepFetchForSync(): void {
-    this.sheet.prepFetchColumnsFull("sheetGid", "sheetTitle", "letApiAccess");
+    this.table.prepFetchColumnsFull("sheetGid", "sheetTitle", "letApiAccess");
     this.sheetConfigSync.prepFetchIsComplete = true;
   }
   syncToSpreadsheet(): void {
@@ -59,7 +59,7 @@ export class SheetConfigOperator extends GenericTableOperator<"sheetConfig"> {
     this.sheetConfigSync.syncedToSpreadsheet = true;
   }
   private _deleteStaleSheetConfigs(): void {
-    this.sheet.rows.forEach((row) => {
+    this.table.rows.forEach((row) => {
       const configGid = row.valueOrEmpty("sheetGid");
       if (configGid === "" || !this.ss.raw.gidIsActive(configGid)) {
         row.delete();
@@ -67,19 +67,19 @@ export class SheetConfigOperator extends GenericTableOperator<"sheetConfig"> {
     });
   }
   private _appendMissingSheetConfigs(): void {
-    const colGid = this.sheet.column("sheetGid");
+    const colGid = this.table.column("sheetGid");
     this.ss.raw.activeSheetGids.forEach((sheetGid) => {
       if (!colGid.hasValue(sheetGid)) {
-        this.sheet.appendRowWithVals({ sheetGid });
+        this.table.appendRowWithVals({ sheetGid });
       }
     });
   }
   private _updateProgrammaticValues(): void {
-    const col = this.sheet.columns("sheetGid", "sheetTitle", "letApiAccess");
+    const col = this.table.columns("sheetGid", "sheetTitle", "letApiAccess");
     const reportLines = this.sheetConfigSync.declaredCellReportLines;
     reportLines.length = 0;
     let updatedValues = 0;
-    this.sheet.rowIndexesActiveWithData.forEach((rowIndex) => {
+    this.table.rowIndexesActiveWithData.forEach((rowIndex) => {
       const sheetGid = col.sheetGid.value(rowIndex);
       const activeSheet = this.ss.raw.sheet(sheetGid);
       if (col.sheetTitle.valueOrEmpty(rowIndex) !== activeSheet.title) {
@@ -109,7 +109,7 @@ export class SheetConfigOperator extends GenericTableOperator<"sheetConfig"> {
   }): boolean {
     const seed = floorTabSeedByGid(sheetGid);
     if (seed === undefined) return false;
-    const letApiAccess = this.sheet.column("letApiAccess");
+    const letApiAccess = this.table.column("letApiAccess");
     if (letApiAccess.valueOrEmpty(rowIndex) === seed.letApiAccess) return false;
     letApiAccess.cell(rowIndex).updateValue(seed.letApiAccess);
     this.sheetConfigSync.declaredCellReportLines.push(
@@ -125,9 +125,9 @@ export class SheetConfigOperator extends GenericTableOperator<"sheetConfig"> {
     return this.sheetGidsApiAccesses().includes(sheetGid);
   }
   sheetGidsApiAccesses(): number[] {
-    const col = this.sheet.columns("sheetGid", "letApiAccess");
+    const col = this.table.columns("sheetGid", "letApiAccess");
     const gids: number[] = [];
-    this.sheet.rowIndexesActiveWithData.forEach((rowIndex) => {
+    this.table.rowIndexesActiveWithData.forEach((rowIndex) => {
       if (col.letApiAccess.valueOrEmpty(rowIndex)) {
         gids.push(col.sheetGid.value(rowIndex));
       }
@@ -177,10 +177,10 @@ export class SheetConfigOperator extends GenericTableOperator<"sheetConfig"> {
     return lines.join(" ");
   }
   newSheetConfigs(): SheetConfigsBase {
-    const col = this.sheet.columns("sheetGid", "sheetTitle", "letApiAccess");
+    const col = this.table.columns("sheetGid", "sheetTitle", "letApiAccess");
     const sheetConfigs: SheetConfigsBase = {};
     const idPrefixLabels: IdPrefixLabel[] = [];
-    this.sheet.rowIndexesActiveWithData.forEach((rowIndex) => {
+    this.table.rowIndexesActiveWithData.forEach((rowIndex) => {
       // Defaults false on a freshly-appended row — excluded until a human sets it true in the sheet.
       if (!col.letApiAccess.valueOrEmpty(rowIndex)) return;
       const title = col.sheetTitle.value(rowIndex);

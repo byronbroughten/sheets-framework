@@ -21,13 +21,13 @@ export class FloorTabColumnCreator<
   get ss(): SpreadsheetNamed {
     return new SpreadsheetNamed(this.spreadsheetNamedProps);
   }
-  get sheet(): TableNamed<TN> {
-    return this.ss.sheet(this.sheetName);
+  get table(): TableNamed<TN> {
+    return this.ss.table(this.sheetName);
   }
   hasFloorTable(): boolean {
     const sheetGid = getSheetTraitByName(this.sheetName, "sheetGid");
     if (!this.ss.raw.gidIsActive(sheetGid)) return false;
-    return this.sheet.raw.hasOneTable();
+    return this.table.raw.hasOneTable();
   }
   assertMissingAreRecreatable(): void {
     this._assertTableMenuSpaceIsFirst();
@@ -36,14 +36,14 @@ export class FloorTabColumnCreator<
       const columnName = columnNameByHeader(this.sheetName, floorColumn.header);
       if (recreatable.includes(columnName)) return;
       throw new Error(
-        `${floorColumnLabel(floorColumn.header)} is missing from ${this.sheet.raw.title}, and recreating it empty would lose what it held. Undo the delete, or insert a column headed "${floorColumn.header}" in its Table and fill it.`,
+        `${floorColumnLabel(floorColumn.header)} is missing from ${this.table.raw.title}, and recreating it empty would lose what it held. Undo the delete, or insert a column headed "${floorColumn.header}" in its Table and fill it.`,
       );
     });
   }
   // Putting it back first would need a mid-Table insert, and column inserts land only at the Table end.
   private _assertTableMenuSpaceIsFirst(): void {
     if (this.sheetName !== "spreadsheetConfig") return;
-    const meta = this.sheet.raw.meta;
+    const meta = this.table.raw.meta;
     const header = getColumnTraitByName(
       "spreadsheetConfig",
       "tableMenuSpace",
@@ -61,22 +61,22 @@ export class FloorTabColumnCreator<
       return;
     }
     throw new Error(
-      `${floorColumnLabel(header)} is no longer the first column of ${this.sheet.raw.title}'s Table. Undo the move, or move it back to the Table's first column.`,
+      `${floorColumnLabel(header)} is no longer the first column of ${this.table.raw.title}'s Table. Undo the move, or move it back to the Table's first column.`,
     );
   }
   createMissing(): string[] {
-    const meta = this.sheet.raw.meta;
+    const meta = this.table.raw.meta;
     return this._missingColumns().map((floorColumn) => {
       meta.insertColumnAtEnd({
         columnId: floorColumn.columnId,
         header: floorColumn.header,
         colGroupName: floorColumn.groupHeading,
       });
-      return `${this.sheet.raw.title} · ${floorColumn.header} (${floorColumn.columnId})`;
+      return `${this.table.raw.title} · ${floorColumn.header} (${floorColumn.columnId})`;
     });
   }
   private _missingColumns(): FloorColumnRestore[] {
-    const meta = this.sheet.raw.meta;
+    const meta = this.table.raw.meta;
     return floorColumnsToRestore(this.sheetName).filter(
       (floorColumn) => liveColIndex(meta, floorColumn) === undefined,
     );

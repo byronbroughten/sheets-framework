@@ -380,7 +380,7 @@ function sheetConfigLetApiAccess(
   orchestrator: ConfigCoordinator,
   sheetGid: number,
 ): boolean | "" {
-  const sheet = orchestrator.sheetConfigOperator.sheet;
+  const sheet = orchestrator.sheetConfigOperator.table;
   const col = sheet.columns("sheetGid", "letApiAccess");
   const rowIndex = sheet.rowIndexesActiveWithData.find(
     (index) => col.sheetGid.value(index) === sheetGid,
@@ -522,7 +522,7 @@ describe("ConfigCoordinator.generateConfigFiles", () => {
     const coordinator = ConfigCoordinator.init();
     const parsed = coordinator.generateConfigFiles("../makeConfigs");
     const columnIdColumn =
-      coordinator.columnConfigOperator.sheet.column("columnId");
+      coordinator.columnConfigOperator.table.column("columnId");
     legacyLayoutColumns.forEach(({ columnId }) => {
       expect(columnIdColumn.hasValue(columnId)).toBe(false);
       expect(parsed.columnConfigs).not.toContain(columnId);
@@ -764,7 +764,7 @@ describe("ConfigCoordinator.syncConfigSheetRows Let api access", () => {
       orchestrator.sheetConfigOperator.newSheetConfigs().addWidgetOrder,
     ).toBeUndefined();
     expect(
-      orchestrator.sheetConfigOperator.sheet
+      orchestrator.sheetConfigOperator.table
         .column("sheetGid")
         .hasValue(draftGid),
     ).toBe(true);
@@ -827,7 +827,7 @@ describe("ConfigCoordinator.syncConfigSheetRows Let api access", () => {
     const orchestrator = ConfigCoordinator.init();
     const parsed = orchestrator.generateConfigFiles("../makeConfigs");
     expect(
-      orchestrator.sheetConfigOperator.sheet
+      orchestrator.sheetConfigOperator.table
         .column("sheetGid")
         .hasValue(draftGid),
     ).toBe(true);
@@ -866,7 +866,7 @@ describe("ConfigCoordinator.syncConfigSheetRows Let api access", () => {
 
     const orchestrator = ConfigCoordinator.init();
     expect(() => orchestrator.syncConfigSheetRows()).not.toThrow();
-    const gids = orchestrator.sheetConfigOperator.sheet.column("sheetGid");
+    const gids = orchestrator.sheetConfigOperator.table.column("sheetGid");
     expect(gids.hasValue(draftGid)).toBe(true);
     expect(gids.hasValue(secondDraftGid)).toBe(true);
   });
@@ -919,7 +919,7 @@ describe("ConfigCoordinator.syncConfigSheetRows Let api access", () => {
     const report = orchestrator.syncConfigSheetRows();
 
     expect(
-      orchestrator.sheetConfigOperator.sheet
+      orchestrator.sheetConfigOperator.table
         .column("sheetGid")
         .hasValue(spreadsheetConfigGid),
     ).toBe(true);

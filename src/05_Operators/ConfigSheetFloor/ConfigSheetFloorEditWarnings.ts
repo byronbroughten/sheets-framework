@@ -118,7 +118,7 @@ export class ConfigSheetFloorEditWarnings extends SpreadsheetBaseNamed {
   private _floorProtections(): ModelableEditProtection[] {
     return this._activeFloorSheetNames().flatMap((sheetName) =>
       this.ss
-        .sheet(sheetName)
+        .table(sheetName)
         .editProtections()
         .flatMap((protection) => {
           if (protection.kind === "unmodelable") return [];
@@ -131,7 +131,7 @@ export class ConfigSheetFloorEditWarnings extends SpreadsheetBaseNamed {
   }
   private _removeProtection(protection: ModelableEditProtection): void {
     floorSheetNames().forEach((sheetName) => {
-      const sheet = this.ss.sheet(sheetName);
+      const sheet = this.ss.table(sheetName);
       if (sheet.schema.sheetGid !== protection.range.sheetId) return;
       sheet.removeEditProtectionById(protection.id);
     });

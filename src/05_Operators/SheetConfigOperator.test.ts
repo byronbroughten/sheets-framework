@@ -41,7 +41,7 @@ beforeEach(() => {
 // no Sheet Config row yet.
 function syncSheetConfigOperator(operator: SheetConfigOperator): void {
   operator.ss.raw.fetchAllSheetProperties();
-  operator.sheet.prepFetchColumnsFull("letApiAccess");
+  operator.table.prepFetchColumnsFull("letApiAccess");
   operator.prepFetchForSync();
   operator.ss.fetchAllPrepped({ skipFetchingProperties: true });
   operator.syncToSpreadsheet();
@@ -91,7 +91,7 @@ describe("SheetConfigOperator.newSheetConfigs / toFileSource", () => {
     // A newly-discovered sheet gets a Sheet Config row appended, but stays
     // excluded from the generated file until a human sets letApiAccess.
     expect(sheetConfigs.brandNewSheet).toBeUndefined();
-    expect(operator.sheet.column("sheetGid").hasValue(newSheetGid)).toBe(true);
+    expect(operator.table.column("sheetGid").hasValue(newSheetGid)).toBe(true);
   });
 
   it("resolves sheetGid -> sheetName for a sheet not yet in any deployed config", () => {
@@ -179,7 +179,7 @@ describe("SheetConfigOperator.newSheetConfigs / toFileSource", () => {
     const operator = SheetConfigOperator.init();
 
     expect(() => syncSheetConfigOperator(operator)).not.toThrow();
-    expect(operator.sheet.row(1).isBlank).toBe(true);
+    expect(operator.table.row(1).isBlank).toBe(true);
     expect(operator.newSheetConfigs().widget).toBeUndefined();
     expect(operator.newSheetConfigs().sheetConfig).toEqual({
       sheetGid: sheetConfigGid,
@@ -245,7 +245,7 @@ describe("SheetConfigOperator.newSheetConfigs / toFileSource", () => {
     const operator = SheetConfigOperator.init();
     syncSheetConfigOperator(operator);
 
-    expect(operator.sheet.column("sheetTitle").value(0)).toBe("Widget");
+    expect(operator.table.column("sheetTitle").value(0)).toBe("Widget");
     expect(operator.newSheetConfigs().widget?.hasIdColumn).toBe(false);
   });
 
@@ -273,7 +273,7 @@ describe("SheetConfigOperator.newSheetConfigs / toFileSource", () => {
     const operator = SheetConfigOperator.init();
     syncSheetConfigOperator(operator);
 
-    expect(operator.sheet.column("sheetTitle").value(0)).toBe("Widget");
+    expect(operator.table.column("sheetTitle").value(0)).toBe("Widget");
     expect(operator.newSheetConfigs().widget).toBeUndefined();
   });
 

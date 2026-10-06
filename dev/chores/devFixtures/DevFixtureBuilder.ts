@@ -23,10 +23,10 @@ export class DevFixtureBuilder extends SpreadsheetBaseNamed {
     this.ss.fetchAllSheetProperties();
     this._validateConfigFloorPresent();
     this.ss
-      .sheet("sheetConfig")
+      .table("sheetConfig")
       .prepFetchColumnsFull("sheetGid", "letApiAccess");
     this.ss
-      .sheet("columnConfig")
+      .table("columnConfig")
       .prepFetchColumnsFull("sheetGid", "columnId", "emptyValueAllowed");
     this.ss.fetchAllPrepped({ skipFetchingProperties: true });
     const missing = devFixtureSheets.filter(
@@ -145,7 +145,7 @@ export class DevFixtureBuilder extends SpreadsheetBaseNamed {
       });
   }
   private _ensureLetApiAccess(fixture: DevFixtureSheet): void {
-    const sheetConfig = this.ss.sheet("sheetConfig");
+    const sheetConfig = this.ss.table("sheetConfig");
     const [row] = sheetConfig.rowsFiltered({ sheetGid: fixture.sheetGid });
     if (row === undefined) {
       sheetConfig.appendRowWithVals({
@@ -158,7 +158,7 @@ export class DevFixtureBuilder extends SpreadsheetBaseNamed {
     }
   }
   private _ensureEmptyValueAllowed(fixture: DevFixtureSheet): void {
-    const columnConfig = this.ss.sheet("columnConfig");
+    const columnConfig = this.ss.table("columnConfig");
     fixture.columns.forEach(({ key, header, emptyValueAllowed }) => {
       if (emptyValueAllowed === undefined) return;
       const columnId = dimensionIds.col(fixture.idPrefix, key);

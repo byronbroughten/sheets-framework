@@ -56,7 +56,7 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
     return new Set(this.sheetConfigOperator.sheetGidsApiAccesses());
   }
   activeValueTitles(): string[] {
-    return this.sheet.rowIndexesActiveWithData.map((rowIndex) =>
+    return this.table.rowIndexesActiveWithData.map((rowIndex) =>
       this._describedColumn(this._columnIdentity(rowIndex)).activeValueTitle(),
     );
   }
@@ -69,7 +69,7 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
   }
   prepFetchWithSheetConfig(): void {
     this.sheetConfigOperator.assertPrepFetchIsComplete();
-    this.sheet.prepFetchColumnsFull(
+    this.table.prepFetchColumnsFull(
       "sheetGid",
       "columnId",
       "sheetTitle",
@@ -155,9 +155,9 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
     return this;
   }
   private _pruneColumnRows(): this {
-    const col = this.sheet.columns("sheetGid", "columnId");
+    const col = this.table.columns("sheetGid", "columnId");
     let staleCount = 0;
-    this.sheet.rowIndexesActive.forEach((rowIndex) => {
+    this.table.rowIndexesActive.forEach((rowIndex) => {
       const sheetGid = col.sheetGid.valueOrEmpty(rowIndex);
       const columnId = col.columnId.valueOrEmpty(rowIndex);
       if (
@@ -166,7 +166,7 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
         !this._isSheetGidApiAccesses(sheetGid) ||
         !this._isActiveColumnId(sheetGid, columnId)
       ) {
-        this.sheet.row(rowIndex).delete();
+        this.table.row(rowIndex).delete();
         staleCount++;
       }
     });
@@ -178,7 +178,7 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
   }
   private _appendColumnRows(): this {
     const existingIdentityKeys = new Set(
-      this.sheet.rowIndexesActiveWithData.map((rowIndex) =>
+      this.table.rowIndexesActiveWithData.map((rowIndex) =>
         columnIdentityKey(this._columnIdentity(rowIndex)),
       ),
     );
@@ -190,7 +190,7 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
         if (
           !existingIdentityKeys.has(columnIdentityKey({ sheetGid, columnId }))
         ) {
-          this.sheet.appendRowWithVals({ sheetGid, columnId });
+          this.table.appendRowWithVals({ sheetGid, columnId });
           appendedCount++;
         }
       });
@@ -199,7 +199,7 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
     return this;
   }
   private _columnIdentity(rowIndex: number): ColumnIdentity {
-    const col = this.sheet.columns("sheetGid", "columnId");
+    const col = this.table.columns("sheetGid", "columnId");
     return {
       sheetGid: col.sheetGid.value(rowIndex),
       columnId: col.columnId.value(rowIndex),
@@ -212,12 +212,12 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
     return this.ss.raw.sheetMeta(sheetGid).columnByActiveId(columnId);
   }
   private _updateProgrammaticValues(): void {
-    const col = this.sheet.columns("sheetTitle", "header", "emptyValueAllowed");
+    const col = this.table.columns("sheetTitle", "header", "emptyValueAllowed");
     const reportLines = this.columnConfigSync.declaredCellReportLines;
     reportLines.length = 0;
     let updatedValues = 0;
     this.untypedHeadersBySheetTitle.clear();
-    this.sheet.rowIndexesActiveWithData.forEach((rowIndex) => {
+    this.table.rowIndexesActiveWithData.forEach((rowIndex) => {
       const identity = this._columnIdentity(rowIndex);
       const sheetRaw = this.ss.raw.sheet(identity.sheetGid);
 
@@ -267,7 +267,7 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
       identity.columnId,
     );
     if (seedColumn === undefined) return false;
-    const emptyValueAllowed = this.sheet.column("emptyValueAllowed");
+    const emptyValueAllowed = this.table.column("emptyValueAllowed");
     if (
       emptyValueAllowed.valueOrEmpty(rowIndex) === seedColumn.emptyValueAllowed
     ) {
@@ -299,9 +299,9 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
   }
   newColumnConfigs(): ColumnConfigsGeneric {
     const sheetNamesByGid = this.sheetConfigOperator.sheetNamesByGid();
-    const col = this.sheet.columns("header", "emptyValueAllowed");
+    const col = this.table.columns("header", "emptyValueAllowed");
     const columnConfigs: ColumnConfigsGeneric = {};
-    this.sheet.rowIndexesActiveWithData.forEach((rowIndex) => {
+    this.table.rowIndexesActiveWithData.forEach((rowIndex) => {
       const identity = this._columnIdentity(rowIndex);
       const { sheetGid, columnId } = identity;
       const header = col.header.value(rowIndex);
