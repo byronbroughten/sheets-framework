@@ -12,9 +12,9 @@ import {
 } from "../../01_SpreadsheetSchema/configSheetFloorSeed";
 import { getSheetTraitByName } from "../../01_SpreadsheetSchema/sheetConfigsTypes";
 import type { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin";
-import { SheetBaseNamed } from "../../04_SpreadsheetNamed/ClassBases/SheetBaseNamed";
-import type { SheetNamed } from "../../04_SpreadsheetNamed/SheetNamed";
+import { TableBaseNamed } from "../../04_SpreadsheetNamed/ClassBases/TableBaseNamed";
 import { SpreadsheetNamed } from "../../04_SpreadsheetNamed/SpreadsheetNamed";
+import type { TableNamed } from "../../04_SpreadsheetNamed/TableNamed";
 import { Arr } from "../../utils/Arr";
 import { Obj } from "../../utils/Obj";
 import { liveColIndex } from "./floorColumnLocation";
@@ -46,11 +46,11 @@ interface FloorTabRules<TN extends FloorSheetName> {
 
 export class FloorTabEditWarning<
   TN extends FloorSheetName,
-> extends SheetBaseNamed<TN> {
+> extends TableBaseNamed<TN> {
   get ss(): SpreadsheetNamed {
     return new SpreadsheetNamed(this.spreadsheetNamedProps);
   }
-  get sheet(): SheetNamed<TN> {
+  get sheet(): TableNamed<TN> {
     return this.ss.sheet(this.sheetName);
   }
   // Before the floor's fetch, so these ride it: a drifted column ID leaves only the Table header to find them by.

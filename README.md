@@ -47,7 +47,7 @@ function triggerOnChange(e: GoogleAppsScript.Events.SheetsOnChange) {
 
 `myEndpoints` is an `Endpoints` map keyed by the column whose action-row checkbox triggers each one. An endpoint can't claim a column on the four config sheets, which the framework owns. How a run works: [endpoint dispatch](./docs/architecture/endpoint-dispatch.md).
 
-The entry also exports the Named-tier classes (`SpreadsheetNamed`, `SheetNamed`, `RowNamed` and their bases), the endpoint and run-report types, `Chore` and `SerialDate`. `./testing` exports `stubSheetsService`, `stubLogger`, `EndpointRun`, `installConfigs` and the fake-grid helpers ([testing](./docs/testing.md)).
+The entry also exports the Named-tier classes (`SpreadsheetNamed`, `TableNamed`, `RowNamed` and their bases), the endpoint and run-report types, `Chore` and `SerialDate`. `./testing` exports `stubSheetsService`, `stubLogger`, `EndpointRun`, `installConfigs` and the fake-grid helpers ([testing](./docs/testing.md)).
 
 ## The bin
 

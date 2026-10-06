@@ -11,7 +11,7 @@ import { SerialDateTime } from "../utils/SerialDateTime";
 import { Val } from "../utils/Val";
 import { SpreadsheetBaseNamed } from "./ClassBases/SpreadsheetBaseNamed.js";
 import { SheetMetaNamed } from "./SheetMetaNamed.js";
-import { SheetNamed } from "./SheetNamed.js";
+import { TableNamed } from "./TableNamed.js";
 import type { SheetNameByGroup } from "./TableNameGroups.js";
 import {
   type ColumnSpecifierNamed,
@@ -45,8 +45,8 @@ export class SpreadsheetNamed extends SpreadsheetBaseNamed {
   get serialDate(): typeof SerialDate & { today(): SerialDate } {
     return { ...SerialDate, today: () => this.today() };
   }
-  sheet<TN extends TableName>(sheetName: TN): SheetNamed<TN> {
-    return new SheetNamed({
+  sheet<TN extends TableName>(sheetName: TN): TableNamed<TN> {
+    return new TableNamed({
       sheetName,
       ...this.spreadsheetNamedProps,
     });
@@ -66,7 +66,7 @@ export class SpreadsheetNamed extends SpreadsheetBaseNamed {
   get activeSheetNames(): TableName[] {
     return this.identified.activeSheets.map((sheet) => sheet.sheetName);
   }
-  get activeSheets(): SheetNamed<TableName>[] {
+  get activeSheets(): TableNamed<TableName>[] {
     return this.activeSheetNames.map((sheetName) => this.sheet(sheetName));
   }
   fetchAllPrepped(props: GatherDataPrerequisitesProps = {}): SpreadsheetNamed {
@@ -162,7 +162,7 @@ export class SpreadsheetNamed extends SpreadsheetBaseNamed {
       });
     });
   }
-  get sheetsOfSchema(): SheetNamed<TableName>[] {
+  get sheetsOfSchema(): TableNamed<TableName>[] {
     return this.schema.sheetNames.map((sheetName) => this.sheet(sheetName));
   }
   batchUpdateGSheets(): void {
@@ -196,7 +196,7 @@ export class SpreadsheetNamed extends SpreadsheetBaseNamed {
       sheet.column("id").emptyActiveCellsToDefualt();
     });
   }
-  private _sheetsWithRowIds(): SheetNamed<SheetNameByGroup<"hasIdColumn">>[] {
+  private _sheetsWithRowIds(): TableNamed<SheetNameByGroup<"hasIdColumn">>[] {
     return this.sheetsOfSchema.filter((sheet) => {
       const hasIdCol = sheet.schema.trait("hasIdColumn");
       const idPrefix = sheet.schema.trait("idPrefix");
@@ -209,7 +209,7 @@ export class SpreadsheetNamed extends SpreadsheetBaseNamed {
         return true;
       }
       return false;
-    }) as SheetNamed<SheetNameByGroup<"hasIdColumn">>[];
+    }) as TableNamed<SheetNameByGroup<"hasIdColumn">>[];
   }
 }
 

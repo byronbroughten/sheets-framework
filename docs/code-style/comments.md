@@ -8,7 +8,7 @@ The shape of a navigation block is in the general reasoning file. Six framework 
 
 - `src/02_SpreadsheetRaw/SpreadsheetRaw.ts`
 - `src/02_SpreadsheetRaw/TableRaw.ts`
-- `src/04_SpreadsheetNamed/SheetNamed.ts`
+- `src/04_SpreadsheetNamed/TableNamed.ts`
 - `src/05_Operators/ConfigCoordinator.ts`
 - `src/05_Operators/ConfigSheetFloor/ConfigSheetFloorEditWarnings.ts`
 - `src/06_API/EndpointRun.ts`

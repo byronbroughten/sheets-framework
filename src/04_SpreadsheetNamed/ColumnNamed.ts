@@ -25,14 +25,14 @@ import { ColumnIdentified } from "../03_SpreadsheetIdentified/ColumnIdentified";
 import { CellNamed } from "./CellNamed";
 import { ColumnCommonNamed } from "./ClassBases/ColumnCommonNamed";
 import { ColumnMetaNamed } from "./ColumnMetaNamed";
-import { SheetNamed } from "./SheetNamed";
+import { TableNamed } from "./TableNamed";
 
 export class ColumnNamed<
   TN extends TableName,
   CN extends ColumnName<TN> = ColumnName<TN>,
 > extends ColumnCommonNamed<TN, CN> {
-  get sheet(): SheetNamed<TN> {
-    return new SheetNamed(this.sheetNamedProps);
+  get sheet(): TableNamed<TN> {
+    return new TableNamed(this.sheetNamedProps);
   }
   get meta(): ColumnMetaNamed<TN, CN> {
     return new ColumnMetaNamed(this.columnNamedProps);

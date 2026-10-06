@@ -3,9 +3,9 @@ import {
   getColumnTraitByName,
 } from "../../01_SpreadsheetSchema/columnConfigsTypes";
 import { getSheetTraitByName } from "../../01_SpreadsheetSchema/sheetConfigsTypes";
-import { SheetBaseNamed } from "../../04_SpreadsheetNamed/ClassBases/SheetBaseNamed";
-import type { SheetNamed } from "../../04_SpreadsheetNamed/SheetNamed";
+import { TableBaseNamed } from "../../04_SpreadsheetNamed/ClassBases/TableBaseNamed";
 import { SpreadsheetNamed } from "../../04_SpreadsheetNamed/SpreadsheetNamed";
+import type { TableNamed } from "../../04_SpreadsheetNamed/TableNamed";
 import { liveColIndex } from "./floorColumnLocation";
 import {
   columnNameByHeader,
@@ -17,11 +17,11 @@ import {
 
 export class FloorTabColumnCreator<
   TN extends FloorSheetName,
-> extends SheetBaseNamed<TN> {
+> extends TableBaseNamed<TN> {
   get ss(): SpreadsheetNamed {
     return new SpreadsheetNamed(this.spreadsheetNamedProps);
   }
-  get sheet(): SheetNamed<TN> {
+  get sheet(): TableNamed<TN> {
     return this.ss.sheet(this.sheetName);
   }
   hasFloorTable(): boolean {

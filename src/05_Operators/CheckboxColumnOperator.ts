@@ -3,8 +3,8 @@ import type { TableNameSimple } from "../01_SpreadsheetSchema/sheetConfigsTypes"
 import { ColumnIdentified } from "../03_SpreadsheetIdentified/ColumnIdentified";
 import { ColumnBaseNamed } from "../04_SpreadsheetNamed/ClassBases/ColumnBaseNamed";
 import { ColumnNamed } from "../04_SpreadsheetNamed/ColumnNamed";
-import type { SheetNamed } from "../04_SpreadsheetNamed/SheetNamed";
 import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
+import type { TableNamed } from "../04_SpreadsheetNamed/TableNamed";
 
 // `checkbox`, not `boolean`: only a declared checkbox column is never blank.
 export type CheckboxColumnName<TN extends TableNameSimple> = ColumnNameFiltered<
@@ -20,7 +20,7 @@ export class CheckboxColumnOperator<
   get ss(): SpreadsheetNamed {
     return new SpreadsheetNamed(this.spreadsheetNamedProps);
   }
-  get sheet(): SheetNamed<TN> {
+  get sheet(): TableNamed<TN> {
     return this.ss.sheet(this.sheetName);
   }
   get column(): ColumnNamed<TN, CN> {

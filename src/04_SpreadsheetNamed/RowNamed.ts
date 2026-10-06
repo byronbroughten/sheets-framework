@@ -12,11 +12,11 @@ import { RowIdentified } from "../03_SpreadsheetIdentified/RowIdentified";
 import { Obj } from "../utils/Obj";
 import type { CellNamed } from "./CellNamed";
 import { RowBaseNamed } from "./ClassBases/RowBaseNamed";
-import { SheetNamed } from "./SheetNamed";
+import { TableNamed } from "./TableNamed";
 
 export class RowNamed<TN extends TableName> extends RowBaseNamed<TN> {
-  get sheet(): SheetNamed<TN> {
-    return new SheetNamed(this.sheetNamedProps);
+  get sheet(): TableNamed<TN> {
+    return new TableNamed(this.sheetNamedProps);
   }
   get identified(): RowIdentified {
     return new RowIdentified({

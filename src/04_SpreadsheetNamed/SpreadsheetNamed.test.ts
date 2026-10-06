@@ -36,8 +36,8 @@ import { ColumnMetaNamed } from "./ColumnMetaNamed";
 import { ColumnNamed } from "./ColumnNamed";
 import { RowNamed } from "./RowNamed";
 import { SheetMetaNamed } from "./SheetMetaNamed";
-import { SheetNamed } from "./SheetNamed";
 import { SpreadsheetNamed } from "./SpreadsheetNamed";
+import { TableNamed } from "./TableNamed";
 
 describe("SpreadsheetNamed props", () => {
   it("have no Named-state member", () => {
@@ -95,15 +95,15 @@ describe("SpreadsheetNamed navigation", () => {
     const column = sheet.column("id");
     const columnMeta = sheetMeta.column("id");
 
-    assertType<IsExactly<typeof sheet, SheetNamed<"item">>>(true);
+    assertType<IsExactly<typeof sheet, TableNamed<"item">>>(true);
     assertType<IsExactly<typeof sheetMeta, SheetMetaNamed<"item">>>(true);
     assertType<IsExactly<typeof sheet.meta, SheetMetaNamed<"item">>>(true);
-    assertType<IsExactly<typeof sheetMeta.primary, SheetNamed<"item">>>(true);
+    assertType<IsExactly<typeof sheetMeta.primary, TableNamed<"item">>>(true);
     assertType<IsExactly<typeof column, ColumnNamed<"item", "id">>>(true);
     assertType<IsExactly<typeof columnMeta, ColumnMetaNamed<"item", "id">>>(
       true,
     );
-    assertType<IsExactly<typeof column.sheet, SheetNamed<"item">>>(true);
+    assertType<IsExactly<typeof column.sheet, TableNamed<"item">>>(true);
     assertType<IsExactly<typeof columnMeta.sheet, SheetMetaNamed<"item">>>(
       true,
     );
@@ -116,10 +116,10 @@ describe("SpreadsheetNamed navigation", () => {
     assertType<IsExactly<ReturnType<typeof sheet.row>, RowNamed<"item">>>(true);
 
     expect(sheet.meta).toBeInstanceOf(SheetMetaNamed);
-    expect(sheetMeta.primary).toBeInstanceOf(SheetNamed);
+    expect(sheetMeta.primary).toBeInstanceOf(TableNamed);
     expect(column).toBeInstanceOf(ColumnNamed);
     expect(columnMeta).toBeInstanceOf(ColumnMetaNamed);
-    expect(column.sheet).toBeInstanceOf(SheetNamed);
+    expect(column.sheet).toBeInstanceOf(TableNamed);
     expect(columnMeta.sheet).toBeInstanceOf(SheetMetaNamed);
     expect(column.meta).toBeInstanceOf(ColumnMetaNamed);
     expect(columnMeta.primary).toBeInstanceOf(ColumnNamed);
@@ -192,14 +192,14 @@ function stubDatesAndValueTypesWithBlankRow() {
   });
 }
 
-function fetchedDatesSheet(): SheetNamed<"dates"> {
+function fetchedDatesSheet(): TableNamed<"dates"> {
   const ss = SpreadsheetNamed.init();
   ss.sheet("dates").prepFetchColumnsFull("id", "requiredDate", "optionalDate");
   ss.fetchAllPrepped();
   return ss.sheet("dates");
 }
 
-function fetchedValueTypesSheet(): SheetNamed<"valueTypes"> {
+function fetchedValueTypesSheet(): TableNamed<"valueTypes"> {
   const ss = SpreadsheetNamed.init();
   ss.sheet("valueTypes").prepFetchColumnsFull("checkbox", "numberValue");
   ss.fetchAllPrepped();
@@ -442,7 +442,7 @@ function sheetConfigTitles(service: FakeSheetsService): FakeCellValue[] {
   );
 }
 
-describe("SheetNamed.rowByValue", () => {
+describe("TableNamed.rowByValue", () => {
   it("returns the one row whose column holds the value", () => {
     stubDatesAndValueTypesWithBlankRow();
 
@@ -495,7 +495,7 @@ function stubDatesWithDuplicateIds() {
   });
 }
 
-describe("SheetNamed.DELETE_ALL_DATA_ROWS", () => {
+describe("TableNamed.DELETE_ALL_DATA_ROWS", () => {
   it("deletes every data row but the top one, and leaves that one blank", () => {
     const service = stubSheetConfigSheet({
       4: filledSheetConfigRow,
@@ -524,7 +524,7 @@ describe("SheetNamed.DELETE_ALL_DATA_ROWS", () => {
   });
 });
 
-describe("SheetNamed.appendRowWithVals", () => {
+describe("TableNamed.appendRowWithVals", () => {
   it("reuses the blank row of an emptied sheet rather than appending beneath it", () => {
     const service = stubSheetConfigSheet({
       4: blankSheetConfigRow,
@@ -606,7 +606,7 @@ describe("SheetNamed.appendRowWithVals", () => {
   });
 });
 
-describe("SheetNamed.appendRowWithVals, growing a lone blank row", () => {
+describe("TableNamed.appendRowWithVals, growing a lone blank row", () => {
   const blankRowColour = { red: 0.851, green: 0.918, blue: 0.827 };
   const looseRowIndex = topDataRowIndex + 2;
   // The inserted rows should copy the blank row's colour; the loose cell below shows any insert.
@@ -722,7 +722,7 @@ function fetchedValueTypesSpreadsheet(): SpreadsheetNamed {
 }
 
 type CompleteAppendBag<TN extends TableName> = Parameters<
-  SheetNamed<TN>["appendRowWithAllVals"]
+  TableNamed<TN>["appendRowWithAllVals"]
 >[0];
 
 const completeValueTypesRow: CompleteAppendBag<"valueTypes"> = {
@@ -733,7 +733,7 @@ const completeValueTypesRow: CompleteAppendBag<"valueTypes"> = {
   checkbox: true,
 };
 
-describe("SheetNamed.appendRowWithAllVals", () => {
+describe("TableNamed.appendRowWithAllVals", () => {
   it("mints the row ID itself, from a bag that cannot name one", () => {
     stubValueTypesWithBlankRow();
 

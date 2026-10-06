@@ -23,7 +23,7 @@ import { TableIdentified } from "../03_SpreadsheetIdentified/TableIdentified";
 import { Arr } from "../utils/Arr";
 import { Obj } from "../utils/Obj";
 import { Val } from "../utils/Val";
-import { SheetCommonNamed } from "./ClassBases/SheetCommonNamed";
+import { TableCommonNamed } from "./ClassBases/TableCommonNamed";
 import { ColumnNamed } from "./ColumnNamed";
 import { RowNamed } from "./RowNamed";
 import { SheetMetaNamed } from "./SheetMetaNamed";
@@ -37,9 +37,9 @@ import type { RowIdByName } from "./Types/RowIdByName";
  * Member placement for Meta vs primary: docs/vocabulary.md, "Meta / primary".
  * docs/architecture/class-chains.md
  */
-export class SheetNamed<
+export class TableNamed<
   TN extends TableName = TableName,
-> extends SheetCommonNamed<TN> {
+> extends TableCommonNamed<TN> {
   get meta(): SheetMetaNamed<TN> {
     return new SheetMetaNamed(this.sheetNamedProps);
   }
@@ -231,14 +231,14 @@ export class SheetNamed<
     );
   }
   prepFetchRowIdAndName(
-    this: SheetNamed<TN & SheetNameWithIdAndNameColumn>,
-  ): SheetNamed<TN & SheetNameWithIdAndNameColumn> {
+    this: TableNamed<TN & SheetNameWithIdAndNameColumn>,
+  ): TableNamed<TN & SheetNameWithIdAndNameColumn> {
     this._idColumn().prepFetchFull();
     this._nameColumn().prepFetchFull();
     return this;
   }
   rowIdByName(
-    this: SheetNamed<TN & SheetNameWithIdAndNameColumn>,
+    this: TableNamed<TN & SheetNameWithIdAndNameColumn>,
     name: string,
   ): RowIdByName {
     this._validateNameNotBlank(name);

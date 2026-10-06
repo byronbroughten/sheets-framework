@@ -4,14 +4,14 @@ import type { TableName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
 import type { SheetMetaRaw } from "../02_SpreadsheetRaw/SheetMetaRaw";
 import { SheetMetaIdentified } from "../03_SpreadsheetIdentified/SheetMetaIdentified";
 import type { UniformRowIdentified } from "../03_SpreadsheetIdentified/UniformRowIdentified";
-import { SheetCommonNamed } from "./ClassBases/SheetCommonNamed";
+import { TableCommonNamed } from "./ClassBases/TableCommonNamed";
 import { ColumnMetaNamed } from "./ColumnMetaNamed";
-import { SheetNamed } from "./SheetNamed";
 import { SpreadsheetNamed } from "./SpreadsheetNamed";
+import { TableNamed } from "./TableNamed";
 
 export class SheetMetaNamed<
   TN extends TableName = TableName,
-> extends SheetCommonNamed<TN> {
+> extends TableCommonNamed<TN> {
   get spreadsheet(): SpreadsheetNamed {
     return new SpreadsheetNamed(this.spreadsheetNamedProps);
   }
@@ -24,8 +24,8 @@ export class SheetMetaNamed<
       sheetGid: this.sheetGid,
     });
   }
-  get primary(): SheetNamed<TN> {
-    return new SheetNamed(this.sheetNamedProps);
+  get primary(): TableNamed<TN> {
+    return new TableNamed(this.sheetNamedProps);
   }
   get activeColumnIds(): string[] {
     return this.raw.activeColumnIds;

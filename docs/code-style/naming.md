@@ -26,7 +26,7 @@ One heading per naming rule, in docs/code-style.md's order: grep `^## ` for the 
 
 ## A multi-row delete is `SHOUTING_SNAKE_CASE`
 
-**A method that deletes more than one row takes a `SHOUTING_SNAKE_CASE` name** (`TableIdentified.DELETE_ALL_DATA_ROWS` and the `SheetNamed` method that delegates to it). Nothing else in the codebase is spelled that way, so the shout is the warning: a caller can't reach one by reflex. It stays shouty even once a guard makes the operation safe — the point is that the reader stops, not that the operation is unguarded.
+**A method that deletes more than one row takes a `SHOUTING_SNAKE_CASE` name** (`TableIdentified.DELETE_ALL_DATA_ROWS` and the `TableNamed` method that delegates to it). Nothing else in the codebase is spelled that way, so the shout is the warning: a caller can't reach one by reflex. It stays shouty even once a guard makes the operation safe — the point is that the reader stops, not that the operation is unguarded.
 
 ## The controlled verb vocabulary
 

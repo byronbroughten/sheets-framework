@@ -1,10 +1,10 @@
 import type { TableName } from "../../01_SpreadsheetSchema/sheetConfigsTypes";
 import { TableSchema } from "../../01_SpreadsheetSchema/TableSchema";
-import { SheetBaseNamed } from "./SheetBaseNamed";
+import { TableBaseNamed } from "./TableBaseNamed";
 
-export abstract class SheetCommonNamed<
+export abstract class TableCommonNamed<
   TN extends TableName,
-> extends SheetBaseNamed<TN> {
+> extends TableBaseNamed<TN> {
   get schema(): TableSchema<TN> {
     return TableSchema.fromSheetName(this.sheetName);
   }

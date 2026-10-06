@@ -3,11 +3,11 @@ import type { ColumnName } from "../01_SpreadsheetSchema/columnConfigsTypes";
 import type { TableNameSimple } from "../01_SpreadsheetSchema/sheetConfigsTypes";
 import type { CellChange } from "../03_SpreadsheetIdentified/ClassTypes/StateIdentified";
 import {
-  SheetBaseNamed,
-  type SheetNamedProps,
-} from "../04_SpreadsheetNamed/ClassBases/SheetBaseNamed";
-import type { SheetNamed } from "../04_SpreadsheetNamed/SheetNamed";
+  TableBaseNamed,
+  type TableNamedProps,
+} from "../04_SpreadsheetNamed/ClassBases/TableBaseNamed";
 import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
+import type { TableNamed } from "../04_SpreadsheetNamed/TableNamed";
 import {
   type CheckboxColumnName,
   CheckboxColumnOperator,
@@ -56,7 +56,7 @@ interface RunStateProps {
 
 export interface EndpointRunProps<
   TN extends TableNameSimple,
-> extends SheetNamedProps<TN> {
+> extends TableNamedProps<TN> {
   entryColumnName: ColumnName<TN>;
   endpoint: EndpointDispatched<TN>;
 }
@@ -71,7 +71,7 @@ export interface EndpointRunProps<
  */
 export class EndpointRun<
   TN extends TableNameSimple = TableNameSimple,
-> extends SheetBaseNamed<TN> {
+> extends TableBaseNamed<TN> {
   readonly entryColumnName: ColumnName<TN>;
   readonly endpoint: EndpointDispatched<TN>;
   constructor({ entryColumnName, endpoint, ...props }: EndpointRunProps<TN>) {
@@ -82,7 +82,7 @@ export class EndpointRun<
   get ss(): SpreadsheetNamed {
     return new SpreadsheetNamed(this.spreadsheetNamedProps);
   }
-  get sheet(): SheetNamed<TN> {
+  get sheet(): TableNamed<TN> {
     return this.ss.sheet(this.sheetName);
   }
   run(isChecked: boolean): void {

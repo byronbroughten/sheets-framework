@@ -1,10 +1,10 @@
 import type { ColumnName } from "../01_SpreadsheetSchema/columnConfigsTypes";
 import type { TableNameSimple } from "../01_SpreadsheetSchema/sheetConfigsTypes";
 import { TableSchema } from "../01_SpreadsheetSchema/TableSchema";
-import { SheetBaseNamed } from "../04_SpreadsheetNamed/ClassBases/SheetBaseNamed";
+import { TableBaseNamed } from "../04_SpreadsheetNamed/ClassBases/TableBaseNamed";
 import type { ColumnNamed } from "../04_SpreadsheetNamed/ColumnNamed";
-import type { SheetNamed } from "../04_SpreadsheetNamed/SheetNamed";
 import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
+import type { TableNamed } from "../04_SpreadsheetNamed/TableNamed";
 import type { ConfigSyncState, OperatorProps } from "./SpreadsheetBaseOperator";
 
 export interface SheetOperatorProps<
@@ -15,7 +15,7 @@ export interface SheetOperatorProps<
 
 export class GenericTableOperator<
   TN extends TableNameSimple,
-> extends SheetBaseNamed<TN> {
+> extends TableBaseNamed<TN> {
   protected configSyncState: ConfigSyncState;
   constructor({ configSyncState, ...rest }: SheetOperatorProps<TN>) {
     super(rest);
@@ -30,7 +30,7 @@ export class GenericTableOperator<
   get ss(): SpreadsheetNamed {
     return new SpreadsheetNamed(this.spreadsheetNamedProps);
   }
-  get sheet(): SheetNamed<TN> {
+  get sheet(): TableNamed<TN> {
     return this.ss.sheet(this.sheetName);
   }
   get schema(): TableSchema<TN> {

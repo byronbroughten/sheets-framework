@@ -89,7 +89,7 @@ function fetchedRunItem() {
   return { ss, sheet };
 }
 
-describe("SheetNamed conditional format rules", () => {
+describe("TableNamed conditional format rules", () => {
   it("reads a sheet with no rules as an empty list", () => {
     stubRunItemWithRules([]);
     const { sheet } = fetchedRunItem();
@@ -388,7 +388,7 @@ const idWholeColumnGoogleRange = {
   endColumnIndex: 1,
 };
 
-describe("SheetNamed edit warnings and edit locks", () => {
+describe("TableNamed edit warnings and edit locks", () => {
   it("sends no batch update when adding a warning identical to one already present", () => {
     const { batchUpdateCount, ss, sheet } = fetchedRunItemProtections([
       googleProtection(idColumnRange, {
@@ -799,7 +799,7 @@ function fetchedItemNames(
   return { ss, sheet, ...service };
 }
 
-describe("SheetNamed.rowIdByName", () => {
+describe("TableNamed.rowIdByName", () => {
   it("finds the one row with the name, with its id and row index", () => {
     const { sheet } = fetchedItemNames([
       ["r:itm:aaaaaaa", "Widget A"],

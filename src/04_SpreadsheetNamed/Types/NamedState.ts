@@ -1,7 +1,7 @@
 import type { ColumnName } from "../../01_SpreadsheetSchema/columnConfigsTypes";
 import type { TableName } from "../../01_SpreadsheetSchema/sheetConfigsTypes";
 import type { StrictOmit } from "../../utils/Obj";
-import type { SheetNamed } from "../SheetNamed";
+import type { TableNamed } from "../TableNamed";
 
 type SheetColumnNames<TN extends TableName> = {
   [S in TN]?: ColumnSpecifierNamed<TN>;
@@ -72,5 +72,5 @@ export type ColumnSpecifierNamed<TN extends TableName> =
   ColumnName<TN> | ColumnName<TN>[] | "allColumns";
 
 export type NamedSheets<TN extends TableName> = {
-  [T in TN]: SheetNamed<T>;
+  [T in TN]: TableNamed<T>;
 };

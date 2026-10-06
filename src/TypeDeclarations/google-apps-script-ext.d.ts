@@ -56,7 +56,7 @@ declare namespace GoogleAppsScript {
       }
 
       // -----------------------------------------------------------------
-      // 3. Extending SheetNamed Interface
+      // 3. Extending TableNamed Interface
       // -----------------------------------------------------------------
 
       export interface Sheet {
