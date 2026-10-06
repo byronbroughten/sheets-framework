@@ -1,4 +1,4 @@
-import type { TableName } from "../../01_SpreadsheetSchema/sheetConfigsTypes";
+import type { TableName } from "../../01_SpreadsheetSchema/tableConfigsTypes";
 import { TableSchema } from "../../01_SpreadsheetSchema/TableSchema";
 import { TableBaseNamed } from "./TableBaseNamed";
 

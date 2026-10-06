@@ -1,4 +1,4 @@
-import type { TableName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
+import type { TableName } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import type { Chore } from "./Chore";
 
 export const addMissingColumnIds: Chore = {

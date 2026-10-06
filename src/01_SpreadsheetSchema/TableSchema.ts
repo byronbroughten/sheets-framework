@@ -7,23 +7,23 @@ import {
 } from "./columnConfigsTypes";
 import { ColumnSchema } from "./ColumnSchema";
 import { dimensionIds } from "./dimensionIds";
-import {
-  getSheetTraitByGid,
-  getSheetTraitByName,
-  type SheetConfig,
-  sheetConfigsByGid,
-  type TableName,
-} from "./sheetConfigsTypes";
 import { SpreadsheetBaseSchema } from "./SpreadsheetBaseSchema";
+import {
+  getTableTraitByGid,
+  getTableTraitByName,
+  type TableConfig,
+  tableConfigsByGid,
+  type TableName,
+} from "./tableConfigsTypes";
 
 function sheetNameFromGid(sheetGid: number): TableName {
-  const byGid = sheetConfigsByGid();
+  const byGid = tableConfigsByGid();
   if (!byGid.has(sheetGid)) {
     throw new Error(
       `Invalid sheetGid: ${sheetGid}. Must be one of: ${[...byGid.keys()].join(", ")}`,
     );
   }
-  return getSheetTraitByGid(sheetGid, "sheetName") as TableName;
+  return getTableTraitByGid(sheetGid, "tableKey") as TableName;
 }
 
 export interface TableSchemaProps<TN extends TableName> {
@@ -44,7 +44,7 @@ export class TableSchema<
   static fromSheetName<TN extends TableName>(sheetName: TN): TableSchema<TN> {
     return new TableSchema({
       sheetName,
-      sheetGid: getSheetTraitByName(sheetName, "sheetGid"),
+      sheetGid: getTableTraitByName(sheetName, "sheetGid"),
     });
   }
   static fromSheetGid(sheetGid: number): TableSchema {
@@ -53,8 +53,11 @@ export class TableSchema<
       sheetName: sheetNameFromGid(sheetGid),
     });
   }
-  trait<TK extends keyof SheetConfig>(key: TK): SheetConfig[TK] {
-    return getSheetTraitByGid(this.sheetGid, key);
+  trait<TK extends keyof TableConfig>(key: TK): TableConfig[TK] {
+    return getTableTraitByGid(this.sheetGid, key);
+  }
+  get tableId(): string {
+    return this.trait("tableId");
   }
   get idPrefix(): string {
     return this.trait("idPrefix");

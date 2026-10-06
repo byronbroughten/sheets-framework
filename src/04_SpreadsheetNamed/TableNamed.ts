@@ -15,7 +15,7 @@ import type {
   SheetDataValues,
   SheetDataValuesAll,
 } from "../01_SpreadsheetSchema/columnConfigsTypes";
-import type { TableName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
+import type { TableName } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import type { FindReplaceTerms } from "../02_SpreadsheetRaw/ClassTypes/StateRaw";
 import type { TableRaw } from "../02_SpreadsheetRaw/TableRaw";
 import { ColumnIdentified } from "../03_SpreadsheetIdentified/ColumnIdentified";

@@ -4,7 +4,7 @@ import type {
   SheetNameOf,
 } from "../01_SpreadsheetSchema/columnConfigsTypes";
 import type { FloorTabName } from "../01_SpreadsheetSchema/configSheetFloorSeed";
-import type { TableNameSimple } from "../01_SpreadsheetSchema/sheetConfigsTypes";
+import type { TableNameSimple } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import type { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
 import type { CheckboxColumnName } from "../05_Operators/CheckboxColumnOperator";
 

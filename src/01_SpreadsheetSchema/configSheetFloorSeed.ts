@@ -4,7 +4,7 @@ import {
   getColumnTraitByName,
   getSheetColumnNames,
 } from "./columnConfigsTypes";
-import { sheetConfigsByGid } from "./sheetConfigsTypes";
+import { tableConfigsByGid } from "./tableConfigsTypes";
 
 export type FloorColumnType = Extract<
   TableColumnType,
@@ -167,11 +167,11 @@ export function isFloorTabName(name: string): name is FloorTabName {
 export function floorTabSeedByGid(
   sheetGid: number,
 ): (typeof configSheetFloorSeed)[FloorTabName] | undefined {
-  const sheetConfig = sheetConfigsByGid().get(sheetGid);
-  if (sheetConfig === undefined || !isFloorTabName(sheetConfig.sheetName)) {
+  const tableConfig = tableConfigsByGid().get(sheetGid);
+  if (tableConfig === undefined || !isFloorTabName(tableConfig.tableKey)) {
     return undefined;
   }
-  return configSheetFloorSeed[sheetConfig.sheetName];
+  return configSheetFloorSeed[tableConfig.tableKey];
 }
 
 export function floorSeedColumns(
@@ -193,11 +193,11 @@ export function floorSeedColumnById(
   sheetGid: number,
   columnId: string,
 ): FloorSeedColumn | undefined {
-  const sheetConfig = sheetConfigsByGid().get(sheetGid);
-  if (sheetConfig === undefined || !isFloorTabName(sheetConfig.sheetName)) {
+  const tableConfig = tableConfigsByGid().get(sheetGid);
+  if (tableConfig === undefined || !isFloorTabName(tableConfig.tableKey)) {
     return undefined;
   }
-  return floorSeedColumnInSheet(sheetConfig.sheetName, columnId);
+  return floorSeedColumnInSheet(tableConfig.tableKey, columnId);
 }
 
 export function floorSeedColumnInSheet(

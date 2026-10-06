@@ -1,6 +1,6 @@
 import type { RgbColor } from "../00_Source/RawSource/RgbColor";
 import type { ColumnName } from "../01_SpreadsheetSchema/columnConfigsTypes";
-import type { TableNameSimple } from "../01_SpreadsheetSchema/sheetConfigsTypes";
+import type { TableNameSimple } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import type { CellChange } from "../03_SpreadsheetIdentified/ClassTypes/StateIdentified";
 import {
   TableBaseNamed,

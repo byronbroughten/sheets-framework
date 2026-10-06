@@ -1,6 +1,6 @@
 import type { ColumnName } from "../../01_SpreadsheetSchema/columnConfigsTypes";
 import { ColumnSchema } from "../../01_SpreadsheetSchema/ColumnSchema";
-import type { TableName } from "../../01_SpreadsheetSchema/sheetConfigsTypes";
+import type { TableName } from "../../01_SpreadsheetSchema/tableConfigsTypes";
 import { TableBaseNamed, type TableNamedProps } from "./TableBaseNamed";
 
 export interface ColumnNamedProps<

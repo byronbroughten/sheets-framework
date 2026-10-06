@@ -13,7 +13,7 @@ import type {
   ColumnValueName,
   MakeColumnFullName,
 } from "../01_SpreadsheetSchema/columnConfigsTypes";
-import type { TableName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
+import type { TableName } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import type { ColumnMetaRaw } from "../02_SpreadsheetRaw/ColumnMetaRaw";
 import type { CellIdentified } from "../03_SpreadsheetIdentified/CellIdentified";
 import { ColumnMetaIdentified } from "../03_SpreadsheetIdentified/ColumnMetaIdentified";

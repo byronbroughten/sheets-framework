@@ -16,12 +16,9 @@ import {
   type ValueOf,
 } from "./columnConfigsTypes";
 import { ColumnSchema } from "./ColumnSchema";
-import {
-  getSheetTraitByName,
-  sheetConfigsByGid,
-  type TableName,
-} from "./sheetConfigsTypes";
+import { getSheetTraitByName, sheetConfigsByGid } from "./sheetConfigsTypes";
 import { SpreadsheetSchema } from "./SpreadsheetSchema";
+import type { TableName } from "./tableConfigsTypes";
 import { TableOrigin } from "./TableOrigin";
 import { TableSchema } from "./TableSchema";
 import type { ValueName } from "./valueSchemas";

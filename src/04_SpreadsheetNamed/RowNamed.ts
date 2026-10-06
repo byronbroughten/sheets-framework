@@ -5,7 +5,7 @@ import type {
   ColumnValueDeclared,
   SheetDataValues,
 } from "../01_SpreadsheetSchema/columnConfigsTypes";
-import type { TableName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
+import type { TableName } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import type { Value, ValueName } from "../01_SpreadsheetSchema/valueSchemas";
 import { RowRaw } from "../02_SpreadsheetRaw/RowRaw";
 import { RowIdentified } from "../03_SpreadsheetIdentified/RowIdentified";

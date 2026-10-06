@@ -8,8 +8,8 @@ import {
   getColumnTraitById,
   type MakeColumnFullName,
 } from "./columnConfigsTypes";
-import type { TableName } from "./sheetConfigsTypes";
 import { SpreadsheetBaseSchema } from "./SpreadsheetBaseSchema";
+import type { TableName } from "./tableConfigsTypes";
 import { TableSchema, type TableSchemaProps } from "./TableSchema";
 import { getValTrait, type ValueSchema } from "./valueSchemas";
 

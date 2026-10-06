@@ -1,6 +1,6 @@
 import type { UniformRowName } from "../00_Source/CellValues/cellValues";
 import type { ColumnName } from "../01_SpreadsheetSchema/columnConfigsTypes";
-import type { TableName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
+import type { TableName } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import type { SheetMetaRaw } from "../02_SpreadsheetRaw/SheetMetaRaw";
 import { SheetMetaIdentified } from "../03_SpreadsheetIdentified/SheetMetaIdentified";
 import type { UniformRowIdentified } from "../03_SpreadsheetIdentified/UniformRowIdentified";

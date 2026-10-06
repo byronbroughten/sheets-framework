@@ -1,6 +1,6 @@
 import type { SheetColIndex } from "../../../src/00_Source/RawSource/SheetIndex";
 import { dimensionIds } from "../../../src/01_SpreadsheetSchema/dimensionIds";
-import { getSheetTraitByName } from "../../../src/01_SpreadsheetSchema/sheetConfigsTypes";
+import { getTableTraitByName } from "../../../src/01_SpreadsheetSchema/tableConfigsTypes";
 import { TableOrigin } from "../../../src/01_SpreadsheetSchema/TableOrigin";
 import { uniformRows } from "../../../src/01_SpreadsheetSchema/uniformRows";
 import { SpreadsheetBaseNamed } from "../../../src/04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
@@ -46,7 +46,7 @@ export class DevFixtureBuilder extends SpreadsheetBaseNamed {
   private _validateConfigFloorPresent(): void {
     const missing = (["sheetConfig", "columnConfig"] as const).filter(
       (sheetName) =>
-        !this.ss.raw.gidIsActive(getSheetTraitByName(sheetName, "sheetGid")),
+        !this.ss.raw.gidIsActive(getTableTraitByName(sheetName, "sheetGid")),
     );
     if (missing.length > 0) {
       throw new Error(

@@ -1,18 +1,18 @@
 import { Val } from "../utils/Val";
-import {
-  configSheetNames,
-  sheetConfigsByGid,
-  type TableName,
-} from "./sheetConfigsTypes";
 import { SpreadsheetBaseSchema } from "./SpreadsheetBaseSchema";
+import {
+  configTableNames,
+  tableConfigsByGid,
+  type TableName,
+} from "./tableConfigsTypes";
 import { TableSchema } from "./TableSchema";
 
 export class SpreadsheetSchema extends SpreadsheetBaseSchema {
   isInSheetGids(sheetGid: number): boolean {
-    return sheetConfigsByGid().has(sheetGid);
+    return tableConfigsByGid().has(sheetGid);
   }
   get sheetNames(): TableName[] {
-    return configSheetNames();
+    return configTableNames();
   }
   sheetByName<TN extends TableName>(sheetName: TN): TableSchema<TN> {
     return TableSchema.fromSheetName(sheetName);

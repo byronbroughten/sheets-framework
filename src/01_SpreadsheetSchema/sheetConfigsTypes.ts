@@ -1,16 +1,11 @@
 import { lazy } from "../utils/lazy";
 import { Obj } from "../utils/Obj";
-import { Val } from "../utils/Val";
 import { type Configs, installedConfigs } from "./configRegister";
 import type { SheetConfigsBase, SheetConfigStored } from "./makeConfigs";
 
 // Post-sheetConfigs
 export type SheetConfigs = Configs["sheetConfigs"];
-export type TableNameSimple = keyof SheetConfigs & string;
-export function configSheetNames(): TableNameSimple[] {
-  return Obj.keys(sheetConfigs()) as TableNameSimple[];
-}
-export type TableName<TN extends TableNameSimple = TableNameSimple> = TN;
+type SheetNameSimple = keyof SheetConfigs & string;
 export interface SheetConfig<
   HI extends boolean = boolean,
 > extends SheetConfigStored<HI> {
@@ -18,9 +13,9 @@ export interface SheetConfig<
 }
 
 export function getSheetTraitByName<
-  TN extends TableNameSimple,
+  SN extends SheetNameSimple,
   TK extends keyof SheetConfig,
->(sheetName: TN, key: TK): SheetConfig[TK] {
+>(sheetName: SN, key: TK): SheetConfig[TK] {
   if (key === "sheetName") {
     return sheetName as unknown as SheetConfig[TK];
   }
@@ -32,16 +27,6 @@ export function getSheetTraitByName<
 export const sheetConfigsByGid = lazy(() =>
   Obj.toKeyedMap(sheetConfigs(), "sheetGid", "sheetName"),
 );
-
-export function getSheetTraitByGid<TK extends keyof SheetConfig>(
-  sheetGid: number,
-  key: TK,
-): SheetConfig[TK] {
-  return Val.assert(
-    sheetConfigsByGid().get(sheetGid),
-    `Sheet with gid ${sheetGid}`,
-  )[key];
-}
 
 // The generated literal read by an arbitrary name, where an entry may be absent.
 export function sheetConfigsByName(): SheetConfigsBase {

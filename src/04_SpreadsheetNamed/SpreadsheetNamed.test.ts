@@ -4,10 +4,8 @@ import {
   type ColumnIsFormula,
   getColumnTraitByName,
 } from "../01_SpreadsheetSchema/columnConfigsTypes";
-import {
-  getSheetTraitByName,
-  type TableName,
-} from "../01_SpreadsheetSchema/sheetConfigsTypes";
+import { getSheetTraitByName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
+import type { TableName } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {

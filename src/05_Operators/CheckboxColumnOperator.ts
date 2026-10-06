@@ -1,5 +1,5 @@
 import type { ColumnNameFiltered } from "../01_SpreadsheetSchema/columnConfigsTypes";
-import type { TableNameSimple } from "../01_SpreadsheetSchema/sheetConfigsTypes";
+import type { TableNameSimple } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import { ColumnIdentified } from "../03_SpreadsheetIdentified/ColumnIdentified";
 import { ColumnBaseNamed } from "../04_SpreadsheetNamed/ClassBases/ColumnBaseNamed";
 import { ColumnNamed } from "../04_SpreadsheetNamed/ColumnNamed";

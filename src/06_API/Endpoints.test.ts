@@ -5,7 +5,7 @@ import type {
   ColumnNameFiltered,
 } from "../01_SpreadsheetSchema/columnConfigsTypes";
 import type { FloorTabName } from "../01_SpreadsheetSchema/configSheetFloorSeed";
-import type { TableNameSimple } from "../01_SpreadsheetSchema/sheetConfigsTypes";
+import type { TableNameSimple } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import { assertType, type IsExactly } from "../testSupport/typeAssertions";
 import type { Endpoint, Endpoints, EndpointsAll } from "./Endpoints";
 

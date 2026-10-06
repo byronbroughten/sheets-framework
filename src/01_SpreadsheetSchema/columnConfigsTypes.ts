@@ -8,10 +8,10 @@ import { Val } from "../utils/Val";
 import { type Configs, installedConfigs } from "./configRegister";
 import type { ColumnConfigsGeneric, ColumnConfigStored } from "./makeConfigs";
 import {
-  configSheetNames,
-  getSheetTraitByName,
+  configTableNames,
+  getTableTraitByName,
   type TableNameSimple,
-} from "./sheetConfigsTypes";
+} from "./tableConfigsTypes";
 import { type Value, type ValueName, type ValueSchema } from "./valueSchemas";
 
 export type ColumnConfigs = Configs["columnConfigs"];
@@ -141,11 +141,11 @@ export type TableColumnConfigsById = KeyedMap<
 
 type ColumnConfigsByGidAndColId = Map<number, TableColumnConfigsById>;
 function makeColumnConfigsByGidAndColId(): ColumnConfigsByGidAndColId {
-  return configSheetNames().reduce((attrs, sheetName) => {
-    const sheetGid = getSheetTraitByName(sheetName, "sheetGid");
+  return configTableNames().reduce((attrs, tableName) => {
+    const sheetGid = getTableTraitByName(tableName, "sheetGid");
     attrs.set(
       sheetGid,
-      Obj.toKeyedMap(columnConfigs()[sheetName], "columnId", "columnName"),
+      Obj.toKeyedMap(columnConfigs()[tableName], "columnId", "columnName"),
     );
     return attrs;
   }, new Map() as ColumnConfigsByGidAndColId);
