@@ -10,10 +10,11 @@ import {
 import {
   makeImportLine,
   type SheetConfigsBase,
+  type TableConfigsBase,
 } from "../01_SpreadsheetSchema/makeConfigs";
 import { sheetConfigsByGid } from "../01_SpreadsheetSchema/sheetConfigsTypes";
 import { Val } from "../utils/Val";
-import { sheetConfigsFileSource } from "./configFileSource";
+import { oneLinePerEntryFileSource } from "./configFileSource";
 import { GenericTableOperator } from "./GenericTableOperator";
 import {
   type ConfigSyncState,
@@ -199,6 +200,25 @@ export class SheetConfigOperator extends GenericTableOperator<"sheetConfig"> {
     idPrefixes.assertUnique(idPrefixLabels);
     return sheetConfigs;
   }
+  newTableConfigs(): TableConfigsBase {
+    const tableConfigs: TableConfigsBase = {};
+    Object.values(this.newSheetConfigs()).forEach((sheetConfig) => {
+      const { sheetGid, idPrefix, hasIdColumn, hasNameColumn } = sheetConfig;
+      const table = this.ss.raw.sheetMeta(sheetGid).primary;
+      const { headerRowIndex, startColIndex } = table.origin;
+      tableConfigs[this.schema.titleToName(table.name)] = {
+        tableId: table.tableId,
+        tableName: table.name,
+        sheetGid,
+        idPrefix,
+        headerRowIndex,
+        startColIndex,
+        hasIdColumn,
+        hasNameColumn,
+      };
+    });
+    return tableConfigs;
+  }
   sheetNamesByGid(): Map<number, string> {
     const map = new Map<number, string>();
     Object.entries(this.newSheetConfigs()).forEach(([sheetName, config]) => {
@@ -210,8 +230,18 @@ export class SheetConfigOperator extends GenericTableOperator<"sheetConfig"> {
     return [
       `${makeImportLine("makeSheetConfigs", makeConfigsImport)}`,
       ``,
-      `export const sheetConfigs = makeSheetConfigs(${sheetConfigsFileSource(
+      `export const sheetConfigs = makeSheetConfigs(${oneLinePerEntryFileSource(
         this.newSheetConfigs(),
+      )});`,
+      ``,
+    ].join("\n");
+  }
+  toTableConfigsFileSource(makeConfigsImport: string): string {
+    return [
+      makeImportLine("makeTableConfigs", makeConfigsImport),
+      ``,
+      `export const tableConfigs = makeTableConfigs(${oneLinePerEntryFileSource(
+        this.newTableConfigs(),
       )});`,
       ``,
     ].join("\n");

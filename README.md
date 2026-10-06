@@ -24,7 +24,7 @@ Your package needs:
 
 App code imports only from `@byronbroughten/sheets-framework`; test files may also import `@byronbroughten/sheets-framework/testing`. Every other path is internal.
 
-**Register your configs once.** `sheets-framework gen-configs` writes four files into your `generatedDir`: three config files and `appConfigs.ts`, which gathers them into one `appConfigs` const and augments `Register` with its type, so every Named and endpoint type is typed to your spreadsheet. Every file there is machine-written; never hand-edit one. Your code imports only `appConfigs`, which goes to `Api` and to `installConfigs` in your test setup; `appEslintPreset` flags an import of the three config files from outside `generated/`.
+**Register your configs once.** `sheets-framework gen-configs` writes five files into your `generatedDir`: four config files and `appConfigs.ts`, which gathers them into one `appConfigs` const and augments `Register` with its type, so every Named and endpoint type is typed to your spreadsheet. Every file there is machine-written; never hand-edit one. Your code imports only `appConfigs`, which goes to `Api` and to `installConfigs` in your test setup; `appEslintPreset` flags an import of the four config files from outside `generated/`.
 
 An unaugmented `Register` is a type error, not a silent widening.
 
@@ -63,7 +63,7 @@ Generated configs go in `src/generated` and chores are found in `src/chores` and
 
 | Command | Does |
 | --- | --- |
-| `sheets-framework gen-configs` | Ensures the config-sheet floor, then regenerates the three config files and `appConfigs.ts` from the config sheets. **It writes to the live spreadsheet.** |
+| `sheets-framework gen-configs` | Ensures the config-sheet floor, then regenerates the four config files and `appConfigs.ts` from the config sheets. **It writes to the live spreadsheet.** |
 | `sheets-framework chore [name] [--send] [--json]` | Lists the chores, dry-runs one (reads live, writes nothing, prints the requests), or applies it with `--send`. |
 | `sheets-framework probe --fields\|--filter\|--path …` | One read-only Sheets request; the full JSON goes to `.probe/last.json`. |
 | `sheets-framework setup-auth` | Mints the credential the Node host uses, from clasp's login. |

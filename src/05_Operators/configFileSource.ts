@@ -1,7 +1,4 @@
-import type {
-  ColumnConfigsGeneric,
-  SheetConfigsBase,
-} from "../01_SpreadsheetSchema/makeConfigs";
+import type { ColumnConfigsGeneric } from "../01_SpreadsheetSchema/makeConfigs";
 
 function oneLineJsonObject(record: object): string {
   const fields = Object.entries(record).map(
@@ -27,14 +24,15 @@ export function columnConfigsFileSource(
   return `{\n${blocks.join(",\n")}\n}`;
 }
 
-export function sheetConfigsFileSource(sheetConfigs: SheetConfigsBase): string {
-  const sheets = Object.entries(sheetConfigs);
-  if (sheets.length === 0) {
+export function oneLinePerEntryFileSource(
+  configs: Record<string, object>,
+): string {
+  const entries = Object.entries(configs);
+  if (entries.length === 0) {
     return "{}";
   }
-  const lines = sheets.map(
-    ([sheetName, sheetConfig]) =>
-      `  ${JSON.stringify(sheetName)}: ${oneLineJsonObject(sheetConfig)}`,
+  const lines = entries.map(
+    ([key, config]) => `  ${JSON.stringify(key)}: ${oneLineJsonObject(config)}`,
   );
   return `{\n${lines.join(",\n")}\n}`;
 }

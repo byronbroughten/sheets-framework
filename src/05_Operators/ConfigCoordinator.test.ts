@@ -470,6 +470,12 @@ describe("ConfigCoordinator.generateConfigFiles", () => {
     expect(typeof parsed.sheetConfigs).toBe("string");
     expect(typeof parsed.columnConfigs).toBe("string");
     expect(parsed.sheetConfigs).toContain('"item"');
+    expect(parsed.tableConfigs).toContain(
+      "export const tableConfigs = makeTableConfigs({",
+    );
+    expect(parsed.tableConfigs).toContain(
+      `"sheetGid": ${testSheetGid}, "idPrefix": "itm"`,
+    );
     expect(typeof parsed.valueConfigs).toBe("string");
     // Gathered into Column Config by the sync, then headed by _updateProgrammaticValues.
     expect(parsed.columnConfigs).toContain("c:itm:xyz123");

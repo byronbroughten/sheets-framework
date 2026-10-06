@@ -4,6 +4,7 @@ import type { Value, ValueName } from "./valueSchemas";
 export function makeImportLine(
   configMagerName:
     | "makeSheetConfigs"
+    | "makeTableConfigs"
     | "makeColumnConfigs"
     | "makeValueConfigs",
   makeConfigsImport: string,
@@ -28,13 +29,37 @@ export type SheetConfigsBase = Record<string, SheetConfigStored>;
 export function makeSheetConfigs<SC extends SheetConfigsBase>(
   sheetConfigs: SC,
 ): SC {
+  assertUniqueIdPrefixes(sheetConfigs);
+  return sheetConfigs;
+}
+
+export interface TableConfigStored {
+  tableId: string;
+  tableName: string;
+  sheetGid: number;
+  idPrefix: string;
+  headerRowIndex: number;
+  startColIndex: number;
+  hasIdColumn: boolean;
+  hasNameColumn: boolean;
+}
+export type TableConfigsBase = Record<string, TableConfigStored>;
+export function makeTableConfigs<TC extends TableConfigsBase>(
+  tableConfigs: TC,
+): TC {
+  assertUniqueIdPrefixes(tableConfigs);
+  return tableConfigs;
+}
+
+function assertUniqueIdPrefixes(
+  configs: Record<string, { idPrefix: string }>,
+): void {
   idPrefixes.assertUnique(
-    Object.entries(sheetConfigs).map(([label, config]) => ({
+    Object.entries(configs).map(([label, config]) => ({
       label,
       idPrefix: config.idPrefix,
     })),
   );
-  return sheetConfigs;
 }
 
 export type ValueConfigsBase = Record<string, readonly string[]>;

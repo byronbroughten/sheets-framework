@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { installedConfigs } from "../01_SpreadsheetSchema/configRegister";
+import { TableOrigin } from "../01_SpreadsheetSchema/TableOrigin";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {
   buildGridRows,
@@ -372,6 +373,83 @@ describe("SheetConfigOperator.newSheetConfigs / toFileSource", () => {
 
     expect(() => operator.toFileSource("../makeConfigs")).toThrow(
       /Widget.*Gadget.*"wdg"/,
+    );
+  });
+});
+
+describe("SheetConfigOperator.newTableConfigs / toTableConfigsFileSource", () => {
+  function stubWidgetTable(letApiAccess: boolean): void {
+    stubSheetsService({
+      sheets: [
+        {
+          sheetId: sheetConfigGid,
+          title: "Sheet Config",
+          rows: buildGridRows({
+            0: sheetConfigColumnIdRow,
+            4: [widgetGid, "Widget", letApiAccess],
+          }),
+          table: { name: "Sheet Config", endRowIndex: 5 },
+        },
+        {
+          sheetId: widgetGid,
+          title: "Widget",
+          rows: buildGridRows({ 0: ["c:wdg:aaa"], 3: ["ID", "Name"] }),
+          table: {
+            tableId: "widget-table",
+            name: "Widget orders",
+            endRowIndex: 5,
+          },
+        },
+      ],
+    });
+  }
+
+  it("keys a managed sheet's Table by its live name and records its identity and position", () => {
+    stubWidgetTable(true);
+
+    const operator = SheetConfigOperator.init();
+    syncSheetConfigOperator(operator);
+    const { headerRowIndex, startColIndex } = TableOrigin.expected();
+    const tableConfigs = operator.newTableConfigs();
+
+    expect(Object.keys(tableConfigs).sort()).toEqual([
+      "sheetConfig",
+      "widgetOrders",
+    ]);
+    expect(tableConfigs.widgetOrders).toEqual({
+      tableId: "widget-table",
+      tableName: "Widget orders",
+      sheetGid: widgetGid,
+      idPrefix: "wdg",
+      headerRowIndex,
+      startColIndex,
+      hasIdColumn: true,
+      hasNameColumn: true,
+    });
+  });
+
+  it("leaves out the Table of a sheet whose API-access checkbox is unticked", () => {
+    stubWidgetTable(false);
+
+    const operator = SheetConfigOperator.init();
+    syncSheetConfigOperator(operator);
+
+    expect(Object.keys(operator.newTableConfigs())).toEqual(["sheetConfig"]);
+  });
+
+  it("writes the entries through makeTableConfigs", () => {
+    stubWidgetTable(true);
+
+    const operator = SheetConfigOperator.init();
+    syncSheetConfigOperator(operator);
+    const source = operator.toTableConfigsFileSource("../makeConfigs");
+
+    expect(source).toContain(
+      'import { makeTableConfigs } from "../makeConfigs";',
+    );
+    expect(source).toContain("export const tableConfigs = makeTableConfigs({");
+    expect(source).toContain(
+      '"widgetOrders": { "tableId": "widget-table", "tableName": "Widget orders", "sheetGid": 999001, "idPrefix": "wdg"',
     );
   });
 });

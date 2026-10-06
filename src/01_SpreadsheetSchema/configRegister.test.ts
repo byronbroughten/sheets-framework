@@ -13,7 +13,12 @@ import {
   installConfigs,
   installedConfigs,
 } from "./configRegister";
-import type { ColumnConfigsGeneric, makeColumnConfigs } from "./makeConfigs";
+import type {
+  ColumnConfigsGeneric,
+  makeColumnConfigs,
+  TableConfigsBase,
+} from "./makeConfigs";
+import type { TableConfigs } from "./tableConfigsTypes";
 
 type ColumnConfigsWithValueName<VN extends string> = ReturnType<
   typeof makeColumnConfigs<
@@ -45,6 +50,10 @@ describe("Register", () => {
     assertNotType<IsExactly<Configs, ConfigsNotRegistered>>(false);
     assertNotType<IsExactly<Configs, ConfigSetBase>>(false);
     assertType<Configs extends ConfigSetBase ? true : false>(true);
+  });
+  it("registers the generated tableConfigs as their own literal", () => {
+    assertType<TableConfigs extends TableConfigsBase ? true : false>(true);
+    assertNotType<IsExactly<TableConfigs, TableConfigsBase>>(false);
   });
   // makeColumnConfigs can't name ValueName without a cycle, so this is where a bad valueName fails.
   it("checks every generated valueName against ValueName once the register resolves", () => {
