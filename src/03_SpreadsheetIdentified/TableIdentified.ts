@@ -55,7 +55,7 @@ export class TableIdentified extends TableCommonIdentified {
   }
   // Feedback columns only report on a row, so a row holding nothing else is still blank.
   get blankTestColumnIds(): string[] {
-    const feedbackColumnIds = this.feedbackColumnIds.get(this.sheetName);
+    const feedbackColumnIds = this.feedbackColumnIds.get(this.tableName);
     return this.nonFormulaColumnIds.filter(
       (columnId) => !feedbackColumnIds?.has(columnId),
     );

@@ -215,7 +215,7 @@ export class TableNamed<
     );
     if (rows.length !== 1) {
       throw new Error(
-        `Expected 1 row of "${this.sheetName}" to have a "${columnName}" of "${value}", but ${rows.length} did.`,
+        `Expected 1 row of "${this.tableName}" to have a "${columnName}" of "${value}", but ${rows.length} did.`,
       );
     }
     return Val.assert(rows[0], "The matching row");
@@ -254,7 +254,7 @@ export class TableNamed<
   private _validateNameNotBlank(name: string): void {
     if (name !== "") return;
     throw new Error(
-      `Cannot look up a blank name in the name column of "${this.sheetName}".`,
+      `Cannot look up a blank name in the name column of "${this.tableName}".`,
     );
   }
   private _rowIndexesNamed(name: string): number[] {

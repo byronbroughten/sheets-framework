@@ -147,7 +147,7 @@ function runEndpoint(
     ...SpreadsheetBaseNamed.initSpreadsheetNamedProps(
       feedbackColumnIdsOf({ ...alsoDeclared, runItem_startTime: endpoint }),
     ),
-    sheetName: "runItem",
+    tableName: "runItem",
     entryColumnName: "startTime",
     endpoint,
   });
@@ -287,7 +287,7 @@ describe("EndpointRun navigation", () => {
       ...SpreadsheetBaseNamed.initSpreadsheetNamedProps(
         feedbackColumnIdsOf({ runItem_startTime: endpoint }),
       ),
-      sheetName: "runItem",
+      tableName: "runItem",
       entryColumnName: "startTime",
       endpoint,
     });

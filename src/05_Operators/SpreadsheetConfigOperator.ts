@@ -7,7 +7,7 @@ import {
 export class SpreadsheetConfigOperator extends GenericTableOperator<"spreadsheetConfig"> {
   constructor(props: OperatorProps) {
     super({
-      sheetName: "spreadsheetConfig",
+      tableName: "spreadsheetConfig",
       ...props,
     });
   }

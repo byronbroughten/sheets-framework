@@ -6,7 +6,7 @@ export abstract class TableCommonNamed<
   TN extends TableName,
 > extends TableBaseNamed<TN> {
   get schema(): TableSchema<TN> {
-    return TableSchema.fromSheetName(this.sheetName);
+    return TableSchema.fromSheetName(this.tableName);
   }
   get sheetGid(): number {
     return this.schema.sheetGid;

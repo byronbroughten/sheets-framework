@@ -21,7 +21,7 @@ export class CheckboxColumnOperator<
     return new SpreadsheetNamed(this.spreadsheetNamedProps);
   }
   get table(): TableNamed<TN> {
-    return this.ss.table(this.sheetName);
+    return this.ss.table(this.tableName);
   }
   get column(): ColumnNamed<TN, CN> {
     return new ColumnNamed(this.columnNamedProps);

@@ -14,7 +14,7 @@ import {
 export class ValueConfigOperator extends GenericTableOperator<"valueConfig"> {
   constructor(props: OperatorProps) {
     super({
-      sheetName: "valueConfig",
+      tableName: "valueConfig",
       ...props,
     });
   }

@@ -51,7 +51,7 @@ export class CellNamed<
     const value = this.valueOrEmpty();
     if (value === "") {
       throw new Error(
-        `Column "${this.columnName}" of sheet "${this.sheetName}" is empty in ${this.identified.raw.rowLabel(this.rowIndex)}.`,
+        `Column "${this.columnName}" of sheet "${this.tableName}" is empty in ${this.identified.raw.rowLabel(this.rowIndex)}.`,
       );
     } else {
       return value as NotEmpty<ColumnValue<TN, CN>>;

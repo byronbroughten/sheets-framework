@@ -7,18 +7,18 @@ import {
 export interface TableNamedProps<
   TN extends TableName,
 > extends SpreadsheetNamedProps {
-  sheetName: TN;
+  tableName: TN;
 }
 
 export class TableBaseNamed<TN extends TableName> extends SpreadsheetBaseNamed {
-  readonly sheetName: TN;
-  constructor({ sheetName, ...props }: TableNamedProps<TN>) {
+  readonly tableName: TN;
+  constructor({ tableName, ...props }: TableNamedProps<TN>) {
     super(props);
-    this.sheetName = sheetName;
+    this.tableName = tableName;
   }
   get sheetNamedProps(): TableNamedProps<TN> {
     return {
-      sheetName: this.sheetName,
+      tableName: this.tableName,
       ...this.spreadsheetNamedProps,
     };
   }

@@ -29,7 +29,7 @@ interface ColumnIdentity {
 export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
   constructor(props: OperatorProps) {
     super({
-      sheetName: "columnConfig",
+      tableName: "columnConfig",
       ...props,
     });
   }

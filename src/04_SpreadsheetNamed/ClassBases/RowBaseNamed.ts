@@ -15,7 +15,7 @@ export class RowBaseNamed<TN extends TableName> extends TableBaseNamed<TN> {
     this.rowIndex = rowIndex;
   }
   get schema(): TableSchema<TN> {
-    return TableSchema.fromSheetName(this.sheetName);
+    return TableSchema.fromSheetName(this.tableName);
   }
   get rowNamedProps(): RowNamedProps<TN> {
     return {

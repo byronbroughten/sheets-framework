@@ -57,7 +57,7 @@ export class ConfigSheetFloorEditWarnings extends SpreadsheetBaseNamed {
     });
     const tabDeclarations = tabs.map((tab) => ({
       tab,
-      declaration: tab.declaration(identityColIndexes.get(tab.sheetName)),
+      declaration: tab.declaration(identityColIndexes.get(tab.tableName)),
     }));
     this._reconcile(tabDeclarations, report);
     return report;
@@ -67,7 +67,7 @@ export class ConfigSheetFloorEditWarnings extends SpreadsheetBaseNamed {
   ): FloorTabEditWarning<FloorSheetName> {
     return new FloorTabEditWarning({
       ...this.spreadsheetNamedProps,
-      sheetName,
+      tableName: sheetName,
     });
   }
   private _reconcile(

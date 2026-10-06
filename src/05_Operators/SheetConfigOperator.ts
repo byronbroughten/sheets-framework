@@ -24,7 +24,7 @@ import {
 export class SheetConfigOperator extends GenericTableOperator<"sheetConfig"> {
   constructor(props: OperatorProps) {
     super({
-      sheetName: "sheetConfig",
+      tableName: "sheetConfig",
       ...props,
     });
   }

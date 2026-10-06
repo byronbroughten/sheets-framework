@@ -20,7 +20,7 @@ export class ColumnBaseNamed<
     this.columnName = props.columnName;
   }
   get schema(): ColumnSchema<TN, CN> {
-    return ColumnSchema.fromColumnName(this.sheetName, this.columnName);
+    return ColumnSchema.fromColumnName(this.tableName, this.columnName);
   }
   get columnNamedProps(): ColumnNamedProps<TN, CN> {
     return {

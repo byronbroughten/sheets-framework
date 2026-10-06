@@ -22,18 +22,18 @@ export class FloorTabColumnCreator<
     return new SpreadsheetNamed(this.spreadsheetNamedProps);
   }
   get table(): TableNamed<TN> {
-    return this.ss.table(this.sheetName);
+    return this.ss.table(this.tableName);
   }
   hasFloorTable(): boolean {
-    const sheetGid = getSheetTraitByName(this.sheetName, "sheetGid");
+    const sheetGid = getSheetTraitByName(this.tableName, "sheetGid");
     if (!this.ss.raw.gidIsActive(sheetGid)) return false;
     return this.table.raw.hasOneTable();
   }
   assertMissingAreRecreatable(): void {
     this._assertTableMenuSpaceIsFirst();
-    const recreatable = recreatableColumns()[this.sheetName];
+    const recreatable = recreatableColumns()[this.tableName];
     this._missingColumns().forEach((floorColumn) => {
-      const columnName = columnNameByHeader(this.sheetName, floorColumn.header);
+      const columnName = columnNameByHeader(this.tableName, floorColumn.header);
       if (recreatable.includes(columnName)) return;
       throw new Error(
         `${floorColumnLabel(floorColumn.header)} is missing from ${this.table.raw.title}, and recreating it empty would lose what it held. Undo the delete, or insert a column headed "${floorColumn.header}" in its Table and fill it.`,
@@ -42,7 +42,7 @@ export class FloorTabColumnCreator<
   }
   // Putting it back first would need a mid-Table insert, and column inserts land only at the Table end.
   private _assertTableMenuSpaceIsFirst(): void {
-    if (this.sheetName !== "spreadsheetConfig") return;
+    if (this.tableName !== "spreadsheetConfig") return;
     const meta = this.table.raw.meta;
     const header = getColumnTraitByName(
       "spreadsheetConfig",
@@ -77,7 +77,7 @@ export class FloorTabColumnCreator<
   }
   private _missingColumns(): FloorColumnRestore[] {
     const meta = this.table.raw.meta;
-    return floorColumnsToRestore(this.sheetName).filter(
+    return floorColumnsToRestore(this.tableName).filter(
       (floorColumn) => liveColIndex(meta, floorColumn) === undefined,
     );
   }

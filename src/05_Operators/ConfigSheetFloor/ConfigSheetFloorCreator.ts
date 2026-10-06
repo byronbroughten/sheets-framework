@@ -113,7 +113,7 @@ export class ConfigSheetFloorCreator extends SpreadsheetBaseNamed {
   ): FloorTabColumnCreator<FloorSheetName> {
     return new FloorTabColumnCreator({
       ...this.spreadsheetNamedProps,
-      sheetName,
+      tableName: sheetName,
     });
   }
 }

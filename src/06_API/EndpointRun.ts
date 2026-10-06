@@ -83,10 +83,10 @@ export class EndpointRun<
     return new SpreadsheetNamed(this.spreadsheetNamedProps);
   }
   get sheet(): TableNamed<TN> {
-    return this.ss.sheet(this.sheetName);
+    return this.ss.sheet(this.tableName);
   }
   get table(): TableNamed<TN> {
-    return this.ss.table(this.sheetName);
+    return this.ss.table(this.tableName);
   }
   run(isChecked: boolean): void {
     this._prepSelectorFetch();

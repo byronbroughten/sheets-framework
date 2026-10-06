@@ -6,7 +6,7 @@ export abstract class TableCommonIdentified extends TableBaseIdentified {
   get schema(): TableSchema {
     return TableSchema.fromSheetGid(this.sheetGid);
   }
-  get sheetName(): TableName {
+  get tableName(): TableName {
     return this.schema.sheetName;
   }
 }

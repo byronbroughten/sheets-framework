@@ -10,7 +10,7 @@ import type { ConfigSyncState, OperatorProps } from "./SpreadsheetBaseOperator";
 export interface SheetOperatorProps<
   TN extends TableNameSimple,
 > extends OperatorProps {
-  sheetName: TN;
+  tableName: TN;
 }
 
 export class GenericTableOperator<
@@ -31,10 +31,10 @@ export class GenericTableOperator<
     return new SpreadsheetNamed(this.spreadsheetNamedProps);
   }
   get table(): TableNamed<TN> {
-    return this.ss.table(this.sheetName);
+    return this.ss.table(this.tableName);
   }
   get schema(): TableSchema<TN> {
-    return TableSchema.fromSheetName(this.sheetName);
+    return TableSchema.fromSheetName(this.tableName);
   }
   column<CN extends ColumnName<TN>>(columnName: CN): ColumnNamed<TN, CN> {
     return this.table.column(columnName);

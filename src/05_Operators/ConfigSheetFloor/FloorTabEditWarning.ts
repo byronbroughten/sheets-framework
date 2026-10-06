@@ -51,19 +51,19 @@ export class FloorTabEditWarning<
     return new SpreadsheetNamed(this.spreadsheetNamedProps);
   }
   get table(): TableNamed<TN> {
-    return this.ss.table(this.sheetName);
+    return this.ss.table(this.tableName);
   }
   // Before the floor's fetch, so these ride it: a drifted column ID leaves only the Table header to find them by.
   gatherIdentityColumns(): number[] | undefined {
-    const rule = floorTabRules()[this.sheetName].selfDescribingRow;
+    const rule = floorTabRules()[this.tableName].selfDescribingRow;
     if (rule === undefined) return undefined;
-    const sheetGid = getSheetTraitByName(this.sheetName, "sheetGid");
+    const sheetGid = getSheetTraitByName(this.tableName, "sheetGid");
     if (!this.ss.raw.gidIsActive(sheetGid)) return undefined;
     const sheet = this.table;
     if (!sheet.raw.hasOneTable()) return undefined;
     const table = sheet.raw;
     const colIndexes = rule.identityColumns.flatMap((columnName) => {
-      const header = getColumnTraitByName(this.sheetName, columnName, "header");
+      const header = getColumnTraitByName(this.tableName, columnName, "header");
       const column = table.columnProperties.find(
         (colProps) => colProps.columnName === header,
       );
@@ -77,7 +77,7 @@ export class FloorTabEditWarning<
   }
   declaration(identityColIndexes: number[] | undefined): FloorDeclaration {
     return {
-      description: floorWarningDescription(this.sheetName),
+      description: floorWarningDescription(this.tableName),
       range: this.table.raw.wholeSheetGridRange,
       unprotectedRanges: this._editableRanges(
         this._carvedRowIndexesByColIndex(identityColIndexes),
@@ -98,7 +98,7 @@ export class FloorTabEditWarning<
   private _carvedRowIndexesByColIndex(
     identityColIndexes: number[] | undefined,
   ): Map<number, number[]> {
-    const rule = floorTabRules()[this.sheetName].selfDescribingRow;
+    const rule = floorTabRules()[this.tableName].selfDescribingRow;
     if (rule === undefined || identityColIndexes === undefined) {
       return new Map();
     }
@@ -121,9 +121,9 @@ export class FloorTabEditWarning<
   private _editableRanges(
     carvedRowIndexesByColIndex: ReadonlyMap<number, readonly number[]>,
   ): ProtectionGridRange[] {
-    const rules = floorTabRules()[this.sheetName];
+    const rules = floorTabRules()[this.tableName];
     const liveIndexes = this._liveColIndexes();
-    const editableDataColumns = getSheetColumnNames(this.sheetName).filter(
+    const editableDataColumns = getSheetColumnNames(this.tableName).filter(
       (columnName) => !rules.excludedDataColumns.includes(columnName),
     );
     const sheet = this.table;
@@ -162,10 +162,10 @@ export class FloorTabEditWarning<
   private _liveColIndexes(): Map<ColumnName<TN>, number> {
     const indexes = new Map<ColumnName<TN>, number>();
     const meta = this.table.raw.meta;
-    getSheetColumnNames(this.sheetName).forEach((columnName) => {
+    getSheetColumnNames(this.tableName).forEach((columnName) => {
       const colIndex = liveColIndex(meta, {
-        columnId: getColumnTraitByName(this.sheetName, columnName, "columnId"),
-        header: getColumnTraitByName(this.sheetName, columnName, "header"),
+        columnId: getColumnTraitByName(this.tableName, columnName, "columnId"),
+        header: getColumnTraitByName(this.tableName, columnName, "header"),
       });
       if (colIndex !== undefined) indexes.set(columnName, colIndex);
     });

@@ -49,7 +49,7 @@ function seedSelectedColumn(selectCells: readonly FakeCell[]) {
 function selectedProps(): ColumnNamedProps<"runItem", "selected"> {
   return {
     ...SpreadsheetNamed.initSpreadsheetNamedProps(),
-    sheetName: "runItem",
+    tableName: "runItem",
     columnName: "selected",
   };
 }
@@ -121,18 +121,18 @@ describe("CheckboxColumnOperator, column constraint", () => {
   it("accepts a declared non-formula checkbox column and rejects anything else", () => {
     const checkbox = new CheckboxColumnOperator({
       ...SpreadsheetNamed.initSpreadsheetNamedProps(),
-      sheetName: "runItem",
+      tableName: "runItem",
       columnName: "selected",
     });
     const text = new CheckboxColumnOperator({
       ...SpreadsheetNamed.initSpreadsheetNamedProps(),
-      sheetName: "runItem",
+      tableName: "runItem",
       // @ts-expect-error a string column is not a checkbox column
       columnName: "result",
     });
     const sampled = new CheckboxColumnOperator({
       ...SpreadsheetNamed.initSpreadsheetNamedProps(),
-      sheetName: "valueTypes",
+      tableName: "valueTypes",
       // @ts-expect-error an undeclared column that merely holds a boolean is not one either
       columnName: "sampledBoolean",
     });
