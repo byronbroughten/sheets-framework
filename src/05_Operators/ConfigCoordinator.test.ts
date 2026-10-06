@@ -180,6 +180,7 @@ function headerOnlyDraftSheet(
   return {
     ...sheet,
     table: {
+      name: draftTitle,
       endRowIndex: table === "header-only" ? headerOnlyTableEndRowIndex : 5,
     },
   };
@@ -188,6 +189,7 @@ function headerOnlyDraftSheet(
 function seedFixture(
   options: {
     testColumnId?: string;
+    testTableId?: string;
     fillRowIdsRunStatusColumnId?: string;
     spreadsheetConfigTableEndRowIndex?: number;
     spreadsheetConfigExtraRows?: Record<
@@ -300,7 +302,11 @@ function seedFixture(
           3: ["Some Header"],
           4: [],
         }),
-        table: { endRowIndex: 5 },
+        table: {
+          tableId: options.testTableId ?? "item",
+          name: "Item",
+          endRowIndex: 5,
+        },
       },
       options.valueConfigSheet ?? floorValueConfigTab(),
       ...(options.extraSheets ?? []),
@@ -704,7 +710,7 @@ describe("ConfigCoordinator.generateConfigFiles", () => {
         ConfigCoordinator.init().generateConfigFiles("../makeConfigs")
           .idPrefixReport,
       ).toBe(
-        'Sheet "Item" sampled ID prefix "zzz" differs from last generated "itm".',
+        'Table "Item" sampled ID prefix "zzz" differs from last generated "itm".',
       );
     });
   });
@@ -996,7 +1002,7 @@ describe("ConfigCoordinator.generateConfigFiles ID prefix", () => {
         3: headers,
         4: [],
       }),
-      table: { endRowIndex: 5 },
+      table: { name: options.title, endRowIndex: 5 },
     };
   }
 
@@ -1141,15 +1147,46 @@ describe("ConfigCoordinator.generateConfigFiles ID prefix", () => {
     ).toThrow(/Widget.*Gizmo.*"wdg"/);
   });
 
-  it("reports a sampled prefix that differs from the last generated sheet configs without failing", () => {
+  it("reports a sampled prefix that differs from the last generated table configs without failing", () => {
     seedFixture({ testColumnId: "c:zzz:xyz123" });
 
     const parsed =
       ConfigCoordinator.init().generateConfigFiles("../makeConfigs");
     expect(parsed.idPrefixReport).toBe(
-      'Sheet "Item" sampled ID prefix "zzz" differs from last generated "itm".',
+      'Table "Item" sampled ID prefix "zzz" differs from last generated "itm".',
     );
     expect(parsed.sheetConfigs).toContain('"idPrefix": "zzz"');
+  });
+
+  it("fails when two Tables' names give the same key, naming both", () => {
+    seedFixture({
+      extraSheets: [
+        {
+          ...letApiAccessSheet({ sheetId: widgetGid, title: "Widget" }),
+          table: { name: "item", endRowIndex: 5 },
+        },
+      ],
+      extraSheetConfigDataRows: {
+        5: [widgetGid, "Widget", true, "wdg"],
+      },
+      sheetConfigTableEndRowIndex: 6,
+    });
+
+    expect(() =>
+      ConfigCoordinator.init().generateConfigFiles("../makeConfigs"),
+    ).toThrow('Tables "Item" and "item" both give the key "item".');
+  });
+
+  it("compares a Table with the previous entry by tableId, not by sheet GID", () => {
+    seedFixture({
+      testColumnId: "c:zzz:xyz123",
+      testTableId: "item-recreated",
+    });
+
+    expect(
+      ConfigCoordinator.init().generateConfigFiles("../makeConfigs")
+        .idPrefixReport,
+    ).toBeUndefined();
   });
 
   it("gives a tab without Let api access no prefix and no column IDs", () => {

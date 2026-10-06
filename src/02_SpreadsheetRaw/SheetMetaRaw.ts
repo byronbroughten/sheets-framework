@@ -70,6 +70,9 @@ export class SheetMetaRaw extends TableCommonRaw {
     });
     return columnIdsByPrefix;
   }
+  columnIdByHeader(header: string): string {
+    return this.columnIdAt(this.tableHeaderRow.colIndexOfValue(header));
+  }
   columnIdAt(colIndex: number): string {
     if (this.isTableColIndex(colIndex)) {
       return this._columnIdInTable(colIndex);
@@ -125,8 +128,7 @@ export class SheetMetaRaw extends TableCommonRaw {
   }
   // Past the inserts already queued, since each lands at the Table end as it stands then.
   insertColumnAtEnd(uniformCells: TableEndColumnUniformCells): number {
-    const colIndex =
-      this.columnCount + this.writes.insertTableEndColumnCount;
+    const colIndex = this.columnCount + this.writes.insertTableEndColumnCount;
     this.queueTableWrite({ action: "insertTableEndColumn" });
     this.column(colIndex).initUniformCells(uniformCells);
     return colIndex;

@@ -12,7 +12,8 @@ import {
   type SheetConfigsBase,
   type TableConfigsBase,
 } from "../01_SpreadsheetSchema/makeConfigs";
-import { sheetConfigsByGid } from "../01_SpreadsheetSchema/sheetConfigsTypes";
+import { tableConfigsByTableId } from "../01_SpreadsheetSchema/tableConfigsTypes";
+import type { SheetMetaRaw } from "../02_SpreadsheetRaw/SheetMetaRaw";
 import { Val } from "../utils/Val";
 import { oneLinePerEntryFileSource } from "./configFileSource";
 import { GenericTableOperator } from "./GenericTableOperator";
@@ -21,6 +22,11 @@ import {
   type OperatorProps,
   SpreadsheetBaseOperator,
 } from "./SpreadsheetBaseOperator";
+
+export interface ColumnReference {
+  tableId: string;
+  columnId: string;
+}
 
 export class SheetConfigOperator extends GenericTableOperator<"sheetConfig"> {
   constructor(props: OperatorProps) {
@@ -150,7 +156,7 @@ export class SheetConfigOperator extends GenericTableOperator<"sheetConfig"> {
     this.sheetGidsApiAccesses().forEach((sheetGid) => {
       if (assigned.has(sheetGid)) return;
       const generated = idPrefixes.fromTitle(
-        this.ss.raw.sheetMeta(sheetGid).primary.title,
+        this.ss.raw.sheetMeta(sheetGid).primary.name,
         prefixesInUse,
       );
       prefixesInUse.add(generated);
@@ -161,12 +167,13 @@ export class SheetConfigOperator extends GenericTableOperator<"sheetConfig"> {
   idPrefixChangeReport(): string | undefined {
     const changes: string[] = [];
     this.sheetGidsApiAccesses().forEach((sheetGid) => {
-      const previous = sheetConfigsByGid().get(sheetGid);
+      const meta = this.ss.raw.sheetMeta(sheetGid);
+      const previous = tableConfigsByTableId().get(meta.primary.tableId);
       if (previous === undefined) return;
-      const sampled = this.ss.raw.sheetMeta(sheetGid).activeIdPrefix();
+      const sampled = meta.activeIdPrefix();
       if (sampled === undefined || sampled === previous.idPrefix) return;
       changes.push(
-        `Sheet "${this.ss.raw.sheetMeta(sheetGid).primary.title}" sampled ID prefix "${sampled}" differs from last generated "${previous.idPrefix}".`,
+        `Table "${meta.primary.name}" sampled ID prefix "${sampled}" differs from last generated "${previous.idPrefix}".`,
       );
     });
     if (changes.length === 0) return undefined;
@@ -206,7 +213,14 @@ export class SheetConfigOperator extends GenericTableOperator<"sheetConfig"> {
       const { sheetGid, idPrefix, hasIdColumn, hasNameColumn } = sheetConfig;
       const table = this.ss.raw.sheetMeta(sheetGid).primary;
       const { headerRowIndex, startColIndex } = table.origin;
-      tableConfigs[this.schema.titleToName(table.name)] = {
+      const tableKey = this.schema.titleToName(table.name);
+      const existing = tableConfigs[tableKey];
+      if (existing !== undefined) {
+        throw new Error(
+          `Tables "${existing.tableName}" and "${table.name}" both give the key "${tableKey}".`,
+        );
+      }
+      tableConfigs[tableKey] = {
         tableId: table.tableId,
         tableName: table.name,
         sheetGid,
@@ -218,6 +232,36 @@ export class SheetConfigOperator extends GenericTableOperator<"sheetConfig"> {
       };
     });
     return tableConfigs;
+  }
+  parseColumnReference(reference: string): ColumnReference {
+    const match = reference.match(/^(.+)\[(.+)\]$/);
+    if (match === null) {
+      throw new Error(
+        `${columnReferenceLabel(reference)} is not of the form Table[Header].`,
+      );
+    }
+    const tableName = Val.assert(match[1], "Table name match");
+    const header = Val.assert(match[2], "header match");
+    const meta = this._managedTableMeta(tableName, reference);
+    const columnId = meta.columnIdByHeader(header);
+    if (columnId === "") {
+      throw new Error(
+        `${columnReferenceLabel(reference)} names a column with no column ID.`,
+      );
+    }
+    return { tableId: meta.primary.tableId, columnId };
+  }
+  private _managedTableMeta(
+    tableName: string,
+    reference: string,
+  ): SheetMetaRaw {
+    for (const sheetGid of this.sheetGidsApiAccesses()) {
+      const meta = this.ss.raw.sheetMeta(sheetGid);
+      if (meta.primary.name === tableName) return meta;
+    }
+    throw new Error(
+      `${columnReferenceLabel(reference)} names no managed Table "${tableName}".`,
+    );
   }
   sheetNamesByGid(): Map<number, string> {
     const map = new Map<number, string>();
@@ -246,4 +290,8 @@ export class SheetConfigOperator extends GenericTableOperator<"sheetConfig"> {
       ``,
     ].join("\n");
   }
+}
+
+function columnReferenceLabel(reference: string): string {
+  return `Column reference "${reference}"`;
 }

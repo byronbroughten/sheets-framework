@@ -48,6 +48,12 @@ function syncSheetConfigOperator(operator: SheetConfigOperator): void {
   operator.syncToSpreadsheet();
 }
 
+function syncedOperator(): SheetConfigOperator {
+  const operator = SheetConfigOperator.init();
+  syncSheetConfigOperator(operator);
+  return operator;
+}
+
 describe("SheetConfigOperator.newSheetConfigs / toFileSource", () => {
   it("carries forward an existing sheet and appends a brand-new one, excluded until manually enabled", () => {
     stubSheetsService({
@@ -67,14 +73,14 @@ describe("SheetConfigOperator.newSheetConfigs / toFileSource", () => {
           sheetId: widgetGid,
           title: "Widget",
           rows: buildGridRows({ 3: [] }),
-          table: { endRowIndex: 5 },
+          table: { name: "Widget", endRowIndex: 5 },
         },
         // Present in the spreadsheet but with NO existing Sheet Config row.
         {
           sheetId: newSheetGid,
           title: "Brand New Sheet",
           rows: buildGridRows({ 3: [] }),
-          table: { endRowIndex: 5 },
+          table: { name: "Brand New Sheet", endRowIndex: 5 },
         },
       ],
     });
@@ -114,7 +120,7 @@ describe("SheetConfigOperator.newSheetConfigs / toFileSource", () => {
           sheetId: newSheetGid,
           title: "Brand New Sheet",
           rows: buildGridRows({ 3: [] }),
-          table: { endRowIndex: 5 },
+          table: { name: "Brand New Sheet", endRowIndex: 5 },
         },
       ],
     });
@@ -148,7 +154,7 @@ describe("SheetConfigOperator.newSheetConfigs / toFileSource", () => {
           sheetId: widgetGid,
           title: "Widget",
           rows: buildGridRows({ 3: [] }),
-          table: { endRowIndex: 5 },
+          table: { name: "Widget", endRowIndex: 5 },
         },
       ],
     });
@@ -190,7 +196,7 @@ describe("SheetConfigOperator.newSheetConfigs / toFileSource", () => {
     });
   });
 
-  it("assigns an ID prefix from the tab title when a Let api access sheet has no column IDs", () => {
+  it("assigns an ID prefix from the Table name when a Let api access sheet has no column IDs", () => {
     stubSheetsService({
       sheets: [
         {
@@ -206,7 +212,7 @@ describe("SheetConfigOperator.newSheetConfigs / toFileSource", () => {
           sheetId: widgetGid,
           title: "Widget",
           rows: buildGridRows({ 3: [] }),
-          table: { endRowIndex: 5 },
+          table: { name: "Widget", endRowIndex: 5 },
         },
       ],
     });
@@ -238,7 +244,7 @@ describe("SheetConfigOperator.newSheetConfigs / toFileSource", () => {
           sheetId: widgetGid,
           title: "Widget",
           rows: buildGridRows({ 3: ["Name"] }),
-          table: { endRowIndex: 5 },
+          table: { name: "Widget", endRowIndex: 5 },
         },
       ],
     });
@@ -294,7 +300,7 @@ describe("SheetConfigOperator.newSheetConfigs / toFileSource", () => {
           sheetId: widgetGid,
           title: "Widget",
           rows: buildGridRows({ 3: ["ID", "Name"] }),
-          table: { endRowIndex: 5 },
+          table: { name: "Widget", endRowIndex: 5 },
         },
       ],
     });
@@ -450,6 +456,141 @@ describe("SheetConfigOperator.newTableConfigs / toTableConfigsFileSource", () =>
     expect(source).toContain("export const tableConfigs = makeTableConfigs({");
     expect(source).toContain(
       '"widgetOrders": { "tableId": "widget-table", "tableName": "Widget orders", "sheetGid": 999001, "idPrefix": "wdg"',
+    );
+  });
+});
+
+describe("SheetConfigOperator Table keys and prefixes", () => {
+  interface TableFixture {
+    name: string;
+    columnIds: string[];
+  }
+  function stubTwoTables({
+    widget,
+    gadget,
+  }: {
+    widget: TableFixture;
+    gadget: TableFixture;
+  }): void {
+    stubSheetsService({
+      sheets: [
+        {
+          sheetId: sheetConfigGid,
+          title: "Sheet Config",
+          rows: buildGridRows({
+            0: sheetConfigColumnIdRow,
+            4: [widgetGid, "Widget", true],
+            5: [gadgetGid, "Gadget", true],
+          }),
+          table: { name: "Sheet Config", endRowIndex: 6 },
+        },
+        {
+          sheetId: widgetGid,
+          title: "Widget",
+          rows: buildGridRows({ 0: widget.columnIds, 3: ["ID", "Name"] }),
+          table: { tableId: "widget-table", name: widget.name, endRowIndex: 5 },
+        },
+        {
+          sheetId: gadgetGid,
+          title: "Gadget",
+          rows: buildGridRows({ 0: gadget.columnIds, 3: ["ID", "Name"] }),
+          table: { tableId: "gadget-table", name: gadget.name, endRowIndex: 5 },
+        },
+      ],
+    });
+  }
+
+  it("fails when two Tables' names give the same key, naming both", () => {
+    stubTwoTables({
+      widget: { name: "Widget orders", columnIds: ["c:wdg:aaa"] },
+      gadget: { name: "Widget Orders", columnIds: ["c:gdg:aaa"] },
+    });
+
+    expect(() => syncedOperator().newTableConfigs()).toThrow(
+      'Tables "Widget orders" and "Widget Orders" both give the key "widgetOrders".',
+    );
+  });
+
+  it("keeps a Table's prefix read from its column ID row over one its name would give", () => {
+    stubTwoTables({
+      widget: { name: "Widget orders", columnIds: ["c:zzz:aaa"] },
+      gadget: { name: "Gadget", columnIds: ["c:gdg:aaa"] },
+    });
+
+    expect(syncedOperator().newTableConfigs().widgetOrders?.idPrefix).toBe(
+      "zzz",
+    );
+  });
+
+  it("generates a prefix from the Table's name, not its tab title, when it holds no IDs", () => {
+    stubTwoTables({
+      widget: { name: "Gizmo", columnIds: [] },
+      gadget: { name: "Gadget", columnIds: ["c:gdg:aaa"] },
+    });
+
+    expect(syncedOperator().newTableConfigs().gizmo?.idPrefix).toBe("gzm");
+  });
+
+  it("keeps a generated prefix unique against one read from another Table", () => {
+    stubTwoTables({
+      widget: { name: "Gadgets", columnIds: [] },
+      gadget: { name: "Gadget", columnIds: ["c:gdg:aaa"] },
+    });
+
+    const tableConfigs = syncedOperator().newTableConfigs();
+    expect(tableConfigs.gadget?.idPrefix).toBe("gdg");
+    expect(tableConfigs.gadgets?.idPrefix).toBe("gdgt");
+  });
+});
+
+describe("SheetConfigOperator.parseColumnReference", () => {
+  beforeEach(() => {
+    stubSheetsService({
+      sheets: [
+        {
+          sheetId: sheetConfigGid,
+          title: "Sheet Config",
+          rows: buildGridRows({
+            0: sheetConfigColumnIdRow,
+            4: [widgetGid, "Rents", true],
+          }),
+          table: { name: "Sheet Config", endRowIndex: 5 },
+        },
+        {
+          sheetId: widgetGid,
+          title: "Rents",
+          rows: buildGridRows({
+            0: ["c:rnt:aaa", "c:rnt:bbb"],
+            3: ["ID", "Tenant"],
+          }),
+          table: { tableId: "rents-table", name: "Rents", endRowIndex: 5 },
+        },
+      ],
+    });
+  });
+
+  it("parses Rents[Tenant] into the live Table's tableId and the header's column ID", () => {
+    expect(syncedOperator().parseColumnReference("Rents[Tenant]")).toEqual({
+      tableId: "rents-table",
+      columnId: "c:rnt:bbb",
+    });
+  });
+
+  it("fails on a Table name no managed Table has", () => {
+    expect(() =>
+      syncedOperator().parseColumnReference("Leases[Tenant]"),
+    ).toThrow('names no managed Table "Leases"');
+  });
+
+  it("fails on a header the Table doesn't have", () => {
+    expect(() =>
+      syncedOperator().parseColumnReference("Rents[Landlord]"),
+    ).toThrow(/Landlord/);
+  });
+
+  it("fails on a reference not of the form Table[Header]", () => {
+    expect(() => syncedOperator().parseColumnReference("Rents")).toThrow(
+      "not of the form Table[Header]",
     );
   });
 });
