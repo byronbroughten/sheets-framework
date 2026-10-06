@@ -105,7 +105,7 @@ function sheetState(fixture: FakeSheetProperties): FakeSheetState {
   };
 }
 
-function defaultTableId(sheetId: number, tableIndex: number): string {
+export function defaultTableId(sheetId: number, tableIndex: number): string {
   return tableIndex === 0
     ? `fake-table-${sheetId}`
     : `fake-table-${sheetId}-${tableIndex}`;

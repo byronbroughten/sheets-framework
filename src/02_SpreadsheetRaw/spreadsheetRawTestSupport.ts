@@ -7,6 +7,7 @@ import {
   buildGridRows,
   type FakeRichCellValue,
   type FakeSheetProperties,
+  fakeTableId,
   type stubSheetsService,
 } from "../testSupport/fakeSheetsService";
 import { SpreadsheetRaw } from "./SpreadsheetRaw";
@@ -15,6 +16,8 @@ export const lightGreen = { red: 0.851, green: 0.918, blue: 0.827 };
 
 export const itemGid = getSheetTraitByName("item", "sheetGid");
 export const logGid = getSheetTraitByName("log", "sheetGid");
+export const itemTableId = fakeTableId(itemGid, 0);
+export const logTableId = fakeTableId(logGid, 0);
 // Sheet rows and columns, for fixtures and grid reads; Raw itself counts from the Table.
 export const expectedOrigin = TableOrigin.expected();
 export const tableHeaderRowIndex: number = expectedOrigin.headerRowIndex;
@@ -24,6 +27,7 @@ export const colIdRowIndex: number = expectedOrigin.sheetRowIndex(
 export const startTableColIndex: number = expectedOrigin.startColIndex;
 export const topDataRowIndex = tableHeaderRowIndex + 1;
 export const scratchGid = 999999;
+export const scratchTableId = fakeTableId(scratchGid, 0);
 export const tableEndRowIndex = tableHeaderRowIndex + 3;
 export const gridRanges = {
   columnOneData: {

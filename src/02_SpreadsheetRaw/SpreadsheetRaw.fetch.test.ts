@@ -19,6 +19,7 @@ import {
   placedTableSheet,
   recordedGridRanges,
   scratchGid,
+  scratchTableId,
   startTableColIndex,
   tableEndRowIndex,
   tableHeaderRowIndex,
@@ -583,7 +584,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheet(scratchGid).topRow.gatherFetchFull();
+    raw.table(scratchTableId).topRow.gatherFetchFull();
     raw.fetchAllGathered();
 
     expect(recordedGridRanges(getByDataFilterCalls)).toEqual([
@@ -695,8 +696,8 @@ describe("SpreadsheetRaw over a Table placed lower on its sheet", () => {
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
     raw.sheetMeta(scratchGid).gatherFetchColumnIdsInit();
-    raw.sheet(scratchGid).row(0).gatherFetchFull();
-    raw.sheet(scratchGid).row(1).gatherFetchFull();
+    raw.table(scratchTableId).row(0).gatherFetchFull();
+    raw.table(scratchTableId).row(1).gatherFetchFull();
     raw.fetchAllGathered();
     return raw;
   }
@@ -704,7 +705,7 @@ describe("SpreadsheetRaw over a Table placed lower on its sheet", () => {
   it("reads body row 0 from the row just below the header, and column 0 from the Table's first column", () => {
     stubLowerTable();
     const raw = fetchedLowerRaw();
-    const sheet = raw.sheet(scratchGid);
+    const sheet = raw.table(scratchTableId);
 
     expect(sheet.rowIndexesFull).toEqual([0, 1]);
     expect(sheet.row(0).valueOrEmpty(0)).toBe("r:low:1");
@@ -721,7 +722,7 @@ describe("SpreadsheetRaw over a Table placed lower on its sheet", () => {
   it("updates and appends at the Table's grid rows, leaving the loose cell beside it alone", () => {
     const { grid } = stubLowerTable();
     const raw = fetchedLowerRaw();
-    const sheet = raw.sheet(scratchGid);
+    const sheet = raw.table(scratchTableId);
 
     sheet.row(1).cell(1).updateValue("changed");
     sheet.appendDataRow().cell(0).updateValue("r:low:3");
@@ -752,7 +753,7 @@ describe("SpreadsheetRaw over a Table placed lower on its sheet", () => {
     stubLowerTable();
     const raw = fetchedLowerRaw();
 
-    expect(() => raw.sheet(scratchGid).row(5).valueOrEmpty(0)).toThrowError(
+    expect(() => raw.table(scratchTableId).row(5).valueOrEmpty(0)).toThrowError(
       "No value is set in row 16 for column index 0.",
     );
   });

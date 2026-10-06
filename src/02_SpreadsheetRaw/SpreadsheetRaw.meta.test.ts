@@ -18,6 +18,7 @@ import {
   fetchedRaw,
   gridRanges,
   itemGid,
+  itemTableId,
   lightGreen,
   ownColumnId,
   startTableColIndex,
@@ -54,7 +55,7 @@ describe("ColumnMetaRaw active facts", () => {
   function fetchedItemColumnMeta(colIndex: number): ColumnMetaRaw {
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheet(itemGid).topRow.gatherFetchFull();
+    raw.table(itemTableId).topRow.gatherFetchFull();
     raw.fetchAllGathered(true);
     return raw.sheetMeta(itemGid).column(colIndex);
   }
@@ -101,7 +102,7 @@ describe("ColumnMetaRaw active facts", () => {
     const raw = SpreadsheetRaw.init();
     raw.sheet(itemGid).gatherFetchProperties();
     raw.fetchAllGathered();
-    raw.sheet(itemGid).column(1).gatherFetchFull();
+    raw.table(itemTableId).column(1).gatherFetchFull();
     raw.fetchAllGathered(true);
 
     expectBlankFacts(raw.sheetMeta(itemGid).column(1));
@@ -113,7 +114,7 @@ describe("ColumnMetaRaw active facts", () => {
     const raw = SpreadsheetRaw.init();
     raw.sheet(itemGid).gatherFetchProperties();
     raw.fetchAllGathered();
-    const cell = raw.sheet(itemGid).row(0).cell(0);
+    const cell = raw.table(itemTableId).row(0).cell(0);
     cell.gatherFetchRange();
     raw.fetchAllGathered();
 
@@ -164,7 +165,7 @@ describe("ColumnMetaRaw active facts", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheet(itemGid).topRow.gatherFetchFull();
+    raw.table(itemTableId).topRow.gatherFetchFull();
     raw.fetchAllGathered(true);
 
     expect(raw.sheetMeta(itemGid).column(0).activeTopValue).toBe(100000);

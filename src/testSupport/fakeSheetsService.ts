@@ -8,6 +8,7 @@ import { cellReplays } from "./fakeSheetsService/cellReplays";
 import { dimensionReplays } from "./fakeSheetsService/dimensionReplays";
 import { FakeGoogleRefusal } from "./fakeSheetsService/FakeGoogleRefusal";
 import {
+  defaultTableId,
   type FakeSheetState,
   type FakeSpreadsheet,
   fakeSpreadsheet,
@@ -27,6 +28,7 @@ type GoogleCellData = GoogleAppsScript.Sheets.Schema.CellData;
 type Request = GoogleAppsScript.Sheets.Schema.Request;
 type Response = GoogleAppsScript.Sheets.Schema.Response;
 
+export { defaultTableId as fakeTableId };
 export const fakeSpreadsheetId = "fake-spreadsheet";
 export const fakeTimeZone = "America/Chicago";
 
