@@ -18,6 +18,9 @@ export class RowNamed<TN extends TableName> extends RowBaseNamed<TN> {
   get sheet(): TableNamed<TN> {
     return new TableNamed(this.sheetNamedProps);
   }
+  get table(): TableNamed<TN> {
+    return new TableNamed(this.sheetNamedProps);
+  }
   get identified(): RowIdentified {
     return new RowIdentified({
       ...this.rowNamedProps,

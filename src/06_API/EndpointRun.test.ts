@@ -4,6 +4,7 @@ import { getColumnTraitByName } from "../01_SpreadsheetSchema/columnConfigsTypes
 import { getSheetTraitByName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
 import { SpreadsheetBaseNamed } from "../04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
 import type { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
+import { TableNamed } from "../04_SpreadsheetNamed/TableNamed";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {
   buildGridRows,
@@ -12,6 +13,7 @@ import {
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
 import type { FakeGridView } from "../testSupport/fakeSheetsService/gridView";
+import { assertType, type IsExactly } from "../testSupport/typeAssertions";
 import { EndpointRun } from "./EndpointRun";
 import type { ActionReturn, Endpoint, EndpointsAll } from "./Endpoints";
 import { feedbackColumnIdsOf } from "./feedbackColumnIds";
@@ -275,6 +277,26 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
+});
+
+describe("EndpointRun navigation", () => {
+  it("reaches the same Table through table as through sheet", () => {
+    stubRunItemSheet();
+    const endpoint = reportingEndpoint(noOp);
+    const run = new EndpointRun({
+      ...SpreadsheetBaseNamed.initSpreadsheetNamedProps(
+        feedbackColumnIdsOf({ runItem_startTime: endpoint }),
+      ),
+      sheetName: "runItem",
+      entryColumnName: "startTime",
+      endpoint,
+    });
+
+    assertType<IsExactly<typeof run.table, TableNamed<"runItem">>>(true);
+
+    expect(run.table).toBeInstanceOf(TableNamed);
+    expect(run.table).toEqual(run.sheet);
+  });
 });
 
 describe("EndpointRun.run, an endpoint with a selector", () => {

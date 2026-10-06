@@ -34,6 +34,9 @@ export class ColumnNamed<
   get sheet(): TableNamed<TN> {
     return new TableNamed(this.sheetNamedProps);
   }
+  get table(): TableNamed<TN> {
+    return new TableNamed(this.sheetNamedProps);
+  }
   get meta(): ColumnMetaNamed<TN, CN> {
     return new ColumnMetaNamed(this.columnNamedProps);
   }

@@ -14,6 +14,9 @@ export class RowIdentified extends RowCommonIdentified {
   get sheet(): TableIdentified {
     return new TableIdentified(this.tableIdentifiedProps);
   }
+  get table(): TableIdentified {
+    return new TableIdentified(this.tableIdentifiedProps);
+  }
   get raw(): RowRaw {
     return new RowRaw(this.rowIdentifiedProps);
   }

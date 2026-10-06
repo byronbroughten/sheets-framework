@@ -32,6 +32,9 @@ export class ColumnIdentified<
   get sheet(): TableIdentified {
     return new TableIdentified(this.tableIdentifiedProps);
   }
+  get table(): TableIdentified {
+    return new TableIdentified(this.tableIdentifiedProps);
+  }
   get meta(): ColumnMetaIdentified<VN> {
     return new ColumnMetaIdentified(this.columnIdentifiedProps);
   }

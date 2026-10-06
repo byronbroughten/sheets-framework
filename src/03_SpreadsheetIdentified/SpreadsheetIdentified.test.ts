@@ -62,6 +62,28 @@ describe("SpreadsheetIdentified navigation", () => {
     expect(columnMeta.primary).toBeInstanceOf(ColumnIdentified);
     expect(sheet.row(0)).toBeInstanceOf(RowIdentified);
   });
+
+  it("reaches the same Table through each table getter as through its sheet one", () => {
+    stubSheetsService();
+    const ssi = new SpreadsheetIdentified(
+      SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
+    );
+    const sheet = ssi.sheet(itemGid);
+    const row = sheet.row(0);
+    const column = sheet.column(itemIdColumnId);
+    const uniformRow = ssi.sheetMeta(itemGid).uniformRow("tableHeader");
+
+    assertType<IsExactly<typeof row.table, TableIdentified>>(true);
+    assertType<IsExactly<typeof column.table, TableIdentified>>(true);
+    assertType<IsExactly<typeof uniformRow.table, TableIdentified>>(true);
+
+    expect(row.table).toBeInstanceOf(TableIdentified);
+    expect(column.table).toBeInstanceOf(TableIdentified);
+    expect(uniformRow.table).toBeInstanceOf(TableIdentified);
+    expect(row.table).toEqual(row.sheet);
+    expect(column.table).toEqual(column.sheet);
+    expect(uniformRow.table).toEqual(uniformRow.sheet);
+  });
 });
 
 const valueTypesGid = getSheetTraitByName("valueTypes", "sheetGid");

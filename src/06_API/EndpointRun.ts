@@ -85,6 +85,9 @@ export class EndpointRun<
   get sheet(): TableNamed<TN> {
     return this.ss.sheet(this.sheetName);
   }
+  get table(): TableNamed<TN> {
+    return this.ss.table(this.sheetName);
+  }
   run(isChecked: boolean): void {
     this._prepSelectorFetch();
     this.ss.fetchAllPrepped();

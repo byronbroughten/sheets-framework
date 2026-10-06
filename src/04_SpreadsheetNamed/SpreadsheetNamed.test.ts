@@ -125,6 +125,34 @@ describe("SpreadsheetNamed navigation", () => {
     expect(columnMeta.primary).toBeInstanceOf(ColumnNamed);
     expect(sheet.row(0)).toBeInstanceOf(RowNamed);
   });
+
+  it("reaches the same Table through each table accessor as through its sheet one", () => {
+    stubSheetsService();
+    const ss = SpreadsheetNamed.init();
+    const table = ss.table("item");
+    const tables = ss.tables("item", "valueTypes");
+    const row = table.row(0);
+    const column = table.column("id");
+
+    assertType<IsExactly<typeof table, TableNamed<"item">>>(true);
+    assertType<
+      IsExactly<
+        typeof tables,
+        { item: TableNamed<"item">; valueTypes: TableNamed<"valueTypes"> }
+      >
+    >(true);
+    assertType<IsExactly<typeof row.table, TableNamed<"item">>>(true);
+    assertType<IsExactly<typeof column.table, TableNamed<"item">>>(true);
+
+    expect(table).toBeInstanceOf(TableNamed);
+    expect(tables.valueTypes).toBeInstanceOf(TableNamed);
+    expect(row.table).toBeInstanceOf(TableNamed);
+    expect(column.table).toBeInstanceOf(TableNamed);
+    expect(table).toEqual(ss.sheet("item"));
+    expect(tables).toEqual(ss.sheets("item", "valueTypes"));
+    expect(row.table).toEqual(row.sheet);
+    expect(column.table).toEqual(column.sheet);
+  });
 });
 
 describe("SpreadsheetNamed.fetch", () => {

@@ -32,6 +32,9 @@ export class UniformRowIdentified<
   get sheet(): TableIdentified {
     return new TableIdentified(this.tableIdentifiedProps);
   }
+  get table(): TableIdentified {
+    return new TableIdentified(this.tableIdentifiedProps);
+  }
   get raw(): UniformRowRaw<UN> {
     return new UniformRowRaw({
       ...this.rowIdentifiedProps,

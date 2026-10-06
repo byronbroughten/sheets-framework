@@ -63,6 +63,18 @@ export class SpreadsheetNamed extends SpreadsheetBaseNamed {
       return acc;
     }, {} as NamedSheets<TN>);
   }
+  table<TN extends TableName>(tableName: TN): TableNamed<TN> {
+    return new TableNamed({
+      sheetName: tableName,
+      ...this.spreadsheetNamedProps,
+    });
+  }
+  tables<TN extends TableName>(...tableNames: TN[]): NamedSheets<TN> {
+    return tableNames.reduce((acc, tableName) => {
+      acc[tableName] = this.table(tableName);
+      return acc;
+    }, {} as NamedSheets<TN>);
+  }
   get activeSheetNames(): TableName[] {
     return this.identified.activeSheets.map((sheet) => sheet.sheetName);
   }
