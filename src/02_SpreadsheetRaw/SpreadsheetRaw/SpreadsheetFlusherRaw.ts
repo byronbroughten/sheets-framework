@@ -49,7 +49,7 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
     // Row indexes only actually shift once the deletes have been sent, and a Table below the deleted rows shifts with them.
     sheetGidsWithRowDeletes.forEach((sheetGid) =>
       this.ss
-        .sheet(sheetGid)
+        .sheetMeta(sheetGid)
         .tableIds()
         .forEach((tableId) => this.ss.table(tableId).markRowIndexesStale()),
     );
@@ -57,10 +57,10 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
       this.ss.table(tableId).markRowIndexesStale(),
     );
     sheetGidsWithConditionalFormatMutations.forEach((sheetGid) =>
-      this.ss.sheet(sheetGid).markConditionalFormatIndexesStale(),
+      this.ss.sheetMeta(sheetGid).primary.markConditionalFormatIndexesStale(),
     );
     sheetGidsWithEditProtectionMutations.forEach((sheetGid) =>
-      this.ss.sheet(sheetGid).markEditProtectionsStale(),
+      this.ss.sheetMeta(sheetGid).primary.markEditProtectionsStale(),
     );
     if (hasFindReplace) this._invalidateFetchedCellState();
   }
@@ -122,7 +122,7 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
     );
     const tablesBeforeProperties = Array.from(
       this.sheetsStateRaw.keys(),
-      (sheetGid) => this.ss.sheet(sheetGid),
+      (sheetGid) => this.ss.sheetMeta(sheetGid).primary,
     ).filter((sheet) => !sheet.hasFetchedProperties);
     return [...knownTables, ...tablesBeforeProperties];
   }
@@ -220,8 +220,8 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
     if (operation.kind !== "insertRange") return refusal;
     const split = this._fetchTableSplitBy(operation);
     if (split === undefined) return refusal;
-    const growth = this.writeOperations.appendTableRows.find(
-      ({ operations }) => operations.includes(operation),
+    const growth = this.writeOperations.appendTableRows.find(({ operations }) =>
+      operations.includes(operation),
     );
     if (growth !== undefined) {
       const grown = this.ss.table(growth.tableId);

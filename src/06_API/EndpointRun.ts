@@ -131,18 +131,18 @@ export class EndpointRun<
   // No selector means every data row that holds data; a blank row is no record.
   private _selectedRowIndexes(): number[] {
     const { selector } = this.endpoint;
-    if (!selector) return this.sheet.rowIndexesFullWithData;
+    if (!selector) return this.table.rowIndexesFullWithData;
     return this._checkboxColumn(selector.column).rowIndexesChecked;
   }
   // The entry cell is a button unless the endpoint also runs on unticking.
   private _resetEntryCheckbox(): void {
     if (this.endpoint.runOnUncheck) return;
-    this.sheet.meta.column(this.entryColumnName).actionRowToDefault();
+    this.table.meta.column(this.entryColumnName).actionRowToDefault();
   }
   // Unselected rows go inactive, so every later read of active rows is the selection.
   private _pruneToSelection(selectedRowIndexes: number[]): void {
     if (!this.endpoint.selector) return;
-    this.sheet.raw.removeRowsExcept(...selectedRowIndexes);
+    this.table.raw.removeRowsExcept(...selectedRowIndexes);
   }
   // The flush is what puts the running state on the sheet before the work runs.
   private _onRunSetup(): void {
@@ -155,7 +155,7 @@ export class EndpointRun<
     if (selectedRowIndexes.length <= 1) return;
     throw new Error(
       // The sheet's own title, not its config name: the operator reads this cell.
-      `This endpoint runs on one row of "${this.sheet.raw.title}" at a time, but ${selectedRowIndexes.length} are selected.`,
+      `This endpoint runs on one row of "${this.table.raw.title}" at a time, but ${selectedRowIndexes.length} are selected.`,
     );
   }
   // Inside the run's `try`, so an action that throws has its clearing discarded too.
@@ -199,7 +199,7 @@ export class EndpointRun<
   ): void {
     if (!columnName) return;
     // Re-deriving the value type here would compose two mapped filters, at ~43k instantiations.
-    const column = this.sheet.columnIdentified(columnName);
+    const column = this.table.columnIdentified(columnName);
     if (this.endpoint.selector) {
       column.updateActiveCells(change);
     } else {
@@ -221,9 +221,9 @@ export class EndpointRun<
   }
   // A key outside the data rows is a reporting bug, and would write somewhere surprising.
   private _validateIsDataRow(rowIndex: number): void {
-    if (this.sheet.raw.rowIndexesFull.includes(rowIndex)) return;
+    if (this.table.raw.rowIndexesFull.includes(rowIndex)) return;
     throw new Error(
-      `This run cannot report into ${this.sheet.raw.rowLabel(rowIndex)}: it is not a data row of "${this.sheet.raw.title}".`,
+      `This run cannot report into ${this.table.raw.rowLabel(rowIndex)}: it is not a data row of "${this.table.raw.title}".`,
     );
   }
   private _updateFeedbackCell(
@@ -232,7 +232,7 @@ export class EndpointRun<
     change: CellChange<"string">,
   ): void {
     if (!columnName) return;
-    this.sheet.columnIdentified(columnName).cell(rowIndex).update(change);
+    this.table.columnIdentified(columnName).cell(rowIndex).update(change);
   }
   // Queued changes are shared by reference, so a half-finished run must be dropped before status is written.
   private _onRunError(error: unknown): void {

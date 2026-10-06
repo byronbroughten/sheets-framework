@@ -82,8 +82,7 @@ export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
     this.spreadsheetStateRaw.sheets.forEach((state, sheetGid) => {
       // Above the early return, so a range that arrived incidentally is still judged.
       const placement = this.tableValidator.tablePlacement(sheetGid);
-      state.tableBeforeProperties.fetchQueue =
-        emptyStateRaw.tableFetchQueue();
+      state.tableBeforeProperties.fetchQueue = emptyStateRaw.tableFetchQueue();
       state.fetchQueue.gatherPlacementStrip = false;
       if (placement.kind === "extra") {
         return;
@@ -129,7 +128,9 @@ export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
       .fetchConditionalFormatRules()
       .filter(({ sheetGid }) => gatheringGids.includes(sheetGid))
       .forEach(({ sheetGid, rules }) =>
-        this.ss.sheet(sheetGid).integrateConditionalFormatRules(rules),
+        this.ss
+          .sheetMeta(sheetGid)
+          .primary.integrateConditionalFormatRules(rules),
       );
   }
   private _fetchGatheredEditProtections(): void {
@@ -139,7 +140,9 @@ export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
       .fetchEditProtections()
       .filter(({ sheetGid }) => gatheringGids.includes(sheetGid))
       .forEach(({ sheetGid, protections }) =>
-        this.ss.sheet(sheetGid).integrateEditProtections(protections),
+        this.ss
+          .sheetMeta(sheetGid)
+          .primary.integrateEditProtections(protections),
       );
   }
   private _gatheringGids(
@@ -154,7 +157,7 @@ export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
       this.spreadsheetStateRaw.timeZone = snapshot.timeZone;
     }
     snapshot.sheets.forEach((sheetSnapshot) => {
-      const sheet = this.ss.sheet(sheetSnapshot.sheetGid);
+      const sheet = this.ss.sheetMeta(sheetSnapshot.sheetGid).primary;
       sheet.integrateSheetState(sheetSnapshot);
     });
   }

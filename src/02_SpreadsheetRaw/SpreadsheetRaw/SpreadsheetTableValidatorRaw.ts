@@ -40,7 +40,7 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
     if (sheetState === undefined) {
       return { kind: "none" };
     }
-    const [tableId, ...otherTableIds] = this.ss.sheet(sheetGid).tableIds();
+    const [tableId, ...otherTableIds] = this.ss.sheetMeta(sheetGid).tableIds();
     if (otherTableIds.length > 0) {
       return { kind: "extra" };
     }
@@ -62,7 +62,12 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
     if (!this.schema.isTableStart(startRowIndex, startColumnIndex)) {
       return {
         kind: "misplaced",
-        misplacement: { kind: "moved", sheetGid, startRowIndex, startColumnIndex },
+        misplacement: {
+          kind: "moved",
+          sheetGid,
+          startRowIndex,
+          startColumnIndex,
+        },
       };
     }
     // Before the band test, which reads the column ID row through the Table's body origin.
@@ -109,7 +114,7 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
     const extraTables: SheetIdentity[] = [];
     this.spreadsheetStateRaw.sheets.forEach((_, sheetGid) => {
       if (
-        this.ss.sheet(sheetGid).tableIds().length <= 1 ||
+        this.ss.sheetMeta(sheetGid).tableIds().length <= 1 ||
         !this.schema.isInSheetGids(sheetGid)
       ) {
         return;
@@ -152,6 +157,6 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
     return `${extraTables.length} sheet(s) have more than one Table — delete the extras so each sheet has exactly one: ${names}`;
   }
   private _sheetLabel({ sheetGid }: SheetIdentity): string {
-    return this.ss.sheet(sheetGid).sheetLabel;
+    return this.ss.sheetMeta(sheetGid).sheetLabel;
   }
 }
