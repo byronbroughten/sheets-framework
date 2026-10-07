@@ -1,10 +1,13 @@
+import type { SheetEdit } from "../00_Source/PlatformEvents/sheetEdit";
 import { Val } from "../utils/Val";
 import { SpreadsheetBaseSchema } from "./SpreadsheetBaseSchema";
 import {
   configTableNames,
   tableConfigsByGid,
+  tableKeysByGid,
   type TableName,
 } from "./tableConfigsTypes";
+import { TableOrigin } from "./TableOrigin";
 import { TableSchema } from "./TableSchema";
 
 export class SpreadsheetSchema extends SpreadsheetBaseSchema {
@@ -19,6 +22,26 @@ export class SpreadsheetSchema extends SpreadsheetBaseSchema {
   }
   sheetByGid(sheetGid: number): TableSchema {
     return TableSchema.fromSheetGid(sheetGid);
+  }
+  tablesOnGid(sheetGid: number): TableSchema[] {
+    return (tableKeysByGid().get(sheetGid) ?? []).map((tableKey) =>
+      TableSchema.fromSheetName(tableKey),
+    );
+  }
+  // A sheet the configs don't record has only the spot the framework creates Tables at.
+  presumedOrigin(sheetGid: number): TableOrigin {
+    if (!this.isInSheetGids(sheetGid)) return TableOrigin.expected();
+    return this.sheetByGid(sheetGid).recordedOrigin;
+  }
+  // From recorded positions alone, so the edit trigger answers without a fetch.
+  tableWithActionCell({
+    sheetGid,
+    rowIndexBase0,
+    colIndexBase0,
+  }: SheetEdit): TableSchema | undefined {
+    return this.tablesOnGid(sheetGid).find((table) =>
+      table.holdsActionCellAt(rowIndexBase0, colIndexBase0),
+    );
   }
   // The inverse of `ColumnSchema.fullName`; a camelCase sheet name never holds the delimiter.
   sheetByColumnFullName(fullName: string): TableSchema {

@@ -35,6 +35,14 @@ export const tableConfigsByGid = lazy(() =>
   Obj.toKeyedMap(tableConfigs(), "sheetGid", "tableKey"),
 );
 
+export const tableKeysByGid = lazy(() =>
+  configTableNames().reduce((byGid, tableKey) => {
+    const sheetGid = getTableTraitByName(tableKey, "sheetGid");
+    byGid.set(sheetGid, [...(byGid.get(sheetGid) ?? []), tableKey]);
+    return byGid;
+  }, new Map<number, TableNameSimple[]>()),
+);
+
 export function getTableTraitByGid<TK extends keyof TableConfig>(
   sheetGid: number,
   key: TK,

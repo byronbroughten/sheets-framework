@@ -1,4 +1,9 @@
 import {
+  type SheetColIndex,
+  SheetIndex,
+  type SheetRowIndex,
+} from "../00_Source/RawSource/SheetIndex";
+import {
   type ColumnName,
   getColumnTraitById,
   getColumnTraitByName,
@@ -15,6 +20,7 @@ import {
   tableConfigsByGid,
   type TableName,
 } from "./tableConfigsTypes";
+import { TableOrigin } from "./TableOrigin";
 
 function sheetNameFromGid(sheetGid: number): TableName {
   const byGid = tableConfigsByGid();
@@ -61,6 +67,28 @@ export class TableSchema<
   }
   get idPrefix(): string {
     return this.trait("idPrefix");
+  }
+  get recordedOrigin(): TableOrigin {
+    return new TableOrigin({
+      headerRowIndex: SheetIndex.row(this.trait("headerRowIndex")),
+      startColIndex: SheetIndex.col(this.trait("startColIndex")),
+    });
+  }
+  get recordedStartLabel(): string {
+    const { headerRowIndex, startColIndex } = this.recordedOrigin;
+    return this.positionLabel(headerRowIndex, startColIndex);
+  }
+  holdsActionCellAt(
+    sheetRowIndex: SheetRowIndex,
+    sheetColIndex: SheetColIndex,
+  ): boolean {
+    const origin = this.recordedOrigin;
+    const colIndex = origin.colIndex(sheetColIndex);
+    return (
+      sheetRowIndex === origin.headSheetRowIndex("action") &&
+      colIndex >= 0 &&
+      colIndex < this.columnNames.length
+    );
   }
   makeRowId(): string {
     return dimensionIds.row(this.idPrefix);

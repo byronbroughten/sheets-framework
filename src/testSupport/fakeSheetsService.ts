@@ -68,10 +68,9 @@ export interface FakeTable {
    */
   endColumnIndex?: number;
   /**
-   * Where the Table's range starts, defaulting to where the layout expects
-   * every managed Table (`TableOrigin.expected()`).
-   * Override either one only to build a deliberately misplaced Table, which
-   * `SpreadsheetRaw`'s post-fetch placement check refuses.
+   * Where the Table's range starts, defaulting to `TableOrigin.expected()`,
+   * where the dev configs record every managed Table. Override either one to
+   * match a test's own recorded position, or to misplace the Table.
    */
   startRowIndex?: number;
   startColumnIndex?: number;

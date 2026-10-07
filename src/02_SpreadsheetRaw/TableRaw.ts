@@ -25,7 +25,6 @@ import {
   SheetIndex,
   type SheetRowIndex,
 } from "../00_Source/RawSource/SheetIndex";
-import { TableOrigin } from "../01_SpreadsheetSchema/TableOrigin";
 import type { Value } from "../01_SpreadsheetSchema/valueSchemas";
 import { Arr } from "../utils/Arr";
 import { Val } from "../utils/Val";
@@ -244,8 +243,8 @@ export class TableRaw extends TableCommonRaw {
     );
   }
   gatherFetchProperties(): this {
-    // The live start is unknown until this probe comes back, so it aims where the layout expects the Table.
-    const origin = TableOrigin.expected();
+    // The live start is unknown until this probe comes back, so it aims where the configs record the Table.
+    const origin = this.presumedOrigin;
     this.gatherFetchRange({
       startRowIndex: SheetIndex.row(0),
       endRowIndex: SheetIndex.row(origin.headerRowIndex + 1),

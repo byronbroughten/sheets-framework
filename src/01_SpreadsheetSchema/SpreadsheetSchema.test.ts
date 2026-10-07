@@ -18,8 +18,7 @@ import {
 import { ColumnSchema } from "./ColumnSchema";
 import { getSheetTraitByName, sheetConfigsByGid } from "./sheetConfigsTypes";
 import { SpreadsheetSchema } from "./SpreadsheetSchema";
-import type { TableName } from "./tableConfigsTypes";
-import { TableOrigin } from "./TableOrigin";
+import { getTableTraitByName, type TableName } from "./tableConfigsTypes";
 import { TableSchema } from "./TableSchema";
 import type { ValueName } from "./valueSchemas";
 
@@ -69,23 +68,26 @@ describe("SpreadsheetSchema", () => {
   });
 
   describe("table placement", () => {
-    const { headerRowIndex, startColIndex } = TableOrigin.expected();
-    const rowAbove = SheetIndex.row(headerRowIndex - 1);
-    const colRight = SheetIndex.col(startColIndex + 1);
+    const runItem = schema.sheetByName("runItem");
 
-    it("accepts only the expected Table header row and start column as a Table's start", () => {
-      expect(schema.isTableStart(headerRowIndex, startColIndex)).toBe(true);
-      expect(schema.isTableStart(rowAbove, startColIndex)).toBe(false);
-      expect(schema.isTableStart(headerRowIndex, colRight)).toBe(false);
+    it("reads a Table's start from where its configs record it", () => {
+      const { headerRowIndex, startColIndex } = runItem.recordedOrigin;
+      expect(headerRowIndex).toBe(
+        getTableTraitByName("runItem", "headerRowIndex"),
+      );
+      expect(startColIndex).toBe(
+        getTableTraitByName("runItem", "startColIndex"),
+      );
+      expect(runItem.recordedStartLabel).toBe(
+        schema.positionLabel(headerRowIndex, startColIndex),
+      );
     });
 
-    it("validateTableStart only throws for a start the layout does not allow", () => {
-      expect(() =>
-        schema.validateTableStart(headerRowIndex, startColIndex),
-      ).not.toThrow();
-      expect(() =>
-        schema.validateTableStart(rowAbove, startColIndex),
-      ).toThrowError(/row 3, column A.*row 4, column A/);
+    it("maps a sheet gid to its managed Tables, and an unmanaged one to none", () => {
+      expect(
+        schema.tablesOnGid(runItem.sheetGid).map((table) => table.sheetName),
+      ).toEqual(["runItem"]);
+      expect(schema.tablesOnGid(-1)).toEqual([]);
     });
 
     it("labels a position in the numbering Sheets shows the operator", () => {

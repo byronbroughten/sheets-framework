@@ -12,7 +12,6 @@ import type {
 import { Obj } from "../utils/Obj";
 import { Str } from "../utils/Str";
 import { sheetLayout } from "./sheetLayout";
-import { TableOrigin } from "./TableOrigin";
 import { uniformRows } from "./uniformRows";
 
 export class SpreadsheetBaseSchema {
@@ -72,34 +71,6 @@ export class SpreadsheetBaseSchema {
           .join(", ")}`,
       );
     }
-  }
-  isTableStart(
-    startRowIndex: SheetRowIndex,
-    startColumnIndex: SheetColIndex,
-  ): boolean {
-    return TableOrigin.expected().equals(
-      new TableOrigin({
-        headerRowIndex: startRowIndex,
-        startColIndex: startColumnIndex,
-      }),
-    );
-  }
-  validateTableStart(
-    startRowIndex: SheetRowIndex,
-    startColumnIndex: SheetColIndex,
-  ): void {
-    if (!this.isTableStart(startRowIndex, startColumnIndex)) {
-      throw new Error(
-        `A Table starting at ${this.positionLabel(
-          startRowIndex,
-          startColumnIndex,
-        )} must start at ${this.tableStartLabel}.`,
-      );
-    }
-  }
-  get tableStartLabel(): string {
-    const { headerRowIndex, startColIndex } = TableOrigin.expected();
-    return this.positionLabel(headerRowIndex, startColIndex);
   }
   positionLabel(rowIndex: SheetRowIndex, colIndex: SheetColIndex): string {
     return `row ${rowIndex + 1}, column ${this.columnLetter(colIndex)}`;

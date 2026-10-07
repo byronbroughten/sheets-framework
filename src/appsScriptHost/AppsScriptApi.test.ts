@@ -85,6 +85,43 @@ describe("AppsScriptApi.handleSheetEdit", () => {
     );
     expect(calls).toEqual(["result"]);
   });
+
+  it("decodes a data-row tick as no match, costing no fetch", () => {
+    const { getByDataFilterCalls } = stubSheetsService({
+      sheets: [
+        {
+          sheetId: runItemGid,
+          title: "Run item",
+          rows: buildGridRows({
+            3: ["ID", "Result"],
+            4: ["r:rit:row4", true],
+          }),
+          table: { endRowIndex: 5 },
+        },
+      ],
+    });
+    const calls: string[] = [];
+    AppsScriptApi.handleSheetEdit(
+      {
+        configs,
+        endpoints: {
+          runItem_result: {
+            action: () => {
+              calls.push("result");
+            },
+          },
+        },
+      },
+      onEditEvent(
+        runItemGid,
+        expectedSheetLayout.topDataRowIndex,
+        resultColIndex,
+        "TRUE",
+      ),
+    );
+    expect(calls).toEqual([]);
+    expect(getByDataFilterCalls).toHaveLength(0);
+  });
 });
 
 describe("AppsScriptApi.handleSheetEdit, with no source installed", () => {

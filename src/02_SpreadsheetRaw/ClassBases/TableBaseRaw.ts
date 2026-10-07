@@ -2,6 +2,7 @@ import type {
   SheetSnapshot,
   TableSnapshot,
 } from "../../00_Source/RawSource/RawSource";
+import { SpreadsheetSchema } from "../../01_SpreadsheetSchema/SpreadsheetSchema";
 import { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin";
 import { Val } from "../../utils/Val";
 import { emptyStateRaw } from "../ClassTypes/emptyStateRaw";
@@ -108,11 +109,14 @@ export class TableBaseRaw extends SpreadsheetBaseRaw {
       `rowState for ${this.rowLabel(rowIndex)} on sheetGid ${this.sheetGid}`,
     );
   }
-  // The live Table once fetched; before that, where the layout expects it.
+  // The live Table once fetched; before that, where the configs record it.
   tableOrigin(): TableOrigin {
     const properties = this.tableProperties;
-    if (properties === undefined) return TableOrigin.expected();
+    if (properties === undefined) return this.presumedOrigin;
     return originOf(properties);
+  }
+  get presumedOrigin(): TableOrigin {
+    return new SpreadsheetSchema().presumedOrigin(this.sheetGid);
   }
   rowLabel(rowIndex: number): string {
     return `row ${this.tableOrigin().rowNumber(rowIndex)}`;

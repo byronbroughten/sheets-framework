@@ -20,7 +20,7 @@ export class TableOrigin {
     this.headerRowIndex = headerRowIndex;
     this.startColIndex = startColIndex;
   }
-  // Until each Table's position is recorded, its head rows start at the sheet's first cell.
+  // Where the framework creates a Table; a managed one is found where its configs record it.
   static expected(): TableOrigin {
     return new TableOrigin({
       headerRowIndex: SheetIndex.row(
