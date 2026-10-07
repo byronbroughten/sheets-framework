@@ -20,10 +20,12 @@ import {
 } from "../testSupport/fakeTableConfigSheet";
 import { assertType, type IsExactly } from "../testSupport/typeAssertions";
 import { Val } from "../utils/Val";
+import { CellIdentified } from "./CellIdentified";
 import { SpreadsheetBaseIdentified } from "./ClassBases/SpreadsheetBaseIdentified";
 import type { FetchTargetIdentified } from "./ClassTypes/StateIdentified";
 import { ColumnIdentified } from "./ColumnIdentified";
 import { ColumnMetaIdentified } from "./ColumnMetaIdentified";
+import { HeadRowIdentified } from "./HeadRowIdentified";
 import { RowIdentified } from "./RowIdentified";
 import { SheetMetaIdentified } from "./SheetMetaIdentified";
 import { SpreadsheetIdentified } from "./SpreadsheetIdentified";
@@ -50,6 +52,8 @@ describe("SpreadsheetIdentified navigation", () => {
     const sheetMeta = ssi.sheetMeta(itemGid);
     const column = table.column(itemIdColumnId);
     const columnMeta = sheetMeta.column(itemIdColumnId);
+    const headRow = table.headRow("action");
+    const headCell = column.headCell("action");
 
     assertType<IsExactly<typeof table, TableIdentified>>(true);
     assertType<IsExactly<typeof sheetMeta, SheetMetaIdentified>>(true);
@@ -62,6 +66,16 @@ describe("SpreadsheetIdentified navigation", () => {
     assertType<IsExactly<typeof column.meta, ColumnMetaIdentified>>(true);
     assertType<IsExactly<typeof columnMeta.primary, ColumnIdentified>>(true);
     assertType<IsExactly<ReturnType<typeof table.row>, RowIdentified>>(true);
+    assertType<IsExactly<typeof headRow, HeadRowIdentified<"action">>>(true);
+    assertType<
+      IsExactly<ReturnType<typeof table.headRowByIndex>, HeadRowIdentified>
+    >(true);
+    assertType<
+      IsExactly<typeof headCell, CellIdentified<"boolean" | "string">>
+    >(true);
+    assertType<
+      IsExactly<ReturnType<typeof headCell.valueOrEmpty>, boolean | string>
+    >(true);
 
     expect(table).toBeInstanceOf(TableIdentified);
     expect(table.meta).toBeInstanceOf(SheetMetaIdentified);
@@ -73,6 +87,9 @@ describe("SpreadsheetIdentified navigation", () => {
     expect(column.meta).toBeInstanceOf(ColumnMetaIdentified);
     expect(columnMeta.primary).toBeInstanceOf(ColumnIdentified);
     expect(table.row(0)).toBeInstanceOf(RowIdentified);
+    expect(headRow).toBeInstanceOf(HeadRowIdentified);
+    expect(table.headRowByIndex(-2)).toBeInstanceOf(HeadRowIdentified);
+    expect(headCell).toBeInstanceOf(CellIdentified);
   });
 
   it("reaches the Table back through each row's and column's table getter", () => {
@@ -85,10 +102,12 @@ describe("SpreadsheetIdentified navigation", () => {
     const row = table.row(0);
     const column = table.column(itemIdColumnId);
     const uniformRow = table.meta.uniformRow("header");
+    const headRow = table.headRow("header");
 
     assertType<IsExactly<typeof row.table, TableIdentified>>(true);
     assertType<IsExactly<typeof column.table, TableIdentified>>(true);
     assertType<IsExactly<typeof uniformRow.table, TableIdentified>>(true);
+    assertType<IsExactly<typeof headRow.table, TableIdentified>>(true);
 
     expect(row.table).toBeInstanceOf(TableIdentified);
     expect(column.table).toBeInstanceOf(TableIdentified);
@@ -96,6 +115,8 @@ describe("SpreadsheetIdentified navigation", () => {
     expect(row.table).toEqual(table);
     expect(column.table).toEqual(table);
     expect(uniformRow.table).toEqual(table);
+    expect(headRow.table).toBeInstanceOf(TableIdentified);
+    expect(headRow.table).toEqual(table);
   });
 });
 
@@ -283,6 +304,68 @@ function unfetchedTableConfig(): TableIdentified {
   ssi.sheetMeta(tableConfigGid).ensureColumnIdsAreFetched();
   return ssi.sheetMeta(tableConfigGid).primary;
 }
+
+describe("Identified head rows", () => {
+  const actionSheetRow = 2;
+
+  function fetchedHeadRows() {
+    const { grid } = stubSheetsService({
+      sheets: [
+        {
+          sheetId: valueTypesGid,
+          title: "Value Types",
+          rows: buildGridRows({
+            0: [valueTypesIdColumnId, checkboxColumnId],
+            [actionSheetRow]: ["Due", true],
+            3: ["ID", "Checkbox"],
+            4: ["r:vty:row4", true],
+          }),
+          table: { endRowIndex: 5 },
+        },
+      ],
+    });
+    const ssi = new SpreadsheetIdentified(
+      SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
+    );
+    const table = ssi.sheetMeta(valueTypesGid).primary;
+    table.headRow("action").prepFetchFull();
+    table.headRow("header").prepFetchFull();
+    ssi.fetchAllPrepped();
+    return { grid, ssi, table };
+  }
+
+  it("reads head cells by column ID, through the column and through the row", () => {
+    const { table } = fetchedHeadRows();
+
+    expect(
+      table.column(checkboxColumnId).headCell("action").valueOrEmpty(),
+    ).toBe(true);
+    expect(
+      table.headRow("groupHeading2").valueOrEmpty(valueTypesIdColumnId),
+    ).toBe("Due");
+    expect(table.headRow("header").valueOrEmpty(checkboxColumnId)).toBe(
+      "Checkbox",
+    );
+  });
+
+  it("writes head cells by column ID, through the column and through the row", () => {
+    const { grid, ssi, table } = fetchedHeadRows();
+
+    table.column(checkboxColumnId).headCell("action").updateValue(false);
+    table.headRow("groupHeading2").updateValue(valueTypesIdColumnId, "Late");
+    ssi.raw.batchUpdateGSheets();
+
+    expect(grid.sheet(valueTypesGid).cell(actionSheetRow, 0)).toBe("Late");
+    expect(grid.sheet(valueTypesGid).cell(actionSheetRow, 1)).toBe(false);
+  });
+
+  it("finds the row at an index with every role it holds", () => {
+    const { table } = fetchedHeadRows();
+
+    expect(table.headRowByIndex(-2).roles).toEqual(["action", "groupHeading2"]);
+    expect(() => table.headRowByIndex(0)).toThrow(/not a head row/);
+  });
+});
 
 describe("RowIdentified.isBlank / isReusable", () => {
   it("calls a row whose every non-formula cell is empty blank", () => {

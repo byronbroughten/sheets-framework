@@ -16,10 +16,15 @@ import type {
   ColumnValueDeclared,
   ColumnValueName,
 } from "../01_SpreadsheetSchema/columnConfigsTypes";
+import type {
+  HeadRole,
+  HeadRowValueName,
+} from "../01_SpreadsheetSchema/headRows";
 import type { TableName } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import type { VnToCvn } from "../01_SpreadsheetSchema/valueSchemas";
 import type { FindReplaceTerms } from "../02_SpreadsheetRaw/ClassTypes/StateRaw";
 import type { ColumnRaw } from "../02_SpreadsheetRaw/ColumnRaw";
+import type { CellIdentified } from "../03_SpreadsheetIdentified/CellIdentified";
 import type { CellChange } from "../03_SpreadsheetIdentified/ClassTypes/StateIdentified";
 import { ColumnIdentified } from "../03_SpreadsheetIdentified/ColumnIdentified";
 import { CellNamed } from "./CellNamed";
@@ -63,6 +68,12 @@ export class ColumnNamed<
   }
   get valueArr(): ColumnValueDeclared<TN, CN>[] {
     return this.rowIndexesActive.map((rowIndex) => this.value(rowIndex));
+  }
+  // Identified, not Named: a Named cell's value type is its column's, which a head cell doesn't share.
+  headCell<HR extends HeadRole>(
+    headRole: HR,
+  ): CellIdentified<HeadRowValueName<HR>> {
+    return this.identified.headCell(headRole);
   }
   hasValue(value: ColumnValue<TN, CN>): boolean {
     return this.valueArrOrEmpty.includes(value);

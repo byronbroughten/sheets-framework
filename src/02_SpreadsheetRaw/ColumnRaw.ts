@@ -19,6 +19,11 @@ import {
   SheetIndex,
   type SheetRowIndex,
 } from "../00_Source/RawSource/SheetIndex";
+import {
+  type HeadRole,
+  headRows,
+  type HeadRowValueName,
+} from "../01_SpreadsheetSchema/headRows";
 import { Arr } from "../utils/Arr";
 import { CellRaw, validateFormulaString } from "./CellRaw";
 import { ColumnBaseRaw } from "./ClassBases/ColumnBaseRaw";
@@ -77,6 +82,12 @@ export class ColumnRaw<
     return new CellRaw<VN>({
       ...this.columnRawProps,
       rowIndex,
+    });
+  }
+  headCell<HR extends HeadRole>(headRole: HR): CellRaw<HeadRowValueName<HR>> {
+    return new CellRaw<HeadRowValueName<HR>>({
+      ...this.columnRawProps,
+      rowIndex: headRows.index(headRole),
     });
   }
   valueOrEmpty(rowIndex: number): CellValue<VN> | "" {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { headRows } from "./headRows";
 import { tableLayout } from "./tableLayout";
 import { uniformRows } from "./uniformRows";
 
@@ -37,5 +38,26 @@ describe("uniformRows", () => {
     expect(uniformRows.index("action")).toBe(-2);
     expect(uniformRows.index("groupHeading1")).toBe(-3);
     expect(uniformRows.index("columnId")).toBe(-4);
+  });
+});
+
+describe("headRows", () => {
+  it("puts each head role's row above body row 0, the header just above it", () => {
+    expect(headRows.index("header")).toBe(-1);
+    expect(headRows.index("action")).toBe(-2);
+    expect(headRows.index("groupHeading2")).toBe(-2);
+    expect(headRows.index("groupHeading1")).toBe(-3);
+    expect(headRows.index("columnId")).toBe(-4);
+  });
+
+  it("names every role a head row holds, so the shared row has two", () => {
+    expect(headRows.rolesAt(-1)).toEqual(["header"]);
+    expect(headRows.rolesAt(-2)).toEqual(["action", "groupHeading2"]);
+    expect(headRows.rolesAt(-4)).toEqual(["columnId"]);
+  });
+
+  it("throws for an index no head row sits at", () => {
+    expect(() => headRows.rolesAt(0)).toThrow(/not a head row/);
+    expect(() => headRows.rolesAt(-5)).toThrow(/not a head row/);
   });
 });

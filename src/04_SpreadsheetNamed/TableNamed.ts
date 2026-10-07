@@ -15,10 +15,12 @@ import type {
   SheetDataValues,
   SheetDataValuesAll,
 } from "../01_SpreadsheetSchema/columnConfigsTypes";
+import type { HeadRole } from "../01_SpreadsheetSchema/headRows";
 import type { TableName } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import type { FindReplaceTerms } from "../02_SpreadsheetRaw/ClassTypes/StateRaw";
 import type { TableRaw } from "../02_SpreadsheetRaw/TableRaw";
 import { ColumnIdentified } from "../03_SpreadsheetIdentified/ColumnIdentified";
+import type { HeadRowIdentified } from "../03_SpreadsheetIdentified/HeadRowIdentified";
 import { TableIdentified } from "../03_SpreadsheetIdentified/TableIdentified";
 import { Arr } from "../utils/Arr";
 import { Obj } from "../utils/Obj";
@@ -72,6 +74,9 @@ export class TableNamed<
       ...this.sheetNamedProps,
       rowIndex,
     });
+  }
+  headRow<HR extends HeadRole>(headRole: HR): HeadRowIdentified<HR> {
+    return this.identified.headRow(headRole);
   }
   column<CN extends ColumnName<TN>>(columnName: CN): ColumnNamed<TN, CN> {
     return new ColumnNamed({

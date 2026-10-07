@@ -1,11 +1,10 @@
-import type { UniformRowName } from "../00_Source/CellValues/cellValues";
 import {
   type SheetColIndex,
   SheetIndex,
   type SheetRowIndex,
 } from "../00_Source/RawSource/SheetIndex";
+import { type HeadRole, headRows } from "./headRows";
 import { tableLayout } from "./tableLayout";
-import { uniformRows } from "./uniformRows";
 
 export interface TableOriginProps {
   headerRowIndex: SheetRowIndex;
@@ -32,8 +31,8 @@ export class TableOrigin {
   sheetRowIndex(rowIndex: number): SheetRowIndex {
     return SheetIndex.row(this.headerRowIndex + 1 + rowIndex);
   }
-  headSheetRowIndex(name: UniformRowName): SheetRowIndex {
-    return this.sheetRowIndex(uniformRows.index(name));
+  headSheetRowIndex(role: HeadRole): SheetRowIndex {
+    return this.sheetRowIndex(headRows.index(role));
   }
   sheetColIndex(colIndex: number): SheetColIndex {
     return SheetIndex.col(this.startColIndex + colIndex);

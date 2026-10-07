@@ -8,6 +8,8 @@ import {
   getTableTraitByName,
   type TableName,
 } from "../01_SpreadsheetSchema/tableConfigsTypes";
+import { CellIdentified } from "../03_SpreadsheetIdentified/CellIdentified";
+import { HeadRowIdentified } from "../03_SpreadsheetIdentified/HeadRowIdentified";
 import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {
@@ -94,6 +96,8 @@ describe("SpreadsheetNamed navigation", () => {
     const sheetMeta = ss.sheetMeta("item");
     const column = table.column("id");
     const columnMeta = sheetMeta.column("id");
+    const headRow = table.headRow("action");
+    const headCell = column.headCell("groupHeading2");
 
     assertType<IsExactly<typeof table, TableNamed<"item">>>(true);
     assertType<IsExactly<typeof sheetMeta, SheetMetaNamed<"item">>>(true);
@@ -114,6 +118,10 @@ describe("SpreadsheetNamed navigation", () => {
       true,
     );
     assertType<IsExactly<ReturnType<typeof table.row>, RowNamed<"item">>>(true);
+    assertType<IsExactly<typeof headRow, HeadRowIdentified<"action">>>(true);
+    assertType<
+      IsExactly<typeof headCell, CellIdentified<"boolean" | "string">>
+    >(true);
 
     expect(table).toBeInstanceOf(TableNamed);
     expect(table.meta).toBeInstanceOf(SheetMetaNamed);
@@ -125,6 +133,8 @@ describe("SpreadsheetNamed navigation", () => {
     expect(column.meta).toBeInstanceOf(ColumnMetaNamed);
     expect(columnMeta.primary).toBeInstanceOf(ColumnNamed);
     expect(table.row(0)).toBeInstanceOf(RowNamed);
+    expect(headRow).toBeInstanceOf(HeadRowIdentified);
+    expect(headCell).toBeInstanceOf(CellIdentified);
   });
 
   it("reaches the Table through ss.tables and back through each row's and column's table getter", () => {
@@ -152,6 +162,51 @@ describe("SpreadsheetNamed navigation", () => {
     expect(tables.item).toEqual(table);
     expect(row.table).toEqual(table);
     expect(column.table).toEqual(table);
+  });
+});
+
+describe("Named head rows", () => {
+  const actionSheetRow = 2;
+  const checkboxColumnId = getColumnTraitByName(
+    "valueTypes",
+    "checkbox",
+    "columnId",
+  );
+
+  function fetchedHeadRows() {
+    const { grid } = stubSheetsService({
+      sheets: [
+        {
+          sheetId: valueTypesGid,
+          title: "Value Types",
+          rows: buildGridRows({
+            0: [checkboxColumnId],
+            [actionSheetRow]: [true],
+            3: ["Checkbox"],
+            4: [true],
+          }),
+          table: { endRowIndex: 5 },
+        },
+      ],
+    });
+    const ss = SpreadsheetNamed.init();
+    ss.table("valueTypes").headRow("action").prepFetchFull();
+    ss.fetchAllPrepped();
+    return { grid, ss, table: ss.table("valueTypes") };
+  }
+
+  it("reads and writes a head cell by column name and a head row by column ID", () => {
+    const { grid, ss, table } = fetchedHeadRows();
+
+    expect(table.column("checkbox").headCell("action").valueOrEmpty()).toBe(
+      true,
+    );
+    expect(table.headRow("action").valueOrEmpty(checkboxColumnId)).toBe(true);
+
+    table.column("checkbox").headCell("groupHeading2").updateValue("Due");
+    ss.batchUpdateGSheets();
+
+    expect(grid.sheet(valueTypesGid).cell(actionSheetRow, 0)).toBe("Due");
   });
 });
 

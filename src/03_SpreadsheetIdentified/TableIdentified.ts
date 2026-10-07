@@ -9,11 +9,13 @@ import type {
   WholeSheetEditLockDeclaration,
   WholeSheetEditWarningDeclaration,
 } from "../00_Source/RawSource/EditProtection";
+import { type HeadRole, headRows } from "../01_SpreadsheetSchema/headRows";
 import type { Value } from "../01_SpreadsheetSchema/valueSchemas";
 import type { FindReplaceTerms } from "../02_SpreadsheetRaw/ClassTypes/StateRaw";
 import { TableRaw } from "../02_SpreadsheetRaw/TableRaw";
 import { TableCommonIdentified } from "./ClassBases/TableCommonIdentified";
 import { ColumnIdentified } from "./ColumnIdentified";
+import { HeadRowIdentified } from "./HeadRowIdentified";
 import { RowIdentified } from "./RowIdentified";
 import { SheetMetaIdentified } from "./SheetMetaIdentified";
 
@@ -142,6 +144,12 @@ export class TableIdentified extends TableCommonIdentified {
       ...this.tableIdentifiedProps,
       rowIndex,
     });
+  }
+  headRow<HR extends HeadRole>(headRole: HR): HeadRowIdentified<HR> {
+    return new HeadRowIdentified({ ...this.tableIdentifiedProps, headRole });
+  }
+  headRowByIndex(rowIndex: number): HeadRowIdentified {
+    return this.headRow(headRows.rolesAt(rowIndex)[0]);
   }
   // The top data row survives, so which row a wipe leaves is predictable.
   DELETE_ALL_DATA_ROWS(): void {

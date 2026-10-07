@@ -25,6 +25,7 @@ import {
   SheetIndex,
   type SheetRowIndex,
 } from "../00_Source/RawSource/SheetIndex";
+import { type HeadRole, headRows } from "../01_SpreadsheetSchema/headRows";
 import type { Value } from "../01_SpreadsheetSchema/valueSchemas";
 import { Arr } from "../utils/Arr";
 import { Val } from "../utils/Val";
@@ -40,6 +41,7 @@ import {
   type TableWrites,
 } from "./ClassTypes/StateRaw";
 import { ColumnRaw } from "./ColumnRaw";
+import { HeadRowRaw } from "./HeadRowRaw";
 import { RowRaw } from "./RowRaw";
 import { SheetMetaRaw } from "./SheetMetaRaw";
 import { SpreadsheetRaw } from "./SpreadsheetRaw";
@@ -209,6 +211,12 @@ export class TableRaw extends TableCommonRaw {
     return this.fullTableColIndexes.every(
       (colIndex) => this.meta.column(colIndex).activeTopValue === "",
     );
+  }
+  headRow<HR extends HeadRole>(headRole: HR): HeadRowRaw<HR> {
+    return new HeadRowRaw({ ...this.tableRawProps, headRole });
+  }
+  headRowByIndex(rowIndex: number): HeadRowRaw {
+    return this.headRow(headRows.rolesAt(rowIndex)[0]);
   }
   // Either kind of row, for callers that only touch what the two share.
   rowCommon(rowIndex: number): RowCommonRaw {

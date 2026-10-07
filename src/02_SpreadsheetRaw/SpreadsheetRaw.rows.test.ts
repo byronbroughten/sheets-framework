@@ -9,6 +9,7 @@ import {
 import type { AddTableProps } from "./ClassTypes/StateRaw";
 import { SpreadsheetRaw } from "./SpreadsheetRaw";
 import {
+  expectedOrigin,
   formulaCell,
   scratchGid,
   startTableColIndex,
@@ -640,5 +641,79 @@ describe("TableRaw.dataRowCount", () => {
 
   it("accepts a Table whose exclusive end is one past the first data row", () => {
     expect(fetchedSheet(topDataRowIndex + 1).dataRowCount).toBe(1);
+  });
+});
+
+describe("TableRaw head rows", () => {
+  const sheetRow = {
+    action: expectedOrigin.headSheetRowIndex("action"),
+    header: expectedOrigin.headSheetRowIndex("header"),
+  };
+
+  function stubHeadRows() {
+    return stubSheetsService({
+      sheets: [
+        {
+          sheetId: 111,
+          title: "Records",
+          rows: buildGridRows({
+            [sheetRow.action]: [true, "Due"],
+            [sheetRow.header]: ["ID", "Amount"],
+            [topDataRowIndex]: ["r1", 5],
+          }),
+          table: { endRowIndex: topDataRowIndex + 1 },
+        },
+      ],
+    });
+  }
+
+  function fetchedHeadRows(): SpreadsheetRaw {
+    const raw = SpreadsheetRaw.init();
+    raw.fetchAllSheetProperties();
+    const table = raw.table(tableId111);
+    table.headRow("action").gatherFetchFull();
+    table.headRow("header").gatherFetchFull();
+    raw.fetchAllGathered();
+    return raw;
+  }
+
+  it("reads a checkbox and a heading from the row two roles share, by either role", () => {
+    stubHeadRows();
+    const table = fetchedHeadRows().table(tableId111);
+
+    expect(table.column(0).headCell("action").valueOrEmpty()).toBe(true);
+    expect(table.column(1).headCell("groupHeading2").valueOrEmpty()).toBe(
+      "Due",
+    );
+    expect(table.headRow("groupHeading2").valueOrEmpty(0)).toBe(true);
+    expect(table.headRow("header").valueOrEmpty(1)).toBe("Amount");
+  });
+
+  it("writes head cells through the column and through the row", () => {
+    const { grid } = stubHeadRows();
+    const raw = fetchedHeadRows();
+    const table = raw.table(tableId111);
+
+    table.column(0).headCell("action").updateValue(false);
+    table.headRow("groupHeading2").updateValue(1, "Late");
+    table.headRow("header").updateValue(1, "Total");
+    raw.batchUpdateGSheets();
+
+    expect(grid.sheet(111).cell(sheetRow.action, 0)).toBe(false);
+    expect(grid.sheet(111).cell(sheetRow.action, 1)).toBe("Late");
+    expect(grid.sheet(111).cell(sheetRow.header, 1)).toBe("Total");
+  });
+
+  it("finds the row at an index with every role it holds", () => {
+    stubHeadRows();
+    const table = fetchedHeadRows().table(tableId111);
+
+    expect(table.headRowByIndex(-2).roles).toEqual(["action", "groupHeading2"]);
+    expect(table.headRowByIndex(-1).roles).toEqual(["header"]);
+    expect(table.headRow("groupHeading2").roles).toEqual([
+      "action",
+      "groupHeading2",
+    ]);
+    expect(() => table.headRowByIndex(0)).toThrow(/not a head row/);
   });
 });

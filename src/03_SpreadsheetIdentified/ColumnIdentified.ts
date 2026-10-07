@@ -10,6 +10,11 @@ import type {
 } from "../00_Source/RawSource/EditProtection";
 import type { GridRangeProps } from "../00_Source/RawSource/RawSource";
 import {
+  type HeadRole,
+  headRows,
+  type HeadRowValueName,
+} from "../01_SpreadsheetSchema/headRows";
+import {
   toWireValue,
   type Value,
   type ValueName,
@@ -49,6 +54,15 @@ export class ColumnIdentified<
   }
   get cellsFull(): CellIdentified<VN>[] {
     return this.cellIndexesFull.map((rowIndex) => this.cell(rowIndex));
+  }
+  headCell<HR extends HeadRole>(
+    headRole: HR,
+  ): CellIdentified<HeadRowValueName<HR>> {
+    return new CellIdentified<HeadRowValueName<HR>>({
+      ...this.tableIdentifiedProps,
+      columnId: this.columnId,
+      rowIndex: headRows.index(headRole),
+    });
   }
   prepFetchSpecific(rowIndexes: number[]): this {
     rowIndexes.forEach((rowIndex) => {
