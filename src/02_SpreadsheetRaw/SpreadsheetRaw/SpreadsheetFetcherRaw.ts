@@ -128,7 +128,7 @@ export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
       .fetchConditionalFormatRules()
       .filter(({ sheetGid }) => gatheringGids.includes(sheetGid))
       .forEach(({ sheetGid, rules }) =>
-        this.ss.tableOnSheet(sheetGid).integrateConditionalFormatRules(rules),
+        this.ss.sheet(sheetGid).integrateConditionalFormatRules(rules),
       );
   }
   private _fetchGatheredEditProtections(): void {
@@ -138,7 +138,7 @@ export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
       .fetchEditProtections()
       .filter(({ sheetGid }) => gatheringGids.includes(sheetGid))
       .forEach(({ sheetGid, protections }) =>
-        this.ss.tableOnSheet(sheetGid).integrateEditProtections(protections),
+        this.ss.sheet(sheetGid).integrateEditProtections(protections),
       );
   }
   private _gatheringGids(

@@ -70,18 +70,11 @@ export class TableBaseRaw extends SpreadsheetBaseRaw {
   get rowStates(): RowStatesRaw {
     return this.tableState.working.rowStates;
   }
-  // Rules and protections are per sheet, so a Table reads its sheet's flags.
-  get hasGatheredSheetFetch(): boolean {
-    return (
-      this.sheetState.fetchQueue.gatherConditionalFormats ||
-      this.sheetState.fetchQueue.gatherEditProtections
-    );
-  }
   get sheetTitle(): string {
     return this.sheetState.working.title ?? "(untitled)";
   }
   get sheetLabel(): string {
-    return `"${this.sheetTitle}" (gid ${this.sheetGid})`;
+    return sheetLabel(this.sheetState.working.title, this.sheetGid);
   }
   get tableRawProps(): TableRawProps {
     return {
@@ -215,6 +208,13 @@ export class TableBaseRaw extends SpreadsheetBaseRaw {
   }
 }
 
+export function sheetLabel(
+  title: string | undefined,
+  sheetGid: number,
+): string {
+  return `"${title ?? "(untitled)"}" (gid ${sheetGid})`;
+}
+
 function sheetGidOf(
   tables: TablesStateRaw,
   tableAddress: TableAddressRaw,
@@ -223,10 +223,7 @@ function sheetGidOf(
   return tableStateOf(tables, tableAddress.tableId).sheetGid;
 }
 
-function tableStateOf(
-  tables: TablesStateRaw,
-  tableId: string,
-): TableStateRaw {
+function tableStateOf(tables: TablesStateRaw, tableId: string): TableStateRaw {
   return Val.assert(tables.get(tableId), `Table state for tableId ${tableId}`);
 }
 

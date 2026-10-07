@@ -119,7 +119,7 @@ export class ConfigSheetFloorEditWarnings extends SpreadsheetBaseNamed {
     return this._activeFloorSheetNames().flatMap((tableName) =>
       this.ss
         .table(tableName)
-        .editProtections()
+        .sheet.editProtections()
         .flatMap((protection) => {
           if (protection.kind === "unmodelable") return [];
           if (!protection.description.startsWith(floorWarningPrefix)) {
@@ -133,7 +133,7 @@ export class ConfigSheetFloorEditWarnings extends SpreadsheetBaseNamed {
     floorSheetNames().forEach((tableName) => {
       const sheet = this.ss.table(tableName);
       if (sheet.schema.sheetGid !== protection.range.sheetId) return;
-      sheet.removeEditProtectionById(protection.id);
+      sheet.sheet.removeEditProtectionById(protection.id);
     });
   }
 }

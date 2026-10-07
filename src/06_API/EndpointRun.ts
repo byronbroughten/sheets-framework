@@ -155,7 +155,7 @@ export class EndpointRun<
     if (selectedRowIndexes.length <= 1) return;
     throw new Error(
       // The sheet's own title, not its config name: the operator reads this cell.
-      `This endpoint runs on one row of "${this.table.raw.title}" at a time, but ${selectedRowIndexes.length} are selected.`,
+      `This endpoint runs on one row of "${this.table.raw.sheet.title}" at a time, but ${selectedRowIndexes.length} are selected.`,
     );
   }
   // Inside the run's `try`, so an action that throws has its clearing discarded too.
@@ -223,7 +223,7 @@ export class EndpointRun<
   private _validateIsDataRow(rowIndex: number): void {
     if (this.table.raw.rowIndexesFull.includes(rowIndex)) return;
     throw new Error(
-      `This run cannot report into ${this.table.raw.rowLabel(rowIndex)}: it is not a data row of "${this.table.raw.title}".`,
+      `This run cannot report into ${this.table.raw.rowLabel(rowIndex)}: it is not a data row of "${this.table.raw.sheet.title}".`,
     );
   }
   private _updateFeedbackCell(

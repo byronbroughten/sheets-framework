@@ -22,25 +22,27 @@ export class HeadRowRaw<
     return this;
   }
   addEditWarning(declaration: EditWarningDeclaration = {}): this {
-    this.table.addEditWarningAt(
+    this.table.sheet.addEditWarningAt(
       this.table.rowGridRange(this.rowIndex),
       declaration,
     );
     return this;
   }
   addEditLock(declaration: EditLockDeclaration = {}): this {
-    this.table.addEditLockAt(
+    this.table.sheet.addEditLockAt(
       this.table.rowGridRange(this.rowIndex),
       declaration,
     );
     return this;
   }
   removeEditProtections(): this {
-    this.table.removeEditProtectionsAt(this.table.rowGridRange(this.rowIndex));
+    this.table.sheet.removeEditProtectionsAt(
+      this.table.rowGridRange(this.rowIndex),
+    );
     return this;
   }
   removeEditProtection(protection: EditProtection): this {
-    this.table.removeEditProtection(protection);
+    this.table.sheet.removeEditProtection(protection);
     return this;
   }
 }

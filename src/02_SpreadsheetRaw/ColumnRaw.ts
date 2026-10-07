@@ -213,53 +213,59 @@ export class ColumnRaw<
     return this;
   }
   addConditionalFormatRule(declaration: ConditionalFormatDeclaration): this {
-    this.table.addConditionalFormatRuleAt(this.dataGridRange(), declaration);
+    this.table.sheet.addConditionalFormatRuleAt(
+      this.dataGridRange(),
+      declaration,
+    );
     return this;
   }
   removeConditionalFormatRules(): this {
-    this.table.removeConditionalFormatRulesAt(this.dataGridRange());
+    this.table.sheet.removeConditionalFormatRulesAt(this.dataGridRange());
     return this;
   }
   removeConditionalFormatRule(rule: ConditionalFormatRule): this {
-    this.table.removeConditionalFormatRule(rule);
+    this.table.sheet.removeConditionalFormatRule(rule);
     return this;
   }
   addEditWarning(declaration: EditWarningDeclaration = {}): this {
-    this.table.addEditWarningAt(this.dataGridRange(), declaration);
+    this.table.sheet.addEditWarningAt(this.dataGridRange(), declaration);
     return this;
   }
   addEditWarningFromRow(
     startRowIndex: number,
     declaration: EditWarningDeclaration = {},
   ): this {
-    this.table.addEditWarningAt(
+    this.table.sheet.addEditWarningAt(
       this.gridRangeFromRow(startRowIndex),
       declaration,
     );
     return this;
   }
   addEditWarningWholeColumn(declaration: EditWarningDeclaration = {}): this {
-    this.table.addEditWarningAt(this._wholeColumnGridRange(), declaration);
+    this.table.sheet.addEditWarningAt(
+      this._wholeColumnGridRange(),
+      declaration,
+    );
     return this;
   }
   addEditLock(declaration: EditLockDeclaration = {}): this {
-    this.table.addEditLockAt(this.dataGridRange(), declaration);
+    this.table.sheet.addEditLockAt(this.dataGridRange(), declaration);
     return this;
   }
   addEditLockWholeColumn(declaration: EditLockDeclaration = {}): this {
-    this.table.addEditLockAt(this._wholeColumnGridRange(), declaration);
+    this.table.sheet.addEditLockAt(this._wholeColumnGridRange(), declaration);
     return this;
   }
   removeEditProtections(): this {
-    this.table.removeEditProtectionsAt(this.dataGridRange());
+    this.table.sheet.removeEditProtectionsAt(this.dataGridRange());
     return this;
   }
   removeEditProtectionsWholeColumn(): this {
-    this.table.removeEditProtectionsAt(this._wholeColumnGridRange());
+    this.table.sheet.removeEditProtectionsAt(this._wholeColumnGridRange());
     return this;
   }
   removeEditProtection(protection: EditProtection): this {
-    this.table.removeEditProtection(protection);
+    this.table.sheet.removeEditProtection(protection);
     return this;
   }
   gatherFetchWorking(): this {

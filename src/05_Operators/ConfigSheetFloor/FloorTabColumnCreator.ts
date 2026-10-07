@@ -36,7 +36,7 @@ export class FloorTabColumnCreator<
       const columnName = columnNameByHeader(this.tableName, floorColumn.header);
       if (recreatable.includes(columnName)) return;
       throw new Error(
-        `${floorColumnLabel(floorColumn.header)} is missing from ${this.table.raw.title}, and recreating it empty would lose what it held. Undo the delete, or insert a column headed "${floorColumn.header}" in its Table and fill it.`,
+        `${floorColumnLabel(floorColumn.header)} is missing from ${this.table.raw.sheet.title}, and recreating it empty would lose what it held. Undo the delete, or insert a column headed "${floorColumn.header}" in its Table and fill it.`,
       );
     });
   }
@@ -57,11 +57,14 @@ export class FloorTabColumnCreator<
         "columnId",
       ),
     });
-    if (colIndex === undefined || colIndex === rawTable.fullTableColIndexes[0]) {
+    if (
+      colIndex === undefined ||
+      colIndex === rawTable.fullTableColIndexes[0]
+    ) {
       return;
     }
     throw new Error(
-      `${floorColumnLabel(header)} is no longer the first column of ${this.table.raw.title}'s Table. Undo the move, or move it back to the Table's first column.`,
+      `${floorColumnLabel(header)} is no longer the first column of ${this.table.raw.sheet.title}'s Table. Undo the move, or move it back to the Table's first column.`,
     );
   }
   createMissing(): string[] {
@@ -71,7 +74,7 @@ export class FloorTabColumnCreator<
         header: floorColumn.header,
         groupHeading1: floorColumn.groupHeading,
       });
-      return `${this.table.raw.title} · ${floorColumn.header} (${floorColumn.columnId})`;
+      return `${this.table.raw.sheet.title} · ${floorColumn.header} (${floorColumn.columnId})`;
     });
   }
   private _missingColumns(): FloorColumnRestore[] {

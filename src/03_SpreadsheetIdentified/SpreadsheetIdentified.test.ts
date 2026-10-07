@@ -959,14 +959,16 @@ describe("SpreadsheetIdentified Tables", () => {
       ],
     });
     const ssi = initIdentified();
-    const sheet = ssi.tableOnSheet(valueTypesGid);
-    sheet.prepFetchConditionalFormatRules().prepFetchEditProtections();
+    const table = ssi.tableOnSheet(valueTypesGid);
+    table.raw.sheet
+      .gatherFetchConditionalFormatRules()
+      .gatherFetchEditProtections();
     ssi.fetchAllPrepped();
     const fetchCount = getByDataFilterCalls.length;
 
-    expect(sheet.conditionalFormatRules()).toEqual([]);
-    expect(sheet.editProtections()).toEqual([]);
-    expect(sheet.column(valueTypesIdColumnId).colIndex).toBe(0);
+    expect(table.raw.sheet.conditionalFormatRules()).toEqual([]);
+    expect(table.raw.sheet.editProtections()).toEqual([]);
+    expect(table.column(valueTypesIdColumnId).colIndex).toBe(0);
     expect(getByDataFilterCalls).toHaveLength(fetchCount);
   });
 });

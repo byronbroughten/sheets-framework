@@ -5,16 +5,24 @@ import {
   rangeEqual,
 } from "../../00_Source/RawSource/ConditionalFormat";
 import type { GridRangeProps } from "../../00_Source/RawSource/RawSource";
-import { TableCommonRaw } from "../ClassBases/TableCommonRaw";
-import { SpreadsheetRaw } from "../SpreadsheetRaw";
-import { TableRaw } from "../TableRaw";
+import { SpreadsheetBaseRaw } from "../ClassBases/SpreadsheetBaseRaw";
+import type { SheetStateRaw } from "../ClassTypes/StateRaw";
+import { SheetRaw, type SheetRawProps } from "../SheetRaw";
 
-export class SheetConditionalFormatsRaw extends TableCommonRaw {
-  get ss(): SpreadsheetRaw {
-    return new SpreadsheetRaw(this.spreadsheetRawProps);
+export class SheetConditionalFormatsRaw extends SpreadsheetBaseRaw {
+  readonly sheetGid: number;
+  constructor({ sheetGid, ...props }: SheetRawProps) {
+    super(props);
+    this.sheetGid = sheetGid;
   }
-  get table(): TableRaw {
-    return new TableRaw(this.tableRawProps);
+  get sheet(): SheetRaw {
+    return new SheetRaw({
+      ...this.spreadsheetRawProps,
+      sheetGid: this.sheetGid,
+    });
+  }
+  private get sheetState(): SheetStateRaw {
+    return this.sheet.sheetState;
   }
   gatherFetchConditionalFormatRules(): void {
     this.sheetState.fetchQueue.gatherConditionalFormats = true;
@@ -28,17 +36,11 @@ export class SheetConditionalFormatsRaw extends TableCommonRaw {
     }
     return rules;
   }
-  addConditionalFormatRule(declaration: ConditionalFormatDeclaration): void {
-    this.addConditionalFormatRuleAt(this.table.dataGridRange(), declaration);
-  }
-  removeConditionalFormatRules(): void {
-    this.removeConditionalFormatRulesAt(this.table.dataGridRange());
-  }
   addConditionalFormatRuleAt(
     range: GridRangeProps,
     declaration: ConditionalFormatDeclaration,
   ): void {
-    this.assertRowIndexesNotStale();
+    this.sheet.assertRowIndexesNotStale();
     this.assertConditionalFormatIndexesNotStale();
     const rule: Extract<ConditionalFormatRule, { kind: "boolean" }> = {
       kind: "boolean",
@@ -87,7 +89,7 @@ export class SheetConditionalFormatsRaw extends TableCommonRaw {
   private _removeRulesWhere(
     matches: (rule: ConditionalFormatRule) => boolean,
   ): void {
-    this.assertRowIndexesNotStale();
+    this.sheet.assertRowIndexesNotStale();
     this.assertConditionalFormatIndexesNotStale();
     this.conditionalFormatRules().forEach((existing, index) => {
       if (!matches(existing)) return;

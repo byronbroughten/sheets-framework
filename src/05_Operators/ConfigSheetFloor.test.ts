@@ -515,9 +515,9 @@ function protectionsOf(
   tableName: "spreadsheetConfig" | "tableConfig" | "columnConfig",
 ): ModelableEditProtection[] {
   const sheet = floor.ss.table(tableName);
-  sheet.prepFetchEditProtections();
+  sheet.sheet.prepFetchEditProtections();
   floor.ss.fetchAllPrepped({ skipFetchingProperties: true });
-  return sheet
+  return sheet.sheet
     .editProtections()
     .flatMap((protection) =>
       protection.kind === "unmodelable" ? [] : [protection],
@@ -1333,12 +1333,7 @@ describe("ConfigSheetFloor", () => {
     {
       column: cc.emptyValueAllowed.header,
       options: {
-        columnConfigColumnOrder: [
-          "tableId",
-          "columnId",
-          "tableName",
-          "header",
-        ],
+        columnConfigColumnOrder: ["tableId", "columnId", "tableName", "header"],
       },
     },
     {

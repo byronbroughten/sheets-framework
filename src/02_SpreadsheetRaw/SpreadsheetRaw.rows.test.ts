@@ -64,7 +64,7 @@ describe("SpreadsheetRaw add sheet and add Table", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.table(tableId111).updateTitle("Renamed");
+    raw.table(tableId111).sheet.updateTitle("Renamed");
     raw.gatherAddTableOperation(addTableProps);
     raw.gatherAddSheetOperation(addSheetProps);
     raw.batchUpdateGSheets();

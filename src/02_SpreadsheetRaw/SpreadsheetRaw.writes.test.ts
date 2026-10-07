@@ -1214,10 +1214,10 @@ describe("queued writes outlive a same-run re-fetch", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.table(tableId111).updateTitle("Renamed");
+    raw.table(tableId111).sheet.updateTitle("Renamed");
     raw.fetchAllSheetProperties();
 
-    expect(raw.table(tableId111).title).toBe("Renamed");
+    expect(raw.table(tableId111).sheet.title).toBe("Renamed");
   });
 
   it("keeps a queued Table name on the known Table and in the sheet's Tables after a re-fetch", () => {
@@ -1248,11 +1248,11 @@ describe("queued writes outlive a same-run re-fetch", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.table(tableId111).updateTitle("First");
-    raw.table(tableId111).updateTitle("Second");
+    raw.table(tableId111).sheet.updateTitle("First");
+    raw.table(tableId111).sheet.updateTitle("Second");
     raw.fetchAllSheetProperties();
 
-    expect(raw.table(tableId111).title).toBe("Second");
+    expect(raw.table(tableId111).sheet.title).toBe("Second");
   });
 
   it("lets the last of two queued Table names win after a re-fetch", () => {
@@ -1272,10 +1272,10 @@ describe("queued writes outlive a same-run re-fetch", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.table(tableId222).updateTitle("Renamed");
+    raw.table(tableId222).sheet.updateTitle("Renamed");
     raw.fetchSheetUsedGrid(111);
 
-    expect(raw.table(tableId222).title).toBe("Renamed");
+    expect(raw.table(tableId222).sheet.title).toBe("Renamed");
   });
 
   it("applies a sheet's queued title to that sheet only", () => {
@@ -1283,10 +1283,10 @@ describe("queued writes outlive a same-run re-fetch", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.table(tableId111).updateTitle("Renamed");
+    raw.table(tableId111).sheet.updateTitle("Renamed");
     raw.fetchAllSheetProperties();
 
-    expect(raw.table(tableId222).title).toBe("Entries");
+    expect(raw.table(tableId222).sheet.title).toBe("Entries");
   });
 
   it("integrates the live title and Table name after the flush has cleared the queue", () => {
@@ -1294,17 +1294,17 @@ describe("queued writes outlive a same-run re-fetch", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.table(tableId111).updateTitle("Renamed");
+    raw.table(tableId111).sheet.updateTitle("Renamed");
     raw.table(tableId111).updateTableName("renamedRecords");
     raw.batchUpdateGSheets();
     const otherRun = SpreadsheetRaw.init();
     otherRun.fetchAllSheetProperties();
-    otherRun.table(tableId111).updateTitle("Records");
+    otherRun.table(tableId111).sheet.updateTitle("Records");
     otherRun.table(tableId111).updateTableName("records");
     otherRun.batchUpdateGSheets();
     raw.fetchAllSheetProperties();
 
-    expect(raw.table(tableId111).title).toBe("Records");
+    expect(raw.table(tableId111).sheet.title).toBe("Records");
     expect(raw.table(tableId111).name).toBe("records");
   });
 });

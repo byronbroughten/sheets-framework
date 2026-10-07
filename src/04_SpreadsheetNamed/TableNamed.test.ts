@@ -84,7 +84,7 @@ function runItemRules(grid: FakeSheetsService["grid"]) {
 function fetchedRunItem() {
   const ss = SpreadsheetNamed.init();
   const sheet = ss.table("runItem");
-  sheet.prepFetchConditionalFormatRules();
+  sheet.sheet.prepFetchConditionalFormatRules();
   ss.fetchAllPrepped();
   return { ss, sheet };
 }
@@ -94,7 +94,7 @@ describe("TableNamed conditional format rules", () => {
     stubRunItemWithRules([]);
     const { sheet } = fetchedRunItem();
 
-    expect(sheet.conditionalFormatRules()).toEqual([]);
+    expect(sheet.sheet.conditionalFormatRules()).toEqual([]);
   });
 
   it("prepends a column rule so it takes precedence over rules already on the sheet", () => {
@@ -114,13 +114,13 @@ describe("TableNamed conditional format rules", () => {
       googleBooleanRule(sheetRange, "NUMBER_EQ", "TRUE", grey),
     ]);
 
-    sheet.prepFetchConditionalFormatRules();
+    sheet.sheet.prepFetchConditionalFormatRules();
     ss.fetchAllPrepped({ skipFetchingProperties: true });
-    expect(sheet.conditionalFormatRules()[0]).toMatchObject({
+    expect(sheet.sheet.conditionalFormatRules()[0]).toMatchObject({
       kind: "boolean",
       condition: { type: "NUMBER_EQ", value: true },
     });
-    expect(sheet.conditionalFormatRules()[1]).toMatchObject({
+    expect(sheet.sheet.conditionalFormatRules()[1]).toMatchObject({
       kind: "boolean",
       format: { backgroundColor: grey },
     });
@@ -143,9 +143,9 @@ describe("TableNamed conditional format rules", () => {
       googleBooleanRule(selectColumnRange, "NUMBER_EQ", "TRUE", green),
     ]);
 
-    sheet.prepFetchConditionalFormatRules();
+    sheet.sheet.prepFetchConditionalFormatRules();
     ss.fetchAllPrepped({ skipFetchingProperties: true });
-    const rules = sheet.conditionalFormatRules();
+    const rules = sheet.sheet.conditionalFormatRules();
     expect(rules).toHaveLength(2);
     expect(rules[0]).toMatchObject({
       ranges: [sheetRange],
@@ -163,7 +163,7 @@ describe("TableNamed conditional format rules", () => {
     ]);
     const { ss, sheet } = fetchedRunItem();
     const toRemove = Val.assert(
-      sheet.conditionalFormatRules()[0],
+      sheet.sheet.conditionalFormatRules()[0],
       "ID column rule to remove",
     );
 
@@ -224,7 +224,7 @@ describe("TableNamed conditional format rules", () => {
       }),
     ).toThrowError(/Conditional format indexes are stale/);
 
-    sheet.prepFetchConditionalFormatRules();
+    sheet.sheet.prepFetchConditionalFormatRules();
     ss.fetchAllPrepped({ skipFetchingProperties: true });
     sheet.column("id").addConditionalFormatRule({
       condition: { type: "NUMBER_NOT_EQ", value: true },
@@ -278,7 +278,7 @@ describe("TableNamed conditional format rules", () => {
     ]);
     const { ss, sheet } = fetchedRunItem();
     const existing = Val.assert(
-      sheet.conditionalFormatRules()[0],
+      sheet.sheet.conditionalFormatRules()[0],
       "existing ID column rule",
     );
     const idPrefix = sheet.column("id");
@@ -339,7 +339,7 @@ function fetchedRunItemProtections(
   const service = stubRunItemWithProtections(protectedRanges);
   const ss = SpreadsheetNamed.init();
   const sheet = ss.table("runItem");
-  sheet.prepFetchEditProtections();
+  sheet.sheet.prepFetchEditProtections();
   ss.fetchAllPrepped();
   const protections = () => service.grid.sheet(runItemGid).protectedRanges;
   return { ss, sheet, protections, ...service };
@@ -485,20 +485,20 @@ describe("TableNamed edit warnings and edit locks", () => {
 
     const byContent = fetchedRunItemProtections([handSet, other]);
     const named = Val.assert(
-      byContent.sheet.editProtections()[0],
+      byContent.sheet.sheet.editProtections()[0],
       "hand-set protection",
     );
-    byContent.sheet.removeEditProtection(named);
+    byContent.sheet.sheet.removeEditProtection(named);
     byContent.ss.batchUpdateGSheets();
     expect(byContent.protections()).toEqual([other]);
 
     const byDescription = fetchedRunItemProtections([handSet, other]);
-    byDescription.sheet.removeEditProtectionByDescription("hand-set");
+    byDescription.sheet.sheet.removeEditProtectionByDescription("hand-set");
     byDescription.ss.batchUpdateGSheets();
     expect(byDescription.protections()).toEqual([other]);
 
     const byId = fetchedRunItemProtections([handSet, other]);
-    byId.sheet.removeEditProtectionById(11);
+    byId.sheet.sheet.removeEditProtectionById(11);
     byId.ss.batchUpdateGSheets();
     expect(byId.protections()).toEqual([other]);
   });
@@ -513,7 +513,7 @@ describe("TableNamed edit warnings and edit locks", () => {
       endColumnIndex: 2,
     };
 
-    sheet.addEditWarningWholeSheet({
+    sheet.sheet.addEditWarningWholeSheet({
       description: "sheet warning",
       unprotectedRanges: [unprotected],
     });
@@ -540,11 +540,11 @@ describe("TableNamed edit warnings and edit locks", () => {
       /Row indexes are stale/,
     );
     expect(() =>
-      sheet.addEditWarningWholeSheet({
+      sheet.sheet.addEditWarningWholeSheet({
         unprotectedRanges: [topIdCellRange],
       }),
     ).toThrowError(/Row indexes are stale/);
-    expect(() => sheet.addEditLockWholeSheet()).not.toThrow();
+    expect(() => sheet.sheet.addEditLockWholeSheet()).not.toThrow();
   });
 
   it("refuses a read or mutation after a protection flush until protections are re-fetched", () => {
@@ -553,16 +553,16 @@ describe("TableNamed edit warnings and edit locks", () => {
     sheet.column("id").addEditWarning({ description: "id warning" });
     ss.batchUpdateGSheets();
 
-    expect(() => sheet.editProtections()).toThrowError(
+    expect(() => sheet.sheet.editProtections()).toThrowError(
       /Edit protections are stale/,
     );
     expect(() =>
       sheet.column("id").addEditLock({ description: "id lock" }),
     ).toThrowError(/Edit protections are stale/);
 
-    sheet.prepFetchEditProtections();
+    sheet.sheet.prepFetchEditProtections();
     ss.fetchAllPrepped({ skipFetchingProperties: true });
-    expect(sheet.editProtections()[0]).toMatchObject({
+    expect(sheet.sheet.editProtections()[0]).toMatchObject({
       kind: "warning",
       description: "id warning",
     });
@@ -720,20 +720,20 @@ describe("TableNamed edit warnings and edit locks", () => {
 
     const byContent = fetchedRunItemProtections([wholeColumn, wholeSheet]);
     const named = Val.assert(
-      byContent.sheet.editProtections()[0],
+      byContent.sheet.sheet.editProtections()[0],
       "whole-column protection",
     );
-    byContent.sheet.removeEditProtection(named);
+    byContent.sheet.sheet.removeEditProtection(named);
     byContent.ss.batchUpdateGSheets();
     expect(byContent.protections()).toEqual([wholeSheet]);
 
     const byDescription = fetchedRunItemProtections([wholeColumn, wholeSheet]);
-    byDescription.sheet.removeEditProtectionByDescription("id column");
+    byDescription.sheet.sheet.removeEditProtectionByDescription("id column");
     byDescription.ss.batchUpdateGSheets();
     expect(byDescription.protections()).toEqual([wholeSheet]);
 
     const byId = fetchedRunItemProtections([wholeColumn, wholeSheet]);
-    byId.sheet.removeEditProtectionById(21);
+    byId.sheet.sheet.removeEditProtectionById(21);
     byId.ss.batchUpdateGSheets();
     expect(byId.protections()).toEqual([wholeSheet]);
   });
@@ -753,7 +753,7 @@ describe("TableNamed edit warnings and edit locks", () => {
       }),
     ]);
 
-    sheet.identified.raw.removeEditProtectionsAt(wholeSheetRange);
+    sheet.identified.raw.sheet.removeEditProtectionsAt(wholeSheetRange);
     ss.batchUpdateGSheets();
 
     expect(protections()).toEqual([wholeColumn]);

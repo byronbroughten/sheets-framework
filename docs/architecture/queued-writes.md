@@ -10,7 +10,7 @@ A write mutates local state and queues an operation; one `batchUpdate` per flush
 
 ## A new write is queued and gathered on the sheet
 
-A new write is queued and gathered on the Table, and the flusher only sends the batch (the rules for a new write: [`src/02_SpreadsheetRaw/AGENTS.md`](../../src/02_SpreadsheetRaw/AGENTS.md)). The sheet, row or cell builds the operation, either when the write is queued (`TableRaw.updateTitle`) or from the write queue at flush time (`TableRaw.gatherFillColumnOperation`). A new operation kind therefore settles four things: its queue key, the state that holds it, the gather method that builds it (none for a spreadsheet-level op like `addSheet`, since a tab that doesn't exist yet has no sheet state to gather from), and its slot in the send order below.
+A new write is queued and gathered on the Table, and the flusher only sends the batch (the rules for a new write: [`src/02_SpreadsheetRaw/AGENTS.md`](../../src/02_SpreadsheetRaw/AGENTS.md)). The sheet, row or cell builds the operation, either when the write is queued (`SheetRaw.updateTitle`) or from the write queue at flush time (`TableRaw.gatherFillColumnOperation`). A new operation kind therefore settles four things: its queue key, the state that holds it, the gather method that builds it (none for a spreadsheet-level op like `addSheet`, since a tab that doesn't exist yet has no sheet state to gather from), and its slot in the send order below.
 
 ## Flush order
 

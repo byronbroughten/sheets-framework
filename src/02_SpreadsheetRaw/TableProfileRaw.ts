@@ -19,7 +19,7 @@ export class TableProfileRaw extends TableBaseRaw {
     if (columnIdsByPrefix.size === 0) return undefined;
     if (columnIdsByPrefix.size > 1) {
       throw new Error(
-        mixedIdPrefixMessage(this.table.title, columnIdsByPrefix),
+        mixedIdPrefixMessage(this.table.sheet.title, columnIdsByPrefix),
       );
     }
     return columnIdsByPrefix.keys().next().value;

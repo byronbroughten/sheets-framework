@@ -57,10 +57,10 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
       this.ss.table(tableId).markRowIndexesStale(),
     );
     sheetGidsWithConditionalFormatMutations.forEach((sheetGid) =>
-      this.ss.tableOnSheet(sheetGid).markConditionalFormatIndexesStale(),
+      this.ss.sheet(sheetGid).markConditionalFormatIndexesStale(),
     );
     sheetGidsWithEditProtectionMutations.forEach((sheetGid) =>
-      this.ss.tableOnSheet(sheetGid).markEditProtectionsStale(),
+      this.ss.sheet(sheetGid).markEditProtectionsStale(),
     );
     if (hasFindReplace) this._invalidateFetchedCellState();
   }

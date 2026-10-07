@@ -27,7 +27,7 @@ export const convertSheetConfigToTableConfig: Chore = {
     const raw = ss.raw;
     raw.fetchAllSheetProperties();
     const gidByTitle = new Map(
-      raw.activeSheetGids.map((gid) => [raw.tableOnSheet(gid).title, gid]),
+      raw.activeSheetGids.map((gid) => [raw.sheet(gid).title, gid]),
     );
     if (gidByTitle.has(tableConfigSeed.title)) {
       return `Nothing to convert: found a "${tableConfigSeed.title}" tab.`;
@@ -42,7 +42,7 @@ export const convertSheetConfigToTableConfig: Chore = {
     const conversions = rowConversions(raw, table);
     validateTicksHaveOneTable(table, conversions);
     updateSheetGidToTableId(table, conversions);
-    table.updateTitle(tableConfigSeed.title);
+    table.sheet.updateTitle(tableConfigSeed.title);
     table.updateTableName(tableConfigSeed.liveTableName);
     ss.batchUpdateGSheets();
     return [

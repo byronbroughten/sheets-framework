@@ -81,7 +81,7 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
       this.ss.raw.activeSheetGids.flatMap((sheetGid) =>
         floorTabSeedByGid(sheetGid) === undefined
           ? []
-          : [[sheetGid, this.ss.raw.tableOnSheet(sheetGid).title] as const],
+          : [[sheetGid, this.ss.raw.sheet(sheetGid).title] as const],
       ),
     );
     return floorChangeNotice(change, liveTitlesByGid);
@@ -107,9 +107,9 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
     const titleLines: string[] = [];
     const tableNameLines: string[] = [];
     presentFloorSheets.forEach(({ sheet, seed }) => {
-      if (sheet.title !== seed.title) {
-        titleLines.push(`"${sheet.title}" → ${seed.title}`);
-        sheet.updateTitle(seed.title);
+      if (sheet.sheet.title !== seed.title) {
+        titleLines.push(`"${sheet.sheet.title}" → ${seed.title}`);
+        sheet.sheet.updateTitle(seed.title);
       }
       if (sheet.name === seed.liveTableName) return;
       tableNameLines.push(
@@ -125,7 +125,7 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
   // Restoring an unconverted Sheet Config tab as Table Config would drop its ticks.
   private _assertSheetConfigIsConverted(): void {
     const titles = this.ss.raw.activeSheetGids.map(
-      (sheetGid) => this.ss.raw.tableOnSheet(sheetGid).title,
+      (sheetGid) => this.ss.raw.sheet(sheetGid).title,
     );
     if (
       titles.includes(retiredSheetConfigTitle) &&
@@ -144,7 +144,7 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
       ]),
     );
     this.ss.raw.activeSheetGids.forEach((sheetGid) => {
-      const title = this.ss.raw.tableOnSheet(sheetGid).title;
+      const title = this.ss.raw.sheet(sheetGid).title;
       const ownedGid = ownedGidByTitle.get(title);
       if (ownedGid !== undefined && sheetGid !== ownedGid) {
         throw new Error(`A tab titled "${title}" is not the floor tab.`);
@@ -163,7 +163,7 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
       if (floorDataValueColumns(tableName).length > 0) {
         sheet.row(0).prepFetchFull();
       }
-      sheet.prepFetchEditProtections();
+      sheet.sheet.prepFetchEditProtections();
     });
     this.ss.fetchAllPrepped({ includeProgrammaticFacts: true });
     return identityColIndexes;
@@ -186,14 +186,14 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
         if (liveHeader !== floorColumn.header) {
           headerRow.updateValue(colIndex, floorColumn.header);
           headerLines.push(
-            `${sheet.raw.title} · ${liveHeader} (${floorColumn.columnId}) → ${floorColumn.header}`,
+            `${sheet.raw.sheet.title} · ${liveHeader} (${floorColumn.columnId}) → ${floorColumn.header}`,
           );
         }
         const liveColumnId = String(colIdRow.valueOrEmpty(colIndex));
         if (liveColumnId !== floorColumn.columnId) {
           colIdRow.updateValue(colIndex, floorColumn.columnId);
           columnIdLines.push(
-            `${sheet.raw.title} · ${floorColumn.header} (${liveColumnId}) → ${floorColumn.columnId}`,
+            `${sheet.raw.sheet.title} · ${floorColumn.header} (${liveColumnId}) → ${floorColumn.columnId}`,
           );
         }
         const liveHeading = String(
@@ -208,7 +208,7 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
               ? "(blank)"
               : floorColumn.groupHeading;
           groupHeadingLines.push(
-            `${sheet.raw.title} · ${floorColumn.header} (${floorColumn.columnId}) → ${headingLabel}`,
+            `${sheet.raw.sheet.title} · ${floorColumn.header} (${floorColumn.columnId}) → ${headingLabel}`,
           );
         }
       });
@@ -318,7 +318,7 @@ function assertOnlyFloorTable(sheet: TableRaw, floorTableId: string): void {
 }
 
 function floorTabLabel(sheet: TableRaw): string {
-  return `Floor tab "${sheet.title}"`;
+  return `Floor tab "${sheet.sheet.title}"`;
 }
 
 function tableNamesLabel(sheet: TableRaw, tableIds: string[]): string {
@@ -336,5 +336,5 @@ function floorColumnIdentity<
   CN extends ColumnName<TN>,
 >(column: ColumnNamed<TN, CN>): string {
   const header = String(column.headCell("header").valueOrEmpty());
-  return `${column.table.raw.title} · ${header} (${column.columnId})`;
+  return `${column.table.raw.sheet.title} · ${header} (${column.columnId})`;
 }

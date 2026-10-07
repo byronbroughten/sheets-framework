@@ -38,7 +38,7 @@ describe("SpreadsheetRaw.fetchAllSheetProperties", () => {
     raw.fetchAllSheetProperties();
 
     expect(raw.activeSheetGids).toEqual([111]);
-    expect(raw.tableOnSheet(111).title).toBe("Records");
+    expect(raw.sheet(111).title).toBe("Records");
   });
 
   it("throws when a known sheet has more than one Table on the unfiltered census", () => {

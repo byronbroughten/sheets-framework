@@ -1,13 +1,7 @@
-import type {
-  ConditionalFormatDeclaration,
-  ConditionalFormatRule,
-} from "../00_Source/RawSource/ConditionalFormat";
+import type { ConditionalFormatDeclaration } from "../00_Source/RawSource/ConditionalFormat";
 import type {
   EditLockDeclaration,
-  EditProtection,
   EditWarningDeclaration,
-  WholeSheetEditLockDeclaration,
-  WholeSheetEditWarningDeclaration,
 } from "../00_Source/RawSource/EditProtection";
 import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
 import { type HeadRole, headRows } from "../01_SpreadsheetSchema/headRows";
@@ -104,13 +98,6 @@ export class TableIdentified extends TableCommonIdentified {
     this.raw.findReplace(terms);
     return this;
   }
-  prepFetchConditionalFormatRules(): this {
-    this.raw.gatherFetchConditionalFormatRules();
-    return this;
-  }
-  conditionalFormatRules(): ConditionalFormatRule[] {
-    return this.raw.conditionalFormatRules();
-  }
   addConditionalFormatRule(declaration: ConditionalFormatDeclaration): this {
     this.raw.addConditionalFormatRule(declaration);
     return this;
@@ -118,17 +105,6 @@ export class TableIdentified extends TableCommonIdentified {
   removeConditionalFormatRules(): this {
     this.raw.removeConditionalFormatRules();
     return this;
-  }
-  removeConditionalFormatRule(rule: ConditionalFormatRule): this {
-    this.raw.removeConditionalFormatRule(rule);
-    return this;
-  }
-  prepFetchEditProtections(): this {
-    this.raw.gatherFetchEditProtections();
-    return this;
-  }
-  editProtections(): EditProtection[] {
-    return this.raw.editProtections();
   }
   addEditWarning(declaration: EditWarningDeclaration = {}): this {
     this.raw.addEditWarning(declaration);
@@ -138,30 +114,8 @@ export class TableIdentified extends TableCommonIdentified {
     this.raw.addEditLock(declaration);
     return this;
   }
-  addEditWarningWholeSheet(
-    declaration: WholeSheetEditWarningDeclaration = {},
-  ): this {
-    this.raw.addEditWarningWholeSheet(declaration);
-    return this;
-  }
-  addEditLockWholeSheet(declaration: WholeSheetEditLockDeclaration = {}): this {
-    this.raw.addEditLockWholeSheet(declaration);
-    return this;
-  }
   removeEditProtections(): this {
     this.raw.removeEditProtections();
-    return this;
-  }
-  removeEditProtection(protection: EditProtection): this {
-    this.raw.removeEditProtection(protection);
-    return this;
-  }
-  removeEditProtectionByDescription(description: string): this {
-    this.raw.removeEditProtectionByDescription(description);
-    return this;
-  }
-  removeEditProtectionById(protectionId: number): this {
-    this.raw.removeEditProtectionById(protectionId);
     return this;
   }
   anchoredA1(colIndex: number): string {

@@ -78,7 +78,7 @@ export class FloorTabEditWarning<
   declaration(identityColIndexes: number[] | undefined): FloorDeclaration {
     return {
       description: floorWarningDescription(this.tableName),
-      range: this.table.raw.wholeSheetGridRange,
+      range: this.table.raw.sheet.wholeSheetGridRange,
       unprotectedRanges: this._editableRanges(
         this._carvedRowIndexesByColIndex(identityColIndexes),
       ),
@@ -88,11 +88,14 @@ export class FloorTabEditWarning<
     const sheet = this.table;
     return this._addedColIndexes().map(
       (colIndex) =>
-        `${sheet.raw.title} · ${String(sheet.raw.headRow("header").valueOrEmpty(colIndex))}`,
+        `${sheet.raw.sheet.title} · ${String(sheet.raw.headRow("header").valueOrEmpty(colIndex))}`,
     );
   }
   queueAdd({ description, unprotectedRanges }: FloorDeclaration): void {
-    this.table.addEditWarningWholeSheet({ description, unprotectedRanges });
+    this.table.sheet.addEditWarningWholeSheet({
+      description,
+      unprotectedRanges,
+    });
   }
   // Row indexes as fetched, before the sync moves rows.
   private _carvedRowIndexesByColIndex(

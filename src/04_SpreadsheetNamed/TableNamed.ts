@@ -1,13 +1,7 @@
-import type {
-  ConditionalFormatDeclaration,
-  ConditionalFormatRule,
-} from "../00_Source/RawSource/ConditionalFormat";
+import type { ConditionalFormatDeclaration } from "../00_Source/RawSource/ConditionalFormat";
 import type {
   EditLockDeclaration,
-  EditProtection,
   EditWarningDeclaration,
-  WholeSheetEditLockDeclaration,
-  WholeSheetEditWarningDeclaration,
 } from "../00_Source/RawSource/EditProtection";
 import type {
   ColumnName,
@@ -124,7 +118,10 @@ export class TableNamed<
   prepFetchColumnsWorking<CS extends readonly ColumnName<TN>[]>(
     ...columnNames: CS
   ): { [K in CS[number]]: ColumnNamed<TN, K> } {
-    return this.prepFetchColumnsSpecific(this.workingRowIndexes, ...columnNames);
+    return this.prepFetchColumnsSpecific(
+      this.workingRowIndexes,
+      ...columnNames,
+    );
   }
   sortRowsbyColumnName(
     rows: RowNamed<TN>[],
@@ -144,13 +141,6 @@ export class TableNamed<
     this.identified.findReplace(terms);
     return this;
   }
-  prepFetchConditionalFormatRules(): this {
-    this.identified.prepFetchConditionalFormatRules();
-    return this;
-  }
-  conditionalFormatRules(): ConditionalFormatRule[] {
-    return this.identified.conditionalFormatRules();
-  }
   addConditionalFormatRule(declaration: ConditionalFormatDeclaration): this {
     this.identified.addConditionalFormatRule(declaration);
     return this;
@@ -158,17 +148,6 @@ export class TableNamed<
   removeConditionalFormatRules(): this {
     this.identified.removeConditionalFormatRules();
     return this;
-  }
-  removeConditionalFormatRule(rule: ConditionalFormatRule): this {
-    this.identified.removeConditionalFormatRule(rule);
-    return this;
-  }
-  prepFetchEditProtections(): this {
-    this.identified.prepFetchEditProtections();
-    return this;
-  }
-  editProtections(): EditProtection[] {
-    return this.identified.editProtections();
   }
   addEditWarning(declaration: EditWarningDeclaration = {}): this {
     this.identified.addEditWarning(declaration);
@@ -178,30 +157,8 @@ export class TableNamed<
     this.identified.addEditLock(declaration);
     return this;
   }
-  addEditWarningWholeSheet(
-    declaration: WholeSheetEditWarningDeclaration = {},
-  ): this {
-    this.identified.addEditWarningWholeSheet(declaration);
-    return this;
-  }
-  addEditLockWholeSheet(declaration: WholeSheetEditLockDeclaration = {}): this {
-    this.identified.addEditLockWholeSheet(declaration);
-    return this;
-  }
   removeEditProtections(): this {
     this.identified.removeEditProtections();
-    return this;
-  }
-  removeEditProtection(protection: EditProtection): this {
-    this.identified.removeEditProtection(protection);
-    return this;
-  }
-  removeEditProtectionByDescription(description: string): this {
-    this.identified.removeEditProtectionByDescription(description);
-    return this;
-  }
-  removeEditProtectionById(protectionId: number): this {
-    this.identified.removeEditProtectionById(protectionId);
     return this;
   }
   anchoredA1(columnName: ColumnName<TN>): string {

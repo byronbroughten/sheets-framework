@@ -146,31 +146,31 @@ export class CellRaw<
     return this;
   }
   addConditionalFormatRule(declaration: ConditionalFormatDeclaration): this {
-    this.table.addConditionalFormatRuleAt(this.gridRange(), declaration);
+    this.table.sheet.addConditionalFormatRuleAt(this.gridRange(), declaration);
     return this;
   }
   removeConditionalFormatRules(): this {
-    this.table.removeConditionalFormatRulesAt(this.gridRange());
+    this.table.sheet.removeConditionalFormatRulesAt(this.gridRange());
     return this;
   }
   removeConditionalFormatRule(rule: ConditionalFormatRule): this {
-    this.table.removeConditionalFormatRule(rule);
+    this.table.sheet.removeConditionalFormatRule(rule);
     return this;
   }
   addEditWarning(declaration: EditWarningDeclaration = {}): this {
-    this.table.addEditWarningAt(this.gridRange(), declaration);
+    this.table.sheet.addEditWarningAt(this.gridRange(), declaration);
     return this;
   }
   addEditLock(declaration: EditLockDeclaration = {}): this {
-    this.table.addEditLockAt(this.gridRange(), declaration);
+    this.table.sheet.addEditLockAt(this.gridRange(), declaration);
     return this;
   }
   removeEditProtections(): this {
-    this.table.removeEditProtectionsAt(this.gridRange());
+    this.table.sheet.removeEditProtectionsAt(this.gridRange());
     return this;
   }
   removeEditProtection(protection: EditProtection): this {
-    this.table.removeEditProtection(protection);
+    this.table.sheet.removeEditProtection(protection);
     return this;
   }
   integrateSnapshot(cell: GridCellSnapshot | undefined): void {

@@ -1,15 +1,8 @@
 import type { CellValueName } from "../00_Source/CellValues/cellValues";
+import type { ConditionalFormatDeclaration } from "../00_Source/RawSource/ConditionalFormat";
 import type {
-  ConditionalFormatDeclaration,
-  ConditionalFormatRule,
-} from "../00_Source/RawSource/ConditionalFormat";
-import {
-  type EditLockDeclaration,
-  type EditProtection,
-  type EditWarningDeclaration,
-  type ProtectionGridRange,
-  type WholeSheetEditLockDeclaration,
-  type WholeSheetEditWarningDeclaration,
+  EditLockDeclaration,
+  EditWarningDeclaration,
 } from "../00_Source/RawSource/EditProtection";
 import type {
   BoundedGridRange,
@@ -21,11 +14,7 @@ import type {
   TableColumnPropertiesUpdate,
   TableColumnSnapshot,
 } from "../00_Source/RawSource/RawSource";
-import {
-  type SheetColIndex,
-  SheetIndex,
-  type SheetRowIndex,
-} from "../00_Source/RawSource/SheetIndex";
+import { SheetIndex } from "../00_Source/RawSource/SheetIndex";
 import { type HeadRole, headRows } from "../01_SpreadsheetSchema/headRows";
 import type { Value } from "../01_SpreadsheetSchema/valueSchemas";
 import { Arr } from "../utils/Arr";
@@ -48,16 +37,13 @@ import { RowRaw } from "./RowRaw";
 import { SheetRaw } from "./SheetRaw";
 import { SpreadsheetRaw } from "./SpreadsheetRaw";
 import { TableProfileRaw } from "./TableProfileRaw";
-import { SheetConditionalFormatsRaw } from "./TableRaw/SheetConditionalFormatsRaw";
-import { SheetEditProtectionsRaw } from "./TableRaw/SheetEditProtectionsRaw";
 import { TableColumnResolverRaw } from "./TableRaw/TableColumnResolverRaw";
 
 /**
  * One Table's state by Table-relative index: rows, columns, pruning, queued
  * Table-level requests, and integrating fetched cells into its rows, cells and
- * sampled column facts. `ss.tableOnSheet(gid)` also reaches it through its
- * sheet, so sheet-level title, conditional format rules and edit protections
- * live here too, the latter two in TableRaw/ behind one-line delegations.
+ * sampled column facts. Its sheet's title, grid size, conditional format rules
+ * and edit protections are SheetRaw, reached as `table.sheet`.
  * Descriptive facts are TableProfileRaw and ColumnProfileRaw; column ID lookups are TableRaw/;
  * spreadsheet-wide fetch and flush are SpreadsheetRaw. By-name and columnId resolution are Identified/Named.
  */
@@ -74,12 +60,6 @@ export class TableRaw extends TableCommonRaw {
   get profile(): TableProfileRaw {
     return new TableProfileRaw(this.tableRawProps);
   }
-  private get conditionalFormats(): SheetConditionalFormatsRaw {
-    return new SheetConditionalFormatsRaw(this.tableRawProps);
-  }
-  private get protections(): SheetEditProtectionsRaw {
-    return new SheetEditProtectionsRaw(this.tableRawProps);
-  }
   get columnResolver(): TableColumnResolverRaw {
     return new TableColumnResolverRaw(this.tableRawProps);
   }
@@ -95,9 +75,6 @@ export class TableRaw extends TableCommonRaw {
       startColumnIndex: origin.sheetColIndex(0),
       endColumnIndex: origin.sheetColIndex(columnCount),
     };
-  }
-  get wholeSheetGridRange(): ProtectionGridRange {
-    return { sheetId: this.sheetGid };
   }
   rowGridRange(rowIndex: number): GridRangeProps {
     const origin = this.tableOrigin();
@@ -118,18 +95,6 @@ export class TableRaw extends TableCommonRaw {
       startColumnIndex: origin.sheetColIndex(0),
       endColumnIndex: origin.sheetColIndex(columnCount),
     };
-  }
-  get title(): string {
-    return this.sheet.title;
-  }
-  updateTitle(title: string): this {
-    this.writeOperations.renameSheet.push({
-      kind: "renameSheet",
-      sheetId: this.sheetGid,
-      title,
-    });
-    this.sheetState.working.title = title;
-    return this;
   }
   updateTableName(name: string): this {
     const tableId = this.tableId;
@@ -388,112 +353,25 @@ export class TableRaw extends TableCommonRaw {
       });
     });
   }
-  gatherFetchConditionalFormatRules(): this {
-    this.conditionalFormats.gatherFetchConditionalFormatRules();
-    return this;
-  }
-  conditionalFormatRules(): ConditionalFormatRule[] {
-    return this.conditionalFormats.conditionalFormatRules();
-  }
   addConditionalFormatRule(declaration: ConditionalFormatDeclaration): this {
-    this.conditionalFormats.addConditionalFormatRule(declaration);
+    this.sheet.addConditionalFormatRuleAt(this.dataGridRange(), declaration);
     return this;
   }
   removeConditionalFormatRules(): this {
-    this.conditionalFormats.removeConditionalFormatRules();
+    this.sheet.removeConditionalFormatRulesAt(this.dataGridRange());
     return this;
-  }
-  addConditionalFormatRuleAt(
-    range: GridRangeProps,
-    declaration: ConditionalFormatDeclaration,
-  ): this {
-    this.conditionalFormats.addConditionalFormatRuleAt(range, declaration);
-    return this;
-  }
-  removeConditionalFormatRulesAt(range: GridRangeProps): this {
-    this.conditionalFormats.removeConditionalFormatRulesAt(range);
-    return this;
-  }
-  removeConditionalFormatRule(rule: ConditionalFormatRule): this {
-    this.conditionalFormats.removeConditionalFormatRule(rule);
-    return this;
-  }
-  markConditionalFormatIndexesStale(): void {
-    this.conditionalFormats.markConditionalFormatIndexesStale();
-  }
-  assertConditionalFormatIndexesNotStale(): void {
-    this.conditionalFormats.assertConditionalFormatIndexesNotStale();
-  }
-  integrateConditionalFormatRules(rules: ConditionalFormatRule[]): void {
-    this.conditionalFormats.integrateConditionalFormatRules(rules);
-  }
-  gatherFetchEditProtections(): this {
-    this.protections.gatherFetchEditProtections();
-    return this;
-  }
-  editProtections(): EditProtection[] {
-    return this.protections.editProtections();
   }
   addEditWarning(declaration: EditWarningDeclaration = {}): this {
-    this.protections.addEditWarning(declaration);
+    this.sheet.addEditWarningAt(this.dataGridRange(), declaration);
     return this;
   }
   addEditLock(declaration: EditLockDeclaration = {}): this {
-    this.protections.addEditLock(declaration);
-    return this;
-  }
-  addEditWarningWholeSheet(
-    declaration: WholeSheetEditWarningDeclaration = {},
-  ): this {
-    this.protections.addEditWarningWholeSheet(declaration);
-    return this;
-  }
-  addEditLockWholeSheet(declaration: WholeSheetEditLockDeclaration = {}): this {
-    this.protections.addEditLockWholeSheet(declaration);
-    return this;
-  }
-  addEditWarningAt(
-    range: ProtectionGridRange,
-    declaration: EditWarningDeclaration = {},
-  ): this {
-    this.protections.addEditWarningAt(range, declaration);
-    return this;
-  }
-  addEditLockAt(
-    range: ProtectionGridRange,
-    declaration: EditLockDeclaration = {},
-  ): this {
-    this.protections.addEditLockAt(range, declaration);
+    this.sheet.addEditLockAt(this.dataGridRange(), declaration);
     return this;
   }
   removeEditProtections(): this {
-    this.protections.removeEditProtections();
+    this.sheet.removeEditProtectionsAt(this.dataGridRange());
     return this;
-  }
-  removeEditProtectionsAt(range: ProtectionGridRange): this {
-    this.protections.removeEditProtectionsAt(range);
-    return this;
-  }
-  removeEditProtection(protection: EditProtection): this {
-    this.protections.removeEditProtection(protection);
-    return this;
-  }
-  removeEditProtectionByDescription(description: string): this {
-    this.protections.removeEditProtectionByDescription(description);
-    return this;
-  }
-  removeEditProtectionById(protectionId: number): this {
-    this.protections.removeEditProtectionById(protectionId);
-    return this;
-  }
-  markEditProtectionsStale(): void {
-    this.protections.markEditProtectionsStale();
-  }
-  assertEditProtectionsNotStale(): void {
-    this.protections.assertEditProtectionsNotStale();
-  }
-  integrateEditProtections(protections: EditProtection[]): void {
-    this.protections.integrateEditProtections(protections);
   }
   // The head rows survive, or every later column-index resolution breaks.
   removeRowsExcept(...rowIdxesToKeep: number[]): void {
@@ -591,7 +469,7 @@ export class TableRaw extends TableCommonRaw {
       endColumnIndex: origin.sheetColIndex(columnCount + insertCount),
     };
     this._validateNoNeighbourSplitBy(newColumns);
-    this._queueGridColumnsThrough(newColumns.endColumnIndex);
+    this.sheet.queueGridColumnsThrough(newColumns.endColumnIndex);
     this.writeOperations.insertTableEndColumns.push({
       tableId: this.tableId,
       newColumns,
@@ -620,16 +498,6 @@ export class TableRaw extends TableCommonRaw {
       `${this.columnInsertSplitting(split.name)} with its head rows. Move "${split.name}" so that it and its head rows sit entirely within rows ${band.startRowIndex + 1}–${band.endRowIndex}, or entirely outside them.`,
     );
   }
-  private _queueGridColumnsThrough(endColumnIndex: SheetColIndex): void {
-    const { working, writeQueue } = this.sheetState;
-    const columnCount = Val.assert(
-      working.columnCount,
-      `${this.sheetLabel}'s column count`,
-    );
-    if (endColumnIndex <= columnCount) return;
-    writeQueue.appendedColumnCount += endColumnIndex - columnCount;
-    working.columnCount = endColumnIndex;
-  }
   // Before the Table-end column inserts are counted, since growth is sent ahead of them.
   gatherAppendTableRowsOperation(): void {
     const appendedRowIndexes = this._queuedRowAppendIndexes();
@@ -642,7 +510,7 @@ export class TableRaw extends TableCommonRaw {
       startRowIndex: modelRow.endRowIndex,
       endRowIndex: SheetIndex.row(modelRow.endRowIndex + appendedRowCount),
     };
-    this._queueGridRowsThrough(newRows.endRowIndex);
+    this.sheet.queueGridRowsThrough(newRows.endRowIndex);
     this.writeOperations.appendTableRows.push({
       tableId: this.tableId,
       newRows,
@@ -675,16 +543,6 @@ export class TableRaw extends TableCommonRaw {
     return Array.from(this.rowWrites).flatMap(([rowIndex, writes]) =>
       writes.appendRow ? [rowIndex] : [],
     );
-  }
-  private _queueGridRowsThrough(endRowIndex: SheetRowIndex): void {
-    const { working, writeQueue } = this.sheetState;
-    const rowCount = Val.assert(
-      working.rowCount,
-      `${this.sheetLabel}'s row count`,
-    );
-    if (endRowIndex <= rowCount) return;
-    writeQueue.appendedRowCount += endRowIndex - rowCount;
-    working.rowCount = endRowIndex;
   }
   // A typed column's validation is the Table's own, so only Automatic columns get theirs copied.
   private _untypedColumnRuns(): [number, number][] {
@@ -789,7 +647,7 @@ export class TableRaw extends TableCommonRaw {
     });
   }
   private _tableLabel(tableId: string): string {
-    return `Table ${tableId} on "${this.title}"`;
+    return `Table ${tableId} on "${this.sheet.title}"`;
   }
   // Sent after the row deletes, so it spans only the body rows they leave.
   gatherSortTableOperation({

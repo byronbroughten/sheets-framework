@@ -24,8 +24,8 @@ export class SpreadsheetIdentified extends SpreadsheetBaseIdentified {
     });
   }
   get activeSheets(): TableIdentified[] {
-    return this.raw.activeSheetGids.map(
-      (sheetGid) => this.tableOnSheet(sheetGid),
+    return this.raw.activeSheetGids.map((sheetGid) =>
+      this.tableOnSheet(sheetGid),
     );
   }
   // Sheets first: building a sheet's handle hands its queue to its known Table.
@@ -34,10 +34,19 @@ export class SpreadsheetIdentified extends SpreadsheetBaseIdentified {
       (table) => table.isPreppedToFetch,
     );
   }
+  // A rule or protection fetch is queued on the sheet, but it still needs its Table's column IDs.
+  private _ensureGatheringSheetsHaveTables(): void {
+    const knownGids = this._knownTables().map((table) => table.sheetGid);
+    this.raw.activeSheetGids
+      .filter((sheetGid) => this.raw.sheet(sheetGid).hasGatheredFetch)
+      .filter((sheetGid) => !knownGids.includes(sheetGid))
+      .forEach((sheetGid) => this.tableOnSheet(sheetGid));
+  }
   fetchAllPrepped({
     includeProgrammaticFacts = false,
     ...props
   }: GatherDataPrerequisitesProps = {}): void {
+    this._ensureGatheringSheetsHaveTables();
     const tablesPreppedForFetch = this.tablesPreppedForFetch;
     tablesPreppedForFetch.forEach((table) => {
       table.columnResolver.gatherDataPrerequisites(props);
