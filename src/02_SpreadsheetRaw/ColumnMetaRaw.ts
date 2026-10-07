@@ -81,10 +81,11 @@ export class ColumnMetaRaw<
     header,
     groupHeading1,
   }: TableEndColumnHeadCells): this {
-    this.primary.headCell("columnId").updateValue(columnId);
-    this.primary.headCell("header").updateValue(header);
+    const { primary } = this;
+    primary.headCell("columnId").updateValue(columnId);
+    primary.headCell("header").updateValue(header);
     if (groupHeading1 !== undefined) {
-      this.primary.headCell("groupHeading1").updateValue(groupHeading1);
+      primary.headCell("groupHeading1").updateValue(groupHeading1);
     }
     return this;
   }

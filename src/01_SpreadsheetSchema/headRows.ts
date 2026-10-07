@@ -26,16 +26,22 @@ export type HeadRowValueName<HR extends HeadRole> =
 export type HeadRowValue<HR extends HeadRole> = CellValue<HeadRowValueName<HR>>;
 
 // Table-relative, so a head row sits at a negative index above body row 0.
+function headRowIndex(role: HeadRole): number {
+  return -1 - tableLayout.headRowOffsets[role];
+}
+
+// One per row, so a row two roles share appears once.
+const headRowIndexes: ReadonlySet<number> = new Set(
+  Obj.keys(tableLayout.headRowOffsets).map(headRowIndex),
+);
+
 export const headRows = {
-  index(role: HeadRole): number {
-    return -1 - tableLayout.headRowOffsets[role];
-  },
-  // One per row, so a row two roles share appears once.
+  index: headRowIndex,
   indexes(): number[] {
-    return [...new Set(Obj.keys(tableLayout.headRowOffsets).map(headRows.index))];
+    return [...headRowIndexes];
   },
   isIndex(rowIndex: number): boolean {
-    return headRows.indexes().includes(rowIndex);
+    return headRowIndexes.has(rowIndex);
   },
   rolesAt(rowIndex: number): [HeadRole, ...HeadRole[]] {
     const [first, ...rest] = Obj.keys(tableLayout.headRowOffsets).filter(

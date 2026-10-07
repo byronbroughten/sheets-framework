@@ -52,12 +52,8 @@ export class CellIdentified<
   // Identified is the lowest tier that knows the value name, so the blank is read here.
   valueOrEmpty(): Value<VN> {
     const value = this.raw.valueOrEmpty();
-    if (this.isHeadCell) return value as Value<VN>;
-    const blankReadsAs = this.schema.valTrait("blankReadsAs");
-    if (value === "" && blankReadsAs !== null) {
-      return blankReadsAs as Value<VN>;
-    }
-    return value as Value<VN>;
+    if (value !== "" || this.isHeadCell) return value as Value<VN>;
+    return (this.schema.valTrait("blankReadsAs") ?? value) as Value<VN>;
   }
   valueNotEmpty(): NotEmpty<Value<VN>> {
     const value = this.valueOrEmpty();
