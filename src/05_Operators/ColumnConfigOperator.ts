@@ -3,6 +3,7 @@ import {
   configSheetFloorSeed,
   floorSeedColumnById,
 } from "../01_SpreadsheetSchema/configSheetFloorSeed";
+import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
 import {
   type ColumnConfigsGeneric,
   makeImportLine,
@@ -144,7 +145,15 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
     let idsAdded = 0;
     this.tableIdsApiAccesses.forEach((tableId) => {
       const idPrefix = this.tableConfigOperator.idPrefix(tableId);
-      idsAdded += this.ss.raw.table(tableId).meta.addMissingColumnIds(idPrefix);
+      // Raw, not TableIdentified: a Table here may predate its generated schema.
+      const table = this.ss.raw.table(tableId);
+      const colIndexes = table.columnResolver.colIndexesWithoutColumnId;
+      colIndexes.forEach((colIndex) => {
+        table
+          .headRow("columnId")
+          .updateValue(colIndex, dimensionIds.col(idPrefix));
+      });
+      idsAdded += colIndexes.length;
     });
     Logger.log(
       `ensureColumnIds: prepared to add ${idsAdded} missing column ID(s)`,
@@ -258,10 +267,7 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
     tableName: string;
     header: string;
   }): boolean {
-    const seedColumn = floorSeedColumnById(
-      identity.tableId,
-      identity.columnId,
-    );
+    const seedColumn = floorSeedColumnById(identity.tableId, identity.columnId);
     if (seedColumn === undefined) return false;
     const emptyValueAllowed = this.table.column("emptyValueAllowed");
     if (

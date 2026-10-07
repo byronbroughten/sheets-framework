@@ -306,7 +306,7 @@ function unfetchedTableConfig(): TableIdentified {
   const ssi = new SpreadsheetIdentified(
     SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
   );
-  ssi.sheetMeta(tableConfigGid).ensureColumnIdsAreFetched();
+  ssi.sheetMeta(tableConfigGid).primary.ensureColumnIdsAreFetched();
   return ssi.sheetMeta(tableConfigGid).primary;
 }
 
@@ -378,6 +378,38 @@ describe("Identified head rows", () => {
 
     expect(table.headRowByIndex(-2).roles).toEqual(["action", "groupHeading2"]);
     expect(() => table.headRowByIndex(0)).toThrow(/not a head row/);
+  });
+});
+
+describe("TableIdentified.addMissingColumnIds", () => {
+  it("writes a column ID with the Table's prefix into each blank column-ID cell", () => {
+    const { grid } = stubSheetsService({
+      sheets: [
+        {
+          sheetId: valueTypesGid,
+          title: "Value Types",
+          rows: buildGridRows({
+            0: [valueTypesIdColumnId, ""],
+            3: ["ID", "Checkbox"],
+            4: ["r:vty:row4", true],
+          }),
+          table: { endRowIndex: 5 },
+        },
+      ],
+    });
+    const ssi = new SpreadsheetIdentified(
+      SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
+    );
+    const table = ssi.sheetMeta(valueTypesGid).primary;
+
+    const addedCount = table.ensureColumnIdsAreFetched().addMissingColumnIds();
+    ssi.raw.batchUpdateGSheets();
+
+    expect(addedCount).toBe(1);
+    expect(grid.sheet(valueTypesGid).cell(0, 0)).toBe(valueTypesIdColumnId);
+    expect(grid.sheet(valueTypesGid).cell(0, 1)).toMatch(
+      new RegExp(`^c:${table.schema.idPrefix}:`),
+    );
   });
 });
 
@@ -691,7 +723,6 @@ describe("Identified formula writes", () => {
         .updateValue("Row number"),
     ).not.toThrow();
   });
-
 });
 
 describe("SpreadsheetIdentified.fetchAllPrepped / FetchTargetIdentified", () => {
@@ -862,7 +893,7 @@ describe("SpreadsheetIdentified Tables", () => {
       ["ID", "Checkbox"],
     );
     const ssi = initIdentified();
-    ssi.sheetMeta(valueTypesGid).primary.meta.ensureColumnIdsAreFetched();
+    ssi.sheetMeta(valueTypesGid).primary.ensureColumnIdsAreFetched();
     const column = ssi.table(valueTypesTableId).column(valueTypesIdColumnId);
     column.prepFetchFull();
     ssi.fetchAllPrepped();
@@ -876,7 +907,7 @@ describe("SpreadsheetIdentified Tables", () => {
       ["ID", "Checkbox"],
     );
     const ssi = initIdentified();
-    ssi.sheetMeta(valueTypesGid).primary.meta.ensureColumnIdsAreFetched();
+    ssi.sheetMeta(valueTypesGid).primary.ensureColumnIdsAreFetched();
     ssi
       .sheetMeta(valueTypesGid)
       .primary.column(valueTypesIdColumnId)
@@ -903,7 +934,7 @@ describe("SpreadsheetIdentified Tables", () => {
       .sheetMeta(valueTypesGid)
       .primary.column(checkboxColumnId)
       .prepFetchFull();
-    ssi.sheetMeta(valueTypesGid).primary.meta.ensureColumnIdsAreFetched();
+    ssi.sheetMeta(valueTypesGid).primary.ensureColumnIdsAreFetched();
     ssi.table(valueTypesTableId).column(valueTypesIdColumnId).prepFetchFull();
     ssi.fetchAllPrepped();
 

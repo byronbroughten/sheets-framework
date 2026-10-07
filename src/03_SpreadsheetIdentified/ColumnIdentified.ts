@@ -8,7 +8,10 @@ import type {
   EditProtection,
   EditWarningDeclaration,
 } from "../00_Source/RawSource/EditProtection";
-import type { GridRangeProps } from "../00_Source/RawSource/RawSource";
+import type {
+  GridRangeProps,
+  TableColumnType,
+} from "../00_Source/RawSource/RawSource";
 import {
   type HeadRole,
   headRows,
@@ -140,6 +143,10 @@ export class ColumnIdentified<
   updateWorkingFormulas(formula: string): this {
     this.schema.validateIsFormula();
     this.raw.updateWorkingFormulas(formula);
+    return this;
+  }
+  updateColumnType(columnType: TableColumnType): this {
+    this.raw.updateColumnType(columnType);
     return this;
   }
   // Google matches the text, so neither string is checked against the value config.

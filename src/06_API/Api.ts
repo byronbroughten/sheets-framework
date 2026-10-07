@@ -79,9 +79,11 @@ export class Api extends SpreadsheetBaseNamed {
       return;
     }
     const { sheetGid, colIndexBase0, value } = edit;
-    const sheet = this.ssi.sheetMeta(sheetGid).ensureColumnIdsAreFetched();
-    const { columnResolver } = sheet.primary;
-    const colIndex = sheet.raw.tableOrigin().colIndex(colIndexBase0);
+    const table = this.ssi
+      .sheetMeta(sheetGid)
+      .primary.ensureColumnIdsAreFetched();
+    const { columnResolver } = table;
+    const colIndex = table.raw.tableOrigin().colIndex(colIndexBase0);
     if (!columnResolver.isTableColIndex(colIndex)) {
       return;
     }
@@ -89,7 +91,7 @@ export class Api extends SpreadsheetBaseNamed {
     if (columnId === "") {
       return;
     }
-    this._runEndpoint(sheet.schema.columnById(columnId), value === "TRUE");
+    this._runEndpoint(table.schema.columnById(columnId), value === "TRUE");
   }
   // An entry that doesn't run on uncheck is a button, so only ticking fires it.
   private _runEndpoint(entryColumn: ColumnSchema, isChecked: boolean): void {

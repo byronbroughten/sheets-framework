@@ -176,7 +176,7 @@ describe("ColumnProfileRaw sampled facts", () => {
   });
 });
 
-describe("SheetMetaRaw.insertColumnAtEnd", () => {
+describe("TableRaw.appendColumn", () => {
   const newColumn = { startColumnIndex: 3, endColumnIndex: 4 } as const;
 
   function stubThreeColumnTable(
@@ -216,7 +216,7 @@ describe("SheetMetaRaw.insertColumnAtEnd", () => {
     const { grid } = stubThreeColumnTable();
 
     const raw = fetchedRaw();
-    const insertedIndex = raw.sheetMeta(111).insertColumnAtEnd({
+    const insertedIndex = raw.sheetMeta(111).primary.appendColumn({
       columnId: "c:lse:ddd",
       header: "New",
       groupHeading1: "Group",
@@ -240,7 +240,7 @@ describe("SheetMetaRaw.insertColumnAtEnd", () => {
     const raw = fetchedRaw();
     const insertedIndex = raw
       .sheetMeta(111)
-      .insertColumnAtEnd({ columnId: "c:lse:ddd", header: "New" });
+      .primary.appendColumn({ columnId: "c:lse:ddd", header: "New" });
     raw.batchUpdateGSheets();
 
     expect(raw.table(tableId111).rowIndexesAreStale).toBe(false);
@@ -259,10 +259,10 @@ describe("SheetMetaRaw.insertColumnAtEnd", () => {
     const raw = fetchedRaw();
     const first = raw
       .sheetMeta(111)
-      .insertColumnAtEnd({ columnId: "c:lse:ddd", header: "First" });
+      .primary.appendColumn({ columnId: "c:lse:ddd", header: "First" });
     const second = raw
       .sheetMeta(111)
-      .insertColumnAtEnd({ columnId: "c:lse:eee", header: "Second" });
+      .primary.appendColumn({ columnId: "c:lse:eee", header: "Second" });
     raw.batchUpdateGSheets();
 
     expect([first, second]).toEqual([3, 4]);
@@ -304,7 +304,7 @@ describe("SheetMetaRaw.insertColumnAtEnd", () => {
     const raw = fetchedRaw();
     raw
       .sheetMeta(111)
-      .insertColumnAtEnd({ columnId: "c:lse:ddd", header: "New" });
+      .primary.appendColumn({ columnId: "c:lse:ddd", header: "New" });
     raw.batchUpdateGSheets();
 
     expect(
@@ -326,7 +326,7 @@ describe("SheetMetaRaw.insertColumnAtEnd", () => {
     const raw = fetchedRaw();
     raw
       .sheetMeta(111)
-      .insertColumnAtEnd({ columnId: "c:lse:ddd", header: "New" });
+      .primary.appendColumn({ columnId: "c:lse:ddd", header: "New" });
     raw.batchUpdateGSheets();
 
     expect(grid.sheet(111).tables[0]?.columnProperties?.[3]).toEqual({
@@ -409,9 +409,7 @@ describe("SheetMetaRaw.insertColumnAtEnd", () => {
     it("widens the Table and moves its head rows, leaving the cells above and below it and the Table under it untouched", () => {
       const { raw, grid } = fetchedTablesAround();
 
-      raw
-        .table("left")
-        .meta.insertColumnAtEnd({ columnId: "c:lft:new", header: "New" });
+      raw.table("left").appendColumn({ columnId: "c:lft:new", header: "New" });
       raw.batchUpdateGSheets();
 
       expect(tableColumns(grid)).toMatchObject({ left: [0, 3], under: [0, 4] });
@@ -450,9 +448,7 @@ describe("SheetMetaRaw.insertColumnAtEnd", () => {
     it("shifts a Table to the right whose rows it spans, head rows included, and lands a write to it in the same batch at its new columns", () => {
       const { raw, grid } = fetchedTablesAround();
 
-      raw
-        .table("left")
-        .meta.insertColumnAtEnd({ columnId: "c:lft:new", header: "New" });
+      raw.table("left").appendColumn({ columnId: "c:lft:new", header: "New" });
       raw.table("right").row(0).cell(1).updateValue("moved");
       raw.batchUpdateGSheets();
 
@@ -479,12 +475,10 @@ describe("SheetMetaRaw.insertColumnAtEnd", () => {
     it("lands inserts on two side-by-side Tables in one batch, each at its own end", () => {
       const { raw, grid } = fetchedTablesAround();
 
-      raw
-        .table("left")
-        .meta.insertColumnAtEnd({ columnId: "c:lft:new", header: "New" });
+      raw.table("left").appendColumn({ columnId: "c:lft:new", header: "New" });
       raw
         .table("right")
-        .meta.insertColumnAtEnd({ columnId: "c:rgt:new", header: "Extra" });
+        .appendColumn({ columnId: "c:rgt:new", header: "Extra" });
       raw.batchUpdateGSheets();
 
       expect(tableColumns(grid)).toMatchObject({
@@ -538,7 +532,7 @@ describe("SheetMetaRaw.insertColumnAtEnd", () => {
         raw.fetchAllSheetProperties();
         raw
           .table("left")
-          .meta.insertColumnAtEnd({ columnId: "c:lft:new", header: "New" });
+          .appendColumn({ columnId: "c:lft:new", header: "New" });
         return raw;
       }
       const refusal = `Inserting a column at the end of Table "Left" on sheet "Records" would shift only part of Table "Right" with its head rows. Move "Right" so that it and its head rows sit entirely within rows ${columnIdRow + 1}–${lastRow + 1}, or entirely outside them.`;
@@ -663,7 +657,7 @@ describe("SheetMetaRaw.insertColumnAtEnd", () => {
         raw.table("top").appendDataRow().updateValue(0, "t2");
         raw
           .table("left")
-          .meta.insertColumnAtEnd({ columnId: "c:lft:new", header: "New" });
+          .appendColumn({ columnId: "c:lft:new", header: "New" });
 
         expect(() => raw.batchUpdateGSheets()).toThrow(
           'Inserting a column at the end of Table "Left" on sheet "Records" would shift only part of Table "Right". Move "Right" so that it sits entirely within rows 8–12, or entirely outside them.',
@@ -727,13 +721,14 @@ describe("TableProfileRaw.columnIds", () => {
   });
 
   it("throws from fill-missing when a Table column-ID cell is not text", () => {
-    expect(() =>
-      fetchedColumnIdTable(["", 42]).meta.addMissingColumnIds("lse"),
+    expect(
+      () =>
+        fetchedColumnIdTable(["", 42]).columnResolver.colIndexesWithoutColumnId,
     ).toThrow(/Records.*column index 1/);
   });
 });
 
-describe("ColumnMetaRaw.updateColumnType", () => {
+describe("ColumnRaw.updateColumnType", () => {
   function stubTypedTable(
     table: Partial<NonNullable<FakeSheetProperties["table"]>> = {},
   ) {
@@ -760,8 +755,8 @@ describe("ColumnMetaRaw.updateColumnType", () => {
     const { grid } = stubTypedTable();
     const raw = fetchedRaw();
     raw.table(tableId111).appendDataRow();
-    raw.table(tableId111).column(2).meta.updateColumnType("DOUBLE");
-    raw.table(tableId111).column(1).meta.updateColumnType("TEXT");
+    raw.table(tableId111).column(2).updateColumnType("DOUBLE");
+    raw.table(tableId111).column(1).updateColumnType("TEXT");
     raw.batchUpdateGSheets();
 
     const [table] = grid.sheet(111).tables;
@@ -776,7 +771,7 @@ describe("ColumnMetaRaw.updateColumnType", () => {
   it("lets a header written in the same flush rename its column rather than be reverted by the type update", () => {
     const { grid } = stubTypedTable();
     const raw = fetchedRaw();
-    raw.table(tableId111).column(2).meta.updateColumnType("DOUBLE");
+    raw.table(tableId111).column(2).updateColumnType("DOUBLE");
     raw
       .table(tableId111)
       .column(1)
@@ -797,7 +792,7 @@ describe("ColumnMetaRaw.updateColumnType", () => {
     const { profile } = column;
     expect(profile.columnType).toBeUndefined();
 
-    column.meta.updateColumnType("DOUBLE");
+    column.updateColumnType("DOUBLE");
 
     expect(profile.columnType).toBe("DOUBLE");
     expect(raw.table(tableId111).column(2).profile.columnType).toBe("DOUBLE");
@@ -806,7 +801,7 @@ describe("ColumnMetaRaw.updateColumnType", () => {
   it("keeps an untouched column's name and type through the full-list replace", () => {
     stubTypedTable();
     const raw = fetchedRaw();
-    raw.table(tableId111).column(2).meta.updateColumnType("DOUBLE");
+    raw.table(tableId111).column(2).updateColumnType("DOUBLE");
     raw.batchUpdateGSheets();
     raw.fetchAllSheetProperties();
 
@@ -820,7 +815,7 @@ describe("ColumnMetaRaw.updateColumnType", () => {
       columnTypes: { [startTableColIndex]: "FUTURE_CHIP" },
     });
     const raw = fetchedRaw();
-    raw.table(tableId111).column(2).meta.updateColumnType("DOUBLE");
+    raw.table(tableId111).column(2).updateColumnType("DOUBLE");
     raw.batchUpdateGSheets();
 
     expect(grid.sheet(111).tables[0]?.columnProperties).toEqual([
@@ -879,7 +874,7 @@ describe("ColumnMetaRaw.updateColumnType", () => {
       },
     });
     const raw = fetchedRaw();
-    raw.table(tableId111).column(2).meta.updateColumnType("DOUBLE");
+    raw.table(tableId111).column(2).updateColumnType("DOUBLE");
 
     expect(() => raw.batchUpdateGSheets()).toThrow(
       /fake-table-111.*Records.*ID/,
@@ -890,10 +885,10 @@ describe("ColumnMetaRaw.updateColumnType", () => {
   it("refuses when the same flush inserts a column on that sheet, sending no batch update", () => {
     const { batchUpdateCount } = stubTypedTable();
     const raw = fetchedRaw();
-    raw.table(tableId111).column(2).meta.updateColumnType("DOUBLE");
+    raw.table(tableId111).column(2).updateColumnType("DOUBLE");
     raw
       .sheetMeta(111)
-      .insertColumnAtEnd({ columnId: "c:lse:new", header: "New" });
+      .primary.appendColumn({ columnId: "c:lse:new", header: "New" });
 
     expect(() => raw.batchUpdateGSheets()).toThrow(/inserts a column/);
     expect(batchUpdateCount()).toBe(0);
@@ -902,9 +897,9 @@ describe("ColumnMetaRaw.updateColumnType", () => {
   it("refuses a second update after a flush until the Table is refetched, sending no second batch update", () => {
     const { batchUpdateCount } = stubTypedTable();
     const raw = fetchedRaw();
-    raw.table(tableId111).column(2).meta.updateColumnType("DOUBLE");
+    raw.table(tableId111).column(2).updateColumnType("DOUBLE");
     raw.batchUpdateGSheets();
-    raw.table(tableId111).column(1).meta.updateColumnType("TEXT");
+    raw.table(tableId111).column(1).updateColumnType("TEXT");
 
     expect(() => raw.batchUpdateGSheets()).toThrow(
       /no fetched column properties/,

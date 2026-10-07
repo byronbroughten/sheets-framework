@@ -14,6 +14,7 @@ import type {
 import type {
   BoundedGridRange,
   GridRangeProps,
+  TableColumnType,
 } from "../00_Source/RawSource/RawSource";
 import {
   SheetIndex,
@@ -27,7 +28,11 @@ import {
 import { Arr } from "../utils/Arr";
 import { CellRaw, validateFormulaString } from "./CellRaw";
 import { ColumnBaseRaw } from "./ClassBases/ColumnBaseRaw";
-import type { CellFill, FindReplaceTerms } from "./ClassTypes/StateRaw";
+import type {
+  CellFill,
+  FindReplaceTerms,
+  TableEndColumnHeadCells,
+} from "./ClassTypes/StateRaw";
 import { ColumnMetaRaw } from "./ColumnMetaRaw";
 import { ColumnProfileRaw } from "./ColumnProfileRaw";
 import { SpreadsheetRaw } from "./SpreadsheetRaw";
@@ -186,6 +191,29 @@ export class ColumnRaw<
       startColIndex: this.colIndex,
       endColIndex: this.colIndex + 1,
     });
+    return this;
+  }
+  // Called only by the Table's appendColumn, on the column it just queued.
+  _initHeadCells({
+    columnId,
+    header,
+    groupHeading1,
+  }: TableEndColumnHeadCells): this {
+    this.headCell("columnId").updateValue(columnId);
+    this.headCell("header").updateValue(header);
+    if (groupHeading1 !== undefined) {
+      this.headCell("groupHeading1").updateValue(groupHeading1);
+    }
+    return this;
+  }
+  updateColumnType(columnType: TableColumnType): this {
+    this.table.assertTableIsKnown();
+    this.table.queueTableWrite({
+      action: "updateColumnType",
+      colIndex: this.colIndex,
+      columnType,
+    });
+    this._ensureColumnState(this.colIndex).columnType = columnType;
     return this;
   }
   addConditionalFormatRule(declaration: ConditionalFormatDeclaration): this {

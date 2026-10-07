@@ -112,7 +112,7 @@ function updateSheetGidToTableId(
   const colIndex = gidCol.colIndex;
   table.headRow("header").updateValue(colIndex, headers.tableId);
   table.headRow("columnId").updateValue(colIndex, dimensionIds.col(idPrefix));
-  gidCol.meta.updateColumnType("TEXT");
+  gidCol.updateColumnType("TEXT");
   conversions.forEach(({ rowIndex, tableId }) => {
     gidCol.updateValue(rowIndex, tableId ?? "");
   });

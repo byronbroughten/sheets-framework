@@ -427,6 +427,22 @@ describe("TableNamed edit warnings and edit locks", () => {
     expect(named.batchUpdateCount()).toBe(0);
   });
 
+  it("adds a lock over a head cell", () => {
+    const { protections, ss, sheet } = fetchedRunItemProtections();
+
+    sheet.column("id").headCell("header").addEditLock({
+      description: "id header lock",
+    });
+    ss.batchUpdateGSheets();
+
+    expect(protections()).toHaveLength(1);
+    expect(protections()[0]).toMatchObject({
+      range: idHeaderCellRange,
+      description: "id header lock",
+    });
+    expect(protections()[0]?.warningOnly).not.toBe(true);
+  });
+
   it("adds a lock when a present lock lacks a declared editor", () => {
     const { protections, ss, sheet } = fetchedRunItemProtections([
       googleProtection(idColumnRange, {
@@ -587,13 +603,13 @@ describe("TableNamed edit warnings and edit locks", () => {
     sheet.headRow("columnId").addEditWarning({
       description: "column id row",
     });
-    sheet.meta.column("id").addEditWarningOn("header", {
+    sheet.column("id").headCell("header").addEditWarning({
       description: "id header",
     });
-    sheet.meta.column("id").addEditWarningOn("columnId", {
+    sheet.column("id").headCell("columnId").addEditWarning({
       description: "id column id",
     });
-    sheet.meta.column("id").addEditWarningOn("groupHeading1", {
+    sheet.column("id").headCell("groupHeading1").addEditWarning({
       description: "id group heading",
     });
     sheet.column("id").cell(0).addEditWarning({

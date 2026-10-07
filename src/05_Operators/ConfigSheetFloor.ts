@@ -279,7 +279,7 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
       if (column.raw.profile.columnType === seedColumn.columnType) {
         return [];
       }
-      column.meta.updateColumnType(seedColumn.columnType);
+      column.updateColumnType(seedColumn.columnType);
       return [`${floorColumnIdentity(column)} → ${seedColumn.columnType}`];
     });
   }

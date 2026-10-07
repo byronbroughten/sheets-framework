@@ -1173,9 +1173,9 @@ describe("Named formula writes", () => {
 
   it("rejects a misspelled column type at the type level", () => {
     function columnTypeGate(column: ColumnNamed<"computed", "amount">) {
-      column.meta.updateColumnType("DOUBLE");
+      column.updateColumnType("DOUBLE");
       // @ts-expect-error DOUBEL is not a Table column type
-      column.meta.updateColumnType("DOUBEL");
+      column.updateColumnType("DOUBEL");
     }
 
     expect(columnTypeGate).toEqual(expect.any(Function));

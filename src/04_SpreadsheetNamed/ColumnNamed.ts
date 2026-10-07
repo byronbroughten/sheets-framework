@@ -8,7 +8,10 @@ import type {
   EditProtection,
   EditWarningDeclaration,
 } from "../00_Source/RawSource/EditProtection";
-import type { GridRangeProps } from "../00_Source/RawSource/RawSource";
+import type {
+  GridRangeProps,
+  TableColumnType,
+} from "../00_Source/RawSource/RawSource";
 import type {
   ColumnIsFormula,
   ColumnName,
@@ -111,6 +114,10 @@ export class ColumnNamed<
     formula: ColumnIsFormula<TN, CN> extends true ? string : never,
   ): this {
     this.identified.updateWorkingFormulas(formula);
+    return this;
+  }
+  updateColumnType(columnType: TableColumnType): this {
+    this.identified.updateColumnType(columnType);
     return this;
   }
   // Plain strings, unlike every other write here: Google matches the cell's text.

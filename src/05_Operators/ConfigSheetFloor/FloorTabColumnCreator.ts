@@ -65,9 +65,8 @@ export class FloorTabColumnCreator<
     );
   }
   createMissing(): string[] {
-    const meta = this.table.raw.meta;
     return this._missingColumns().map((floorColumn) => {
-      meta.insertColumnAtEnd({
+      this.table.raw.appendColumn({
         columnId: floorColumn.columnId,
         header: floorColumn.header,
         groupHeading1: floorColumn.groupHeading,

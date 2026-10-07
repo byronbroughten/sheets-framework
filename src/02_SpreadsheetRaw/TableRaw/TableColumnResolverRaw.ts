@@ -26,6 +26,11 @@ export class TableColumnResolverRaw extends TableCommonRaw {
     const value = this.table.headRow("columnId").valueOrEmpty(colIndex);
     return typeof value === "string" ? value : "";
   }
+  get colIndexesWithoutColumnId(): number[] {
+    return this.fullTableColIndexes.filter(
+      (colIndex) => this._columnIdInTable(colIndex) === "",
+    );
+  }
   hasColumnId(columnId: string): boolean {
     return this._tableColumnIds().includes(columnId);
   }

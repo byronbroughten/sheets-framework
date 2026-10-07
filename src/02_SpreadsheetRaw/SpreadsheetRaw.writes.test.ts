@@ -737,7 +737,7 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
     expect(() =>
       raw
         .sheetMeta(111)
-        .insertColumnAtEnd({ columnId: "c:x:new", header: "New" }),
+        .primary.appendColumn({ columnId: "c:x:new", header: "New" }),
     ).toThrow(staleRowIndexes);
   });
 
@@ -1237,7 +1237,7 @@ describe("queued writes outlive a same-run re-fetch", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheetMeta(111).primary.column(1).meta.updateColumnType("DOUBLE");
+    raw.sheetMeta(111).primary.column(1).updateColumnType("DOUBLE");
     raw.fetchAllSheetProperties();
 
     expect(raw.table(tableId111).column(1).profile.columnType).toBe("DOUBLE");

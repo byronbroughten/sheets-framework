@@ -151,7 +151,7 @@ function runEndpoint(
     entryColumnName: "startTime",
     endpoint,
   });
-  run.table.identified.meta.ensureColumnIdsAreFetched();
+  run.table.identified.ensureColumnIdsAreFetched();
   run.run(isChecked);
 }
 

@@ -31,7 +31,4 @@ export class SheetMetaNamed<
       columnName,
     });
   }
-  addMissingColumnIds(): number {
-    return this.identified.addMissingColumnIds();
-  }
 }

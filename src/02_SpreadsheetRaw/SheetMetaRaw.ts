@@ -1,6 +1,5 @@
 import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
 import { TableCommonRaw } from "./ClassBases/TableCommonRaw";
-import type { TableEndColumnHeadCells } from "./ClassTypes/StateRaw";
 import type { HeadRowRaw } from "./HeadRowRaw";
 import { SpreadsheetRaw } from "./SpreadsheetRaw";
 import { TableRaw } from "./TableRaw";
@@ -30,25 +29,5 @@ export class SheetMetaRaw extends TableCommonRaw {
           dimensionIds.colIdPrefixOrUndefined(columnId) === idPrefix,
       )
     );
-  }
-  addMissingColumnIds(idPrefix: string): number {
-    let addedCount = 0;
-    this.fullTableColIndexes.forEach((colIndex) => {
-      const colIdValue = this.primary.columnResolver.columnIdAt(colIndex);
-      if (!colIdValue) {
-        this.primary
-          .headRow("columnId")
-          .updateValue(colIndex, dimensionIds.col(idPrefix));
-        addedCount++;
-      }
-    });
-    return addedCount;
-  }
-  // Past the inserts already queued, since each lands at the Table end as it stands then.
-  insertColumnAtEnd(headCells: TableEndColumnHeadCells): number {
-    const colIndex = this.columnCount + this.writes.insertTableEndColumnCount;
-    this.queueTableWrite({ action: "insertTableEndColumn" });
-    this.primary.column(colIndex).meta.initHeadCells(headCells);
-    return colIndex;
   }
 }

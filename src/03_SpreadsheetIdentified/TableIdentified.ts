@@ -9,6 +9,7 @@ import type {
   WholeSheetEditLockDeclaration,
   WholeSheetEditWarningDeclaration,
 } from "../00_Source/RawSource/EditProtection";
+import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
 import { type HeadRole, headRows } from "../01_SpreadsheetSchema/headRows";
 import type { Value } from "../01_SpreadsheetSchema/valueSchemas";
 import type { FindReplaceTerms } from "../02_SpreadsheetRaw/ClassTypes/StateRaw";
@@ -71,6 +72,20 @@ export class TableIdentified extends TableCommonIdentified {
       ...this.tableIdentifiedProps,
       columnId,
     });
+  }
+  ensureColumnIdsAreFetched(): this {
+    this.columnResolver.gatherDataPrerequisites();
+    this.raw.ss.fetchAllGathered();
+    return this;
+  }
+  addMissingColumnIds(): number {
+    const colIndexes = this.raw.columnResolver.colIndexesWithoutColumnId;
+    colIndexes.forEach((colIndex) => {
+      this.raw
+        .headRow("columnId")
+        .updateValue(colIndex, dimensionIds.col(this.schema.idPrefix));
+    });
+    return colIndexes.length;
   }
   findReplace(terms: FindReplaceTerms): this {
     this.raw.findReplace(terms);

@@ -368,7 +368,7 @@ describe("RowRaw.delete", () => {
     raw.fetchAllSheetProperties();
     raw
       .sheetMeta(111)
-      .insertColumnAtEnd({ columnId: "c:x:new", header: "New" });
+      .primary.appendColumn({ columnId: "c:x:new", header: "New" });
     raw.table(tableId111).row(0).delete();
     raw.batchUpdateGSheets();
 

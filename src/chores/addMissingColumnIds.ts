@@ -13,7 +13,7 @@ export const addMissingColumnIds: Chore = {
     ss.fetchAllPrepped({ skipFetchingProperties: true });
     const addedBySheet = sheetNames.map((tableName): [TableName, number] => [
       tableName,
-      ss.sheetMeta(tableName).addMissingColumnIds(),
+      ss.table(tableName).identified.addMissingColumnIds(),
     ]);
     ss.batchUpdateGSheets();
     return addedIdsSummary(addedBySheet);

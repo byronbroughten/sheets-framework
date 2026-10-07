@@ -1,15 +1,9 @@
 import type {
-  EditLockDeclaration,
-  EditWarningDeclaration,
-} from "../00_Source/RawSource/EditProtection";
-import type { TableColumnType } from "../00_Source/RawSource/RawSource";
-import type {
   ColumnFullName,
   ColumnName,
   ColumnValueName,
   MakeColumnFullName,
 } from "../01_SpreadsheetSchema/columnConfigsTypes";
-import type { HeadRole } from "../01_SpreadsheetSchema/headRows";
 import type { TableName } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import type { ColumnMetaRaw } from "../02_SpreadsheetRaw/ColumnMetaRaw";
 import { ColumnMetaIdentified } from "../03_SpreadsheetIdentified/ColumnMetaIdentified";
@@ -41,27 +35,5 @@ export class ColumnMetaNamed<
   }
   get fullName(): MakeColumnFullName<TN, CN> & ColumnFullName {
     return this.schema.fullName;
-  }
-  updateColumnType(columnType: TableColumnType): this {
-    this.identified.updateColumnType(columnType);
-    return this;
-  }
-  actionRowToDefault(): ColumnMetaNamed<TN, CN> {
-    this.primary.headCell("action").updateValue(false);
-    return this;
-  }
-  addEditWarningOn(
-    headRole: HeadRole,
-    declaration: EditWarningDeclaration = {},
-  ): this {
-    this.primary.headCell(headRole).addEditWarning(declaration);
-    return this;
-  }
-  addEditLockOn(
-    headRole: HeadRole,
-    declaration: EditLockDeclaration = {},
-  ): this {
-    this.primary.headCell(headRole).addEditLock(declaration);
-    return this;
   }
 }

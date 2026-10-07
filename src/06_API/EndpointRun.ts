@@ -134,7 +134,10 @@ export class EndpointRun<
   // The entry cell is a button unless the endpoint also runs on unticking.
   private _resetEntryCheckbox(): void {
     if (this.endpoint.runOnUncheck) return;
-    this.table.meta.column(this.entryColumnName).actionRowToDefault();
+    this.table
+      .column(this.entryColumnName)
+      .headCell("action")
+      .updateValue(false);
   }
   // Unselected rows leave the working view, so every later read of working rows is the selection.
   private _pruneToSelection(selectedRowIndexes: number[]): void {

@@ -38,6 +38,7 @@ import {
   type ColumnFill,
   type FindReplaceTerms,
   type SortParameters,
+  type TableEndColumnHeadCells,
   type TableFindReplace,
   type TableWrites,
 } from "./ClassTypes/StateRaw";
@@ -202,6 +203,13 @@ export class TableRaw extends TableCommonRaw {
       startColIndex: 0,
       endColIndex: this.columnCount,
     });
+  }
+  // Past the inserts already queued, since each lands at the Table end as it stands then.
+  appendColumn(headCells: TableEndColumnHeadCells): number {
+    const colIndex = this.columnCount + this.writes.insertTableEndColumnCount;
+    this.queueTableWrite({ action: "insertTableEndColumn" });
+    this.column(colIndex)._initHeadCells(headCells);
+    return colIndex;
   }
   row(rowIndex: number): RowRaw {
     return new RowRaw({

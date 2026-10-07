@@ -9,11 +9,6 @@ export class SheetMetaIdentified extends TableCommonIdentified {
   get primary(): TableIdentified {
     return new TableIdentified(this.tableIdentifiedProps);
   }
-  ensureColumnIdsAreFetched(): this {
-    this.primary.columnResolver.gatherDataPrerequisites();
-    this.raw.ss.fetchAllGathered();
-    return this;
-  }
   gatherFetchDataPrepped(): void {
     // This is so that table dimensions and columnIndexes can be guaranteed
     // before their fetch requests are generated.
@@ -33,8 +28,5 @@ export class SheetMetaIdentified extends TableCommonIdentified {
         throw new Error(`Unknown fetch target: ${JSON.stringify(exhaustive)}`);
       }
     });
-  }
-  addMissingColumnIds(): number {
-    return this.raw.addMissingColumnIds(this.schema.idPrefix);
   }
 }
