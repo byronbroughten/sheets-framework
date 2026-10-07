@@ -1019,7 +1019,7 @@ describe("ConfigSheetFloor", () => {
     });
 
     expect(() => applyFloor()).toThrow(
-      'Found a "Sheet Config" tab and no "Table Config" tab. Convert Sheet Config to Table Config before syncing or regenerating configs',
+      'Found a "Sheet Config" tab and no "Table Config" tab. Run the convertSheetConfigToTableConfig chore before syncing or regenerating configs.',
     );
     expect(batchUpdateCount()).toBe(0);
   });

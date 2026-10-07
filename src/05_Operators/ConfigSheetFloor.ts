@@ -31,7 +31,7 @@ import {
   floorSheetNames,
 } from "./ConfigSheetFloor/floorSeedLookups";
 
-const retiredSheetConfigTitle = "Sheet Config";
+export const retiredSheetConfigTitle = "Sheet Config";
 
 /**
  * Restores floor tab titles, Table names, headers, column IDs, group
@@ -132,7 +132,7 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
       !titles.includes(configSheetFloorSeed.tableConfig.title)
     ) {
       throw new Error(
-        `Found a "${retiredSheetConfigTitle}" tab and no "${configSheetFloorSeed.tableConfig.title}" tab. Convert Sheet Config to Table Config before syncing or regenerating configs (sheets-framework#81).`,
+        `Found a "${retiredSheetConfigTitle}" tab and no "${configSheetFloorSeed.tableConfig.title}" tab. Run the convertSheetConfigToTableConfig chore before syncing or regenerating configs.`,
       );
     }
   }
