@@ -7,7 +7,7 @@ import {
   type FloorTabName,
   floorTabSeedByGid,
 } from "../01_SpreadsheetSchema/configSheetFloorSeed";
-import { getSheetTraitByName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import type { TableRaw } from "../02_SpreadsheetRaw/TableRaw";
 import { SpreadsheetBaseNamed } from "../04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
 import type { ColumnNamed } from "../04_SpreadsheetNamed/ColumnNamed";
@@ -91,17 +91,18 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
     this._assertSheetConfigIsConverted();
     this._assertFloorTitlesAreOwned();
     const presentFloorSheets = floorTabNames().flatMap((sheetName) => {
-      const sheetGid = getSheetTraitByName(sheetName, "sheetGid");
+      const sheetGid = getTableTraitByName(sheetName, "sheetGid");
       if (!this.ss.raw.gidIsActive(sheetGid)) return [];
       return [
         {
           sheet: this.ss.raw.sheetMeta(sheetGid).primary,
           seed: configSheetFloorSeed[sheetName],
+          floorTableId: getTableTraitByName(sheetName, "tableId"),
         },
       ];
     });
-    presentFloorSheets.forEach(({ sheet, seed }) => {
-      assertFloorTable(sheet, seed.tableName);
+    presentFloorSheets.forEach(({ sheet, floorTableId }) => {
+      assertOnlyFloorTable(sheet, floorTableId);
     });
     const titleLines: string[] = [];
     const tableNameLines: string[] = [];
@@ -110,7 +111,6 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
         titleLines.push(`"${sheet.title}" → ${seed.title}`);
         sheet.updateTitle(seed.title);
       }
-      if (!sheet.hasOneTable()) return;
       if (sheet.name === seed.tableName) return;
       tableNameLines.push(
         `${seed.title}'s Table "${sheet.name}" → ${seed.tableName}`,
@@ -140,7 +140,7 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
     const ownedGidByTitle = new Map<string, number>(
       floorTabNames().map((sheetName) => [
         configSheetFloorSeed[sheetName].title,
-        getSheetTraitByName(sheetName, "sheetGid"),
+        getTableTraitByName(sheetName, "sheetGid"),
       ]),
     );
     this.ss.raw.activeSheetGids.forEach((sheetGid) => {
@@ -154,7 +154,7 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
   private _fetchFloorSheets(): IdentityColIndexes {
     const identityColIndexes = this.editWarnings.gatherIdentityColumns();
     floorSheetNames().forEach((sheetName) => {
-      const sheetGid = getSheetTraitByName(sheetName, "sheetGid");
+      const sheetGid = getTableTraitByName(sheetName, "sheetGid");
       if (!this.ss.raw.gidIsActive(sheetGid)) return;
       const sheet = this.ss.table(sheetName);
       sheet.meta.uniformRow("columnId").prepFetchFull();
@@ -173,10 +173,9 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
     const columnIdLines: string[] = [];
     const groupHeadingLines: string[] = [];
     floorSheetNames().forEach((sheetName) => {
-      const sheetGid = getSheetTraitByName(sheetName, "sheetGid");
+      const sheetGid = getTableTraitByName(sheetName, "sheetGid");
       if (!this.ss.raw.gidIsActive(sheetGid)) return;
       const sheet = this.ss.table(sheetName);
-      if (!sheet.raw.hasOneTable()) return;
       const meta = sheet.raw.meta;
       floorColumnsToRestore(sheetName).forEach((floorColumn) => {
         const colIndex = liveColIndex(meta, floorColumn);
@@ -226,10 +225,9 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
   private _ensureSheetDataValues<TN extends FloorSheetName>(
     sheetName: TN,
   ): string[] {
-    const sheetGid = getSheetTraitByName(sheetName, "sheetGid");
+    const sheetGid = getTableTraitByName(sheetName, "sheetGid");
     if (!this.ss.raw.gidIsActive(sheetGid)) return [];
     const sheet = this.ss.table(sheetName);
-    if (!sheet.raw.hasOneTable()) return [];
     const row = sheet.raw.row(0);
     const restoredLines: string[] = [];
     floorDataValueColumns(sheetName).forEach((seedColumn) => {
@@ -261,7 +259,7 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
     sheetName: TN,
     columns: readonly FloorSeedColumn[],
   ): string[] {
-    const sheetGid = getSheetTraitByName(sheetName, "sheetGid");
+    const sheetGid = getTableTraitByName(sheetName, "sheetGid");
     if (!this.ss.raw.gidIsActive(sheetGid)) return [];
     const sheet = this.ss.table(sheetName);
     return columns.flatMap((seedColumn) => {
@@ -300,18 +298,31 @@ function floorDataValueColumns(
   );
 }
 
-function assertFloorTable(sheet: TableRaw, tableName: string): void {
-  if (sheet.tableIds().length === 0) {
-    throw new Error(`Floor tab "${sheet.title}" has no Table.`);
+function assertOnlyFloorTable(sheet: TableRaw, floorTableId: string): void {
+  const tableIds = sheet.tableIds();
+  if (tableIds.length === 0) {
+    throw new Error(`${floorTabLabel(sheet)} has no Table.`);
   }
-  if (
-    sheet.tableIds().length > 1 &&
-    !sheet.tableIds().some((tableId) => sheet.ss.table(tableId).name === tableName)
-  ) {
+  if (tableIds.length === 1) return;
+  if (!tableIds.includes(floorTableId)) {
     throw new Error(
-      `Floor tab "${sheet.title}" has several Tables and none is named ${tableName}.`,
+      `${floorTabLabel(sheet)} has ${tableNamesLabel(sheet, tableIds)} and none is its floor Table (Table ID "${floorTableId}").`,
     );
   }
+  const extraTableIds = tableIds.filter((tableId) => tableId !== floorTableId);
+  throw new Error(
+    `${floorTabLabel(sheet)} holds only its floor Table; move or delete ${tableNamesLabel(sheet, extraTableIds)}.`,
+  );
+}
+
+function floorTabLabel(sheet: TableRaw): string {
+  return `Floor tab "${sheet.title}"`;
+}
+
+function tableNamesLabel(sheet: TableRaw, tableIds: string[]): string {
+  return tableIds
+    .map((tableId) => `Table "${sheet.ss.table(tableId).name}"`)
+    .join(", ");
 }
 
 function reportLines(label: string, lines: string[]): string[] {

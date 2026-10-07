@@ -3,10 +3,10 @@ import { describe, expect, it } from "vitest";
 import { columnConfigsByName } from "./columnConfigsTypes";
 import { assertFloorMatchesSeed } from "./floorSeedCheck";
 import type { ColumnConfigsGeneric, ColumnConfigStored } from "./makeConfigs";
-import { sheetConfigsByName } from "./sheetConfigsTypes";
+import { tableConfigsByName } from "./tableConfigsTypes";
 
 describe("assertFloorMatchesSeed", () => {
-  const sheetConfigs = sheetConfigsByName();
+  const tableConfigs = tableConfigsByName();
 
   function floorColumnConfigs(): ColumnConfigsGeneric {
     return JSON.parse(JSON.stringify(columnConfigsByName()));
@@ -26,12 +26,12 @@ describe("assertFloorMatchesSeed", () => {
 
   it("passes the generated floor entries against the floor seed", () => {
     expect(() =>
-      assertFloorMatchesSeed(sheetConfigs, floorColumnConfigs()),
+      assertFloorMatchesSeed(tableConfigs, floorColumnConfigs()),
     ).not.toThrow();
   });
 
   it("throws naming a floor tab with no entry", () => {
-    const { valueConfig: _valueConfig, ...withoutValueConfig } = sheetConfigs;
+    const { valueConfig: _valueConfig, ...withoutValueConfig } = tableConfigs;
 
     expect(() =>
       assertFloorMatchesSeed(withoutValueConfig, floorColumnConfigs()),
@@ -43,7 +43,7 @@ describe("assertFloorMatchesSeed", () => {
     const header = floorColumn(configs, "columnConfig", "header");
     header.header = "Heading";
 
-    expect(() => assertFloorMatchesSeed(sheetConfigs, configs)).toThrow(
+    expect(() => assertFloorMatchesSeed(tableConfigs, configs)).toThrow(
       `Floor column "Header" on "columnConfig" (column ID "${header.columnId}") has header "Heading" where the floor seed has "Header".`,
     );
   });
@@ -53,7 +53,7 @@ describe("assertFloorMatchesSeed", () => {
     const tableId = floorColumn(configs, "columnConfig", "tableId");
     tableId.valueName = "number";
 
-    expect(() => assertFloorMatchesSeed(sheetConfigs, configs)).toThrow(
+    expect(() => assertFloorMatchesSeed(tableConfigs, configs)).toThrow(
       `Floor column "Table ID" on "columnConfig" (column ID "${tableId.columnId}") has valueName "number" where the floor seed's column type TEXT implies "string".`,
     );
   });
@@ -63,7 +63,7 @@ describe("assertFloorMatchesSeed", () => {
     const letApiAccess = floorColumn(configs, "tableConfig", "letApiAccess");
     letApiAccess.valueName = "boolean";
 
-    expect(() => assertFloorMatchesSeed(sheetConfigs, configs)).toThrow(
+    expect(() => assertFloorMatchesSeed(tableConfigs, configs)).toThrow(
       `Floor column "Let api access" on "tableConfig" (column ID "${letApiAccess.columnId}") has valueName "boolean" where the floor seed's column type BOOLEAN implies "checkbox".`,
     );
   });
@@ -77,7 +77,7 @@ describe("assertFloorMatchesSeed", () => {
     );
     tableMenuSpace.emptyValueAllowed = true;
 
-    expect(() => assertFloorMatchesSeed(sheetConfigs, configs)).toThrow(
+    expect(() => assertFloorMatchesSeed(tableConfigs, configs)).toThrow(
       `Floor column "Table menu space" on "spreadsheetConfig" (column ID "${tableMenuSpace.columnId}") has emptyValueAllowed true where the floor seed has false.`,
     );
   });
@@ -86,7 +86,7 @@ describe("assertFloorMatchesSeed", () => {
     const configs = floorColumnConfigs();
     delete configs.columnConfig?.emptyValueAllowed;
 
-    expect(() => assertFloorMatchesSeed(sheetConfigs, configs)).toThrow(
+    expect(() => assertFloorMatchesSeed(tableConfigs, configs)).toThrow(
       'Floor column "Empty value allowed" on "columnConfig" has no floor entry.',
     );
   });
@@ -98,7 +98,7 @@ describe("assertFloorMatchesSeed", () => {
     floorColumn(configs, "columnConfig", "tableName").customDefaultValue =
       null;
 
-    expect(() => assertFloorMatchesSeed(sheetConfigs, configs)).not.toThrow();
+    expect(() => assertFloorMatchesSeed(tableConfigs, configs)).not.toThrow();
   });
 
   it("passes a live column the seed doesn't declare", () => {
@@ -113,6 +113,6 @@ describe("assertFloorMatchesSeed", () => {
       customDefaultValue: null,
     };
 
-    expect(() => assertFloorMatchesSeed(sheetConfigs, configs)).not.toThrow();
+    expect(() => assertFloorMatchesSeed(tableConfigs, configs)).not.toThrow();
   });
 });

@@ -10,7 +10,7 @@ import {
 import type {
   ColumnConfigsGeneric,
   ColumnConfigStored,
-  SheetConfigsBase,
+  TableConfigsBase,
 } from "./makeConfigs";
 import type { ValueName } from "./valueSchemas";
 
@@ -24,16 +24,16 @@ const floorColumnTypeValueNames: Record<FloorColumnType, ValueName> = {
 
 // Resolves column IDs through the last generated configs, so it's sound only after the floor identity guard.
 export function assertFloorMatchesSeed(
-  sheetConfigs: SheetConfigsBase,
+  tableConfigs: TableConfigsBase,
   columnConfigs: ColumnConfigsGeneric,
 ): void {
-  assertFloorTabEntries(sheetConfigs);
+  assertFloorTabEntries(tableConfigs);
   assertFloorColumnEntries(columnConfigs);
 }
 
-function assertFloorTabEntries(sheetConfigs: SheetConfigsBase): void {
+function assertFloorTabEntries(tableConfigs: TableConfigsBase): void {
   const missing = floorTabNames.find(
-    (sheetName) => !Object.hasOwn(sheetConfigs, sheetName),
+    (tableKey) => !Object.hasOwn(tableConfigs, tableKey),
   );
   if (missing === undefined) return;
   throw new Error(

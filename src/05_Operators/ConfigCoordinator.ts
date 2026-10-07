@@ -1,6 +1,6 @@
 import { columnConfigsByName } from "../01_SpreadsheetSchema/columnConfigsTypes";
 import { assertFloorMatchesSeed } from "../01_SpreadsheetSchema/floorSeedCheck";
-import { sheetConfigsByName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
+import { tableConfigsByName } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import {
   SpreadsheetBaseNamed,
   type SpreadsheetNamedProps,
@@ -101,18 +101,18 @@ export class ConfigCoordinator extends SpreadsheetBaseOperator {
   private _assertFloorIdentityUnchanged(): void {
     assertFloorIdentityUnchanged({
       previous: {
-        sheetConfigs: sheetConfigsByName(),
+        tableConfigs: tableConfigsByName(),
         columnConfigs: columnConfigsByName(),
       },
       next: {
-        sheetConfigs: this.tableConfigOperator.newSheetConfigs(),
+        tableConfigs: this.tableConfigOperator.newTableConfigs(),
         columnConfigs: this.columnConfigOperator.newColumnConfigs(),
       },
     });
   }
   private _assertFloorMatchesSeed(): void {
     assertFloorMatchesSeed(
-      this.tableConfigOperator.newSheetConfigs(),
+      this.tableConfigOperator.newTableConfigs(),
       this.columnConfigOperator.newColumnConfigs(),
     );
   }

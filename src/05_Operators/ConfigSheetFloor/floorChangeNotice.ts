@@ -3,7 +3,7 @@ import {
   configSheetFloorSeed,
   type FloorTabName,
 } from "../../01_SpreadsheetSchema/configSheetFloorSeed";
-import { getSheetTraitByName } from "../../01_SpreadsheetSchema/sheetConfigsTypes";
+import { getTableTraitByName } from "../../01_SpreadsheetSchema/tableConfigsTypes";
 
 export interface FloorNotice {
   title: string;
@@ -19,7 +19,7 @@ export function floorChangeNotice(
 ): FloorNotice | undefined {
   const { title } = configSheetFloorSeed[unwarnedFloorTab];
   const liveTitle = liveTitlesByGid.get(
-    getSheetTraitByName(unwarnedFloorTab, "sheetGid"),
+    getTableTraitByName(unwarnedFloorTab, "sheetGid"),
   );
   if (change === "other" && liveTitle !== undefined && liveTitle !== title) {
     return {

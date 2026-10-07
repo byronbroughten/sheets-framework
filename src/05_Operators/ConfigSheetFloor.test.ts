@@ -6,7 +6,7 @@ import {
   configSheetFloorSeed,
   floorSeedColumns,
 } from "../01_SpreadsheetSchema/configSheetFloorSeed";
-import { getSheetTraitByName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {
@@ -24,13 +24,13 @@ import { selfDescribingRowColumns } from "./ConfigSheetFloor/FloorTabEditWarning
 
 const { columnConfigs } = installedConfigs();
 
-const spreadsheetConfigGid = getSheetTraitByName(
+const spreadsheetConfigGid = getTableTraitByName(
   "spreadsheetConfig",
   "sheetGid",
 );
-const tableConfigGid = getSheetTraitByName("tableConfig", "sheetGid");
-const columnConfigGid = getSheetTraitByName("columnConfig", "sheetGid");
-const valueConfigGid = getSheetTraitByName("valueConfig", "sheetGid");
+const tableConfigGid = getTableTraitByName("tableConfig", "sheetGid");
+const columnConfigGid = getTableTraitByName("columnConfig", "sheetGid");
+const valueConfigGid = getTableTraitByName("valueConfig", "sheetGid");
 const actionRowIndex = expectedSheetLayout.actionRowIndex;
 const topDataRowIndex = expectedSheetLayout.tableHeaderRowIndex + 1;
 const floorWarningPrefix = "Config-sheet floor";
@@ -365,6 +365,7 @@ function floorFixture(
             ? []
             : [
                 {
+                  tableId: tableIdOnTab(spreadsheetConfigGid),
                   name:
                     options.spreadsheetConfigTableName ??
                     configSheetFloorSeed.spreadsheetConfig.tableName,
@@ -414,6 +415,7 @@ function floorFixture(
           ),
         }),
         table: {
+          tableId: tableIdOnTab(tableConfigGid),
           name: configSheetFloorSeed.tableConfig.tableName,
           startColumnIndex: startTableColIndex,
           endRowIndex: topDataRowIndex + tableConfigGids.length,
@@ -464,6 +466,7 @@ function floorFixture(
           ),
         }),
         table: {
+          tableId: tableIdOnTab(columnConfigGid),
           name: configSheetFloorSeed.columnConfig.tableName,
           startColumnIndex: startTableColIndex,
           endRowIndex: topDataRowIndex + columnConfigRows.length,
@@ -487,6 +490,7 @@ function floorFixture(
         title:
           options.valueConfig?.title ?? configSheetFloorSeed.valueConfig.title,
         table: {
+          tableId: tableIdOnTab(valueConfigGid),
           name:
             options.valueConfig?.tableName ??
             configSheetFloorSeed.valueConfig.tableName,
@@ -1041,25 +1045,39 @@ describe("ConfigSheetFloor", () => {
     expect(batchUpdateCount()).toBe(0);
   });
 
-  it("throws naming the tab when several Tables are present and none has the floor name, and sends no batch update", () => {
+  it("throws naming the tab and its Tables when several are present and none has the floor Table ID, and sends no batch update", () => {
     const { batchUpdateCount } = floorFixture({
-      spreadsheetConfigTableName: "firstWrong",
-      spreadsheetConfigExtraTables: [{ endRowIndex: 5, name: "secondWrong" }],
+      omitSpreadsheetConfigTable: true,
+      spreadsheetConfigExtraTables: [
+        { endRowIndex: 5, name: "firstWrong" },
+        { endRowIndex: 5, name: "secondWrong" },
+      ],
     });
 
     expect(() => applyFloor()).toThrow(
-      'Floor tab "Spreadsheet Config" has several Tables and none is named spreadsheetConfig.',
+      `Floor tab "Spreadsheet Config" has Table "firstWrong", Table "secondWrong" and none is its floor Table (Table ID "${tableIdOnTab(spreadsheetConfigGid)}").`,
     );
     expect(batchUpdateCount()).toBe(0);
   });
 
-  it("throws naming the tab when several Tables are present and one has the floor name, and sends no batch update", () => {
+  it("refuses an extra Table beside a renamed floor Table, naming the extra", () => {
+    floorFixture({
+      spreadsheetConfigTableName: "renamedFloor",
+      spreadsheetConfigExtraTables: [{ endRowIndex: 5, name: "extra" }],
+    });
+
+    expect(() => applyFloor()).toThrow(
+      'Floor tab "Spreadsheet Config" holds only its floor Table; move or delete Table "extra".',
+    );
+  });
+
+  it("refuses an extra Table beside the floor Table, naming it, and sends no batch update", () => {
     const { batchUpdateCount } = floorFixture({
       spreadsheetConfigExtraTables: [{ endRowIndex: 5, name: "extra" }],
     });
 
     expect(() => applyFloor()).toThrow(
-      '1 sheet(s) have more than one Table — delete the extras so each sheet has exactly one: "Spreadsheet Config"',
+      'Floor tab "Spreadsheet Config" holds only its floor Table; move or delete Table "extra".',
     );
     expect(batchUpdateCount()).toBe(0);
   });
@@ -1476,15 +1494,15 @@ describe("ConfigSheetFloor", () => {
     });
   });
 
-  it("gives a created Table a random tableId, not its name", () => {
+  it("recreates a deleted Table Config tab at its generated GID and tableId", () => {
     const { grid } = floorFixture({
       omitSheetGids: [tableConfigGid],
     });
     applyFloor();
 
-    expect(grid.sheet(tableConfigGid).tables[0]?.tableId).toMatch(
-      /^tbl-[0-9a-f]{10}$/,
-    );
+    expect(
+      grid.sheet(tableConfigGid).tables.map((table) => table.tableId),
+    ).toEqual([getTableTraitByName("tableConfig", "tableId")]);
   });
 
   it("creates a missing Spreadsheet Config at its GID with a Table carrying every seed column, the endpoint feedback columns included, and reports it", () => {

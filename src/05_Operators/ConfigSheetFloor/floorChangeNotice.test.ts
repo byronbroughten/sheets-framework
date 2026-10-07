@@ -1,17 +1,17 @@
 import { describe, expect, it } from "vitest";
 
 import { configSheetFloorSeed } from "../../01_SpreadsheetSchema/configSheetFloorSeed";
-import { getSheetTraitByName } from "../../01_SpreadsheetSchema/sheetConfigsTypes";
+import { getTableTraitByName } from "../../01_SpreadsheetSchema/tableConfigsTypes";
 import { floorChangeNotice } from "./floorChangeNotice";
 
 const businessSheetGid = 9001;
-const spreadsheetConfigGid = getSheetTraitByName(
+const spreadsheetConfigGid = getTableTraitByName(
   "spreadsheetConfig",
   "sheetGid",
 );
-const tableConfigGid = getSheetTraitByName("tableConfig", "sheetGid");
-const columnConfigGid = getSheetTraitByName("columnConfig", "sheetGid");
-const valueConfigGid = getSheetTraitByName("valueConfig", "sheetGid");
+const tableConfigGid = getTableTraitByName("tableConfig", "sheetGid");
+const columnConfigGid = getTableTraitByName("columnConfig", "sheetGid");
+const valueConfigGid = getTableTraitByName("valueConfig", "sheetGid");
 
 function liveTitles(
   overrides: Record<number, string | null> = {},

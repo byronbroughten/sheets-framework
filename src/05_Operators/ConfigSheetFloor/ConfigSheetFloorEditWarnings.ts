@@ -3,7 +3,7 @@ import {
   protectionRangeEqual,
   protectionRangesEqual,
 } from "../../00_Source/RawSource/EditProtection";
-import { getSheetTraitByName } from "../../01_SpreadsheetSchema/sheetConfigsTypes";
+import { getTableTraitByName } from "../../01_SpreadsheetSchema/tableConfigsTypes";
 import { SpreadsheetBaseNamed } from "../../04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
 import { SpreadsheetNamed } from "../../04_SpreadsheetNamed/SpreadsheetNamed";
 import { type FloorSheetName, floorSheetNames } from "./floorSeedLookups";
@@ -112,7 +112,7 @@ export class ConfigSheetFloorEditWarnings extends SpreadsheetBaseNamed {
   // A floor tab created this run is still absent after the refetch under a fake or dry run.
   private _activeFloorSheetNames(): FloorSheetName[] {
     return floorSheetNames().filter((sheetName) =>
-      this.ss.raw.gidIsActive(getSheetTraitByName(sheetName, "sheetGid")),
+      this.ss.raw.gidIsActive(getTableTraitByName(sheetName, "sheetGid")),
     );
   }
   private _floorProtections(): ModelableEditProtection[] {

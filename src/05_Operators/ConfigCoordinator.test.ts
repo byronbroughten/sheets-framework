@@ -326,7 +326,9 @@ function seedFixture(
 
 const valueConfigFloorGid = getSheetTraitByName("valueConfig", "sheetGid");
 
-function floorValueConfigTab(): FakeSheetProperties {
+function floorValueConfigTab(
+  tableId = tableIdOnTab(valueConfigFloorGid),
+): FakeSheetProperties {
   return {
     ...valueConfigTab({
       sheetId: valueConfigFloorGid,
@@ -334,7 +336,7 @@ function floorValueConfigTab(): FakeSheetProperties {
       columnId: "c:vcf:abc1234",
     }),
     table: {
-      tableId: tableIdOnTab(valueConfigFloorGid),
+      tableId,
       name: configSheetFloorSeed.valueConfig.tableName,
       startRowIndex: tableHeaderRowIndex,
       startColumnIndex: startTableColIndex,
@@ -721,6 +723,24 @@ describe("ConfigCoordinator.generateConfigFiles", () => {
       );
     });
 
+    it("throws when a floor tab's Table ID changed", () => {
+      const replacedTableId = "tbl-replaced01";
+      seedFixture({
+        valueConfigSheet: floorValueConfigTab(replacedTableId),
+        extraTableConfigDataRows: {
+          5: [replacedTableId, "", "Value Config", true, ""],
+        },
+        tableConfigTableEndRowIndex: 6,
+        isDryRun: true,
+      });
+
+      expect(() =>
+        ConfigCoordinator.init().generateConfigFiles("../makeConfigs"),
+      ).toThrow(
+        `Floor tab "valueConfig" Table ID was "${tableIdOnTab(valueConfigFloorGid)}" and is now "${replacedTableId}".`,
+      );
+    });
+
     it("fails a floor column's changed column ID with the identity guard's message, before the floor seed check", () => {
       seedFixture({
         fillRowIdsRunStatusColumnId: "c:sscf:moved01",
@@ -959,6 +979,33 @@ describe("ConfigCoordinator.syncConfigSheetRows Let api access", () => {
     expect(report).toContain(
       "Table Config · Let api access · Spreadsheet Config → TRUE",
     );
+  });
+
+  it("ticks all four floor Tables' unticked Let api access rows again in one sync", () => {
+    const floorGids = [
+      spreadsheetConfigGid,
+      tableConfigGid,
+      columnConfigGid,
+      valueConfigFloorGid,
+    ];
+    seedFixture({
+      extraTableConfigDataRows: Object.fromEntries(
+        floorGids.map((sheetGid, index) => [
+          5 + index,
+          [tableIdOnTab(sheetGid), "", "", false, ""],
+        ]),
+      ),
+      tableConfigTableEndRowIndex: 5 + floorGids.length,
+    });
+
+    const orchestrator = ConfigCoordinator.init();
+    orchestrator.syncConfigSheetRows();
+
+    expect(
+      floorGids.map((sheetGid) =>
+        tableConfigLetApiAccess(orchestrator, sheetGid),
+      ),
+    ).toEqual([true, true, true, true]);
   });
 
   it("appends a missing floor-tab row with Let api access TRUE", () => {

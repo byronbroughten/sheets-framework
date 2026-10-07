@@ -2,7 +2,7 @@ import {
   type ColumnName,
   getColumnTraitByName,
 } from "../../01_SpreadsheetSchema/columnConfigsTypes";
-import { getSheetTraitByName } from "../../01_SpreadsheetSchema/sheetConfigsTypes";
+import { getTableTraitByName } from "../../01_SpreadsheetSchema/tableConfigsTypes";
 import { TableBaseNamed } from "../../04_SpreadsheetNamed/ClassBases/TableBaseNamed";
 import { SpreadsheetNamed } from "../../04_SpreadsheetNamed/SpreadsheetNamed";
 import type { TableNamed } from "../../04_SpreadsheetNamed/TableNamed";
@@ -25,7 +25,7 @@ export class FloorTabColumnCreator<
     return this.ss.table(this.tableName);
   }
   hasFloorTable(): boolean {
-    const sheetGid = getSheetTraitByName(this.tableName, "sheetGid");
+    const sheetGid = getTableTraitByName(this.tableName, "sheetGid");
     if (!this.ss.raw.gidIsActive(sheetGid)) return false;
     return this.table.raw.hasOneTable();
   }

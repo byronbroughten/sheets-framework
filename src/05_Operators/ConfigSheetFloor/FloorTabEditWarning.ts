@@ -10,7 +10,7 @@ import {
   floorSeedColumnById,
   floorTabSeedByTableId,
 } from "../../01_SpreadsheetSchema/configSheetFloorSeed";
-import { getSheetTraitByName } from "../../01_SpreadsheetSchema/sheetConfigsTypes";
+import { getTableTraitByName } from "../../01_SpreadsheetSchema/tableConfigsTypes";
 import type { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin";
 import { TableBaseNamed } from "../../04_SpreadsheetNamed/ClassBases/TableBaseNamed";
 import { SpreadsheetNamed } from "../../04_SpreadsheetNamed/SpreadsheetNamed";
@@ -57,7 +57,7 @@ export class FloorTabEditWarning<
   gatherIdentityColumns(): number[] | undefined {
     const rule = floorTabRules()[this.tableName].selfDescribingRow;
     if (rule === undefined) return undefined;
-    const sheetGid = getSheetTraitByName(this.tableName, "sheetGid");
+    const sheetGid = getTableTraitByName(this.tableName, "sheetGid");
     if (!this.ss.raw.gidIsActive(sheetGid)) return undefined;
     const sheet = this.table;
     if (!sheet.raw.hasOneTable()) return undefined;

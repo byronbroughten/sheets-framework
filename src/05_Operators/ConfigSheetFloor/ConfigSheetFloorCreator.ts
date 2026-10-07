@@ -5,7 +5,7 @@ import {
   type FloorTabName,
 } from "../../01_SpreadsheetSchema/configSheetFloorSeed";
 import { dimensionIds } from "../../01_SpreadsheetSchema/dimensionIds";
-import { getSheetTraitByName } from "../../01_SpreadsheetSchema/sheetConfigsTypes";
+import { getTableTraitByName } from "../../01_SpreadsheetSchema/tableConfigsTypes";
 import { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin";
 import { SpreadsheetBaseNamed } from "../../04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
 import { SpreadsheetNamed } from "../../04_SpreadsheetNamed/SpreadsheetNamed";
@@ -24,12 +24,13 @@ const exampleColumn = configSheetFloorSeed.valueConfig.exampleColumn;
 type CreatedTableColumn = Pick<FloorSeedColumn, "header" | "columnType">;
 
 /**
- * Creates a missing floor tab at its generated GID, with its seeded Table placed
- * by the sheet layout, and recreates missing floor columns at their Table's
- * end, with the generated column ID, seeded header and group heading, failing
- * closed on a missing column the sync can't refill. ConfigSheetFloor runs this
- * right after its fetch and flushes only when it reports something. Each tab's
- * recreatable table and insert live in FloorTabColumnCreator.
+ * Creates a missing floor tab at its generated GID, with its seeded Table at
+ * its generated tableId and placed by the sheet layout, and recreates missing
+ * floor columns at their Table's end, with the generated column ID, seeded
+ * header and group heading, failing closed on a missing column the sync can't
+ * refill. ConfigSheetFloor runs this right after its fetch and flushes only
+ * when it reports something. Each tab's recreatable table and insert live in
+ * FloorTabColumnCreator.
  * docs/generated-data/config-sheet-floor.md
  */
 export class ConfigSheetFloorCreator extends SpreadsheetBaseNamed {
@@ -55,7 +56,7 @@ export class ConfigSheetFloorCreator extends SpreadsheetBaseNamed {
   private _createMissingTabs(): string[] {
     const origin = TableOrigin.expected();
     return creatableFloorTabNames.flatMap((sheetName) => {
-      const sheetGid = getSheetTraitByName(sheetName, "sheetGid");
+      const sheetGid = getTableTraitByName(sheetName, "sheetGid");
       if (this.ss.raw.gidIsActive(sheetGid)) return [];
       const seed = configSheetFloorSeed[sheetName];
       const columns = createdTableColumns(sheetName);
@@ -69,6 +70,7 @@ export class ConfigSheetFloorCreator extends SpreadsheetBaseNamed {
           columnCount: endColIdx,
         })
         .gatherAddTableOperation({
+          tableId: getTableTraitByName(sheetName, "tableId"),
           name: seed.tableName,
           range: {
             sheetId: sheetGid,
@@ -92,7 +94,7 @@ export class ConfigSheetFloorCreator extends SpreadsheetBaseNamed {
   // The add-Table's columnName writes the header, so no header cell is written.
   private _seedExampleColumn(sheetGid: number, origin: TableOrigin): void {
     const colIndex = origin.sheetColIndex(0);
-    const idPrefix = getSheetTraitByName("valueConfig", "idPrefix");
+    const idPrefix = getTableTraitByName("valueConfig", "idPrefix");
     this.ss.raw.gatherAddedSheetFillCellOperation({
       sheetId: sheetGid,
       rowIndex: origin.headSheetRowIndex("columnId"),
