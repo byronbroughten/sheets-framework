@@ -9,7 +9,7 @@ const spreadsheetConfigGid = getSheetTraitByName(
   "spreadsheetConfig",
   "sheetGid",
 );
-const sheetConfigGid = getSheetTraitByName("sheetConfig", "sheetGid");
+const tableConfigGid = getSheetTraitByName("tableConfig", "sheetGid");
 const columnConfigGid = getSheetTraitByName("columnConfig", "sheetGid");
 const valueConfigGid = getSheetTraitByName("valueConfig", "sheetGid");
 
@@ -19,7 +19,7 @@ function liveTitles(
   const titles = new Map<number, string | null>([
     [businessSheetGid, "Widget"],
     [spreadsheetConfigGid, configSheetFloorSeed.spreadsheetConfig.title],
-    [sheetConfigGid, configSheetFloorSeed.sheetConfig.title],
+    [tableConfigGid, configSheetFloorSeed.tableConfig.title],
     [columnConfigGid, configSheetFloorSeed.columnConfig.title],
     [valueConfigGid, configSheetFloorSeed.valueConfig.title],
   ]);
@@ -68,7 +68,7 @@ describe("floorChangeNotice", () => {
 
   it.each([
     ["Spreadsheet Config", spreadsheetConfigGid],
-    ["Sheet Config", sheetConfigGid],
+    ["Table Config", tableConfigGid],
     ["Column Config", columnConfigGid],
   ])("says nothing when warned %s is renamed", (title, sheetGid) => {
     expect(

@@ -50,21 +50,21 @@ describe("assertFloorMatchesSeed", () => {
 
   it("throws when a floor column's valueName isn't the one the seed's column type implies", () => {
     const configs = floorColumnConfigs();
-    const sheetGid = floorColumn(configs, "sheetConfig", "sheetGid");
+    const sheetGid = floorColumn(configs, "columnConfig", "sheetGid");
     sheetGid.valueName = "string";
 
     expect(() => assertFloorMatchesSeed(sheetConfigs, configs)).toThrow(
-      `Floor column "Sheet GID" on "sheetConfig" (column ID "${sheetGid.columnId}") has valueName "string" where the floor seed's column type DOUBLE implies "number".`,
+      `Floor column "Sheet GID" on "columnConfig" (column ID "${sheetGid.columnId}") has valueName "string" where the floor seed's column type DOUBLE implies "number".`,
     );
   });
 
   it("throws when a BOOLEAN floor column's valueName isn't checkbox", () => {
     const configs = floorColumnConfigs();
-    const letApiAccess = floorColumn(configs, "sheetConfig", "letApiAccess");
+    const letApiAccess = floorColumn(configs, "tableConfig", "letApiAccess");
     letApiAccess.valueName = "boolean";
 
     expect(() => assertFloorMatchesSeed(sheetConfigs, configs)).toThrow(
-      `Floor column "Let api access" on "sheetConfig" (column ID "${letApiAccess.columnId}") has valueName "boolean" where the floor seed's column type BOOLEAN implies "checkbox".`,
+      `Floor column "Let api access" on "tableConfig" (column ID "${letApiAccess.columnId}") has valueName "boolean" where the floor seed's column type BOOLEAN implies "checkbox".`,
     );
   });
 
@@ -93,7 +93,7 @@ describe("assertFloorMatchesSeed", () => {
 
   it("passes a floor entry with a Custom default value and one without", () => {
     const configs = floorColumnConfigs();
-    floorColumn(configs, "sheetConfig", "sheetTitle").customDefaultValue =
+    floorColumn(configs, "tableConfig", "sheetTitle").customDefaultValue =
       "Untitled";
     floorColumn(configs, "columnConfig", "sheetTitle").customDefaultValue =
       null;

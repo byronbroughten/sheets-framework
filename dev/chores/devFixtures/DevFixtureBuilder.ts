@@ -23,8 +23,8 @@ export class DevFixtureBuilder extends SpreadsheetBaseNamed {
     this.ss.fetchAllSheetProperties();
     this._validateConfigFloorPresent();
     this.ss
-      .table("sheetConfig")
-      .prepFetchColumnsFull("sheetGid", "letApiAccess");
+      .table("tableConfig")
+      .prepFetchColumnsFull("tableId", "letApiAccess");
     this.ss
       .table("columnConfig")
       .prepFetchColumnsFull("sheetGid", "columnId", "emptyValueAllowed");
@@ -44,7 +44,7 @@ export class DevFixtureBuilder extends SpreadsheetBaseNamed {
     return `Created ${missing.map((fixture) => fixture.title).join(", ")}.`;
   }
   private _validateConfigFloorPresent(): void {
-    const missing = (["sheetConfig", "columnConfig"] as const).filter(
+    const missing = (["tableConfig", "columnConfig"] as const).filter(
       (sheetName) =>
         !this.ss.raw.gidIsActive(getTableTraitByName(sheetName, "sheetGid")),
     );
@@ -68,6 +68,8 @@ export class DevFixtureBuilder extends SpreadsheetBaseNamed {
         columnCount: endColIdx,
       })
       .gatherAddTableOperation({
+        // The live fixture Tables carry their name as their ID, so a rebuilt one matches its generated entry.
+        tableId: fixture.tableName,
         name: fixture.tableName,
         range: {
           sheetId: sheetGid,
@@ -145,11 +147,12 @@ export class DevFixtureBuilder extends SpreadsheetBaseNamed {
       });
   }
   private _ensureLetApiAccess(fixture: DevFixtureSheet): void {
-    const sheetConfig = this.ss.table("sheetConfig");
-    const [row] = sheetConfig.rowsFiltered({ sheetGid: fixture.sheetGid });
+    const tableConfig = this.ss.table("tableConfig");
+    const [row] = tableConfig.rowsFiltered({ tableId: fixture.tableName });
     if (row === undefined) {
-      sheetConfig.appendRowWithVals({
-        sheetGid: fixture.sheetGid,
+      tableConfig.appendRowWithVals({
+        tableId: fixture.tableName,
+        tableName: fixture.tableName,
         sheetTitle: fixture.title,
         letApiAccess: true,
       });

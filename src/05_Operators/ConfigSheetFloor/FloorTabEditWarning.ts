@@ -8,7 +8,7 @@ import {
 import {
   configSheetFloorSeed,
   floorSeedColumnById,
-  floorTabSeedByGid,
+  floorTabSeedByTableId,
 } from "../../01_SpreadsheetSchema/configSheetFloorSeed";
 import { getSheetTraitByName } from "../../01_SpreadsheetSchema/sheetConfigsTypes";
 import type { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin";
@@ -191,15 +191,15 @@ function floorTabRules(): { [TN in FloorSheetName]: FloorTabRules<TN> } {
       actionRowEditableColumns: spreadsheetConfigTimeLastRanColumnNames(),
       selfDescribingRow: undefined,
     },
-    sheetConfig: {
-      excludedDataColumns: ["sheetGid", "sheetTitle"],
+    tableConfig: {
+      excludedDataColumns: ["tableId", "tableName", "sheetTitle"],
       actionRowEditableColumns: [],
       selfDescribingRow: {
         declaredColumn: "letApiAccess",
-        identityColumns: ["sheetGid"],
-        isFloorIdentity: ([sheetGid]) =>
-          typeof sheetGid === "number" &&
-          floorTabSeedByGid(sheetGid) !== undefined,
+        identityColumns: ["tableId"],
+        isFloorIdentity: ([tableId]) =>
+          typeof tableId === "string" &&
+          floorTabSeedByTableId(tableId) !== undefined,
       },
     },
     columnConfig: {

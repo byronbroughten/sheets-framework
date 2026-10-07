@@ -14,7 +14,7 @@ import { FloorTabColumnCreator } from "./FloorTabColumnCreator";
 
 const creatableFloorTabNames = [
   "spreadsheetConfig",
-  "sheetConfig",
+  "tableConfig",
   "columnConfig",
   "valueConfig",
 ] as const satisfies readonly FloorTabName[];

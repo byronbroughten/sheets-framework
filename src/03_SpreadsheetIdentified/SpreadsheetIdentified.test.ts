@@ -8,16 +8,16 @@ import {
   placedTableSheet,
 } from "../02_SpreadsheetRaw/spreadsheetRawTestSupport";
 import {
-  blankSheetConfigRow,
-  filledSheetConfigRow,
-  sheetConfigColumnIdRow,
-  sheetConfigGid,
-  stubSheetConfigSheet,
-} from "../testSupport/fakeSheetConfigSheet";
-import {
   buildGridRows,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
+import {
+  blankTableConfigRow,
+  filledTableConfigRow,
+  stubTableConfigSheet,
+  tableConfigColumnIdRow,
+  tableConfigGid,
+} from "../testSupport/fakeTableConfigSheet";
 import { assertType, type IsExactly } from "../testSupport/typeAssertions";
 import { Val } from "../utils/Val";
 import { SpreadsheetBaseIdentified } from "./ClassBases/SpreadsheetBaseIdentified";
@@ -262,51 +262,51 @@ describe("Identified value accessors", () => {
 });
 
 // Google omits a row nothing was ever written to, which is what "never read" looks like.
-function stubSheetConfigWithUnreadTopRow() {
-  return stubSheetConfigSheet({ 4: blankSheetConfigRow }, [4]);
+function stubTableConfigWithUnreadTopRow() {
+  return stubTableConfigSheet({ 4: blankTableConfigRow }, [4]);
 }
 
-function fetchedSheetConfig(): TableIdentified {
+function fetchedTableConfig(): TableIdentified {
   const ssi = new SpreadsheetIdentified(
     SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
   );
-  const sheet = ssi.sheetMeta(sheetConfigGid).primary;
+  const sheet = ssi.sheetMeta(tableConfigGid).primary;
   sheet.topRow.prepFetchFull();
   ssi.fetchAllPrepped();
   return sheet;
 }
 
-function unfetchedSheetConfig(): TableIdentified {
+function unfetchedTableConfig(): TableIdentified {
   const ssi = new SpreadsheetIdentified(
     SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
   );
-  ssi.sheetMeta(sheetConfigGid).ensureColumnIdsAreFetched();
-  return ssi.sheetMeta(sheetConfigGid).primary;
+  ssi.sheetMeta(tableConfigGid).ensureColumnIdsAreFetched();
+  return ssi.sheetMeta(tableConfigGid).primary;
 }
 
 describe("RowIdentified.isBlank / isReusable", () => {
   it("calls a row whose every non-formula cell is empty blank", () => {
-    stubSheetConfigSheet({ 4: blankSheetConfigRow });
+    stubTableConfigSheet({ 4: blankTableConfigRow });
 
-    expect(fetchedSheetConfig().topRow.isBlank).toBe(true);
+    expect(fetchedTableConfig().topRow.isBlank).toBe(true);
   });
 
   it("calls a row holding any non-formula value not blank", () => {
-    stubSheetConfigSheet({ 4: filledSheetConfigRow });
+    stubTableConfigSheet({ 4: filledTableConfigRow });
 
-    expect(fetchedSheetConfig().topRow.isBlank).toBe(false);
+    expect(fetchedTableConfig().topRow.isBlank).toBe(false);
   });
 
   it("calls a row nothing fetched not blank, since nothing read it", () => {
-    stubSheetConfigWithUnreadTopRow();
+    stubTableConfigWithUnreadTopRow();
 
-    expect(unfetchedSheetConfig().topRow.isBlank).toBe(false);
+    expect(unfetchedTableConfig().topRow.isBlank).toBe(false);
   });
 
   it("makes a blank row reusable until an append reserves it", () => {
-    stubSheetConfigSheet({ 4: blankSheetConfigRow });
+    stubTableConfigSheet({ 4: blankTableConfigRow });
 
-    const sheet = fetchedSheetConfig();
+    const sheet = fetchedTableConfig();
     expect(sheet.topRow.isReusable).toBe(true);
 
     sheet.appendRowDefault();
@@ -316,15 +316,15 @@ describe("RowIdentified.isBlank / isReusable", () => {
 
 describe("TableIdentified.hasNoData", () => {
   it("is true for a sheet whose one row is blank", () => {
-    stubSheetConfigSheet({ 4: blankSheetConfigRow });
+    stubTableConfigSheet({ 4: blankTableConfigRow });
 
-    expect(fetchedSheetConfig().hasNoData).toBe(true);
+    expect(fetchedTableConfig().hasNoData).toBe(true);
   });
 
   it("is false while any row still holds data", () => {
-    stubSheetConfigSheet({ 4: blankSheetConfigRow, 5: filledSheetConfigRow });
+    stubTableConfigSheet({ 4: blankTableConfigRow, 5: filledTableConfigRow });
 
-    expect(fetchedSheetConfig().hasNoData).toBe(false);
+    expect(fetchedTableConfig().hasNoData).toBe(false);
   });
 });
 
@@ -428,14 +428,14 @@ describe("RowIdentified.clearValues", () => {
 
   // The cell is cleared to a blank on the wire; the value name is what reads it back.
   it("leaves a cleared checkbox reading unchecked rather than blank", () => {
-    stubSheetConfigSheet({ 4: filledSheetConfigRow });
+    stubTableConfigSheet({ 4: filledTableConfigRow });
 
-    const sheet = fetchedSheetConfig();
+    const sheet = fetchedTableConfig();
     sheet.topRow.clearValues();
 
     expect(
       sheet.topRow.valueOrEmpty(
-        getColumnTraitByName("sheetConfig", "letApiAccess", "columnId"),
+        getColumnTraitByName("tableConfig", "letApiAccess", "columnId"),
       ),
     ).toBe(false);
     expect(sheet.topRow.isBlank).toBe(true);
@@ -443,14 +443,14 @@ describe("RowIdentified.clearValues", () => {
 
   // The default and the blank must agree, or an append and a read back disagree.
   it("defaults a checkbox cell to the same unchecked a blank reads as", () => {
-    stubSheetConfigSheet({ 4: filledSheetConfigRow });
+    stubTableConfigSheet({ 4: filledTableConfigRow });
 
     const columnId = getColumnTraitByName(
-      "sheetConfig",
+      "tableConfig",
       "letApiAccess",
       "columnId",
     );
-    const cell = fetchedSheetConfig().topRow.cell(columnId);
+    const cell = fetchedTableConfig().topRow.cell(columnId);
     cell.updateToDefault();
 
     expect(cell.valueOrEmpty()).toBe(false);
@@ -494,30 +494,30 @@ describe("RowIdentified.clearValues", () => {
 
 describe("TableIdentified.appendRowDefault", () => {
   it("throws when the Table's one data row was never fetched, naming the Table and the prefetch owed", () => {
-    stubSheetConfigWithUnreadTopRow();
+    stubTableConfigWithUnreadTopRow();
 
-    expect(() => unfetchedSheetConfig().appendRowDefault()).toThrowError(
-      /Table ".*" on "Sheet Config".*never fetched.*Prefetch its top data row/,
+    expect(() => unfetchedTableConfig().appendRowDefault()).toThrowError(
+      /Table ".*" on "Table Config".*never fetched.*Prefetch its top data row/,
     );
   });
 
   it("skips a configured column missing from the column-ID row and writes the rest", () => {
     const omittedColumnId = getColumnTraitByName(
-      "sheetConfig",
+      "tableConfig",
       "letApiAccess",
       "columnId",
     );
-    const columnIdRow = sheetConfigColumnIdRow.filter(
+    const columnIdRow = tableConfigColumnIdRow.filter(
       (columnId) => columnId !== omittedColumnId,
     );
     const { grid } = stubSheetsService({
       sheets: [
         {
-          sheetId: sheetConfigGid,
-          title: "Sheet Config",
+          sheetId: tableConfigGid,
+          title: "Table Config",
           rows: buildGridRows({
             0: columnIdRow,
-            4: [null, null],
+            4: [null, null, null],
           }),
           table: { endRowIndex: 5 },
         },
@@ -527,15 +527,15 @@ describe("TableIdentified.appendRowDefault", () => {
     const ssi = new SpreadsheetIdentified(
       SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
     );
-    const sheet = ssi.sheetMeta(sheetConfigGid).primary;
+    const sheet = ssi.sheetMeta(tableConfigGid).primary;
     sheet.topRow.prepFetchFull();
     ssi.fetchAllPrepped();
     sheet.appendRowDefault();
     ssi.raw.batchUpdateGSheets();
 
     expect(
-      grid.sheet(sheetConfigGid).values({ ...topRowRange, endColumnIndex: 3 }),
-    ).toEqual([["", "", null]]);
+      grid.sheet(tableConfigGid).values({ ...topRowRange, endColumnIndex: 4 }),
+    ).toEqual([["", "", "", null]]);
   });
 });
 

@@ -50,6 +50,15 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
   get activeSheetGids(): number[] {
     return Array.from(this.spreadsheetStateRaw.sheets.keys());
   }
+  tableIdIsActive(tableId: string): boolean {
+    return this.activeTableIds.includes(tableId);
+  }
+  // A Table queued for creation has state but no properties until it is fetched.
+  get activeTableIds(): string[] {
+    return Array.from(this.tablesStateRaw.entries())
+      .filter(([, tableState]) => tableState.properties !== undefined)
+      .map(([tableId]) => tableId);
+  }
   table(tableId: string): TableRaw {
     return new TableRaw({
       spreadsheetStateRaw: this.spreadsheetStateRaw,

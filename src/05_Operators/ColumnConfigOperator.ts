@@ -12,13 +12,13 @@ import type { ColumnMetaRaw } from "../02_SpreadsheetRaw/ColumnMetaRaw";
 import { Str } from "../utils/Str";
 import { columnConfigsFileSource } from "./configFileSource";
 import { GenericTableOperator } from "./GenericTableOperator";
-import { SheetConfigOperator } from "./SheetConfigOperator";
 import {
   type ConfigSyncState,
   type OperatorProps,
   SpreadsheetBaseOperator,
   type UntypedHeadersBySheetTitle,
 } from "./SpreadsheetBaseOperator";
+import { TableConfigOperator } from "./TableConfigOperator";
 import { ValueConfigOperator } from "./ValueConfigOperator";
 
 interface ColumnIdentity {
@@ -41,8 +41,8 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
   get columnConfigSync(): ConfigSyncState["columnConfigSync"] {
     return this.configSyncState.columnConfigSync;
   }
-  get sheetConfigOperator(): SheetConfigOperator {
-    return new SheetConfigOperator(this.operatorProps);
+  get tableConfigOperator(): TableConfigOperator {
+    return new TableConfigOperator(this.operatorProps);
   }
   get valueConfigOperator(): ValueConfigOperator {
     return new ValueConfigOperator(this.operatorProps);
@@ -53,7 +53,7 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
   // Derived fresh each call, not cached — a stored field goes stale across
   // this coordinator's per-access getter rebuilds.
   private get sheetGidsApiAccesses(): Set<number> {
-    return new Set(this.sheetConfigOperator.sheetGidsApiAccesses());
+    return new Set(this.tableConfigOperator.sheetGidsApiAccesses());
   }
   activeValueTitles(): string[] {
     return this.table.rowIndexesActiveWithData.map((rowIndex) =>
@@ -67,8 +67,8 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
       );
     }
   }
-  prepFetchWithSheetConfig(): void {
-    this.sheetConfigOperator.assertPrepFetchIsComplete();
+  prepFetchWithTableConfig(): void {
+    this.tableConfigOperator.assertPrepFetchIsComplete();
     this.table.prepFetchColumnsFull(
       "sheetGid",
       "columnId",
@@ -77,8 +77,8 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
       "emptyValueAllowed",
     );
   }
-  fetchAfterSheetConfigSynced(): this {
-    this.sheetConfigOperator.assertSyncedToSpreadsheet();
+  fetchAfterTableConfigSynced(): this {
+    this.tableConfigOperator.assertSyncedToSpreadsheet();
     this.sheetGidsApiAccesses.forEach((sheetGid) => {
       const sheet = this.ss.raw.sheetMeta(sheetGid).primary;
       // hasIdColumn samples this row after Let api access is known.
@@ -146,7 +146,7 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
   private _addMissingColumnIds(): this {
     let idsAdded = 0;
     this.sheetGidsApiAccesses.forEach((sheetGid) => {
-      const idPrefix = this.sheetConfigOperator.idPrefix(sheetGid);
+      const idPrefix = this.tableConfigOperator.idPrefix(sheetGid);
       idsAdded += this.ss.raw.sheetMeta(sheetGid).addMissingColumnIds(idPrefix);
     });
     Logger.log(
@@ -298,7 +298,7 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
     });
   }
   newColumnConfigs(): ColumnConfigsGeneric {
-    const sheetNamesByGid = this.sheetConfigOperator.sheetNamesByGid();
+    const sheetNamesByGid = this.tableConfigOperator.sheetNamesByGid();
     const col = this.table.columns("header", "emptyValueAllowed");
     const columnConfigs: ColumnConfigsGeneric = {};
     this.table.rowIndexesActiveWithData.forEach((rowIndex) => {
@@ -309,7 +309,7 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
       if (!sheetName) {
         throw new Error(
           `generateColumnConfigFileSource: column "${columnId}" references sheetGid ` +
-            `${sheetGid}, which has no corresponding sheet name in Sheet Config.`,
+            `${sheetGid}, which has no corresponding sheet name in Table Config.`,
         );
       }
       const columnName = Str.sentenceToCamelCase(header);

@@ -31,6 +31,8 @@ import {
   floorSheetNames,
 } from "./ConfigSheetFloor/floorSeedLookups";
 
+const retiredSheetConfigTitle = "Sheet Config";
+
 /**
  * Restores floor tab titles, Table names, headers, column IDs, group
  * headings, data values and column types, has ConfigSheetFloorCreator
@@ -86,6 +88,7 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
   }
   private _ensureTitlesAndTables(): string[] {
     this.ss.raw.ensureAllSheetPropertiesAreFetched();
+    this._assertSheetConfigIsConverted();
     this._assertFloorTitlesAreOwned();
     const presentFloorSheets = floorTabNames().flatMap((sheetName) => {
       const sheetGid = getSheetTraitByName(sheetName, "sheetGid");
@@ -118,6 +121,20 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
       ...reportLines("Restored tab titles", titleLines),
       ...reportLines("Restored Table names", tableNameLines),
     ];
+  }
+  // Restoring an unconverted Sheet Config tab as Table Config would drop its ticks.
+  private _assertSheetConfigIsConverted(): void {
+    const titles = this.ss.raw.activeSheetGids.map(
+      (sheetGid) => this.ss.raw.sheetMeta(sheetGid).primary.title,
+    );
+    if (
+      titles.includes(retiredSheetConfigTitle) &&
+      !titles.includes(configSheetFloorSeed.tableConfig.title)
+    ) {
+      throw new Error(
+        `Found a "${retiredSheetConfigTitle}" tab and no "${configSheetFloorSeed.tableConfig.title}" tab. Convert Sheet Config to Table Config before syncing or regenerating configs (sheets-framework#81).`,
+      );
+    }
   }
   private _assertFloorTitlesAreOwned(): void {
     const ownedGidByTitle = new Map<string, number>(

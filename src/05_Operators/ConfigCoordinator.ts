@@ -9,9 +9,9 @@ import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
 import { ColumnConfigOperator } from "./ColumnConfigOperator";
 import { ConfigSheetFloor } from "./ConfigSheetFloor";
 import { assertFloorIdentityUnchanged } from "./floorIdentityGuard";
-import { SheetConfigOperator } from "./SheetConfigOperator";
 import { SpreadsheetBaseOperator } from "./SpreadsheetBaseOperator";
 import { SpreadsheetConfigOperator } from "./SpreadsheetConfigOperator";
+import { TableConfigOperator } from "./TableConfigOperator";
 import { ValueConfigOperator } from "./ValueConfigOperator";
 
 export interface ConfigRegeneration {
@@ -53,8 +53,8 @@ export class ConfigCoordinator extends SpreadsheetBaseOperator {
   get columnConfigOperator(): ColumnConfigOperator {
     return new ColumnConfigOperator(this.operatorProps);
   }
-  get sheetConfigOperator(): SheetConfigOperator {
-    return new SheetConfigOperator(this.operatorProps);
+  get tableConfigOperator(): TableConfigOperator {
+    return new TableConfigOperator(this.operatorProps);
   }
   get valueConfigOperator(): ValueConfigOperator {
     return new ValueConfigOperator(this.operatorProps);
@@ -82,14 +82,14 @@ export class ConfigCoordinator extends SpreadsheetBaseOperator {
     this._assertFloorIdentityUnchanged();
     this._assertFloorMatchesSeed();
     return {
-      sheetConfigs: this.sheetConfigOperator.toFileSource(makeConfigsImport),
+      sheetConfigs: this.tableConfigOperator.toFileSource(makeConfigsImport),
       tableConfigs:
-        this.sheetConfigOperator.toTableConfigsFileSource(makeConfigsImport),
+        this.tableConfigOperator.toTableConfigsFileSource(makeConfigsImport),
       columnConfigs: this.columnConfigOperator.toFileSource(makeConfigsImport),
       valueConfigs: this.valueConfigOperator.toFileSource(makeConfigsImport),
       untypedColumnsSummary,
       floorReport,
-      idPrefixReport: this.sheetConfigOperator.idPrefixChangeReport(),
+      idPrefixReport: this.tableConfigOperator.idPrefixChangeReport(),
       declaredCellReport: this._declaredCellReport(),
     };
   }
@@ -105,25 +105,25 @@ export class ConfigCoordinator extends SpreadsheetBaseOperator {
         columnConfigs: columnConfigsByName(),
       },
       next: {
-        sheetConfigs: this.sheetConfigOperator.newSheetConfigs(),
+        sheetConfigs: this.tableConfigOperator.newSheetConfigs(),
         columnConfigs: this.columnConfigOperator.newColumnConfigs(),
       },
     });
   }
   private _assertFloorMatchesSeed(): void {
     assertFloorMatchesSeed(
-      this.sheetConfigOperator.newSheetConfigs(),
+      this.tableConfigOperator.newSheetConfigs(),
       this.columnConfigOperator.newColumnConfigs(),
     );
   }
   private _syncConfigSheetRows(): string | undefined {
     this.ss.fetchAllSheetProperties();
     this.spreadsheetConfigOperator.validateExactlyOneDataRow();
-    this.sheetConfigOperator.prepFetchForSync();
-    this.columnConfigOperator.prepFetchWithSheetConfig();
+    this.tableConfigOperator.prepFetchForSync();
+    this.columnConfigOperator.prepFetchWithTableConfig();
     this.ss.fetchAllPrepped({ skipFetchingProperties: true });
-    this.sheetConfigOperator.syncToSpreadsheet();
-    this.columnConfigOperator.fetchAfterSheetConfigSynced();
+    this.tableConfigOperator.syncToSpreadsheet();
+    this.columnConfigOperator.fetchAfterTableConfigSynced();
     this.columnConfigOperator.syncToSpreadsheet();
     return this.columnConfigOperator.untypedColumnsSummary();
   }
@@ -137,7 +137,7 @@ export class ConfigCoordinator extends SpreadsheetBaseOperator {
   }
   private _declaredCellReport(): string | undefined {
     return combineConfigSyncReports(
-      this.sheetConfigOperator.declaredCellReport(),
+      this.tableConfigOperator.declaredCellReport(),
       this.columnConfigOperator.declaredCellReport(),
     );
   }

@@ -4,7 +4,11 @@ import {
   getColumnTraitByName,
   getSheetColumnNames,
 } from "./columnConfigsTypes";
-import { tableConfigsByGid } from "./tableConfigsTypes";
+import {
+  type TableConfig,
+  tableConfigsByGid,
+  tableConfigsByTableId,
+} from "./tableConfigsTypes";
 
 export type FloorColumnType = Extract<
   TableColumnType,
@@ -83,15 +87,21 @@ export const configSheetFloorSeed = {
       },
     },
   },
-  sheetConfig: {
-    title: "Sheet Config",
-    tableName: "sheetConfig",
+  tableConfig: {
+    title: "Table Config",
+    tableName: "tableConfig",
     letApiAccess: true,
     columns: [
       {
-        header: "Sheet GID",
+        header: "Table ID",
         columnGroupHeading: "",
-        columnType: "DOUBLE",
+        columnType: "TEXT",
+        emptyValueAllowed: false,
+      },
+      {
+        header: "Table name",
+        columnGroupHeading: "",
+        columnType: "TEXT",
         emptyValueAllowed: false,
       },
       {
@@ -159,15 +169,25 @@ export const configSheetFloorSeed = {
 } as const satisfies Record<string, FloorSeedSheet>;
 
 export type FloorTabName = keyof typeof configSheetFloorSeed;
+type FloorTabSeed = (typeof configSheetFloorSeed)[FloorTabName];
 
 export function isFloorTabName(name: string): name is FloorTabName {
   return Object.hasOwn(configSheetFloorSeed, name);
 }
 
-export function floorTabSeedByGid(
-  sheetGid: number,
-): (typeof configSheetFloorSeed)[FloorTabName] | undefined {
-  const tableConfig = tableConfigsByGid().get(sheetGid);
+export function floorTabSeedByGid(sheetGid: number): FloorTabSeed | undefined {
+  return floorTabSeedOf(tableConfigsByGid().get(sheetGid));
+}
+
+export function floorTabSeedByTableId(
+  tableId: string,
+): FloorTabSeed | undefined {
+  return floorTabSeedOf(tableConfigsByTableId().get(tableId));
+}
+
+function floorTabSeedOf(
+  tableConfig: TableConfig | undefined,
+): FloorTabSeed | undefined {
   if (tableConfig === undefined || !isFloorTabName(tableConfig.tableKey)) {
     return undefined;
   }

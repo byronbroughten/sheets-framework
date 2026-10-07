@@ -8,6 +8,7 @@ import {
   type FakeCell,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
+import { tableIdOnTab } from "../testSupport/fakeTableConfigSheet";
 import type { StrictOmit } from "../utils/Obj";
 import { ColumnConfigOperator } from "./ColumnConfigOperator";
 
@@ -15,9 +16,9 @@ const { columnConfigs } = installedConfigs();
 
 // Real committed columnId strings, so fixtures stay honest to what the
 // production code actually resolves column names through.
-const sc = columnConfigs.sheetConfig;
+const tc = columnConfigs.tableConfig;
 const cc = columnConfigs.columnConfig;
-const sheetConfigGid = 210603630;
+const tableConfigGid = 210603630;
 const columnConfigGid = 2034522667;
 const widgetGid = 999001;
 const newSheetGid = 999002;
@@ -25,21 +26,25 @@ const unresolvableGid = 424242;
 
 const testSheetGid = getSheetTraitByName("item", "sheetGid");
 
-const sheetConfigColumnIdRow = [
-  sc.sheetGid.columnId,
-  sc.sheetTitle.columnId,
-  sc.letApiAccess.columnId,
+const tableConfigColumnIdRow = [
+  tc.tableId.columnId,
+  tc.tableName.columnId,
+  tc.sheetTitle.columnId,
+  tc.letApiAccess.columnId,
 ];
-const sheetConfigHeaderRow = [
-  sc.sheetGid.header,
-  sc.sheetTitle.header,
-  sc.letApiAccess.header,
+const tableConfigHeaderRow = [
+  tc.tableId.header,
+  tc.tableName.header,
+  tc.sheetTitle.header,
+  tc.letApiAccess.header,
 ];
-const sheetConfigColumnTypes = {
-  0: "DOUBLE",
+const tableConfigColumnTypes = {
+  0: "TEXT",
   1: "TEXT",
-  2: "BOOLEAN",
+  2: "TEXT",
+  3: "BOOLEAN",
 } as const;
+
 const columnConfigColumnIdRow = [
   cc.sheetGid.columnId,
   cc.columnId.columnId,
@@ -79,16 +84,16 @@ beforeEach(() => {
   stubLogger();
 });
 
-// Syncs Sheet Config (so sheetGid -> sheetName resolves for Widget/Brand
+// Syncs Table Config (so sheetGid -> sheetName resolves for Widget/Brand
 // New Sheet, via auto-appended rows) and fetches whatever Column Config
 // rows the caller seeded — without running the full append/prune column-ID
 // lifecycle, keeping these tests focused on toFileSource's own read/skip/
 // throw logic rather than re-testing the pre-existing lifecycle.
 function initSyncedColumnConfigOperator(): ColumnConfigOperator {
   const columnConfigOperator = ColumnConfigOperator.init();
-  const sheetConfigOperator = columnConfigOperator.sheetConfigOperator;
-  sheetConfigOperator.table.prepFetchColumnsFull("letApiAccess");
-  sheetConfigOperator.prepFetchForSync();
+  const tableConfigOperator = columnConfigOperator.tableConfigOperator;
+  tableConfigOperator.table.prepFetchColumnsFull("letApiAccess");
+  tableConfigOperator.prepFetchForSync();
   columnConfigOperator.table.prepFetchColumnsFull(
     "sheetGid",
     "columnId",
@@ -96,8 +101,8 @@ function initSyncedColumnConfigOperator(): ColumnConfigOperator {
     "emptyValueAllowed",
   );
   columnConfigOperator.ss.fetchAllPrepped();
-  sheetConfigOperator.syncToSpreadsheet();
-  columnConfigOperator.fetchAfterSheetConfigSynced();
+  tableConfigOperator.syncToSpreadsheet();
+  columnConfigOperator.fetchAfterTableConfigSynced();
   return columnConfigOperator;
 }
 
@@ -105,15 +110,15 @@ function stubGroupedColumnConfigSheets(): void {
   stubSheetsService({
     sheets: [
       {
-        sheetId: sheetConfigGid,
-        title: "Sheet Config",
+        sheetId: tableConfigGid,
+        title: "Table Config",
         rows: buildGridRows({
-          0: sheetConfigColumnIdRow,
-          3: sheetConfigHeaderRow,
-          4: [widgetGid, "Widget", true, ""],
-          5: [newSheetGid, "Brand New Sheet", true, ""],
+          0: tableConfigColumnIdRow,
+          3: tableConfigHeaderRow,
+          4: [tableIdOnTab(widgetGid), "", "Widget", true],
+          5: [tableIdOnTab(newSheetGid), "", "Brand New Sheet", true],
         }),
-        table: { endRowIndex: 6 },
+        table: { tableId: tableIdOnTab(tableConfigGid), endRowIndex: 6 },
       },
       {
         sheetId: columnConfigGid,
@@ -125,7 +130,7 @@ function stubGroupedColumnConfigSheets(): void {
           5: [widgetGid, "c:wdg:bbb", "Widget", "Notes"],
           6: [newSheetGid, "c:999002:ccc", "Brand New Sheet", "Some Field"],
         }),
-        table: { endRowIndex: 7 },
+        table: { tableId: tableIdOnTab(columnConfigGid), endRowIndex: 7 },
       },
       {
         sheetId: widgetGid,
@@ -152,17 +157,17 @@ function stubGroupedColumnConfigSheets(): void {
 }
 
 // Mirrors ConfigCoordinator.syncAndFlushConfigSheets's own sequence (see
-// docs/generated-data.md on why Sheet Config and Column Config sync together),
+// docs/generated-data.md on why Table Config and Column Config sync together),
 // stopping short of the final batchUpdateGSheets flush these tests don't
 // need.
 function syncColumnConfigOperator(operator: ColumnConfigOperator): void {
   operator.ss.fetchAllSheetProperties();
-  const sheetConfigOperator = operator.sheetConfigOperator;
-  sheetConfigOperator.prepFetchForSync();
-  operator.prepFetchWithSheetConfig();
+  const tableConfigOperator = operator.tableConfigOperator;
+  tableConfigOperator.prepFetchForSync();
+  operator.prepFetchWithTableConfig();
   operator.ss.fetchAllPrepped({ skipFetchingProperties: true });
-  sheetConfigOperator.syncToSpreadsheet();
-  operator.fetchAfterSheetConfigSynced();
+  tableConfigOperator.syncToSpreadsheet();
+  operator.fetchAfterTableConfigSynced();
   operator.syncToSpreadsheet();
 }
 
@@ -230,14 +235,14 @@ describe("ColumnConfigOperator.newColumnConfigs / toFileSource", () => {
     stubSheetsService({
       sheets: [
         {
-          sheetId: sheetConfigGid,
-          title: "Sheet Config",
+          sheetId: tableConfigGid,
+          title: "Table Config",
           rows: buildGridRows({
-            0: sheetConfigColumnIdRow,
-            3: sheetConfigHeaderRow,
-            4: [widgetGid, "Widget", true, ""],
+            0: tableConfigColumnIdRow,
+            3: tableConfigHeaderRow,
+            4: [tableIdOnTab(widgetGid), "", "Widget", true],
           }),
-          table: { endRowIndex: 5 },
+          table: { tableId: tableIdOnTab(tableConfigGid), endRowIndex: 5 },
         },
         {
           sheetId: columnConfigGid,
@@ -248,7 +253,7 @@ describe("ColumnConfigOperator.newColumnConfigs / toFileSource", () => {
             4: [widgetGid, "c:wdg:aaa", "Widget", "Unit Price", true],
             5: [widgetGid, "c:wdg:bbb", "Widget", "Notes", false],
           }),
-          table: { endRowIndex: 6 },
+          table: { tableId: tableIdOnTab(columnConfigGid), endRowIndex: 6 },
         },
         {
           sheetId: widgetGid,
@@ -273,10 +278,10 @@ describe("ColumnConfigOperator.newColumnConfigs / toFileSource", () => {
     stubSheetsService({
       sheets: [
         {
-          sheetId: sheetConfigGid,
-          title: "Sheet Config",
-          rows: buildGridRows({ 0: sheetConfigColumnIdRow }),
-          table: { endRowIndex: 5 },
+          sheetId: tableConfigGid,
+          title: "Table Config",
+          rows: buildGridRows({ 0: tableConfigColumnIdRow }),
+          table: { tableId: tableIdOnTab(tableConfigGid), endRowIndex: 5 },
         },
         {
           sheetId: columnConfigGid,
@@ -286,7 +291,7 @@ describe("ColumnConfigOperator.newColumnConfigs / toFileSource", () => {
             3: columnConfigHeaderRow,
             4: freshlyAppendedRowMissingHeaderAndValueName,
           }),
-          table: { endRowIndex: 5 },
+          table: { tableId: tableIdOnTab(columnConfigGid), endRowIndex: 5 },
         },
         {
           sheetId: widgetGid,
@@ -301,14 +306,14 @@ describe("ColumnConfigOperator.newColumnConfigs / toFileSource", () => {
     );
   });
 
-  it("throws when a row references a sheetGid unresolvable in Sheet Config", () => {
+  it("throws when a row references a sheetGid unresolvable in Table Config", () => {
     stubSheetsService({
       sheets: [
         {
-          sheetId: sheetConfigGid,
-          title: "Sheet Config",
-          rows: buildGridRows({ 0: sheetConfigColumnIdRow }),
-          table: { endRowIndex: 5 },
+          sheetId: tableConfigGid,
+          title: "Table Config",
+          rows: buildGridRows({ 0: tableConfigColumnIdRow }),
+          table: { tableId: tableIdOnTab(tableConfigGid), endRowIndex: 5 },
         },
         {
           sheetId: columnConfigGid,
@@ -318,7 +323,7 @@ describe("ColumnConfigOperator.newColumnConfigs / toFileSource", () => {
             3: columnConfigHeaderRow,
             4: rowReferencingUnresolvableSheet,
           }),
-          table: { endRowIndex: 5 },
+          table: { tableId: tableIdOnTab(columnConfigGid), endRowIndex: 5 },
         },
         {
           sheetId: widgetGid,
@@ -329,7 +334,7 @@ describe("ColumnConfigOperator.newColumnConfigs / toFileSource", () => {
     });
 
     expect(() => initSyncedColumnConfigOperator().newColumnConfigs()).toThrow(
-      /no corresponding sheet name in Sheet Config/,
+      /no corresponding sheet name in Table Config/,
     );
   });
 
@@ -337,14 +342,14 @@ describe("ColumnConfigOperator.newColumnConfigs / toFileSource", () => {
     stubSheetsService({
       sheets: [
         {
-          sheetId: sheetConfigGid,
-          title: "Sheet Config",
+          sheetId: tableConfigGid,
+          title: "Table Config",
           rows: buildGridRows({
-            0: sheetConfigColumnIdRow,
-            3: sheetConfigHeaderRow,
-            4: [widgetGid, "Widget", true, ""],
+            0: tableConfigColumnIdRow,
+            3: tableConfigHeaderRow,
+            4: [tableIdOnTab(widgetGid), "", "Widget", true],
           }),
-          table: { endRowIndex: 5 },
+          table: { tableId: tableIdOnTab(tableConfigGid), endRowIndex: 5 },
         },
         {
           sheetId: columnConfigGid,
@@ -355,7 +360,7 @@ describe("ColumnConfigOperator.newColumnConfigs / toFileSource", () => {
             4: [widgetGid, "c:wdg:aaa", "Widget", "Unit Price"],
             5: [widgetGid, "c:wdg:bbb", "Widget", "Unit  Price"],
           }),
-          table: { endRowIndex: 6 },
+          table: { tableId: tableIdOnTab(columnConfigGid), endRowIndex: 6 },
         },
         {
           sheetId: widgetGid,
@@ -377,25 +382,34 @@ describe("ColumnConfigOperator.newColumnConfigs / toFileSource", () => {
 });
 
 describe("ColumnConfigOperator.syncToSpreadsheet -> _updateProgrammaticValues", () => {
-  const testSheetConfigRowWithApiAccess = [testSheetGid, "Item", true];
+  const testTableConfigRowWithApiAccess = [
+    tableIdOnTab(testSheetGid),
+    "",
+    "Item",
+    true,
+  ];
 
-  function seedSheetConfigFixture() {
+  function seedTableConfigFixture() {
     return {
-      sheetId: sheetConfigGid,
-      title: "Sheet Config",
+      sheetId: tableConfigGid,
+      title: "Table Config",
       rows: buildGridRows({
-        0: sheetConfigColumnIdRow,
-        3: sheetConfigHeaderRow,
-        4: testSheetConfigRowWithApiAccess,
+        0: tableConfigColumnIdRow,
+        3: tableConfigHeaderRow,
+        4: testTableConfigRowWithApiAccess,
       }),
-      table: { endRowIndex: 5, columnTypes: sheetConfigColumnTypes },
+      table: {
+        tableId: tableIdOnTab(tableConfigGid),
+        endRowIndex: 5,
+        columnTypes: tableConfigColumnTypes,
+      },
     };
   }
 
   it("corrects sheetTitle and header, emitting live samples", () => {
     stubSheetsService({
       sheets: [
-        seedSheetConfigFixture(),
+        seedTableConfigFixture(),
         {
           sheetId: columnConfigGid,
           title: "Column Config",
@@ -411,7 +425,7 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> _updateProgrammaticValues", 
             ],
             5: [testSheetGid, "c:itm:corr02", "Item", "ID"],
           }),
-          table: { endRowIndex: 6 },
+          table: { tableId: tableIdOnTab(columnConfigGid), endRowIndex: 6 },
         },
         {
           sheetId: testSheetGid,
@@ -451,7 +465,7 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> _updateProgrammaticValues", 
   it("fills in a row whose identity cells have never been filled in", () => {
     stubSheetsService({
       sheets: [
-        seedSheetConfigFixture(),
+        seedTableConfigFixture(),
         {
           sheetId: columnConfigGid,
           title: "Column Config",
@@ -460,7 +474,7 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> _updateProgrammaticValues", 
             3: columnConfigHeaderRow,
             4: [testSheetGid, "c:itm:corr05", null, null],
           }),
-          table: { endRowIndex: 5 },
+          table: { tableId: tableIdOnTab(columnConfigGid), endRowIndex: 5 },
         },
         {
           sheetId: testSheetGid,
@@ -491,18 +505,19 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> _updateProgrammaticValues", 
     stubSheetsService({
       sheets: [
         {
-          sheetId: sheetConfigGid,
-          title: "Sheet Config",
+          sheetId: tableConfigGid,
+          title: "Table Config",
           rows: buildGridRows({
-            0: sheetConfigColumnIdRow,
-            3: sheetConfigHeaderRow,
-            4: [testSheetGid, "Item", true],
-            5: [sheetConfigGid, "Sheet Config", true],
+            0: tableConfigColumnIdRow,
+            3: tableConfigHeaderRow,
+            4: [tableIdOnTab(testSheetGid), "", "Item", true],
+            5: [tableIdOnTab(tableConfigGid), "", "Table Config", true],
           }),
           table: {
+            tableId: tableIdOnTab(tableConfigGid),
             endRowIndex: 6,
-            endColumnIndex: 3,
-            columnTypes: sheetConfigColumnTypes,
+            endColumnIndex: 4,
+            columnTypes: tableConfigColumnTypes,
           },
         },
         {
@@ -513,14 +528,18 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> _updateProgrammaticValues", 
             3: columnConfigHeaderRow,
             4: [testSheetGid, "c:itm:corr01", "Item", "Amount", true],
             5: [
-              sheetConfigGid,
-              sc.sheetGid.columnId,
-              "Sheet Config",
-              sc.sheetGid.header,
+              tableConfigGid,
+              tc.tableId.columnId,
+              "Table Config",
+              tc.tableId.header,
               true,
             ],
           }),
-          table: { endRowIndex: 6, columnTypes: columnConfigColumnTypes },
+          table: {
+            tableId: tableIdOnTab(columnConfigGid),
+            endRowIndex: 6,
+            columnTypes: columnConfigColumnTypes,
+          },
         },
         {
           sheetId: testSheetGid,
@@ -542,7 +561,7 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> _updateProgrammaticValues", 
       (rowIndex) => col.columnId.value(rowIndex) === "c:itm:corr01",
     );
     const floorRow = operator.table.rowIndexesActiveWithData.find(
-      (rowIndex) => col.columnId.value(rowIndex) === sc.sheetGid.columnId,
+      (rowIndex) => col.columnId.value(rowIndex) === tc.tableId.columnId,
     );
 
     expect(businessRow).toBeDefined();
@@ -553,14 +572,14 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> _updateProgrammaticValues", 
     expect(col.emptyValueAllowed.value(businessRow)).toBe(true);
     expect(col.emptyValueAllowed.value(floorRow)).toBe(false);
     expect(operator.declaredCellReport()).toContain(
-      `Column Config · Empty value allowed · Sheet Config · ${sc.sheetGid.header} → FALSE`,
+      `Column Config · Empty value allowed · Table Config · ${tc.tableId.header} → FALSE`,
     );
   });
 
   it("detects a named valueConfig from the column's live data-validation formula", () => {
     stubSheetsService({
       sheets: [
-        seedSheetConfigFixture(),
+        seedTableConfigFixture(),
         {
           sheetId: columnConfigGid,
           title: "Column Config",
@@ -569,7 +588,7 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> _updateProgrammaticValues", 
             3: columnConfigHeaderRow,
             4: [testSheetGid, "c:itm:corr03", "Item", "Description"],
           }),
-          table: { endRowIndex: 5 },
+          table: { tableId: tableIdOnTab(columnConfigGid), endRowIndex: 5 },
         },
         {
           sheetId: testSheetGid,
@@ -604,7 +623,7 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> _updateProgrammaticValues", 
   it("detects a live formula and a date-formatted number", () => {
     stubSheetsService({
       sheets: [
-        seedSheetConfigFixture(),
+        seedTableConfigFixture(),
         {
           sheetId: columnConfigGid,
           title: "Column Config",
@@ -613,7 +632,7 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> _updateProgrammaticValues", 
             3: columnConfigHeaderRow,
             4: [testSheetGid, "c:itm:corr04", "Item", "Due-by Date"],
           }),
-          table: { endRowIndex: 5 },
+          table: { tableId: tableIdOnTab(columnConfigGid), endRowIndex: 5 },
         },
         {
           sheetId: testSheetGid,
@@ -656,15 +675,19 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> _appendColumnRows", () => {
     stubSheetsService({
       sheets: [
         {
-          sheetId: sheetConfigGid,
-          title: "Sheet Config",
+          sheetId: tableConfigGid,
+          title: "Table Config",
           rows: buildGridRows({
-            0: sheetConfigColumnIdRow,
-            3: sheetConfigHeaderRow,
-            4: [widgetGid, "Widget", true, ""],
-            5: [newSheetGid, "Brand New Sheet", true, ""],
+            0: tableConfigColumnIdRow,
+            3: tableConfigHeaderRow,
+            4: [tableIdOnTab(widgetGid), "", "Widget", true],
+            5: [tableIdOnTab(newSheetGid), "", "Brand New Sheet", true],
           }),
-          table: { endRowIndex: 6, columnTypes: sheetConfigColumnTypes },
+          table: {
+            tableId: tableIdOnTab(tableConfigGid),
+            endRowIndex: 6,
+            columnTypes: tableConfigColumnTypes,
+          },
         },
         {
           sheetId: columnConfigGid,
@@ -677,6 +700,7 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> _appendColumnRows", () => {
             ),
           }),
           table: {
+            tableId: tableIdOnTab(columnConfigGid),
             endRowIndex: 4 + columnConfigRows.length,
             columnTypes: columnConfigColumnTypes,
           },
@@ -774,20 +798,25 @@ function syncColumnsUnderTest({
   stubSheetsService({
     sheets: [
       {
-        sheetId: sheetConfigGid,
-        title: "Sheet Config",
+        sheetId: tableConfigGid,
+        title: "Table Config",
         rows: buildGridRows({
-          0: sheetConfigColumnIdRow,
-          3: sheetConfigHeaderRow,
-          4: [testSheetGid, "Item", true],
+          0: tableConfigColumnIdRow,
+          3: tableConfigHeaderRow,
+          4: [tableIdOnTab(testSheetGid), "", "Item", true],
         }),
-        table: { endRowIndex: 5, columnTypes: sheetConfigColumnTypes },
+        table: {
+          tableId: tableIdOnTab(tableConfigGid),
+          endRowIndex: 5,
+          columnTypes: tableConfigColumnTypes,
+        },
       },
       {
         sheetId: columnConfigGid,
         title: "Column Config",
         rows: buildGridRows(columnConfigRows),
         table: {
+          tableId: tableIdOnTab(columnConfigGid),
           endRowIndex: Math.max(5, 4 + columnIds.length),
           columnTypes: columnConfigColumnTypes,
         },
@@ -1210,17 +1239,17 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> _addMissingColumnIds", () =>
     stubSheetsService({
       sheets: [
         {
-          sheetId: sheetConfigGid,
-          title: "Sheet Config",
+          sheetId: tableConfigGid,
+          title: "Table Config",
           rows: buildGridRows({
-            0: sheetConfigColumnIdRow,
-            3: sheetConfigHeaderRow,
+            0: tableConfigColumnIdRow,
+            3: tableConfigHeaderRow,
             // Api-access sheet: gets a missing column ID filled in.
-            4: [testSheetGid, "Item", true, "tst"],
+            4: [tableIdOnTab(testSheetGid), "", "Item", true],
 
-            5: [unresolvableGid, "Ghost", false, "gho"],
+            5: [tableIdOnTab(unresolvableGid), "", "Ghost", false],
           }),
-          table: { endRowIndex: 6 },
+          table: { tableId: tableIdOnTab(tableConfigGid), endRowIndex: 6 },
         },
         {
           sheetId: columnConfigGid,
@@ -1229,7 +1258,7 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> _addMissingColumnIds", () =>
             0: columnConfigColumnIdRow,
             3: columnConfigHeaderRow,
           }),
-          table: { endRowIndex: 5 },
+          table: { tableId: tableIdOnTab(columnConfigGid), endRowIndex: 5 },
         },
         {
           sheetId: testSheetGid,
@@ -1256,14 +1285,14 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> _addMissingColumnIds", () =>
     stubSheetsService({
       sheets: [
         {
-          sheetId: sheetConfigGid,
-          title: "Sheet Config",
+          sheetId: tableConfigGid,
+          title: "Table Config",
           rows: buildGridRows({
-            0: sheetConfigColumnIdRow,
-            3: sheetConfigHeaderRow,
-            4: [testSheetGid, "Item", true, "tst"],
+            0: tableConfigColumnIdRow,
+            3: tableConfigHeaderRow,
+            4: [tableIdOnTab(testSheetGid), "", "Item", true],
           }),
-          table: { endRowIndex: 5 },
+          table: { tableId: tableIdOnTab(tableConfigGid), endRowIndex: 5 },
         },
         {
           sheetId: columnConfigGid,
@@ -1272,7 +1301,7 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> _addMissingColumnIds", () =>
             0: columnConfigColumnIdRow,
             3: columnConfigHeaderRow,
           }),
-          table: { endRowIndex: 5 },
+          table: { tableId: tableIdOnTab(columnConfigGid), endRowIndex: 5 },
         },
         {
           sheetId: testSheetGid,
@@ -1304,17 +1333,18 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> _pruneColumnRows", () => {
     stubSheetsService({
       sheets: [
         {
-          sheetId: sheetConfigGid,
-          title: "Sheet Config",
+          sheetId: tableConfigGid,
+          title: "Table Config",
           rows: buildGridRows({
-            0: sheetConfigColumnIdRow,
-            3: sheetConfigHeaderRow,
-            4: [columnConfigGid, "Column Config", true, "ccf"],
+            0: tableConfigColumnIdRow,
+            3: tableConfigHeaderRow,
+            4: [tableIdOnTab(columnConfigGid), "", "Column Config", true],
           }),
           table: {
+            tableId: tableIdOnTab(tableConfigGid),
             endRowIndex: 5,
-            endColumnIndex: 3,
-            columnTypes: sheetConfigColumnTypes,
+            endColumnIndex: 4,
+            columnTypes: tableConfigColumnTypes,
           },
         },
         {
@@ -1332,6 +1362,7 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> _pruneColumnRows", () => {
             ],
           }),
           table: {
+            tableId: tableIdOnTab(columnConfigGid),
             endRowIndex: 6,
             columnTypes: columnConfigColumnTypes,
           },
@@ -1346,17 +1377,18 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> _pruneColumnRows", () => {
     stubSheetsService({
       sheets: [
         {
-          sheetId: sheetConfigGid,
-          title: "Sheet Config",
+          sheetId: tableConfigGid,
+          title: "Table Config",
           rows: buildGridRows({
-            0: sheetConfigColumnIdRow,
-            3: sheetConfigHeaderRow,
-            4: [columnConfigGid, "Column Config", false, "ccf"],
+            0: tableConfigColumnIdRow,
+            3: tableConfigHeaderRow,
+            4: [tableIdOnTab(columnConfigGid), "", "Column Config", false],
           }),
           table: {
+            tableId: tableIdOnTab(tableConfigGid),
             endRowIndex: 5,
-            endColumnIndex: 3,
-            columnTypes: sheetConfigColumnTypes,
+            endColumnIndex: 4,
+            columnTypes: tableConfigColumnTypes,
           },
         },
         {
@@ -1369,6 +1401,7 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> _pruneColumnRows", () => {
             5: [columnConfigGid, cc.sheetGid.columnId, "Column Config"],
           }),
           table: {
+            tableId: tableIdOnTab(columnConfigGid),
             endRowIndex: 6,
             columnTypes: columnConfigColumnTypes,
           },

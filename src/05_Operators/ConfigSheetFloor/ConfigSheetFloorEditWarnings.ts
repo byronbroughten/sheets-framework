@@ -23,7 +23,7 @@ interface FloorTabDeclaration {
 
 /**
  * Reconciles the floor's edit warnings across the floor tabs: Spreadsheet
- * Config, Sheet Config and Column Config each get one, and any that drifted
+ * Config, Table Config and Column Config each get one, and any that drifted
  * or no floor tab declares is removed. ConfigSheetFloor runs this after its restores.
  * Each tab's declaration and the rules table live in FloorTabEditWarning; the
  * live column lookup is floorColumnLocation; seed lookups are floorSeedLookups;

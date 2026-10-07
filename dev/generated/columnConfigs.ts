@@ -8,8 +8,9 @@ export const columnConfigs = makeColumnConfigs({
     "syncConfigSheetRowsTimeLastRan": { "columnId": "c:sscf:pLBSdae", "header": "Sync config sheet rows, time last ran", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null },
     "syncConfigSheetRowsRunStatus": { "columnId": "c:sscf:W-JABu_", "header": "Sync config sheet rows, run status", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null }
   },
-  "sheetConfig": {
-    "sheetGid": { "columnId": "c:scf:WgnoW8d", "header": "Sheet GID", "valueName": "number", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null },
+  "tableConfig": {
+    "tableId": { "columnId": "c:scf:tableId", "header": "Table ID", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null },
+    "tableName": { "columnId": "c:scf:tableName", "header": "Table name", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null },
     "sheetTitle": { "columnId": "c:scf:0Ctj9xZ", "header": "Sheet title", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null },
     "letApiAccess": { "columnId": "c:scf:GOJ0ixi", "header": "Let api access", "valueName": "checkbox", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null }
   },

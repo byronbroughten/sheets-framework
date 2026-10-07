@@ -2,7 +2,7 @@ import { makeSheetConfigs } from "../../src/01_SpreadsheetSchema/makeConfigs";
 
 export const sheetConfigs = makeSheetConfigs({
   "spreadsheetConfig": { "sheetGid": 1967106628, "idPrefix": "sscf", "hasIdColumn": false, "hasNameColumn": false },
-  "sheetConfig": { "sheetGid": 210603630, "idPrefix": "scf", "hasIdColumn": false, "hasNameColumn": false },
+  "tableConfig": { "sheetGid": 210603630, "idPrefix": "scf", "hasIdColumn": false, "hasNameColumn": false },
   "columnConfig": { "sheetGid": 2034522667, "idPrefix": "ccf", "hasIdColumn": false, "hasNameColumn": false },
   "valueConfig": { "sheetGid": 2119236084, "idPrefix": "vcf", "hasIdColumn": false, "hasNameColumn": false },
   "item": { "sheetGid": 1100001, "idPrefix": "itm", "hasIdColumn": true, "hasNameColumn": true },

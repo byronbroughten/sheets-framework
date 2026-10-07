@@ -12,19 +12,19 @@ import {
 
 const { columnConfigs } = installedConfigs();
 
-const sheetGidHeader = columnConfigs.sheetConfig.sheetGid.header;
+const tableIdHeader = columnConfigs.tableConfig.tableId.header;
 
 function column(columnId: string): ColumnConfigStored {
-  return { ...columnConfigs.sheetConfig.sheetGid, columnId };
+  return { ...columnConfigs.tableConfig.tableId, columnId };
 }
 
 function source(props: {
   sheetConfigs?: SheetConfigsBase;
-  sheetConfigColumnId?: string;
+  tableConfigColumnId?: string;
 }): FloorIdentitySource {
   return {
     sheetConfigs: props.sheetConfigs ?? {
-      sheetConfig: {
+      tableConfig: {
         sheetGid: 1,
         idPrefix: "scf",
         hasIdColumn: false,
@@ -32,9 +32,9 @@ function source(props: {
       },
     },
     columnConfigs:
-      props.sheetConfigColumnId === undefined
+      props.tableConfigColumnId === undefined
         ? {}
-        : { sheetConfig: { sheetGid: column(props.sheetConfigColumnId) } },
+        : { tableConfig: { tableId: column(props.tableConfigColumnId) } },
   };
 }
 
@@ -42,19 +42,19 @@ describe("assertFloorIdentityUnchanged", () => {
   it("throws naming the sheet, the header, and the previous and new column ID of a floor column", () => {
     expect(() =>
       assertFloorIdentityUnchanged({
-        previous: source({ sheetConfigColumnId: "c:scf:aaa" }),
-        next: source({ sheetConfigColumnId: "c:scf:bbb" }),
+        previous: source({ tableConfigColumnId: "c:scf:aaa" }),
+        next: source({ tableConfigColumnId: "c:scf:bbb" }),
       }),
     ).toThrow(
-      `Floor column "${sheetGidHeader}" on "sheetConfig" had column ID "c:scf:aaa" and is now "c:scf:bbb".`,
+      `Floor column "${tableIdHeader}" on "tableConfig" had column ID "c:scf:aaa" and is now "c:scf:bbb".`,
     );
   });
 
   it("passes when the floor identities match", () => {
     expect(() =>
       assertFloorIdentityUnchanged({
-        previous: source({ sheetConfigColumnId: "c:scf:aaa" }),
-        next: source({ sheetConfigColumnId: "c:scf:aaa" }),
+        previous: source({ tableConfigColumnId: "c:scf:aaa" }),
+        next: source({ tableConfigColumnId: "c:scf:aaa" }),
       }),
     ).not.toThrow();
   });
@@ -72,7 +72,7 @@ describe("assertFloorIdentityUnchanged", () => {
     expect(() =>
       assertFloorIdentityUnchanged({
         previous: source({}),
-        next: source({ sheetConfigColumnId: "c:scf:bbb" }),
+        next: source({ tableConfigColumnId: "c:scf:bbb" }),
       }),
     ).not.toThrow();
   });

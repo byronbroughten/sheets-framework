@@ -9,20 +9,20 @@ import type { TableName } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {
-  blankSheetConfigRow,
-  filledSheetConfigRow,
-  sheetConfigColumnIdRow,
-  sheetConfigGid,
-  sheetTitleColIndex,
-  stubSheetConfigSheet,
-} from "../testSupport/fakeSheetConfigSheet";
-import {
   buildGridRows,
   type FakeCell,
   type FakeCellValue,
   type FakeSheetsService,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
+import {
+  blankTableConfigRow,
+  filledTableConfigRow,
+  sheetTitleColIndex,
+  stubTableConfigSheet,
+  tableConfigColumnIdRow,
+  tableConfigGid,
+} from "../testSupport/fakeTableConfigSheet";
 import {
   assertNotType,
   assertType,
@@ -438,10 +438,11 @@ describe("Named value accessors", () => {
   });
 });
 
-function fetchedSheetConfig(): SpreadsheetNamed {
+function fetchedTableConfig(): SpreadsheetNamed {
   const ss = SpreadsheetNamed.init();
-  ss.table("sheetConfig").prepFetchColumnsFull(
-    "sheetGid",
+  ss.table("tableConfig").prepFetchColumnsFull(
+    "tableId",
+    "tableName",
     "sheetTitle",
     "letApiAccess",
   );
@@ -462,8 +463,8 @@ function tableDataRows(
   });
 }
 
-function sheetConfigTitles(service: FakeSheetsService): FakeCellValue[] {
-  return tableDataRows(service, sheetConfigGid).map(
+function tableConfigSheetTitles(service: FakeSheetsService): FakeCellValue[] {
+  return tableDataRows(service, tableConfigGid).map(
     (row) => row[sheetTitleColIndex] ?? null,
   );
 }
@@ -523,27 +524,27 @@ function stubDatesWithDuplicateIds() {
 
 describe("TableNamed.DELETE_ALL_DATA_ROWS", () => {
   it("deletes every data row but the top one, and leaves that one blank", () => {
-    const service = stubSheetConfigSheet({
-      4: filledSheetConfigRow,
-      5: filledSheetConfigRow,
-      6: filledSheetConfigRow,
+    const service = stubTableConfigSheet({
+      4: filledTableConfigRow,
+      5: filledTableConfigRow,
+      6: filledTableConfigRow,
     });
 
-    const ss = fetchedSheetConfig();
-    ss.table("sheetConfig").DELETE_ALL_DATA_ROWS();
+    const ss = fetchedTableConfig();
+    ss.table("tableConfig").DELETE_ALL_DATA_ROWS();
     ss.batchUpdateGSheets();
 
-    expect(tableDataRows(service, sheetConfigGid)).toEqual([["", "", ""]]);
-    expect(ss.table("sheetConfig").topRow.isBlank).toBe(true);
+    expect(tableDataRows(service, tableConfigGid)).toEqual([["", "", "", ""]]);
+    expect(ss.table("tableConfig").topRow.isBlank).toBe(true);
   });
 
   it("sends no batch update for a sheet already down to its blank row", () => {
-    const service = stubSheetConfigSheet({
-      4: blankSheetConfigRow,
+    const service = stubTableConfigSheet({
+      4: blankTableConfigRow,
     });
 
-    const ss = fetchedSheetConfig();
-    ss.table("sheetConfig").DELETE_ALL_DATA_ROWS();
+    const ss = fetchedTableConfig();
+    ss.table("tableConfig").DELETE_ALL_DATA_ROWS();
     ss.batchUpdateGSheets();
 
     expect(service.batchUpdateCount()).toBe(0);
@@ -552,83 +553,83 @@ describe("TableNamed.DELETE_ALL_DATA_ROWS", () => {
 
 describe("TableNamed.appendRowWithVals", () => {
   it("reuses the blank row of an emptied sheet rather than appending beneath it", () => {
-    const service = stubSheetConfigSheet({
-      4: blankSheetConfigRow,
+    const service = stubTableConfigSheet({
+      4: blankTableConfigRow,
     });
 
-    const ss = fetchedSheetConfig();
-    const row = ss.table("sheetConfig").appendRowWithVals({
+    const ss = fetchedTableConfig();
+    const row = ss.table("tableConfig").appendRowWithVals({
       sheetTitle: "Item",
     });
     ss.batchUpdateGSheets();
 
     expect(row.rowIndex).toBe(0);
-    expect(sheetConfigTitles(service)).toEqual(["Item"]);
+    expect(tableConfigSheetTitles(service)).toEqual(["Item"]);
     expect(row.value("sheetTitle")).toBe("Item");
   });
 
   it("appends beneath a one-row sheet that still holds data", () => {
-    const service = stubSheetConfigSheet({
-      4: filledSheetConfigRow,
+    const service = stubTableConfigSheet({
+      4: filledTableConfigRow,
     });
 
-    const ss = fetchedSheetConfig();
+    const ss = fetchedTableConfig();
     const row = ss
-      .table("sheetConfig")
+      .table("tableConfig")
       .appendRowWithVals({ sheetTitle: "Log" });
     ss.batchUpdateGSheets();
 
     expect(row.rowIndex).toBe(1);
-    expect(sheetConfigTitles(service)).toEqual(["Item", "Log"]);
+    expect(tableConfigSheetTitles(service)).toEqual(["Item", "Log"]);
   });
 
   it("reuses the blank row once and appends for the second row", () => {
-    const service = stubSheetConfigSheet({
-      4: blankSheetConfigRow,
+    const service = stubTableConfigSheet({
+      4: blankTableConfigRow,
     });
 
-    const ss = fetchedSheetConfig();
-    const sheet = ss.table("sheetConfig");
+    const ss = fetchedTableConfig();
+    const sheet = ss.table("tableConfig");
     const first = sheet.appendRowWithVals({ sheetTitle: "one" });
     const second = sheet.appendRowWithVals({ sheetTitle: "two" });
     ss.batchUpdateGSheets();
 
     expect([first.rowIndex, second.rowIndex]).toEqual([0, 1]);
-    expect(sheetConfigTitles(service)).toEqual(["one", "two"]);
+    expect(tableConfigSheetTitles(service)).toEqual(["one", "two"]);
   });
 
   // The wipe has to lift the reservation the first append took, or the second strands a row.
   it("hands the same row to a second append once a wipe has released it", () => {
-    const service = stubSheetConfigSheet({
-      4: blankSheetConfigRow,
+    const service = stubTableConfigSheet({
+      4: blankTableConfigRow,
     });
 
-    const ss = fetchedSheetConfig();
-    const sheet = ss.table("sheetConfig");
+    const ss = fetchedTableConfig();
+    const sheet = ss.table("tableConfig");
     sheet.appendRowWithVals({ sheetTitle: "one" });
     sheet.DELETE_ALL_DATA_ROWS();
     const rebuilt = sheet.appendRowWithVals({ sheetTitle: "two" });
     ss.batchUpdateGSheets();
 
     expect(rebuilt.rowIndex).toBe(0);
-    expect(sheetConfigTitles(service)).toEqual(["two"]);
+    expect(tableConfigSheetTitles(service)).toEqual(["two"]);
     expect(rebuilt.value("sheetTitle")).toBe("two");
   });
 
   it("reuses the row a wipe just cleared, so the wipe and rebuild leave only rebuilt rows", () => {
-    const service = stubSheetConfigSheet({
-      4: filledSheetConfigRow,
-      5: filledSheetConfigRow,
+    const service = stubTableConfigSheet({
+      4: filledTableConfigRow,
+      5: filledTableConfigRow,
     });
 
-    const ss = fetchedSheetConfig();
-    const sheet = ss.table("sheetConfig");
+    const ss = fetchedTableConfig();
+    const sheet = ss.table("tableConfig");
     sheet.DELETE_ALL_DATA_ROWS();
     const row = sheet.appendRowWithVals({ sheetTitle: "new" });
     ss.batchUpdateGSheets();
 
     expect(row.rowIndex).toBe(0);
-    expect(sheetConfigTitles(service)).toEqual(["new"]);
+    expect(tableConfigSheetTitles(service)).toEqual(["new"]);
   });
 });
 
@@ -637,7 +638,7 @@ describe("TableNamed.appendRowWithVals, growing a lone blank row", () => {
   const looseRowIndex = topDataRowIndex + 2;
   // The inserted rows should copy the blank row's colour; the loose cell below shows any insert.
   function stubColouredBlankRowAboveLooseCell(): FakeSheetsService {
-    const blankRow = blankSheetConfigRow.map((cell, colIndex): FakeCell =>
+    const blankRow = blankTableConfigRow.map((cell, colIndex): FakeCell =>
       colIndex === sheetTitleColIndex
         ? { value: null, backgroundColor: blankRowColour }
         : cell,
@@ -645,10 +646,10 @@ describe("TableNamed.appendRowWithVals, growing a lone blank row", () => {
     return stubSheetsService({
       sheets: [
         {
-          sheetId: sheetConfigGid,
-          title: "Sheet Config",
+          sheetId: tableConfigGid,
+          title: "Table Config",
           rows: buildGridRows({
-            0: sheetConfigColumnIdRow,
+            0: tableConfigColumnIdRow,
             [topDataRowIndex]: blankRow,
             [looseRowIndex]: ["loose"],
           }),
@@ -661,15 +662,15 @@ describe("TableNamed.appendRowWithVals, growing a lone blank row", () => {
   it("writes the blank row in place and inserts the rest beneath it, modelled on it", () => {
     const service = stubColouredBlankRowAboveLooseCell();
 
-    const ss = fetchedSheetConfig();
-    const sheet = ss.table("sheetConfig");
+    const ss = fetchedTableConfig();
+    const sheet = ss.table("tableConfig");
     const titles = ["one", "two", "three"];
     const rows = titles.map((sheetTitle) =>
       sheet.appendRowWithVals({ sheetTitle }),
     );
     ss.batchUpdateGSheets();
 
-    const grid = service.grid.sheet(sheetConfigGid);
+    const grid = service.grid.sheet(tableConfigGid);
     expect(rows.map((row) => row.rowIndex)).toEqual([0, 1, 2]);
     expect(grid.tables[0]?.range?.endRowIndex).toBe(topDataRowIndex + 3);
     expect(
@@ -687,14 +688,14 @@ describe("TableNamed.appendRowWithVals, growing a lone blank row", () => {
 
   it("only fills the blank row when growing by one, inserting nothing", () => {
     const service = stubColouredBlankRowAboveLooseCell();
-    const rowCountBefore = service.grid.sheet(sheetConfigGid).rowCount;
+    const rowCountBefore = service.grid.sheet(tableConfigGid).rowCount;
 
-    const ss = fetchedSheetConfig();
-    ss.table("sheetConfig").appendRowWithVals({ sheetTitle: "one" });
+    const ss = fetchedTableConfig();
+    ss.table("tableConfig").appendRowWithVals({ sheetTitle: "one" });
     ss.batchUpdateGSheets();
 
-    const grid = service.grid.sheet(sheetConfigGid);
-    expect(sheetConfigTitles(service)).toEqual(["one"]);
+    const grid = service.grid.sheet(tableConfigGid);
+    expect(tableConfigSheetTitles(service)).toEqual(["one"]);
     expect(grid.tables[0]?.range?.endRowIndex).toBe(topDataRowIndex + 1);
     expect(grid.rowCount).toBe(rowCountBefore);
     expect(grid.cell(looseRowIndex, 0)).toBe("loose");
@@ -825,9 +826,10 @@ describe("TableNamed.appendRowWithAllVals", () => {
   it("asks a sheet with no ID column for every writable column", () => {
     assertType<
       IsExactly<
-        CompleteAppendBag<"sheetConfig">,
+        CompleteAppendBag<"tableConfig">,
         {
-          sheetGid: number | "";
+          tableId: string;
+          tableName: string;
           sheetTitle: string;
           letApiAccess: boolean;
         }

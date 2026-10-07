@@ -18,7 +18,7 @@ type TimeLastRanOf<TN extends TableNameSimple> = NonNullable<
 
 describe("Endpoint's column parameters", () => {
   it("resolve to the entry column's own sheet", () => {
-    assertType<IsExactly<SelectorColumnOf<"sheetConfig">, "letApiAccess">>(
+    assertType<IsExactly<SelectorColumnOf<"tableConfig">, "letApiAccess">>(
       true,
     );
     assertType<

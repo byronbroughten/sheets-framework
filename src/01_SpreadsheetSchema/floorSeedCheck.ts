@@ -37,7 +37,7 @@ function assertFloorTabEntries(sheetConfigs: SheetConfigsBase): void {
   );
   if (missing === undefined) return;
   throw new Error(
-    `Floor tab "${missing}" has no floor entry; Let api access may be unticked on its Sheet Config row.`,
+    `Floor tab "${missing}" has no floor entry; Let api access may be unticked on its Table Config row.`,
   );
 }
 

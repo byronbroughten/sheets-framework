@@ -6,7 +6,7 @@ Each package's `generatedDir` (the app's `src/generated/`, the framework's `dev/
 
 | When | File |
 | --- | --- |
-| `sheetConfigs`, `tableConfigs`, `hasIdColumn`, `hasNameColumn`, `idPrefix` | [`generated-data/sheet-configs.md`](./generated-data/sheet-configs.md) |
+| The Table Config sheet, `tableConfigs`, `sheetConfigs`, `hasIdColumn`, `hasNameColumn`, `idPrefix` | [`generated-data/table-configs.md`](./generated-data/table-configs.md) |
 | `columnConfigs`, `emptyValueAllowed`, `isFormula`, `valueName` resolution, the untyped-columns summary | [`generated-data/column-configs.md`](./generated-data/column-configs.md) |
 | `valueConfigs` and its `const` type parameter | [`generated-data/value-configs.md`](./generated-data/value-configs.md) |
 | Which config-sheet columns exist, the correction pass, `syncConfigSheetRows` | [`generated-data/config-sync.md`](./generated-data/config-sync.md) |
@@ -30,7 +30,7 @@ The rules on regenerating and on tab spelling: [`src/01_SpreadsheetSchema/AGENTS
 
 ## What a regeneration runs, on the Node host
 
-Regenerate all four with `sheets-framework gen-configs` (see [`docs/how-it-runs.md`](./how-it-runs.md#what-gen-configs-writes)), which runs `ConfigCoordinator` (`05_Operators`) **on the Node host**: it syncs the live Sheet Config sheet, then the live Column Config sheet (including adding any missing column IDs to business sheets), flushes all of that in one write, then reads the live Value Config sheet, and only then emits source for all four files. **Live Table sampling on that run — Table header row, column-ID row, first data row — is for this run's Let api access sheets**, after Sheet Config is loaded, not for every tab. Everyday Table-placement and extra-Table checks still use last-generate sheet GIDs, one regen behind the live box. The command writes all five files or none, and runs `npm run tsc` itself afterward so a stale hand-written reference surfaces immediately.
+Regenerate all four with `sheets-framework gen-configs` (see [`docs/how-it-runs.md`](./how-it-runs.md#what-gen-configs-writes)), which runs `ConfigCoordinator` (`05_Operators`) **on the Node host**: it syncs the live Table Config sheet, then the live Column Config sheet (including adding any missing column IDs to business sheets), flushes all of that in one write, then reads the live Value Config sheet, and only then emits source for all four files. **Live Table sampling on that run — Table header row, column-ID row, first data row — is for this run's Let api access Tables**, after Table Config is loaded, not for every Table. Everyday Table-placement and extra-Table checks still use last-generate sheet GIDs, one regen behind the live box. The command writes all five files or none, and runs `npm run tsc` itself afterward so a stale hand-written reference surfaces immediately.
 
 ## The `clasp run` path is gone
 

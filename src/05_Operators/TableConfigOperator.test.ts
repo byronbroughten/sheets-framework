@@ -7,24 +7,32 @@ import {
   buildGridRows,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
-import { SheetConfigOperator } from "./SheetConfigOperator";
+import { tableIdOnTab } from "../testSupport/fakeTableConfigSheet";
+import { TableConfigOperator } from "./TableConfigOperator";
 
 const { columnConfigs } = installedConfigs();
 
 // The installed columnConfigs' ids, so the fixture matches what production resolves through.
-const sc = columnConfigs.sheetConfig;
-const sheetConfigGid = 210603630;
+const tc = columnConfigs.tableConfig;
+const tableConfigGid = 210603630;
 const widgetGid = 999001;
 const newSheetGid = 999002;
 const gadgetGid = 999003;
+const notesGid = 999004;
 
-const sheetConfigColumnIdRow = [
-  sc.sheetGid.columnId,
-  sc.sheetTitle.columnId,
-  sc.letApiAccess.columnId,
+const tableConfigTableId = tableIdOnTab(tableConfigGid);
+const widgetTableId = tableIdOnTab(widgetGid);
+const newSheetTableId = tableIdOnTab(newSheetGid);
+const gadgetTableId = tableIdOnTab(gadgetGid);
+
+const tableConfigColumnIdRow = [
+  tc.tableId.columnId,
+  tc.tableName.columnId,
+  tc.sheetTitle.columnId,
+  tc.letApiAccess.columnId,
 ];
 
-const existingWidgetConfigRow = [widgetGid, "Widget", true];
+const existingWidgetConfigRow = [widgetTableId, "Widget", "Widget", true];
 
 beforeEach(() => {
   stubLogger();
@@ -32,15 +40,15 @@ beforeEach(() => {
 
 // newSheetConfigs()/sheetNamesByGid()/toFileSource("../makeConfigs") all read letApiAccess,
 // which prepFetchForSync doesn't prep on its own — production code only
-// preps it via ColumnConfigOperator.prepFetchWithSheetConfig, so a
-// standalone SheetConfigOperator test has to prep it itself.
+// preps it via ColumnConfigOperator.prepFetchWithTableConfig, so a
+// standalone TableConfigOperator test has to prep it itself.
 //
 // fetchAllSheetProperties() has to run first, matching
 // ConfigCoordinator.syncAndFlushConfigSheets's order — it's what populates
-// ss.raw.activeSheetGids (the catalogue walk, and hence
-// skipFetchingProperties below) with every live sheet, including ones with
-// no Sheet Config row yet.
-function syncSheetConfigOperator(operator: SheetConfigOperator): void {
+// ss.raw.activeTableIds (the catalogue walk, and hence
+// skipFetchingProperties below) with every live Table, including ones with
+// no Table Config row yet.
+function syncTableConfigOperator(operator: TableConfigOperator): void {
   operator.ss.raw.fetchAllSheetProperties();
   operator.table.prepFetchColumnsFull("letApiAccess");
   operator.prepFetchForSync();
@@ -48,24 +56,149 @@ function syncSheetConfigOperator(operator: SheetConfigOperator): void {
   operator.syncToSpreadsheet();
 }
 
-function syncedOperator(): SheetConfigOperator {
-  const operator = SheetConfigOperator.init();
-  syncSheetConfigOperator(operator);
+function syncedOperator(): TableConfigOperator {
+  const operator = TableConfigOperator.init();
+  syncTableConfigOperator(operator);
   return operator;
 }
 
-describe("SheetConfigOperator.newSheetConfigs / toFileSource", () => {
+function catalogueRows(operator: TableConfigOperator) {
+  const col = operator.table.columns(
+    "tableId",
+    "tableName",
+    "sheetTitle",
+    "letApiAccess",
+  );
+  return operator.table.rowIndexesActiveWithData.map((rowIndex) => ({
+    tableId: col.tableId.value(rowIndex),
+    tableName: col.tableName.valueOrEmpty(rowIndex),
+    sheetTitle: col.sheetTitle.value(rowIndex),
+    letApiAccess: col.letApiAccess.valueOrEmpty(rowIndex),
+  }));
+}
+
+describe("TableConfigOperator catalogue rows", () => {
+  it("lists every Table, new ones unticked, two on one tab as two rows, and gives a tab with no Table no row", () => {
+    stubSheetsService({
+      sheets: [
+        {
+          sheetId: tableConfigGid,
+          title: "Table Config",
+          rows: buildGridRows({
+            0: tableConfigColumnIdRow,
+            4: [null, null, null, null],
+          }),
+          table: {
+            tableId: tableIdOnTab(tableConfigGid),
+            name: "tableConfig",
+            endRowIndex: 5,
+          },
+        },
+        {
+          sheetId: widgetGid,
+          title: "Widget",
+          rows: buildGridRows({ 3: ["ID"] }),
+          table: { name: "Widget orders", endRowIndex: 5 },
+        },
+        {
+          sheetId: gadgetGid,
+          title: "Gadget",
+          rows: buildGridRows({ 3: ["ID"] }),
+          tables: [
+            { tableId: "gadget-orders", name: "Gadget orders", endRowIndex: 5 },
+            {
+              tableId: "gadget-stock",
+              name: "Gadget stock",
+              startRowIndex: 13,
+              endRowIndex: 15,
+            },
+          ],
+        },
+        { sheetId: notesGid, title: "Notes", rows: buildGridRows({ 3: [] }) },
+      ],
+    });
+
+    const rows = catalogueRows(syncedOperator());
+
+    expect(rows).toHaveLength(4);
+    expect(rows).toEqual(
+      expect.arrayContaining([
+        {
+          tableId: tableConfigTableId,
+          tableName: "tableConfig",
+          sheetTitle: "Table Config",
+          letApiAccess: true,
+        },
+        {
+          tableId: widgetTableId,
+          tableName: "Widget orders",
+          sheetTitle: "Widget",
+          letApiAccess: false,
+        },
+        {
+          tableId: "gadget-orders",
+          tableName: "Gadget orders",
+          sheetTitle: "Gadget",
+          letApiAccess: false,
+        },
+        {
+          tableId: "gadget-stock",
+          tableName: "Gadget stock",
+          sheetTitle: "Gadget",
+          letApiAccess: false,
+        },
+      ]),
+    );
+  });
+
+  it("corrects a stale Table name and Sheet title from the live spreadsheet, keeping the tick", () => {
+    stubSheetsService({
+      sheets: [
+        {
+          sheetId: tableConfigGid,
+          title: "Table Config",
+          rows: buildGridRows({
+            0: tableConfigColumnIdRow,
+            4: [widgetTableId, "Old name", "Old title", true],
+          }),
+          table: {
+            tableId: tableIdOnTab(tableConfigGid),
+            name: "tableConfig",
+            endRowIndex: 5,
+          },
+        },
+        {
+          sheetId: widgetGid,
+          title: "Widget",
+          rows: buildGridRows({ 3: ["ID"] }),
+          table: { name: "Widget orders", endRowIndex: 5 },
+        },
+      ],
+    });
+
+    const [widgetRow] = catalogueRows(syncedOperator());
+
+    expect(widgetRow).toEqual({
+      tableId: widgetTableId,
+      tableName: "Widget orders",
+      sheetTitle: "Widget",
+      letApiAccess: true,
+    });
+  });
+});
+
+describe("TableConfigOperator.newSheetConfigs / toFileSource", () => {
   it("carries forward an existing sheet and appends a brand-new one, excluded until manually enabled", () => {
     stubSheetsService({
       sheets: [
         {
-          sheetId: sheetConfigGid,
-          title: "Sheet Config",
+          sheetId: tableConfigGid,
+          title: "Table Config",
           rows: buildGridRows({
-            0: sheetConfigColumnIdRow,
+            0: tableConfigColumnIdRow,
             4: existingWidgetConfigRow,
           }),
-          table: { endRowIndex: 5 },
+          table: { tableId: tableIdOnTab(tableConfigGid), endRowIndex: 5 },
         },
         // Referenced by the existing row above; no "ID" header, so
         // hasIdColumn is emitted false from the header-row sample.
@@ -75,7 +208,7 @@ describe("SheetConfigOperator.newSheetConfigs / toFileSource", () => {
           rows: buildGridRows({ 3: [] }),
           table: { name: "Widget", endRowIndex: 5 },
         },
-        // Present in the spreadsheet but with NO existing Sheet Config row.
+        // Present in the spreadsheet but with NO existing Table Config row.
         {
           sheetId: newSheetGid,
           title: "Brand New Sheet",
@@ -85,8 +218,8 @@ describe("SheetConfigOperator.newSheetConfigs / toFileSource", () => {
       ],
     });
 
-    const operator = SheetConfigOperator.init();
-    syncSheetConfigOperator(operator);
+    const operator = TableConfigOperator.init();
+    syncTableConfigOperator(operator);
     const sheetConfigs = operator.newSheetConfigs();
 
     expect(sheetConfigs.widget).toEqual({
@@ -95,26 +228,28 @@ describe("SheetConfigOperator.newSheetConfigs / toFileSource", () => {
       hasIdColumn: false,
       hasNameColumn: false,
     });
-    // A newly-discovered sheet gets a Sheet Config row appended, but stays
+    // A newly-discovered Table gets a Table Config row appended, but stays
     // excluded from the generated file until a human sets letApiAccess.
     expect(sheetConfigs.brandNewSheet).toBeUndefined();
-    expect(operator.table.column("sheetGid").hasValue(newSheetGid)).toBe(true);
+    expect(operator.table.column("tableId").hasValue(newSheetTableId)).toBe(
+      true,
+    );
   });
 
   it("resolves sheetGid -> sheetName for a sheet not yet in any deployed config", () => {
     stubSheetsService({
       sheets: [
         {
-          sheetId: sheetConfigGid,
-          title: "Sheet Config",
+          sheetId: tableConfigGid,
+          title: "Table Config",
           rows: buildGridRows({
-            0: sheetConfigColumnIdRow,
-            // A human already turned on API access for this sheet, but no
+            0: tableConfigColumnIdRow,
+            // A human already turned on API access for this Table, but no
             // deploy has run since — this run's own live sync is the only
             // place the mapping exists.
-            4: [newSheetGid, "Brand New Sheet", true],
+            4: [newSheetTableId, "Brand New Sheet", "Brand New Sheet", true],
           }),
-          table: { endRowIndex: 5 },
+          table: { tableId: tableIdOnTab(tableConfigGid), endRowIndex: 5 },
         },
         {
           sheetId: newSheetGid,
@@ -125,8 +260,8 @@ describe("SheetConfigOperator.newSheetConfigs / toFileSource", () => {
       ],
     });
 
-    const operator = SheetConfigOperator.init();
-    syncSheetConfigOperator(operator);
+    const operator = TableConfigOperator.init();
+    syncTableConfigOperator(operator);
 
     expect(operator.sheetNamesByGid().get(newSheetGid)).toBe("brandNewSheet");
     expect(operator.newSheetConfigs().brandNewSheet).toEqual({
@@ -138,17 +273,17 @@ describe("SheetConfigOperator.newSheetConfigs / toFileSource", () => {
   });
 
   // A checkbox nobody has ever touched reads blank, not false.
-  it("excludes a sheet whose API-access checkbox has never been ticked", () => {
+  it("excludes a Table whose API-access checkbox has never been ticked", () => {
     stubSheetsService({
       sheets: [
         {
-          sheetId: sheetConfigGid,
-          title: "Sheet Config",
+          sheetId: tableConfigGid,
+          title: "Table Config",
           rows: buildGridRows({
-            0: sheetConfigColumnIdRow,
-            4: [widgetGid, "Widget", null, "wdg"],
+            0: tableConfigColumnIdRow,
+            4: [widgetTableId, "Widget", "Widget", null],
           }),
-          table: { endRowIndex: 5 },
+          table: { tableId: tableIdOnTab(tableConfigGid), endRowIndex: 5 },
         },
         {
           sheetId: widgetGid,
@@ -159,54 +294,54 @@ describe("SheetConfigOperator.newSheetConfigs / toFileSource", () => {
       ],
     });
 
-    const operator = SheetConfigOperator.init();
-    syncSheetConfigOperator(operator);
+    const operator = TableConfigOperator.init();
+    syncTableConfigOperator(operator);
 
     expect(operator.newSheetConfigs().widget).toBeUndefined();
-    expect(operator.sheetGidsApiAccesses()).toEqual([sheetConfigGid]);
+    expect(operator.sheetGidsApiAccesses()).toEqual([tableConfigGid]);
   });
 
-  // Every seeded row names a sheet that no longer exists, so the prune reaches the last one.
+  // Every seeded row names a Table that no longer exists, so the prune reaches the last one.
   it("clears the last stale row rather than deleting it, and syncs past it without throwing", () => {
     stubSheetsService({
       sheets: [
         {
-          sheetId: sheetConfigGid,
-          title: "Sheet Config",
+          sheetId: tableConfigGid,
+          title: "Table Config",
           rows: buildGridRows({
-            0: sheetConfigColumnIdRow,
+            0: tableConfigColumnIdRow,
             4: existingWidgetConfigRow,
-            5: [newSheetGid, "Gone", true],
+            5: [newSheetTableId, "Gone", "Gone", true],
           }),
-          table: { endRowIndex: 6 },
+          table: { tableId: tableIdOnTab(tableConfigGid), endRowIndex: 6 },
         },
       ],
     });
 
-    const operator = SheetConfigOperator.init();
+    const operator = TableConfigOperator.init();
 
-    expect(() => syncSheetConfigOperator(operator)).not.toThrow();
+    expect(() => syncTableConfigOperator(operator)).not.toThrow();
     expect(operator.table.row(1).isBlank).toBe(true);
     expect(operator.newSheetConfigs().widget).toBeUndefined();
-    expect(operator.newSheetConfigs().sheetConfig).toEqual({
-      sheetGid: sheetConfigGid,
+    expect(operator.newSheetConfigs().tableConfig).toEqual({
+      sheetGid: tableConfigGid,
       idPrefix: "scf",
       hasIdColumn: false,
       hasNameColumn: false,
     });
   });
 
-  it("assigns an ID prefix from the Table name when a Let api access sheet has no column IDs", () => {
+  it("assigns an ID prefix from the Table name when a Let api access Table has no column IDs", () => {
     stubSheetsService({
       sheets: [
         {
-          sheetId: sheetConfigGid,
-          title: "Sheet Config",
+          sheetId: tableConfigGid,
+          title: "Table Config",
           rows: buildGridRows({
-            0: sheetConfigColumnIdRow,
-            4: [widgetGid, "Widget", true],
+            0: tableConfigColumnIdRow,
+            4: existingWidgetConfigRow,
           }),
-          table: { endRowIndex: 5 },
+          table: { tableId: tableIdOnTab(tableConfigGid), endRowIndex: 5 },
         },
         {
           sheetId: widgetGid,
@@ -217,8 +352,8 @@ describe("SheetConfigOperator.newSheetConfigs / toFileSource", () => {
       ],
     });
 
-    const operator = SheetConfigOperator.init();
-    syncSheetConfigOperator(operator);
+    const operator = TableConfigOperator.init();
+    syncTableConfigOperator(operator);
 
     expect(operator.newSheetConfigs().widget).toEqual({
       sheetGid: widgetGid,
@@ -232,13 +367,13 @@ describe("SheetConfigOperator.newSheetConfigs / toFileSource", () => {
     stubSheetsService({
       sheets: [
         {
-          sheetId: sheetConfigGid,
-          title: "Sheet Config",
+          sheetId: tableConfigGid,
+          title: "Table Config",
           rows: buildGridRows({
-            0: sheetConfigColumnIdRow,
-            4: [widgetGid, "Stale Title", true],
+            0: tableConfigColumnIdRow,
+            4: [widgetTableId, "Widget", "Stale Title", true],
           }),
-          table: { endRowIndex: 5 },
+          table: { tableId: tableIdOnTab(tableConfigGid), endRowIndex: 5 },
         },
         {
           sheetId: widgetGid,
@@ -249,8 +384,8 @@ describe("SheetConfigOperator.newSheetConfigs / toFileSource", () => {
       ],
     });
 
-    const operator = SheetConfigOperator.init();
-    syncSheetConfigOperator(operator);
+    const operator = TableConfigOperator.init();
+    syncTableConfigOperator(operator);
 
     expect(operator.table.column("sheetTitle").value(0)).toBe("Widget");
     expect(operator.newSheetConfigs().widget?.hasIdColumn).toBe(false);
@@ -260,13 +395,13 @@ describe("SheetConfigOperator.newSheetConfigs / toFileSource", () => {
     stubSheetsService({
       sheets: [
         {
-          sheetId: sheetConfigGid,
-          title: "Sheet Config",
+          sheetId: tableConfigGid,
+          title: "Table Config",
           rows: buildGridRows({
-            0: sheetConfigColumnIdRow,
-            4: [widgetGid, "Stale Title", false],
+            0: tableConfigColumnIdRow,
+            4: [widgetTableId, "", "Stale Title", false],
           }),
-          table: { endRowIndex: 5 },
+          table: { tableId: tableIdOnTab(tableConfigGid), endRowIndex: 5 },
         },
         {
           sheetId: widgetGid,
@@ -277,8 +412,8 @@ describe("SheetConfigOperator.newSheetConfigs / toFileSource", () => {
       ],
     });
 
-    const operator = SheetConfigOperator.init();
-    syncSheetConfigOperator(operator);
+    const operator = TableConfigOperator.init();
+    syncTableConfigOperator(operator);
 
     expect(operator.table.column("sheetTitle").value(0)).toBe("Widget");
     expect(operator.newSheetConfigs().widget).toBeUndefined();
@@ -288,13 +423,13 @@ describe("SheetConfigOperator.newSheetConfigs / toFileSource", () => {
     stubSheetsService({
       sheets: [
         {
-          sheetId: sheetConfigGid,
-          title: "Sheet Config",
+          sheetId: tableConfigGid,
+          title: "Table Config",
           rows: buildGridRows({
-            0: sheetConfigColumnIdRow,
-            4: [widgetGid, "Widget", true],
+            0: tableConfigColumnIdRow,
+            4: existingWidgetConfigRow,
           }),
-          table: { endRowIndex: 5 },
+          table: { tableId: tableIdOnTab(tableConfigGid), endRowIndex: 5 },
         },
         {
           sheetId: widgetGid,
@@ -305,8 +440,8 @@ describe("SheetConfigOperator.newSheetConfigs / toFileSource", () => {
       ],
     });
 
-    const operator = SheetConfigOperator.init();
-    syncSheetConfigOperator(operator);
+    const operator = TableConfigOperator.init();
+    syncTableConfigOperator(operator);
 
     expect(operator.newSheetConfigs().widget?.hasIdColumn).toBe(true);
   });
@@ -320,13 +455,13 @@ describe("SheetConfigOperator.newSheetConfigs / toFileSource", () => {
       stubSheetsService({
         sheets: [
           {
-            sheetId: sheetConfigGid,
-            title: "Sheet Config",
+            sheetId: tableConfigGid,
+            title: "Table Config",
             rows: buildGridRows({
-              0: sheetConfigColumnIdRow,
-              4: [widgetGid, "Widget", true],
+              0: tableConfigColumnIdRow,
+              4: existingWidgetConfigRow,
             }),
-            table: { endRowIndex: 5 },
+            table: { tableId: tableIdOnTab(tableConfigGid), endRowIndex: 5 },
           },
           {
             sheetId: widgetGid,
@@ -337,8 +472,8 @@ describe("SheetConfigOperator.newSheetConfigs / toFileSource", () => {
         ],
       });
 
-      const operator = SheetConfigOperator.init();
-      syncSheetConfigOperator(operator);
+      const operator = TableConfigOperator.init();
+      syncTableConfigOperator(operator);
 
       expect(operator.newSheetConfigs().widget?.hasNameColumn).toBe(
         hasNameColumn,
@@ -350,14 +485,14 @@ describe("SheetConfigOperator.newSheetConfigs / toFileSource", () => {
     stubSheetsService({
       sheets: [
         {
-          sheetId: sheetConfigGid,
-          title: "Sheet Config",
+          sheetId: tableConfigGid,
+          title: "Table Config",
           rows: buildGridRows({
-            0: sheetConfigColumnIdRow,
-            4: [widgetGid, "Widget", true],
-            5: [gadgetGid, "Gadget", true],
+            0: tableConfigColumnIdRow,
+            4: existingWidgetConfigRow,
+            5: [gadgetTableId, "", "Gadget", true],
           }),
-          table: { endRowIndex: 6 },
+          table: { tableId: tableIdOnTab(tableConfigGid), endRowIndex: 6 },
         },
         {
           sheetId: widgetGid,
@@ -374,8 +509,8 @@ describe("SheetConfigOperator.newSheetConfigs / toFileSource", () => {
       ],
     });
 
-    const operator = SheetConfigOperator.init();
-    syncSheetConfigOperator(operator);
+    const operator = TableConfigOperator.init();
+    syncTableConfigOperator(operator);
 
     expect(() => operator.toFileSource("../makeConfigs")).toThrow(
       /Widget.*Gadget.*"wdg"/,
@@ -383,18 +518,22 @@ describe("SheetConfigOperator.newSheetConfigs / toFileSource", () => {
   });
 });
 
-describe("SheetConfigOperator.newTableConfigs / toTableConfigsFileSource", () => {
+describe("TableConfigOperator.newTableConfigs / toTableConfigsFileSource", () => {
   function stubWidgetTable(letApiAccess: boolean): void {
     stubSheetsService({
       sheets: [
         {
-          sheetId: sheetConfigGid,
-          title: "Sheet Config",
+          sheetId: tableConfigGid,
+          title: "Table Config",
           rows: buildGridRows({
-            0: sheetConfigColumnIdRow,
-            4: [widgetGid, "Widget", letApiAccess],
+            0: tableConfigColumnIdRow,
+            4: ["widget-table", "Widget orders", "Widget", letApiAccess],
           }),
-          table: { name: "Sheet Config", endRowIndex: 5 },
+          table: {
+            tableId: tableIdOnTab(tableConfigGid),
+            name: "tableConfig",
+            endRowIndex: 5,
+          },
         },
         {
           sheetId: widgetGid,
@@ -410,16 +549,16 @@ describe("SheetConfigOperator.newTableConfigs / toTableConfigsFileSource", () =>
     });
   }
 
-  it("keys a managed sheet's Table by its live name and records its identity and position", () => {
+  it("keys a managed Table by its live name and records its identity and position", () => {
     stubWidgetTable(true);
 
-    const operator = SheetConfigOperator.init();
-    syncSheetConfigOperator(operator);
+    const operator = TableConfigOperator.init();
+    syncTableConfigOperator(operator);
     const { headerRowIndex, startColIndex } = TableOrigin.expected();
     const tableConfigs = operator.newTableConfigs();
 
     expect(Object.keys(tableConfigs).sort()).toEqual([
-      "sheetConfig",
+      "tableConfig",
       "widgetOrders",
     ]);
     expect(tableConfigs.widgetOrders).toEqual({
@@ -434,20 +573,20 @@ describe("SheetConfigOperator.newTableConfigs / toTableConfigsFileSource", () =>
     });
   });
 
-  it("leaves out the Table of a sheet whose API-access checkbox is unticked", () => {
+  it("leaves out a Table whose API-access checkbox is unticked", () => {
     stubWidgetTable(false);
 
-    const operator = SheetConfigOperator.init();
-    syncSheetConfigOperator(operator);
+    const operator = TableConfigOperator.init();
+    syncTableConfigOperator(operator);
 
-    expect(Object.keys(operator.newTableConfigs())).toEqual(["sheetConfig"]);
+    expect(Object.keys(operator.newTableConfigs())).toEqual(["tableConfig"]);
   });
 
   it("writes the entries through makeTableConfigs", () => {
     stubWidgetTable(true);
 
-    const operator = SheetConfigOperator.init();
-    syncSheetConfigOperator(operator);
+    const operator = TableConfigOperator.init();
+    syncTableConfigOperator(operator);
     const source = operator.toTableConfigsFileSource("../makeConfigs");
 
     expect(source).toContain(
@@ -460,7 +599,7 @@ describe("SheetConfigOperator.newTableConfigs / toTableConfigsFileSource", () =>
   });
 });
 
-describe("SheetConfigOperator Table keys and prefixes", () => {
+describe("TableConfigOperator Table keys and prefixes", () => {
   interface TableFixture {
     name: string;
     columnIds: string[];
@@ -475,14 +614,18 @@ describe("SheetConfigOperator Table keys and prefixes", () => {
     stubSheetsService({
       sheets: [
         {
-          sheetId: sheetConfigGid,
-          title: "Sheet Config",
+          sheetId: tableConfigGid,
+          title: "Table Config",
           rows: buildGridRows({
-            0: sheetConfigColumnIdRow,
-            4: [widgetGid, "Widget", true],
-            5: [gadgetGid, "Gadget", true],
+            0: tableConfigColumnIdRow,
+            4: ["widget-table", widget.name, "Widget", true],
+            5: ["gadget-table", gadget.name, "Gadget", true],
           }),
-          table: { name: "Sheet Config", endRowIndex: 6 },
+          table: {
+            tableId: tableIdOnTab(tableConfigGid),
+            name: "tableConfig",
+            endRowIndex: 6,
+          },
         },
         {
           sheetId: widgetGid,
@@ -543,18 +686,22 @@ describe("SheetConfigOperator Table keys and prefixes", () => {
   });
 });
 
-describe("SheetConfigOperator.parseColumnReference", () => {
+describe("TableConfigOperator.parseColumnReference", () => {
   beforeEach(() => {
     stubSheetsService({
       sheets: [
         {
-          sheetId: sheetConfigGid,
-          title: "Sheet Config",
+          sheetId: tableConfigGid,
+          title: "Table Config",
           rows: buildGridRows({
-            0: sheetConfigColumnIdRow,
-            4: [widgetGid, "Rents", true],
+            0: tableConfigColumnIdRow,
+            4: ["rents-table", "Rents", "Rents", true],
           }),
-          table: { name: "Sheet Config", endRowIndex: 5 },
+          table: {
+            tableId: tableIdOnTab(tableConfigGid),
+            name: "tableConfig",
+            endRowIndex: 5,
+          },
         },
         {
           sheetId: widgetGid,

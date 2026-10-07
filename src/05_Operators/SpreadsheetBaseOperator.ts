@@ -7,7 +7,7 @@ export type UntypedHeadersBySheetTitle = Map<string, string[]>;
 
 // Lives on operator props, not each collaborator, so getter rebuilds share it.
 export interface ConfigSyncState {
-  sheetConfigSync: {
+  tableConfigSync: {
     prepFetchIsComplete: boolean;
     syncedToSpreadsheet: boolean;
     declaredCellReportLines: string[];
@@ -38,7 +38,7 @@ export class SpreadsheetBaseOperator extends SpreadsheetBaseNamed {
   }
   static initConfigSyncState(): ConfigSyncState {
     return {
-      sheetConfigSync: {
+      tableConfigSync: {
         prepFetchIsComplete: false,
         syncedToSpreadsheet: false,
         declaredCellReportLines: [],
