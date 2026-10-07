@@ -1,4 +1,4 @@
-// `sheets-framework gen-configs`: regenerates the package's five generated files from its live config sheets, on the Node host.
+// `sheets-framework gen-configs`: regenerates the package's four generated files from its live config sheets, on the Node host.
 import { spawnSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
@@ -22,7 +22,6 @@ class ConfigFilesGenerator {
     this.sheetsConfig = sheetsConfig;
     const { generatedDir } = sheetsConfig;
     this.path = {
-      sheetConfigs: configFilePath(generatedDir, "sheetConfigs"),
       tableConfigs: configFilePath(generatedDir, "tableConfigs"),
       columnConfigs: configFilePath(generatedDir, "columnConfigs"),
       valueConfigs: configFilePath(generatedDir, "valueConfigs"),
@@ -34,7 +33,6 @@ class ConfigFilesGenerator {
   }
   async run(): Promise<void> {
     const {
-      sheetConfigs,
       tableConfigs,
       columnConfigs,
       valueConfigs,
@@ -44,9 +42,8 @@ class ConfigFilesGenerator {
       declaredCellReport,
     } = await this._generate();
 
-    // Write nothing until all four configs are confirmed good; a subset would go stale.
+    // Write nothing until all three configs are confirmed good; a subset would go stale.
     mkdirSync(this.sheetsConfig.generatedDir, { recursive: true });
-    writeFileSync(this.path.sheetConfigs, sheetConfigs);
     writeFileSync(this.path.tableConfigs, tableConfigs);
     writeFileSync(this.path.columnConfigs, columnConfigs);
     writeFileSync(this.path.valueConfigs, valueConfigs);
@@ -112,7 +109,7 @@ class ConfigFilesGenerator {
 
 function reportTscFailure(): void {
   console.error(
-    "\ngen:configs: regeneration succeeded and all five files were written, " +
+    "\ngen:configs: regeneration succeeded and all four files were written, " +
       "but this package's `npm run tsc` failed above. This usually means " +
       "hand-written references in this package still name a sheet or column " +
       "that no longer exists after this regeneration. Fix those references " +
@@ -125,12 +122,10 @@ export function appConfigsText(): string {
 import type {} from "@byronbroughten/sheets-framework";
 
 import { columnConfigs } from "./columnConfigs";
-import { sheetConfigs } from "./sheetConfigs";
 import { tableConfigs } from "./tableConfigs";
 import { valueConfigs } from "./valueConfigs";
 
 export const appConfigs = {
-  sheetConfigs,
   tableConfigs,
   columnConfigs,
   valueConfigs,

@@ -4,7 +4,7 @@ import {
   type ColumnValueName,
   getColumnTraitByName,
 } from "../01_SpreadsheetSchema/columnConfigsTypes";
-import { getSheetTraitByName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import type { ColumnNamedProps } from "../04_SpreadsheetNamed/ClassBases/ColumnBaseNamed";
 import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
@@ -19,7 +19,7 @@ import {
   CheckboxColumnOperator,
 } from "./CheckboxColumnOperator";
 
-const runItemGid = getSheetTraitByName("runItem", "sheetGid");
+const runItemGid = getTableTraitByName("runItem", "sheetGid");
 const columnIds = [
   getColumnTraitByName("runItem", "id", "columnId"),
   getColumnTraitByName("runItem", "selected", "columnId"),

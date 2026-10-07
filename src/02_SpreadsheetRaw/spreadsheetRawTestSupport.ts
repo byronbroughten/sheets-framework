@@ -1,6 +1,6 @@
 import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
-import { getSheetTraitByName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
 import { SpreadsheetSchema } from "../01_SpreadsheetSchema/SpreadsheetSchema";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import { TableOrigin } from "../01_SpreadsheetSchema/TableOrigin";
 import { uniformRows } from "../01_SpreadsheetSchema/uniformRows";
 import {
@@ -14,8 +14,8 @@ import { SpreadsheetRaw } from "./SpreadsheetRaw";
 
 export const lightGreen = { red: 0.851, green: 0.918, blue: 0.827 };
 
-export const itemGid = getSheetTraitByName("item", "sheetGid");
-export const logGid = getSheetTraitByName("log", "sheetGid");
+export const itemGid = getTableTraitByName("item", "sheetGid");
+export const logGid = getTableTraitByName("log", "sheetGid");
 export const itemTableId = fakeTableId(itemGid, 0);
 export const logTableId = fakeTableId(logGid, 0);
 // Sheet rows and columns, for fixtures and grid reads; Raw itself counts from the Table.

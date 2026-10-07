@@ -7,7 +7,7 @@ import {
   getSheetColumnNames,
 } from "../01_SpreadsheetSchema/columnConfigsTypes";
 import { installedConfigs } from "../01_SpreadsheetSchema/configRegister";
-import { getSheetTraitByName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {
@@ -19,7 +19,7 @@ import type { FakeGridView } from "../testSupport/fakeSheetsService/gridView";
 import { Api } from "./Api";
 import type { Endpoints } from "./Endpoints";
 
-const runItemGid = getSheetTraitByName("runItem", "sheetGid");
+const runItemGid = getTableTraitByName("runItem", "sheetGid");
 // The last column is deliberately left without a column id.
 const columnIds = [
   getColumnTraitByName("runItem", "id", "columnId"),
@@ -143,7 +143,7 @@ describe("Api.handleSheetChange", () => {
     stubSheetsService({
       sheets: [
         {
-          sheetId: getSheetTraitByName("valueConfig", "sheetGid"),
+          sheetId: getTableTraitByName("valueConfig", "sheetGid"),
           title: "Values",
         },
       ],
@@ -163,7 +163,7 @@ describe("Api.handleSheetChange", () => {
     stubSheetsService({
       sheets: [
         {
-          sheetId: getSheetTraitByName("valueConfig", "sheetGid"),
+          sheetId: getTableTraitByName("valueConfig", "sheetGid"),
           title: "Value Config",
         },
       ],

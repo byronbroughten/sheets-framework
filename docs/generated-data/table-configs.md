@@ -12,10 +12,6 @@ Part of [generated data](../generated-data.md). Table Config lists every Google 
 
 **`hasIdColumn` is *sampled*** at emit time from whether the Table's header row contains the ID header (`sheetLayout`'s `ID`). **`hasNameColumn` is sampled** the same way, from the `Name` header; a Table with both is one `TableNamed.rowIdByName` can search. **`idPrefix` is *sampled*** from the column ID row, generated from the Table name when that row has no column IDs yet, and checked against the previous `tableConfigs` entry with the same `tableId`. A difference is reported, not failed. ID prefixes must be unique across entries, and `makeTableConfigs` and the emit share that check.
 
-## `sheetConfigs`, until it is removed
-
-**`sheetConfigs`** (`generated/sheetConfigs.ts`) is still emitted beside it: one entry per sheet that holds a ticked Table, keyed by the sheet title, with that Table's GID, `idPrefix`, `hasIdColumn` and `hasNameColumn`. The floor still reads it, and it goes once the floor reads `tableConfigs`.
-
 ## Column references
 
 `TableConfigOperator.parseColumnReference` resolves a structured reference such as `Rents[Tenant]` to `(tableId, columnId)` against the ticked Tables' live names and headers. No dropdown validator is built on it yet.

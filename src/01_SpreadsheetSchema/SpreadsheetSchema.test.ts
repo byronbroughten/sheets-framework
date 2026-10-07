@@ -16,9 +16,12 @@ import {
   type ValueOf,
 } from "./columnConfigsTypes";
 import { ColumnSchema } from "./ColumnSchema";
-import { getSheetTraitByName, sheetConfigsByGid } from "./sheetConfigsTypes";
 import { SpreadsheetSchema } from "./SpreadsheetSchema";
-import { getTableTraitByName, type TableName } from "./tableConfigsTypes";
+import {
+  getTableTraitByName,
+  tableConfigsByGid,
+  type TableName,
+} from "./tableConfigsTypes";
 import { TableSchema } from "./TableSchema";
 import type { ValueName } from "./valueSchemas";
 
@@ -101,7 +104,7 @@ describe("SpreadsheetSchema", () => {
 
   describe("isInSheetGids", () => {
     it("agrees with the generated sheet gid list", () => {
-      const [firstGid] = sheetConfigsByGid().keys();
+      const [firstGid] = tableConfigsByGid().keys();
       expect(firstGid).toBeDefined();
       expect(schema.isInSheetGids(firstGid as number)).toBe(true);
       expect(schema.isInSheetGids(Number.MAX_SAFE_INTEGER)).toBe(false);
@@ -136,7 +139,7 @@ describe("type-level precision", () => {
   });
 
   it("resolves a gid-addressed column to the usable widened types, never `never`", () => {
-    const sheetGid = getSheetTraitByName("item", "sheetGid");
+    const sheetGid = getTableTraitByName("item", "sheetGid");
     const column = ColumnSchema.fromColumnId(
       sheetGid,
       getColumnTraitByName("item", "requiredCount", "columnId"),

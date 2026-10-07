@@ -38,7 +38,7 @@ beforeEach(() => {
   stubLogger();
 });
 
-// newSheetConfigs()/tableKeysByTableId()/toFileSource("../makeConfigs") all read letApiAccess,
+// newTableConfigs()/tableKeysByTableId()/toFileSource("../makeConfigs") all read letApiAccess,
 // which prepFetchForSync doesn't prep on its own — production code only
 // preps it via ColumnConfigOperator.prepFetchWithTableConfig, so a
 // standalone TableConfigOperator test has to prep it itself.
@@ -187,8 +187,8 @@ describe("TableConfigOperator catalogue rows", () => {
   });
 });
 
-describe("TableConfigOperator.newSheetConfigs / toFileSource", () => {
-  it("carries forward an existing sheet and appends a brand-new one, excluded until manually enabled", () => {
+describe("TableConfigOperator.newTableConfigs / toFileSource", () => {
+  it("carries forward an existing Table and appends a brand-new one, excluded until manually enabled", () => {
     stubSheetsService({
       sheets: [
         {
@@ -198,7 +198,11 @@ describe("TableConfigOperator.newSheetConfigs / toFileSource", () => {
             0: tableConfigColumnIdRow,
             4: existingWidgetConfigRow,
           }),
-          table: { tableId: tableIdOnTab(tableConfigGid), endRowIndex: 5 },
+          table: {
+            tableId: tableIdOnTab(tableConfigGid),
+            name: "tableConfig",
+            endRowIndex: 5,
+          },
         },
         // Referenced by the existing row above; no "ID" header, so
         // hasIdColumn is emitted false from the header-row sample.
@@ -220,23 +224,28 @@ describe("TableConfigOperator.newSheetConfigs / toFileSource", () => {
 
     const operator = TableConfigOperator.init();
     syncTableConfigOperator(operator);
-    const sheetConfigs = operator.newSheetConfigs();
+    const tableConfigs = operator.newTableConfigs();
 
-    expect(sheetConfigs.widget).toEqual({
+    const { headerRowIndex, startColIndex } = TableOrigin.expected();
+    expect(tableConfigs.widget).toEqual({
+      tableId: widgetTableId,
+      tableName: "Widget",
       sheetGid: widgetGid,
       idPrefix: "wdg",
+      headerRowIndex,
+      startColIndex,
       hasIdColumn: false,
       hasNameColumn: false,
     });
     // A newly-discovered Table gets a Table Config row appended, but stays
     // excluded from the generated file until a human sets letApiAccess.
-    expect(sheetConfigs.brandNewSheet).toBeUndefined();
+    expect(tableConfigs.brandNewSheet).toBeUndefined();
     expect(operator.table.column("tableId").hasValue(newSheetTableId)).toBe(
       true,
     );
   });
 
-  it("resolves sheetGid -> sheetName for a sheet not yet in any deployed config", () => {
+  it("resolves tableId -> tableKey for a Table not yet in any deployed config", () => {
     stubSheetsService({
       sheets: [
         {
@@ -249,7 +258,11 @@ describe("TableConfigOperator.newSheetConfigs / toFileSource", () => {
             // place the mapping exists.
             4: [newSheetTableId, "Brand New Sheet", "Brand New Sheet", true],
           }),
-          table: { tableId: tableIdOnTab(tableConfigGid), endRowIndex: 5 },
+          table: {
+            tableId: tableIdOnTab(tableConfigGid),
+            name: "tableConfig",
+            endRowIndex: 5,
+          },
         },
         {
           sheetId: newSheetGid,
@@ -266,9 +279,14 @@ describe("TableConfigOperator.newSheetConfigs / toFileSource", () => {
     expect(operator.tableKeysByTableId().get(newSheetTableId)).toBe(
       "brandNewSheet",
     );
-    expect(operator.newSheetConfigs().brandNewSheet).toEqual({
+    const { headerRowIndex, startColIndex } = TableOrigin.expected();
+    expect(operator.newTableConfigs().brandNewSheet).toEqual({
+      tableId: newSheetTableId,
+      tableName: "Brand New Sheet",
       sheetGid: newSheetGid,
       idPrefix: "bns",
+      headerRowIndex,
+      startColIndex,
       hasIdColumn: false,
       hasNameColumn: false,
     });
@@ -285,7 +303,11 @@ describe("TableConfigOperator.newSheetConfigs / toFileSource", () => {
             0: tableConfigColumnIdRow,
             4: [widgetTableId, "Widget", "Widget", null],
           }),
-          table: { tableId: tableIdOnTab(tableConfigGid), endRowIndex: 5 },
+          table: {
+            tableId: tableIdOnTab(tableConfigGid),
+            name: "tableConfig",
+            endRowIndex: 5,
+          },
         },
         {
           sheetId: widgetGid,
@@ -299,7 +321,7 @@ describe("TableConfigOperator.newSheetConfigs / toFileSource", () => {
     const operator = TableConfigOperator.init();
     syncTableConfigOperator(operator);
 
-    expect(operator.newSheetConfigs().widget).toBeUndefined();
+    expect(operator.newTableConfigs().widget).toBeUndefined();
     expect(operator.tableIdsApiAccesses()).toEqual([tableConfigTableId]);
   });
 
@@ -315,7 +337,11 @@ describe("TableConfigOperator.newSheetConfigs / toFileSource", () => {
             4: existingWidgetConfigRow,
             5: [newSheetTableId, "Gone", "Gone", true],
           }),
-          table: { tableId: tableIdOnTab(tableConfigGid), endRowIndex: 6 },
+          table: {
+            tableId: tableIdOnTab(tableConfigGid),
+            name: "tableConfig",
+            endRowIndex: 6,
+          },
         },
       ],
     });
@@ -324,10 +350,15 @@ describe("TableConfigOperator.newSheetConfigs / toFileSource", () => {
 
     expect(() => syncTableConfigOperator(operator)).not.toThrow();
     expect(operator.table.row(1).isBlank).toBe(true);
-    expect(operator.newSheetConfigs().widget).toBeUndefined();
-    expect(operator.newSheetConfigs().tableConfig).toEqual({
+    expect(operator.newTableConfigs().widget).toBeUndefined();
+    const { headerRowIndex, startColIndex } = TableOrigin.expected();
+    expect(operator.newTableConfigs().tableConfig).toEqual({
+      tableId: tableConfigTableId,
+      tableName: "tableConfig",
       sheetGid: tableConfigGid,
       idPrefix: "scf",
+      headerRowIndex,
+      startColIndex,
       hasIdColumn: false,
       hasNameColumn: false,
     });
@@ -343,7 +374,11 @@ describe("TableConfigOperator.newSheetConfigs / toFileSource", () => {
             0: tableConfigColumnIdRow,
             4: existingWidgetConfigRow,
           }),
-          table: { tableId: tableIdOnTab(tableConfigGid), endRowIndex: 5 },
+          table: {
+            tableId: tableIdOnTab(tableConfigGid),
+            name: "tableConfig",
+            endRowIndex: 5,
+          },
         },
         {
           sheetId: widgetGid,
@@ -357,9 +392,14 @@ describe("TableConfigOperator.newSheetConfigs / toFileSource", () => {
     const operator = TableConfigOperator.init();
     syncTableConfigOperator(operator);
 
-    expect(operator.newSheetConfigs().widget).toEqual({
+    const { headerRowIndex, startColIndex } = TableOrigin.expected();
+    expect(operator.newTableConfigs().widget).toEqual({
+      tableId: widgetTableId,
+      tableName: "Widget",
       sheetGid: widgetGid,
       idPrefix: "wdg",
+      headerRowIndex,
+      startColIndex,
       hasIdColumn: false,
       hasNameColumn: false,
     });
@@ -375,7 +415,11 @@ describe("TableConfigOperator.newSheetConfigs / toFileSource", () => {
             0: tableConfigColumnIdRow,
             4: [widgetTableId, "Widget", "Stale Title", true],
           }),
-          table: { tableId: tableIdOnTab(tableConfigGid), endRowIndex: 5 },
+          table: {
+            tableId: tableIdOnTab(tableConfigGid),
+            name: "tableConfig",
+            endRowIndex: 5,
+          },
         },
         {
           sheetId: widgetGid,
@@ -390,7 +434,7 @@ describe("TableConfigOperator.newSheetConfigs / toFileSource", () => {
     syncTableConfigOperator(operator);
 
     expect(operator.table.column("sheetTitle").value(0)).toBe("Widget");
-    expect(operator.newSheetConfigs().widget?.hasIdColumn).toBe(false);
+    expect(operator.newTableConfigs().widget?.hasIdColumn).toBe(false);
   });
 
   it("corrects a draft tab's title from the live tab name without reading its Table", () => {
@@ -403,7 +447,11 @@ describe("TableConfigOperator.newSheetConfigs / toFileSource", () => {
             0: tableConfigColumnIdRow,
             4: [widgetTableId, "", "Stale Title", false],
           }),
-          table: { tableId: tableIdOnTab(tableConfigGid), endRowIndex: 5 },
+          table: {
+            tableId: tableIdOnTab(tableConfigGid),
+            name: "tableConfig",
+            endRowIndex: 5,
+          },
         },
         {
           sheetId: widgetGid,
@@ -418,7 +466,7 @@ describe("TableConfigOperator.newSheetConfigs / toFileSource", () => {
     syncTableConfigOperator(operator);
 
     expect(operator.table.column("sheetTitle").value(0)).toBe("Widget");
-    expect(operator.newSheetConfigs().widget).toBeUndefined();
+    expect(operator.newTableConfigs().widget).toBeUndefined();
   });
 
   it("emits has-ID true when the described sheet's header row has the ID header", () => {
@@ -431,7 +479,11 @@ describe("TableConfigOperator.newSheetConfigs / toFileSource", () => {
             0: tableConfigColumnIdRow,
             4: existingWidgetConfigRow,
           }),
-          table: { tableId: tableIdOnTab(tableConfigGid), endRowIndex: 5 },
+          table: {
+            tableId: tableIdOnTab(tableConfigGid),
+            name: "tableConfig",
+            endRowIndex: 5,
+          },
         },
         {
           sheetId: widgetGid,
@@ -445,7 +497,7 @@ describe("TableConfigOperator.newSheetConfigs / toFileSource", () => {
     const operator = TableConfigOperator.init();
     syncTableConfigOperator(operator);
 
-    expect(operator.newSheetConfigs().widget?.hasIdColumn).toBe(true);
+    expect(operator.newTableConfigs().widget?.hasIdColumn).toBe(true);
   });
 
   it.each([
@@ -463,13 +515,17 @@ describe("TableConfigOperator.newSheetConfigs / toFileSource", () => {
               0: tableConfigColumnIdRow,
               4: existingWidgetConfigRow,
             }),
-            table: { tableId: tableIdOnTab(tableConfigGid), endRowIndex: 5 },
+            table: {
+              tableId: tableIdOnTab(tableConfigGid),
+              name: "tableConfig",
+              endRowIndex: 5,
+            },
           },
           {
             sheetId: widgetGid,
             title: "Widget",
             rows: buildGridRows({ 3: headers }),
-            table: { endRowIndex: 5 },
+            table: { name: "Widget", endRowIndex: 5 },
           },
         ],
       });
@@ -477,13 +533,13 @@ describe("TableConfigOperator.newSheetConfigs / toFileSource", () => {
       const operator = TableConfigOperator.init();
       syncTableConfigOperator(operator);
 
-      expect(operator.newSheetConfigs().widget?.hasNameColumn).toBe(
+      expect(operator.newTableConfigs().widget?.hasNameColumn).toBe(
         hasNameColumn,
       );
     },
   );
 
-  it("throws when two sheets share a sampled ID prefix, named by sheet title", () => {
+  it("throws when two Tables share a sampled ID prefix, named by Table name", () => {
     stubSheetsService({
       sheets: [
         {
@@ -494,19 +550,23 @@ describe("TableConfigOperator.newSheetConfigs / toFileSource", () => {
             4: existingWidgetConfigRow,
             5: [gadgetTableId, "", "Gadget", true],
           }),
-          table: { tableId: tableIdOnTab(tableConfigGid), endRowIndex: 6 },
+          table: {
+            tableId: tableIdOnTab(tableConfigGid),
+            name: "tableConfig",
+            endRowIndex: 6,
+          },
         },
         {
           sheetId: widgetGid,
           title: "Widget",
           rows: buildGridRows({ 0: ["c:wdg:aaa"], 3: [] }),
-          table: { endRowIndex: 5 },
+          table: { name: "Widget", endRowIndex: 5 },
         },
         {
           sheetId: gadgetGid,
           title: "Gadget",
           rows: buildGridRows({ 0: ["c:wdg:bbb"], 3: [] }),
-          table: { endRowIndex: 5 },
+          table: { name: "Gadget", endRowIndex: 5 },
         },
       ],
     });
@@ -520,7 +580,7 @@ describe("TableConfigOperator.newSheetConfigs / toFileSource", () => {
   });
 });
 
-describe("TableConfigOperator.newTableConfigs / toTableConfigsFileSource", () => {
+describe("TableConfigOperator.newTableConfigs Table identity and position", () => {
   function stubWidgetTable(letApiAccess: boolean): void {
     stubSheetsService({
       sheets: [
@@ -589,7 +649,7 @@ describe("TableConfigOperator.newTableConfigs / toTableConfigsFileSource", () =>
 
     const operator = TableConfigOperator.init();
     syncTableConfigOperator(operator);
-    const source = operator.toTableConfigsFileSource("../makeConfigs");
+    const source = operator.toFileSource("../makeConfigs");
 
     expect(source).toContain(
       'import { makeTableConfigs } from "../makeConfigs";',

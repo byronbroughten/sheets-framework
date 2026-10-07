@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getColumnTraitByName } from "../01_SpreadsheetSchema/columnConfigsTypes";
-import { getSheetTraitByName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import { SpreadsheetBaseNamed } from "../04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
 import type { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
 import { TableNamed } from "../04_SpreadsheetNamed/TableNamed";
@@ -20,7 +20,7 @@ import { feedbackColumnIdsOf } from "./feedbackColumnIds";
 
 type Color = GoogleAppsScript.Sheets.Schema.Color;
 
-const runItemGid = getSheetTraitByName("runItem", "sheetGid");
+const runItemGid = getTableTraitByName("runItem", "sheetGid");
 const columnIds = (["id", "selected", "startTime", "runStatus"] as const).map(
   (columnName) => getColumnTraitByName("runItem", columnName, "columnId"),
 );

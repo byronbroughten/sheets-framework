@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import { installedConfigs } from "../01_SpreadsheetSchema/configRegister";
 import { configSheetFloorSeed } from "../01_SpreadsheetSchema/configSheetFloorSeed";
-import { getSheetTraitByName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {
@@ -15,7 +15,7 @@ import { tableIdOnTab } from "../testSupport/fakeTableConfigSheet";
 import { ConfigCoordinator } from "./ConfigCoordinator";
 
 const { columnConfigs } = installedConfigs();
-const testSheetGid = getSheetTraitByName("item", "sheetGid");
+const testSheetGid = getTableTraitByName("item", "sheetGid");
 const tableConfigGid = 210603630;
 const columnConfigGid = 2034522667;
 const draftGid = 777000111;
@@ -23,7 +23,7 @@ const draftTitle = "Add Widget Order";
 const headerOnlyTableEndRowIndex = expectedSheetLayout.tableHeaderRowIndex + 1;
 const tableHeaderRowIndex = expectedSheetLayout.tableHeaderRowIndex;
 const startTableColIndex = expectedSheetLayout.startTableColIndex;
-const spreadsheetConfigGid = getSheetTraitByName(
+const spreadsheetConfigGid = getTableTraitByName(
   "spreadsheetConfig",
   "sheetGid",
 );
@@ -324,7 +324,7 @@ function seedFixture(
   });
 }
 
-const valueConfigFloorGid = getSheetTraitByName("valueConfig", "sheetGid");
+const valueConfigFloorGid = getTableTraitByName("valueConfig", "sheetGid");
 
 function floorValueConfigTab(
   tableId = tableIdOnTab(valueConfigFloorGid),
@@ -413,6 +413,25 @@ function tableConfigLetApiAccess(
   return col.letApiAccess.valueOrEmpty(rowIndex);
 }
 
+interface TableConfigsEntryFixture {
+  tableKey: string;
+  tableName: string;
+  sheetGid: number;
+  idPrefix: string;
+  hasIdColumn: boolean;
+}
+
+// Every fixture Table sits at the expected origin and carries a "Name" header.
+function tableConfigsEntry({
+  tableKey,
+  tableName,
+  sheetGid,
+  idPrefix,
+  hasIdColumn,
+}: TableConfigsEntryFixture): string {
+  return `"${tableKey}": { "tableId": "${tableIdOnTab(sheetGid)}", "tableName": "${tableName}", "sheetGid": ${sheetGid}, "idPrefix": "${idPrefix}", "headerRowIndex": ${tableHeaderRowIndex}, "startColIndex": ${startTableColIndex}, "hasIdColumn": ${hasIdColumn}, "hasNameColumn": true }`;
+}
+
 function driftedFloorWarningProtection(): GoogleAppsScript.Sheets.Schema.ProtectedRange {
   return {
     protectedRangeId: 41,
@@ -452,9 +471,13 @@ describe("ConfigCoordinator.syncAndFlushConfigSheets", () => {
       }),
     ).toEqual([["item", "c:itm:xyz123", "Item", "Some Header"]]);
     // The gathered column ID rode the appended Column Config row into the flush.
-    expect(orchestrator.tableConfigOperator.newSheetConfigs().item).toEqual({
+    expect(orchestrator.tableConfigOperator.newTableConfigs().item).toEqual({
+      tableId: "item",
+      tableName: "Item",
       sheetGid: testSheetGid,
       idPrefix: "itm",
+      headerRowIndex: tableHeaderRowIndex,
+      startColIndex: startTableColIndex,
       hasIdColumn: false,
       hasNameColumn: false,
     });
@@ -489,9 +512,9 @@ describe("ConfigCoordinator.generateConfigFiles", () => {
 
     const parsed =
       ConfigCoordinator.init().generateConfigFiles("../makeConfigs");
-    expect(typeof parsed.sheetConfigs).toBe("string");
+    expect(typeof parsed.tableConfigs).toBe("string");
     expect(typeof parsed.columnConfigs).toBe("string");
-    expect(parsed.sheetConfigs).toContain('"item"');
+    expect(parsed.tableConfigs).toContain('"item"');
     expect(parsed.tableConfigs).toContain(
       "export const tableConfigs = makeTableConfigs({",
     );
@@ -824,7 +847,7 @@ describe("ConfigCoordinator.syncConfigSheetRows Let api access", () => {
     const orchestrator = ConfigCoordinator.init();
     expect(() => orchestrator.syncConfigSheetRows()).not.toThrow();
     expect(
-      orchestrator.tableConfigOperator.newSheetConfigs().addWidgetOrder,
+      orchestrator.tableConfigOperator.newTableConfigs().addWidgetOrder,
     ).toBeUndefined();
     expect(
       orchestrator.tableConfigOperator.table
@@ -863,8 +886,14 @@ describe("ConfigCoordinator.syncConfigSheetRows Let api access", () => {
 
     const parsed =
       ConfigCoordinator.init().generateConfigFiles("../makeConfigs");
-    expect(parsed.sheetConfigs).toContain(
-      `"addWidgetOrder": { "sheetGid": ${draftGid}, "idPrefix": "awo", "hasIdColumn": true, "hasNameColumn": true }`,
+    expect(parsed.tableConfigs).toContain(
+      tableConfigsEntry({
+        tableKey: "addWidgetOrder",
+        tableName: draftTitle,
+        sheetGid: draftGid,
+        idPrefix: "awo",
+        hasIdColumn: true,
+      }),
     );
   });
 
@@ -880,7 +909,7 @@ describe("ConfigCoordinator.syncConfigSheetRows Let api access", () => {
     const orchestrator = ConfigCoordinator.init();
     expect(() => orchestrator.syncConfigSheetRows()).not.toThrow();
     expect(
-      orchestrator.tableConfigOperator.newSheetConfigs().addWidgetOrder,
+      orchestrator.tableConfigOperator.newTableConfigs().addWidgetOrder,
     ).toBeUndefined();
   });
 
@@ -894,7 +923,7 @@ describe("ConfigCoordinator.syncConfigSheetRows Let api access", () => {
         .column("tableId")
         .hasValue(tableIdOnTab(draftGid)),
     ).toBe(true);
-    expect(parsed.sheetConfigs).not.toContain("addWidgetOrder");
+    expect(parsed.tableConfigs).not.toContain("addWidgetOrder");
   });
 
   it("omits a draft that has data rows until Let api access is ticked", () => {
@@ -908,8 +937,8 @@ describe("ConfigCoordinator.syncConfigSheetRows Let api access", () => {
 
     const parsed =
       ConfigCoordinator.init().generateConfigFiles("../makeConfigs");
-    expect(parsed.sheetConfigs).toContain('"item"');
-    expect(parsed.sheetConfigs).not.toContain("addWidgetOrder");
+    expect(parsed.tableConfigs).toContain('"item"');
+    expect(parsed.tableConfigs).not.toContain("addWidgetOrder");
     expect(parsed.columnConfigs).toContain("c:itm:xyz123");
     expect(parsed.columnConfigs).not.toMatch(/c:awo:/);
   });
@@ -939,8 +968,8 @@ describe("ConfigCoordinator.syncConfigSheetRows Let api access", () => {
 
     const parsed =
       ConfigCoordinator.init().generateConfigFiles("../makeConfigs");
-    expect(parsed.sheetConfigs).toContain('"item"');
-    expect(parsed.sheetConfigs).not.toContain("addWidgetOrder");
+    expect(parsed.tableConfigs).toContain('"item"');
+    expect(parsed.tableConfigs).not.toContain("addWidgetOrder");
     expect(parsed.columnConfigs).toContain("c:itm:xyz123");
   });
 
@@ -1123,8 +1152,14 @@ describe("ConfigCoordinator.generateConfigFiles ID prefix", () => {
 
     const parsed =
       ConfigCoordinator.init().generateConfigFiles("../makeConfigs");
-    expect(parsed.sheetConfigs).toContain(
-      `"widget": { "sheetGid": ${widgetGid}, "idPrefix": "wdg", "hasIdColumn": false, "hasNameColumn": true }`,
+    expect(parsed.tableConfigs).toContain(
+      tableConfigsEntry({
+        tableKey: "widget",
+        tableName: "Widget",
+        sheetGid: widgetGid,
+        idPrefix: "wdg",
+        hasIdColumn: false,
+      }),
     );
     expect(parsed.columnConfigs).toMatch(/c:wdg:/);
   });
@@ -1150,8 +1185,14 @@ describe("ConfigCoordinator.generateConfigFiles ID prefix", () => {
 
     const parsed =
       ConfigCoordinator.init().generateConfigFiles("../makeConfigs");
-    expect(parsed.sheetConfigs).toContain(
-      `"renamedTab": { "sheetGid": ${widgetGid}, "idPrefix": "wdg", "hasIdColumn": false, "hasNameColumn": true }`,
+    expect(parsed.tableConfigs).toContain(
+      tableConfigsEntry({
+        tableKey: "renamedTab",
+        tableName: "Renamed Tab",
+        sheetGid: widgetGid,
+        idPrefix: "wdg",
+        hasIdColumn: false,
+      }),
     );
   });
 
@@ -1249,7 +1290,7 @@ describe("ConfigCoordinator.generateConfigFiles ID prefix", () => {
     expect(parsed.idPrefixReport).toBe(
       'Table "Item" sampled ID prefix "zzz" differs from last generated "itm".',
     );
-    expect(parsed.sheetConfigs).toContain('"idPrefix": "zzz"');
+    expect(parsed.tableConfigs).toContain('"idPrefix": "zzz"');
   });
 
   it("fails when two Tables' names give the same key, naming both", () => {
@@ -1300,7 +1341,7 @@ describe("ConfigCoordinator.generateConfigFiles ID prefix", () => {
 
     const parsed =
       ConfigCoordinator.init().generateConfigFiles("../makeConfigs");
-    expect(parsed.sheetConfigs).not.toContain("widget");
+    expect(parsed.tableConfigs).not.toContain("widget");
     expect(parsed.columnConfigs).not.toMatch(/c:wdg:/);
   });
 
@@ -1334,11 +1375,23 @@ describe("ConfigCoordinator.generateConfigFiles ID prefix", () => {
 
     const parsed =
       ConfigCoordinator.init().generateConfigFiles("../makeConfigs");
-    expect(parsed.sheetConfigs).toContain(
-      `"gadget": { "sheetGid": ${widgetGid}, "idPrefix": "wdg", "hasIdColumn": false, "hasNameColumn": true }`,
+    expect(parsed.tableConfigs).toContain(
+      tableConfigsEntry({
+        tableKey: "gadget",
+        tableName: "Gadget",
+        sheetGid: widgetGid,
+        idPrefix: "wdg",
+        hasIdColumn: false,
+      }),
     );
-    expect(parsed.sheetConfigs).toContain(
-      `"widget": { "sheetGid": ${otherGid}, "idPrefix": "wdgt", "hasIdColumn": false, "hasNameColumn": true }`,
+    expect(parsed.tableConfigs).toContain(
+      tableConfigsEntry({
+        tableKey: "widget",
+        tableName: "Widget",
+        sheetGid: otherGid,
+        idPrefix: "wdgt",
+        hasIdColumn: false,
+      }),
     );
   });
 });

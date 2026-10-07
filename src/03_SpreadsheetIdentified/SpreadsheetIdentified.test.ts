@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { getColumnTraitByName } from "../01_SpreadsheetSchema/columnConfigsTypes";
-import { getSheetTraitByName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import type { Value, VnToCvn } from "../01_SpreadsheetSchema/valueSchemas";
 import {
   itemTableId,
@@ -29,7 +29,7 @@ import { SheetMetaIdentified } from "./SheetMetaIdentified";
 import { SpreadsheetIdentified } from "./SpreadsheetIdentified";
 import { TableIdentified } from "./TableIdentified";
 
-const itemGid = getSheetTraitByName("item", "sheetGid");
+const itemGid = getTableTraitByName("item", "sheetGid");
 const itemIdColumnId = getColumnTraitByName("item", "id", "columnId");
 
 // A mis-wired accessor still type-checks; the instance checks catch it.
@@ -99,7 +99,7 @@ describe("SpreadsheetIdentified navigation", () => {
   });
 });
 
-const valueTypesGid = getSheetTraitByName("valueTypes", "sheetGid");
+const valueTypesGid = getTableTraitByName("valueTypes", "sheetGid");
 const valueTypesIdColumnId = getColumnTraitByName(
   "valueTypes",
   "id",
@@ -328,7 +328,7 @@ describe("TableIdentified.hasNoData", () => {
   });
 });
 
-const runItemGid = getSheetTraitByName("runItem", "sheetGid");
+const runItemGid = getTableTraitByName("runItem", "sheetGid");
 const runItemColumnIds = (["id", "result", "runStatus"] as const).map(
   (columnName) => getColumnTraitByName("runItem", columnName, "columnId"),
 );
@@ -387,7 +387,7 @@ describe("the blank test, on a sheet with a feedback column", () => {
   });
 });
 
-const computedGid = getSheetTraitByName("computed", "sheetGid");
+const computedGid = getTableTraitByName("computed", "sheetGid");
 const amountColumnId = getColumnTraitByName("computed", "amount", "columnId");
 const rowNumberColumnId = getColumnTraitByName(
   "computed",

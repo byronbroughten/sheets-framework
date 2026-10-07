@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import type { GoogleRequest } from "../00_Source/GoogleSheets/GoogleSheetsAPI";
-import { getSheetTraitByName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import { UpdateRequestSummary } from "./UpdateRequestSummary";
 
-const itemGid = getSheetTraitByName("item", "sheetGid");
+const itemGid = getTableTraitByName("item", "sheetGid");
 const unknownGid = 999999;
 
 function onlyLine(request: GoogleRequest): string {

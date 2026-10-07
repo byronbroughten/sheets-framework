@@ -15,7 +15,6 @@ import { TableConfigOperator } from "./TableConfigOperator";
 import { ValueConfigOperator } from "./ValueConfigOperator";
 
 export interface ConfigRegeneration {
-  sheetConfigs: string;
   tableConfigs: string;
   columnConfigs: string;
   valueConfigs: string;
@@ -26,9 +25,9 @@ export interface ConfigRegeneration {
 }
 
 /**
- * Coordinates Spreadsheet/Sheet/Column/Value Config: the config-sheet floor
+ * Coordinates Spreadsheet/Table/Column/Value Config: the config-sheet floor
  * first (one extra flush), sync the live config sheets, one more flush, then
- * emit all four generated files or none. Config maintenance is this Operator
+ * emit all three generated files or none. Config maintenance is this Operator
  * family, not Raw or Named. npm run gen:configs is the only regeneration path.
  * docs/generated-data.md
  */
@@ -82,9 +81,7 @@ export class ConfigCoordinator extends SpreadsheetBaseOperator {
     this._assertFloorIdentityUnchanged();
     this._assertFloorMatchesSeed();
     return {
-      sheetConfigs: this.tableConfigOperator.toFileSource(makeConfigsImport),
-      tableConfigs:
-        this.tableConfigOperator.toTableConfigsFileSource(makeConfigsImport),
+      tableConfigs: this.tableConfigOperator.toFileSource(makeConfigsImport),
       columnConfigs: this.columnConfigOperator.toFileSource(makeConfigsImport),
       valueConfigs: this.valueConfigOperator.toFileSource(makeConfigsImport),
       untypedColumnsSummary,

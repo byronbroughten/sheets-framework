@@ -24,7 +24,7 @@ Your package needs:
 
 App code imports only from `@byronbroughten/sheets-framework`; test files may also import `@byronbroughten/sheets-framework/testing`. Every other path is internal.
 
-**Register your configs once.** `sheets-framework gen-configs` writes five files into your `generatedDir`: four config files and `appConfigs.ts`, which gathers them into one `appConfigs` const and augments `Register` with its type, so every Named and endpoint type is typed to your spreadsheet. Every file there is machine-written; never hand-edit one. Your code imports only `appConfigs`, which goes to `Api` and to `installConfigs` in your test setup; `appEslintPreset` flags an import of the four config files from outside `generated/`.
+**Register your configs once.** `sheets-framework gen-configs` writes four files into your `generatedDir`: three config files and `appConfigs.ts`, which gathers them into one `appConfigs` const and augments `Register` with its type, so every Named and endpoint type is typed to your spreadsheet. Every file there is machine-written; never hand-edit one. Your code imports only `appConfigs`, which goes to `Api` and to `installConfigs` in your test setup; `appEslintPreset` flags an import of the three config files from outside `generated/`.
 
 An unaugmented `Register` is a type error, not a silent widening.
 

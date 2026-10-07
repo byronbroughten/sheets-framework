@@ -3,10 +3,7 @@ import type { Value, ValueName } from "./valueSchemas";
 
 export function makeImportLine(
   configMagerName:
-    | "makeSheetConfigs"
-    | "makeTableConfigs"
-    | "makeColumnConfigs"
-    | "makeValueConfigs",
+    "makeTableConfigs" | "makeColumnConfigs" | "makeValueConfigs",
   makeConfigsImport: string,
 ): string {
   return `import { ${configMagerName} } from ${JSON.stringify(makeConfigsImport)};`;
@@ -17,20 +14,6 @@ function makeStructuredConfig<ST, const CF extends ST>(
   t: CF,
 ): CF {
   return t;
-}
-
-export interface SheetConfigStored<HI extends boolean = boolean> {
-  sheetGid: number;
-  hasIdColumn: HI;
-  hasNameColumn: boolean;
-  idPrefix: string;
-}
-export type SheetConfigsBase = Record<string, SheetConfigStored>;
-export function makeSheetConfigs<SC extends SheetConfigsBase>(
-  sheetConfigs: SC,
-): SC {
-  assertUniqueIdPrefixes(sheetConfigs);
-  return sheetConfigs;
 }
 
 export interface TableConfigStored {

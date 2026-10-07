@@ -2,12 +2,10 @@
 import type {} from "@byronbroughten/sheets-framework";
 
 import { columnConfigs } from "./columnConfigs";
-import { sheetConfigs } from "./sheetConfigs";
 import { tableConfigs } from "./tableConfigs";
 import { valueConfigs } from "./valueConfigs";
 
 export const appConfigs = {
-  sheetConfigs,
   tableConfigs,
   columnConfigs,
   valueConfigs,

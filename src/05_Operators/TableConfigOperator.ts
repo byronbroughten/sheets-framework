@@ -9,8 +9,6 @@ import {
 } from "../01_SpreadsheetSchema/idPrefixes";
 import {
   makeImportLine,
-  type SheetConfigsBase,
-  type SheetConfigStored,
   type TableConfigsBase,
 } from "../01_SpreadsheetSchema/makeConfigs";
 import { tableConfigsByTableId } from "../01_SpreadsheetSchema/tableConfigsTypes";
@@ -185,51 +183,28 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
           `Tables "${existing.tableName}" and "${tableName}" both give the key "${tableKey}".`,
         );
       }
-      const { sheetGid, idPrefix, hasIdColumn, hasNameColumn } =
-        this._sheetConfig(table);
+      const idPrefix = this.idPrefix(tableId);
       const { headerRowIndex, startColIndex } = table.origin;
+      const { tableHeaderRow } = table.meta;
       tableConfigs[tableKey] = {
         tableId,
         tableName,
-        sheetGid,
+        sheetGid: table.sheetGid,
         idPrefix,
         headerRowIndex,
         startColIndex,
-        hasIdColumn,
-        hasNameColumn,
+        hasIdColumn: tableHeaderRow.hasValue(this.schema.idHeader),
+        hasNameColumn: tableHeaderRow.hasValue(this.schema.nameHeader),
       };
       idPrefixLabels.push({ label: tableName, idPrefix });
     });
     idPrefixes.assertUnique(idPrefixLabels);
     return tableConfigs;
   }
-  newSheetConfigs(): SheetConfigsBase {
-    const sheetConfigs: SheetConfigsBase = {};
-    const idPrefixLabels: IdPrefixLabel[] = [];
-    this._apiAccessTables().forEach((table) => {
-      const sheetConfig = this._sheetConfig(table);
-      sheetConfigs[this.schema.titleToName(table.sheetTitle)] = sheetConfig;
-      idPrefixLabels.push({
-        label: table.sheetTitle,
-        idPrefix: sheetConfig.idPrefix,
-      });
-    });
-    idPrefixes.assertUnique(idPrefixLabels);
-    return sheetConfigs;
-  }
   private _apiAccessTables(): TableRaw[] {
     return this.tableIdsApiAccesses().map((tableId) =>
       this.ss.raw.table(tableId),
     );
-  }
-  private _sheetConfig(table: TableRaw): SheetConfigStored {
-    const { tableHeaderRow } = table.meta;
-    return {
-      sheetGid: table.sheetGid,
-      idPrefix: this.idPrefix(table.tableId),
-      hasIdColumn: tableHeaderRow.hasValue(this.schema.idHeader),
-      hasNameColumn: tableHeaderRow.hasValue(this.schema.nameHeader),
-    };
   }
   parseColumnReference(reference: string): ColumnReference {
     const match = reference.match(/^(.+)\[(.+)\]$/);
@@ -266,16 +241,6 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
     return map;
   }
   toFileSource(makeConfigsImport: string): string {
-    return [
-      `${makeImportLine("makeSheetConfigs", makeConfigsImport)}`,
-      ``,
-      `export const sheetConfigs = makeSheetConfigs(${oneLinePerEntryFileSource(
-        this.newSheetConfigs(),
-      )});`,
-      ``,
-    ].join("\n");
-  }
-  toTableConfigsFileSource(makeConfigsImport: string): string {
     return [
       makeImportLine("makeTableConfigs", makeConfigsImport),
       ``,

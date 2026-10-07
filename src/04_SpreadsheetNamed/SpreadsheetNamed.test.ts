@@ -4,8 +4,10 @@ import {
   type ColumnIsFormula,
   getColumnTraitByName,
 } from "../01_SpreadsheetSchema/columnConfigsTypes";
-import { getSheetTraitByName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
-import type { TableName } from "../01_SpreadsheetSchema/tableConfigsTypes";
+import {
+  getTableTraitByName,
+  type TableName,
+} from "../01_SpreadsheetSchema/tableConfigsTypes";
 import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {
@@ -167,8 +169,8 @@ describe("SpreadsheetNamed.fetch", () => {
 });
 
 const topDataRowIndex = expectedSheetLayout.tableHeaderRowIndex + 1;
-const datesGid = getSheetTraitByName("dates", "sheetGid");
-const valueTypesGid = getSheetTraitByName("valueTypes", "sheetGid");
+const datesGid = getTableTraitByName("dates", "sheetGid");
+const valueTypesGid = getTableTraitByName("valueTypes", "sheetGid");
 const idColumnId = getColumnTraitByName("dates", "id", "columnId");
 const requiredDateColumnId = getColumnTraitByName(
   "dates",
@@ -905,7 +907,7 @@ describe("RowNamed.blankRequiredColumnNames", () => {
   });
 });
 
-const computedGid = getSheetTraitByName("computed", "sheetGid");
+const computedGid = getTableTraitByName("computed", "sheetGid");
 const computedColumnIdRow = [
   getColumnTraitByName("computed", "amount", "columnId"),
   getColumnTraitByName("computed", "rowNumber", "columnId"),

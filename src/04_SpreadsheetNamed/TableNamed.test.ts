@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { getColumnTraitByName } from "../01_SpreadsheetSchema/columnConfigsTypes";
-import { getSheetTraitByName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
 import {
   buildGridRows,
@@ -12,7 +12,7 @@ import { Val } from "../utils/Val";
 import { SpreadsheetNamed } from "./SpreadsheetNamed";
 
 const topDataRowIndex = expectedSheetLayout.tableHeaderRowIndex + 1;
-const runItemGid = getSheetTraitByName("runItem", "sheetGid");
+const runItemGid = getTableTraitByName("runItem", "sheetGid");
 const idColumnId = getColumnTraitByName("runItem", "id", "columnId");
 const selectColumnId = getColumnTraitByName("runItem", "selected", "columnId");
 const pink = { red: 244 / 255, green: 204 / 255, blue: 204 / 255 };
@@ -762,7 +762,7 @@ describe("TableNamed edit warnings and edit locks", () => {
   });
 });
 
-const itemGid = getSheetTraitByName("item", "sheetGid");
+const itemGid = getTableTraitByName("item", "sheetGid");
 
 function fetchedItemNames(
   dataRows: readonly (readonly [string | null, string | null])[],
