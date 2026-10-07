@@ -16,7 +16,7 @@ Baseline (Sept 2026): **~286k instantiations, ~1.2s check time.** A mapped filte
 
 ## The known cliff: a widened template literal over both names
 
-**The known cliff is a widened template literal over both names.** Building `` `${SN}${CodebaseNameDelimiter}${CN}` `` when both are unions enumerates the full ~28 × ~574 cross product before any intersection can prune it, which produces `TS2590: Expression produces a union type that is too complex to represent` and takes check time to **~7s**. Going the other way — from a full name to its parts, by indexed access on the flat map — costs nothing. That asymmetry is why there is no type-level bridge from `<SN, CN>` to a column full name.
+**The known cliff is a widened template literal over both names.** Building `` `${TN}${CodebaseNameDelimiter}${CN}` `` when both are unions enumerates the full ~28 × ~574 cross product before any intersection can prune it, which produces `TS2590: Expression produces a union type that is too complex to represent` and takes check time to **~7s**. Going the other way — from a full name to its parts, by indexed access on the flat map — costs nothing. That asymmetry is why there is no type-level bridge from `<SN, CN>` to a column full name.
 
 ## Measurements after each change
 

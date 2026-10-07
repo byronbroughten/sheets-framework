@@ -15,6 +15,6 @@ Map fragments, one file per heading. Open the file the task needs.
 | Endpoint entry, `EndpointRun`, run report, selector behavior | [endpoint-dispatch.md](./architecture/endpoint-dispatch.md) |
 | Sheets round trips | [round-trips.md](./architecture/round-trips.md) |
 | Instantiation budget, the template-literal cliff | [type-check-cost.md](./architecture/type-check-cost.md) |
-| Relative `<SN, CN>` vs `ColumnFullName` | [column-addressing.md](./architecture/column-addressing.md) |
+| Relative `<TN, CN>` vs `ColumnFullName` | [column-addressing.md](./architecture/column-addressing.md) |
 | `SpreadsheetBaseSchema` / `SpreadsheetSchema` / `TableSchema` / `ColumnSchema` | [schema-classes.md](./architecture/schema-classes.md) |
-| Meta/primary class chains, `TableCommonRaw` | [class-chains.md](./architecture/class-chains.md) |
+| Table and column class chains, `TableCommonRaw`, the Sheet container | [class-chains.md](./architecture/class-chains.md) |

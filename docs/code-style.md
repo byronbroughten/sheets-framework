@@ -61,7 +61,7 @@ One line per rule. The reasoning and worked examples are one file away. Open a r
 
 ## Type modeling
 
-- **Generic params use the framework's abbreviations** (`SN`, `VN`, `CN`, `UN`, `HR`, `IF`, `TN`); its domain-free utilities are `utils/` and `appUtils/`.
+- **Generic params use the framework's abbreviations** (`TN`, `VN`, `CN`, `UN`, `HR`, `IF`); its domain-free utilities are `utils/` and `appUtils/`.
 - **Verify a type-level claim with `IsExactly` / `assertType` / `assertNotType` from `src/testSupport/typeAssertions.ts`, never an assignment.** Measure a mapped type over the config unions before adopting it.
 - **`as` casts narrow data that's already runtime-safe; they never substitute for validation.** External values go through `Val.validate.*`/`Val.is.*`. The three accepted cast idioms are in the reasoning file.
 - **A registry keyed by a finite name union takes a plain `: Type` annotation, not `makeStructuredConfig`**, which stays for the generated config files.
@@ -80,7 +80,7 @@ One line per rule. The reasoning and worked examples are one file away. Open a r
 
 ## Tooling
 
-- **The framework's `scripts/` follow the general style and this file too**, all but the tier class-shape rules (coordinators, Operators, collaborators, Meta columns) and the Sheets verb list, and may use `Val`.
+- **The framework's `scripts/` follow the general style and this file too**, all but the tier class-shape rules (coordinators, Operators, collaborators, profiles) and the Sheets verb list, and may use `Val`.
 
 ## Imports & file organization
 

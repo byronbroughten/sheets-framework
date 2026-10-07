@@ -55,7 +55,7 @@ A coordinator splits when its private helpers form groups that share no helpers 
 
 ## An Operator extends a `*BaseNamed` and reaches its subject through a getter
 
-Whatever an Operator operates on — a sheet, a column — it extends that thing's `*BaseNamed` class and adds methods suited to that data structure. It does **not** extend the concrete class it works through, and it doesn't take one as a constructor argument: the subject is a lazy collaborator getter built from the props already on `this`, named for what it is (`ss`, `sheet`, `column`). `GenericTableOperator extends TableBaseNamed<SN>` with `ss`/`sheet`/`schema` getters is the reference shape — `sheet` is the primary (data) sheet, and the metadata view is `sheet.meta`; a column-scoped operator extends `ColumnBaseNamed<SN, CN>` and exposes a `column` getter the same way.
+Whatever an Operator operates on — a Table, a column — it extends that thing's `*BaseNamed` class and adds methods suited to that data structure. It does **not** extend the concrete class it works through, and it doesn't take one as a constructor argument: the subject is a lazy collaborator getter built from the props already on `this`, named for what it is (`ss`, `table`, `column`). `GenericTableOperator extends TableBaseNamed<TN>` with `ss`/`table`/`schema` getters is the reference shape; a column-scoped operator extends `ColumnBaseNamed<TN, CN>` and exposes a `column` getter the same way.
 
 Inheriting the concrete class instead would put its whole surface on the operator, which is the opposite of what the operator is for — it exists to offer a *narrower*, more specific set of methods than the general class does.
 

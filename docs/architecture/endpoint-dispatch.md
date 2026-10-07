@@ -11,12 +11,12 @@ An endpoint is one entry keyed by the column whose action-row checkbox triggers 
 An endpoint is **one entry keyed by the column whose action-row checkbox triggers it**. Any column may be that key — there is no suffix requirement and no second endpoint kind. The entry's value names an action plus, optionally, the columns the framework manages on the endpoint's behalf — two feedback columns, and a selector declared as an object so the opt-out from clearing sits inside the thing it modifies:
 
 ```ts
-export interface Endpoint<SN extends SheetNameSimple> {
+export interface Endpoint<TN extends TableNameSimple> {
   action: EndpointAction;
-  timeLastRan?: FeedbackColumnName<SN>;
-  runStatus?: FeedbackColumnName<SN>;
+  timeLastRan?: FeedbackColumnName<TN>;
+  runStatus?: FeedbackColumnName<TN>;
   selector?: {
-    column: CheckboxColumnName<SN>;
+    column: CheckboxColumnName<TN>;
     retainSelection?: boolean;
     requireOneRow?: boolean;
   };
@@ -130,7 +130,7 @@ Feedback is written with the two column fills from [column fills](./queued-write
 
 **The dispatch boundary is where the generic widens.** There is deliberately no type-level bridge from a column full name to a sheet-and-column pair, so `Api` — holding a full name resolved at runtime — instantiates `EndpointRun` at the widened sheet name, where a column parameter is the union across sheets rather than one sheet's. That is sound and does not collapse to `never`, because `ColumnNameFiltered` distributes over the sheet name; `Endpoints.test.ts` pins both ends.
 
-That widening is what forces the selector's shape to be spelled inline, and the run to take `EndpointDispatched` (the rule: [`src/06_API/AGENTS.md`](../../src/06_API/AGENTS.md)). Two generic references to the *same* named type are compared by that type's measured variance rather than property by property, and the column filter leaves the variance unmeasurable, so the comparison falls back to demanding identical sheet names. Nesting the selector inside a named `EndpointSelector<SN>` — interface or alias — therefore breaks `Api`'s assignment outright, and so does `Endpoint<SheetNameSimple>` as the run's prop type; an anonymous nested object plus a structural copy (`{ [K in keyof Endpoint<SN>]: Endpoint<SN>[K] }`) keeps both comparisons structural. Tidying either into a named type fails `npm run tsc` at `Api.ts`, not at the file you edited.
+That widening is what forces the selector's shape to be spelled inline, and the run to take `EndpointDispatched` (the rule: [`src/06_API/AGENTS.md`](../../src/06_API/AGENTS.md)). Two generic references to the *same* named type are compared by that type's measured variance rather than property by property, and the column filter leaves the variance unmeasurable, so the comparison falls back to demanding identical sheet names. Nesting the selector inside a named `EndpointSelector<TN>` — interface or alias — therefore breaks `Api`'s assignment outright, and so does `Endpoint<TableNameSimple>` as the run's prop type; an anonymous nested object plus a structural copy (`{ [K in keyof Endpoint<TN>]: Endpoint<TN>[K] }`) keeps both comparisons structural. Tidying either into a named type fails `npm run tsc` at `Api.ts`, not at the file you edited.
 
 ## An endpoint that appends into its own sheet
 
