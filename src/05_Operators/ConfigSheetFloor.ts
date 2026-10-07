@@ -177,19 +177,21 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
       if (!this.ss.raw.gidIsActive(sheetGid)) return;
       const sheet = this.ss.table(tableName);
       const meta = sheet.raw.meta;
+      const headerRow = sheet.raw.headRow("header");
+      const colIdRow = sheet.raw.headRow("columnId");
       floorColumnsToRestore(tableName).forEach((floorColumn) => {
         const colIndex = liveColIndex(meta, floorColumn);
         if (colIndex === undefined) return;
-        const liveHeader = String(meta.tableHeaderRow.valueOrEmpty(colIndex));
+        const liveHeader = String(headerRow.valueOrEmpty(colIndex));
         if (liveHeader !== floorColumn.header) {
-          meta.tableHeaderRow.updateValue(colIndex, floorColumn.header);
+          headerRow.updateValue(colIndex, floorColumn.header);
           headerLines.push(
             `${sheet.raw.title} · ${liveHeader} (${floorColumn.columnId}) → ${floorColumn.header}`,
           );
         }
-        const liveColumnId = String(meta.colIdRow.valueOrEmpty(colIndex));
+        const liveColumnId = String(colIdRow.valueOrEmpty(colIndex));
         if (liveColumnId !== floorColumn.columnId) {
-          meta.colIdRow.updateValue(colIndex, floorColumn.columnId);
+          colIdRow.updateValue(colIndex, floorColumn.columnId);
           columnIdLines.push(
             `${sheet.raw.title} · ${floorColumn.header} (${liveColumnId}) → ${floorColumn.columnId}`,
           );

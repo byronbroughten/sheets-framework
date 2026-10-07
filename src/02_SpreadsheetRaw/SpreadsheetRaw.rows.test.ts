@@ -581,7 +581,7 @@ describe("TableRaw.removeRowsExcept", () => {
   function fetchedPrunableSheet() {
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheetMeta(111).colIdRow.gatherFetchFull();
+    raw.sheetMeta(111).primary.headRow("columnId").gatherFetchFull();
     raw.table(tableId111).column(1).gatherFetchFull();
     raw.fetchAllGathered();
     return raw;

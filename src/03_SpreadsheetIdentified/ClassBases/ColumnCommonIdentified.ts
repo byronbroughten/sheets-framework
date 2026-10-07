@@ -1,12 +1,12 @@
 import type { ValueName } from "../../01_SpreadsheetSchema/valueSchemas";
-import { SheetMetaRaw } from "../../02_SpreadsheetRaw/SheetMetaRaw";
+import { TableColumnResolverRaw } from "../../02_SpreadsheetRaw/TableRaw/TableColumnResolverRaw";
 import { ColumnBaseIdentified } from "./ColumnBaseIdentified";
 
 export abstract class ColumnCommonIdentified<
   VN extends ValueName = ValueName,
 > extends ColumnBaseIdentified<VN> {
   get colIndex(): number {
-    return new SheetMetaRaw(this.tableIdentifiedProps).colIndexOfActiveColumnId(
+    return new TableColumnResolverRaw(this.tableIdentifiedProps).colIndexOf(
       this.columnId,
     );
   }

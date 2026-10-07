@@ -652,7 +652,7 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
     expect(table.startRowIndex).toBe(tableHeaderRowIndex);
     expect(table.startColumnIndex).toBe(startTableColIndex);
     expect(table.columnCount).toBeGreaterThan(0);
-    const columnMeta = raw.table(tableId111).meta.column(0);
+    const columnMeta = raw.table(tableId111).column(0).meta;
     expect(columnMeta.activeColumnType).toBe("TEXT");
     expect(columnMeta.valueValidationStrings).toEqual(["=valueConfig[Notes]"]);
     expect(columnMeta.validationConditionType).toBe("BOOLEAN");
@@ -681,7 +681,7 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
 
-    const columnMeta = raw.table(tableId111).meta.column(0);
+    const columnMeta = raw.table(tableId111).column(0).meta;
     expect(columnMeta.activeColumnType).toBe("TEXT");
     expect(columnMeta.valueValidationStrings).toEqual(["=valueConfig[Notes]"]);
     expect(columnMeta.validationConditionType).toBe("BOOLEAN");
@@ -1059,7 +1059,7 @@ describe("queued writes outlive a same-run re-fetch", () => {
     raw.table(tableId111).topRow.gatherFetchFull();
     expect(() => raw.fetchAllGathered(true)).not.toThrow();
 
-    const column = raw.sheetMeta(111).column(1);
+    const column = raw.sheetMeta(111).primary.column(1).meta;
     expect(column.activeIsFormula).toBe(true);
     expect(column.activeNumberFormatType).toBe("CURRENCY");
     expect(column.activeTopValue).toBe(42);
@@ -1237,10 +1237,12 @@ describe("queued writes outlive a same-run re-fetch", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheetMeta(111).column(1).updateColumnType("DOUBLE");
+    raw.sheetMeta(111).primary.column(1).meta.updateColumnType("DOUBLE");
     raw.fetchAllSheetProperties();
 
-    expect(raw.sheetMeta(111).column(1).activeColumnType).toBe("DOUBLE");
+    expect(raw.sheetMeta(111).primary.column(1).meta.activeColumnType).toBe(
+      "DOUBLE",
+    );
   });
 
   it("lets the last of two queued tab titles win after a re-fetch", () => {

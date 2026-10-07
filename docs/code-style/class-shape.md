@@ -67,11 +67,11 @@ Holding the row index as an optional field assigned at the start of a build was 
 
 ## Push a domain query onto the object that owns it
 
-When a coordinating class composes several calls on a collaborator to answer one domain question, that composition belongs on the collaborator as its own named method — not re-inlined at every call site. `ColumnConfigOperator` used to reach through `sheet.headRow("columnId").workingValueArr` and `.hasValue(columnId)` directly; that logic moved onto `SheetMetaNamed` itself as `get activeColumnIds()` and `isActiveColumnId(columnId)`, and `ColumnConfigOperator`'s own private helper now just delegates:
+When a coordinating class composes several calls on a collaborator to answer one domain question, that composition belongs on the collaborator as its own named method — not re-inlined at every call site. `ColumnConfigOperator` used to reach through `sheet.headRow("columnId").workingValueArr` and `.hasValue(columnId)` directly; that logic moved onto `SheetMetaRaw` as `get activeColumnIds()` and onto the Table's column resolver as `hasColumnId(columnId)`, and `ColumnConfigOperator`'s own private helper now just delegates:
 
 ```ts
-private _isActiveColumnId(sheetGid: number, columnId: string): boolean {
-  return this.ss.raw.sheetMeta(sheetGid).isActiveColumnId(columnId);
+private _hasColumnId(tableId: string, columnId: string): boolean {
+  return this.ss.raw.table(tableId).columnResolver.hasColumnId(columnId);
 }
 ```
 

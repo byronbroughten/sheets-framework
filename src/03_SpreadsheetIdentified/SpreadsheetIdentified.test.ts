@@ -51,7 +51,7 @@ describe("SpreadsheetIdentified navigation", () => {
     const table = ssi.table(itemTableId);
     const sheetMeta = ssi.sheetMeta(itemGid);
     const column = table.column(itemIdColumnId);
-    const columnMeta = sheetMeta.column(itemIdColumnId);
+    const columnMeta = column.meta;
     const headRow = table.headRow("action");
     const headCell = column.headCell("action");
 

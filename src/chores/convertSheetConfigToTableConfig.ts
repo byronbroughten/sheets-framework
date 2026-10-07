@@ -54,8 +54,8 @@ export const convertSheetConfigToTableConfig: Chore = {
 };
 
 function fetchSheetConfig(raw: SpreadsheetRaw, table: TableRaw): void {
-  table.meta.tableHeaderRow.gatherFetchFull();
-  table.meta.colIdRow.gatherFetchFull();
+  table.headRow("header").gatherFetchFull();
+  table.headRow("columnId").gatherFetchFull();
   raw.fetchAllGathered();
   table.columnByHeader(headers.sheetGid).gatherFetchFull();
   table.columnByHeader(headers.letApiAccess).gatherFetchFull();
@@ -110,9 +110,9 @@ function updateSheetGidToTableId(
   const idPrefix = Val.assert(table.meta.activeIdPrefix(), "ID prefix");
   const gidCol = table.columnByHeader(headers.sheetGid);
   const colIndex = gidCol.colIndex;
-  table.meta.tableHeaderRow.updateValue(colIndex, headers.tableId);
-  table.meta.colIdRow.updateValue(colIndex, dimensionIds.col(idPrefix));
-  table.meta.column(colIndex).updateColumnType("TEXT");
+  table.headRow("header").updateValue(colIndex, headers.tableId);
+  table.headRow("columnId").updateValue(colIndex, dimensionIds.col(idPrefix));
+  gidCol.meta.updateColumnType("TEXT");
   conversions.forEach(({ rowIndex, tableId }) => {
     gidCol.updateValue(rowIndex, tableId ?? "");
   });

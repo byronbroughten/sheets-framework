@@ -47,6 +47,7 @@ import { SheetMetaRaw } from "./SheetMetaRaw";
 import { SpreadsheetRaw } from "./SpreadsheetRaw";
 import { SheetConditionalFormatsRaw } from "./TableRaw/SheetConditionalFormatsRaw";
 import { SheetEditProtectionsRaw } from "./TableRaw/SheetEditProtectionsRaw";
+import { TableColumnResolverRaw } from "./TableRaw/TableColumnResolverRaw";
 
 /**
  * One Table's state by Table-relative index: rows, columns, pruning, queued
@@ -54,8 +55,8 @@ import { SheetEditProtectionsRaw } from "./TableRaw/SheetEditProtectionsRaw";
  * Meta column facts. `ss.sheetMeta(gid).primary` also reaches it through its
  * sheet, so sheet-level title, conditional format rules and edit protections
  * live here too, the latter two in TableRaw/ behind one-line delegations.
- * Column facts are SheetMetaRaw; spreadsheet-wide fetch and
- * flush are SpreadsheetRaw. By-name and columnId resolution are Identified/Named.
+ * Column facts are SheetMetaRaw; column ID lookups are TableRaw/; spreadsheet-wide
+ * fetch and flush are SpreadsheetRaw. By-name and columnId resolution are Identified/Named.
  */
 export class TableRaw extends TableCommonRaw {
   get ss(): SpreadsheetRaw {
@@ -69,6 +70,9 @@ export class TableRaw extends TableCommonRaw {
   }
   private get protections(): SheetEditProtectionsRaw {
     return new SheetEditProtectionsRaw(this.tableRawProps);
+  }
+  get columnResolver(): TableColumnResolverRaw {
+    return new TableColumnResolverRaw(this.tableRawProps);
   }
   get hasFetchedProperties(): boolean {
     return this.tableProperties !== undefined;
@@ -209,7 +213,7 @@ export class TableRaw extends TableCommonRaw {
     }
     // A queued-delete top row has no cells; column facts still describe the live sheet.
     return this.fullTableColIndexes.every(
-      (colIndex) => this.meta.column(colIndex).activeTopValue === "",
+      (colIndex) => this.column(colIndex).meta.activeTopValue === "",
     );
   }
   headRow<HR extends HeadRole>(headRole: HR): HeadRowRaw<HR> {
@@ -237,7 +241,7 @@ export class TableRaw extends TableCommonRaw {
   columnByHeader<VN extends CellValueName = CellValueName>(
     header: string,
   ): ColumnRaw<VN> {
-    return this.column<VN>(this.meta.tableHeaderRow.colIndexOfValue(header));
+    return this.column<VN>(this.columnResolver.colIndexOfHeader(header));
   }
   gatherFetchDataColumnsUsingHeaders<HD extends string>(
     ...headers: HD[]
@@ -301,12 +305,15 @@ export class TableRaw extends TableCommonRaw {
   // After the backfills above, so a blank fact is sampled rather than built.
   private _ensureFetchedActiveFacts(): void {
     const { toFinalize } = this.tableState.fetchQueue;
+    // Only table columns: a fact is always reached through a column ID.
     if (toFinalize.rows.has(0)) {
-      this.meta.ensureTableColumnsActiveFacts();
+      this.fullTableColIndexes.forEach((colIndex) => {
+        this.column(colIndex).meta.ensureActiveFacts();
+      });
     }
     toFinalize.columns.forEach((colIndex) => {
       if (!this.isTableColIndex(colIndex)) return;
-      this.meta.column(colIndex).ensureActiveFacts();
+      this.column(colIndex).meta.ensureActiveFacts();
     });
   }
   integrateSheetState(sheet: SheetSnapshot): void {
@@ -347,7 +354,7 @@ export class TableRaw extends TableCommonRaw {
             row.cell(colIndex).integrateSnapshot(cellData);
           }
           if (rowIndex === 0) {
-            this.meta.column(colIndex).integrateActiveFacts(cellData);
+            this.column(colIndex).meta.integrateActiveFacts(cellData);
           }
         }
       });

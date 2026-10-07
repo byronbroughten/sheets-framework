@@ -1296,7 +1296,7 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> _addMissingColumnIds", () =>
 
     expect(() => syncColumnConfigOperator(operator)).not.toThrow();
 
-    const colIdRow = operator.ss.raw.sheetMeta(testSheetGid).colIdRow;
+    const colIdRow = operator.ss.raw.table(testTableId).headRow("columnId");
     expect(colIdRow.valueOrEmpty(0)).not.toBe("");
   });
 
@@ -1342,7 +1342,7 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> _addMissingColumnIds", () =>
 
     expect(() => syncColumnConfigOperator(operator)).not.toThrow();
 
-    const colIdRow = operator.ss.raw.sheetMeta(testSheetGid).colIdRow;
+    const colIdRow = operator.ss.raw.table(testTableId).headRow("columnId");
     expect(colIdRow.valueOrEmpty(0)).not.toBe("");
   });
 });

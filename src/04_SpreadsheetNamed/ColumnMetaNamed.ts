@@ -25,7 +25,7 @@ export class ColumnMetaNamed<
     return new SheetMetaNamed(this.sheetNamedProps);
   }
   get raw(): ColumnMetaRaw {
-    return this.table.raw.column(this.identified.colIndex);
+    return this.table.raw.primary.column(this.identified.colIndex).meta;
   }
   get identified(): ColumnMetaIdentified<ColumnValueName<TN, CN>> {
     return new ColumnMetaIdentified<ColumnValueName<TN, CN>>({

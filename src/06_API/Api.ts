@@ -80,11 +80,12 @@ export class Api extends SpreadsheetBaseNamed {
     }
     const { sheetGid, colIndexBase0, value } = edit;
     const sheet = this.ssi.sheetMeta(sheetGid).ensureColumnIdsAreFetched();
+    const { columnResolver } = sheet.primary;
     const colIndex = sheet.raw.tableOrigin().colIndex(colIndexBase0);
-    if (!sheet.isTableColIndex(colIndex)) {
+    if (!columnResolver.isTableColIndex(colIndex)) {
       return;
     }
-    const columnId = sheet.columnIdByIndex(colIndex);
+    const columnId = columnResolver.columnIdAt(colIndex);
     if (columnId === "") {
       return;
     }

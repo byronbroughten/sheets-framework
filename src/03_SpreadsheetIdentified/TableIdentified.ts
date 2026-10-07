@@ -18,6 +18,7 @@ import { ColumnIdentified } from "./ColumnIdentified";
 import { HeadRowIdentified } from "./HeadRowIdentified";
 import { RowIdentified } from "./RowIdentified";
 import { SheetMetaIdentified } from "./SheetMetaIdentified";
+import { TableColumnResolverIdentified } from "./TableIdentified/TableColumnResolverIdentified";
 
 export class TableIdentified extends TableCommonIdentified {
   get meta(): SheetMetaIdentified {
@@ -25,6 +26,9 @@ export class TableIdentified extends TableCommonIdentified {
   }
   get raw(): TableRaw {
     return new TableRaw(this.tableIdentifiedProps);
+  }
+  get columnResolver(): TableColumnResolverIdentified {
+    return new TableColumnResolverIdentified(this.tableIdentifiedProps);
   }
   get workingRowIndexes(): number[] {
     return this.raw.workingRowIndexes;
@@ -52,7 +56,7 @@ export class TableIdentified extends TableCommonIdentified {
   // A configured column the sheet doesn't have holds nothing to read, clear, or default.
   get nonFormulaColumnIds(): string[] {
     return this.schema.nonFormulaColumnIds.filter((columnId) =>
-      this.meta.isActiveColumnId(columnId),
+      this.columnResolver.hasColumnId(columnId),
     );
   }
   // Feedback columns only report on a row, so a row holding nothing else is still blank.

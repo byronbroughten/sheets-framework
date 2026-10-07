@@ -1,11 +1,9 @@
 import { SpreadsheetSchema } from "../01_SpreadsheetSchema/SpreadsheetSchema";
 import { SpreadsheetRaw } from "../02_SpreadsheetRaw/SpreadsheetRaw";
 import { SpreadsheetBaseIdentified } from "./ClassBases/SpreadsheetBaseIdentified";
-import {
-  type GatherDataPrerequisitesProps,
-  SheetMetaIdentified,
-} from "./SheetMetaIdentified";
+import { SheetMetaIdentified } from "./SheetMetaIdentified";
 import { TableIdentified } from "./TableIdentified";
+import type { GatherDataPrerequisitesProps } from "./TableIdentified/TableColumnResolverIdentified";
 
 export class SpreadsheetIdentified extends SpreadsheetBaseIdentified {
   get schema(): SpreadsheetSchema {
@@ -43,7 +41,7 @@ export class SpreadsheetIdentified extends SpreadsheetBaseIdentified {
   }: GatherDataPrerequisitesProps = {}): void {
     const tablesPreppedForFetch = this.tablesPreppedForFetch;
     tablesPreppedForFetch.forEach((table) => {
-      table._gatherDataPrerequisites(props);
+      table.primary.columnResolver.gatherDataPrerequisites(props);
     });
     this.raw.fetchAllGathered(includeProgrammaticFacts);
     tablesPreppedForFetch.forEach((table) => {

@@ -185,7 +185,7 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
       }
       const idPrefix = this.idPrefix(tableId);
       const { headerRowIndex, startColIndex } = table.origin;
-      const { tableHeaderRow } = table.meta;
+      const headerRow = table.headRow("header");
       tableConfigs[tableKey] = {
         tableId,
         tableName,
@@ -193,8 +193,8 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
         idPrefix,
         headerRowIndex,
         startColIndex,
-        hasIdColumn: tableHeaderRow.hasValue(this.schema.idHeader),
-        hasNameColumn: tableHeaderRow.hasValue(this.schema.nameHeader),
+        hasIdColumn: headerRow.hasValue(this.schema.idHeader),
+        hasNameColumn: headerRow.hasValue(this.schema.nameHeader),
       };
       idPrefixLabels.push({ label: tableName, idPrefix });
     });
@@ -216,7 +216,7 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
     const tableName = Val.assert(match[1], "Table name match");
     const header = Val.assert(match[2], "header match");
     const table = this._managedTable(tableName, reference);
-    const columnId = table.meta.columnIdByHeader(header);
+    const columnId = table.columnResolver.columnIdByHeader(header);
     if (columnId === "") {
       throw new Error(
         `${columnReferenceLabel(reference)} names a column with no column ID.`,

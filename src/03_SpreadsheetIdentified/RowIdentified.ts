@@ -42,7 +42,7 @@ export class RowIdentified extends RowCommonIdentified {
   }
   get activeColumnIds(): string[] {
     return [...this.raw.rowState.keys()].map((colIndex) =>
-      this.table.meta.columnIdByIndex(colIndex),
+      this.table.columnResolver.columnIdAt(colIndex),
     );
   }
   get inWorking(): boolean {

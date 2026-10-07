@@ -27,7 +27,7 @@ describe("SpreadsheetRaw navigation", () => {
     const table = raw.table(tableId111);
     const sheetMeta = raw.sheetMeta(111);
     const column = table.column(0);
-    const columnMeta = sheetMeta.column(0);
+    const columnMeta = column.meta;
     const headRow = table.headRow("action");
     const headCell = column.headCell("header");
 

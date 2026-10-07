@@ -102,7 +102,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.sheetMeta(itemGid).primary.gatherFetchProperties();
-    raw.sheetMeta(itemGid).gatherFetchColumnIdsInit();
+    raw.sheetMeta(itemGid).primary.columnResolver.gatherFetchColumnIds();
     raw.sheetMeta(logGid).primary.gatherFetchProperties();
 
     expect(() => raw.fetchAllGathered()).toThrowError(
@@ -301,7 +301,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.sheetMeta(itemGid).primary.gatherFetchProperties();
-    raw.sheetMeta(itemGid).gatherFetchColumnIdsInit();
+    raw.sheetMeta(itemGid).primary.columnResolver.gatherFetchColumnIds();
 
     expect(() => raw.fetchAllGathered()).toThrowError(
       /regenerate the configs.*"Item" \(gid \d+\) has no Table starting at row 4, column A/,
@@ -317,7 +317,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.sheetMeta(itemGid).primary.gatherFetchProperties();
-    raw.sheetMeta(itemGid).gatherFetchColumnIdsInit();
+    raw.sheetMeta(itemGid).primary.columnResolver.gatherFetchColumnIds();
     raw.fetchAllGathered();
 
     expect(getByDataFilterCalls).toHaveLength(1);
@@ -361,7 +361,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.sheetMeta(itemGid).primary.gatherFetchProperties();
-    raw.sheetMeta(itemGid).gatherFetchColumnIdsInit();
+    raw.sheetMeta(itemGid).primary.columnResolver.gatherFetchColumnIds();
 
     expect(() => raw.fetchAllGathered()).toThrowError(
       /"Item" \(gid \d+\) needs its own "itm" column IDs, and only those, in row 1/,
@@ -384,7 +384,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.sheetMeta(itemGid).primary.gatherFetchProperties();
-    raw.sheetMeta(itemGid).gatherFetchColumnIdsInit();
+    raw.sheetMeta(itemGid).primary.columnResolver.gatherFetchColumnIds();
 
     expect(() => raw.fetchAllGathered()).not.toThrow();
   });
@@ -446,7 +446,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     const raw = SpreadsheetRaw.init();
     raw.sheetMeta(itemGid).primary.gatherFetchProperties();
     raw.sheetMeta(logGid).primary.gatherFetchProperties();
-    raw.sheetMeta(logGid).gatherFetchColumnIdsInit();
+    raw.sheetMeta(logGid).primary.columnResolver.gatherFetchColumnIds();
 
     const message = thrownMessage(() => raw.fetchAllGathered());
     expect(message).toMatch(/more than one Table.*"Item"/);
@@ -486,7 +486,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.sheetMeta(itemGid).primary.gatherFetchProperties();
-    raw.sheetMeta(itemGid).gatherFetchColumnIdsInit();
+    raw.sheetMeta(itemGid).primary.columnResolver.gatherFetchColumnIds();
 
     expect(() => raw.fetchAllGathered()).toThrowError(
       /"Item" \(gid \d+\) has no Table/,
@@ -539,7 +539,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     });
 
     const raw = SpreadsheetRaw.init();
-    raw.sheetMeta(itemGid).gatherFetchColumnIdsInit();
+    raw.sheetMeta(itemGid).primary.columnResolver.gatherFetchColumnIds();
     raw.fetchAllGathered();
 
     expect(recordedGridRanges(getByDataFilterCalls)).toEqual([
@@ -696,7 +696,7 @@ describe("SpreadsheetRaw over a Table placed lower on its sheet", () => {
   function fetchedLowerRaw(): SpreadsheetRaw {
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheetMeta(scratchGid).gatherFetchColumnIdsInit();
+    raw.sheetMeta(scratchGid).primary.columnResolver.gatherFetchColumnIds();
     raw.table(scratchTableId).row(0).gatherFetchFull();
     raw.table(scratchTableId).row(1).gatherFetchFull();
     raw.fetchAllGathered();
@@ -715,9 +715,9 @@ describe("SpreadsheetRaw over a Table placed lower on its sheet", () => {
       "c:low:aaa",
       "c:low:bbb",
     ]);
-    expect(raw.sheetMeta(scratchGid).tableHeaderRow.valueOrEmpty(1)).toBe(
-      "Name",
-    );
+    expect(
+      raw.sheetMeta(scratchGid).primary.headRow("header").valueOrEmpty(1),
+    ).toBe("Name");
   });
 
   it("updates and appends at the Table's grid rows, leaving the loose cell beside it alone", () => {
@@ -807,11 +807,11 @@ describe("SpreadsheetRaw fetch integration routes each cell to its Table", () =>
     expect(raw.table("left").row(0).workingValueArr).toEqual(["r1", "a"]);
     expect(raw.table("right").row(0).workingValueArr).toEqual(["c1", 5]);
     expect(raw.table("right").row(1).valueOrEmpty(1)).toBe(6);
-    expect(raw.table("left").meta.colIdRow.workingValueArr).toEqual([
+    expect(raw.table("left").headRow("columnId").workingValueArr).toEqual([
       "lft:1",
       "lft:2",
     ]);
-    expect(raw.table("right").meta.colIdRow.workingValueArr).toEqual([
+    expect(raw.table("right").headRow("columnId").workingValueArr).toEqual([
       "rgt:1",
       "rgt:2",
     ]);

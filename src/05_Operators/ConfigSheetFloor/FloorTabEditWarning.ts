@@ -88,7 +88,7 @@ export class FloorTabEditWarning<
     const sheet = this.table;
     return this._addedColIndexes().map(
       (colIndex) =>
-        `${sheet.raw.title} · ${String(sheet.raw.meta.tableHeaderRow.valueOrEmpty(colIndex))}`,
+        `${sheet.raw.title} · ${String(sheet.raw.headRow("header").valueOrEmpty(colIndex))}`,
     );
   }
   queueAdd({ description, unprotectedRanges }: FloorDeclaration): void {

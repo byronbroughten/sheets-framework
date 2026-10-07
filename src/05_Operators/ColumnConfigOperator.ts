@@ -82,8 +82,8 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
     this.tableIdsApiAccesses.forEach((tableId) => {
       const table = this.ss.raw.table(tableId);
       // hasIdColumn samples this row after Let api access is known.
-      table.meta.tableHeaderRow.gatherFetchFull();
-      table.meta.colIdRow.gatherFetchFull();
+      table.headRow("header").gatherFetchFull();
+      table.headRow("columnId").gatherFetchFull();
       table.topRow.gatherFetchFull();
     });
     this.ss.raw.fetchAllGathered(true);
@@ -161,7 +161,7 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
         tableId === "" ||
         columnId === "" ||
         !this.tableIdsApiAccesses.has(tableId) ||
-        !this._isActiveColumnId(tableId, columnId)
+        !this._hasColumnId(tableId, columnId)
       ) {
         this.table.row(rowIndex).delete();
         staleCount++;
@@ -170,8 +170,8 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
     Logger.log(`_pruneColumnRows: pruned ${staleCount} stale row(s).`);
     return this;
   }
-  private _isActiveColumnId(tableId: string, columnId: string): boolean {
-    return this.ss.raw.table(tableId).meta.isActiveColumnId(columnId);
+  private _hasColumnId(tableId: string, columnId: string): boolean {
+    return this.ss.raw.table(tableId).columnResolver.hasColumnId(columnId);
   }
   private _appendColumnRows(): this {
     const existingIdentityKeys = new Set(

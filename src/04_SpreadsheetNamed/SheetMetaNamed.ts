@@ -34,14 +34,6 @@ export class SheetMetaNamed<
       columnName,
     });
   }
-  columnByIndex(colIndex: number): ColumnMetaNamed<TN> {
-    const columnId = this.identified.columnIdByIndex(colIndex);
-    const columnName = this.schema.colNameByColumnId(columnId);
-    return this.column(columnName);
-  }
-  isActiveColumnId(columnId: string): boolean {
-    return this.identified.isActiveColumnId(columnId);
-  }
   addMissingColumnIds(): number {
     return this.identified.addMissingColumnIds();
   }
