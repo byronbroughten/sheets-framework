@@ -45,7 +45,6 @@ import {
 import { ColumnRaw } from "./ColumnRaw";
 import { HeadRowRaw } from "./HeadRowRaw";
 import { RowRaw } from "./RowRaw";
-import { SheetMetaRaw } from "./SheetMetaRaw";
 import { SpreadsheetRaw } from "./SpreadsheetRaw";
 import { TableProfileRaw } from "./TableProfileRaw";
 import { SheetConditionalFormatsRaw } from "./TableRaw/SheetConditionalFormatsRaw";
@@ -55,7 +54,7 @@ import { TableColumnResolverRaw } from "./TableRaw/TableColumnResolverRaw";
 /**
  * One Table's state by Table-relative index: rows, columns, pruning, queued
  * Table-level requests, and integrating fetched cells into its rows, cells and
- * sampled column facts. `ss.sheetMeta(gid).primary` also reaches it through its
+ * sampled column facts. `ss.tableOnSheet(gid)` also reaches it through its
  * sheet, so sheet-level title, conditional format rules and edit protections
  * live here too, the latter two in TableRaw/ behind one-line delegations.
  * Descriptive facts are TableProfileRaw and ColumnProfileRaw; column ID lookups are TableRaw/;
@@ -64,9 +63,6 @@ import { TableColumnResolverRaw } from "./TableRaw/TableColumnResolverRaw";
 export class TableRaw extends TableCommonRaw {
   get ss(): SpreadsheetRaw {
     return new SpreadsheetRaw(this.spreadsheetRawProps);
-  }
-  get meta(): SheetMetaRaw {
-    return new SheetMetaRaw(this.tableRawProps);
   }
   get profile(): TableProfileRaw {
     return new TableProfileRaw(this.tableRawProps);

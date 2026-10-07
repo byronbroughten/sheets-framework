@@ -27,7 +27,7 @@ export const convertSheetConfigToTableConfig: Chore = {
     const raw = ss.raw;
     raw.fetchAllSheetProperties();
     const gidByTitle = new Map(
-      raw.activeSheetGids.map((gid) => [raw.sheetMeta(gid).primary.title, gid]),
+      raw.activeSheetGids.map((gid) => [raw.tableOnSheet(gid).title, gid]),
     );
     if (gidByTitle.has(tableConfigSeed.title)) {
       return `Nothing to convert: found a "${tableConfigSeed.title}" tab.`;
@@ -36,7 +36,7 @@ export const convertSheetConfigToTableConfig: Chore = {
     if (sheetGid === undefined) {
       return `Nothing to convert: no "${retiredSheetConfigTitle}" tab.`;
     }
-    const table = raw.sheetMeta(sheetGid).primary;
+    const table = raw.tableOnSheet(sheetGid);
     const oldTableName = table.name;
     fetchSheetConfig(raw, table);
     const conversions = rowConversions(raw, table);

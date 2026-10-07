@@ -33,7 +33,6 @@ import type {
   FindReplaceTerms,
   TableEndColumnHeadCells,
 } from "./ClassTypes/StateRaw";
-import { ColumnMetaRaw } from "./ColumnMetaRaw";
 import { ColumnProfileRaw } from "./ColumnProfileRaw";
 import { SpreadsheetRaw } from "./SpreadsheetRaw";
 import { TableRaw } from "./TableRaw";
@@ -46,9 +45,6 @@ export class ColumnRaw<
   }
   get table(): TableRaw {
     return new TableRaw(this.tableRawProps);
-  }
-  get meta(): ColumnMetaRaw<VN> {
-    return new ColumnMetaRaw<VN>(this.columnRawProps);
   }
   get profile(): ColumnProfileRaw {
     return new ColumnProfileRaw(this.columnRawProps);

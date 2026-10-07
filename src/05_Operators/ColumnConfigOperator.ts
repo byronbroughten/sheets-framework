@@ -56,7 +56,7 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
   private get tableIdsApiAccesses(): Set<string> {
     return new Set(this.tableConfigOperator.tableIdsApiAccesses());
   }
-  activeValueTitles(): string[] {
+  profileValueTitles(): string[] {
     return this.table.workingRowIndexesWithData.map((rowIndex) =>
       this._describedColumn(this._columnIdentity(rowIndex)).valueTitle(),
     );

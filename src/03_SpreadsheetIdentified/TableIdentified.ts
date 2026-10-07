@@ -18,13 +18,9 @@ import { TableCommonIdentified } from "./ClassBases/TableCommonIdentified";
 import { ColumnIdentified } from "./ColumnIdentified";
 import { HeadRowIdentified } from "./HeadRowIdentified";
 import { RowIdentified } from "./RowIdentified";
-import { SheetMetaIdentified } from "./SheetMetaIdentified";
 import { TableColumnResolverIdentified } from "./TableIdentified/TableColumnResolverIdentified";
 
 export class TableIdentified extends TableCommonIdentified {
-  get meta(): SheetMetaIdentified {
-    return new SheetMetaIdentified(this.tableIdentifiedProps);
-  }
   get raw(): TableRaw {
     return new TableRaw(this.tableIdentifiedProps);
   }
@@ -71,6 +67,23 @@ export class TableIdentified extends TableCommonIdentified {
     return new ColumnIdentified({
       ...this.tableIdentifiedProps,
       columnId,
+    });
+  }
+  gatherFetchDataPrepped(): void {
+    // This is so that table dimensions and columnIndexes can be guaranteed
+    // before their fetch requests are generated.
+    this.fetchTargets.forEach((target) => {
+      if (target.kind === "fullRow") {
+        this.raw.rowCommon(target.row).gatherFetchFull();
+      } else if (target.kind === "fullDataColumn") {
+        this.column(target.column).raw.gatherFetchFull();
+      } else if (target.kind === "singleCell") {
+        const colIndex = this.column(target.column).colIndex;
+        this.raw.rowCommon(target.row).cell(colIndex).gatherFetchRange();
+      } else {
+        const exhaustive: never = target;
+        throw new Error(`Unknown fetch target: ${JSON.stringify(exhaustive)}`);
+      }
     });
   }
   ensureColumnIdsAreFetched(): this {

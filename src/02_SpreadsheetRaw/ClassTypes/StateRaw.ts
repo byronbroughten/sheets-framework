@@ -90,7 +90,7 @@ export interface SheetStateRaw {
   working: SheetWorkingStateRaw;
   fetchQueue: SheetFetchQueueRaw;
   writeQueue: SheetWriteQueueRaw;
-  // `ss.sheetMeta(gid).primary` reaches a Table through its sheet, so what is queued before that Table is known waits here.
+  // `ss.tableOnSheet(gid)` reaches a Table through its sheet, so what is queued before that Table is known waits here.
   tableBeforeProperties: TableStateRaw;
 }
 

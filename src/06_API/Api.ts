@@ -79,9 +79,7 @@ export class Api extends SpreadsheetBaseNamed {
       return;
     }
     const { sheetGid, colIndexBase0, value } = edit;
-    const table = this.ssi
-      .sheetMeta(sheetGid)
-      .primary.ensureColumnIdsAreFetched();
+    const table = this.ssi.tableOnSheet(sheetGid).ensureColumnIdsAreFetched();
     const { columnResolver } = table;
     const colIndex = table.raw.tableOrigin().colIndex(colIndexBase0);
     if (!columnResolver.isTableColIndex(colIndex)) {

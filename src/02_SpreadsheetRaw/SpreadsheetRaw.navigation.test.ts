@@ -10,12 +10,10 @@ import { type ColumnBaseRaw } from "./ClassBases/ColumnBaseRaw";
 import { type RowCommonRaw } from "./ClassBases/RowCommonRaw";
 import { type TableBaseRaw } from "./ClassBases/TableBaseRaw";
 import { type CellFill, type CellStateRaw } from "./ClassTypes/StateRaw";
-import { ColumnMetaRaw } from "./ColumnMetaRaw";
 import { ColumnProfileRaw } from "./ColumnProfileRaw";
 import { ColumnRaw } from "./ColumnRaw";
 import { HeadRowRaw } from "./HeadRowRaw";
 import { RowRaw } from "./RowRaw";
-import { SheetMetaRaw } from "./SheetMetaRaw";
 import { SpreadsheetRaw } from "./SpreadsheetRaw";
 import { placedTableSheet, tableId111 } from "./spreadsheetRawTestSupport";
 import { TableProfileRaw } from "./TableProfileRaw";
@@ -29,22 +27,15 @@ describe("SpreadsheetRaw navigation", () => {
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
     const table = raw.table(tableId111);
-    const sheetMeta = raw.sheetMeta(111);
+    const tableOnSheet = raw.tableOnSheet(111);
     const column = table.column(0);
-    const columnMeta = column.meta;
     const headRow = table.headRow("action");
     const headCell = column.headCell("header");
 
     assertType<IsExactly<typeof table, TableRaw>>(true);
-    assertType<IsExactly<typeof sheetMeta, SheetMetaRaw>>(true);
-    assertType<IsExactly<typeof table.meta, SheetMetaRaw>>(true);
-    assertType<IsExactly<typeof sheetMeta.primary, TableRaw>>(true);
+    assertType<IsExactly<typeof tableOnSheet, TableRaw>>(true);
     assertType<IsExactly<typeof column, ColumnRaw>>(true);
-    assertType<IsExactly<typeof columnMeta, ColumnMetaRaw>>(true);
     assertType<IsExactly<typeof column.table, TableRaw>>(true);
-    assertType<IsExactly<typeof columnMeta.table, SheetMetaRaw>>(true);
-    assertType<IsExactly<typeof column.meta, ColumnMetaRaw>>(true);
-    assertType<IsExactly<typeof columnMeta.primary, ColumnRaw>>(true);
     assertType<IsExactly<typeof table.profile, TableProfileRaw>>(true);
     assertType<IsExactly<typeof column.profile, ColumnProfileRaw>>(true);
     assertType<
@@ -62,14 +53,9 @@ describe("SpreadsheetRaw navigation", () => {
     assertType<IsExactly<typeof headCell, CellRaw<"string">>>(true);
 
     expect(table).toBeInstanceOf(TableRaw);
-    expect(table.meta).toBeInstanceOf(SheetMetaRaw);
-    expect(sheetMeta.primary).toBeInstanceOf(TableRaw);
+    expect(tableOnSheet).toBeInstanceOf(TableRaw);
     expect(column).toBeInstanceOf(ColumnRaw);
-    expect(columnMeta).toBeInstanceOf(ColumnMetaRaw);
     expect(column.table).toBeInstanceOf(TableRaw);
-    expect(columnMeta.table).toBeInstanceOf(SheetMetaRaw);
-    expect(column.meta).toBeInstanceOf(ColumnMetaRaw);
-    expect(columnMeta.primary).toBeInstanceOf(ColumnRaw);
     expect(table.profile).toBeInstanceOf(TableProfileRaw);
     expect(column.profile).toBeInstanceOf(ColumnProfileRaw);
     expect(table.row(0)).toBeInstanceOf(RowRaw);
@@ -79,6 +65,18 @@ describe("SpreadsheetRaw navigation", () => {
     expect(headRow.table).toBeInstanceOf(TableRaw);
     expect(table.headRowByIndex(-2)).toBeInstanceOf(HeadRowRaw);
     expect(headCell).toBeInstanceOf(CellRaw);
+  });
+
+  it("offers no Meta view", () => {
+    assertType<
+      IsExactly<
+        Extract<
+          "meta" | "sheetMeta",
+          keyof SpreadsheetRaw | keyof TableRaw | keyof ColumnRaw
+        >,
+        never
+      >
+    >(true);
   });
 });
 
@@ -125,10 +123,7 @@ describe("Raw value types", () => {
       true,
     );
     assertType<
-      IsExactly<
-        ReturnType<HeadRowRaw<"columnId">["valueOrEmpty"]>,
-        string | ""
-      >
+      IsExactly<ReturnType<HeadRowRaw<"columnId">["valueOrEmpty"]>, string | "">
     >(true);
     assertType<IsExactly<CellFill["backgroundColor"], RgbColor | undefined>>(
       true,

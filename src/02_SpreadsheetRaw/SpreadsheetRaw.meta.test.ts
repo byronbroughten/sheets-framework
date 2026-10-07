@@ -101,7 +101,7 @@ describe("ColumnProfileRaw sampled facts", () => {
     stubSheetWithTopDataRow([], "rowsWithNoGridData");
 
     const raw = SpreadsheetRaw.init();
-    raw.sheetMeta(itemGid).primary.gatherFetchProperties();
+    raw.tableOnSheet(itemGid).gatherFetchProperties();
     raw.fetchAllGathered();
     raw.table(itemTableId).column(1).gatherFetchFull();
     raw.fetchAllGathered(true);
@@ -113,7 +113,7 @@ describe("ColumnProfileRaw sampled facts", () => {
     stubSheetWithTopDataRow([], "rowsWithNoGridData");
 
     const raw = SpreadsheetRaw.init();
-    raw.sheetMeta(itemGid).primary.gatherFetchProperties();
+    raw.tableOnSheet(itemGid).gatherFetchProperties();
     raw.fetchAllGathered();
     const cell = raw.table(itemTableId).row(0).cell(0);
     cell.gatherFetchRange();
@@ -138,7 +138,7 @@ describe("ColumnProfileRaw sampled facts", () => {
     });
 
     const raw = SpreadsheetRaw.init();
-    raw.sheetMeta(itemGid).primary.gatherFetchProperties();
+    raw.tableOnSheet(itemGid).gatherFetchProperties();
     raw.fetchAllGathered();
 
     const message = thrownMessage(
@@ -216,7 +216,7 @@ describe("TableRaw.appendColumn", () => {
     const { grid } = stubThreeColumnTable();
 
     const raw = fetchedRaw();
-    const insertedIndex = raw.sheetMeta(111).primary.appendColumn({
+    const insertedIndex = raw.tableOnSheet(111).appendColumn({
       columnId: "c:lse:ddd",
       header: "New",
       groupHeading1: "Group",
@@ -239,8 +239,8 @@ describe("TableRaw.appendColumn", () => {
 
     const raw = fetchedRaw();
     const insertedIndex = raw
-      .sheetMeta(111)
-      .primary.appendColumn({ columnId: "c:lse:ddd", header: "New" });
+      .tableOnSheet(111)
+      .appendColumn({ columnId: "c:lse:ddd", header: "New" });
     raw.batchUpdateGSheets();
 
     expect(raw.table(tableId111).rowIndexesAreStale).toBe(false);
@@ -258,11 +258,11 @@ describe("TableRaw.appendColumn", () => {
 
     const raw = fetchedRaw();
     const first = raw
-      .sheetMeta(111)
-      .primary.appendColumn({ columnId: "c:lse:ddd", header: "First" });
+      .tableOnSheet(111)
+      .appendColumn({ columnId: "c:lse:ddd", header: "First" });
     const second = raw
-      .sheetMeta(111)
-      .primary.appendColumn({ columnId: "c:lse:eee", header: "Second" });
+      .tableOnSheet(111)
+      .appendColumn({ columnId: "c:lse:eee", header: "Second" });
     raw.batchUpdateGSheets();
 
     expect([first, second]).toEqual([3, 4]);
@@ -303,8 +303,8 @@ describe("TableRaw.appendColumn", () => {
 
     const raw = fetchedRaw();
     raw
-      .sheetMeta(111)
-      .primary.appendColumn({ columnId: "c:lse:ddd", header: "New" });
+      .tableOnSheet(111)
+      .appendColumn({ columnId: "c:lse:ddd", header: "New" });
     raw.batchUpdateGSheets();
 
     expect(
@@ -325,8 +325,8 @@ describe("TableRaw.appendColumn", () => {
 
     const raw = fetchedRaw();
     raw
-      .sheetMeta(111)
-      .primary.appendColumn({ columnId: "c:lse:ddd", header: "New" });
+      .tableOnSheet(111)
+      .appendColumn({ columnId: "c:lse:ddd", header: "New" });
     raw.batchUpdateGSheets();
 
     expect(grid.sheet(111).tables[0]?.columnProperties?.[3]).toEqual({
@@ -887,8 +887,8 @@ describe("ColumnRaw.updateColumnType", () => {
     const raw = fetchedRaw();
     raw.table(tableId111).column(2).updateColumnType("DOUBLE");
     raw
-      .sheetMeta(111)
-      .primary.appendColumn({ columnId: "c:lse:new", header: "New" });
+      .tableOnSheet(111)
+      .appendColumn({ columnId: "c:lse:new", header: "New" });
 
     expect(() => raw.batchUpdateGSheets()).toThrow(/inserts a column/);
     expect(batchUpdateCount()).toBe(0);

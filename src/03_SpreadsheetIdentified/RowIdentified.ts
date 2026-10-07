@@ -40,7 +40,7 @@ export class RowIdentified extends RowCommonIdentified {
     columnIds.forEach((columnId) => this.cell(columnId).updateToDefault());
     return this;
   }
-  get activeColumnIds(): string[] {
+  get workingColumnIds(): string[] {
     return [...this.raw.rowState.keys()].map((colIndex) =>
       this.table.columnResolver.columnIdAt(colIndex),
     );
@@ -80,8 +80,7 @@ export class RowIdentified extends RowCommonIdentified {
     }
   }
   private get _workingBlankTestCells(): CellIdentified[] {
-    return this.table
-      .blankTestColumnIds
+    return this.table.blankTestColumnIds
       .map((columnId) => this.cell(columnId))
       .filter((cell) => cell.inWorking);
   }

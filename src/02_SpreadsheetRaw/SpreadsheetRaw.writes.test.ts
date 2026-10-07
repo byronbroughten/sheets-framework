@@ -26,7 +26,7 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
     });
 
     const raw = SpreadsheetRaw.init();
-    raw.sheetMeta(111).primary.requestSortGSheet({
+    raw.tableOnSheet(111).requestSortGSheet({
       colIdxToSortBy: 0,
       sortOrder: "ASCENDING",
     });
@@ -545,7 +545,7 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
         const { raw } = flushedGrowthOfTop();
 
         expect(() =>
-          raw.sheetMeta(111).primary.row(0).cell(0).updateValue("late"),
+          raw.tableOnSheet(111).row(0).cell(0).updateValue("late"),
         ).toThrow(/sheet properties have been fetched/);
       });
 
@@ -736,8 +736,8 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
 
     expect(() =>
       raw
-        .sheetMeta(111)
-        .primary.appendColumn({ columnId: "c:x:new", header: "New" }),
+        .tableOnSheet(111)
+        .appendColumn({ columnId: "c:x:new", header: "New" }),
     ).toThrow(staleRowIndexes);
   });
 
@@ -1237,7 +1237,7 @@ describe("queued writes outlive a same-run re-fetch", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheetMeta(111).primary.column(1).updateColumnType("DOUBLE");
+    raw.tableOnSheet(111).column(1).updateColumnType("DOUBLE");
     raw.fetchAllSheetProperties();
 
     expect(raw.table(tableId111).column(1).profile.columnType).toBe("DOUBLE");
@@ -1328,7 +1328,7 @@ describe("the last queued write wins between fills and cell writes", () => {
   }
   function fetchedColumn() {
     const raw = SpreadsheetRaw.init();
-    raw.sheetMeta(111).primary.column(1).gatherFetchFull();
+    raw.tableOnSheet(111).column(1).gatherFetchFull();
     raw.fetchAllGathered();
     return raw;
   }

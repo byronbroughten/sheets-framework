@@ -32,7 +32,6 @@ import type { CellChange } from "../03_SpreadsheetIdentified/ClassTypes/StateIde
 import { ColumnIdentified } from "../03_SpreadsheetIdentified/ColumnIdentified";
 import { CellNamed } from "./CellNamed";
 import { ColumnCommonNamed } from "./ClassBases/ColumnCommonNamed";
-import { ColumnMetaNamed } from "./ColumnMetaNamed";
 import { TableNamed } from "./TableNamed";
 
 export class ColumnNamed<
@@ -41,9 +40,6 @@ export class ColumnNamed<
 > extends ColumnCommonNamed<TN, CN> {
   get table(): TableNamed<TN> {
     return new TableNamed(this.sheetNamedProps);
-  }
-  get meta(): ColumnMetaNamed<TN, CN> {
-    return new ColumnMetaNamed(this.columnNamedProps);
   }
   get identified(): ColumnIdentified<ColumnValueName<TN, CN>> {
     return new ColumnIdentified<ColumnValueName<TN, CN>>({

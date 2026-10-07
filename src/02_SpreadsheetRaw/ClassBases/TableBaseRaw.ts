@@ -22,7 +22,7 @@ import {
   type SpreadsheetRawProps,
 } from "./SpreadsheetBaseRaw";
 
-// `ss.sheetMeta(gid).primary` still reaches a Table through its sheet, meaning the sheet's one Table.
+// `ss.tableOnSheet(gid)` reaches a Table through its sheet, meaning the sheet's one Table.
 export type TableAddressRaw = { sheetGid: number } | { tableId: string };
 export type TableRawProps = SpreadsheetRawProps & TableAddressRaw;
 

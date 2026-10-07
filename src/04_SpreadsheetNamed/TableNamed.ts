@@ -28,23 +28,19 @@ import { Val } from "../utils/Val";
 import { TableCommonNamed } from "./ClassBases/TableCommonNamed";
 import { ColumnNamed } from "./ColumnNamed";
 import { RowNamed } from "./RowNamed";
-import { SheetMetaNamed } from "./SheetMetaNamed";
 import type { SheetNameWithIdAndNameColumn } from "./TableNameGroups";
 import type { RowIdByName } from "./Types/RowIdByName";
 
 /**
- * Name-addressed primary sheet: data rows, append, named columns.
- * Structure as its own shape is this.meta (SheetMetaNamed).
- * Crossing views costs one word: meta / primary; no cross-level shortcut.
- * Member placement for Meta vs primary: docs/vocabulary.md, "Meta / primary".
+ * Name-addressed Table: data rows, append, named columns.
+ * Head rows are headRow(role); descriptive facts are the Raw-only
+ * raw.profile; column IDs are identified.ensureColumnIdsAreFetched and
+ * identified.addMissingColumnIds.
  * docs/architecture/class-chains.md
  */
 export class TableNamed<
   TN extends TableName = TableName,
 > extends TableCommonNamed<TN> {
-  get meta(): SheetMetaNamed<TN> {
-    return new SheetMetaNamed(this.sheetNamedProps);
-  }
   get raw(): TableRaw {
     return this.identified.raw;
   }

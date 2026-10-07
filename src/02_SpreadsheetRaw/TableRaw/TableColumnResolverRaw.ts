@@ -1,3 +1,4 @@
+import { dimensionIds } from "../../01_SpreadsheetSchema/dimensionIds";
 import { Val } from "../../utils/Val";
 import { TableCommonRaw } from "../ClassBases/TableCommonRaw";
 import { SpreadsheetRaw } from "../SpreadsheetRaw";
@@ -43,6 +44,22 @@ export class TableColumnResolverRaw extends TableCommonRaw {
       );
     }
     return Val.assert(tableColIndexes[colIndex], "Table column index");
+  }
+  // Fetched cells only: the placement strip carries just the first column's.
+  holdsOnlyColumnIdsOf(idPrefix: string): boolean {
+    const columnIds = this.fullTableColIndexes
+      .map((colIndex) => this.table.headRow("columnId").cell(colIndex))
+      .filter((cell) => cell.inWorking)
+      .map((cell) => cell.valueOrEmpty())
+      .filter((value) => value !== "");
+    return (
+      columnIds.length > 0 &&
+      columnIds.every(
+        (columnId) =>
+          typeof columnId === "string" &&
+          dimensionIds.colIdPrefixOrUndefined(columnId) === idPrefix,
+      )
+    );
   }
   gatherFetchColumnIds(): this {
     const colIdRowIndex = this.schema.colIdRowIndex;

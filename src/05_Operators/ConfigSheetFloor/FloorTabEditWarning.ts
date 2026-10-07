@@ -161,9 +161,9 @@ export class FloorTabEditWarning<
   }
   private _liveColIndexes(): Map<ColumnName<TN>, number> {
     const indexes = new Map<ColumnName<TN>, number>();
-    const meta = this.table.raw.meta;
+    const rawTable = this.table.raw;
     getSheetColumnNames(this.tableName).forEach((columnName) => {
-      const colIndex = liveColIndex(meta, {
+      const colIndex = liveColIndex(rawTable, {
         columnId: getColumnTraitByName(this.tableName, columnName, "columnId"),
         header: getColumnTraitByName(this.tableName, columnName, "header"),
       });

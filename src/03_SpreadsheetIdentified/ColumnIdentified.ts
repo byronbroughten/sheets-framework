@@ -31,7 +31,6 @@ import { ColumnRaw } from "../02_SpreadsheetRaw/ColumnRaw";
 import { CellIdentified } from "./CellIdentified";
 import { ColumnCommonIdentified } from "./ClassBases/ColumnCommonIdentified";
 import type { CellChange } from "./ClassTypes/StateIdentified";
-import { ColumnMetaIdentified } from "./ColumnMetaIdentified";
 import { TableIdentified } from "./TableIdentified";
 
 export class ColumnIdentified<
@@ -39,9 +38,6 @@ export class ColumnIdentified<
 > extends ColumnCommonIdentified<VN> {
   get table(): TableIdentified {
     return new TableIdentified(this.tableIdentifiedProps);
-  }
-  get meta(): ColumnMetaIdentified<VN> {
-    return new ColumnMetaIdentified(this.columnIdentifiedProps);
   }
   get raw(): ColumnRaw<VnToCvn<VN>> {
     return new ColumnRaw({

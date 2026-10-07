@@ -21,8 +21,8 @@ export class ValueConfigOperator extends GenericTableOperator<"valueConfig"> {
   get valueConfigSync(): ConfigSyncState["valueConfigSync"] {
     return this.configSyncState.valueConfigSync;
   }
-  get activeHeaders(): Set<string> {
-    return this.valueConfigSync.activeHeaders;
+  get profileValueTitles(): Set<string> {
+    return this.valueConfigSync.profileValueTitles;
   }
   static init(): ValueConfigOperator {
     return new ValueConfigOperator(SpreadsheetBaseOperator.initOperatorProps());
@@ -32,18 +32,18 @@ export class ValueConfigOperator extends GenericTableOperator<"valueConfig"> {
   }
   fetchAfterColumnConfigSynced(): void {
     this.columnConfigOperator.assertSyncedToSpreadsheet();
-    this.valueConfigSync.activeHeaders = new Set(
+    this.valueConfigSync.profileValueTitles = new Set(
       this.columnConfigOperator
-        .activeValueTitles()
+        .profileValueTitles()
         .filter((valueName) => !isFrameworkValueName(valueName)),
     );
-    this.activeHeaders.forEach((header) => {
+    this.profileValueTitles.forEach((header) => {
       this.table.raw.columnByHeader(header).gatherFetchFull();
     });
     this.ss.fetchAllPrepped({ skipFetchingProperties: true });
   }
   newValueConfigs(): ValueConfigsBase {
-    return [...this.activeHeaders].reduce(
+    return [...this.profileValueTitles].reduce(
       (acc, header) => {
         const valueNameDataCol =
           this.table.raw.columnByHeader<"string">(header);

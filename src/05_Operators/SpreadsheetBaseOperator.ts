@@ -17,7 +17,7 @@ export interface ConfigSyncState {
     untypedHeadersByTableName: UntypedHeadersByTableName;
     declaredCellReportLines: string[];
   };
-  valueConfigSync: { activeHeaders: Set<string> };
+  valueConfigSync: { profileValueTitles: Set<string> };
 }
 
 export interface OperatorProps extends SpreadsheetNamedProps {
@@ -48,7 +48,7 @@ export class SpreadsheetBaseOperator extends SpreadsheetBaseNamed {
         untypedHeadersByTableName: new Map(),
         declaredCellReportLines: [],
       },
-      valueConfigSync: { activeHeaders: new Set() },
+      valueConfigSync: { profileValueTitles: new Set() },
     };
   }
   static initOperatorProps(): OperatorProps {

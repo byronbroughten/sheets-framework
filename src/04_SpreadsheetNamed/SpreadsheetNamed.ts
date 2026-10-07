@@ -10,7 +10,6 @@ import { SerialDate } from "../utils/SerialDate";
 import { SerialDateTime } from "../utils/SerialDateTime";
 import { Val } from "../utils/Val";
 import { SpreadsheetBaseNamed } from "./ClassBases/SpreadsheetBaseNamed.js";
-import { SheetMetaNamed } from "./SheetMetaNamed.js";
 import { TableNamed } from "./TableNamed.js";
 import type { SheetNameByGroup } from "./TableNameGroups.js";
 import {
@@ -44,12 +43,6 @@ export class SpreadsheetNamed extends SpreadsheetBaseNamed {
   }
   get serialDate(): typeof SerialDate & { today(): SerialDate } {
     return { ...SerialDate, today: () => this.today() };
-  }
-  sheetMeta<TN extends TableName>(tableName: TN): SheetMetaNamed<TN> {
-    return new SheetMetaNamed({
-      tableName,
-      ...this.spreadsheetNamedProps,
-    });
   }
   table<TN extends TableName>(tableName: TN): TableNamed<TN> {
     return new TableNamed({

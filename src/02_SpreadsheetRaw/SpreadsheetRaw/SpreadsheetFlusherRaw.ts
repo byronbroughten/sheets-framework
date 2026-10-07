@@ -49,7 +49,7 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
     // Row indexes only actually shift once the deletes have been sent, and a Table below the deleted rows shifts with them.
     sheetGidsWithRowDeletes.forEach((sheetGid) =>
       this.ss
-        .sheetMeta(sheetGid)
+        .tableOnSheet(sheetGid)
         .tableIds()
         .forEach((tableId) => this.ss.table(tableId).markRowIndexesStale()),
     );
@@ -57,10 +57,10 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
       this.ss.table(tableId).markRowIndexesStale(),
     );
     sheetGidsWithConditionalFormatMutations.forEach((sheetGid) =>
-      this.ss.sheetMeta(sheetGid).primary.markConditionalFormatIndexesStale(),
+      this.ss.tableOnSheet(sheetGid).markConditionalFormatIndexesStale(),
     );
     sheetGidsWithEditProtectionMutations.forEach((sheetGid) =>
-      this.ss.sheetMeta(sheetGid).primary.markEditProtectionsStale(),
+      this.ss.tableOnSheet(sheetGid).markEditProtectionsStale(),
     );
     if (hasFindReplace) this._invalidateFetchedCellState();
   }
@@ -122,8 +122,8 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
     );
     const tablesBeforeProperties = Array.from(
       this.sheetsStateRaw.keys(),
-      (sheetGid) => this.ss.sheetMeta(sheetGid).primary,
-    ).filter((sheet) => !sheet.hasFetchedProperties);
+      (sheetGid) => this.ss.tableOnSheet(sheetGid),
+    ).filter((table) => !table.hasFetchedProperties);
     return [...knownTables, ...tablesBeforeProperties];
   }
   private _gatherRowWrites(

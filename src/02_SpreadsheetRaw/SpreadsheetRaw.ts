@@ -12,7 +12,6 @@ import type {
   AddTableProps,
   FindReplaceProps,
 } from "./ClassTypes/StateRaw";
-import { SheetMetaRaw } from "./SheetMetaRaw";
 import { SpreadsheetFetcherRaw } from "./SpreadsheetRaw/SpreadsheetFetcherRaw";
 import { SpreadsheetFlusherRaw } from "./SpreadsheetRaw/SpreadsheetFlusherRaw";
 import { TableRaw } from "./TableRaw";
@@ -65,10 +64,11 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
       tableId,
     });
   }
-  sheetMeta(sheetGid: number): SheetMetaRaw {
-    return new SheetMetaRaw({
+  // The sheet's one Table, reachable by GID before its tableId is fetched.
+  tableOnSheet(sheetGid: number): TableRaw {
+    return new TableRaw({
       spreadsheetStateRaw: this.spreadsheetStateRaw,
-      sheetGid: sheetGid,
+      sheetGid,
     });
   }
   ensureAllSheetPropertiesAreFetched(): void {

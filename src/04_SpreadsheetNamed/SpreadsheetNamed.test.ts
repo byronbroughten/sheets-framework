@@ -34,10 +34,8 @@ import {
 } from "../testSupport/typeAssertions";
 import { SerialDate } from "../utils/SerialDate";
 import type { SpreadsheetNamedProps } from "./ClassBases/SpreadsheetBaseNamed";
-import { ColumnMetaNamed } from "./ColumnMetaNamed";
 import { ColumnNamed } from "./ColumnNamed";
 import { RowNamed } from "./RowNamed";
-import { SheetMetaNamed } from "./SheetMetaNamed";
 import { SpreadsheetNamed } from "./SpreadsheetNamed";
 import { TableNamed } from "./TableNamed";
 
@@ -93,30 +91,13 @@ describe("SpreadsheetNamed navigation", () => {
     stubSheetsService();
     const ss = SpreadsheetNamed.init();
     const table = ss.table("item");
-    const sheetMeta = ss.sheetMeta("item");
     const column = table.column("id");
-    const columnMeta = sheetMeta.column("id");
     const headRow = table.headRow("action");
     const headCell = column.headCell("groupHeading2");
 
     assertType<IsExactly<typeof table, TableNamed<"item">>>(true);
-    assertType<IsExactly<typeof sheetMeta, SheetMetaNamed<"item">>>(true);
-    assertType<IsExactly<typeof table.meta, SheetMetaNamed<"item">>>(true);
-    assertType<IsExactly<typeof sheetMeta.primary, TableNamed<"item">>>(true);
     assertType<IsExactly<typeof column, ColumnNamed<"item", "id">>>(true);
-    assertType<IsExactly<typeof columnMeta, ColumnMetaNamed<"item", "id">>>(
-      true,
-    );
     assertType<IsExactly<typeof column.table, TableNamed<"item">>>(true);
-    assertType<IsExactly<typeof columnMeta.table, SheetMetaNamed<"item">>>(
-      true,
-    );
-    assertType<IsExactly<typeof column.meta, ColumnMetaNamed<"item", "id">>>(
-      true,
-    );
-    assertType<IsExactly<typeof columnMeta.primary, ColumnNamed<"item", "id">>>(
-      true,
-    );
     assertType<IsExactly<ReturnType<typeof table.row>, RowNamed<"item">>>(true);
     assertType<IsExactly<typeof headRow, HeadRowIdentified<"action">>>(true);
     assertType<
@@ -124,14 +105,8 @@ describe("SpreadsheetNamed navigation", () => {
     >(true);
 
     expect(table).toBeInstanceOf(TableNamed);
-    expect(table.meta).toBeInstanceOf(SheetMetaNamed);
-    expect(sheetMeta.primary).toBeInstanceOf(TableNamed);
     expect(column).toBeInstanceOf(ColumnNamed);
-    expect(columnMeta).toBeInstanceOf(ColumnMetaNamed);
     expect(column.table).toBeInstanceOf(TableNamed);
-    expect(columnMeta.table).toBeInstanceOf(SheetMetaNamed);
-    expect(column.meta).toBeInstanceOf(ColumnMetaNamed);
-    expect(columnMeta.primary).toBeInstanceOf(ColumnNamed);
     expect(table.row(0)).toBeInstanceOf(RowNamed);
     expect(headRow).toBeInstanceOf(HeadRowIdentified);
     expect(headCell).toBeInstanceOf(CellIdentified);
@@ -143,6 +118,20 @@ describe("SpreadsheetNamed navigation", () => {
         Extract<
           "profile",
           keyof TableNamed<"item"> | keyof ColumnNamed<"item", "id">
+        >,
+        never
+      >
+    >(true);
+  });
+
+  it("offers no Meta view", () => {
+    assertType<
+      IsExactly<
+        Extract<
+          "meta" | "sheetMeta",
+          | keyof SpreadsheetNamed
+          | keyof TableNamed<"item">
+          | keyof ColumnNamed<"item", "id">
         >,
         never
       >

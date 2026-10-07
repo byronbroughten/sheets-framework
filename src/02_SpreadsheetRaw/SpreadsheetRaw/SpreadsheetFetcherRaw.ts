@@ -128,9 +128,7 @@ export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
       .fetchConditionalFormatRules()
       .filter(({ sheetGid }) => gatheringGids.includes(sheetGid))
       .forEach(({ sheetGid, rules }) =>
-        this.ss
-          .sheetMeta(sheetGid)
-          .primary.integrateConditionalFormatRules(rules),
+        this.ss.tableOnSheet(sheetGid).integrateConditionalFormatRules(rules),
       );
   }
   private _fetchGatheredEditProtections(): void {
@@ -140,9 +138,7 @@ export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
       .fetchEditProtections()
       .filter(({ sheetGid }) => gatheringGids.includes(sheetGid))
       .forEach(({ sheetGid, protections }) =>
-        this.ss
-          .sheetMeta(sheetGid)
-          .primary.integrateEditProtections(protections),
+        this.ss.tableOnSheet(sheetGid).integrateEditProtections(protections),
       );
   }
   private _gatheringGids(
@@ -157,8 +153,8 @@ export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
       this.spreadsheetStateRaw.timeZone = snapshot.timeZone;
     }
     snapshot.sheets.forEach((sheetSnapshot) => {
-      const sheet = this.ss.sheetMeta(sheetSnapshot.sheetGid).primary;
-      sheet.integrateSheetState(sheetSnapshot);
+      const table = this.ss.tableOnSheet(sheetSnapshot.sheetGid);
+      table.integrateSheetState(sheetSnapshot);
     });
   }
 }

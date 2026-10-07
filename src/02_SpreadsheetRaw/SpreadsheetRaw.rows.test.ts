@@ -366,9 +366,7 @@ describe("RowRaw.delete", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw
-      .sheetMeta(111)
-      .primary.appendColumn({ columnId: "c:x:new", header: "New" });
+    raw.tableOnSheet(111).appendColumn({ columnId: "c:x:new", header: "New" });
     raw.table(tableId111).row(0).delete();
     raw.batchUpdateGSheets();
 
@@ -581,7 +579,7 @@ describe("TableRaw.removeRowsExcept", () => {
   function fetchedPrunableSheet() {
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheetMeta(111).primary.headRow("columnId").gatherFetchFull();
+    raw.tableOnSheet(111).headRow("columnId").gatherFetchFull();
     raw.table(tableId111).column(1).gatherFetchFull();
     raw.fetchAllGathered();
     return raw;

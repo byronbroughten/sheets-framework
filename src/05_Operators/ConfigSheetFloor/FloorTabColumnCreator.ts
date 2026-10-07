@@ -43,13 +43,13 @@ export class FloorTabColumnCreator<
   // Putting it back first would need a mid-Table insert, and column inserts land only at the Table end.
   private _assertTableMenuSpaceIsFirst(): void {
     if (this.tableName !== "spreadsheetConfig") return;
-    const meta = this.table.raw.meta;
+    const rawTable = this.table.raw;
     const header = getColumnTraitByName(
       "spreadsheetConfig",
       "tableMenuSpace",
       "header",
     );
-    const colIndex = liveColIndex(meta, {
+    const colIndex = liveColIndex(rawTable, {
       header,
       columnId: getColumnTraitByName(
         "spreadsheetConfig",
@@ -57,7 +57,7 @@ export class FloorTabColumnCreator<
         "columnId",
       ),
     });
-    if (colIndex === undefined || colIndex === meta.fullTableColIndexes[0]) {
+    if (colIndex === undefined || colIndex === rawTable.fullTableColIndexes[0]) {
       return;
     }
     throw new Error(
@@ -75,9 +75,9 @@ export class FloorTabColumnCreator<
     });
   }
   private _missingColumns(): FloorColumnRestore[] {
-    const meta = this.table.raw.meta;
+    const rawTable = this.table.raw;
     return floorColumnsToRestore(this.tableName).filter(
-      (floorColumn) => liveColIndex(meta, floorColumn) === undefined,
+      (floorColumn) => liveColIndex(rawTable, floorColumn) === undefined,
     );
   }
 }

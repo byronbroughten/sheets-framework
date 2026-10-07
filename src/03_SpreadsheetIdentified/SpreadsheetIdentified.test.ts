@@ -24,10 +24,8 @@ import { CellIdentified } from "./CellIdentified";
 import { SpreadsheetBaseIdentified } from "./ClassBases/SpreadsheetBaseIdentified";
 import type { FetchTargetIdentified } from "./ClassTypes/StateIdentified";
 import { ColumnIdentified } from "./ColumnIdentified";
-import { ColumnMetaIdentified } from "./ColumnMetaIdentified";
 import { HeadRowIdentified } from "./HeadRowIdentified";
 import { RowIdentified } from "./RowIdentified";
-import { SheetMetaIdentified } from "./SheetMetaIdentified";
 import { SpreadsheetIdentified } from "./SpreadsheetIdentified";
 import { TableIdentified } from "./TableIdentified";
 
@@ -49,22 +47,15 @@ describe("SpreadsheetIdentified navigation", () => {
     );
     ssi.raw.fetchAllSheetProperties();
     const table = ssi.table(itemTableId);
-    const sheetMeta = ssi.sheetMeta(itemGid);
+    const tableOnSheet = ssi.tableOnSheet(itemGid);
     const column = table.column(itemIdColumnId);
-    const columnMeta = column.meta;
     const headRow = table.headRow("action");
     const headCell = column.headCell("action");
 
     assertType<IsExactly<typeof table, TableIdentified>>(true);
-    assertType<IsExactly<typeof sheetMeta, SheetMetaIdentified>>(true);
-    assertType<IsExactly<typeof table.meta, SheetMetaIdentified>>(true);
-    assertType<IsExactly<typeof sheetMeta.primary, TableIdentified>>(true);
+    assertType<IsExactly<typeof tableOnSheet, TableIdentified>>(true);
     assertType<IsExactly<typeof column, ColumnIdentified>>(true);
-    assertType<IsExactly<typeof columnMeta, ColumnMetaIdentified>>(true);
     assertType<IsExactly<typeof column.table, TableIdentified>>(true);
-    assertType<IsExactly<typeof columnMeta.table, SheetMetaIdentified>>(true);
-    assertType<IsExactly<typeof column.meta, ColumnMetaIdentified>>(true);
-    assertType<IsExactly<typeof columnMeta.primary, ColumnIdentified>>(true);
     assertType<IsExactly<ReturnType<typeof table.row>, RowIdentified>>(true);
     assertType<IsExactly<typeof headRow, HeadRowIdentified<"action">>>(true);
     assertType<
@@ -78,14 +69,9 @@ describe("SpreadsheetIdentified navigation", () => {
     >(true);
 
     expect(table).toBeInstanceOf(TableIdentified);
-    expect(table.meta).toBeInstanceOf(SheetMetaIdentified);
-    expect(sheetMeta.primary).toBeInstanceOf(TableIdentified);
+    expect(tableOnSheet).toBeInstanceOf(TableIdentified);
     expect(column).toBeInstanceOf(ColumnIdentified);
-    expect(columnMeta).toBeInstanceOf(ColumnMetaIdentified);
     expect(column.table).toBeInstanceOf(TableIdentified);
-    expect(columnMeta.table).toBeInstanceOf(SheetMetaIdentified);
-    expect(column.meta).toBeInstanceOf(ColumnMetaIdentified);
-    expect(columnMeta.primary).toBeInstanceOf(ColumnIdentified);
     expect(table.row(0)).toBeInstanceOf(RowIdentified);
     expect(headRow).toBeInstanceOf(HeadRowIdentified);
     expect(table.headRowByIndex(-2)).toBeInstanceOf(HeadRowIdentified);
@@ -96,6 +82,20 @@ describe("SpreadsheetIdentified navigation", () => {
     assertType<
       IsExactly<
         Extract<"profile", keyof TableIdentified | keyof ColumnIdentified>,
+        never
+      >
+    >(true);
+  });
+
+  it("offers no Meta view", () => {
+    assertType<
+      IsExactly<
+        Extract<
+          "meta" | "sheetMeta",
+          | keyof SpreadsheetIdentified
+          | keyof TableIdentified
+          | keyof ColumnIdentified
+        >,
         never
       >
     >(true);
@@ -162,7 +162,7 @@ function fetchedValueTypesSheet(): TableIdentified {
   const ssi = new SpreadsheetIdentified(
     SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
   );
-  const sheet = ssi.sheetMeta(valueTypesGid).primary;
+  const sheet = ssi.tableOnSheet(valueTypesGid);
   sheet.column(valueTypesIdColumnId).prepFetchFull();
   sheet.column(checkboxColumnId).prepFetchFull();
   ssi.fetchAllPrepped();
@@ -212,7 +212,7 @@ describe("Identified value accessors", () => {
     const ssi = new SpreadsheetIdentified(
       SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
     );
-    const sheet = ssi.sheetMeta(valueTypesGid).primary;
+    const sheet = ssi.tableOnSheet(valueTypesGid);
     sheet.column(valueTypesIdColumnId).prepFetchSpecific([blankRowIndex]);
     ssi.fetchAllPrepped();
 
@@ -296,7 +296,7 @@ function fetchedTableConfig(): TableIdentified {
   const ssi = new SpreadsheetIdentified(
     SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
   );
-  const sheet = ssi.sheetMeta(tableConfigGid).primary;
+  const sheet = ssi.tableOnSheet(tableConfigGid);
   sheet.topRow.prepFetchFull();
   ssi.fetchAllPrepped();
   return sheet;
@@ -306,8 +306,8 @@ function unfetchedTableConfig(): TableIdentified {
   const ssi = new SpreadsheetIdentified(
     SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
   );
-  ssi.sheetMeta(tableConfigGid).primary.ensureColumnIdsAreFetched();
-  return ssi.sheetMeta(tableConfigGid).primary;
+  ssi.tableOnSheet(tableConfigGid).ensureColumnIdsAreFetched();
+  return ssi.tableOnSheet(tableConfigGid);
 }
 
 describe("Identified head rows", () => {
@@ -332,7 +332,7 @@ describe("Identified head rows", () => {
     const ssi = new SpreadsheetIdentified(
       SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
     );
-    const table = ssi.sheetMeta(valueTypesGid).primary;
+    const table = ssi.tableOnSheet(valueTypesGid);
     table.headRow("action").prepFetchFull();
     table.headRow("header").prepFetchFull();
     table.headRow("groupHeading1").prepFetchFull();
@@ -400,7 +400,7 @@ describe("TableIdentified.addMissingColumnIds", () => {
     const ssi = new SpreadsheetIdentified(
       SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
     );
-    const table = ssi.sheetMeta(valueTypesGid).primary;
+    const table = ssi.tableOnSheet(valueTypesGid);
 
     const addedCount = table.ensureColumnIdsAreFetched().addMissingColumnIds();
     ssi.raw.batchUpdateGSheets();
@@ -483,7 +483,7 @@ function runItemWithOneRow(topRow: (string | null)[]): TableIdentified {
       new Map([["runItem", new Set([runStatusColumnId])]]),
     ),
   );
-  const sheet = ssi.sheetMeta(runItemGid).primary;
+  const sheet = ssi.tableOnSheet(runItemGid);
   sheet.topRow.prepFetchFull();
   ssi.fetchAllPrepped();
   return sheet;
@@ -545,7 +545,7 @@ describe("RowIdentified.clearValues", () => {
     const ssi = new SpreadsheetIdentified(
       SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
     );
-    const sheet = ssi.sheetMeta(computedGid).primary;
+    const sheet = ssi.tableOnSheet(computedGid);
     sheet.topRow.prepFetchFull();
     ssi.fetchAllPrepped();
     sheet.topRow.clearValues();
@@ -607,7 +607,7 @@ describe("RowIdentified.clearValues", () => {
     const ssi = new SpreadsheetIdentified(
       SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
     );
-    const cell = ssi.sheetMeta(valueTypesGid).primary.topRow.cell(dateColumnId);
+    const cell = ssi.tableOnSheet(valueTypesGid).topRow.cell(dateColumnId);
     cell.prepFetch();
     ssi.fetchAllPrepped();
 
@@ -656,7 +656,7 @@ describe("TableIdentified.appendRowDefault", () => {
     const ssi = new SpreadsheetIdentified(
       SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
     );
-    const sheet = ssi.sheetMeta(tableConfigGid).primary;
+    const sheet = ssi.tableOnSheet(tableConfigGid);
     sheet.topRow.prepFetchFull();
     ssi.fetchAllPrepped();
     sheet.appendRowDefault();
@@ -690,8 +690,8 @@ describe("Identified formula writes", () => {
 
     expect(() =>
       ssi
-        .sheetMeta(computedGid)
-        .primary.column(amountColumnId)
+        .tableOnSheet(computedGid)
+        .column(amountColumnId)
         .updateAllFormulas("=1"),
     ).toThrowError(/not a formula column/);
   });
@@ -704,8 +704,8 @@ describe("Identified formula writes", () => {
 
     expect(() =>
       ssi
-        .sheetMeta(computedGid)
-        .primary.column(rowNumberColumnId)
+        .tableOnSheet(computedGid)
+        .column(rowNumberColumnId)
         .updateAllFormulas("=ROW()"),
     ).not.toThrow();
   });
@@ -717,8 +717,8 @@ describe("Identified formula writes", () => {
 
     expect(() =>
       ssi
-        .sheetMeta(computedGid)
-        .primary.column(rowNumberColumnId)
+        .tableOnSheet(computedGid)
+        .column(rowNumberColumnId)
         .headCell("header")
         .updateValue("Row number"),
     ).not.toThrow();
@@ -779,7 +779,7 @@ describe("SpreadsheetIdentified.fetchAllPrepped / FetchTargetIdentified", () => 
     const ssi = new SpreadsheetIdentified(
       SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
     );
-    ssi.sheetMeta(valueTypesGid).primary.topRow.prepFetchFull();
+    ssi.tableOnSheet(valueTypesGid).topRow.prepFetchFull();
     ssi.fetchAllPrepped();
 
     expect(lastFetchedRanges(getByDataFilterCalls)).toEqual(
@@ -801,8 +801,8 @@ describe("SpreadsheetIdentified.fetchAllPrepped / FetchTargetIdentified", () => 
       SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
     );
     ssi
-      .sheetMeta(valueTypesGid)
-      .primary.column(valueTypesIdColumnId)
+      .tableOnSheet(valueTypesGid)
+      .column(valueTypesIdColumnId)
       .prepFetchFull();
     ssi.fetchAllPrepped();
 
@@ -825,8 +825,8 @@ describe("SpreadsheetIdentified.fetchAllPrepped / FetchTargetIdentified", () => 
       SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
     );
     ssi
-      .sheetMeta(valueTypesGid)
-      .primary.column(valueTypesIdColumnId)
+      .tableOnSheet(valueTypesGid)
+      .column(valueTypesIdColumnId)
       .cell(filledRowIndex)
       .prepFetch();
     ssi.fetchAllPrepped();
@@ -877,9 +877,7 @@ describe("SpreadsheetIdentified Tables", () => {
       ["Checkbox", "ID"],
     );
     const ssi = initIdentified();
-    const column = ssi
-      .sheetMeta(valueTypesGid)
-      .primary.column(valueTypesIdColumnId);
+    const column = ssi.tableOnSheet(valueTypesGid).column(valueTypesIdColumnId);
     column.prepFetchFull();
     ssi.fetchAllPrepped();
 
@@ -893,7 +891,7 @@ describe("SpreadsheetIdentified Tables", () => {
       ["ID", "Checkbox"],
     );
     const ssi = initIdentified();
-    ssi.sheetMeta(valueTypesGid).primary.ensureColumnIdsAreFetched();
+    ssi.tableOnSheet(valueTypesGid).ensureColumnIdsAreFetched();
     const column = ssi.table(valueTypesTableId).column(valueTypesIdColumnId);
     column.prepFetchFull();
     ssi.fetchAllPrepped();
@@ -907,10 +905,10 @@ describe("SpreadsheetIdentified Tables", () => {
       ["ID", "Checkbox"],
     );
     const ssi = initIdentified();
-    ssi.sheetMeta(valueTypesGid).primary.ensureColumnIdsAreFetched();
+    ssi.tableOnSheet(valueTypesGid).ensureColumnIdsAreFetched();
     ssi
-      .sheetMeta(valueTypesGid)
-      .primary.column(valueTypesIdColumnId)
+      .tableOnSheet(valueTypesGid)
+      .column(valueTypesIdColumnId)
       .prepFetchFull();
     ssi.table(valueTypesTableId).column(checkboxColumnId).prepFetchFull();
 
@@ -930,11 +928,8 @@ describe("SpreadsheetIdentified Tables", () => {
       ["ID", "Checkbox"],
     );
     const ssi = initIdentified();
-    ssi
-      .sheetMeta(valueTypesGid)
-      .primary.column(checkboxColumnId)
-      .prepFetchFull();
-    ssi.sheetMeta(valueTypesGid).primary.ensureColumnIdsAreFetched();
+    ssi.tableOnSheet(valueTypesGid).column(checkboxColumnId).prepFetchFull();
+    ssi.tableOnSheet(valueTypesGid).ensureColumnIdsAreFetched();
     ssi.table(valueTypesTableId).column(valueTypesIdColumnId).prepFetchFull();
     ssi.fetchAllPrepped();
 
@@ -964,7 +959,7 @@ describe("SpreadsheetIdentified Tables", () => {
       ],
     });
     const ssi = initIdentified();
-    const sheet = ssi.sheetMeta(valueTypesGid).primary;
+    const sheet = ssi.tableOnSheet(valueTypesGid);
     sheet.prepFetchConditionalFormatRules().prepFetchEditProtections();
     ssi.fetchAllPrepped();
     const fetchCount = getByDataFilterCalls.length;

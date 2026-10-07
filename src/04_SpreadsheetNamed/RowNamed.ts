@@ -65,7 +65,7 @@ export class RowNamed<TN extends TableName> extends RowBaseNamed<TN> {
     );
   }
   get workingCellNames(): ColumnName<TN>[] {
-    return this.identified.activeColumnIds.map((columnId) =>
+    return this.identified.workingColumnIds.map((columnId) =>
       this.schema.colNameByColumnId(columnId),
     );
   }

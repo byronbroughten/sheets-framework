@@ -81,7 +81,7 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
       this.ss.raw.activeSheetGids.flatMap((sheetGid) =>
         floorTabSeedByGid(sheetGid) === undefined
           ? []
-          : [[sheetGid, this.ss.raw.sheetMeta(sheetGid).primary.title] as const],
+          : [[sheetGid, this.ss.raw.tableOnSheet(sheetGid).title] as const],
       ),
     );
     return floorChangeNotice(change, liveTitlesByGid);
@@ -95,7 +95,7 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
       if (!this.ss.raw.gidIsActive(sheetGid)) return [];
       return [
         {
-          sheet: this.ss.raw.sheetMeta(sheetGid).primary,
+          sheet: this.ss.raw.tableOnSheet(sheetGid),
           seed: configSheetFloorSeed[tableName],
           floorTableId: getTableTraitByName(tableName, "tableId"),
         },
@@ -125,7 +125,7 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
   // Restoring an unconverted Sheet Config tab as Table Config would drop its ticks.
   private _assertSheetConfigIsConverted(): void {
     const titles = this.ss.raw.activeSheetGids.map(
-      (sheetGid) => this.ss.raw.sheetMeta(sheetGid).primary.title,
+      (sheetGid) => this.ss.raw.tableOnSheet(sheetGid).title,
     );
     if (
       titles.includes(retiredSheetConfigTitle) &&
@@ -144,7 +144,7 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
       ]),
     );
     this.ss.raw.activeSheetGids.forEach((sheetGid) => {
-      const title = this.ss.raw.sheetMeta(sheetGid).primary.title;
+      const title = this.ss.raw.tableOnSheet(sheetGid).title;
       const ownedGid = ownedGidByTitle.get(title);
       if (ownedGid !== undefined && sheetGid !== ownedGid) {
         throw new Error(`A tab titled "${title}" is not the floor tab.`);
@@ -176,11 +176,11 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
       const sheetGid = getTableTraitByName(tableName, "sheetGid");
       if (!this.ss.raw.gidIsActive(sheetGid)) return;
       const sheet = this.ss.table(tableName);
-      const meta = sheet.raw.meta;
-      const headerRow = sheet.raw.headRow("header");
-      const colIdRow = sheet.raw.headRow("columnId");
+      const rawTable = sheet.raw;
+      const headerRow = rawTable.headRow("header");
+      const colIdRow = rawTable.headRow("columnId");
       floorColumnsToRestore(tableName).forEach((floorColumn) => {
-        const colIndex = liveColIndex(meta, floorColumn);
+        const colIndex = liveColIndex(rawTable, floorColumn);
         if (colIndex === undefined) return;
         const liveHeader = String(headerRow.valueOrEmpty(colIndex));
         if (liveHeader !== floorColumn.header) {
@@ -197,10 +197,10 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
           );
         }
         const liveHeading = String(
-          meta.primary.headRow("groupHeading1").valueOrEmpty(colIndex),
+          rawTable.headRow("groupHeading1").valueOrEmpty(colIndex),
         );
         if (liveHeading !== floorColumn.groupHeading) {
-          meta.primary
+          rawTable
             .headRow("groupHeading1")
             .updateValue(colIndex, floorColumn.groupHeading);
           const headingLabel =
@@ -234,7 +234,7 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
     const restoredLines: string[] = [];
     floorDataValueColumns(tableName).forEach((seedColumn) => {
       const colIndex = liveColIndex(
-        sheet.raw.meta,
+        sheet.raw,
         floorColumnRestore(tableName, {
           header: seedColumn.header,
           groupHeading: "",
@@ -266,7 +266,7 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
     const sheet = this.ss.table(tableName);
     return columns.flatMap((seedColumn) => {
       const colIndex = liveColIndex(
-        sheet.raw.meta,
+        sheet.raw,
         floorColumnRestore(tableName, {
           header: seedColumn.header,
           groupHeading: "",

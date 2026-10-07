@@ -41,7 +41,9 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
     if (sheetState === undefined) {
       return { kind: "none" };
     }
-    const [tableId, ...otherTableIds] = this.ss.sheetMeta(sheetGid).tableIds();
+    const [tableId, ...otherTableIds] = this.ss
+      .tableOnSheet(sheetGid)
+      .tableIds();
     if (otherTableIds.length > 0) {
       return { kind: "extra" };
     }
@@ -111,13 +113,15 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
   }
   private _holdsOwnColumnIds(sheetGid: number): boolean {
     const { idPrefix } = this.schema.sheetByGid(sheetGid);
-    return this.ss.sheetMeta(sheetGid).holdsOnlyColumnIdsOf(idPrefix);
+    return this.ss
+      .tableOnSheet(sheetGid)
+      .columnResolver.holdsOnlyColumnIdsOf(idPrefix);
   }
   private _sheetsWithExtraTables(): SheetIdentity[] {
     const extraTables: SheetIdentity[] = [];
     this.spreadsheetStateRaw.sheets.forEach((_, sheetGid) => {
       if (
-        this.ss.sheetMeta(sheetGid).tableIds().length <= 1 ||
+        this.ss.tableOnSheet(sheetGid).tableIds().length <= 1 ||
         !this.schema.isInSheetGids(sheetGid)
       ) {
         return;
@@ -146,7 +150,7 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
     } else if (misplacement.kind === "band-shifted") {
       const { idPrefix } = this.schema.sheetByGid(misplacement.sheetGid);
       const colIdRowLabel = this.ss
-        .sheetMeta(misplacement.sheetGid)
+        .tableOnSheet(misplacement.sheetGid)
         .rowLabel(this.schema.colIdRowIndex);
       return `needs its own "${idPrefix}" column IDs, and only those, in ${colIdRowLabel}`;
     } else {
@@ -163,6 +167,6 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
     return `${extraTables.length} sheet(s) have more than one Table — delete the extras so each sheet has exactly one: ${names}`;
   }
   private _sheetLabel({ sheetGid }: SheetIdentity): string {
-    return this.ss.sheetMeta(sheetGid).sheetLabel;
+    return this.ss.tableOnSheet(sheetGid).sheetLabel;
   }
 }

@@ -36,7 +36,7 @@ describe("ColumnRaw.updateAllCells", () => {
   }
   function fetchedColumn() {
     const raw = SpreadsheetRaw.init();
-    raw.sheetMeta(111).primary.column(1).gatherFetchFull();
+    raw.tableOnSheet(111).column(1).gatherFetchFull();
     raw.fetchAllGathered();
     return raw;
   }
@@ -142,7 +142,7 @@ describe("ColumnRaw.updateWorkingCells", () => {
   function fetchedSelectionSheet() {
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheetMeta(111).primary.headRow("columnId").gatherFetchFull();
+    raw.tableOnSheet(111).headRow("columnId").gatherFetchFull();
     raw.table(tableId111).column(1).gatherFetchFull();
     raw.fetchAllGathered();
     return raw;
@@ -260,7 +260,7 @@ describe("ColumnRaw.updateAllFormulas", () => {
 
   function fetchedColumn() {
     const raw = SpreadsheetRaw.init();
-    raw.sheetMeta(111).primary.column(1).gatherFetchFull();
+    raw.tableOnSheet(111).column(1).gatherFetchFull();
     raw.fetchAllGathered();
     return raw;
   }
@@ -402,7 +402,7 @@ describe("SpreadsheetRaw.findReplace", () => {
   }
   function fetchedColumn() {
     const raw = SpreadsheetRaw.init();
-    raw.sheetMeta(111).primary.column(1).gatherFetchFull();
+    raw.tableOnSheet(111).column(1).gatherFetchFull();
     raw.fetchAllGathered();
     return raw;
   }
