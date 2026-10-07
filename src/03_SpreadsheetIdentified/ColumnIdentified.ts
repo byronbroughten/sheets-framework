@@ -46,8 +46,8 @@ export class ColumnIdentified<
       colIndex: this.colIndex,
     });
   }
-  get cellIndexesActive(): number[] {
-    return this.raw.cellIndexesActive;
+  get workingCellIndexes(): number[] {
+    return this.raw.workingCellIndexes;
   }
   get cellIndexesFull(): number[] {
     return this.raw.cellIndexesFull;
@@ -70,8 +70,8 @@ export class ColumnIdentified<
     });
     return this;
   }
-  prepFetchActive(): this {
-    return this.prepFetchSpecific(this.cellIndexesActive);
+  prepFetchWorking(): this {
+    return this.prepFetchSpecific(this.workingCellIndexes);
   }
   prepFetchFull(): this {
     this.fetchTargets.push({
@@ -82,7 +82,7 @@ export class ColumnIdentified<
   }
   // Through the cells, not straight to Raw, so the value name's blank is read here too.
   get valueArrOrEmpty(): Value<VN>[] {
-    return this.table.rowIndexesActive.map((rowIndex) =>
+    return this.table.workingRowIndexes.map((rowIndex) =>
       this.valueOrEmpty(rowIndex),
     );
   }
@@ -92,7 +92,7 @@ export class ColumnIdentified<
     );
   }
   get valueArrNotEmpty(): NotEmpty<Value<VN>>[] {
-    return this.table.rowIndexesActive.map((rowIndex) =>
+    return this.table.workingRowIndexes.map((rowIndex) =>
       this.cell(rowIndex).valueNotEmpty(),
     );
   }
@@ -111,11 +111,11 @@ export class ColumnIdentified<
       rowIndex,
     });
   }
-  get cellsActive(): CellIdentified<VN>[] {
-    return this.cellIndexesActive.map((rowIndex) => this.cell(rowIndex));
+  get workingCells(): CellIdentified<VN>[] {
+    return this.workingCellIndexes.map((rowIndex) => this.cell(rowIndex));
   }
-  activeCellsToDefault(): void {
-    this.cellsActive.forEach((cell) => {
+  workingCellsToDefault(): void {
+    this.workingCells.forEach((cell) => {
       cell.updateToDefault();
     });
   }
@@ -128,8 +128,8 @@ export class ColumnIdentified<
     this.raw.updateAllCells(this._rawChange(change));
     return this;
   }
-  updateActiveCells(change: CellChange<VN>): this {
-    this.raw.updateActiveCells(this._rawChange(change));
+  updateWorkingCells(change: CellChange<VN>): this {
+    this.raw.updateWorkingCells(this._rawChange(change));
     return this;
   }
   updateAllFormulas(formula: string): this {
@@ -137,9 +137,9 @@ export class ColumnIdentified<
     this.raw.updateAllFormulas(formula);
     return this;
   }
-  updateActiveFormulas(formula: string): this {
+  updateWorkingFormulas(formula: string): this {
     this.schema.validateIsFormula();
-    this.raw.updateActiveFormulas(formula);
+    this.raw.updateWorkingFormulas(formula);
     return this;
   }
   // Google matches the text, so neither string is checked against the value config.
@@ -209,8 +209,8 @@ export class ColumnIdentified<
     this.schema.validateDataNotFormula();
     return { ...rest, value: toWireValue(value) };
   }
-  emptyActiveCellsToDefualt(): this {
-    this.cellsActive.forEach((cell) => {
+  emptyWorkingCellsToDefault(): this {
+    this.workingCells.forEach((cell) => {
       if (cell.raw.isEmpty) {
         cell.updateToDefault();
       }

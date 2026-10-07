@@ -45,7 +45,7 @@ export class ColumnRaw<
     return new ColumnMetaRaw<VN>(this.columnRawProps);
   }
   get valueArrOrEmpty(): (CellValue<VN> | "")[] {
-    return this.table.rowIndexesActive.map((rowIndex) =>
+    return this.table.workingRowIndexes.map((rowIndex) =>
       this.valueOrEmpty(rowIndex),
     );
   }
@@ -72,8 +72,8 @@ export class ColumnRaw<
       this.tableOrigin().sheetRowIndex(startRowIndex),
     );
   }
-  get cellIndexesActive(): number[] {
-    return this.table.rowIndexesActive;
+  get workingCellIndexes(): number[] {
+    return this.table.workingRowIndexes;
   }
   get cellIndexesFull(): number[] {
     return this.table.rowIndexesFull;
@@ -106,7 +106,7 @@ export class ColumnRaw<
     this.table.rowIndexesFull.forEach((rowIndex) => {
       const row = this.table.row(rowIndex);
       row.validateIsWritable();
-      if (value !== undefined && row.rowIsActive()) {
+      if (value !== undefined && row.rowInWorking()) {
         this.cell(rowIndex).setValueState(value);
       }
     });
@@ -136,9 +136,9 @@ export class ColumnRaw<
     });
     return this;
   }
-  updateActiveCells(change: Omit<CellFill<VN>, "formula">): this {
+  updateWorkingCells(change: Omit<CellFill<VN>, "formula">): this {
     this.table.assertRowIndexesNotStale();
-    const rowIndexes = this.cellIndexesActive;
+    const rowIndexes = this.workingCellIndexes;
     const { value } = change;
     if (value !== undefined) {
       rowIndexes.forEach((rowIndex) => {
@@ -156,10 +156,10 @@ export class ColumnRaw<
     });
     return this;
   }
-  updateActiveFormulas(formula: string): this {
+  updateWorkingFormulas(formula: string): this {
     this.table.assertRowIndexesNotStale();
     validateFormulaString(formula);
-    Arr.contiguousRanges(this.cellIndexesActive).forEach(
+    Arr.contiguousRanges(this.workingCellIndexes).forEach(
       ({ startIndex, endIndex }) => {
         this.table.queueTableWrite({
           action: "fillColumn",
@@ -234,8 +234,8 @@ export class ColumnRaw<
     this.table.removeEditProtection(protection);
     return this;
   }
-  gatherFetchActive(): this {
-    this.cellIndexesActive.forEach((rowIndex) => {
+  gatherFetchWorking(): this {
+    this.workingCellIndexes.forEach((rowIndex) => {
       this.cell(rowIndex).gatherFetchRange();
     });
     return this;
@@ -247,11 +247,11 @@ export class ColumnRaw<
   }
   // A full-column fetch can hit rows that are entirely blank across every
   // column, which Sheets omits from the response — ensureStateExists
-  // backfills those before ensureActive tries to touch a cell in them.
-  ensureFullActiveDataCells(): void {
+  // backfills those before ensureInWorking tries to touch a cell in them.
+  ensureFullWorkingDataCells(): void {
     this.table.rowIndexesFull.forEach((rowIndex) => {
       this.table.row(rowIndex).ensureStateExists();
-      this.cell(rowIndex).ensureActive();
+      this.cell(rowIndex).ensureInWorking();
     });
   }
   private _wholeColumnGridRange(): GridRangeProps {

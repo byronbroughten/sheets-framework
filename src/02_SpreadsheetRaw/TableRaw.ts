@@ -133,18 +133,18 @@ export class TableRaw extends TableCommonRaw {
     this._updateWorkingTableName(tableId, name);
     return this;
   }
-  get activeRowIndexes(): number[] {
+  get workingRowIndexesWithHead(): number[] {
     const indexes = Array.from(this.rowStates.keys());
     return Arr.sortAscending(indexes);
   }
-  get activeRowCount(): number {
+  get workingRowCount(): number {
     return this.rowStates.size;
   }
-  get lastActiveRowIndex(): number {
+  get lastWorkingRowIndex(): number {
     return Math.max(...this.rowStates.keys());
   }
-  get rowIndexesActive(): number[] {
-    return this.activeRowIndexes.filter((rowIndex) => rowIndex >= 0);
+  get workingRowIndexes(): number[] {
+    return this.workingRowIndexesWithHead.filter((rowIndex) => rowIndex >= 0);
   }
   get rowIndexesFull(): number[] {
     return Arr.indexesFromUntil(0, this.dataRowCount);
@@ -153,13 +153,13 @@ export class TableRaw extends TableCommonRaw {
     return this.rowIndexesFull.map((rowIndex) => this.row(rowIndex));
   }
   get rows(): RowRaw[] {
-    return this.rowIndexesActive.map((index) => this.row(index));
+    return this.workingRowIndexes.map((index) => this.row(index));
   }
   get topRow(): RowRaw {
     return this.row(0);
   }
   get rowCount(): number {
-    return this.rowIndexesActive.length;
+    return this.workingRowIndexes.length;
   }
   // The one place the invariant's threshold is written, so no tier can drift from it.
   get isDownToLastDataRow(): boolean {
@@ -202,7 +202,7 @@ export class TableRaw extends TableCommonRaw {
   }
   // Every guess this sheet's columns made from a sample had none behind it.
   topDataRowIsBlank(): boolean {
-    if (this.topRow.rowIsActive()) {
+    if (this.topRow.rowInWorking()) {
       return this.fullTableColIndexes.every(
         (colIndex) => this.topRow.valueOrEmpty(colIndex) === "",
       );
@@ -277,10 +277,10 @@ export class TableRaw extends TableCommonRaw {
       this.tableState.working.hasFetchedColumnIds = true;
     }
     toFinalize.rows.forEach((rowIndex) => {
-      this.rowCommon(rowIndex).ensureFullActiveDataCells();
+      this.rowCommon(rowIndex).ensureFullWorkingDataCells();
     });
     toFinalize.columns.forEach((colIndex) => {
-      this.column(colIndex).ensureFullActiveDataCells();
+      this.column(colIndex).ensureFullWorkingDataCells();
     });
     this._ensureFetchedActiveFacts();
     toFinalize.rows.clear();
@@ -292,7 +292,7 @@ export class TableRaw extends TableCommonRaw {
         const row = this.rowCommon(rowIndex);
         row.ensureStateExists();
         colIndexes.forEach((colIndex) => {
-          row.cell(colIndex).ensureActive();
+          row.cell(colIndex).ensureInWorking();
         });
       },
     );
@@ -343,7 +343,7 @@ export class TableRaw extends TableCommonRaw {
           const colIndex = firstColIndex + colIdxOffset;
           if (colIndex < 0 || colIndex >= columnCount) continue;
           const cellData = rowSnapshot.cells[colIdxOffset];
-          if (row.rowIsActive()) {
+          if (row.rowInWorking()) {
             row.cell(colIndex).integrateSnapshot(cellData);
           }
           if (rowIndex === 0) {
@@ -471,7 +471,7 @@ export class TableRaw extends TableCommonRaw {
     });
     this.tableState.working.isPrunedToSelection = true;
   }
-  // A whole-column fill ignores active rows, so it would rewrite what a prune excluded.
+  // A whole-column fill ignores working rows, so it would rewrite what a prune excluded.
   validateNotPrunedToSelection(): void {
     if (this.tableState.working.isPrunedToSelection) {
       throw new Error(

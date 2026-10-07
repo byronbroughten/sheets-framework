@@ -34,13 +34,13 @@ export class CheckboxColumnOperator<
     });
   }
   get rowIndexesChecked(): number[] {
-    return this.column.rowIndexesActive.filter(
+    return this.column.workingRowIndexes.filter(
       (rowIndex) => this.column.value(rowIndex) === true,
     );
   }
-  // The active-cells fill, so an uncheck is safe on a sheet pruned to a selection.
-  uncheckActiveCells(): this {
-    this.identified.updateActiveCells({ value: false });
+  // The working-cells fill, so an uncheck is safe on a sheet pruned to a selection.
+  uncheckWorkingCells(): this {
+    this.identified.updateWorkingCells({ value: false });
     return this;
   }
 }

@@ -85,13 +85,13 @@ describe("CheckboxColumnOperator.rowIndexesChecked", () => {
   });
 });
 
-describe("CheckboxColumnOperator.uncheckActiveCells", () => {
+describe("CheckboxColumnOperator.uncheckWorkingCells", () => {
   it("unticks a pruned sheet's remaining rows and leaves the pruned rows ticked", () => {
     const { grid } = seedSelectedColumn([true, true, true]);
     const operator = initOperatorWithFetchedColumn();
 
     operator.table.raw.removeRowsExcept(0, 2);
-    operator.uncheckActiveCells();
+    operator.uncheckWorkingCells();
     operator.ss.batchUpdateGSheets();
 
     expect(grid.sheet(runItemGid).values(selectedColumnRange)).toEqual([
@@ -106,7 +106,7 @@ describe("CheckboxColumnOperator.uncheckActiveCells", () => {
     const operator = initOperatorWithFetchedColumn();
 
     operator.table.raw.removeRowsExcept(1, 2);
-    operator.uncheckActiveCells();
+    operator.uncheckWorkingCells();
     operator.ss.batchUpdateGSheets();
 
     expect(grid.sheet(runItemGid).values(selectedColumnRange)).toEqual([

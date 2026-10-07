@@ -119,7 +119,7 @@ describe("ColumnRaw.updateAllCells", () => {
   });
 });
 
-describe("ColumnRaw.updateActiveCells", () => {
+describe("ColumnRaw.updateWorkingCells", () => {
   function stubSelectionSheet() {
     return stubSheetsService({
       sheets: [
@@ -147,11 +147,11 @@ describe("ColumnRaw.updateActiveCells", () => {
     raw.fetchAllGathered();
     return raw;
   }
-  it("fills every active row of a column whose active rows are all contiguous", () => {
+  it("fills every working row of a column whose working rows are all contiguous", () => {
     const { grid } = stubSelectionSheet();
 
     const raw = fetchedSelectionSheet();
-    raw.table(tableId111).column(1).updateActiveCells({ value: "new" });
+    raw.table(tableId111).column(1).updateWorkingCells({ value: "new" });
     raw.batchUpdateGSheets();
 
     expect(grid.sheet(111).values(gridRanges.columnOneData)).toEqual([
@@ -163,12 +163,12 @@ describe("ColumnRaw.updateActiveCells", () => {
     ]);
   });
 
-  it("fills only the active rows when they fall in separate runs", () => {
+  it("fills only the working rows when they fall in separate runs", () => {
     const { grid } = stubSelectionSheet();
 
     const raw = fetchedSelectionSheet();
     raw.table(tableId111).removeRowsExcept(0, 1, 4);
-    raw.table(tableId111).column(1).updateActiveCells({ value: "new" });
+    raw.table(tableId111).column(1).updateWorkingCells({ value: "new" });
     raw.batchUpdateGSheets();
 
     expect(grid.sheet(111).values(gridRanges.columnOneData)).toEqual([
@@ -188,7 +188,7 @@ describe("ColumnRaw.updateActiveCells", () => {
     raw
       .table(tableId111)
       .column(1)
-      .updateActiveCells({ value: "new", backgroundColor: lightGreen });
+      .updateWorkingCells({ value: "new", backgroundColor: lightGreen });
     raw.batchUpdateGSheets();
 
     expect(
@@ -204,7 +204,7 @@ describe("ColumnRaw.updateActiveCells", () => {
     raw
       .table(tableId111)
       .column(1)
-      .updateActiveCells({ backgroundColor: lightGreen });
+      .updateWorkingCells({ backgroundColor: lightGreen });
     raw.batchUpdateGSheets();
 
     expect(grid.sheet(111).cell(4, 1)).toEqual({
@@ -214,12 +214,12 @@ describe("ColumnRaw.updateActiveCells", () => {
     expect(raw.table(tableId111).column(1).valueArrOrEmpty).toEqual(["old"]);
   });
 
-  it("sends no batch update when no row is active", () => {
+  it("sends no batch update when no row is in the working view", () => {
     const { batchUpdateCount } = stubSelectionSheet();
 
     const raw = fetchedSelectionSheet();
     raw.table(tableId111).removeRowsExcept();
-    raw.table(tableId111).column(1).updateActiveCells({ value: "new" });
+    raw.table(tableId111).column(1).updateWorkingCells({ value: "new" });
     raw.batchUpdateGSheets();
 
     expect(batchUpdateCount()).toBe(0);
@@ -230,7 +230,7 @@ describe("ColumnRaw.updateActiveCells", () => {
 
     const raw = fetchedSelectionSheet();
     raw.table(tableId111).removeRowsExcept(0, 4);
-    raw.table(tableId111).column(1).updateActiveCells({ value: "new" });
+    raw.table(tableId111).column(1).updateWorkingCells({ value: "new" });
 
     expect(raw.table(tableId111).column(1).valueArrOrEmpty).toEqual([
       "new",

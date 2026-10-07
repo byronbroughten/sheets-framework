@@ -49,11 +49,11 @@ export interface FetchPropsStandardNamed<TN extends TableName = TableName> {
 }
 
 type RowSpecifier = RowSpecifierName | RowSpecifierName[];
-export type RowSpecifierBySchemaName = Exclude<RowSpecifierName, "activeRows">;
+export type RowSpecifierBySchemaName = Exclude<RowSpecifierName, "workingRows">;
 
 export const rowSpecifierNames = [
   "all",
-  "activeRows",
+  "workingRows",
   "data",
   "topDatum",
   "actions",

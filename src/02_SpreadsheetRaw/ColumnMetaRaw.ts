@@ -100,7 +100,7 @@ export class ColumnMetaRaw<
   // Gap-filling only, so a fact the payload described always wins.
   ensureActiveFacts(): void {
     if (this.columnState?.activeFacts !== undefined) return;
-    if (!this.primary.topCell.isActive) return; // no top data row to sample
+    if (!this.primary.topCell.inWorking) return; // no top data row to sample
     this.integrateActiveFacts(undefined);
   }
   activeValueTitle(): string {

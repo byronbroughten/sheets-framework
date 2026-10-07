@@ -56,7 +56,7 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
     return new Set(this.tableConfigOperator.tableIdsApiAccesses());
   }
   activeValueTitles(): string[] {
-    return this.table.rowIndexesActiveWithData.map((rowIndex) =>
+    return this.table.workingRowIndexesWithData.map((rowIndex) =>
       this._describedColumn(this._columnIdentity(rowIndex)).activeValueTitle(),
     );
   }
@@ -154,7 +154,7 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
   private _pruneColumnRows(): this {
     const col = this.table.columns("tableId", "columnId");
     let staleCount = 0;
-    this.table.rowIndexesActive.forEach((rowIndex) => {
+    this.table.workingRowIndexes.forEach((rowIndex) => {
       const tableId = col.tableId.valueOrEmpty(rowIndex);
       const columnId = col.columnId.valueOrEmpty(rowIndex);
       if (
@@ -175,7 +175,7 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
   }
   private _appendColumnRows(): this {
     const existingIdentityKeys = new Set(
-      this.table.rowIndexesActiveWithData.map((rowIndex) =>
+      this.table.workingRowIndexesWithData.map((rowIndex) =>
         columnIdentityKey(this._columnIdentity(rowIndex)),
       ),
     );
@@ -211,7 +211,7 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
     reportLines.length = 0;
     let updatedValues = 0;
     this.untypedHeadersByTableName.clear();
-    this.table.rowIndexesActiveWithData.forEach((rowIndex) => {
+    this.table.workingRowIndexesWithData.forEach((rowIndex) => {
       const identity = this._columnIdentity(rowIndex);
 
       const actualTableName = this.ss.raw.table(identity.tableId).name;
@@ -294,7 +294,7 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
     const tableKeysByTableId = this.tableConfigOperator.tableKeysByTableId();
     const col = this.table.columns("header", "emptyValueAllowed");
     const columnConfigs: ColumnConfigsGeneric = {};
-    this.table.rowIndexesActiveWithData.forEach((rowIndex) => {
+    this.table.workingRowIndexesWithData.forEach((rowIndex) => {
       const identity = this._columnIdentity(rowIndex);
       const { tableId, columnId } = identity;
       const header = col.header.value(rowIndex);

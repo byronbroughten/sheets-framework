@@ -65,7 +65,7 @@ function fetchSheetConfig(raw: SpreadsheetRaw, table: TableRaw): void {
 function rowConversions(raw: SpreadsheetRaw, table: TableRaw): RowConversion[] {
   const tableIdsByGid = tableIdsBySheetGid(raw);
   const gidCol = table.columnByHeader(headers.sheetGid);
-  return gidCol.cellIndexesActive.map((rowIndex) => {
+  return gidCol.workingCellIndexes.map((rowIndex) => {
     const sheetGid = Number(gidCol.valueOrEmpty(rowIndex));
     const tableIds = tableIdsByGid.get(sheetGid) ?? [];
     return {

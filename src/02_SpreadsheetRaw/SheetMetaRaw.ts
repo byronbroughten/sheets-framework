@@ -34,7 +34,7 @@ export class SheetMetaRaw extends TableCommonRaw {
   holdsOnlyColumnIdsOf(idPrefix: string): boolean {
     const columnIds = this.fullTableColIndexes
       .map((colIndex) => this.colIdRow.cell(colIndex))
-      .filter((cell) => cell.isActive)
+      .filter((cell) => cell.inWorking)
       .map((cell) => cell.valueOrEmpty())
       .filter((value) => value !== "");
     return (

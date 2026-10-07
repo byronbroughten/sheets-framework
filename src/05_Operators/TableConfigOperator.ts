@@ -90,7 +90,7 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
     const reportLines = this.tableConfigSync.declaredCellReportLines;
     reportLines.length = 0;
     let updatedValues = 0;
-    this.table.rowIndexesActiveWithData.forEach((rowIndex) => {
+    this.table.workingRowIndexesWithData.forEach((rowIndex) => {
       const liveTable = this.ss.raw.table(col.tableId.value(rowIndex));
       if (col.tableName.valueOrEmpty(rowIndex) !== liveTable.name) {
         col.tableName.cell(rowIndex).updateValue(liveTable.name);
@@ -126,7 +126,7 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
   }
   tableIdsApiAccesses(): string[] {
     const col = this.table.columns("tableId", "letApiAccess");
-    return this.table.rowIndexesActiveWithData.flatMap((rowIndex) => {
+    return this.table.workingRowIndexesWithData.flatMap((rowIndex) => {
       if (!col.letApiAccess.valueOrEmpty(rowIndex)) return [];
       return [col.tableId.value(rowIndex)];
     });

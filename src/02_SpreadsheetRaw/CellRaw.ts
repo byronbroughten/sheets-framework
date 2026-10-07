@@ -68,19 +68,19 @@ export class CellRaw<
     });
   }
   setValueState(value: CellValue): void {
-    if (!this.row.rowIsActive()) {
+    if (!this.row.rowInWorking()) {
       throw new Error(
-        `Cannot set value for ${this.rowLabel(this.rowIndex)} because it is not active.`,
+        `Cannot set value for ${this.rowLabel(this.rowIndex)} because it is not in the working view.`,
       );
     }
     this.rowState.set(this.colIndex, { value });
   }
   get isEmpty(): boolean {
-    this.validateIsActive();
+    this.validateInWorking();
     return this.cellState.value === "";
   }
-  validateIsActive(): void {
-    if (this.isActive) return;
+  validateInWorking(): void {
+    if (this.inWorking) return;
     if (this.table.cellStateIsStale) {
       throw new Error(
         `Cell values went stale when a findReplace was sent; re-fetch before reading ${this.rowLabel(this.rowIndex)}, column index ${this.colIndex}.`,
@@ -90,25 +90,25 @@ export class CellRaw<
       `No value is set in ${this.rowLabel(this.rowIndex)} for column index ${this.colIndex}.`,
     );
   }
-  get isActive(): boolean {
-    return this.row.rowIsActive() && this.rowState.has(this.colIndex);
+  get inWorking(): boolean {
+    return this.row.rowInWorking() && this.rowState.has(this.colIndex);
   }
-  ensureActive(): void {
-    if (!this.row.rowIsActive()) return;
-    if (!this.isActive) {
+  ensureInWorking(): void {
+    if (!this.row.rowInWorking()) return;
+    if (!this.inWorking) {
       this.setValueState("");
     }
   }
   // An untouched cell holds nothing; Raw reports that rather than judging it.
   valueOrEmpty(): CellValue<VN> | "" {
-    this.validateIsActive();
+    this.validateInWorking();
     return this.cellState.value as CellValue<VN> | "";
   }
   updateValue(value: CellValue<VN>): this {
     this.table.assertRowIndexesNotStale();
     this.row.validateIsWritable();
     // A row that was never fetched has no state to mirror the write into.
-    if (this.row.rowIsActive()) {
+    if (this.row.rowInWorking()) {
       this.setValueState(value);
     }
     this.row.queueRowWrite({
@@ -174,7 +174,7 @@ export class CellRaw<
     return this;
   }
   integrateSnapshot(cell: GridCellSnapshot | undefined): void {
-    if (!this.row.rowIsActive()) return;
+    if (!this.row.rowInWorking()) return;
     this.setValueState(this._queuedValue() ?? cell?.value ?? "");
   }
   // A fill erases the cell writes queued before it, so a cell's own value is the latest.

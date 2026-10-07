@@ -699,14 +699,14 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
     expect(() => cell.addCheckboxValidation()).toThrow(staleRowIndexes);
   });
 
-  it("throws on active-row and whole-column fills after a flushed row delete", () => {
+  it("throws on working-row and whole-column fills after a flushed row delete", () => {
     const raw = sheetAfterFlushedDataRowDelete(true);
     const column = raw.table(tableId111).column(0);
 
-    expect(() => column.updateActiveCells({ value: "fill" })).toThrow(
+    expect(() => column.updateWorkingCells({ value: "fill" })).toThrow(
       staleRowIndexes,
     );
-    expect(() => column.updateActiveFormulas("=1")).toThrow(staleRowIndexes);
+    expect(() => column.updateWorkingFormulas("=1")).toThrow(staleRowIndexes);
     expect(() => column.updateAllCells({ value: "fill" })).toThrow(
       staleRowIndexes,
     );
@@ -1014,7 +1014,7 @@ describe("queued writes outlive a same-run re-fetch", () => {
     return raw;
   }
 
-  it("leaves a row queued for delete inactive after a re-fetch that returns it", () => {
+  it("leaves a row queued for delete out of the working view after a re-fetch that returns it", () => {
     stubTwoDataRows();
 
     const raw = fetchedSpreadsheet();
@@ -1022,27 +1022,27 @@ describe("queued writes outlive a same-run re-fetch", () => {
     raw.table(tableId111).topRow.gatherFetchFull();
     raw.fetchAllGathered();
 
-    expect(raw.table(tableId111).topRow.rowIsActive()).toBe(false);
+    expect(raw.table(tableId111).topRow.rowInWorking()).toBe(false);
   });
 
-  it("leaves the same row inactive when the re-fetch was a full row, so finalize backfilled", () => {
+  it("leaves the same row out of the working view when the re-fetch was a full row, so finalize backfilled", () => {
     stubTwoDataRows();
 
     const raw = fetchedSpreadsheet();
     raw.table(tableId111).topRow.delete();
     raw.table(tableId111).topRow.gatherFetchFull();
     expect(() => raw.fetchAllGathered()).not.toThrow();
-    expect(raw.table(tableId111).topRow.rowIsActive()).toBe(false);
+    expect(raw.table(tableId111).topRow.rowInWorking()).toBe(false);
   });
 
-  it("leaves the same row inactive after a full-column fetch that covers it", () => {
+  it("leaves the same row out of the working view after a full-column fetch that covers it", () => {
     stubTwoDataRows();
 
     const raw = fetchedSpreadsheet();
     raw.table(tableId111).topRow.delete();
     raw.table(tableId111).column(1).gatherFetchFull();
     expect(() => raw.fetchAllGathered()).not.toThrow();
-    expect(raw.table(tableId111).topRow.rowIsActive()).toBe(false);
+    expect(raw.table(tableId111).topRow.rowInWorking()).toBe(false);
   });
 
   it("still supplies Table column facts from a top data row queued for delete", () => {
@@ -1617,7 +1617,7 @@ describe("CellRaw.updateBackgroundColor", () => {
     const cell = raw.table(tableId111).row(1).cell(2);
     cell.updateBackgroundColor(lightGreen);
 
-    expect(cell.isActive).toBe(false);
+    expect(cell.inWorking).toBe(false);
     expect(() => cell.valueOrEmpty()).toThrowError(/No value is set/);
   });
 });

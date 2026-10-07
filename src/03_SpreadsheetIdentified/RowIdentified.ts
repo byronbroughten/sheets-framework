@@ -17,8 +17,8 @@ export class RowIdentified extends RowCommonIdentified {
   get raw(): RowRaw {
     return new RowRaw(this.rowIdentifiedProps);
   }
-  get activeValueArr(): CellValue[] {
-    return this.raw.activeValueArr;
+  get workingValueArr(): CellValue[] {
+    return this.raw.workingValueArr;
   }
   valueOrEmpty(columnId: string): Value {
     return this.cell(columnId).valueOrEmpty();
@@ -45,16 +45,16 @@ export class RowIdentified extends RowCommonIdentified {
       this.table.meta.columnIdByIndex(colIndex),
     );
   }
-  get isActive(): boolean {
-    return this.raw.rowIsActive();
+  get inWorking(): boolean {
+    return this.raw.rowInWorking();
   }
   get isQueuedForDelete(): boolean {
     return this.raw.isQueuedForDelete;
   }
   // Raw decides, since a checkbox column's blank reads as false and an unread row isn't empty.
   get isBlank(): boolean {
-    if (!this.isActive) return false;
-    return this._blankTestCellsActive.every((cell) => cell.raw.isEmpty);
+    if (!this.inWorking) return false;
+    return this._workingBlankTestCells.every((cell) => cell.raw.isEmpty);
   }
   get isReusable(): boolean {
     return this.isBlank && !this.raw.isReserved;
@@ -79,10 +79,10 @@ export class RowIdentified extends RowCommonIdentified {
       this.raw.delete();
     }
   }
-  private get _blankTestCellsActive(): CellIdentified[] {
+  private get _workingBlankTestCells(): CellIdentified[] {
     return this.table
       .blankTestColumnIds
       .map((columnId) => this.cell(columnId))
-      .filter((cell) => cell.isActive);
+      .filter((cell) => cell.inWorking);
   }
 }

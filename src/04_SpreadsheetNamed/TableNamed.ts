@@ -54,11 +54,11 @@ export class TableNamed<
       sheetGid: this.sheetGid,
     });
   }
-  get rowIndexesActive(): number[] {
-    return this.identified.rowIndexesActive;
+  get workingRowIndexes(): number[] {
+    return this.identified.workingRowIndexes;
   }
-  get rowIndexesActiveWithData(): number[] {
-    return this.identified.rowIndexesActiveWithData;
+  get workingRowIndexesWithData(): number[] {
+    return this.identified.workingRowIndexesWithData;
   }
   get rowIndexesFullWithData(): number[] {
     return this.identified.rowIndexesFullWithData;
@@ -118,10 +118,10 @@ export class TableNamed<
     });
     return columns;
   }
-  prepFetchColumnsActive<CS extends readonly ColumnName<TN>[]>(
+  prepFetchColumnsWorking<CS extends readonly ColumnName<TN>[]>(
     ...columnNames: CS
   ): { [K in CS[number]]: ColumnNamed<TN, K> } {
-    return this.prepFetchColumnsSpecific(this.rowIndexesActive, ...columnNames);
+    return this.prepFetchColumnsSpecific(this.workingRowIndexes, ...columnNames);
   }
   sortRowsbyColumnName(
     rows: RowNamed<TN>[],
@@ -264,7 +264,7 @@ export class TableNamed<
   }
   private _rowIndexesNamed(name: string): number[] {
     const column = this._nameColumn();
-    return column.cellIndexesActive.filter(
+    return column.workingCellIndexes.filter(
       (rowIndex) => column.valueOrEmpty(rowIndex) === name,
     );
   }

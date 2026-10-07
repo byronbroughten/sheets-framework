@@ -38,8 +38,8 @@ export class HeadRowIdentified<
       headRole: this.headRole,
     });
   }
-  get activeValueArr(): (HeadRowValue<HR> | "")[] {
-    return this.raw.activeValueArr;
+  get workingValueArr(): (HeadRowValue<HR> | "")[] {
+    return this.raw.workingValueArr;
   }
   valueOrEmpty(columnId: string): CellValue<HeadRowValueName<HR>> | "" {
     return this.raw.valueOrEmpty(this.table.column(columnId).colIndex);

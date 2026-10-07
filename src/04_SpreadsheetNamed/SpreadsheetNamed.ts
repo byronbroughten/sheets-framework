@@ -193,7 +193,7 @@ export class SpreadsheetNamed extends SpreadsheetBaseNamed {
     });
     this.fetchAllPrepped();
     idSheets.forEach((sheet) => {
-      sheet.column("id").emptyActiveCellsToDefualt();
+      sheet.column("id").emptyWorkingCellsToDefault();
     });
   }
   private _sheetsWithRowIds(): TableNamed<SheetNameByGroup<"hasIdColumn">>[] {
@@ -227,7 +227,7 @@ function prepFetchRowSpecifier(
   const schema = sheet.schema;
   const column = sheet.column(columnId);
   switch (rowSpecifier) {
-    case "activeRows":
+    case "workingRows":
     case "data":
       column.prepFetchFull();
       break;

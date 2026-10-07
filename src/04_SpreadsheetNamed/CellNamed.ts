@@ -40,8 +40,8 @@ export class CellNamed<
   get raw(): CellRaw<VnToCvn<ColumnValueName<TN, CN>>> {
     return this.identified.raw;
   }
-  get isActive(): boolean {
-    return this.identified.isActive;
+  get inWorking(): boolean {
+    return this.identified.inWorking;
   }
   valueOrEmpty(): ColumnValue<TN, CN> {
     return this.identified.valueOrEmpty();

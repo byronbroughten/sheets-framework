@@ -6,7 +6,7 @@ One heading per naming rule, in docs/code-style.md's order: grep `^## ` for the 
 
 ## The `active` prefix marks a live read
 
-**Prefix a getter `active` when it reads live/fetched sheet state that has a same-named counterpart sourced from schema/generated-config data** — disambiguates the live read from the committed one. `ColumnMetaRaw.activeIsFormula` (this run's live sheet data) vs. `ColumnSchema.isFormula` (the committed `columnConfigs.ts` trait) — same underlying concept, two different sources of truth. Matches the existing `active` vocabulary for "what's actually in the fetched state right now": `activeColumnIds`, `activeSheetGids`, `activeRowIndexes`.
+**Prefix a getter `active` when it reads live/fetched sheet state that has a same-named counterpart sourced from schema/generated-config data** — disambiguates the live read from the committed one. `ColumnMetaRaw.activeIsFormula` (this run's live sheet data) vs. `ColumnSchema.isFormula` (the committed `columnConfigs.ts` trait) — same underlying concept, two different sources of truth. Matches the existing `active` vocabulary for "what's actually in the fetched state right now": `activeColumnIds`, `activeSheetGids`.
 
 ## `_actualX` becomes `activeX` when a helper moves down
 

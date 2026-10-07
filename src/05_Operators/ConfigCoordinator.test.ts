@@ -404,7 +404,7 @@ function tableConfigLetApiAccess(
 ): boolean | "" {
   const sheet = orchestrator.tableConfigOperator.table;
   const col = sheet.columns("tableId", "letApiAccess");
-  const rowIndex = sheet.rowIndexesActiveWithData.find(
+  const rowIndex = sheet.workingRowIndexesWithData.find(
     (index) => col.tableId.value(index) === tableIdOnTab(sheetGid),
   );
   if (rowIndex === undefined) {

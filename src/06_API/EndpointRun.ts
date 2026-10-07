@@ -136,7 +136,7 @@ export class EndpointRun<
     if (this.endpoint.runOnUncheck) return;
     this.table.meta.column(this.entryColumnName).actionRowToDefault();
   }
-  // Unselected rows go inactive, so every later read of active rows is the selection.
+  // Unselected rows leave the working view, so every later read of working rows is the selection.
   private _pruneToSelection(selectedRowIndexes: number[]): void {
     if (!this.endpoint.selector) return;
     this.table.raw.removeRowsExcept(...selectedRowIndexes);
@@ -159,7 +159,7 @@ export class EndpointRun<
   private _clearSelection(): void {
     const { selector } = this.endpoint;
     if (!selector || selector.retainSelection) return;
-    this._checkboxColumn(selector.column).uncheckActiveCells();
+    this._checkboxColumn(selector.column).uncheckWorkingCells();
   }
   // A string is a success with that message, and nothing at all is a bare success.
   private _applyActionReport(report: ActionReturn): void {
@@ -198,7 +198,7 @@ export class EndpointRun<
     // Re-deriving the value type here would compose two mapped filters, at ~43k instantiations.
     const column = this.table.columnIdentified(columnName);
     if (this.endpoint.selector) {
-      column.updateActiveCells(change);
+      column.updateWorkingCells(change);
     } else {
       column.updateAllCells(change);
     }

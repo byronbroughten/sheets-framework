@@ -51,8 +51,8 @@ export class ColumnNamed<
   get raw(): ColumnRaw<VnToCvn<ColumnValueName<TN, CN>>> {
     return this.identified.raw;
   }
-  get rowIndexesActive(): number[] {
-    return this.identified.cellIndexesActive;
+  get workingRowIndexes(): number[] {
+    return this.identified.workingCellIndexes;
   }
   get valueArrOrEmpty(): ColumnValue<TN, CN>[] {
     return this.identified.valueArrOrEmpty;
@@ -62,12 +62,12 @@ export class ColumnNamed<
   }
   // Not delegated to Identified, so a blank throws with the Named message.
   get valueArrNotEmpty(): NotEmpty<ColumnValue<TN, CN>>[] {
-    return this.rowIndexesActive.map((rowIndex) =>
+    return this.workingRowIndexes.map((rowIndex) =>
       this.valueNotEmpty(rowIndex),
     );
   }
   get valueArr(): ColumnValueDeclared<TN, CN>[] {
-    return this.rowIndexesActive.map((rowIndex) => this.value(rowIndex));
+    return this.workingRowIndexes.map((rowIndex) => this.value(rowIndex));
   }
   // Identified, not Named: a Named cell's value type is its column's, which a head cell doesn't share.
   headCell<HR extends HeadRole>(
@@ -97,8 +97,8 @@ export class ColumnNamed<
     this.identified.updateAllCells(change);
     return this;
   }
-  updateActiveCells(change: CellChange<ColumnValueName<TN, CN>>): this {
-    this.identified.updateActiveCells(change);
+  updateWorkingCells(change: CellChange<ColumnValueName<TN, CN>>): this {
+    this.identified.updateWorkingCells(change);
     return this;
   }
   updateAllFormulas(
@@ -107,10 +107,10 @@ export class ColumnNamed<
     this.identified.updateAllFormulas(formula);
     return this;
   }
-  updateActiveFormulas(
+  updateWorkingFormulas(
     formula: ColumnIsFormula<TN, CN> extends true ? string : never,
   ): this {
-    this.identified.updateActiveFormulas(formula);
+    this.identified.updateWorkingFormulas(formula);
     return this;
   }
   // Plain strings, unlike every other write here: Google matches the cell's text.
@@ -175,20 +175,20 @@ export class ColumnNamed<
     this.identified.prepFetchSpecific(rowIndexes);
     return this;
   }
-  prepFetchActive(): this {
-    this.identified.prepFetchActive();
+  prepFetchWorking(): this {
+    this.identified.prepFetchWorking();
     return this;
   }
   prepFetchFull(): this {
     this.identified.prepFetchFull();
     return this;
   }
-  activeCellsToDefault(): this {
-    this.identified.activeCellsToDefault();
+  workingCellsToDefault(): this {
+    this.identified.workingCellsToDefault();
     return this;
   }
-  emptyActiveCellsToDefualt(): this {
-    this.identified.emptyActiveCellsToDefualt();
+  emptyWorkingCellsToDefault(): this {
+    this.identified.emptyWorkingCellsToDefault();
     return this;
   }
 }

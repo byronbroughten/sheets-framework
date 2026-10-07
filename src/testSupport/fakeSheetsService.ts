@@ -121,7 +121,7 @@ export interface FakeSheetProperties {
   rows?: readonly (readonly FakeCell[])[];
   /**
    * The sheet's one Table, shorthand for `tables: [table]`. Required for any test that reads/appends
-   * *data* rows on this sheet (`TableRaw`'s `rowIndexesActive`/
+   * *data* rows on this sheet (`TableRaw`'s `workingRowIndexes`/
    * `appendDataRow` etc. read the Table's `dataRowCount`, which throws if no table was
    * ever integrated) — not needed for sheets only read via a head row
    * (e.g. a business sheet's header row). `endRowIndex` is the exclusive
@@ -147,7 +147,7 @@ export interface FakeSheetProperties {
    * against the live spreadsheet, for a row inside the grid whose every
    * cell lacks a value, a formula and an explicit number format. Contrast
    * a row present in `rows` with empty cells, which IS reported and so
-   * marks those cells active with an empty value. Use this to reproduce
+   * puts those cells in the working view with an empty value. Use this to reproduce
    * bugs where code assumes a row it explicitly fetched came back with
    * cells in the response.
    */

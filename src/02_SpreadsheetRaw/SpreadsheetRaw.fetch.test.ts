@@ -727,7 +727,7 @@ describe("SpreadsheetRaw over a Table placed lower on its sheet", () => {
 
     sheet.row(1).cell(1).updateValue("changed");
     sheet.appendDataRow().cell(0).updateValue("r:low:3");
-    sheet.column(1).updateActiveCells({ backgroundColor: lightGreen });
+    sheet.column(1).updateWorkingCells({ backgroundColor: lightGreen });
     raw.batchUpdateGSheets();
 
     expect(
@@ -804,14 +804,14 @@ describe("SpreadsheetRaw fetch integration routes each cell to its Table", () =>
     raw.fetchSheetUsedGrid(scratchGid);
 
     expect(raw.table("left").tableIds()).toEqual(["left", "right"]);
-    expect(raw.table("left").row(0).activeValueArr).toEqual(["r1", "a"]);
-    expect(raw.table("right").row(0).activeValueArr).toEqual(["c1", 5]);
+    expect(raw.table("left").row(0).workingValueArr).toEqual(["r1", "a"]);
+    expect(raw.table("right").row(0).workingValueArr).toEqual(["c1", 5]);
     expect(raw.table("right").row(1).valueOrEmpty(1)).toBe(6);
-    expect(raw.table("left").meta.colIdRow.activeValueArr).toEqual([
+    expect(raw.table("left").meta.colIdRow.workingValueArr).toEqual([
       "lft:1",
       "lft:2",
     ]);
-    expect(raw.table("right").meta.colIdRow.activeValueArr).toEqual([
+    expect(raw.table("right").meta.colIdRow.workingValueArr).toEqual([
       "rgt:1",
       "rgt:2",
     ]);
@@ -890,8 +890,8 @@ describe("SpreadsheetRaw fetch integration routes each cell to its Table", () =>
     raw.fetchSheetUsedGrid(scratchGid);
 
     const headAndBodyRowIndexes = [-4, -3, -2, -1, 0, 1];
-    expect(raw.table("left").activeRowIndexes).toEqual(headAndBodyRowIndexes);
-    expect(raw.table("right").activeRowIndexes).toEqual(headAndBodyRowIndexes);
-    expect(raw.table("left").row(0).cell(2).isActive).toBe(false);
+    expect(raw.table("left").workingRowIndexesWithHead).toEqual(headAndBodyRowIndexes);
+    expect(raw.table("right").workingRowIndexesWithHead).toEqual(headAndBodyRowIndexes);
+    expect(raw.table("left").row(0).cell(2).inWorking).toBe(false);
   });
 });

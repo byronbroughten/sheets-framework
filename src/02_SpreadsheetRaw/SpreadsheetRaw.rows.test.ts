@@ -491,8 +491,8 @@ describe("RowRaw.delete", () => {
   });
 });
 
-describe("RowRaw.rowIsActive", () => {
-  it("makes an appended row active and grows the table end before the flush", () => {
+describe("RowRaw.rowInWorking", () => {
+  it("puts an appended row in the working view and grows the table end before the flush", () => {
     stubSheetsService({
       sheets: [{ sheetId: 111, title: "Records", table: { endRowIndex: 11 } }],
     });
@@ -503,7 +503,7 @@ describe("RowRaw.rowIsActive", () => {
 
     const row = raw.table(tableId111).appendDataRow();
 
-    expect(row.rowIsActive()).toBe(true);
+    expect(row.rowInWorking()).toBe(true);
     expect(raw.table(tableId111).dataRowCount).toBe(countBefore + 1);
   });
 
@@ -523,17 +523,17 @@ describe("RowRaw.rowIsActive", () => {
     raw.fetchAllSheetProperties();
     raw.table(tableId111).row(1).gatherFetchFull();
     raw.fetchAllGathered();
-    expect(raw.table(tableId111).row(1).rowIsActive()).toBe(true);
+    expect(raw.table(tableId111).row(1).rowInWorking()).toBe(true);
     const countBefore = raw.table(tableId111).dataRowCount;
 
     raw.table(tableId111).row(1).delete();
 
-    expect(raw.table(tableId111).row(1).rowIsActive()).toBe(false);
+    expect(raw.table(tableId111).row(1).rowInWorking()).toBe(false);
     expect(raw.table(tableId111).dataRowCount).toBe(countBefore);
     expect(raw.table(tableId111).dataRowCountAfterFlush).toBe(6);
   });
 
-  it("keeps pre-flush row indexes after a flushed delete, so the removed row stays inactive at its old index", () => {
+  it("keeps pre-flush row indexes after a flushed delete, so the removed row stays out of the working view at its old index", () => {
     stubSheetsService({
       sheets: [
         {
@@ -552,7 +552,7 @@ describe("RowRaw.rowIsActive", () => {
     raw.table(tableId111).row(1).delete();
     raw.batchUpdateGSheets();
 
-    expect(raw.table(tableId111).row(1).rowIsActive()).toBe(false);
+    expect(raw.table(tableId111).row(1).rowInWorking()).toBe(false);
     expect(raw.table(tableId111).rowIndexesAreStale).toBe(true);
     expect(() => raw.table(tableId111).dataRowCount).toThrow(
       /Row indexes are stale/,
@@ -593,7 +593,7 @@ describe("TableRaw.removeRowsExcept", () => {
     const raw = fetchedPrunableSheet();
     raw.table(tableId111).removeRowsExcept(1);
 
-    expect(raw.table(tableId111).rowIndexesActive).toEqual([1]);
+    expect(raw.table(tableId111).workingRowIndexes).toEqual([1]);
   });
 
   it("keeps the head rows, so a column still resolves by its id afterwards", () => {

@@ -33,8 +33,8 @@ export class RowNamed<TN extends TableName> extends RowBaseNamed<TN> {
   cell<CN extends ColumnName<TN>>(columnName: CN): CellNamed<TN, CN> {
     return this.table.column(columnName).cell(this.rowIndex);
   }
-  cellIsActive<CN extends ColumnName<TN>>(columnName: CN): boolean {
-    return this.cell(columnName).isActive;
+  cellInWorking<CN extends ColumnName<TN>>(columnName: CN): boolean {
+    return this.cell(columnName).inWorking;
   }
   valueOrEmpty<CN extends ColumnName<TN>>(columnName: CN): ColumnValue<TN, CN> {
     return this.cell(columnName).valueOrEmpty();
@@ -53,7 +53,7 @@ export class RowNamed<TN extends TableName> extends RowBaseNamed<TN> {
     ...columnNames: readonly CN[]
   ): SheetDataValues<TN, CN> {
     const keys =
-      columnNames.length > 0 ? columnNames : (this.activeCellNames as CN[]);
+      columnNames.length > 0 ? columnNames : (this.workingCellNames as CN[]);
     return keys.reduce(
       (values, columnName) => {
         (values[columnName] as SheetDataValues<TN, CN>[CN]) = this.valueOrEmpty(
@@ -64,14 +64,14 @@ export class RowNamed<TN extends TableName> extends RowBaseNamed<TN> {
       {} as SheetDataValues<TN, CN>,
     );
   }
-  get activeCellNames(): ColumnName<TN>[] {
+  get workingCellNames(): ColumnName<TN>[] {
     return this.identified.activeColumnIds.map((columnId) =>
       this.schema.colNameByColumnId(columnId),
     );
   }
   // The column's own Empty value allowed tick is the only record of mandatoriness.
   blankRequiredColumnNames(): ColumnName<TN>[] {
-    return this.activeCellNames.filter((columnName) => {
+    return this.workingCellNames.filter((columnName) => {
       const cell = this.cell(columnName);
       return !cell.schema.emptyValueAllowed && cell.valueOrEmpty() === "";
     });

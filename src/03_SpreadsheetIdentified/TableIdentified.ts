@@ -26,8 +26,8 @@ export class TableIdentified extends TableCommonIdentified {
   get raw(): TableRaw {
     return new TableRaw(this.tableIdentifiedProps);
   }
-  get rowIndexesActive(): number[] {
-    return this.raw.rowIndexesActive;
+  get workingRowIndexes(): number[] {
+    return this.raw.workingRowIndexes;
   }
   get rows(): RowIdentified[] {
     return this.raw.rows.map((row) => this.row(row.rowIndex));
@@ -43,8 +43,8 @@ export class TableIdentified extends TableCommonIdentified {
     if (this.raw.dataRowCountAfterFlush === 0) return true;
     return this._isTopRowTheOnlyRow && this.topRow.isBlank;
   }
-  get rowIndexesActiveWithData(): number[] {
-    return this._withoutBlankRows(this.rowIndexesActive);
+  get workingRowIndexesWithData(): number[] {
+    return this._withoutBlankRows(this.workingRowIndexes);
   }
   get rowIndexesFullWithData(): number[] {
     return this._withoutBlankRows(this.raw.rowIndexesFull);
@@ -182,7 +182,7 @@ export class TableIdentified extends TableCommonIdentified {
   }
   private _isTopRowReusable(): boolean {
     if (!this._isTopRowTheOnlyRow) return false;
-    if (!this.topRow.isActive) {
+    if (!this.topRow.inWorking) {
       throw new Error(
         `Cannot append to ${this.raw.tableLabel}: its one data row was never fetched, so whether the append may reuse it is unknown. Prefetch its top data row first.`,
       );

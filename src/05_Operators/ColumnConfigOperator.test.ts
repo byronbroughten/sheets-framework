@@ -574,10 +574,10 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> _updateProgrammaticValues", 
     const operator = ColumnConfigOperator.init();
     syncColumnConfigOperator(operator);
     const col = operator.table.columns("columnId", "emptyValueAllowed");
-    const businessRow = operator.table.rowIndexesActiveWithData.find(
+    const businessRow = operator.table.workingRowIndexesWithData.find(
       (rowIndex) => col.columnId.value(rowIndex) === "c:itm:corr01",
     );
-    const floorRow = operator.table.rowIndexesActiveWithData.find(
+    const floorRow = operator.table.workingRowIndexesWithData.find(
       (rowIndex) => col.columnId.value(rowIndex) === tc.tableId.columnId,
     );
 
@@ -749,7 +749,7 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> _appendColumnRows", () => {
 
   function identitiesOnTheTwoTables(operator: ColumnConfigOperator): string[] {
     const col = operator.table.columns("tableId", "columnId");
-    return operator.table.rowIndexesActiveWithData
+    return operator.table.workingRowIndexesWithData
       .map((rowIndex) => [
         col.tableId.value(rowIndex),
         col.columnId.value(rowIndex),
@@ -861,7 +861,7 @@ function syncColumnsUnderTest({
 
 function valueTitles(operator: ColumnConfigOperator, count: number) {
   const col = operator.table.columns("tableId", "columnId");
-  const titles = operator.table.rowIndexesActiveWithData.flatMap((rowIndex) => {
+  const titles = operator.table.workingRowIndexesWithData.flatMap((rowIndex) => {
     if (col.tableId.valueOrEmpty(rowIndex) !== testTableId) return [];
     return [
       operator.ss.raw
@@ -1450,7 +1450,7 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> _pruneColumnRows", () => {
     const col = operator.table.columns("tableName", "header");
     const emitted = operator.newColumnConfigs().columnConfig;
 
-    expect(operator.table.rowIndexesActive).not.toContain(0);
+    expect(operator.table.workingRowIndexes).not.toContain(0);
     expect(col.tableName.value(1)).toBe("columnConfig");
     expect(col.header.value(1)).toBe("Table ID");
     expect(emitted?.tableId).toMatchObject({

@@ -1056,14 +1056,14 @@ describe("Named formula writes", () => {
     expect(rowNumberCells(grid)).toEqual([testFormula, 21]);
   });
 
-  it("writes the formula into only the active rows for updateActiveFormulas", () => {
+  it("writes the formula into only the working rows for updateWorkingFormulas", () => {
     const { grid } = stubComputedForFormulaWrite();
 
     const ss = SpreadsheetNamed.init();
     ss.table("computed").prepFetchColumnsFull("rowNumber");
     ss.fetchAllPrepped();
     ss.table("computed").raw.removeRowsExcept(0);
-    ss.table("computed").column("rowNumber").updateActiveFormulas(testFormula);
+    ss.table("computed").column("rowNumber").updateWorkingFormulas(testFormula);
     ss.batchUpdateGSheets();
 
     expect(rowNumberCells(grid)).toEqual([testFormula, 21]);
@@ -1146,12 +1146,12 @@ describe("Named formula writes", () => {
       numColumn: ColumnNamed<"computed", "amount">,
     ) {
       formulaColumn.updateAllFormulas(testFormula);
-      formulaColumn.updateActiveFormulas(testFormula);
+      formulaColumn.updateWorkingFormulas(testFormula);
       formulaColumn.cell(0).updateFormula(testFormula);
       // @ts-expect-error Amount is not a formula column
       numColumn.updateAllFormulas(testFormula);
       // @ts-expect-error Amount is not a formula column
-      numColumn.updateActiveFormulas(testFormula);
+      numColumn.updateWorkingFormulas(testFormula);
       // @ts-expect-error Amount is not a formula column
       numColumn.cell(0).updateFormula(testFormula);
     }

@@ -34,8 +34,8 @@ export class CellIdentified<
       colIndex: this.column.colIndex,
     });
   }
-  get isActive(): boolean {
-    return this.raw.isActive;
+  get inWorking(): boolean {
+    return this.raw.inWorking;
   }
   prepFetch(): this {
     this.fetchTargets.push({

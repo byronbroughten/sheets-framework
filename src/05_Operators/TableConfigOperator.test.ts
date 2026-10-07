@@ -69,7 +69,7 @@ function catalogueRows(operator: TableConfigOperator) {
     "sheetTitle",
     "letApiAccess",
   );
-  return operator.table.rowIndexesActiveWithData.map((rowIndex) => ({
+  return operator.table.workingRowIndexesWithData.map((rowIndex) => ({
     tableId: col.tableId.value(rowIndex),
     tableName: col.tableName.valueOrEmpty(rowIndex),
     sheetTitle: col.sheetTitle.value(rowIndex),

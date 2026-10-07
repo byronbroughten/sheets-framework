@@ -22,7 +22,7 @@ export class HeadRowBaseRaw<
     this.roles = headRows.rolesSharing(headRole);
     this.ensureStateExists();
   }
-  get activeValueArr(): (HeadRowValue<HR> | "")[] {
+  get workingValueArr(): (HeadRowValue<HR> | "")[] {
     return [...this.rowState.values()].map((cellState) => cellState.value) as (
       HeadRowValue<HR> | ""
     )[];
