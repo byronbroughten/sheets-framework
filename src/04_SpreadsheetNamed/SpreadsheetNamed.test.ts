@@ -1072,6 +1072,96 @@ function rowNumberCells(grid: FakeSheetsService["grid"]): FakeCellValue[] {
     .flat();
 }
 
+const renamedComputed = {
+  tableName: "renamedComputed",
+  besideTable: "beside the Table",
+  belowTable: "below the Table",
+} as const;
+
+// The live Table name and headers differ from the generated configs, as after a rename.
+function stubRenamedComputed() {
+  return stubSheetsService({
+    sheets: [
+      {
+        sheetId: computedGid,
+        title: "Computed",
+        rows: buildGridRows({
+          0: [...computedColumnIdRow, renamedComputed.besideTable],
+          [expectedSheetLayout.tableHeaderRowIndex]: [
+            "Amount total",
+            "Row count",
+            renamedComputed.besideTable,
+          ],
+          4: [10, 11, renamedComputed.besideTable],
+          5: [20, 21, renamedComputed.besideTable],
+          6: [
+            renamedComputed.belowTable,
+            renamedComputed.belowTable,
+            renamedComputed.belowTable,
+          ],
+        }),
+        table: {
+          endRowIndex: 6,
+          endColumnIndex: 2,
+          name: renamedComputed.tableName,
+        },
+      },
+    ],
+  });
+}
+
+describe("Named formula references", () => {
+  it("builds reference and single from the live Table name and header", () => {
+    stubRenamedComputed();
+
+    const ss = SpreadsheetNamed.init();
+    ss.fetchAllSheetProperties();
+    const amount = ss.table("computed").column("amount");
+
+    expect(amount.reference).toBe("renamedComputed[Amount total]");
+    expect(amount.single).toBe("SINGLE(renamedComputed[Amount total])");
+  });
+
+  it("refuses a reference for a column whose header is blank", () => {
+    stubComputedForFormulaWrite();
+
+    const ss = SpreadsheetNamed.init();
+    ss.fetchAllSheetProperties();
+
+    expect(() => ss.table("computed").column("amount").reference).toThrowError(
+      /blank header/,
+    );
+  });
+
+  it("writes a formula over the Table body only, leaving the head rows and a neighbour alone", () => {
+    const { grid } = stubRenamedComputed();
+
+    const ss = SpreadsheetNamed.init();
+    ss.fetchAllSheetProperties();
+    const table = ss.table("computed");
+    const formula = `=2+${table.column("amount").single}`;
+    table.column("rowNumber").updateAllFormulas(formula);
+    ss.batchUpdateGSheets();
+
+    expect(
+      grid.sheet(computedGid).values({
+        startRowIndex: 0,
+        endRowIndex: 7,
+        startColumnIndex: rowNumberColIndex,
+        endColumnIndex: rowNumberColIndex + 2,
+      }),
+    ).toEqual([
+      [computedColumnIdRow[1], renamedComputed.besideTable],
+      [null, null],
+      [null, null],
+      ["Row count", renamedComputed.besideTable],
+      ["=2+SINGLE(renamedComputed[Amount total])", renamedComputed.besideTable],
+      ["=2+SINGLE(renamedComputed[Amount total])", renamedComputed.besideTable],
+      [renamedComputed.belowTable, renamedComputed.belowTable],
+    ]);
+  });
+});
+
 describe("Named formula writes", () => {
   it("writes the formula into every Computed data row", () => {
     const { grid } = stubComputedForFormulaWrite();

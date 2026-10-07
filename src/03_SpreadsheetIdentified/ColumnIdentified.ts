@@ -45,6 +45,12 @@ export class ColumnIdentified<
       colIndex: this.colIndex,
     });
   }
+  get reference(): string {
+    return this.raw.reference;
+  }
+  get single(): string {
+    return this.raw.single;
+  }
   get workingCellIndexes(): number[] {
     return this.raw.workingCellIndexes;
   }

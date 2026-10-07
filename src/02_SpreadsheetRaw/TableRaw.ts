@@ -307,6 +307,7 @@ export class TableRaw extends TableCommonRaw {
       numberFormatType: cell?.numberFormatType,
       dataValidationConditionType: cell?.dataValidationConditionType,
       topValue: cell?.value ?? "", // from the payload, so a deleted top data row still describes the column
+      topFormula: cell?.formula,
     };
   }
   integrateSheetState(sheet: SheetSnapshot): void {

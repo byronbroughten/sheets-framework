@@ -29,6 +29,9 @@ export class ColumnProfileRaw extends ColumnBaseRaw {
   get topValue(): CellValue {
     return this._sampledFacts.topValue;
   }
+  get topFormula(): string | undefined {
+    return this._sampledFacts.topFormula;
+  }
   get valueValidationStrings(): string[] {
     return this._tableColumnState()?.validationValues ?? [];
   }

@@ -65,6 +65,7 @@ describe("ColumnProfileRaw sampled facts", () => {
     expect(column.isFormula).toBe(false);
     expect(column.numberFormatType).toBeUndefined();
     expect(column.topValue).toBe("");
+    expect(column.topFormula).toBeUndefined();
   }
 
   it("reports blank facts for a top data row returned without any cell data", () => {
@@ -95,6 +96,18 @@ describe("ColumnProfileRaw sampled facts", () => {
     expect(column.isFormula).toBe(true);
     expect(column.numberFormatType).toBe("CURRENCY");
     expect(column.topValue).toBe(42);
+  });
+
+  it("gives a dry run the top data row's formula text", () => {
+    stubSheetWithTopDataRow([
+      { value: "=SINGLE(item[Purchase Price])", isFormula: true },
+      "a note",
+    ]);
+
+    expect(fetchedItemColumnProfile(0).topFormula).toBe(
+      "=SINGLE(item[Purchase Price])",
+    );
+    expect(fetchedItemColumnProfile(1).topFormula).toBeUndefined();
   });
 
   it("reports blank facts for a full-column fetch of a wholly blank column", () => {

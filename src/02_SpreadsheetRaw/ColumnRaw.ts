@@ -49,6 +49,19 @@ export class ColumnRaw<
   get profile(): ColumnProfileRaw {
     return new ColumnProfileRaw(this.columnRawProps);
   }
+  // The live names, so formula text stays right after a rename without regenerating.
+  get reference(): string {
+    const { header } = this.profile;
+    if (header === "") {
+      throw new Error(
+        `Column ${this.colIndex} of ${this.table.tableLabel} has a blank header, so it has no Table reference.`,
+      );
+    }
+    return `${this.table.name}[${header}]`;
+  }
+  get single(): string {
+    return `SINGLE(${this.reference})`;
+  }
   get valueArrOrEmpty(): (CellValue<VN> | "")[] {
     return this.table.workingRowIndexes.map((rowIndex) =>
       this.valueOrEmpty(rowIndex),

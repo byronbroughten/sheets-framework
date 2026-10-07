@@ -50,6 +50,12 @@ export class ColumnNamed<
   get raw(): ColumnRaw<VnToCvn<ColumnValueName<TN, CN>>> {
     return this.identified.raw;
   }
+  get reference(): string {
+    return this.identified.reference;
+  }
+  get single(): string {
+    return this.identified.single;
+  }
   get workingRowIndexes(): number[] {
     return this.identified.workingCellIndexes;
   }

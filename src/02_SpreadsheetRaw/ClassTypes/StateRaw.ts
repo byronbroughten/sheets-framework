@@ -191,6 +191,7 @@ export interface SampledFactsRaw {
   numberFormatType: string | undefined;
   dataValidationConditionType: string | undefined;
   topValue: CellValue;
+  topFormula: string | undefined;
 }
 
 type SheetId = number;

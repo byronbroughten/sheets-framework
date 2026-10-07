@@ -130,6 +130,7 @@ describe("Raw profile members", () => {
         | "isFormula"
         | "numberFormatType"
         | "topValue"
+        | "topFormula"
         | "dataValidationConditionType"
         | "header"
         | "valueValidationStrings"

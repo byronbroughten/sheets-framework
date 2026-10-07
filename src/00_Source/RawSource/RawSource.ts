@@ -117,6 +117,7 @@ export interface GridRowSnapshot {
 export interface GridCellSnapshot {
   value: CellValue | "";
   isFormula: boolean;
+  formula?: string;
   numberFormatType?: string;
   dataValidationConditionType?: string;
   backgroundColor?: RgbColor;
