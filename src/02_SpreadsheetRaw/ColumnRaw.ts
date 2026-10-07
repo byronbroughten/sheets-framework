@@ -29,6 +29,7 @@ import { CellRaw, validateFormulaString } from "./CellRaw";
 import { ColumnBaseRaw } from "./ClassBases/ColumnBaseRaw";
 import type { CellFill, FindReplaceTerms } from "./ClassTypes/StateRaw";
 import { ColumnMetaRaw } from "./ColumnMetaRaw";
+import { ColumnProfileRaw } from "./ColumnProfileRaw";
 import { SpreadsheetRaw } from "./SpreadsheetRaw";
 import { TableRaw } from "./TableRaw";
 
@@ -43,6 +44,9 @@ export class ColumnRaw<
   }
   get meta(): ColumnMetaRaw<VN> {
     return new ColumnMetaRaw<VN>(this.columnRawProps);
+  }
+  get profile(): ColumnProfileRaw {
+    return new ColumnProfileRaw(this.columnRawProps);
   }
   get valueArrOrEmpty(): (CellValue<VN> | "")[] {
     return this.table.workingRowIndexes.map((rowIndex) =>

@@ -25,9 +25,6 @@ export class SheetMetaNamed<
   get primary(): TableNamed<TN> {
     return new TableNamed(this.sheetNamedProps);
   }
-  get activeColumnIds(): string[] {
-    return this.raw.activeColumnIds;
-  }
   column<CN extends ColumnName<TN>>(columnName: CN): ColumnMetaNamed<TN, CN> {
     return new ColumnMetaNamed({
       ...this.sheetNamedProps,

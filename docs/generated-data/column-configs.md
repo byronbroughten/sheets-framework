@@ -16,7 +16,7 @@ No longer stores a column's index (`colIndex`) — `03_SpreadsheetIdentified` re
 
 ## `isFormula` is sampled
 
-**`isFormula` is *sampled* — read off the described column's top data-row cell at emit time (`activeIsFormula`), not declared, and not stored on Column Config** — so it can flip between regenerations if someone edits that cell. Fine as data; treat it with care as a *type* axis, since a routine `gen:configs` run can then change which columns satisfy a constraint, and the resulting error surfaces far from the spreadsheet edit that caused it.
+**`isFormula` is *sampled* — read off the described column's top data-row cell at emit time (`column.profile.isFormula`), not declared, and not stored on Column Config** — so it can flip between regenerations if someone edits that cell. Fine as data; treat it with care as a *type* axis, since a routine `gen:configs` run can then change which columns satisfy a constraint, and the resulting error surfaces far from the spreadsheet edit that caused it.
 
 ## A boolean trait keeps its literal type
 

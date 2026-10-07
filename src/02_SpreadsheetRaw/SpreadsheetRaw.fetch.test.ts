@@ -711,7 +711,7 @@ describe("SpreadsheetRaw over a Table placed lower on its sheet", () => {
     expect(sheet.rowIndexesFull).toEqual([0, 1]);
     expect(sheet.row(0).valueOrEmpty(0)).toBe("r:low:1");
     expect(sheet.row(1).valueOrEmpty(1)).toBe("second");
-    expect(raw.sheetMeta(scratchGid).activeColumnIds).toEqual([
+    expect(sheet.profile.columnIds).toEqual([
       "c:low:aaa",
       "c:low:bbb",
     ]);

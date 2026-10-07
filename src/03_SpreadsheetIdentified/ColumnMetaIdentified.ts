@@ -20,9 +20,6 @@ export class ColumnMetaIdentified<
   get primary(): ColumnIdentified<VN> {
     return new ColumnIdentified(this.columnIdentifiedProps);
   }
-  get activeColumnType(): string | undefined {
-    return this.raw.activeColumnType;
-  }
   updateColumnType(columnType: TableColumnType): this {
     this.raw.updateColumnType(columnType);
     return this;

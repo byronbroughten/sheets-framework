@@ -276,7 +276,7 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
       const column = sheet.column(
         columnNameByHeader(tableName, seedColumn.header),
       );
-      if (column.meta.activeColumnType === seedColumn.columnType) {
+      if (column.raw.profile.columnType === seedColumn.columnType) {
         return [];
       }
       column.meta.updateColumnType(seedColumn.columnType);

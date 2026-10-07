@@ -180,13 +180,13 @@ export interface CellStateRaw {
 
 export type ColumnStatesRaw = Map<ColIndex, ColumnStateRaw>;
 export interface ColumnStateRaw {
-  activeFacts?: ActiveFactsRaw;
+  sampledFacts?: SampledFactsRaw;
   validationValues?: string[];
   validationConditionType?: string;
   // Absent for a column left on Automatic, which is what makes it "untyped".
   columnType?: string;
 }
-export interface ActiveFactsRaw {
+export interface SampledFactsRaw {
   isFormula: boolean;
   numberFormatType: string | undefined;
   dataValidationConditionType: string | undefined;

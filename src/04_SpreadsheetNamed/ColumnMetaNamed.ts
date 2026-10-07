@@ -42,9 +42,6 @@ export class ColumnMetaNamed<
   get fullName(): MakeColumnFullName<TN, CN> & ColumnFullName {
     return this.schema.fullName;
   }
-  get activeColumnType(): string | undefined {
-    return this.identified.activeColumnType;
-  }
   updateColumnType(columnType: TableColumnType): this {
     this.identified.updateColumnType(columnType);
     return this;

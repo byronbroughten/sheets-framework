@@ -15,6 +15,7 @@ import type {
   BoundedGridRange,
   CopyPasteOperation,
   GridBlockSnapshot,
+  GridCellSnapshot,
   GridRangeProps,
   SheetSnapshot,
   TableColumnPropertiesUpdate,
@@ -45,6 +46,7 @@ import { HeadRowRaw } from "./HeadRowRaw";
 import { RowRaw } from "./RowRaw";
 import { SheetMetaRaw } from "./SheetMetaRaw";
 import { SpreadsheetRaw } from "./SpreadsheetRaw";
+import { TableProfileRaw } from "./TableProfileRaw";
 import { SheetConditionalFormatsRaw } from "./TableRaw/SheetConditionalFormatsRaw";
 import { SheetEditProtectionsRaw } from "./TableRaw/SheetEditProtectionsRaw";
 import { TableColumnResolverRaw } from "./TableRaw/TableColumnResolverRaw";
@@ -52,11 +54,11 @@ import { TableColumnResolverRaw } from "./TableRaw/TableColumnResolverRaw";
 /**
  * One Table's state by Table-relative index: rows, columns, pruning, queued
  * Table-level requests, and integrating fetched cells into its rows, cells and
- * Meta column facts. `ss.sheetMeta(gid).primary` also reaches it through its
+ * sampled column facts. `ss.sheetMeta(gid).primary` also reaches it through its
  * sheet, so sheet-level title, conditional format rules and edit protections
  * live here too, the latter two in TableRaw/ behind one-line delegations.
- * Column facts are SheetMetaRaw; column ID lookups are TableRaw/; spreadsheet-wide
- * fetch and flush are SpreadsheetRaw. By-name and columnId resolution are Identified/Named.
+ * Descriptive facts are TableProfileRaw and ColumnProfileRaw; column ID lookups are TableRaw/;
+ * spreadsheet-wide fetch and flush are SpreadsheetRaw. By-name and columnId resolution are Identified/Named.
  */
 export class TableRaw extends TableCommonRaw {
   get ss(): SpreadsheetRaw {
@@ -64,6 +66,9 @@ export class TableRaw extends TableCommonRaw {
   }
   get meta(): SheetMetaRaw {
     return new SheetMetaRaw(this.tableRawProps);
+  }
+  get profile(): TableProfileRaw {
+    return new TableProfileRaw(this.tableRawProps);
   }
   private get conditionalFormats(): SheetConditionalFormatsRaw {
     return new SheetConditionalFormatsRaw(this.tableRawProps);
@@ -213,7 +218,7 @@ export class TableRaw extends TableCommonRaw {
     }
     // A queued-delete top row has no cells; column facts still describe the live sheet.
     return this.fullTableColIndexes.every(
-      (colIndex) => this.column(colIndex).meta.activeTopValue === "",
+      (colIndex) => this.column(colIndex).profile.topValue === "",
     );
   }
   headRow<HR extends HeadRole>(headRole: HR): HeadRowRaw<HR> {
@@ -286,7 +291,7 @@ export class TableRaw extends TableCommonRaw {
     toFinalize.columns.forEach((colIndex) => {
       this.column(colIndex).ensureFullWorkingDataCells();
     });
-    this._ensureFetchedActiveFacts();
+    this._ensureFetchedSampledFacts();
     toFinalize.rows.clear();
     toFinalize.columns.clear();
   }
@@ -303,18 +308,35 @@ export class TableRaw extends TableCommonRaw {
     this.tableState.fetchQueue.toFinalize.cells.clear();
   }
   // After the backfills above, so a blank fact is sampled rather than built.
-  private _ensureFetchedActiveFacts(): void {
+  private _ensureFetchedSampledFacts(): void {
     const { toFinalize } = this.tableState.fetchQueue;
     // Only table columns: a fact is always reached through a column ID.
     if (toFinalize.rows.has(0)) {
       this.fullTableColIndexes.forEach((colIndex) => {
-        this.column(colIndex).meta.ensureActiveFacts();
+        this._ensureSampledFacts(colIndex);
       });
     }
     toFinalize.columns.forEach((colIndex) => {
       if (!this.isTableColIndex(colIndex)) return;
-      this.column(colIndex).meta.ensureActiveFacts();
+      this._ensureSampledFacts(colIndex);
     });
+  }
+  // Gap-filling only, so a fact the payload described always wins.
+  private _ensureSampledFacts(colIndex: number): void {
+    if (this.columnStates.get(colIndex)?.sampledFacts !== undefined) return;
+    if (!this.column(colIndex).topCell.inWorking) return; // no top data row to sample
+    this._integrateSampledFacts(colIndex, undefined);
+  }
+  private _integrateSampledFacts(
+    colIndex: number,
+    cell: GridCellSnapshot | undefined,
+  ): void {
+    this._ensureColumnState(colIndex).sampledFacts = {
+      isFormula: cell?.isFormula ?? false,
+      numberFormatType: cell?.numberFormatType,
+      dataValidationConditionType: cell?.dataValidationConditionType,
+      topValue: cell?.value ?? "", // from the payload, so a deleted top data row still describes the column
+    };
   }
   integrateSheetState(sheet: SheetSnapshot): void {
     this._integrateSheetProperties(sheet);
@@ -354,7 +376,7 @@ export class TableRaw extends TableCommonRaw {
             row.cell(colIndex).integrateSnapshot(cellData);
           }
           if (rowIndex === 0) {
-            this.column(colIndex).meta.integrateActiveFacts(cellData);
+            this._integrateSampledFacts(colIndex, cellData);
           }
         }
       });

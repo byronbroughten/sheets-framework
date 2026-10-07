@@ -107,7 +107,7 @@ function updateSheetGidToTableId(
   table: TableRaw,
   conversions: RowConversion[],
 ): void {
-  const idPrefix = Val.assert(table.meta.activeIdPrefix(), "ID prefix");
+  const idPrefix = Val.assert(table.profile.idPrefix(), "ID prefix");
   const gidCol = table.columnByHeader(headers.sheetGid);
   const colIndex = gidCol.colIndex;
   table.headRow("header").updateValue(colIndex, headers.tableId);

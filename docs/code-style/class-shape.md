@@ -67,7 +67,7 @@ Holding the row index as an optional field assigned at the start of a build was 
 
 ## Push a domain query onto the object that owns it
 
-When a coordinating class composes several calls on a collaborator to answer one domain question, that composition belongs on the collaborator as its own named method — not re-inlined at every call site. `ColumnConfigOperator` used to reach through `sheet.headRow("columnId").workingValueArr` and `.hasValue(columnId)` directly; that logic moved onto `SheetMetaRaw` as `get activeColumnIds()` and onto the Table's column resolver as `hasColumnId(columnId)`, and `ColumnConfigOperator`'s own private helper now just delegates:
+When a coordinating class composes several calls on a collaborator to answer one domain question, that composition belongs on the collaborator as its own named method — not re-inlined at every call site. `ColumnConfigOperator` used to reach through `sheet.headRow("columnId").workingValueArr` and `.hasValue(columnId)` directly; that logic moved onto the Table profile as `get columnIds()` (`TableProfileRaw`) and onto the Table's column resolver as `hasColumnId(columnId)`, and `ColumnConfigOperator`'s own private helper now just delegates:
 
 ```ts
 private _hasColumnId(tableId: string, columnId: string): boolean {
@@ -75,13 +75,13 @@ private _hasColumnId(tableId: string, columnId: string): boolean {
 }
 ```
 
-Destructure a collaborator's getter directly when only one property is needed: `const { activeColumnIds } = this.ss.raw.sheetMeta(sheetGid);`.
+Destructure a collaborator's getter directly when only one property is needed: `const { columnIds } = this.ss.raw.table(tableId).profile;`.
 
-A container method that takes an index/id as a parameter, but is only ever called by code that already has that exact value as its own instance state, is a sign the query belongs on the instance instead — drop the parameter along with the method. `SheetBaseRaw.columnValidationValues(colIndex: number)` was deleted; its one caller always already had its own `colIndex`, so the query moved to `ColumnMetaRaw` as `get valueValidationStrings()`, reading `this.sheet.activeTable.columnValidationValues.get(this.colIndex)` (`ColumnMetaRaw.ts`). The parameter disappearing is what turns it into a getter (see the getter rule in `@byronbroughten/config`'s `docs/code-style/naming.md`).
+A container method that takes an index/id as a parameter, but is only ever called by code that already has that exact value as its own instance state, is a sign the query belongs on the instance instead — drop the parameter along with the method. `SheetBaseRaw.columnValidationValues(colIndex: number)` was deleted; its one caller always already had its own `colIndex`, so the query moved onto the column as `get valueValidationStrings()`, now on its profile (`ColumnProfileRaw.ts`). The parameter disappearing is what turns it into a getter (see the getter rule in `@byronbroughten/config`'s `docs/code-style/naming.md`).
 
 ## Model state at the granularity the concept actually has
 
-The principle and its other instances live in [design.md](../design.md); what follows is where it lands on member placement. A member that **samples the top data row to derive a column-wide fact** belongs on the Meta column — that is membership criterion 2 of the Meta/primary axis ([vocabulary.md](../vocabulary.md), "Meta / primary"), and `isFormula`/`numberFormatType` are the case that produced it. They match `ColumnSchema.isFormula`, the schema-based trait, and are read off the column's top data-row cell only because that is how the API delivers them; so they live as `activeIsFormula`/`activeNumberFormatType` on `ColumnMetaRaw`, populated once per column by `TableRaw._integrateSheetData`, not as per-row/per-cell state on `CellRaw`/`RowBaseRaw`.
+The principle and its other instances live in [design.md](../design.md); what follows is where it lands on member placement. A member that **samples the top data row to derive a column-wide fact** belongs on the column profile, and `isFormula`/`numberFormatType` are the case that produced it. They match `ColumnSchema.isFormula`, the schema-based trait, and are read off the column's top data-row cell only because that is how the API delivers them; so they are held once per column in `ColumnStateRaw.sampledFacts`, filled by `TableRaw`'s fetch integration and read as `column.profile.isFormula`/`.numberFormatType`, not as per-row/per-cell state on `CellRaw`/`RowBaseRaw`.
 
-The criterion bites on the derived fact, not on row or cell addressing: `topCell` and `topRow` stay primary, or a Meta class would end up handing out data rows.
+The criterion bites on the derived fact, not on row or cell addressing: `topCell` and `topRow` stay on the column and Table, or the profile would end up handing out data rows.
 

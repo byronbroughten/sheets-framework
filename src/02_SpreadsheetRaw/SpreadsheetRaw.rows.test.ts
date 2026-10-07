@@ -602,7 +602,9 @@ describe("TableRaw.removeRowsExcept", () => {
     const raw = fetchedPrunableSheet();
     raw.table(tableId111).removeRowsExcept(1);
 
-    expect(raw.sheetMeta(111).columnByActiveId("c:lse:bbb").colIndex).toBe(1);
+    expect(raw.table(tableId111).profile.columnById("c:lse:bbb").colIndex).toBe(
+      1,
+    );
   });
 
   it("makes a whole-column fill throw, so it can't overwrite the excluded rows", () => {

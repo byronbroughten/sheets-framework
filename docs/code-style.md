@@ -24,11 +24,11 @@ One line per rule. The reasoning and worked examples are one file away. Open a r
 - **Split a coordinator into collaborators when its private helpers fall into groups that share nothing with each other**, not when it passes a method count. The coordinator keeps its public methods as one-line delegations, and the collaborators go in a subfolder named after it.
   - **Collaborators get no tests of their own** and reach the coordinator's shared surface through a getter. A base class stays in `ClassBases/`.
 - **A composition of collaborator calls that answers one domain question belongs on the collaborator**, under its own name. A parameter that its only caller already holds as its own state means the query belongs on the instance.
-- **A member that samples the top data row for a column-wide fact belongs on the Meta column.** `topCell`/`topRow` stay primary.
+- **A member that samples the top data row for a column-wide fact belongs on the column profile.** `topCell`/`topRow` stay on the column and Table.
 
 ## Naming
 
-- **Prefix a getter `active` when it reads live sheet state that has a same-named schema/config counterpart.** A helper that moves down onto the object it's about renames `_actualX` → `activeX`.
+- **A live read with a same-named schema/config counterpart takes the bare name on the profile, never an `active` prefix.** A helper with a committed counterpart that moves down onto the column drops its `_actual` prefix there.
 - **`column` abbreviates to `col` by default, and is spelled out beside an already-short suffix**, one form per scope.
 - **A sheet takes the unmarked name and a row is marked with a spelled-out `Row` suffix.**
 - **Google's API names stay at the wire; framework names follow the glossary.**

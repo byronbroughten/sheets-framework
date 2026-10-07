@@ -138,7 +138,7 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
     const prefixesInUse = new Set<string>();
     const assigned = new Map<string, string>();
     this._apiAccessTables().forEach((table) => {
-      const sampled = table.meta.activeIdPrefix();
+      const sampled = table.profile.idPrefix();
       if (sampled === undefined) return;
       prefixesInUse.add(sampled);
       assigned.set(table.tableId, sampled);
@@ -157,7 +157,7 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
       const previous = tableConfigsByTableId().get(tableId);
       if (previous === undefined) return;
       const table = this.ss.raw.table(tableId);
-      const sampled = table.meta.activeIdPrefix();
+      const sampled = table.profile.idPrefix();
       if (sampled === undefined || sampled === previous.idPrefix) return;
       changes.push(
         `Table "${table.name}" sampled ID prefix "${sampled}" differs from last generated "${previous.idPrefix}".`,

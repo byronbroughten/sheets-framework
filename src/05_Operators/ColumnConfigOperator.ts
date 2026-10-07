@@ -8,7 +8,7 @@ import {
   makeImportLine,
 } from "../01_SpreadsheetSchema/makeConfigs";
 import { type ValueName } from "../01_SpreadsheetSchema/valueSchemas";
-import type { ColumnMetaRaw } from "../02_SpreadsheetRaw/ColumnMetaRaw";
+import type { ColumnProfileRaw } from "../02_SpreadsheetRaw/ColumnProfileRaw";
 import { Str } from "../utils/Str";
 import { columnConfigsFileSource } from "./configFileSource";
 import { GenericTableOperator } from "./GenericTableOperator";
@@ -57,7 +57,7 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
   }
   activeValueTitles(): string[] {
     return this.table.workingRowIndexesWithData.map((rowIndex) =>
-      this._describedColumn(this._columnIdentity(rowIndex)).activeValueTitle(),
+      this._describedColumn(this._columnIdentity(rowIndex)).valueTitle(),
     );
   }
   assertSyncedToSpreadsheet(): void {
@@ -182,8 +182,8 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
 
     let appendedCount = 0;
     this.tableIdsApiAccesses.forEach((tableId) => {
-      const { activeColumnIds } = this.ss.raw.table(tableId).meta;
-      activeColumnIds.forEach((columnId) => {
+      const { columnIds } = this.ss.raw.table(tableId).profile;
+      columnIds.forEach((columnId) => {
         if (
           !existingIdentityKeys.has(columnIdentityKey({ tableId, columnId }))
         ) {
@@ -202,8 +202,11 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
       columnId: col.columnId.value(rowIndex),
     };
   }
-  private _describedColumn({ tableId, columnId }: ColumnIdentity): ColumnMetaRaw {
-    return this.ss.raw.table(tableId).meta.columnByActiveId(columnId);
+  private _describedColumn({
+    tableId,
+    columnId,
+  }: ColumnIdentity): ColumnProfileRaw {
+    return this.ss.raw.table(tableId).profile.columnById(columnId);
   }
   private _updateProgrammaticValues(): void {
     const col = this.table.columns("tableName", "header", "emptyValueAllowed");
@@ -221,7 +224,7 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
       }
 
       const describedColumn = this._describedColumn(identity);
-      const actualHeader = describedColumn.activeHeader;
+      const actualHeader = describedColumn.header;
       if (col.header.valueOrEmpty(rowIndex) !== actualHeader) {
         col.header.cell(rowIndex).updateValue(actualHeader);
         updatedValues++;
@@ -238,7 +241,7 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
         updatedValues++;
       }
 
-      if (describedColumn.activeDeclaredValueTitle() === undefined) {
+      if (describedColumn.declaredValueTitle() === undefined) {
         this._recordUntypedColumn(actualTableName, actualHeader);
       }
     });
@@ -321,9 +324,9 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
         columnId,
         header,
         valueName: this.schema.titleToName(
-          describedColumn.activeValueTitle(),
+          describedColumn.valueTitle(),
         ) as ValueName,
-        isFormula: describedColumn.activeIsFormula,
+        isFormula: describedColumn.isFormula,
         emptyValueAllowed: col.emptyValueAllowed.value(rowIndex),
         customDefaultValue: null,
       };

@@ -137,6 +137,18 @@ describe("SpreadsheetNamed navigation", () => {
     expect(headCell).toBeInstanceOf(CellIdentified);
   });
 
+  it("offers no profile: descriptive facts stay at Raw", () => {
+    assertType<
+      IsExactly<
+        Extract<
+          "profile",
+          keyof TableNamed<"item"> | keyof ColumnNamed<"item", "id">
+        >,
+        never
+      >
+    >(true);
+  });
+
   it("reaches the Table through ss.tables and back through each row's and column's table getter", () => {
     stubSheetsService();
     const ss = SpreadsheetNamed.init();

@@ -866,8 +866,8 @@ function valueTitles(operator: ColumnConfigOperator, count: number) {
     return [
       operator.ss.raw
         .table(testTableId)
-        .meta.columnByActiveId(col.columnId.value(rowIndex))
-        .activeValueTitle(),
+        .profile.columnById(col.columnId.value(rowIndex))
+        .valueTitle(),
     ];
   });
   expect(titles).toHaveLength(count);

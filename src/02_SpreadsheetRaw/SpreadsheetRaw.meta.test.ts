@@ -10,7 +10,7 @@ import {
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
 import { Val } from "../utils/Val";
-import { type ColumnMetaRaw } from "./ColumnMetaRaw";
+import { type ColumnProfileRaw } from "./ColumnProfileRaw";
 import { SpreadsheetRaw } from "./SpreadsheetRaw";
 import {
   colIdRowIndex,
@@ -29,7 +29,7 @@ import {
   topDataRowIndex,
 } from "./spreadsheetRawTestSupport";
 
-describe("ColumnMetaRaw active facts", () => {
+describe("ColumnProfileRaw sampled facts", () => {
   const tableEndRow = topDataRowIndex + 1;
 
   function stubSheetWithTopDataRow(
@@ -53,36 +53,36 @@ describe("ColumnMetaRaw active facts", () => {
     });
   }
 
-  function fetchedItemColumnMeta(colIndex: number): ColumnMetaRaw {
+  function fetchedItemColumnProfile(colIndex: number): ColumnProfileRaw {
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
     raw.table(itemTableId).topRow.gatherFetchFull();
     raw.fetchAllGathered(true);
-    return raw.sheetMeta(itemGid).primary.column(colIndex).meta;
+    return raw.table(itemTableId).column(colIndex).profile;
   }
 
-  function expectBlankFacts(column: ColumnMetaRaw): void {
-    expect(column.activeIsFormula).toBe(false);
-    expect(column.activeNumberFormatType).toBeUndefined();
-    expect(column.activeTopValue).toBe("");
+  function expectBlankFacts(column: ColumnProfileRaw): void {
+    expect(column.isFormula).toBe(false);
+    expect(column.numberFormatType).toBeUndefined();
+    expect(column.topValue).toBe("");
   }
 
   it("reports blank facts for a top data row returned without any cell data", () => {
     stubSheetWithTopDataRow([], "rowsWithNoGridData");
 
-    expectBlankFacts(fetchedItemColumnMeta(0));
+    expectBlankFacts(fetchedItemColumnProfile(0));
   });
 
   it("reports blank facts for a top data row returned as no grid block at all", () => {
     stubSheetWithTopDataRow([], "rowsWithNoGridBlock");
 
-    expectBlankFacts(fetchedItemColumnMeta(0));
+    expectBlankFacts(fetchedItemColumnProfile(0));
   });
 
   it("reports the same facts an empty cell inside a returned row produces", () => {
     stubSheetWithTopDataRow([null, "a note"]);
 
-    expectBlankFacts(fetchedItemColumnMeta(0));
+    expectBlankFacts(fetchedItemColumnProfile(0));
   });
 
   it("keeps the facts the payload supplied rather than seeding over them", () => {
@@ -90,11 +90,11 @@ describe("ColumnMetaRaw active facts", () => {
       { value: 42, isFormula: true, numberFormatType: "CURRENCY" },
     ]);
 
-    const column = fetchedItemColumnMeta(0);
+    const column = fetchedItemColumnProfile(0);
 
-    expect(column.activeIsFormula).toBe(true);
-    expect(column.activeNumberFormatType).toBe("CURRENCY");
-    expect(column.activeTopValue).toBe(42);
+    expect(column.isFormula).toBe(true);
+    expect(column.numberFormatType).toBe("CURRENCY");
+    expect(column.topValue).toBe(42);
   });
 
   it("reports blank facts for a full-column fetch of a wholly blank column", () => {
@@ -106,7 +106,7 @@ describe("ColumnMetaRaw active facts", () => {
     raw.table(itemTableId).column(1).gatherFetchFull();
     raw.fetchAllGathered(true);
 
-    expectBlankFacts(raw.sheetMeta(itemGid).primary.column(1).meta);
+    expectBlankFacts(raw.table(itemTableId).column(1).profile);
   });
 
   it("reads a specifically fetched cell omitted from the payload as empty, not unfetched", () => {
@@ -142,7 +142,7 @@ describe("ColumnMetaRaw active facts", () => {
     raw.fetchAllGathered();
 
     const message = thrownMessage(
-      () => raw.sheetMeta(itemGid).primary.column(0).meta.activeIsFormula,
+      () => raw.table(itemTableId).column(0).profile.isFormula,
     );
     expect(message).toContain(`"Item" (gid ${itemGid})`);
     expect(message).toMatch(/top data row/);
@@ -169,12 +169,10 @@ describe("ColumnMetaRaw active facts", () => {
     raw.table(itemTableId).topRow.gatherFetchFull();
     raw.fetchAllGathered(true);
 
-    expect(raw.sheetMeta(itemGid).primary.column(0).meta.activeTopValue).toBe(
-      100000,
-    );
+    expect(raw.table(itemTableId).column(0).profile.topValue).toBe(100000);
     expect(
-      () => raw.sheetMeta(itemGid).primary.column(1).meta.activeTopValue,
-    ).toThrowError(/No active facts/);
+      () => raw.table(itemTableId).column(1).profile.topValue,
+    ).toThrowError(/No sampled facts/);
   });
 });
 
@@ -675,8 +673,8 @@ describe("SheetMetaRaw.insertColumnAtEnd", () => {
   });
 });
 
-describe("SheetMetaRaw.activeColumnIds", () => {
-  function fetchedColumnIdSheet(columnIdRow: FakeCell[]) {
+describe("TableProfileRaw.columnIds", () => {
+  function fetchedColumnIdTable(columnIdRow: FakeCell[]) {
     stubSheetsService({
       sheets: [
         {
@@ -692,45 +690,45 @@ describe("SheetMetaRaw.activeColumnIds", () => {
     });
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheetMeta(111).primary.headRow("columnId").gatherFetchFull();
+    raw.table(tableId111).headRow("columnId").gatherFetchFull();
     raw.fetchAllGathered();
-    return raw.sheetMeta(111);
+    return raw.table(tableId111);
   }
 
   it("throws when a Table column-ID cell is a number, boolean, or date", () => {
     expect(
-      () => fetchedColumnIdSheet(["c:lse:aaa", 42]).activeColumnIds,
+      () => fetchedColumnIdTable(["c:lse:aaa", 42]).profile.columnIds,
     ).toThrow(/Records.*column index 1/);
     expect(
-      () => fetchedColumnIdSheet(["c:lse:aaa", true]).activeColumnIds,
+      () => fetchedColumnIdTable(["c:lse:aaa", true]).profile.columnIds,
     ).toThrow(/Records.*column index 1/);
     expect(
-      () => fetchedColumnIdSheet(["c:lse:aaa", 44927]).activeColumnIds,
+      () => fetchedColumnIdTable(["c:lse:aaa", 44927]).profile.columnIds,
     ).toThrow(/Records.*column index 1/);
   });
 
   it("treats a blank Table column-ID cell as missing rather than a type error", () => {
-    expect(fetchedColumnIdSheet(["c:lse:aaa", ""]).activeColumnIds).toEqual([
+    expect(fetchedColumnIdTable(["c:lse:aaa", ""]).profile.columnIds).toEqual([
       "c:lse:aaa",
     ]);
   });
 
   it("ignores a non-string past the Table", () => {
     expect(
-      fetchedColumnIdSheet(["c:lse:aaa", "c:lse:bbb", 42]).activeColumnIds,
+      fetchedColumnIdTable(["c:lse:aaa", "c:lse:bbb", 42]).profile.columnIds,
     ).toEqual(["c:lse:aaa", "c:lse:bbb"]);
   });
 
   it("throws from lookup by ID when a sibling Table cell is not text", () => {
-    const sheet = fetchedColumnIdSheet(["c:lse:aaa", false]);
-    expect(() => sheet.columnByActiveId("c:lse:aaa")).toThrow(
+    const table = fetchedColumnIdTable(["c:lse:aaa", false]);
+    expect(() => table.profile.columnById("c:lse:aaa")).toThrow(
       /Records.*column index 1/,
     );
   });
 
   it("throws from fill-missing when a Table column-ID cell is not text", () => {
     expect(() =>
-      fetchedColumnIdSheet(["", 42]).addMissingColumnIds("lse"),
+      fetchedColumnIdTable(["", 42]).meta.addMissingColumnIds("lse"),
     ).toThrow(/Records.*column index 1/);
   });
 });
@@ -792,6 +790,19 @@ describe("ColumnMetaRaw.updateColumnType", () => {
     });
   });
 
+  it("shows a queued column type on a profile reached before the update, since the profile reads the Table's state", () => {
+    stubTypedTable();
+    const raw = fetchedRaw();
+    const column = raw.table(tableId111).column(2);
+    const { profile } = column;
+    expect(profile.columnType).toBeUndefined();
+
+    column.meta.updateColumnType("DOUBLE");
+
+    expect(profile.columnType).toBe("DOUBLE");
+    expect(raw.table(tableId111).column(2).profile.columnType).toBe("DOUBLE");
+  });
+
   it("keeps an untouched column's name and type through the full-list replace", () => {
     stubTypedTable();
     const raw = fetchedRaw();
@@ -799,13 +810,9 @@ describe("ColumnMetaRaw.updateColumnType", () => {
     raw.batchUpdateGSheets();
     raw.fetchAllSheetProperties();
 
-    expect(raw.table(tableId111).column(0).meta.activeColumnType).toBe("TEXT");
-    expect(
-      raw.table(tableId111).column(1).meta.activeColumnType,
-    ).toBeUndefined();
-    expect(raw.table(tableId111).column(2).meta.activeColumnType).toBe(
-      "DOUBLE",
-    );
+    expect(raw.table(tableId111).column(0).profile.columnType).toBe("TEXT");
+    expect(raw.table(tableId111).column(1).profile.columnType).toBeUndefined();
+    expect(raw.table(tableId111).column(2).profile.columnType).toBe("DOUBLE");
   });
 
   it("keeps a sibling column's type unchanged when it is one the framework does not name", () => {
@@ -842,12 +849,8 @@ describe("ColumnMetaRaw.updateColumnType", () => {
     raw.batchUpdateGSheets();
     raw.fetchAllSheetProperties();
 
-    expect(
-      raw.table(tableId111).column(0).meta.activeColumnType,
-    ).toBeUndefined();
-    expect(raw.table(tableId111).column(2).meta.activeColumnType).toBe(
-      "DOUBLE",
-    );
+    expect(raw.table(tableId111).column(0).profile.columnType).toBeUndefined();
+    expect(raw.table(tableId111).column(2).profile.columnType).toBe("DOUBLE");
   });
 
   it("fake: rejects a columnProperties update carrying a column with no columnName", () => {

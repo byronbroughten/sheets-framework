@@ -92,6 +92,15 @@ describe("SpreadsheetIdentified navigation", () => {
     expect(headCell).toBeInstanceOf(CellIdentified);
   });
 
+  it("offers no profile: descriptive facts stay at Raw", () => {
+    assertType<
+      IsExactly<
+        Extract<"profile", keyof TableIdentified | keyof ColumnIdentified>,
+        never
+      >
+    >(true);
+  });
+
   it("reaches the Table back through each row's and column's table getter", () => {
     stubItemTable();
     const ssi = new SpreadsheetIdentified(

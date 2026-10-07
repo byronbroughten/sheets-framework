@@ -652,10 +652,10 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
     expect(table.startRowIndex).toBe(tableHeaderRowIndex);
     expect(table.startColumnIndex).toBe(startTableColIndex);
     expect(table.columnCount).toBeGreaterThan(0);
-    const columnMeta = raw.table(tableId111).column(0).meta;
-    expect(columnMeta.activeColumnType).toBe("TEXT");
-    expect(columnMeta.valueValidationStrings).toEqual(["=valueConfig[Notes]"]);
-    expect(columnMeta.validationConditionType).toBe("BOOLEAN");
+    const { profile } = raw.table(tableId111).column(0);
+    expect(profile.columnType).toBe("TEXT");
+    expect(profile.valueValidationStrings).toEqual(["=valueConfig[Notes]"]);
+    expect(profile.validationConditionType).toBe("BOOLEAN");
     expect(raw.table(tableId111).isTableColIndex(0)).toBe(true);
     expect(() => table.dataRowCount).toThrow(staleRowIndexes);
     expect(() => table.growDataRowCount()).toThrow(staleRowIndexes);
@@ -681,10 +681,10 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
 
-    const columnMeta = raw.table(tableId111).column(0).meta;
-    expect(columnMeta.activeColumnType).toBe("TEXT");
-    expect(columnMeta.valueValidationStrings).toEqual(["=valueConfig[Notes]"]);
-    expect(columnMeta.validationConditionType).toBe("BOOLEAN");
+    const { profile } = raw.table(tableId111).column(0);
+    expect(profile.columnType).toBe("TEXT");
+    expect(profile.valueValidationStrings).toEqual(["=valueConfig[Notes]"]);
+    expect(profile.validationConditionType).toBe("BOOLEAN");
   });
 
   it("throws on per-cell value, formula, and colour writes after a flushed row delete", () => {
@@ -1059,10 +1059,10 @@ describe("queued writes outlive a same-run re-fetch", () => {
     raw.table(tableId111).topRow.gatherFetchFull();
     expect(() => raw.fetchAllGathered(true)).not.toThrow();
 
-    const column = raw.sheetMeta(111).primary.column(1).meta;
-    expect(column.activeIsFormula).toBe(true);
-    expect(column.activeNumberFormatType).toBe("CURRENCY");
-    expect(column.activeTopValue).toBe(42);
+    const { profile } = raw.table(tableId111).column(1);
+    expect(profile.isFormula).toBe(true);
+    expect(profile.numberFormatType).toBe("CURRENCY");
+    expect(profile.topValue).toBe(42);
   });
 
   it("still answers whether the top data row is blank from those facts", () => {
@@ -1240,9 +1240,7 @@ describe("queued writes outlive a same-run re-fetch", () => {
     raw.sheetMeta(111).primary.column(1).meta.updateColumnType("DOUBLE");
     raw.fetchAllSheetProperties();
 
-    expect(raw.sheetMeta(111).primary.column(1).meta.activeColumnType).toBe(
-      "DOUBLE",
-    );
+    expect(raw.table(tableId111).column(1).profile.columnType).toBe("DOUBLE");
   });
 
   it("lets the last of two queued tab titles win after a re-fetch", () => {

@@ -6,15 +6,19 @@ import { type HeadRowValueName } from "../01_SpreadsheetSchema/headRows";
 import { stubSheetsService } from "../testSupport/fakeSheetsService";
 import { assertType, type IsExactly } from "../testSupport/typeAssertions";
 import { CellRaw } from "./CellRaw";
+import { type ColumnBaseRaw } from "./ClassBases/ColumnBaseRaw";
 import { type RowCommonRaw } from "./ClassBases/RowCommonRaw";
+import { type TableBaseRaw } from "./ClassBases/TableBaseRaw";
 import { type CellFill, type CellStateRaw } from "./ClassTypes/StateRaw";
 import { ColumnMetaRaw } from "./ColumnMetaRaw";
+import { ColumnProfileRaw } from "./ColumnProfileRaw";
 import { ColumnRaw } from "./ColumnRaw";
 import { HeadRowRaw } from "./HeadRowRaw";
 import { RowRaw } from "./RowRaw";
 import { SheetMetaRaw } from "./SheetMetaRaw";
 import { SpreadsheetRaw } from "./SpreadsheetRaw";
 import { placedTableSheet, tableId111 } from "./spreadsheetRawTestSupport";
+import { TableProfileRaw } from "./TableProfileRaw";
 import { TableRaw } from "./TableRaw";
 
 describe("SpreadsheetRaw navigation", () => {
@@ -41,6 +45,11 @@ describe("SpreadsheetRaw navigation", () => {
     assertType<IsExactly<typeof columnMeta.table, SheetMetaRaw>>(true);
     assertType<IsExactly<typeof column.meta, ColumnMetaRaw>>(true);
     assertType<IsExactly<typeof columnMeta.primary, ColumnRaw>>(true);
+    assertType<IsExactly<typeof table.profile, TableProfileRaw>>(true);
+    assertType<IsExactly<typeof column.profile, ColumnProfileRaw>>(true);
+    assertType<
+      IsExactly<ReturnType<typeof table.profile.columnById>, ColumnProfileRaw>
+    >(true);
     assertType<IsExactly<ReturnType<typeof table.row>, RowRaw>>(true);
     assertType<IsExactly<ReturnType<typeof table.rowCommon>, RowCommonRaw>>(
       true,
@@ -61,6 +70,8 @@ describe("SpreadsheetRaw navigation", () => {
     expect(columnMeta.table).toBeInstanceOf(SheetMetaRaw);
     expect(column.meta).toBeInstanceOf(ColumnMetaRaw);
     expect(columnMeta.primary).toBeInstanceOf(ColumnRaw);
+    expect(table.profile).toBeInstanceOf(TableProfileRaw);
+    expect(column.profile).toBeInstanceOf(ColumnProfileRaw);
     expect(table.row(0)).toBeInstanceOf(RowRaw);
     expect(table.rowCommon(0)).toBeInstanceOf(RowRaw);
     expect(table.rowCommon(-4)).toBeInstanceOf(HeadRowRaw);
@@ -68,6 +79,36 @@ describe("SpreadsheetRaw navigation", () => {
     expect(headRow.table).toBeInstanceOf(TableRaw);
     expect(table.headRowByIndex(-2)).toBeInstanceOf(HeadRowRaw);
     expect(headCell).toBeInstanceOf(CellRaw);
+  });
+});
+
+describe("Raw profile members", () => {
+  it("gives the Table profile its column IDs, ID prefix and lookup by ID", () => {
+    assertType<
+      IsExactly<
+        Exclude<keyof TableProfileRaw, keyof TableBaseRaw>,
+        "columnIds" | "idPrefix" | "columnById"
+      >
+    >(true);
+  });
+
+  it("gives the column profile its descriptive facts and value titles", () => {
+    assertType<
+      IsExactly<
+        Exclude<keyof ColumnProfileRaw, keyof ColumnBaseRaw>,
+        | "columnType"
+        | "isFormula"
+        | "numberFormatType"
+        | "topValue"
+        | "dataValidationConditionType"
+        | "header"
+        | "valueValidationStrings"
+        | "validationConditionType"
+        | "valueTitle"
+        | "declaredValueTitle"
+        | "validationValueTitle"
+      >
+    >(true);
   });
 });
 

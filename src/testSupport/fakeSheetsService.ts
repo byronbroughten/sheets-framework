@@ -83,7 +83,7 @@ export interface FakeTable {
    * A column's live data-validation condition values (e.g.
    * `["=valueConfig[Transaction Description]"]`), keyed by absolute
    * column index — read by `ColumnConfigOperator`'s valueName detection
-   * (`ColumnMetaRaw.valueValidationStrings`). Omit for a table with no
+   * (`ColumnProfileRaw.valueValidationStrings`). Omit for a table with no
    * validated columns.
    */
   columnValidationValues?: Record<number, string[]>;
@@ -97,7 +97,7 @@ export interface FakeTable {
   /**
    * A column's declared Sheets column type (e.g. `"CURRENCY"`, `"DATE"`,
    * `"BOOLEAN"`), keyed by absolute column index — read by
-   * `ColumnMetaRaw.activeColumnType`, which `ColumnConfigOperator`'s
+   * `ColumnProfileRaw.columnType`, which `ColumnConfigOperator`'s
    * valueName derivation consults before falling back to the top-row
    * sample. Omit a column here to leave it untyped (Automatic), which is
    * what the real API reports for a column whose type was never set.
