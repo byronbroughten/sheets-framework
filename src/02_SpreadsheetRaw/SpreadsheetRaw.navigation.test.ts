@@ -16,7 +16,6 @@ import { SheetMetaRaw } from "./SheetMetaRaw";
 import { SpreadsheetRaw } from "./SpreadsheetRaw";
 import { placedTableSheet, tableId111 } from "./spreadsheetRawTestSupport";
 import { TableRaw } from "./TableRaw";
-import { UniformRowRaw } from "./UniformRowRaw";
 
 describe("SpreadsheetRaw navigation", () => {
   it("gives each accessor the class its return type names", () => {
@@ -64,7 +63,7 @@ describe("SpreadsheetRaw navigation", () => {
     expect(columnMeta.primary).toBeInstanceOf(ColumnRaw);
     expect(table.row(0)).toBeInstanceOf(RowRaw);
     expect(table.rowCommon(0)).toBeInstanceOf(RowRaw);
-    expect(table.rowCommon(-4)).toBeInstanceOf(UniformRowRaw);
+    expect(table.rowCommon(-4)).toBeInstanceOf(HeadRowRaw);
     expect(headRow).toBeInstanceOf(HeadRowRaw);
     expect(headRow.table).toBeInstanceOf(TableRaw);
     expect(table.headRowByIndex(-2)).toBeInstanceOf(HeadRowRaw);
@@ -86,8 +85,8 @@ describe("Raw value types", () => {
     );
     assertType<
       IsExactly<
-        ReturnType<UniformRowRaw<"action">["valueOrEmpty"]>,
-        boolean | ""
+        ReturnType<HeadRowRaw<"columnId">["valueOrEmpty"]>,
+        string | ""
       >
     >(true);
     assertType<IsExactly<CellFill["backgroundColor"], RgbColor | undefined>>(

@@ -1,9 +1,7 @@
-import type { UniformRowName } from "../00_Source/CellValues/cellValues";
 import type { ColumnName } from "../01_SpreadsheetSchema/columnConfigsTypes";
 import type { TableName } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import type { SheetMetaRaw } from "../02_SpreadsheetRaw/SheetMetaRaw";
 import { SheetMetaIdentified } from "../03_SpreadsheetIdentified/SheetMetaIdentified";
-import type { UniformRowIdentified } from "../03_SpreadsheetIdentified/UniformRowIdentified";
 import { TableCommonNamed } from "./ClassBases/TableCommonNamed";
 import { ColumnMetaNamed } from "./ColumnMetaNamed";
 import { SpreadsheetNamed } from "./SpreadsheetNamed";
@@ -40,9 +38,6 @@ export class SheetMetaNamed<
     const columnId = this.identified.columnIdByIndex(colIndex);
     const columnName = this.schema.colNameByColumnId(columnId);
     return this.column(columnName);
-  }
-  uniformRow<UN extends UniformRowName>(rowName: UN): UniformRowIdentified<UN> {
-    return this.identified.uniformRow(rowName);
   }
   isActiveColumnId(columnId: string): boolean {
     return this.identified.isActiveColumnId(columnId);

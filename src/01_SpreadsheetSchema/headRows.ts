@@ -30,6 +30,13 @@ export const headRows = {
   index(role: HeadRole): number {
     return -1 - tableLayout.headRowOffsets[role];
   },
+  // One per row, so a row two roles share appears once.
+  indexes(): number[] {
+    return [...new Set(Obj.keys(tableLayout.headRowOffsets).map(headRows.index))];
+  },
+  isIndex(rowIndex: number): boolean {
+    return headRows.indexes().includes(rowIndex);
+  },
   rolesAt(rowIndex: number): [HeadRole, ...HeadRole[]] {
     const [first, ...rest] = Obj.keys(tableLayout.headRowOffsets).filter(
       (role) => headRows.index(role) === rowIndex,

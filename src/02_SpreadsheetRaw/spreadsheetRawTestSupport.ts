@@ -1,8 +1,8 @@
 import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
+import { headRows } from "../01_SpreadsheetSchema/headRows";
 import { SpreadsheetSchema } from "../01_SpreadsheetSchema/SpreadsheetSchema";
 import { getTableTraitByName } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import { TableOrigin } from "../01_SpreadsheetSchema/TableOrigin";
-import { uniformRows } from "../01_SpreadsheetSchema/uniformRows";
 import {
   buildGridRows,
   type FakeRichCellValue,
@@ -22,7 +22,7 @@ export const logTableId = fakeTableId(logGid, 0);
 export const expectedOrigin = TableOrigin.expected();
 export const tableHeaderRowIndex: number = expectedOrigin.headerRowIndex;
 export const colIdRowIndex: number = expectedOrigin.sheetRowIndex(
-  uniformRows.index("columnId"),
+  headRows.index("columnId"),
 );
 export const startTableColIndex: number = expectedOrigin.startColIndex;
 export const topDataRowIndex = tableHeaderRowIndex + 1;

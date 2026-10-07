@@ -157,9 +157,9 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
       const sheetGid = getTableTraitByName(tableName, "sheetGid");
       if (!this.ss.raw.gidIsActive(sheetGid)) return;
       const sheet = this.ss.table(tableName);
-      sheet.meta.uniformRow("columnId").prepFetchFull();
-      sheet.meta.uniformRow("header").prepFetchFull();
-      sheet.meta.uniformRow("groupHeading1").prepFetchFull();
+      sheet.headRow("columnId").prepFetchFull();
+      sheet.headRow("header").prepFetchFull();
+      sheet.headRow("groupHeading1").prepFetchFull();
       if (floorDataValueColumns(tableName).length > 0) {
         sheet.row(0).prepFetchFull();
       }
@@ -195,11 +195,11 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
           );
         }
         const liveHeading = String(
-          meta.uniformRow("groupHeading1").valueOrEmpty(colIndex),
+          meta.primary.headRow("groupHeading1").valueOrEmpty(colIndex),
         );
         if (liveHeading !== floorColumn.groupHeading) {
-          meta
-            .uniformRow("groupHeading1")
+          meta.primary
+            .headRow("groupHeading1")
             .updateValue(colIndex, floorColumn.groupHeading);
           const headingLabel =
             floorColumn.groupHeading === ""
@@ -333,6 +333,6 @@ function floorColumnIdentity<
   TN extends FloorSheetName,
   CN extends ColumnName<TN>,
 >(column: ColumnNamed<TN, CN>): string {
-  const header = String(column.meta.uniformCell("header").valueOrEmpty());
+  const header = String(column.headCell("header").valueOrEmpty());
   return `${column.table.raw.title} · ${header} (${column.columnId})`;
 }

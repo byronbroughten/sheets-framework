@@ -34,7 +34,7 @@ TableBaseRaw                     // the address (a tableId, or a sheet GID until
   └─ ColumnBaseRaw
 ```
 
-`TableCommonRaw` holds the Table's identity and geometry: `tableId`, `name`, the bounds, `dataRowCount`, `columnCount` and the stale flag. Its state is `TableStateRaw`, keyed by `tableId`, which holds the Table's properties, rows, columns and fetch and write queues; `SheetStateRaw` keeps only per-sheet facts. Identified's chain is `TableBaseIdentified` → `TableCommonIdentified` → `TableIdentified`. Meta, the Named classes and uniform rows keep their Sheet names.
+`TableCommonRaw` holds the Table's identity and geometry: `tableId`, `name`, the bounds, `dataRowCount`, `columnCount` and the stale flag. Its state is `TableStateRaw`, keyed by `tableId`, which holds the Table's properties, rows, columns and fetch and write queues; `SheetStateRaw` keeps only per-sheet facts. Identified's chain is `TableBaseIdentified` → `TableCommonIdentified` → `TableIdentified`. Meta and the Named classes keep their Sheet names.
 
 **Raw addresses a Table by its live `tableId`** (`ss.table(tableId)`). Until Meta is retired, `ss.sheetMeta(gid).primary` resolves the sheet's one Table. Before that Table's properties are fetched, it queues into the sheet's `tableBeforeProperties` state, and the Table adopts it when its properties arrive.
 

@@ -191,6 +191,7 @@ describe("Named head rows", () => {
     });
     const ss = SpreadsheetNamed.init();
     ss.table("valueTypes").headRow("action").prepFetchFull();
+    ss.table("valueTypes").headRow("groupHeading1").prepFetchFull();
     ss.fetchAllPrepped();
     return { grid, ss, table: ss.table("valueTypes") };
   }
@@ -207,6 +208,39 @@ describe("Named head rows", () => {
     ss.batchUpdateGSheets();
 
     expect(grid.sheet(valueTypesGid).cell(actionSheetRow, 0)).toBe("Due");
+  });
+
+  it("reads a checkbox column's blank head cell as blank text", () => {
+    const { table } = fetchedHeadRows();
+
+    expect(
+      table.column("checkbox").headCell("groupHeading1").valueOrEmpty(),
+    ).toBe("");
+  });
+
+  it("writes a formula column's head cell as plain text", () => {
+    stubSheetsService({
+      sheets: [
+        {
+          sheetId: getTableTraitByName("computed", "sheetGid"),
+          title: "Computed",
+          rows: buildGridRows({
+            0: [getColumnTraitByName("computed", "rowNumber", "columnId")],
+          }),
+          table: { endRowIndex: 6 },
+        },
+      ],
+    });
+    const ss = SpreadsheetNamed.init();
+    ss.raw.fetchAllSheetProperties();
+
+    expect(() =>
+      ss
+        .table("computed")
+        .column("rowNumber")
+        .headCell("header")
+        .updateValue("Row number"),
+    ).not.toThrow();
   });
 });
 

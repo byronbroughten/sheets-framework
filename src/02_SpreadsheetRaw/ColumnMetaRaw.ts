@@ -1,9 +1,6 @@
 import type {
   CellValue,
   CellValueName,
-  UniformRowName,
-  UniformRowValue,
-  UniformRowValueName,
 } from "../00_Source/CellValues/cellValues";
 import type { FrameworkValueName } from "../00_Source/CellValues/frameworkValueSchemas";
 import type {
@@ -11,12 +8,11 @@ import type {
   TableColumnType,
 } from "../00_Source/RawSource/RawSource";
 import { type PrimitiveValueName, Val } from "../utils/Val";
-import { CellRaw } from "./CellRaw";
 import { ColumnBaseRaw } from "./ClassBases/ColumnBaseRaw";
 import type {
   ActiveFactsRaw,
   ColumnStateRaw,
-  TableEndColumnUniformCells,
+  TableEndColumnHeadCells,
 } from "./ClassTypes/StateRaw";
 import { ColumnRaw } from "./ColumnRaw";
 import { SheetMetaRaw } from "./SheetMetaRaw";
@@ -31,7 +27,7 @@ export class ColumnMetaRaw<
     return new ColumnRaw<VN>(this.columnRawProps);
   }
   get activeHeader(): string {
-    return this.uniformCell("header").valueOrEmpty();
+    return this.primary.headCell("header").valueOrEmpty();
   }
   get activeIsFormula(): boolean {
     return this._activeFacts.isFormula;
@@ -80,31 +76,16 @@ export class ColumnMetaRaw<
     this.table.assertTableIsKnown();
     return this.columnState;
   }
-  uniformCell<UN extends UniformRowName>(
-    rowName: UN,
-  ): CellRaw<UniformRowValueName<UN>> {
-    return new CellRaw<UniformRowValueName<UN>>({
-      ...this.columnRawProps,
-      rowIndex: this.schema.uniformRowIndex(rowName),
-    });
-  }
-  initUniformCells({
+  initHeadCells({
     columnId,
     header,
     groupHeading1,
-  }: TableEndColumnUniformCells): this {
-    this.uniformCell("columnId").updateValue(columnId);
-    this.uniformCell("header").updateValue(header);
+  }: TableEndColumnHeadCells): this {
+    this.primary.headCell("columnId").updateValue(columnId);
+    this.primary.headCell("header").updateValue(header);
     if (groupHeading1 !== undefined) {
-      this.uniformCell("groupHeading1").updateValue(groupHeading1);
+      this.primary.headCell("groupHeading1").updateValue(groupHeading1);
     }
-    return this;
-  }
-  updateUniformCell<UN extends UniformRowName>(
-    rowName: UN,
-    newValue: UniformRowValue<UN>,
-  ): this {
-    this.uniformCell(rowName).updateValue(newValue);
     return this;
   }
   integrateActiveFacts(cell: GridCellSnapshot | undefined): void {

@@ -101,20 +101,16 @@ describe("SpreadsheetIdentified navigation", () => {
     const table = ssi.table(itemTableId);
     const row = table.row(0);
     const column = table.column(itemIdColumnId);
-    const uniformRow = table.meta.uniformRow("header");
     const headRow = table.headRow("header");
 
     assertType<IsExactly<typeof row.table, TableIdentified>>(true);
     assertType<IsExactly<typeof column.table, TableIdentified>>(true);
-    assertType<IsExactly<typeof uniformRow.table, TableIdentified>>(true);
     assertType<IsExactly<typeof headRow.table, TableIdentified>>(true);
 
     expect(row.table).toBeInstanceOf(TableIdentified);
     expect(column.table).toBeInstanceOf(TableIdentified);
-    expect(uniformRow.table).toBeInstanceOf(TableIdentified);
     expect(row.table).toEqual(table);
     expect(column.table).toEqual(table);
-    expect(uniformRow.table).toEqual(table);
     expect(headRow.table).toBeInstanceOf(TableIdentified);
     expect(headRow.table).toEqual(table);
   });
@@ -330,6 +326,7 @@ describe("Identified head rows", () => {
     const table = ssi.sheetMeta(valueTypesGid).primary;
     table.headRow("action").prepFetchFull();
     table.headRow("header").prepFetchFull();
+    table.headRow("groupHeading1").prepFetchFull();
     ssi.fetchAllPrepped();
     return { grid, ssi, table };
   }
@@ -357,6 +354,14 @@ describe("Identified head rows", () => {
 
     expect(grid.sheet(valueTypesGid).cell(actionSheetRow, 0)).toBe("Late");
     expect(grid.sheet(valueTypesGid).cell(actionSheetRow, 1)).toBe(false);
+  });
+
+  it("reads a checkbox column's blank head cell as blank text", () => {
+    const { table } = fetchedHeadRows();
+
+    expect(
+      table.column(checkboxColumnId).headCell("groupHeading1").valueOrEmpty(),
+    ).toBe("");
   });
 
   it("finds the row at an index with every role it holds", () => {
@@ -663,6 +668,21 @@ describe("Identified formula writes", () => {
         .updateAllFormulas("=ROW()"),
     ).not.toThrow();
   });
+  it("writes a formula column's head cell as plain text", () => {
+    const ssi = new SpreadsheetIdentified(
+      SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
+    );
+    ssi.raw.fetchAllSheetProperties();
+
+    expect(() =>
+      ssi
+        .sheetMeta(computedGid)
+        .primary.column(rowNumberColumnId)
+        .headCell("header")
+        .updateValue("Row number"),
+    ).not.toThrow();
+  });
+
 });
 
 describe("SpreadsheetIdentified.fetchAllPrepped / FetchTargetIdentified", () => {

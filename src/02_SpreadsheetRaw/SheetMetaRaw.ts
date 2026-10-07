@@ -1,15 +1,12 @@
-import {
-  type CellValueName,
-  type UniformRowName,
-} from "../00_Source/CellValues/cellValues";
+import type { CellValueName } from "../00_Source/CellValues/cellValues";
 import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
 import { Val } from "../utils/Val";
 import { TableCommonRaw } from "./ClassBases/TableCommonRaw";
-import type { TableEndColumnUniformCells } from "./ClassTypes/StateRaw";
+import type { TableEndColumnHeadCells } from "./ClassTypes/StateRaw";
 import { ColumnMetaRaw } from "./ColumnMetaRaw";
+import type { HeadRowRaw } from "./HeadRowRaw";
 import { SpreadsheetRaw } from "./SpreadsheetRaw";
 import { TableRaw } from "./TableRaw";
-import { UniformRowRaw } from "./UniformRowRaw";
 
 export class SheetMetaRaw extends TableCommonRaw {
   get ss(): SpreadsheetRaw {
@@ -21,14 +18,14 @@ export class SheetMetaRaw extends TableCommonRaw {
   get hasFetchedColumnIds(): boolean {
     return this.tableState.working.hasFetchedColumnIds;
   }
-  get tableHeaderRow(): UniformRowRaw<"header"> {
-    return this.uniformRow("header");
+  get tableHeaderRow(): HeadRowRaw<"header"> {
+    return this.primary.headRow("header");
   }
-  get actionRow(): UniformRowRaw<"action"> {
-    return this.uniformRow("action");
+  get actionRow(): HeadRowRaw<"action"> {
+    return this.primary.headRow("action");
   }
-  get colIdRow(): UniformRowRaw<"columnId"> {
-    return this.uniformRow("columnId");
+  get colIdRow(): HeadRowRaw<"columnId"> {
+    return this.primary.headRow("columnId");
   }
   get activeColumnIds(): string[] {
     return this._tableColumnIds().filter((columnId) => columnId !== "");
@@ -80,15 +77,6 @@ export class SheetMetaRaw extends TableCommonRaw {
     const value = this.colIdRow.valueOrEmpty(colIndex);
     return typeof value === "string" ? value : "";
   }
-  uniformRow<UN extends UniformRowName>(uniformRowName: UN): UniformRowRaw<UN> {
-    return new UniformRowRaw({
-      ...this.tableRawProps,
-      uniformRowName,
-    });
-  }
-  uniformRowByIndex(rowIndex: number): UniformRowRaw {
-    return this.uniformRow(this.schema.uniformRowNameByIndex(rowIndex));
-  }
   column<VN extends CellValueName = CellValueName>(
     colIndex: number,
   ): ColumnMetaRaw<VN> {
@@ -127,10 +115,10 @@ export class SheetMetaRaw extends TableCommonRaw {
     return addedCount;
   }
   // Past the inserts already queued, since each lands at the Table end as it stands then.
-  insertColumnAtEnd(uniformCells: TableEndColumnUniformCells): number {
+  insertColumnAtEnd(headCells: TableEndColumnHeadCells): number {
     const colIndex = this.columnCount + this.writes.insertTableEndColumnCount;
     this.queueTableWrite({ action: "insertTableEndColumn" });
-    this.column(colIndex).initUniformCells(uniformCells);
+    this.column(colIndex).initHeadCells(headCells);
     return colIndex;
   }
   // Only table columns: a fact is always reached through a column ID.

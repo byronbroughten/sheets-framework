@@ -11,7 +11,7 @@ Disclosed from [`docs/code-style.md`](../code-style.md), "Type modeling". The ru
 
 ## The framework's generic abbreviations
 
-The abbreviations are `SN` (SheetName), `VN` (ValueName), `CN` (ColumnName), `UN` (UniformRowName), `HR` (HeadRole), `IF` (IsFormula) and `TN`. The domain-free utilities that keep bare `T`/`K`/`V`/`O` are `utils/` (`utils/Obj.ts`, for one) and `appUtils/`. Why two letters: `@byronbroughten/config`'s `docs/code-style/type-modeling.md`.
+The abbreviations are `SN` (SheetName), `VN` (ValueName), `CN` (ColumnName), `HR` (HeadRole), `IF` (IsFormula) and `TN`. The domain-free utilities that keep bare `T`/`K`/`V`/`O` are `utils/` (`utils/Obj.ts`, for one) and `appUtils/`. Why two letters: `@byronbroughten/config`'s `docs/code-style/type-modeling.md`.
 
 ## The three accepted `as` idioms
 

@@ -1,9 +1,7 @@
-import type { UniformRowName } from "../00_Source/CellValues/cellValues";
 import { SheetMetaRaw } from "../02_SpreadsheetRaw/SheetMetaRaw";
 import { TableCommonIdentified } from "./ClassBases/TableCommonIdentified";
 import { ColumnMetaIdentified } from "./ColumnMetaIdentified";
 import { TableIdentified } from "./TableIdentified";
-import { UniformRowIdentified } from "./UniformRowIdentified";
 
 export interface GatherDataPrerequisitesProps {
   skipFetchingProperties?: boolean;
@@ -28,15 +26,6 @@ export class SheetMetaIdentified extends TableCommonIdentified {
   }
   columnIdByIndex(colIndex: number): string {
     return this.raw.columnIdAt(colIndex);
-  }
-  uniformRow<UN extends UniformRowName>(rowName: UN): UniformRowIdentified<UN> {
-    return new UniformRowIdentified({
-      ...this.tableIdentifiedProps,
-      uniformRowName: rowName,
-    });
-  }
-  uniformRowByIndex(rowIndex: number): UniformRowIdentified {
-    return this.uniformRow(this.schema.uniformRowNameByIndex(rowIndex));
   }
   isTableColIndex(colIndex: number): boolean {
     return this.raw.isTableColIndex(colIndex);

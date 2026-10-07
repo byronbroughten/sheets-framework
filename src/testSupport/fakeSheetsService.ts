@@ -123,7 +123,7 @@ export interface FakeSheetProperties {
    * The sheet's one Table, shorthand for `tables: [table]`. Required for any test that reads/appends
    * *data* rows on this sheet (`TableRaw`'s `rowIndexesActive`/
    * `appendDataRow` etc. read the Table's `dataRowCount`, which throws if no table was
-   * ever integrated) — not needed for sheets only read via a uniform row
+   * ever integrated) — not needed for sheets only read via a head row
    * (e.g. a business sheet's header row). `endRowIndex` is the exclusive
    * bound of existing data rows and must be strictly past the first data
    * row; a replayed Table append grows it, as the live API does.

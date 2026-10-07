@@ -1,8 +1,4 @@
 import type {
-  UniformRowName,
-  UniformRowValueName,
-} from "../00_Source/CellValues/cellValues";
-import type {
   EditLockDeclaration,
   EditWarningDeclaration,
 } from "../00_Source/RawSource/EditProtection";
@@ -13,9 +9,9 @@ import type {
   ColumnValueName,
   MakeColumnFullName,
 } from "../01_SpreadsheetSchema/columnConfigsTypes";
+import type { HeadRole } from "../01_SpreadsheetSchema/headRows";
 import type { TableName } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import type { ColumnMetaRaw } from "../02_SpreadsheetRaw/ColumnMetaRaw";
-import type { CellIdentified } from "../03_SpreadsheetIdentified/CellIdentified";
 import { ColumnMetaIdentified } from "../03_SpreadsheetIdentified/ColumnMetaIdentified";
 import { ColumnCommonNamed } from "./ClassBases/ColumnCommonNamed";
 import { ColumnNamed } from "./ColumnNamed";
@@ -53,33 +49,22 @@ export class ColumnMetaNamed<
     this.identified.updateColumnType(columnType);
     return this;
   }
-  uniformCell<UN extends UniformRowName>(
-    rowName: UN,
-  ): CellIdentified<UniformRowValueName<UN>> {
-    // intentionally not cell named, because named cells only work for data...
-    return this.identified.uniformCell(rowName);
-  }
-  prepFetchUniformCell<UN extends UniformRowName>(
-    rowName: UN,
-  ): CellIdentified<UniformRowValueName<UN>> {
-    return this.uniformCell(rowName).prepFetch();
-  }
   actionRowToDefault(): ColumnMetaNamed<TN, CN> {
-    this.uniformCell("action").updateValue(false);
+    this.primary.headCell("action").updateValue(false);
     return this;
   }
   addEditWarningOn(
-    rowName: UniformRowName,
+    headRole: HeadRole,
     declaration: EditWarningDeclaration = {},
   ): this {
-    this.uniformCell(rowName).addEditWarning(declaration);
+    this.primary.headCell(headRole).addEditWarning(declaration);
     return this;
   }
   addEditLockOn(
-    rowName: UniformRowName,
+    headRole: HeadRole,
     declaration: EditLockDeclaration = {},
   ): this {
-    this.uniformCell(rowName).addEditLock(declaration);
+    this.primary.headCell(headRole).addEditLock(declaration);
     return this;
   }
 }

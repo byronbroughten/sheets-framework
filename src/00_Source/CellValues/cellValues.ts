@@ -19,24 +19,3 @@ export type NotEmpty<VL> = Exclude<VL, "">;
 export const codebaseNameDelimiter = "_";
 export type CodebaseNameDelimiter = typeof codebaseNameDelimiter;
 
-const uniformRowValueNames = {
-  header: "string",
-  action: "boolean", // Should perhaps be "boolean" | "string"
-  columnId: "string",
-  groupHeading1: "string",
-} as const;
-
-type UniformRowValueNames = typeof uniformRowValueNames;
-export type UniformRowName = keyof UniformRowValueNames;
-export type UniformRowValueName<UN extends UniformRowName> =
-  UniformRowValueNames[UN];
-
-export type UniformRowValue<UN extends UniformRowName> = CellValue<
-  UniformRowValueName<UN>
->;
-
-export function getUniformRowValueName<UN extends UniformRowName>(
-  name: UN,
-): UniformRowValueName<UN> {
-  return uniformRowValueNames[name];
-}

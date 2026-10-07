@@ -8,7 +8,7 @@ export const addMissingColumnIds: Chore = {
     const sheetNames = ss.schema.sheetNames;
     ss.fetchAllSheetProperties();
     sheetNames.forEach((tableName) => {
-      ss.sheetMeta(tableName).uniformRow("columnId").prepFetchFull();
+      ss.table(tableName).headRow("columnId").prepFetchFull();
     });
     ss.fetchAllPrepped({ skipFetchingProperties: true });
     const addedBySheet = sheetNames.map((tableName): [TableName, number] => [

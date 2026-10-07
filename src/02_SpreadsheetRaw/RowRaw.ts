@@ -1,4 +1,4 @@
-// First, out of order: entering the RowCommonRaw <-> TableRaw cycle here loads UniformRowBaseRaw before its base class, in the bundle.
+// First, out of order: entering the RowCommonRaw <-> TableRaw cycle here loads HeadRowBaseRaw before its base class, in the bundle.
 import "./TableRaw";
 
 import type {

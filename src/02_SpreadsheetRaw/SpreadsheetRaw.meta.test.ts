@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { googleRawRequest } from "../00_Source/GoogleSheets/GoogleSheetsAPI";
-import { uniformRows } from "../01_SpreadsheetSchema/uniformRows";
+import { headRows } from "../01_SpreadsheetSchema/headRows";
 import {
   buildGridRows,
   type FakeCell,
@@ -285,11 +285,11 @@ describe("SheetMetaRaw.insertColumnAtEnd", () => {
     const { grid } = stubThreeColumnTable(
       { columnTypes: { 2: "BOOLEAN" } },
       {
-        [expectedOrigin.sheetRowIndex(uniformRows.index("groupHeading1"))]: {
+        [expectedOrigin.sheetRowIndex(headRows.index("groupHeading1"))]: {
           value: "Checks",
           backgroundColor: lightGreen,
         },
-        [expectedOrigin.sheetRowIndex(uniformRows.index("action"))]: {
+        [expectedOrigin.sheetRowIndex(headRows.index("action"))]: {
           value: true,
           dataValidationConditionType: "BOOLEAN",
         },
@@ -779,8 +779,9 @@ describe("ColumnMetaRaw.updateColumnType", () => {
     raw.table(tableId111).meta.column(2).updateColumnType("DOUBLE");
     raw
       .table(tableId111)
-      .meta.column(1)
-      .updateUniformCell("header", "Identifier");
+      .column(1)
+      .headCell("header")
+      .updateValue("Identifier");
     raw.batchUpdateGSheets();
 
     expect(grid.sheet(111).tables[0]?.columnProperties?.[1]).toEqual({

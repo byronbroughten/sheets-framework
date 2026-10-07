@@ -584,7 +584,7 @@ describe("TableNamed edit warnings and edit locks", () => {
   it("adds warnings over a head row, header cells, a column-group heading cell and a single cell", () => {
     const { protections, ss, sheet } = fetchedRunItemProtections();
 
-    sheet.meta.uniformRow("columnId").addEditWarning({
+    sheet.headRow("columnId").addEditWarning({
       description: "column id row",
     });
     sheet.meta.column("id").addEditWarningOn("header", {

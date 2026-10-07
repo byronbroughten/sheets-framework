@@ -596,7 +596,7 @@ describe("TableRaw.removeRowsExcept", () => {
     expect(raw.table(tableId111).rowIndexesActive).toEqual([1]);
   });
 
-  it("keeps the uniform rows, so a column still resolves by its id afterwards", () => {
+  it("keeps the head rows, so a column still resolves by its id afterwards", () => {
     stubPrunableSheet();
 
     const raw = fetchedPrunableSheet();

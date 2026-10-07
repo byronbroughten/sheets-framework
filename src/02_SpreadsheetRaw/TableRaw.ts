@@ -54,7 +54,7 @@ import { SheetEditProtectionsRaw } from "./TableRaw/SheetEditProtectionsRaw";
  * Meta column facts. `ss.sheetMeta(gid).primary` also reaches it through its
  * sheet, so sheet-level title, conditional format rules and edit protections
  * live here too, the latter two in TableRaw/ behind one-line delegations.
- * Uniform rows and column facts are SheetMetaRaw; spreadsheet-wide fetch and
+ * Column facts are SheetMetaRaw; spreadsheet-wide fetch and
  * flush are SpreadsheetRaw. By-name and columnId resolution are Identified/Named.
  */
 export class TableRaw extends TableCommonRaw {
@@ -220,8 +220,8 @@ export class TableRaw extends TableCommonRaw {
   }
   // Either kind of row, for callers that only touch what the two share.
   rowCommon(rowIndex: number): RowCommonRaw {
-    if (this.schema.isUniformRowIndex(rowIndex)) {
-      return this.meta.uniformRowByIndex(rowIndex);
+    if (headRows.isIndex(rowIndex)) {
+      return this.headRowByIndex(rowIndex);
     } else {
       return this.row(rowIndex);
     }
@@ -259,8 +259,8 @@ export class TableRaw extends TableCommonRaw {
       startColumnIndex: origin.startColIndex,
       endColumnIndex: SheetIndex.col(origin.startColIndex + 1),
     });
-    this.schema.uniformRowNames.forEach((name) => {
-      this.meta.uniformRow(name).cell(0).prepFetchBackfill();
+    headRows.indexes().forEach((rowIndex) => {
+      this.headRowByIndex(rowIndex).cell(0).prepFetchBackfill();
     });
     this.sheetState.fetchQueue.gatherPlacementStrip = true;
     return this;
@@ -460,11 +460,11 @@ export class TableRaw extends TableCommonRaw {
   integrateEditProtections(protections: EditProtection[]): void {
     this.protections.integrateEditProtections(protections);
   }
-  // The uniform rows survive, or every later column-index resolution breaks.
+  // The head rows survive, or every later column-index resolution breaks.
   removeRowsExcept(...rowIdxesToKeep: number[]): void {
     const allRowIdxs = Array.from(this.rowStates.keys());
     allRowIdxs.forEach((rowIndex) => {
-      if (this.schema.isUniformRowIndex(rowIndex)) return;
+      if (headRows.isIndex(rowIndex)) return;
       if (!rowIdxesToKeep.includes(rowIndex)) {
         this.rowCommon(rowIndex).remove();
       }

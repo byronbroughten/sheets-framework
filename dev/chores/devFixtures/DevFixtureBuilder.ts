@@ -1,8 +1,8 @@
 import type { SheetColIndex } from "../../../src/00_Source/RawSource/SheetIndex";
 import { dimensionIds } from "../../../src/01_SpreadsheetSchema/dimensionIds";
+import { headRows } from "../../../src/01_SpreadsheetSchema/headRows";
 import { getTableTraitByName } from "../../../src/01_SpreadsheetSchema/tableConfigsTypes";
 import { TableOrigin } from "../../../src/01_SpreadsheetSchema/TableOrigin";
-import { uniformRows } from "../../../src/01_SpreadsheetSchema/uniformRows";
 import { SpreadsheetBaseNamed } from "../../../src/04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
 import { SpreadsheetNamed } from "../../../src/04_SpreadsheetNamed/SpreadsheetNamed";
 import {
@@ -128,7 +128,7 @@ export class DevFixtureBuilder extends SpreadsheetBaseNamed {
       throw new Error(`${fixture.title} has no "${columnKey}" column.`);
     }
     const origin = TableOrigin.expected();
-    const actionRowIndex = uniformRows.index("action");
+    const actionRowIndex = headRows.index("action");
     const rowIndex = origin.sheetRowIndex(actionRowIndex);
     const colIndex = origin.sheetColIndex(columnIndex);
     this.ss.raw

@@ -34,42 +34,6 @@ describe("SpreadsheetSchema", () => {
     });
   });
 
-  describe("uniform row indexes", () => {
-    it("recognizes known uniform row indexes", () => {
-      expect(schema.isUniformRowIndex(schema.colIdRowIndex)).toBe(true);
-      expect(schema.isUniformRowIndex(schema.colIdRowIndex, "columnId")).toBe(
-        true,
-      );
-      expect(
-        schema.isUniformRowIndex(schema.colIdRowIndex, "header"),
-      ).toBe(false);
-      expect(schema.isUniformRowIndex(9999)).toBe(false);
-    });
-
-    it("maps a known index back to its name", () => {
-      expect(schema.uniformRowNameByIndex(schema.colIdRowIndex)).toBe(
-        "columnId",
-      );
-      expect(schema.uniformRowNameByIndex(schema.tableHeaderRowIndex)).toBe(
-        "header",
-      );
-    });
-
-    it("throws mapping an unknown index to a name", () => {
-      expect(() => schema.uniformRowNameByIndex(9999)).toThrow();
-    });
-
-    it("validateUniformRowIndex only throws for non-uniform rows", () => {
-      expect(() =>
-        schema.validateUniformRowIndex(
-          schema.tableHeaderRowIndex,
-          "header",
-        ),
-      ).not.toThrow();
-      expect(() => schema.validateUniformRowIndex(9999)).toThrow();
-    });
-  });
-
   describe("table placement", () => {
     const runItem = schema.sheetByName("runItem");
 

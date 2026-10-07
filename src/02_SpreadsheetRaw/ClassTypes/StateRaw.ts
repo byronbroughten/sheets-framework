@@ -215,8 +215,8 @@ export interface CellFill<VN extends CellValueName = CellValueName> {
   formula?: string;
   backgroundColor?: RgbColor;
 }
-// The uniform cells a Table-end column insert writes.
-export interface TableEndColumnUniformCells {
+// The head cells a Table-end column insert writes.
+export interface TableEndColumnHeadCells {
   columnId: string;
   header: string;
   groupHeading1?: string;
