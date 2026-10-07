@@ -10,6 +10,7 @@ import { SerialDate } from "../utils/SerialDate";
 import { SerialDateTime } from "../utils/SerialDateTime";
 import { Val } from "../utils/Val";
 import { SpreadsheetBaseNamed } from "./ClassBases/SpreadsheetBaseNamed.js";
+import { SheetNamed } from "./SheetNamed";
 import { TableNamed } from "./TableNamed.js";
 import type { SheetNameByGroup } from "./TableNameGroups.js";
 import {
@@ -55,6 +56,22 @@ export class SpreadsheetNamed extends SpreadsheetBaseNamed {
       acc[tableName] = this.table(tableName);
       return acc;
     }, {} as NamedSheets<TN>);
+  }
+  sheet(sheetTitle: string): SheetNamed {
+    this.raw.ensureAllSheetPropertiesAreFetched();
+    return new SheetNamed({
+      ...this.spreadsheetNamedProps,
+      sheetGid: Val.assert(
+        this._sheetGidByTitle(sheetTitle),
+        `A sheet titled "${sheetTitle}"`,
+      ),
+    });
+  }
+  private _sheetGidByTitle(sheetTitle: string): number | undefined {
+    for (const [sheetGid, sheetState] of this.sheetsStateRaw) {
+      if (sheetState.working.title === sheetTitle) return sheetGid;
+    }
+    return undefined;
   }
   get activeSheetNames(): TableName[] {
     return this.identified.activeSheets.map((sheet) => sheet.tableName);

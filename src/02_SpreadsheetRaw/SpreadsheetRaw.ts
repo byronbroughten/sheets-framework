@@ -12,6 +12,7 @@ import type {
   AddTableProps,
   FindReplaceProps,
 } from "./ClassTypes/StateRaw";
+import { SheetRaw } from "./SheetRaw";
 import { SpreadsheetFetcherRaw } from "./SpreadsheetRaw/SpreadsheetFetcherRaw";
 import { SpreadsheetFlusherRaw } from "./SpreadsheetRaw/SpreadsheetFlusherRaw";
 import { TableRaw } from "./TableRaw";
@@ -67,6 +68,12 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
   // The sheet's one Table, reachable by GID before its tableId is fetched.
   tableOnSheet(sheetGid: number): TableRaw {
     return new TableRaw({
+      spreadsheetStateRaw: this.spreadsheetStateRaw,
+      sheetGid,
+    });
+  }
+  sheet(sheetGid: number): SheetRaw {
+    return new SheetRaw({
       spreadsheetStateRaw: this.spreadsheetStateRaw,
       sheetGid,
     });

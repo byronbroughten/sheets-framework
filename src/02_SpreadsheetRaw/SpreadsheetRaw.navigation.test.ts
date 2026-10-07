@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { type CellValue } from "../00_Source/CellValues/cellValues";
 import { type RgbColor } from "../00_Source/RawSource/RgbColor";
 import { type HeadRowValueName } from "../01_SpreadsheetSchema/headRows";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import { stubSheetsService } from "../testSupport/fakeSheetsService";
 import { assertType, type IsExactly } from "../testSupport/typeAssertions";
 import { CellRaw } from "./CellRaw";
@@ -14,6 +15,7 @@ import { ColumnProfileRaw } from "./ColumnProfileRaw";
 import { ColumnRaw } from "./ColumnRaw";
 import { HeadRowRaw } from "./HeadRowRaw";
 import { RowRaw } from "./RowRaw";
+import { SheetRaw } from "./SheetRaw";
 import { SpreadsheetRaw } from "./SpreadsheetRaw";
 import { placedTableSheet, tableId111 } from "./spreadsheetRawTestSupport";
 import { TableProfileRaw } from "./TableProfileRaw";
@@ -28,12 +30,15 @@ describe("SpreadsheetRaw navigation", () => {
     raw.fetchAllSheetProperties();
     const table = raw.table(tableId111);
     const tableOnSheet = raw.tableOnSheet(111);
+    const sheet = raw.sheet(111);
     const column = table.column(0);
     const headRow = table.headRow("action");
     const headCell = column.headCell("header");
 
     assertType<IsExactly<typeof table, TableRaw>>(true);
     assertType<IsExactly<typeof tableOnSheet, TableRaw>>(true);
+    assertType<IsExactly<typeof sheet, SheetRaw>>(true);
+    assertType<IsExactly<typeof table.sheet, SheetRaw>>(true);
     assertType<IsExactly<typeof column, ColumnRaw>>(true);
     assertType<IsExactly<typeof column.table, TableRaw>>(true);
     assertType<IsExactly<typeof table.profile, TableProfileRaw>>(true);
@@ -54,6 +59,8 @@ describe("SpreadsheetRaw navigation", () => {
 
     expect(table).toBeInstanceOf(TableRaw);
     expect(tableOnSheet).toBeInstanceOf(TableRaw);
+    expect(sheet).toBeInstanceOf(SheetRaw);
+    expect(table.sheet).toBeInstanceOf(SheetRaw);
     expect(column).toBeInstanceOf(ColumnRaw);
     expect(column.table).toBeInstanceOf(TableRaw);
     expect(table.profile).toBeInstanceOf(TableProfileRaw);
@@ -77,6 +84,31 @@ describe("SpreadsheetRaw navigation", () => {
         never
       >
     >(true);
+  });
+});
+
+describe("SheetRaw", () => {
+  it("names its tab and is the container its Table reaches", () => {
+    stubSheetsService({
+      sheets: [placedTableSheet({ sheetId: 111, title: "Task Generic" })],
+    });
+    const raw = SpreadsheetRaw.init();
+    raw.fetchAllSheetProperties();
+
+    expect(raw.sheet(111).title).toBe("Task Generic");
+    expect(raw.table(tableId111).sheet.sheetGid).toBe(111);
+    expect(raw.table(tableId111).sheet.title).toBe("Task Generic");
+  });
+
+  it("lists the managed Tables the configs place on it, and none on an unmanaged tab", () => {
+    stubSheetsService();
+    const raw = SpreadsheetRaw.init();
+    const itemGid = getTableTraitByName("item", "sheetGid");
+
+    expect(raw.sheet(itemGid).tableIds).toEqual([
+      getTableTraitByName("item", "tableId"),
+    ]);
+    expect(raw.sheet(111).tableIds).toEqual([]);
   });
 });
 

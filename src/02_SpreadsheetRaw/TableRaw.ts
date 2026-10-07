@@ -45,6 +45,7 @@ import {
 import { ColumnRaw } from "./ColumnRaw";
 import { HeadRowRaw } from "./HeadRowRaw";
 import { RowRaw } from "./RowRaw";
+import { SheetRaw } from "./SheetRaw";
 import { SpreadsheetRaw } from "./SpreadsheetRaw";
 import { TableProfileRaw } from "./TableProfileRaw";
 import { SheetConditionalFormatsRaw } from "./TableRaw/SheetConditionalFormatsRaw";
@@ -63,6 +64,12 @@ import { TableColumnResolverRaw } from "./TableRaw/TableColumnResolverRaw";
 export class TableRaw extends TableCommonRaw {
   get ss(): SpreadsheetRaw {
     return new SpreadsheetRaw(this.spreadsheetRawProps);
+  }
+  get sheet(): SheetRaw {
+    return new SheetRaw({
+      ...this.spreadsheetRawProps,
+      sheetGid: this.sheetGid,
+    });
   }
   get profile(): TableProfileRaw {
     return new TableProfileRaw(this.tableRawProps);
@@ -113,12 +120,7 @@ export class TableRaw extends TableCommonRaw {
     };
   }
   get title(): string {
-    if (this.sheetState.working.title === undefined) {
-      throw new Error(
-        `Sheet title is null for sheetGid ${this.sheetGid}. Ensure that the sheet properties have been fetched.`,
-      );
-    }
-    return this.sheetState.working.title;
+    return this.sheet.title;
   }
   updateTitle(title: string): this {
     this.writeOperations.renameSheet.push({

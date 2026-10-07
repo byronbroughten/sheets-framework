@@ -28,6 +28,7 @@ import { Val } from "../utils/Val";
 import { TableCommonNamed } from "./ClassBases/TableCommonNamed";
 import { ColumnNamed } from "./ColumnNamed";
 import { RowNamed } from "./RowNamed";
+import { SheetNamed } from "./SheetNamed";
 import type { SheetNameWithIdAndNameColumn } from "./TableNameGroups";
 import type { RowIdByName } from "./Types/RowIdByName";
 
@@ -47,6 +48,12 @@ export class TableNamed<
   get identified(): TableIdentified {
     return new TableIdentified({
       ...this.sheetNamedProps,
+      sheetGid: this.sheetGid,
+    });
+  }
+  get sheet(): SheetNamed {
+    return new SheetNamed({
+      ...this.spreadsheetNamedProps,
       sheetGid: this.sheetGid,
     });
   }

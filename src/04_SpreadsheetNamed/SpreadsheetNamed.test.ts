@@ -8,6 +8,8 @@ import {
   getTableTraitByName,
   type TableName,
 } from "../01_SpreadsheetSchema/tableConfigsTypes";
+import { SheetRaw } from "../02_SpreadsheetRaw/SheetRaw";
+import { placedTableSheet } from "../02_SpreadsheetRaw/spreadsheetRawTestSupport";
 import { CellIdentified } from "../03_SpreadsheetIdentified/CellIdentified";
 import { HeadRowIdentified } from "../03_SpreadsheetIdentified/HeadRowIdentified";
 import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
@@ -16,6 +18,7 @@ import {
   buildGridRows,
   type FakeCell,
   type FakeCellValue,
+  type FakeSheetProperties,
   type FakeSheetsService,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
@@ -36,6 +39,7 @@ import { SerialDate } from "../utils/SerialDate";
 import type { SpreadsheetNamedProps } from "./ClassBases/SpreadsheetBaseNamed";
 import { ColumnNamed } from "./ColumnNamed";
 import { RowNamed } from "./RowNamed";
+import { SheetNamed } from "./SheetNamed";
 import { SpreadsheetNamed } from "./SpreadsheetNamed";
 import { TableNamed } from "./TableNamed";
 
@@ -88,14 +92,18 @@ describe("SpreadsheetNamed dates", () => {
 
 describe("SpreadsheetNamed navigation", () => {
   it("gives each accessor the class its return type names", () => {
-    stubSheetsService();
+    stubSheetsService({ sheets: [itemSheet()] });
     const ss = SpreadsheetNamed.init();
     const table = ss.table("item");
+    const sheet = ss.sheet(itemSheetTitle);
     const column = table.column("id");
     const headRow = table.headRow("action");
     const headCell = column.headCell("groupHeading2");
 
     assertType<IsExactly<typeof table, TableNamed<"item">>>(true);
+    assertType<IsExactly<typeof sheet, SheetNamed>>(true);
+    assertType<IsExactly<typeof table.sheet, SheetNamed>>(true);
+    assertType<IsExactly<typeof sheet.raw, SheetRaw>>(true);
     assertType<IsExactly<typeof column, ColumnNamed<"item", "id">>>(true);
     assertType<IsExactly<typeof column.table, TableNamed<"item">>>(true);
     assertType<IsExactly<ReturnType<typeof table.row>, RowNamed<"item">>>(true);
@@ -105,6 +113,9 @@ describe("SpreadsheetNamed navigation", () => {
     >(true);
 
     expect(table).toBeInstanceOf(TableNamed);
+    expect(sheet).toBeInstanceOf(SheetNamed);
+    expect(table.sheet).toBeInstanceOf(SheetNamed);
+    expect(sheet.raw).toBeInstanceOf(SheetRaw);
     expect(column).toBeInstanceOf(ColumnNamed);
     expect(column.table).toBeInstanceOf(TableNamed);
     expect(table.row(0)).toBeInstanceOf(RowNamed);
@@ -163,6 +174,33 @@ describe("SpreadsheetNamed navigation", () => {
     expect(tables.item).toEqual(table);
     expect(row.table).toEqual(table);
     expect(column.table).toEqual(table);
+  });
+});
+
+describe("SheetNamed", () => {
+  it("reaches a tab by its title, the same container its Table reaches", () => {
+    stubSheetsService({ sheets: [itemSheet()] });
+    const ss = SpreadsheetNamed.init();
+    const sheet = ss.sheet(itemSheetTitle);
+
+    expect(sheet.title).toBe(itemSheetTitle);
+    expect(sheet.sheetGid).toBe(getTableTraitByName("item", "sheetGid"));
+    expect(ss.table("item").sheet.title).toBe(itemSheetTitle);
+  });
+
+  it("lists the managed Tables the configs place on it", () => {
+    stubSheetsService({ sheets: [itemSheet()] });
+    const ss = SpreadsheetNamed.init();
+
+    expect(ss.sheet(itemSheetTitle).tableNames).toEqual(["item"]);
+    expect(ss.table("item").sheet.tableNames).toEqual(["item"]);
+  });
+
+  it("refuses a title no tab carries", () => {
+    stubSheetsService({ sheets: [itemSheet()] });
+    const ss = SpreadsheetNamed.init();
+
+    expect(() => ss.sheet("No Such Tab")).toThrow(/No Such Tab/);
   });
 });
 
@@ -1170,3 +1208,11 @@ describe("Named formula writes", () => {
     expect(columnTypeGate).toEqual(expect.any(Function));
   });
 });
+
+const itemSheetTitle = "Item Tab";
+function itemSheet(): FakeSheetProperties {
+  return placedTableSheet({
+    sheetId: getTableTraitByName("item", "sheetGid"),
+    title: itemSheetTitle,
+  });
+}
