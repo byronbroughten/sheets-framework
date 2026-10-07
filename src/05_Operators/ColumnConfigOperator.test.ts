@@ -36,11 +36,11 @@ const testTableId = tableIdOnTab(testSheetGid);
 // The floor Tables carry their generated names, which give their Table keys.
 const tableConfigTable = {
   tableId: tableConfigTableId,
-  name: configSheetFloorSeed.tableConfig.tableName,
+  name: configSheetFloorSeed.tableConfig.liveTableName,
 };
 const columnConfigTable = {
   tableId: columnConfigTableId,
-  name: configSheetFloorSeed.columnConfig.tableName,
+  name: configSheetFloorSeed.columnConfig.liveTableName,
 };
 
 const tableConfigColumnIdRow = [

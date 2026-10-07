@@ -34,29 +34,29 @@ function sheetNameFromGid(sheetGid: number): TableName {
 
 export interface TableSchemaProps<TN extends TableName> {
   sheetGid: number;
-  sheetName: TN;
+  tableName: TN;
 }
 
 export class TableSchema<
   TN extends TableName = TableName,
 > extends SpreadsheetBaseSchema {
   readonly sheetGid: number;
-  readonly sheetName: TN;
-  constructor({ sheetGid, sheetName }: TableSchemaProps<TN>) {
+  readonly tableName: TN;
+  constructor({ sheetGid, tableName }: TableSchemaProps<TN>) {
     super();
     this.sheetGid = sheetGid;
-    this.sheetName = sheetName;
+    this.tableName = tableName;
   }
-  static fromSheetName<TN extends TableName>(sheetName: TN): TableSchema<TN> {
+  static fromSheetName<TN extends TableName>(tableName: TN): TableSchema<TN> {
     return new TableSchema({
-      sheetName,
-      sheetGid: getTableTraitByName(sheetName, "sheetGid"),
+      tableName,
+      sheetGid: getTableTraitByName(tableName, "sheetGid"),
     });
   }
   static fromSheetGid(sheetGid: number): TableSchema {
     return new TableSchema({
       sheetGid,
-      sheetName: sheetNameFromGid(sheetGid),
+      tableName: sheetNameFromGid(sheetGid),
     });
   }
   trait<TK extends keyof TableConfig>(key: TK): TableConfig[TK] {
@@ -97,7 +97,7 @@ export class TableSchema<
     return getSheetColumnIds(this.sheetGid);
   }
   get columnNames(): ColumnName<TN>[] {
-    return getSheetColumnNames(this.sheetName);
+    return getSheetColumnNames(this.tableName);
   }
   get nonFormulaColumnIds(): string[] {
     return [...this.columnIds].filter((columnId) => {
@@ -118,7 +118,7 @@ export class TableSchema<
     return new ColumnSchema({
       ...this.sheetSchemaProps,
       columnName,
-      columnId: getColumnTraitByName(this.sheetName, columnName, "columnId"),
+      columnId: getColumnTraitByName(this.tableName, columnName, "columnId"),
     });
   }
   columnById(columnId: string): ColumnSchema<TN, ColumnName<TN>> {
@@ -133,7 +133,7 @@ export class TableSchema<
       (id) => getColumnTraitById(this.sheetGid, id, "header") === header,
     );
     if (columnId === undefined) {
-      throw new Error(`"${this.sheetName}" has no column headed "${header}".`);
+      throw new Error(`"${this.tableName}" has no column headed "${header}".`);
     }
     return columnId;
   }
@@ -149,6 +149,6 @@ export class TableSchema<
     }
   }
   private get sheetSchemaProps(): TableSchemaProps<TN> {
-    return { sheetGid: this.sheetGid, sheetName: this.sheetName };
+    return { sheetGid: this.sheetGid, tableName: this.tableName };
   }
 }

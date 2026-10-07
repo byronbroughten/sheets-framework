@@ -14,12 +14,12 @@ describe("assertFloorMatchesSeed", () => {
 
   function floorColumn(
     configs: ColumnConfigsGeneric,
-    sheetName: string,
+    tableName: string,
     columnName: string,
   ): ColumnConfigStored {
-    const column = configs[sheetName]?.[columnName];
+    const column = configs[tableName]?.[columnName];
     if (column === undefined) {
-      throw new Error(`No generated column ${sheetName}.${columnName}.`);
+      throw new Error(`No generated column ${tableName}.${columnName}.`);
     }
     return column;
   }

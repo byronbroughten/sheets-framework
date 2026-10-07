@@ -90,14 +90,14 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
     this.ss.raw.ensureAllSheetPropertiesAreFetched();
     this._assertSheetConfigIsConverted();
     this._assertFloorTitlesAreOwned();
-    const presentFloorSheets = floorTabNames().flatMap((sheetName) => {
-      const sheetGid = getTableTraitByName(sheetName, "sheetGid");
+    const presentFloorSheets = floorTabNames().flatMap((tableName) => {
+      const sheetGid = getTableTraitByName(tableName, "sheetGid");
       if (!this.ss.raw.gidIsActive(sheetGid)) return [];
       return [
         {
           sheet: this.ss.raw.sheetMeta(sheetGid).primary,
-          seed: configSheetFloorSeed[sheetName],
-          floorTableId: getTableTraitByName(sheetName, "tableId"),
+          seed: configSheetFloorSeed[tableName],
+          floorTableId: getTableTraitByName(tableName, "tableId"),
         },
       ];
     });
@@ -111,11 +111,11 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
         titleLines.push(`"${sheet.title}" → ${seed.title}`);
         sheet.updateTitle(seed.title);
       }
-      if (sheet.name === seed.tableName) return;
+      if (sheet.name === seed.liveTableName) return;
       tableNameLines.push(
-        `${seed.title}'s Table "${sheet.name}" → ${seed.tableName}`,
+        `${seed.title}'s Table "${sheet.name}" → ${seed.liveTableName}`,
       );
-      sheet.updateTableName(seed.tableName);
+      sheet.updateTableName(seed.liveTableName);
     });
     return [
       ...reportLines("Restored tab titles", titleLines),
@@ -138,9 +138,9 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
   }
   private _assertFloorTitlesAreOwned(): void {
     const ownedGidByTitle = new Map<string, number>(
-      floorTabNames().map((sheetName) => [
-        configSheetFloorSeed[sheetName].title,
-        getTableTraitByName(sheetName, "sheetGid"),
+      floorTabNames().map((tableName) => [
+        configSheetFloorSeed[tableName].title,
+        getTableTraitByName(tableName, "sheetGid"),
       ]),
     );
     this.ss.raw.activeSheetGids.forEach((sheetGid) => {
@@ -153,14 +153,14 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
   }
   private _fetchFloorSheets(): IdentityColIndexes {
     const identityColIndexes = this.editWarnings.gatherIdentityColumns();
-    floorSheetNames().forEach((sheetName) => {
-      const sheetGid = getTableTraitByName(sheetName, "sheetGid");
+    floorSheetNames().forEach((tableName) => {
+      const sheetGid = getTableTraitByName(tableName, "sheetGid");
       if (!this.ss.raw.gidIsActive(sheetGid)) return;
-      const sheet = this.ss.table(sheetName);
+      const sheet = this.ss.table(tableName);
       sheet.meta.uniformRow("columnId").prepFetchFull();
       sheet.meta.uniformRow("tableHeader").prepFetchFull();
       sheet.meta.uniformRow("colGroupName").prepFetchFull();
-      if (floorDataValueColumns(sheetName).length > 0) {
+      if (floorDataValueColumns(tableName).length > 0) {
         sheet.row(0).prepFetchFull();
       }
       sheet.prepFetchEditProtections();
@@ -172,12 +172,12 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
     const headerLines: string[] = [];
     const columnIdLines: string[] = [];
     const groupHeadingLines: string[] = [];
-    floorSheetNames().forEach((sheetName) => {
-      const sheetGid = getTableTraitByName(sheetName, "sheetGid");
+    floorSheetNames().forEach((tableName) => {
+      const sheetGid = getTableTraitByName(tableName, "sheetGid");
       if (!this.ss.raw.gidIsActive(sheetGid)) return;
-      const sheet = this.ss.table(sheetName);
+      const sheet = this.ss.table(tableName);
       const meta = sheet.raw.meta;
-      floorColumnsToRestore(sheetName).forEach((floorColumn) => {
+      floorColumnsToRestore(tableName).forEach((floorColumn) => {
         const colIndex = liveColIndex(meta, floorColumn);
         if (colIndex === undefined) return;
         const liveHeader = String(meta.tableHeaderRow.valueOrEmpty(colIndex));
@@ -218,22 +218,22 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
     ];
   }
   private _ensureDataValues(): string[] {
-    return floorSheetNames().flatMap((sheetName) =>
-      this._ensureSheetDataValues(sheetName),
+    return floorSheetNames().flatMap((tableName) =>
+      this._ensureSheetDataValues(tableName),
     );
   }
   private _ensureSheetDataValues<TN extends FloorSheetName>(
-    sheetName: TN,
+    tableName: TN,
   ): string[] {
-    const sheetGid = getTableTraitByName(sheetName, "sheetGid");
+    const sheetGid = getTableTraitByName(tableName, "sheetGid");
     if (!this.ss.raw.gidIsActive(sheetGid)) return [];
-    const sheet = this.ss.table(sheetName);
+    const sheet = this.ss.table(tableName);
     const row = sheet.raw.row(0);
     const restoredLines: string[] = [];
-    floorDataValueColumns(sheetName).forEach((seedColumn) => {
+    floorDataValueColumns(tableName).forEach((seedColumn) => {
       const colIndex = liveColIndex(
         sheet.raw.meta,
-        floorColumnRestore(sheetName, {
+        floorColumnRestore(tableName, {
           header: seedColumn.header,
           groupHeading: "",
         }),
@@ -250,29 +250,29 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
     return restoredLines;
   }
   private _ensureColumnTypes(): string[] {
-    const typeChangeLines = floorSheetNames().flatMap((sheetName) =>
-      this._ensureSheetColumnTypes(sheetName, floorSeedColumns(sheetName)),
+    const typeChangeLines = floorSheetNames().flatMap((tableName) =>
+      this._ensureSheetColumnTypes(tableName, floorSeedColumns(tableName)),
     );
     return reportLines("Set column types", typeChangeLines);
   }
   private _ensureSheetColumnTypes<TN extends FloorSheetName>(
-    sheetName: TN,
+    tableName: TN,
     columns: readonly FloorSeedColumn[],
   ): string[] {
-    const sheetGid = getTableTraitByName(sheetName, "sheetGid");
+    const sheetGid = getTableTraitByName(tableName, "sheetGid");
     if (!this.ss.raw.gidIsActive(sheetGid)) return [];
-    const sheet = this.ss.table(sheetName);
+    const sheet = this.ss.table(tableName);
     return columns.flatMap((seedColumn) => {
       const colIndex = liveColIndex(
         sheet.raw.meta,
-        floorColumnRestore(sheetName, {
+        floorColumnRestore(tableName, {
           header: seedColumn.header,
           groupHeading: "",
         }),
       );
       if (colIndex === undefined) return [];
       const column = sheet.column(
-        columnNameByHeader(sheetName, seedColumn.header),
+        columnNameByHeader(tableName, seedColumn.header),
       );
       if (column.meta.activeColumnType === seedColumn.columnType) {
         return [];
@@ -290,9 +290,9 @@ function floorTabNames(): FloorTabName[] {
 type FloorDataValueColumn = FloorSeedColumn & { dataValue: string };
 
 function floorDataValueColumns(
-  sheetName: FloorSheetName,
+  tableName: FloorSheetName,
 ): FloorDataValueColumn[] {
-  return floorSeedColumns(sheetName).filter(
+  return floorSeedColumns(tableName).filter(
     (seedColumn): seedColumn is FloorDataValueColumn =>
       seedColumn.dataValue !== undefined,
   );

@@ -102,7 +102,7 @@ export class Api extends SpreadsheetBaseNamed {
     // The full name is only known at runtime, so the run widens to every sheet.
     new EndpointRun({
       ...this.spreadsheetNamedProps,
-      tableName: entryColumn.sheetName,
+      tableName: entryColumn.tableName,
       entryColumnName: entryColumn.columnName,
       endpoint,
     }).run(isChecked);

@@ -84,9 +84,9 @@ export class FloorTabColumnCreator<
 }
 
 export function floorRecreatableColumns<TN extends FloorSheetName>(
-  sheetName: TN,
+  tableName: TN,
 ): readonly ColumnName<TN>[] {
-  return recreatableColumns()[sheetName];
+  return recreatableColumns()[tableName];
 }
 
 // Only columns the sync or an endpoint refills by itself; recreating any other empty loses what it declared.

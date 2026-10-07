@@ -18,15 +18,15 @@ export interface FloorColumnRestore {
 }
 
 export function columnNameByHeader<TN extends FloorSheetName>(
-  sheetName: TN,
+  tableName: TN,
   header: string,
 ): ColumnName<TN> {
-  const columnName = getSheetColumnNames(sheetName).find(
-    (name) => getColumnTraitByName(sheetName, name, "header") === header,
+  const columnName = getSheetColumnNames(tableName).find(
+    (name) => getColumnTraitByName(tableName, name, "header") === header,
   );
   if (columnName === undefined) {
     throw new Error(
-      `Floor seed header ${JSON.stringify(header)} is not a column on ${sheetName}.`,
+      `Floor seed header ${JSON.stringify(header)} is not a column on ${tableName}.`,
     );
   }
   return columnName;
@@ -34,7 +34,7 @@ export function columnNameByHeader<TN extends FloorSheetName>(
 
 export function floorSheetNames(): FloorSheetName[] {
   return Obj.keys(configSheetFloorSeed).filter(
-    (sheetName): sheetName is FloorSheetName => sheetName !== "valueConfig",
+    (tableName): tableName is FloorSheetName => tableName !== "valueConfig",
   );
 }
 
@@ -48,15 +48,15 @@ export function spreadsheetConfigFeedbackColumnNames(): ColumnName<"spreadsheetC
 }
 
 export function floorColumnsToRestore<TN extends FloorSheetName>(
-  sheetName: TN,
+  tableName: TN,
 ): FloorColumnRestore[] {
-  const seedColumns = configSheetFloorSeed[sheetName].columns.map((column) =>
-    floorColumnRestore(sheetName, {
+  const seedColumns = configSheetFloorSeed[tableName].columns.map((column) =>
+    floorColumnRestore(tableName, {
       header: column.header,
       groupHeading: column.columnGroupHeading,
     }),
   );
-  if (sheetName !== "spreadsheetConfig") return seedColumns;
+  if (tableName !== "spreadsheetConfig") return seedColumns;
   const endpointColumns = Obj.values(
     configSheetFloorSeed.spreadsheetConfig.endpoints,
   ).flatMap((endpoint) =>
@@ -71,13 +71,13 @@ export function floorColumnsToRestore<TN extends FloorSheetName>(
 }
 
 export function floorColumnRestore<TN extends FloorSheetName>(
-  sheetName: TN,
+  tableName: TN,
   { header, groupHeading }: Pick<FloorColumnRestore, "header" | "groupHeading">,
 ): FloorColumnRestore {
-  const columnName = columnNameByHeader(sheetName, header);
+  const columnName = columnNameByHeader(tableName, header);
   return {
     header,
-    columnId: getColumnTraitByName(sheetName, columnName, "columnId"),
+    columnId: getColumnTraitByName(tableName, columnName, "columnId"),
     groupHeading,
   };
 }

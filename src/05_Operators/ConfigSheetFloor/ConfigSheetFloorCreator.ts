@@ -44,7 +44,7 @@ export class ConfigSheetFloorCreator extends SpreadsheetBaseNamed {
       report.push(`Created tabs: ${createdTabs.join("; ")}`);
     }
     const tabs = floorSheetNames()
-      .map((sheetName) => this._floorTab(sheetName))
+      .map((tableName) => this._floorTab(tableName))
       .filter((tab) => tab.hasFloorTable());
     tabs.forEach((tab) => tab.assertMissingAreRecreatable());
     const createdLines = tabs.flatMap((tab) => tab.createMissing());
@@ -55,12 +55,12 @@ export class ConfigSheetFloorCreator extends SpreadsheetBaseNamed {
   }
   private _createMissingTabs(): string[] {
     const origin = TableOrigin.expected();
-    return creatableFloorTabNames.flatMap((sheetName) => {
-      const sheetGid = getTableTraitByName(sheetName, "sheetGid");
+    return creatableFloorTabNames.flatMap((tableName) => {
+      const sheetGid = getTableTraitByName(tableName, "sheetGid");
       if (this.ss.raw.gidIsActive(sheetGid)) return [];
-      const seed = configSheetFloorSeed[sheetName];
-      const columns = createdTableColumns(sheetName);
-      const endRowIdx = origin.sheetRowIndex(createdDataRowCount(sheetName));
+      const seed = configSheetFloorSeed[tableName];
+      const columns = createdTableColumns(tableName);
+      const endRowIdx = origin.sheetRowIndex(createdDataRowCount(tableName));
       const endColIdx = origin.sheetColIndex(columns.length);
       this.ss.raw
         .gatherAddSheetOperation({
@@ -70,8 +70,8 @@ export class ConfigSheetFloorCreator extends SpreadsheetBaseNamed {
           columnCount: endColIdx,
         })
         .gatherAddTableOperation({
-          tableId: getTableTraitByName(sheetName, "tableId"),
-          name: seed.tableName,
+          tableId: getTableTraitByName(tableName, "tableId"),
+          name: seed.liveTableName,
           range: {
             sheetId: sheetGid,
             startRowIndex: origin.headerRowIndex,
@@ -85,7 +85,7 @@ export class ConfigSheetFloorCreator extends SpreadsheetBaseNamed {
             columnType: column.columnType,
           })),
         });
-      if (sheetName === "valueConfig") {
+      if (tableName === "valueConfig") {
         this._seedExampleColumn(sheetGid, origin);
       }
       return [seed.title];
@@ -111,23 +111,23 @@ export class ConfigSheetFloorCreator extends SpreadsheetBaseNamed {
     });
   }
   private _floorTab(
-    sheetName: FloorSheetName,
+    tableName: FloorSheetName,
   ): FloorTabColumnCreator<FloorSheetName> {
     return new FloorTabColumnCreator({
       ...this.spreadsheetNamedProps,
-      tableName: sheetName,
+      tableName: tableName,
     });
   }
 }
 
 function createdTableColumns(
-  sheetName: FloorTabName,
+  tableName: FloorTabName,
 ): readonly CreatedTableColumn[] {
-  if (sheetName === "valueConfig") return [exampleColumn];
-  return floorSeedColumns(sheetName);
+  if (tableName === "valueConfig") return [exampleColumn];
+  return floorSeedColumns(tableName);
 }
 
-function createdDataRowCount(sheetName: FloorTabName): number {
-  if (sheetName === "valueConfig") return exampleColumn.seededValues.length;
+function createdDataRowCount(tableName: FloorTabName): number {
+  if (tableName === "valueConfig") return exampleColumn.seededValues.length;
   return 1;
 }

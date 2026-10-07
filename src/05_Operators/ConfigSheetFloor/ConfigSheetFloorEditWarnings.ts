@@ -36,18 +36,18 @@ export class ConfigSheetFloorEditWarnings extends SpreadsheetBaseNamed {
   }
   gatherIdentityColumns(): IdentityColIndexes {
     const identityColIndexes: IdentityColIndexes = new Map();
-    floorSheetNames().forEach((sheetName) => {
-      const colIndexes = this._floorTab(sheetName).gatherIdentityColumns();
+    floorSheetNames().forEach((tableName) => {
+      const colIndexes = this._floorTab(tableName).gatherIdentityColumns();
       if (colIndexes !== undefined) {
-        identityColIndexes.set(sheetName, colIndexes);
+        identityColIndexes.set(tableName, colIndexes);
       }
     });
     return identityColIndexes;
   }
   ensure(identityColIndexes: IdentityColIndexes): string[] {
     const report: string[] = [];
-    const tabs = this._activeFloorSheetNames().map((sheetName) =>
-      this._floorTab(sheetName),
+    const tabs = this._activeFloorSheetNames().map((tableName) =>
+      this._floorTab(tableName),
     );
     tabs.forEach((tab) => {
       const addedColumnLines = tab.addedColumnReportLines();
@@ -63,11 +63,11 @@ export class ConfigSheetFloorEditWarnings extends SpreadsheetBaseNamed {
     return report;
   }
   private _floorTab(
-    sheetName: FloorSheetName,
+    tableName: FloorSheetName,
   ): FloorTabEditWarning<FloorSheetName> {
     return new FloorTabEditWarning({
       ...this.spreadsheetNamedProps,
-      tableName: sheetName,
+      tableName: tableName,
     });
   }
   private _reconcile(
@@ -111,14 +111,14 @@ export class ConfigSheetFloorEditWarnings extends SpreadsheetBaseNamed {
   }
   // A floor tab created this run is still absent after the refetch under a fake or dry run.
   private _activeFloorSheetNames(): FloorSheetName[] {
-    return floorSheetNames().filter((sheetName) =>
-      this.ss.raw.gidIsActive(getTableTraitByName(sheetName, "sheetGid")),
+    return floorSheetNames().filter((tableName) =>
+      this.ss.raw.gidIsActive(getTableTraitByName(tableName, "sheetGid")),
     );
   }
   private _floorProtections(): ModelableEditProtection[] {
-    return this._activeFloorSheetNames().flatMap((sheetName) =>
+    return this._activeFloorSheetNames().flatMap((tableName) =>
       this.ss
-        .table(sheetName)
+        .table(tableName)
         .editProtections()
         .flatMap((protection) => {
           if (protection.kind === "unmodelable") return [];
@@ -130,8 +130,8 @@ export class ConfigSheetFloorEditWarnings extends SpreadsheetBaseNamed {
     );
   }
   private _removeProtection(protection: ModelableEditProtection): void {
-    floorSheetNames().forEach((sheetName) => {
-      const sheet = this.ss.table(sheetName);
+    floorSheetNames().forEach((tableName) => {
+      const sheet = this.ss.table(tableName);
       if (sheet.schema.sheetGid !== protection.range.sheetId) return;
       sheet.removeEditProtectionById(protection.id);
     });

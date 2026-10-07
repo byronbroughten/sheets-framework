@@ -55,27 +55,27 @@ function sscField<K extends (typeof sscColumns)[number]>(columnName: K) {
 }
 
 function floorSeedType(
-  sheetName: "spreadsheetConfig" | "tableConfig" | "columnConfig",
+  tableName: "spreadsheetConfig" | "tableConfig" | "columnConfig",
   header: string,
 ): string | undefined {
-  const column = configSheetFloorSeed[sheetName].columns.find(
+  const column = configSheetFloorSeed[tableName].columns.find(
     (entry) => entry.header === header,
   );
   if (column !== undefined) return column.columnType;
-  if (sheetName !== "spreadsheetConfig") return undefined;
+  if (tableName !== "spreadsheetConfig") return undefined;
   return Object.values(configSheetFloorSeed.spreadsheetConfig.endpoints)
     .flatMap((endpoint) => [endpoint.timeLastRan, endpoint.runStatus])
     .find((entry) => entry.header === header)?.columnType;
 }
 
 function columnTypesByHeader(
-  sheetName: "spreadsheetConfig" | "tableConfig" | "columnConfig",
+  tableName: "spreadsheetConfig" | "tableConfig" | "columnConfig",
   headers: readonly string[],
   overrides: Record<string, string> = {},
 ): Record<number, string> {
   const types: Record<number, string> = {};
   headers.forEach((header, colIndex) => {
-    const columnType = overrides[header] ?? floorSeedType(sheetName, header);
+    const columnType = overrides[header] ?? floorSeedType(tableName, header);
     if (columnType !== undefined) types[colIndex] = columnType;
   });
   return types;
@@ -111,12 +111,12 @@ function spreadsheetConfigFixtureColumnTypes(
 }
 
 function matchingFloorColumnTypes(
-  sheetName: "tableConfig" | "columnConfig",
+  tableName: "tableConfig" | "columnConfig",
   headers: readonly string[],
   columnTypesAreUnset: boolean | undefined,
 ): Record<number, string> | undefined {
   if (columnTypesAreUnset) return undefined;
-  return columnTypesByHeader(sheetName, headers);
+  return columnTypesByHeader(tableName, headers);
 }
 
 function sheetAbsoluteTypes(
@@ -163,12 +163,12 @@ function seedTableColumns(
 }
 
 function floorTypedColumns(
-  sheetName: "spreadsheetConfig" | "tableConfig" | "columnConfig",
+  tableName: "spreadsheetConfig" | "tableConfig" | "columnConfig",
   headers: readonly string[],
 ) {
   return headers.map((header) => ({
     columnName: header,
-    columnType: floorSeedType(sheetName, header),
+    columnType: floorSeedType(tableName, header),
   }));
 }
 
@@ -368,7 +368,7 @@ function floorFixture(
                   tableId: tableIdOnTab(spreadsheetConfigGid),
                   name:
                     options.spreadsheetConfigTableName ??
-                    configSheetFloorSeed.spreadsheetConfig.tableName,
+                    configSheetFloorSeed.spreadsheetConfig.liveTableName,
                   startColumnIndex: startTableColIndex,
                   endRowIndex: 5,
                   endColumnIndex:
@@ -416,7 +416,7 @@ function floorFixture(
         }),
         table: {
           tableId: tableIdOnTab(tableConfigGid),
-          name: configSheetFloorSeed.tableConfig.tableName,
+          name: configSheetFloorSeed.tableConfig.liveTableName,
           startColumnIndex: startTableColIndex,
           endRowIndex: topDataRowIndex + tableConfigGids.length,
           endColumnIndex: startTableColIndex + tcOrder.length,
@@ -467,7 +467,7 @@ function floorFixture(
         }),
         table: {
           tableId: tableIdOnTab(columnConfigGid),
-          name: configSheetFloorSeed.columnConfig.tableName,
+          name: configSheetFloorSeed.columnConfig.liveTableName,
           startColumnIndex: startTableColIndex,
           endRowIndex: topDataRowIndex + columnConfigRows.length,
           endColumnIndex:
@@ -493,7 +493,7 @@ function floorFixture(
           tableId: tableIdOnTab(valueConfigGid),
           name:
             options.valueConfig?.tableName ??
-            configSheetFloorSeed.valueConfig.tableName,
+            configSheetFloorSeed.valueConfig.liveTableName,
           endRowIndex: 5,
         },
       },
@@ -512,9 +512,9 @@ function applyFloor() {
 
 function protectionsOf(
   floor: ConfigSheetFloor,
-  sheetName: "spreadsheetConfig" | "tableConfig" | "columnConfig",
+  tableName: "spreadsheetConfig" | "tableConfig" | "columnConfig",
 ): ModelableEditProtection[] {
-  const sheet = floor.ss.table(sheetName);
+  const sheet = floor.ss.table(tableName);
   sheet.prepFetchEditProtections();
   floor.ss.fetchAllPrepped({ skipFetchingProperties: true });
   return sheet
@@ -1457,18 +1457,18 @@ describe("ConfigSheetFloor", () => {
   });
 
   it.each([
-    { sheetName: "tableConfig", sheetGid: tableConfigGid },
-    { sheetName: "columnConfig", sheetGid: columnConfigGid },
+    { tableName: "tableConfig", sheetGid: tableConfigGid },
+    { tableName: "columnConfig", sheetGid: columnConfigGid },
   ] as const)(
-    "creates a missing $sheetName tab at its GID with its seed title and Table, and reports it",
-    ({ sheetName, sheetGid }) => {
+    "creates a missing $tableName tab at its GID with its seed title and Table, and reports it",
+    ({ tableName, sheetGid }) => {
       const { grid } = floorFixture({ omitSheetGids: [sheetGid] });
       const { report } = applyFloor();
-      const seed = configSheetFloorSeed[sheetName];
+      const seed = configSheetFloorSeed[tableName];
 
       expect(grid.sheet(sheetGid).title).toBe(seed.title);
       expect(grid.sheet(sheetGid).tables.map((table) => table.name)).toEqual([
-        seed.tableName,
+        seed.liveTableName,
       ]);
       expect(tableColumns(grid, sheetGid)).toEqual(
         seedTableColumns(seed.columns),
@@ -1515,7 +1515,7 @@ describe("ConfigSheetFloor", () => {
     expect(grid.sheet(spreadsheetConfigGid).title).toBe(seed.title);
     expect(
       grid.sheet(spreadsheetConfigGid).tables.map((table) => table.name),
-    ).toEqual([seed.tableName]);
+    ).toEqual([seed.liveTableName]);
     expect(tableColumns(grid, spreadsheetConfigGid)).toEqual(
       seedTableColumns(floorSeedColumns("spreadsheetConfig")),
     );
@@ -1676,11 +1676,11 @@ describe("ConfigSheetFloor", () => {
   });
 
   it("never lets a recreatable column be one of a self-describing row's identity or declared columns", () => {
-    floorSheetNames().forEach((sheetName) => {
+    floorSheetNames().forEach((tableName) => {
       const selfDescribing: readonly string[] =
-        selfDescribingRowColumns(sheetName);
+        selfDescribingRowColumns(tableName);
       expect(
-        floorRecreatableColumns(sheetName).filter((columnName) =>
+        floorRecreatableColumns(tableName).filter((columnName) =>
           selfDescribing.includes(columnName),
         ),
       ).toEqual([]);

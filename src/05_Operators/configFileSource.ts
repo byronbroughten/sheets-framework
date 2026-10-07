@@ -14,12 +14,12 @@ export function columnConfigsFileSource(
   if (sheets.length === 0) {
     return "{}";
   }
-  const blocks = sheets.map(([sheetName, tableColumnConfigs]) => {
+  const blocks = sheets.map(([tableName, tableColumnConfigs]) => {
     const columnLines = Object.entries(tableColumnConfigs).map(
       ([columnName, columnConfig]) =>
         `    ${JSON.stringify(columnName)}: ${oneLineJsonObject(columnConfig)}`,
     );
-    return `  ${JSON.stringify(sheetName)}: {\n${columnLines.join(",\n")}\n  }`;
+    return `  ${JSON.stringify(tableName)}: {\n${columnLines.join(",\n")}\n  }`;
   });
   return `{\n${blocks.join(",\n")}\n}`;
 }

@@ -17,8 +17,8 @@ export class SpreadsheetSchema extends SpreadsheetBaseSchema {
   get sheetNames(): TableName[] {
     return configTableNames();
   }
-  sheetByName<TN extends TableName>(sheetName: TN): TableSchema<TN> {
-    return TableSchema.fromSheetName(sheetName);
+  sheetByName<TN extends TableName>(tableName: TN): TableSchema<TN> {
+    return TableSchema.fromSheetName(tableName);
   }
   sheetByGid(sheetGid: number): TableSchema {
     return TableSchema.fromSheetGid(sheetGid);
@@ -45,11 +45,11 @@ export class SpreadsheetSchema extends SpreadsheetBaseSchema {
   }
   // The inverse of `ColumnSchema.fullName`; a camelCase sheet name never holds the delimiter.
   sheetByColumnFullName(fullName: string): TableSchema {
-    const sheetName = this.sheetNames.find((name) =>
+    const tableName = this.sheetNames.find((name) =>
       fullName.startsWith(this.combineNames(name, "")),
     );
     return TableSchema.fromSheetName(
-      Val.assert(sheetName, `sheet of column full name ${fullName}`),
+      Val.assert(tableName, `sheet of column full name ${fullName}`),
     );
   }
 }

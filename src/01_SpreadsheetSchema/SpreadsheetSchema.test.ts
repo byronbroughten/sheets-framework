@@ -88,7 +88,7 @@ describe("SpreadsheetSchema", () => {
 
     it("maps a sheet gid to its managed Tables, and an unmanaged one to none", () => {
       expect(
-        schema.tablesOnGid(runItem.sheetGid).map((table) => table.sheetName),
+        schema.tablesOnGid(runItem.sheetGid).map((table) => table.tableName),
       ).toEqual(["runItem"]);
       expect(schema.tablesOnGid(-1)).toEqual([]);
     });
@@ -126,7 +126,7 @@ describe("type-level precision", () => {
     const column = ColumnSchema.fromColumnName("item", "requiredCount");
     assertType<IsExactly<typeof column.valueName, "number">>(true);
     assertType<IsExactly<typeof column.columnName, "requiredCount">>(true);
-    assertType<IsExactly<typeof column.sheetName, "item">>(true);
+    assertType<IsExactly<typeof column.tableName, "item">>(true);
     assertType<IsExactly<typeof column.fullName, "item_requiredCount">>(true);
     assertType<
       IsExactly<ReturnType<typeof column.makeDefaultDataValue>, number | "">
@@ -156,15 +156,15 @@ describe("type-level precision", () => {
   it("keeps the sheet trait accessor's shape at both instantiations", () => {
     const byName = TableSchema.fromSheetName("item");
     const byGid = TableSchema.fromSheetGid(byName.sheetGid);
-    assertType<IsExactly<typeof byName.sheetName, "item">>(true);
-    assertType<IsExactly<typeof byGid.sheetName, TableName>>(true);
+    assertType<IsExactly<typeof byName.tableName, "item">>(true);
+    assertType<IsExactly<typeof byGid.tableName, TableName>>(true);
     assertType<
       IsExactly<ReturnType<typeof byName.trait<"hasIdColumn">>, boolean>
     >(true);
     assertType<IsExactly<typeof byName.columnNames, ColumnName<"item">[]>>(
       true,
     );
-    expect(byGid.sheetName).toBe("item");
+    expect(byGid.tableName).toBe("item");
     expect(byName.columnNames).toContain("requiredCount");
   });
 
@@ -180,7 +180,7 @@ describe("type-level precision", () => {
   it("navigates from a column schema back to its own sheet", () => {
     const sheet = ColumnSchema.fromColumnName("item", "requiredCount").sheet;
     assertType<IsExactly<typeof sheet, TableSchema<"item">>>(true);
-    expect(sheet.sheetName).toBe("item");
+    expect(sheet.tableName).toBe("item");
   });
 });
 

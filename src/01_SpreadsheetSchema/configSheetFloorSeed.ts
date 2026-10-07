@@ -26,7 +26,7 @@ type FloorSeedGroupedColumn = FloorSeedColumn & { columnGroupHeading: string };
 
 interface FloorSeedSheet {
   title: string;
-  tableName: string;
+  liveTableName: string;
   letApiAccess: boolean;
   columns: readonly FloorSeedGroupedColumn[];
   endpoints?: Record<
@@ -47,7 +47,7 @@ interface FloorSeedSheet {
 export const configSheetFloorSeed = {
   spreadsheetConfig: {
     title: "Spreadsheet Config",
-    tableName: "spreadsheetConfig",
+    liveTableName: "spreadsheetConfig",
     letApiAccess: true,
     columns: [
       {
@@ -89,7 +89,7 @@ export const configSheetFloorSeed = {
   },
   tableConfig: {
     title: "Table Config",
-    tableName: "tableConfig",
+    liveTableName: "tableConfig",
     letApiAccess: true,
     columns: [
       {
@@ -120,7 +120,7 @@ export const configSheetFloorSeed = {
   },
   columnConfig: {
     title: "Column Config",
-    tableName: "columnConfig",
+    liveTableName: "columnConfig",
     letApiAccess: true,
     columns: [
       {
@@ -157,7 +157,7 @@ export const configSheetFloorSeed = {
   },
   valueConfig: {
     title: "Value Config",
-    tableName: "valueConfig",
+    liveTableName: "valueConfig",
     letApiAccess: true,
     columns: [],
     exampleColumn: {
@@ -203,11 +203,11 @@ function floorTableKeyOf(
 }
 
 export function floorSeedColumns(
-  sheetName: FloorTabName,
+  tableName: FloorTabName,
 ): readonly FloorSeedColumn[] {
-  if (sheetName === "valueConfig") return [];
-  if (sheetName !== "spreadsheetConfig") {
-    return configSheetFloorSeed[sheetName].columns;
+  if (tableName === "valueConfig") return [];
+  if (tableName !== "spreadsheetConfig") {
+    return configSheetFloorSeed[tableName].columns;
   }
   return [
     ...configSheetFloorSeed.spreadsheetConfig.columns,
@@ -227,19 +227,19 @@ export function floorSeedColumnById(
 }
 
 export function floorSeedColumnInSheet(
-  sheetName: FloorTabName,
+  tableName: FloorTabName,
   columnId: string,
 ): FloorSeedColumn | undefined {
-  return floorSeedColumns(sheetName).find((seedColumn) => {
-    const columnName = getSheetColumnNames(sheetName).find(
+  return floorSeedColumns(tableName).find((seedColumn) => {
+    const columnName = getSheetColumnNames(tableName).find(
       (name) =>
-        getColumnTraitByName(sheetName, name, "header") === seedColumn.header,
+        getColumnTraitByName(tableName, name, "header") === seedColumn.header,
     );
     if (columnName === undefined) return false;
-    return getColumnTraitByName(sheetName, columnName, "columnId") === columnId;
+    return getColumnTraitByName(tableName, columnName, "columnId") === columnId;
   });
 }
 
-export function floorColumnLabel(sheetName: string, header: string): string {
-  return `Floor column "${header}" on "${sheetName}"`;
+export function floorColumnLabel(tableName: string, header: string): string {
+  return `Floor column "${header}" on "${tableName}"`;
 }

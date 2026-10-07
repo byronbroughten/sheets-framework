@@ -43,11 +43,11 @@ export const convertSheetConfigToTableConfig: Chore = {
     validateTicksHaveOneTable(table, conversions);
     updateSheetGidToTableId(table, conversions);
     table.updateTitle(tableConfigSeed.title);
-    table.updateTableName(tableConfigSeed.tableName);
+    table.updateTableName(tableConfigSeed.liveTableName);
     ss.batchUpdateGSheets();
     return [
       `"${retiredSheetConfigTitle}" → ${tableConfigSeed.title}, keeping GID ${sheetGid}`,
-      `Table "${oldTableName}" → ${tableConfigSeed.tableName}`,
+      `Table "${oldTableName}" → ${tableConfigSeed.liveTableName}`,
       ...conversionReport(conversions),
     ].join("; ");
   },

@@ -114,9 +114,9 @@ export type SheetDataValuesAll<TN extends TableNameSimple> = SheetDataValues<
 >;
 
 export function getSheetColumnNames<TN extends TableNameSimple>(
-  sheetName: TN,
+  tableName: TN,
 ): ColumnName<TN>[] {
-  return Obj.keys(columnConfigs()[sheetName]) as unknown as ColumnName<TN>[];
+  return Obj.keys(columnConfigs()[tableName]) as unknown as ColumnName<TN>[];
 }
 
 // columnConfig isn't actually very unique. The only unique
@@ -124,11 +124,11 @@ export function getColumnTraitByName<
   TN extends TableNameSimple,
   CN extends ColumnName<TN>,
   TK extends keyof ColumnConfigAt<TN, CN>,
->(sheetName: TN, columnName: CN, key: TK): ColumnConfigAt<TN, CN>[TK] {
+>(tableName: TN, columnName: CN, key: TK): ColumnConfigAt<TN, CN>[TK] {
   if (key === "columnName") {
     return columnName as ColumnConfigAt<TN, CN>[TK];
   }
-  return (columnConfigs()[sheetName][columnName] as ColumnConfigAt<TN, CN>)[
+  return (columnConfigs()[tableName][columnName] as ColumnConfigAt<TN, CN>)[
     key
   ];
 }
@@ -179,7 +179,7 @@ export type MakeColumnFullName<
 type ColumnConfigsFlat = FlattenTwoLevels<
   ColumnConfigs,
   CodebaseNameDelimiter,
-  "sheetName",
+  "tableName",
   "columnName"
 >;
 type ColumnFullNameAll = keyof ColumnConfigsFlat & string;
@@ -197,7 +197,7 @@ export type ColumnFullName<
 }[ColumnFullNameAll];
 
 export type SheetNameOf<FN extends ColumnFullName> =
-  ColumnConfigsFlat[FN]["sheetName"];
+  ColumnConfigsFlat[FN]["tableName"];
 export type ColumnNameOf<FN extends ColumnFullName> =
   ColumnConfigsFlat[FN]["columnName"] & ColumnName<SheetNameOf<FN>>;
 export type ValueNameOf<FN extends ColumnFullName> =

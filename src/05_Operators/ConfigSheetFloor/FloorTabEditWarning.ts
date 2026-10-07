@@ -174,9 +174,9 @@ export class FloorTabEditWarning<
 }
 
 export function selfDescribingRowColumns<TN extends FloorSheetName>(
-  sheetName: TN,
+  tableName: TN,
 ): readonly ColumnName<TN>[] {
-  const rule = floorTabRules()[sheetName].selfDescribingRow;
+  const rule = floorTabRules()[tableName].selfDescribingRow;
   if (rule === undefined) return [];
   return [...rule.identityColumns, rule.declaredColumn];
 }
@@ -223,8 +223,8 @@ function spreadsheetConfigTimeLastRanColumnNames(): ColumnName<"spreadsheetConfi
   );
 }
 
-function floorWarningDescription(sheetName: FloorSheetName): string {
-  return `${floorWarningPrefix} · ${configSheetFloorSeed[sheetName].title} · warning`;
+function floorWarningDescription(tableName: FloorSheetName): string {
+  return `${floorWarningPrefix} · ${configSheetFloorSeed[tableName].title} · warning`;
 }
 
 function liveColIndexesOf<TN extends FloorSheetName>(

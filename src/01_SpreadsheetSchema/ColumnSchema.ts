@@ -26,26 +26,26 @@ export class ColumnSchema<
   CN extends ColumnName<TN> = ColumnName<TN>,
 > extends SpreadsheetBaseSchema {
   readonly sheetGid: number;
-  readonly sheetName: TN;
+  readonly tableName: TN;
   readonly columnId: string;
   readonly columnName: CN;
   constructor({
     sheetGid,
-    sheetName,
+    tableName,
     columnId,
     columnName,
   }: ColumnSchemaProps<TN, CN>) {
     super();
     this.sheetGid = sheetGid;
-    this.sheetName = sheetName;
+    this.tableName = tableName;
     this.columnId = columnId;
     this.columnName = columnName;
   }
   static fromColumnName<TN extends TableName, CN extends ColumnName<TN>>(
-    sheetName: TN,
+    tableName: TN,
     columnName: CN,
   ): ColumnSchema<TN, CN> {
-    return TableSchema.fromSheetName(sheetName).columnByName(columnName);
+    return TableSchema.fromSheetName(tableName).columnByName(columnName);
   }
   static fromColumnId(sheetGid: number, columnId: string): ColumnSchema {
     return TableSchema.fromSheetGid(sheetGid).columnById(columnId);
@@ -53,7 +53,7 @@ export class ColumnSchema<
   get sheet(): TableSchema<TN> {
     return new TableSchema({
       sheetGid: this.sheetGid,
-      sheetName: this.sheetName,
+      tableName: this.tableName,
     });
   }
   trait<TK extends keyof ColumnConfig>(
@@ -81,7 +81,7 @@ export class ColumnSchema<
   }
   get fullName(): MakeColumnFullName<TN, CN> & ColumnFullName {
     return this.combineNames(
-      this.sheetName,
+      this.tableName,
       this.columnName as string,
     ) as MakeColumnFullName<TN, CN> & ColumnFullName;
   }

@@ -69,26 +69,26 @@ const legacyLayoutColumns = [
 ] as const;
 
 function floorSeedType(
-  sheetName: "spreadsheetConfig" | "tableConfig" | "columnConfig",
+  tableName: "spreadsheetConfig" | "tableConfig" | "columnConfig",
   header: string,
 ): string | undefined {
-  const column = configSheetFloorSeed[sheetName].columns.find(
+  const column = configSheetFloorSeed[tableName].columns.find(
     (entry) => entry.header === header,
   );
   if (column !== undefined) return column.columnType;
-  if (sheetName !== "spreadsheetConfig") return undefined;
+  if (tableName !== "spreadsheetConfig") return undefined;
   return Object.values(configSheetFloorSeed.spreadsheetConfig.endpoints)
     .flatMap((endpoint) => [endpoint.timeLastRan, endpoint.runStatus])
     .find((entry) => entry.header === header)?.columnType;
 }
 
 function columnTypesByHeader(
-  sheetName: "spreadsheetConfig" | "tableConfig" | "columnConfig",
+  tableName: "spreadsheetConfig" | "tableConfig" | "columnConfig",
   headers: readonly string[],
 ): Record<number, string> {
   const types: Record<number, string> = {};
   headers.forEach((header, colIndex) => {
-    const columnType = floorSeedType(sheetName, header);
+    const columnType = floorSeedType(tableName, header);
     if (columnType !== undefined) types[colIndex] = columnType;
   });
   return types;
@@ -142,7 +142,7 @@ function spreadsheetConfigSheet(
     }),
     table: {
       tableId: tableIdOnTab(spreadsheetConfigGid),
-      name: configSheetFloorSeed.spreadsheetConfig.tableName,
+      name: configSheetFloorSeed.spreadsheetConfig.liveTableName,
       startRowIndex: tableHeaderRowIndex,
       startColumnIndex: startTableColIndex,
       endRowIndex: options.tableEndRowIndex ?? 5,
@@ -241,7 +241,7 @@ function seedFixture(
         }),
         table: {
           tableId: tableIdOnTab(tableConfigGid),
-          name: configSheetFloorSeed.tableConfig.tableName,
+          name: configSheetFloorSeed.tableConfig.liveTableName,
           startRowIndex: tableHeaderRowIndex,
           startColumnIndex: startTableColIndex,
           endRowIndex: options.tableConfigTableEndRowIndex ?? 5,
@@ -280,7 +280,7 @@ function seedFixture(
         }),
         table: {
           tableId: tableIdOnTab(columnConfigGid),
-          name: configSheetFloorSeed.columnConfig.tableName,
+          name: configSheetFloorSeed.columnConfig.liveTableName,
           startRowIndex: tableHeaderRowIndex,
           startColumnIndex: startTableColIndex,
           endRowIndex:
@@ -337,7 +337,7 @@ function floorValueConfigTab(
     }),
     table: {
       tableId,
-      name: configSheetFloorSeed.valueConfig.tableName,
+      name: configSheetFloorSeed.valueConfig.liveTableName,
       startRowIndex: tableHeaderRowIndex,
       startColumnIndex: startTableColIndex,
       endRowIndex: 5,
@@ -362,7 +362,7 @@ function valueConfigTab(options: {
     }),
     table: {
       tableId: tableIdOnTab(options.sheetId),
-      name: configSheetFloorSeed.valueConfig.tableName,
+      name: configSheetFloorSeed.valueConfig.liveTableName,
       endRowIndex: 5,
     },
   };
@@ -655,7 +655,7 @@ describe("ConfigCoordinator.generateConfigFiles", () => {
           }),
           table: {
             tableId: tableIdOnTab(tableConfigGid),
-            name: configSheetFloorSeed.tableConfig.tableName,
+            name: configSheetFloorSeed.tableConfig.liveTableName,
             startRowIndex: tableHeaderRowIndex,
             startColumnIndex: startTableColIndex,
             endRowIndex: 5,
@@ -688,7 +688,7 @@ describe("ConfigCoordinator.generateConfigFiles", () => {
           }),
           table: {
             tableId: tableIdOnTab(columnConfigGid),
-            name: configSheetFloorSeed.columnConfig.tableName,
+            name: configSheetFloorSeed.columnConfig.liveTableName,
             startRowIndex: tableHeaderRowIndex,
             startColumnIndex: startTableColIndex,
             endRowIndex: 6,

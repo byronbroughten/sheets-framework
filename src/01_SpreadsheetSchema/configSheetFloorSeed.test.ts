@@ -7,14 +7,14 @@ import {
 } from "./configSheetFloorSeed";
 
 function seedColumn(
-  sheetName: "spreadsheetConfig" | "tableConfig" | "columnConfig",
+  tableName: "spreadsheetConfig" | "tableConfig" | "columnConfig",
   header: string,
 ): FloorSeedColumn {
-  const column = configSheetFloorSeed[sheetName].columns.find(
+  const column = configSheetFloorSeed[tableName].columns.find(
     (entry) => entry.header === header,
   );
   if (column === undefined) {
-    throw new Error(`Floor seed has no ${sheetName} column ${header}.`);
+    throw new Error(`Floor seed has no ${tableName} column ${header}.`);
   }
   return column;
 }
