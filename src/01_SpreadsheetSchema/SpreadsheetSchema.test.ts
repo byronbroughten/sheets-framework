@@ -41,7 +41,7 @@ describe("SpreadsheetSchema", () => {
         true,
       );
       expect(
-        schema.isUniformRowIndex(schema.colIdRowIndex, "tableHeader"),
+        schema.isUniformRowIndex(schema.colIdRowIndex, "header"),
       ).toBe(false);
       expect(schema.isUniformRowIndex(9999)).toBe(false);
     });
@@ -51,7 +51,7 @@ describe("SpreadsheetSchema", () => {
         "columnId",
       );
       expect(schema.uniformRowNameByIndex(schema.tableHeaderRowIndex)).toBe(
-        "tableHeader",
+        "header",
       );
     });
 
@@ -63,7 +63,7 @@ describe("SpreadsheetSchema", () => {
       expect(() =>
         schema.validateUniformRowIndex(
           schema.tableHeaderRowIndex,
-          "tableHeader",
+          "header",
         ),
       ).not.toThrow();
       expect(() => schema.validateUniformRowIndex(9999)).toThrow();

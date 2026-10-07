@@ -20,10 +20,10 @@ export const codebaseNameDelimiter = "_";
 export type CodebaseNameDelimiter = typeof codebaseNameDelimiter;
 
 const uniformRowValueNames = {
-  tableHeader: "string",
+  header: "string",
   action: "boolean", // Should perhaps be "boolean" | "string"
   columnId: "string",
-  colGroupName: "string",
+  groupHeading1: "string",
 } as const;
 
 type UniformRowValueNames = typeof uniformRowValueNames;

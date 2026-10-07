@@ -84,7 +84,7 @@ describe("SpreadsheetIdentified navigation", () => {
     const table = ssi.table(itemTableId);
     const row = table.row(0);
     const column = table.column(itemIdColumnId);
-    const uniformRow = table.meta.uniformRow("tableHeader");
+    const uniformRow = table.meta.uniformRow("header");
 
     assertType<IsExactly<typeof row.table, TableIdentified>>(true);
     assertType<IsExactly<typeof column.table, TableIdentified>>(true);

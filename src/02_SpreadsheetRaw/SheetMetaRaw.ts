@@ -21,8 +21,8 @@ export class SheetMetaRaw extends TableCommonRaw {
   get hasFetchedColumnIds(): boolean {
     return this.tableState.working.hasFetchedColumnIds;
   }
-  get tableHeaderRow(): UniformRowRaw<"tableHeader"> {
-    return this.uniformRow("tableHeader");
+  get tableHeaderRow(): UniformRowRaw<"header"> {
+    return this.uniformRow("header");
   }
   get actionRow(): UniformRowRaw<"action"> {
     return this.uniformRow("action");

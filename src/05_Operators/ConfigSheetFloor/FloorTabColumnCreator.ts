@@ -70,7 +70,7 @@ export class FloorTabColumnCreator<
       meta.insertColumnAtEnd({
         columnId: floorColumn.columnId,
         header: floorColumn.header,
-        colGroupName: floorColumn.groupHeading,
+        groupHeading1: floorColumn.groupHeading,
       });
       return `${this.table.raw.title} · ${floorColumn.header} (${floorColumn.columnId})`;
     });

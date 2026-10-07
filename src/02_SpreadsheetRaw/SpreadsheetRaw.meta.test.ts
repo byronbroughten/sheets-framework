@@ -219,7 +219,7 @@ describe("SheetMetaRaw.insertColumnAtEnd", () => {
     const insertedIndex = raw.sheetMeta(111).insertColumnAtEnd({
       columnId: "c:lse:ddd",
       header: "New",
-      colGroupName: "Group",
+      groupHeading1: "Group",
     });
     raw.batchUpdateGSheets();
 
@@ -285,7 +285,7 @@ describe("SheetMetaRaw.insertColumnAtEnd", () => {
     const { grid } = stubThreeColumnTable(
       { columnTypes: { 2: "BOOLEAN" } },
       {
-        [expectedOrigin.sheetRowIndex(uniformRows.index("colGroupName"))]: {
+        [expectedOrigin.sheetRowIndex(uniformRows.index("groupHeading1"))]: {
           value: "Checks",
           backgroundColor: lightGreen,
         },
@@ -780,7 +780,7 @@ describe("ColumnMetaRaw.updateColumnType", () => {
     raw
       .table(tableId111)
       .meta.column(1)
-      .updateUniformCell("tableHeader", "Identifier");
+      .updateUniformCell("header", "Identifier");
     raw.batchUpdateGSheets();
 
     expect(grid.sheet(111).tables[0]?.columnProperties?.[1]).toEqual({

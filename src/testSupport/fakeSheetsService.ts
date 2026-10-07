@@ -112,7 +112,7 @@ export interface FakeSheetProperties {
   /**
    * Row-major grid data, starting at row/column 0 — row indexes here are
    * literal sheet row indexes, so they must line up with
-   * `sheetLayout`'s row layout (row 0 is the columnId row, row 4 is
+   * `tableLayout`'s row layout (row 0 is the columnId row, row 4 is
    * the first data row, etc.) for anything above 02_SpreadsheetRaw to
    * resolve columns/values correctly. Omit for a sheet whose cell content
    * doesn't matter to the test (sheet-properties-only fixtures still work
@@ -193,7 +193,7 @@ export interface FakeSheetsService {
  * Builds a `FakeSheetProperties["rows"]` array from a sparse `{ rowIndex:
  * cells }` map, padding the gaps with empty rows so array position lines
  * up with literal sheet row index (row 0 is the columnId row, row 4 is
- * the first data row, per `sheetLayout` — see `rows`' own doc).
+ * the first data row, per `tableLayout` — see `rows`' own doc).
  */
 export function buildGridRows(
   rowsByIndex: Record<number, readonly FakeCell[]>,

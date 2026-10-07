@@ -1,7 +1,7 @@
 import type { CellValue } from "../../../src/00_Source/CellValues/cellValues";
 import type { TableColumnType } from "../../../src/00_Source/RawSource/RawSource";
 import { dimensionIds } from "../../../src/01_SpreadsheetSchema/dimensionIds";
-import { sheetLayout } from "../../../src/01_SpreadsheetSchema/sheetLayout";
+import { tableLayout } from "../../../src/01_SpreadsheetSchema/tableLayout";
 
 export interface DevFixtureColumn {
   key: string;
@@ -30,7 +30,7 @@ function withIdColumn(sheet: DevFixtureSheet): DevFixtureSheet {
   );
   const idColumn: DevFixtureColumn = {
     key: "id",
-    header: sheetLayout.idHeader,
+    header: tableLayout.idHeader,
     columnType: "TEXT",
     values: Array.from({ length: rowCount }, (_, index) =>
       dimensionIds.row(sheet.idPrefix, String(index + 1)),
@@ -42,7 +42,7 @@ function withIdColumn(sheet: DevFixtureSheet): DevFixtureSheet {
 function nameColumn(values: string[]): DevFixtureColumn {
   return {
     key: "name",
-    header: sheetLayout.nameHeader,
+    header: tableLayout.nameHeader,
     columnType: "TEXT",
     values,
   };

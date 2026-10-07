@@ -11,7 +11,7 @@ import type {
 } from "../00_Source/RawSource/SheetIndex";
 import { Obj } from "../utils/Obj";
 import { Str } from "../utils/Str";
-import { sheetLayout } from "./sheetLayout";
+import { tableLayout } from "./tableLayout";
 import { uniformRows } from "./uniformRows";
 
 export class SpreadsheetBaseSchema {
@@ -25,10 +25,10 @@ export class SpreadsheetBaseSchema {
     return `${name1}${this.codebaseNameDelimiter}${name2}`;
   }
   get idHeader(): string {
-    return sheetLayout.idHeader;
+    return tableLayout.idHeader;
   }
   get nameHeader(): string {
-    return sheetLayout.nameHeader;
+    return tableLayout.nameHeader;
   }
   titleToName(sheetTitle: string): string {
     return Str.sentenceToCamelCase(sheetTitle);
@@ -91,12 +91,12 @@ export class SpreadsheetBaseSchema {
     return uniformRows.indexes().columnId;
   }
   get tableHeaderRowIndex(): number {
-    return uniformRows.indexes().tableHeader;
+    return uniformRows.indexes().header;
   }
   get actionRowIndex(): number {
     return uniformRows.indexes().action;
   }
   get idDelimiter(): string {
-    return sheetLayout.idDelimiter;
+    return tableLayout.idDelimiter;
   }
 }

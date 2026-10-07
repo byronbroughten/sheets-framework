@@ -587,13 +587,13 @@ describe("TableNamed edit warnings and edit locks", () => {
     sheet.meta.uniformRow("columnId").addEditWarning({
       description: "column id row",
     });
-    sheet.meta.column("id").addEditWarningOn("tableHeader", {
+    sheet.meta.column("id").addEditWarningOn("header", {
       description: "id header",
     });
     sheet.meta.column("id").addEditWarningOn("columnId", {
       description: "id column id",
     });
-    sheet.meta.column("id").addEditWarningOn("colGroupName", {
+    sheet.meta.column("id").addEditWarningOn("groupHeading1", {
       description: "id group heading",
     });
     sheet.column("id").cell(0).addEditWarning({

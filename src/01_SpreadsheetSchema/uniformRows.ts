@@ -1,16 +1,16 @@
 import type { UniformRowName } from "../00_Source/CellValues/cellValues";
 import { Obj } from "../utils/Obj";
-import { sheetLayout } from "./sheetLayout";
+import { tableLayout } from "./tableLayout";
 
 // Table-relative, so a head row sits at a negative index above body row 0.
 export const uniformRows = {
   indexes(): Record<UniformRowName, number> {
-    const offsets = sheetLayout.headRowOffsets;
+    const offsets = tableLayout.headRowOffsets;
     return {
       columnId: headRowIndex(offsets.columnId),
-      colGroupName: headRowIndex(offsets.groupHeading1),
+      groupHeading1: headRowIndex(offsets.groupHeading1),
       action: headRowIndex(offsets.action),
-      tableHeader: headRowIndex(offsets.header),
+      header: headRowIndex(offsets.header),
     };
   },
   index(name: UniformRowName): number {

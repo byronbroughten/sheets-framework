@@ -4,7 +4,7 @@ import {
   SheetIndex,
   type SheetRowIndex,
 } from "../00_Source/RawSource/SheetIndex";
-import { sheetLayout } from "./sheetLayout";
+import { tableLayout } from "./tableLayout";
 import { uniformRows } from "./uniformRows";
 
 export interface TableOriginProps {
@@ -24,7 +24,7 @@ export class TableOrigin {
   static expected(): TableOrigin {
     return new TableOrigin({
       headerRowIndex: SheetIndex.row(
-        Math.max(...Object.values(sheetLayout.headRowOffsets)),
+        Math.max(...Object.values(tableLayout.headRowOffsets)),
       ),
       startColIndex: SheetIndex.col(0),
     });

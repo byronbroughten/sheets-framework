@@ -219,7 +219,7 @@ export interface CellFill<VN extends CellValueName = CellValueName> {
 export interface TableEndColumnUniformCells {
   columnId: string;
   header: string;
-  colGroupName?: string;
+  groupHeading1?: string;
 }
 export interface TableWrites {
   sort: SortParameters | undefined;

@@ -40,7 +40,7 @@ const sscColumns = [
   "syncConfigSheetRowsRunStatus",
 ] as const;
 
-// The columns sheetLayout replaced, as a spreadsheet synced before it still has them.
+// The columns tableLayout replaced, as a spreadsheet synced before it still has them.
 const legacyLayoutColumns = [
   { columnId: "c:sscf:XOpXA8U", header: "ID header", value: "ID" },
   { columnId: "c:sscf:Gp3PuNE", header: "Name header", value: "Name" },

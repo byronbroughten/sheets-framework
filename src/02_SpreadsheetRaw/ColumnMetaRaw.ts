@@ -31,7 +31,7 @@ export class ColumnMetaRaw<
     return new ColumnRaw<VN>(this.columnRawProps);
   }
   get activeHeader(): string {
-    return this.uniformCell("tableHeader").valueOrEmpty();
+    return this.uniformCell("header").valueOrEmpty();
   }
   get activeIsFormula(): boolean {
     return this._activeFacts.isFormula;
@@ -91,12 +91,12 @@ export class ColumnMetaRaw<
   initUniformCells({
     columnId,
     header,
-    colGroupName,
+    groupHeading1,
   }: TableEndColumnUniformCells): this {
     this.uniformCell("columnId").updateValue(columnId);
-    this.uniformCell("tableHeader").updateValue(header);
-    if (colGroupName !== undefined) {
-      this.uniformCell("colGroupName").updateValue(colGroupName);
+    this.uniformCell("header").updateValue(header);
+    if (groupHeading1 !== undefined) {
+      this.uniformCell("groupHeading1").updateValue(groupHeading1);
     }
     return this;
   }
