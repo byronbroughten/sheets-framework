@@ -44,7 +44,7 @@ describe("configSheetFloorSeed Spreadsheet Config", () => {
 });
 
 describe("configSheetFloorSeed column types", () => {
-  it("declares TEXT, DOUBLE and BOOLEAN on the floor columns the spec names", () => {
+  it("declares TEXT and BOOLEAN on the floor columns the spec names", () => {
     expect(seedColumn("spreadsheetConfig", "Table menu space").columnType).toBe(
       "TEXT",
     );
@@ -64,9 +64,9 @@ describe("configSheetFloorSeed column types", () => {
       "BOOLEAN",
     );
 
-    expect(seedColumn("columnConfig", "Sheet GID").columnType).toBe("DOUBLE");
+    expect(seedColumn("columnConfig", "Table ID").columnType).toBe("TEXT");
     expect(seedColumn("columnConfig", "Column ID").columnType).toBe("TEXT");
-    expect(seedColumn("columnConfig", "Sheet title").columnType).toBe("TEXT");
+    expect(seedColumn("columnConfig", "Table name").columnType).toBe("TEXT");
     expect(seedColumn("columnConfig", "Header").columnType).toBe("TEXT");
     expect(seedColumn("columnConfig", "Empty value allowed").columnType).toBe(
       "BOOLEAN",

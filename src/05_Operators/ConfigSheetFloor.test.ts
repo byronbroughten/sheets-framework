@@ -216,9 +216,9 @@ const tableConfigColumns = [
   "letApiAccess",
 ] as const;
 const columnConfigColumns = [
-  "sheetGid",
+  "tableId",
   "columnId",
-  "sheetTitle",
+  "tableName",
   "header",
   "emptyValueAllowed",
 ] as const;
@@ -246,12 +246,16 @@ const defaultTableConfigGids = [
   columnConfigGid,
   valueConfigGid,
 ];
+const businessTableId = tableIdOnTab(businessSheetGid);
 const defaultColumnConfigRows = [
-  { sheetGid: businessSheetGid, columnId: "c:biz:one" },
-  { sheetGid: tableConfigGid, columnId: tc.letApiAccess.columnId },
-  { sheetGid: businessSheetGid, columnId: "c:biz:two" },
-  { sheetGid: columnConfigGid, columnId: cc.emptyValueAllowed.columnId },
-  { sheetGid: columnConfigGid, columnId: cc.header.columnId },
+  { tableId: businessTableId, columnId: "c:biz:one" },
+  { tableId: tableIdOnTab(tableConfigGid), columnId: tc.letApiAccess.columnId },
+  { tableId: businessTableId, columnId: "c:biz:two" },
+  {
+    tableId: tableIdOnTab(columnConfigGid),
+    columnId: cc.emptyValueAllowed.columnId,
+  },
+  { tableId: tableIdOnTab(columnConfigGid), columnId: cc.header.columnId },
 ];
 
 function dataRowsFrom(
@@ -287,7 +291,7 @@ function floorFixture(
     tableConfigColumnIds?: Partial<Record<keyof typeof tc, string>>;
     columnConfigColumnIds?: Partial<Record<keyof typeof cc, string>>;
     tableConfigGids?: readonly number[];
-    columnConfigRows?: readonly { sheetGid: number; columnId: string }[];
+    columnConfigRows?: readonly { tableId: string; columnId: string }[];
     spreadsheetConfigTitle?: string;
     spreadsheetConfigTableName?: string;
     valueConfig?: {
@@ -442,11 +446,11 @@ function floorFixture(
           3: pad(withExtraColumn(ccHeaders, extraCcColumn?.header)),
           ...dataRowsFrom(
             topDataRowIndex,
-            columnConfigRows.map(({ sheetGid, columnId }) => {
+            columnConfigRows.map(({ tableId, columnId }) => {
               const cells = {
-                sheetGid,
+                tableId,
                 columnId,
-                sheetTitle: "",
+                tableName: "",
                 header: "",
                 emptyValueAllowed: false,
               };
@@ -647,7 +651,7 @@ describe("ConfigSheetFloor", () => {
 
   it("leaves Column Config's editable column open while no floor column has a row", () => {
     floorFixture({
-      columnConfigRows: [{ sheetGid: businessSheetGid, columnId: "c:biz:one" }],
+      columnConfigRows: [{ tableId: businessTableId, columnId: "c:biz:one" }],
     });
     const { floor } = applyFloor();
 
@@ -680,7 +684,7 @@ describe("ConfigSheetFloor", () => {
 
   it("keeps Column Config's editable column merged with an added one while no floor column has a row", () => {
     floorFixture({
-      columnConfigRows: [{ sheetGid: businessSheetGid, columnId: "c:biz:one" }],
+      columnConfigRows: [{ tableId: businessTableId, columnId: "c:biz:one" }],
       extraColumnConfigColumn: addedColumnConfigColumn,
     });
     const { floor } = applyFloor();
@@ -1204,9 +1208,9 @@ describe("ConfigSheetFloor", () => {
   it("recreates a missing Column Config Header column at the Table end with its header, column ID and heading, and reports it", () => {
     const { grid } = floorFixture({
       columnConfigColumnOrder: [
-        "sheetGid",
+        "tableId",
         "columnId",
-        "sheetTitle",
+        "tableName",
         "emptyValueAllowed",
       ],
     });
@@ -1215,9 +1219,9 @@ describe("ConfigSheetFloor", () => {
     expect(
       rowValues(grid, columnConfigGid, expectedSheetLayout.tableHeaderRowIndex),
     ).toEqual([
-      cc.sheetGid.header,
+      cc.tableId.header,
       cc.columnId.header,
-      cc.sheetTitle.header,
+      cc.tableName.header,
       cc.emptyValueAllowed.header,
       cc.header.header,
     ]);
@@ -1235,17 +1239,17 @@ describe("ConfigSheetFloor", () => {
 
   it("recreates two missing columns on one tab at the Table end, in seed order", () => {
     const { grid } = floorFixture({
-      columnConfigColumnOrder: ["sheetGid", "columnId", "emptyValueAllowed"],
+      columnConfigColumnOrder: ["tableId", "columnId", "emptyValueAllowed"],
     });
     applyFloor();
 
     expect(
       rowValues(grid, columnConfigGid, expectedSheetLayout.tableHeaderRowIndex),
     ).toEqual([
-      cc.sheetGid.header,
+      cc.tableId.header,
       cc.columnId.header,
       cc.emptyValueAllowed.header,
-      cc.sheetTitle.header,
+      cc.tableName.header,
       cc.header.header,
     ]);
   });
@@ -1254,9 +1258,9 @@ describe("ConfigSheetFloor", () => {
     const { grid } = floorFixture({
       columnTypesAreUnset: true,
       columnConfigColumnOrder: [
-        "sheetGid",
+        "tableId",
         "columnId",
-        "sheetTitle",
+        "tableName",
         "emptyValueAllowed",
       ],
     });
@@ -1301,8 +1305,8 @@ describe("ConfigSheetFloor", () => {
       column: cc.columnId.header,
       options: {
         columnConfigColumnOrder: [
-          "sheetGid",
-          "sheetTitle",
+          "tableId",
+          "tableName",
           "header",
           "emptyValueAllowed",
         ],
@@ -1312,9 +1316,9 @@ describe("ConfigSheetFloor", () => {
       column: cc.emptyValueAllowed.header,
       options: {
         columnConfigColumnOrder: [
-          "sheetGid",
+          "tableId",
           "columnId",
-          "sheetTitle",
+          "tableName",
           "header",
         ],
       },
@@ -1363,9 +1367,9 @@ describe("ConfigSheetFloor", () => {
     const { batchUpdateCount, grid } = floorFixture({
       columnTypesAreUnset: true,
       columnConfigColumnOrder: [
-        "sheetGid",
+        "tableId",
         "columnId",
-        "sheetTitle",
+        "tableName",
         "emptyValueAllowed",
       ],
     });
@@ -1385,9 +1389,9 @@ describe("ConfigSheetFloor", () => {
   it("reports nothing and sends no batch update on a second sync after recreating a column inside its Table in two", () => {
     const { batchUpdateCount, grid } = floorFixture({
       columnConfigColumnOrder: [
-        "sheetGid",
+        "tableId",
         "columnId",
-        "sheetTitle",
+        "tableName",
         "emptyValueAllowed",
       ],
     });
@@ -1399,9 +1403,9 @@ describe("ConfigSheetFloor", () => {
     expect(second.report).toBe("");
     expect(batchUpdateCount()).toBe(2);
     const headers = [
-      cc.sheetGid.header,
+      cc.tableId.header,
       cc.columnId.header,
-      cc.sheetTitle.header,
+      cc.tableName.header,
       cc.emptyValueAllowed.header,
       cc.header.header,
     ];
@@ -1417,9 +1421,9 @@ describe("ConfigSheetFloor", () => {
     const { batchUpdateCount } = floorFixture({
       columnTypesAreUnset: true,
       columnConfigColumnOrder: [
-        "sheetGid",
+        "tableId",
         "columnId",
-        "sheetTitle",
+        "tableName",
         "emptyValueAllowed",
       ],
       isDryRun: true,

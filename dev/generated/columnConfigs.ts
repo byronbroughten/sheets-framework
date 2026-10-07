@@ -15,9 +15,9 @@ export const columnConfigs = makeColumnConfigs({
     "letApiAccess": { "columnId": "c:scf:GOJ0ixi", "header": "Let api access", "valueName": "checkbox", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null }
   },
   "columnConfig": {
-    "sheetGid": { "columnId": "c:ccf:1-6AQIj", "header": "Sheet GID", "valueName": "number", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null },
+    "tableId": { "columnId": "c:ccf:tableId", "header": "Table ID", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null },
     "columnId": { "columnId": "c:ccf:vj9_rre", "header": "Column ID", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null },
-    "sheetTitle": { "columnId": "c:ccf:949GjdB", "header": "Sheet title", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null },
+    "tableName": { "columnId": "c:ccf:tableName", "header": "Table name", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null },
     "header": { "columnId": "c:ccf:kqA31oK", "header": "Header", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null },
     "emptyValueAllowed": { "columnId": "c:ccf:volkLl6", "header": "Empty value allowed", "valueName": "checkbox", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null }
   },

@@ -14,7 +14,7 @@ Each package's `generatedDir` (the app's `src/generated/`, the framework's `dev/
 
 ## Reading the generated files by block
 
-**Never read `columnConfigs.ts` whole.** `sheetConfigs.ts` is the sheet list and `tableConfigs.ts` the Table list — one labeled record per line. Grep `columnConfigs.ts` for the sheet key (`"occupancy":`) and read that object only: the key opens a multi-line block, and each column config is one labeled line inside it (`columnId`, `header`, `valueName`, `isFormula`, `emptyValueAllowed`, `customDefaultValue`). Same for a single column: grep its `columnId` or name. `valueConfigs.ts` stays a pretty-printed map of member arrays.
+**Never read `columnConfigs.ts` whole.** `sheetConfigs.ts` is the sheet list and `tableConfigs.ts` the Table list — one labeled record per line. Grep `columnConfigs.ts` for the Table key (`"occupancy":`) and read that object only: the key opens a multi-line block, and each column config is one labeled line inside it (`columnId`, `header`, `valueName`, `isFormula`, `emptyValueAllowed`, `customDefaultValue`). Same for a single column: grep its `columnId` or name. `valueConfigs.ts` stays a pretty-printed map of member arrays.
 
 ## The generated half and the hand-written half
 
@@ -26,7 +26,7 @@ All four are (or are meant to be) mechanically generated from the real spreadshe
 
 The rules on regenerating and on tab spelling: [`src/01_SpreadsheetSchema/AGENTS.md`](../src/01_SpreadsheetSchema/AGENTS.md).
 
-**`sheetConfigs`, `tableConfigs`, `columnConfigs`, and `valueConfigs` must always be regenerated together, in the same run — never a subset of them.** Sheet names live as keys in `sheetConfigs.ts`, and `columnConfigs.ts` is keyed by those same names; `tableConfigs.ts` records each managed sheet's Table with that sheet's ID prefix; `valueConfigs.ts` in turn depends on `columnConfigs` already being current to know which columns' headers to read. Regenerating a subset after a sheet/column was renamed/added/removed leaves the others referencing stale names, which breaks `npm run tsc` in places that look unrelated (the generated files themselves, plus any hand-written code — like `SheetNameGroups.ts` — that references a sheet name by string literal).
+**`sheetConfigs`, `tableConfigs`, `columnConfigs`, and `valueConfigs` must always be regenerated together, in the same run — never a subset of them.** Sheet names live as keys in `sheetConfigs.ts`; Table keys live as keys in `tableConfigs.ts`, and `columnConfigs.ts` is keyed by those same Table keys; `valueConfigs.ts` in turn depends on `columnConfigs` already being current to know which columns' headers to read. Regenerating a subset after a sheet/column was renamed/added/removed leaves the others referencing stale names, which breaks `npm run tsc` in places that look unrelated (the generated files themselves, plus any hand-written code — like `SheetNameGroups.ts` — that references a sheet name by string literal).
 
 ## What a regeneration runs, on the Node host
 
@@ -38,7 +38,7 @@ Regenerate all four with `sheets-framework gen-configs` (see [`docs/how-it-runs.
 
 ## A tab title becomes the sheet's key
 
-**A sheet's key in `sheetConfigs`/`columnConfigs` is derived from its tab title**, so a misspelled tab becomes a misspelled identifier in the generated files and in every string literal naming that sheet. Fix a tab's spelling before code references it; afterwards it costs a sheet edit, a regeneration and every call site.
+**A sheet's key in `sheetConfigs` is derived from its tab title, and a Table's key in `tableConfigs`/`columnConfigs` from its Table name**, so a misspelled tab or Table becomes a misspelled identifier in the generated files and in every string literal naming it. Fix the spelling before code references it; afterwards it costs a sheet edit, a regeneration and every call site.
 
 ## One word splitter derives keys, names and prefixes
 

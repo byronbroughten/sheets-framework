@@ -203,14 +203,14 @@ function floorTabRules(): { [TN in FloorSheetName]: FloorTabRules<TN> } {
       },
     },
     columnConfig: {
-      excludedDataColumns: ["sheetGid", "columnId", "sheetTitle", "header"],
+      excludedDataColumns: ["tableId", "columnId", "tableName", "header"],
       actionRowEditableColumns: [],
       selfDescribingRow: {
         declaredColumn: "emptyValueAllowed",
-        identityColumns: ["sheetGid", "columnId"],
-        isFloorIdentity: ([sheetGid, columnId]) =>
-          typeof sheetGid === "number" &&
-          floorSeedColumnById(sheetGid, String(columnId)) !== undefined,
+        identityColumns: ["tableId", "columnId"],
+        isFloorIdentity: ([tableId, columnId]) =>
+          typeof tableId === "string" &&
+          floorSeedColumnById(tableId, String(columnId)) !== undefined,
       },
     },
   };

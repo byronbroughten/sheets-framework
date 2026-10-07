@@ -14,7 +14,7 @@ Part of [generated data](../generated-data.md). Table Config lists every Google 
 
 ## `sheetConfigs`, until it is removed
 
-**`sheetConfigs`** (`generated/sheetConfigs.ts`) is still emitted beside it: one entry per sheet that holds a ticked Table, keyed by the sheet title, with that Table's GID, `idPrefix`, `hasIdColumn` and `hasNameColumn`. Column Config and the floor still read it, and it goes once they read `tableConfigs`.
+**`sheetConfigs`** (`generated/sheetConfigs.ts`) is still emitted beside it: one entry per sheet that holds a ticked Table, keyed by the sheet title, with that Table's GID, `idPrefix`, `hasIdColumn` and `hasNameColumn`. The floor still reads it, and it goes once the floor reads `tableConfigs`.
 
 ## Column references
 

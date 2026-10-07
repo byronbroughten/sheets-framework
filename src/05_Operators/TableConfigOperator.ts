@@ -133,36 +133,23 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
       return [col.tableId.value(rowIndex)];
     });
   }
-  isSheetGidApiAccess(sheetGid: number): boolean {
-    return this.sheetGidsApiAccesses().includes(sheetGid);
+  idPrefix(tableId: string): string {
+    return Val.assert(this._idPrefixesByTableId().get(tableId), "ID prefix");
   }
-  // The sheets that hold a ticked Table, until Column Config moves to Table IDs.
-  sheetGidsApiAccesses(): number[] {
-    const gids = this.tableIdsApiAccesses().map(
-      (tableId) => this.ss.raw.table(tableId).sheetGid,
-    );
-    return [...new Set(gids)];
-  }
-  idPrefix(sheetGid: number): string {
-    return Val.assert(this._idPrefixesBySheetGid().get(sheetGid), "ID prefix");
-  }
-  private _idPrefixesBySheetGid(): Map<number, string> {
+  private _idPrefixesByTableId(): Map<string, string> {
     const prefixesInUse = new Set<string>();
-    const assigned = new Map<number, string>();
-    this.sheetGidsApiAccesses().forEach((sheetGid) => {
-      const sampled = this.ss.raw.sheetMeta(sheetGid).activeIdPrefix();
+    const assigned = new Map<string, string>();
+    this._apiAccessTables().forEach((table) => {
+      const sampled = table.meta.activeIdPrefix();
       if (sampled === undefined) return;
       prefixesInUse.add(sampled);
-      assigned.set(sheetGid, sampled);
+      assigned.set(table.tableId, sampled);
     });
-    this.sheetGidsApiAccesses().forEach((sheetGid) => {
-      if (assigned.has(sheetGid)) return;
-      const generated = idPrefixes.fromTitle(
-        this.ss.raw.sheetMeta(sheetGid).primary.name,
-        prefixesInUse,
-      );
+    this._apiAccessTables().forEach((table) => {
+      if (assigned.has(table.tableId)) return;
+      const generated = idPrefixes.fromTitle(table.name, prefixesInUse);
       prefixesInUse.add(generated);
-      assigned.set(sheetGid, generated);
+      assigned.set(table.tableId, generated);
     });
     return assigned;
   }
@@ -239,7 +226,7 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
     const { tableHeaderRow } = table.meta;
     return {
       sheetGid: table.sheetGid,
-      idPrefix: this.idPrefix(table.sheetGid),
+      idPrefix: this.idPrefix(table.tableId),
       hasIdColumn: tableHeaderRow.hasValue(this.schema.idHeader),
       hasNameColumn: tableHeaderRow.hasValue(this.schema.nameHeader),
     };
@@ -271,10 +258,10 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
       `${columnReferenceLabel(reference)} names no managed Table "${tableName}".`,
     );
   }
-  sheetNamesByGid(): Map<number, string> {
-    const map = new Map<number, string>();
-    Object.entries(this.newSheetConfigs()).forEach(([sheetName, config]) => {
-      map.set(config.sheetGid, sheetName);
+  tableKeysByTableId(): Map<string, string> {
+    const map = new Map<string, string>();
+    Object.entries(this.newTableConfigs()).forEach(([tableKey, config]) => {
+      map.set(config.tableId, tableKey);
     });
     return map;
   }

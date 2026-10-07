@@ -60,15 +60,15 @@ function floorColumnIdentityChanges(
   previous: ColumnConfigsGeneric,
   next: ColumnConfigsGeneric,
 ): string[] {
-  return Obj.keys(configSheetFloorSeed).flatMap((sheetName) => {
-    return floorSeedColumns(sheetName).flatMap(({ header }) => {
+  return Obj.keys(configSheetFloorSeed).flatMap((tableKey) => {
+    return floorSeedColumns(tableKey).flatMap(({ header }) => {
       const columnName = Str.sentenceToCamelCase(header);
-      const previousColumn = previous[sheetName]?.[columnName];
-      const nextColumn = next[sheetName]?.[columnName];
+      const previousColumn = previous[tableKey]?.[columnName];
+      const nextColumn = next[tableKey]?.[columnName];
       if (previousColumn === undefined || nextColumn === undefined) return [];
       if (nextColumn.columnId === previousColumn.columnId) return [];
       return [
-        `${floorColumnLabel(sheetName, header)} had column ID "${previousColumn.columnId}" and is now "${nextColumn.columnId}".`,
+        `${floorColumnLabel(tableKey, header)} had column ID "${previousColumn.columnId}" and is now "${nextColumn.columnId}".`,
       ];
     });
   });

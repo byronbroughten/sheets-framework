@@ -50,11 +50,11 @@ describe("assertFloorMatchesSeed", () => {
 
   it("throws when a floor column's valueName isn't the one the seed's column type implies", () => {
     const configs = floorColumnConfigs();
-    const sheetGid = floorColumn(configs, "columnConfig", "sheetGid");
-    sheetGid.valueName = "string";
+    const tableId = floorColumn(configs, "columnConfig", "tableId");
+    tableId.valueName = "number";
 
     expect(() => assertFloorMatchesSeed(sheetConfigs, configs)).toThrow(
-      `Floor column "Sheet GID" on "columnConfig" (column ID "${sheetGid.columnId}") has valueName "string" where the floor seed's column type DOUBLE implies "number".`,
+      `Floor column "Table ID" on "columnConfig" (column ID "${tableId.columnId}") has valueName "number" where the floor seed's column type TEXT implies "string".`,
     );
   });
 
@@ -95,7 +95,7 @@ describe("assertFloorMatchesSeed", () => {
     const configs = floorColumnConfigs();
     floorColumn(configs, "tableConfig", "sheetTitle").customDefaultValue =
       "Untitled";
-    floorColumn(configs, "columnConfig", "sheetTitle").customDefaultValue =
+    floorColumn(configs, "columnConfig", "tableName").customDefaultValue =
       null;
 
     expect(() => assertFloorMatchesSeed(sheetConfigs, configs)).not.toThrow();

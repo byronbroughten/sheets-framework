@@ -263,16 +263,16 @@ function seedFixture(
         // real committed Column Config columns need to be present here.
         rows: buildGridRows({
           0: [
-            cc.sheetGid.columnId,
+            cc.tableId.columnId,
             cc.columnId.columnId,
-            cc.sheetTitle.columnId,
+            cc.tableName.columnId,
             cc.header.columnId,
             cc.emptyValueAllowed.columnId,
           ],
           3: [
-            cc.sheetGid.header,
+            cc.tableId.header,
             cc.columnId.header,
-            cc.sheetTitle.header,
+            cc.tableName.header,
             cc.header.header,
             cc.emptyValueAllowed.header,
           ],
@@ -288,7 +288,7 @@ function seedFixture(
             Math.max(1, columnConfigDataRows.length),
           endColumnIndex: startTableColIndex + 5,
           columnTypes: {
-            0: "DOUBLE",
+            0: "TEXT",
             1: "TEXT",
             2: "TEXT",
             3: "TEXT",
@@ -358,7 +358,11 @@ function valueConfigTab(options: {
       3: ["Value title"],
       4: [],
     }),
-    table: { tableId: tableIdOnTab(options.sheetId), endRowIndex: 5 },
+    table: {
+      tableId: tableIdOnTab(options.sheetId),
+      name: configSheetFloorSeed.valueConfig.tableName,
+      endRowIndex: 5,
+    },
   };
 }
 
@@ -444,7 +448,7 @@ describe("ConfigCoordinator.syncAndFlushConfigSheets", () => {
         endRowIndex: 5,
         endColumnIndex: 4,
       }),
-    ).toEqual([[testSheetGid, "c:itm:xyz123", "Item", "Some Header"]]);
+    ).toEqual([["item", "c:itm:xyz123", "Item", "Some Header"]]);
     // The gathered column ID rode the appended Column Config row into the flush.
     expect(orchestrator.tableConfigOperator.newSheetConfigs().item).toEqual({
       sheetGid: testSheetGid,
@@ -459,7 +463,7 @@ describe("ConfigCoordinator.syncAndFlushConfigSheets", () => {
 
     const summary = ConfigCoordinator.init().syncConfigSheetRows();
 
-    expect(summary).toContain("1 column(s) across 1 sheet(s)");
+    expect(summary).toContain("1 column(s) across 1 Table(s)");
     expect(typeof summary).toBe("string");
   });
 
@@ -472,7 +476,7 @@ describe("ConfigCoordinator.syncAndFlushConfigSheets", () => {
 
     expect(summary).toContain("Replaced drifted:");
     expect(summary).toContain(driftedFloorWarningDescription());
-    expect(summary).toContain("1 column(s) across 1 sheet(s)");
+    expect(summary).toContain("1 column(s) across 1 Table(s)");
     expect(summary).not.toContain("\n");
   });
 });
@@ -533,7 +537,7 @@ describe("ConfigCoordinator.generateConfigFiles", () => {
 
   it("prunes the old layout columns' Column Config rows once they are gone from the sheet", () => {
     const legacyColumnConfigRows = legacyLayoutColumns.map((column) => [
-      spreadsheetConfigGid,
+      tableIdOnTab(spreadsheetConfigGid),
       column.columnId,
       "Spreadsheet Config",
       column.header,
@@ -557,7 +561,7 @@ describe("ConfigCoordinator.generateConfigFiles", () => {
     expect(
       ConfigCoordinator.init().generateConfigFiles("../makeConfigs")
         .untypedColumnsSummary,
-    ).toContain("1 column(s) across 1 sheet(s)");
+    ).toContain("1 column(s) across 1 Table(s)");
   });
 
   it("carries the floor report back beside the untyped-column summary", () => {
@@ -571,7 +575,7 @@ describe("ConfigCoordinator.generateConfigFiles", () => {
       `Replaced drifted: ${driftedFloorWarningDescription()}`,
     );
     expect(parsed.untypedColumnsSummary).toContain(
-      "1 column(s) across 1 sheet(s)",
+      "1 column(s) across 1 Table(s)",
     );
   });
 
@@ -597,9 +601,9 @@ describe("ConfigCoordinator.generateConfigFiles", () => {
 
   it("still catalogs value titles after Column Config pruned a stale row of its own", () => {
     const columnIdRow = [
-      cc.sheetGid.columnId,
+      cc.tableId.columnId,
       cc.columnId.columnId,
-      cc.sheetTitle.columnId,
+      cc.tableName.columnId,
       cc.header.columnId,
       cc.emptyValueAllowed.columnId,
     ];
@@ -638,19 +642,24 @@ describe("ConfigCoordinator.generateConfigFiles", () => {
           rows: buildGridRows({
             0: columnIdRow,
             3: [
-              cc.sheetGid.header,
+              cc.tableId.header,
               cc.columnId.header,
-              cc.sheetTitle.header,
+              cc.tableName.header,
               cc.header.header,
               cc.emptyValueAllowed.header,
             ],
             4: [
-              columnConfigGid,
-              cc.sheetGid.columnId,
+              tableIdOnTab(columnConfigGid),
+              cc.tableId.columnId,
               "Column Config",
-              cc.sheetGid.header,
+              cc.tableId.header,
             ],
-            5: [columnConfigGid, "c:ccf:stale-gone", "Column Config", "Gone"],
+            5: [
+              tableIdOnTab(columnConfigGid),
+              "c:ccf:stale-gone",
+              "Column Config",
+              "Gone",
+            ],
           }),
           table: {
             tableId: tableIdOnTab(columnConfigGid),

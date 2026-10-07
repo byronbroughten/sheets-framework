@@ -3,7 +3,7 @@ import {
   type SpreadsheetNamedProps,
 } from "../04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
 
-export type UntypedHeadersBySheetTitle = Map<string, string[]>;
+export type UntypedHeadersByTableName = Map<string, string[]>;
 
 // Lives on operator props, not each collaborator, so getter rebuilds share it.
 export interface ConfigSyncState {
@@ -14,7 +14,7 @@ export interface ConfigSyncState {
   };
   columnConfigSync: {
     syncedToSpreadsheet: boolean;
-    untypedHeadersBySheetTitle: UntypedHeadersBySheetTitle;
+    untypedHeadersByTableName: UntypedHeadersByTableName;
     declaredCellReportLines: string[];
   };
   valueConfigSync: { activeHeaders: Set<string> };
@@ -45,7 +45,7 @@ export class SpreadsheetBaseOperator extends SpreadsheetBaseNamed {
       },
       columnConfigSync: {
         syncedToSpreadsheet: false,
-        untypedHeadersBySheetTitle: new Map(),
+        untypedHeadersByTableName: new Map(),
         declaredCellReportLines: [],
       },
       valueConfigSync: { activeHeaders: new Set() },

@@ -96,7 +96,7 @@ function recreatableColumns(): {
   return {
     spreadsheetConfig: spreadsheetConfigFeedbackColumnNames(),
     tableConfig: ["tableName", "sheetTitle"],
-    columnConfig: ["sheetTitle", "header"],
+    columnConfig: ["tableName", "header"],
   };
 }
 

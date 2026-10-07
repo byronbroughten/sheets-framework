@@ -27,7 +27,7 @@ export class DevFixtureBuilder extends SpreadsheetBaseNamed {
       .prepFetchColumnsFull("tableId", "letApiAccess");
     this.ss
       .table("columnConfig")
-      .prepFetchColumnsFull("sheetGid", "columnId", "emptyValueAllowed");
+      .prepFetchColumnsFull("tableId", "columnId", "emptyValueAllowed");
     this.ss.fetchAllPrepped({ skipFetchingProperties: true });
     const missing = devFixtureSheets.filter(
       (fixture) => !this.ss.raw.gidIsActive(fixture.sheetGid),
@@ -166,14 +166,14 @@ export class DevFixtureBuilder extends SpreadsheetBaseNamed {
       if (emptyValueAllowed === undefined) return;
       const columnId = dimensionIds.col(fixture.idPrefix, key);
       const [row] = columnConfig.rowsFiltered({
-        sheetGid: fixture.sheetGid,
+        tableId: fixture.tableName,
         columnId,
       });
       if (row === undefined) {
         columnConfig.appendRowWithVals({
-          sheetGid: fixture.sheetGid,
+          tableId: fixture.tableName,
           columnId,
-          sheetTitle: fixture.title,
+          tableName: fixture.tableName,
           header,
           emptyValueAllowed,
         });

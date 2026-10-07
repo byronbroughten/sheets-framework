@@ -38,7 +38,7 @@ beforeEach(() => {
   stubLogger();
 });
 
-// newSheetConfigs()/sheetNamesByGid()/toFileSource("../makeConfigs") all read letApiAccess,
+// newSheetConfigs()/tableKeysByTableId()/toFileSource("../makeConfigs") all read letApiAccess,
 // which prepFetchForSync doesn't prep on its own — production code only
 // preps it via ColumnConfigOperator.prepFetchWithTableConfig, so a
 // standalone TableConfigOperator test has to prep it itself.
@@ -263,7 +263,9 @@ describe("TableConfigOperator.newSheetConfigs / toFileSource", () => {
     const operator = TableConfigOperator.init();
     syncTableConfigOperator(operator);
 
-    expect(operator.sheetNamesByGid().get(newSheetGid)).toBe("brandNewSheet");
+    expect(operator.tableKeysByTableId().get(newSheetTableId)).toBe(
+      "brandNewSheet",
+    );
     expect(operator.newSheetConfigs().brandNewSheet).toEqual({
       sheetGid: newSheetGid,
       idPrefix: "bns",
@@ -298,7 +300,7 @@ describe("TableConfigOperator.newSheetConfigs / toFileSource", () => {
     syncTableConfigOperator(operator);
 
     expect(operator.newSheetConfigs().widget).toBeUndefined();
-    expect(operator.sheetGidsApiAccesses()).toEqual([tableConfigGid]);
+    expect(operator.tableIdsApiAccesses()).toEqual([tableConfigTableId]);
   });
 
   // Every seeded row names a Table that no longer exists, so the prune reaches the last one.
