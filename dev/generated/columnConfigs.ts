@@ -58,5 +58,17 @@ export const columnConfigs = makeColumnConfigs({
     "requiredDate": { "columnId": "c:dat:requiredDate", "header": "Required date", "valueName": "date", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null },
     "optionalDate": { "columnId": "c:dat:optionalDate", "header": "Optional date", "valueName": "date", "isFormula": false, "emptyValueAllowed": true, "customDefaultValue": null },
     "id": { "columnId": "c:dat:id", "header": "ID", "valueName": "id", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null }
+  },
+  "layoutLeft": {
+    "entry": { "columnId": "c:lyl:entry", "header": "Entry", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null },
+    "amount": { "columnId": "c:lyl:amount", "header": "Amount", "valueName": "number", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null }
+  },
+  "layoutRight": {
+    "entry": { "columnId": "c:lyr:entry", "header": "Entry", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null },
+    "amount": { "columnId": "c:lyr:amount", "header": "Amount", "valueName": "number", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null }
+  },
+  "layoutBelow": {
+    "entry": { "columnId": "c:lyb:entry", "header": "Entry", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null },
+    "amount": { "columnId": "c:lyb:amount", "header": "Amount", "valueName": "number", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null }
   }
 });

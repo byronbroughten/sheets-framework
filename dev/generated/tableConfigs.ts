@@ -10,5 +10,8 @@ export const tableConfigs = makeTableConfigs({
   "log": { "tableId": "log", "tableName": "log", "sheetGid": 1100003, "idPrefix": "log", "headerRowIndex": 3, "startColIndex": 0, "hasIdColumn": false, "hasNameColumn": false },
   "runItem": { "tableId": "runItem", "tableName": "runItem", "sheetGid": 1100004, "idPrefix": "rit", "headerRowIndex": 3, "startColIndex": 0, "hasIdColumn": true, "hasNameColumn": true },
   "computed": { "tableId": "computed", "tableName": "computed", "sheetGid": 1100005, "idPrefix": "cmp", "headerRowIndex": 3, "startColIndex": 0, "hasIdColumn": false, "hasNameColumn": false },
-  "dates": { "tableId": "dates", "tableName": "dates", "sheetGid": 1100006, "idPrefix": "dat", "headerRowIndex": 3, "startColIndex": 0, "hasIdColumn": true, "hasNameColumn": false }
+  "dates": { "tableId": "dates", "tableName": "dates", "sheetGid": 1100006, "idPrefix": "dat", "headerRowIndex": 3, "startColIndex": 0, "hasIdColumn": true, "hasNameColumn": false },
+  "layoutLeft": { "tableId": "layoutLeft", "tableName": "layoutLeft", "sheetGid": 1100007, "idPrefix": "lyl", "headerRowIndex": 3, "startColIndex": 0, "hasIdColumn": false, "hasNameColumn": false },
+  "layoutRight": { "tableId": "layoutRight", "tableName": "layoutRight", "sheetGid": 1100007, "idPrefix": "lyr", "headerRowIndex": 3, "startColIndex": 3, "hasIdColumn": false, "hasNameColumn": false },
+  "layoutBelow": { "tableId": "layoutBelow", "tableName": "layoutBelow", "sheetGid": 1100007, "idPrefix": "lyb", "headerRowIndex": 11, "startColIndex": 0, "hasIdColumn": false, "hasNameColumn": false }
 });
