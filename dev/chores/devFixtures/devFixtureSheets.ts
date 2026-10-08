@@ -67,7 +67,7 @@ function nameColumn(values: string[]): DevFixtureColumn {
   };
 }
 
-const expected = TableOrigin.expected();
+const expectedOrigin = TableOrigin.expected();
 
 export const devFixtureSheets: readonly DevFixtureSheet[] = [
   {
@@ -77,7 +77,7 @@ export const devFixtureSheets: readonly DevFixtureSheet[] = [
       withIdColumn({
         tableName: "item",
         idPrefix: "itm",
-        origin: expected,
+        origin: expectedOrigin,
         columns: [
           nameColumn(["Alpha", "Beta", "Gamma"]),
           {
@@ -105,7 +105,7 @@ export const devFixtureSheets: readonly DevFixtureSheet[] = [
       withIdColumn({
         tableName: "valueTypes",
         idPrefix: "vty",
-        origin: expected,
+        origin: expectedOrigin,
         columns: [
           {
             key: "stringValue",
@@ -148,7 +148,7 @@ export const devFixtureSheets: readonly DevFixtureSheet[] = [
       {
         tableName: "log",
         idPrefix: "log",
-        origin: expected,
+        origin: expectedOrigin,
         columns: entryAmountColumns(["First entry", "Second entry"], [10, 20]),
       },
     ],
@@ -160,7 +160,7 @@ export const devFixtureSheets: readonly DevFixtureSheet[] = [
       {
         tableName: "computed",
         idPrefix: "cmp",
-        origin: expected,
+        origin: expectedOrigin,
         columns: [
           {
             key: "amount",
@@ -186,7 +186,7 @@ export const devFixtureSheets: readonly DevFixtureSheet[] = [
       withIdColumn({
         tableName: "runItem",
         idPrefix: "rit",
-        origin: expected,
+        origin: expectedOrigin,
         entryCheckboxColumnKey: "result",
         columns: [
           nameColumn(["First", "Second", "Third"]),
@@ -225,7 +225,7 @@ export const devFixtureSheets: readonly DevFixtureSheet[] = [
       withIdColumn({
         tableName: "dates",
         idPrefix: "dat",
-        origin: expected,
+        origin: expectedOrigin,
         columns: [
           {
             key: "requiredDate",
@@ -253,7 +253,7 @@ export const devFixtureSheets: readonly DevFixtureSheet[] = [
       {
         tableName: "layoutLeft",
         idPrefix: "lyl",
-        origin: expected,
+        origin: expectedOrigin,
         columns: entryAmountColumns(
           ["Left one", "Left two", "Left three"],
           [1, 2, 3],

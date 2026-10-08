@@ -16,10 +16,12 @@ import {
   type DevFixtureTable,
 } from "./devFixtureSheets";
 
-interface FixtureColumnPlace {
+interface FixtureColumnSeed {
   sheetId: number;
   origin: TableOrigin;
   colIndex: SheetColIndex;
+  column: DevFixtureColumn;
+  rowCount: number;
 }
 
 // A tab that exists is left alone; rebuild one by deleting it and rerunning (docs/how-it-runs.md).
@@ -105,21 +107,23 @@ export class DevFixtureBuilder extends SpreadsheetBaseNamed {
         colIndex,
         value: dimensionIds.col(table.idPrefix, column.key),
       });
-      this._seedColumnRows(
-        { sheetId: sheetGid, origin, colIndex },
+      this._seedColumnRows({
+        sheetId: sheetGid,
+        origin,
+        colIndex,
         column,
         rowCount,
-      );
+      });
     });
-    if (table.entryCheckboxColumnKey !== undefined) {
-      this._addEntryCheckbox(sheetGid, table, table.entryCheckboxColumnKey);
-    }
+    this._addEntryCheckbox(sheetGid, table);
   }
-  private _seedColumnRows(
-    { sheetId, origin, colIndex }: FixtureColumnPlace,
-    column: DevFixtureColumn,
-    rowCount: number,
-  ): void {
+  private _seedColumnRows({
+    sheetId,
+    origin,
+    colIndex,
+    column,
+    rowCount,
+  }: FixtureColumnSeed): void {
     for (let rowIndex = 0; rowIndex < rowCount; rowIndex++) {
       const position = {
         sheetId,
@@ -135,11 +139,9 @@ export class DevFixtureBuilder extends SpreadsheetBaseNamed {
       }
     }
   }
-  private _addEntryCheckbox(
-    sheetGid: number,
-    table: DevFixtureTable,
-    columnKey: string,
-  ): void {
+  private _addEntryCheckbox(sheetGid: number, table: DevFixtureTable): void {
+    const columnKey = table.entryCheckboxColumnKey;
+    if (columnKey === undefined) return;
     const columnIndex = table.columns.findIndex(
       (column) => column.key === columnKey,
     );

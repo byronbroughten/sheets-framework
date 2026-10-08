@@ -154,6 +154,22 @@ export class TableBaseRaw extends SpreadsheetBaseRaw {
   rowLabel(rowIndex: number): string {
     return `row ${this.tableOrigin().rowNumber(rowIndex)}`;
   }
+  removeTablesAbsentFrom(tables: TableSnapshot[]): void {
+    const liveTableIds = tables.map(({ tableId }) => tableId);
+    this.tableIds()
+      .filter((tableId) => !liveTableIds.includes(tableId))
+      .forEach((tableId) => this._removeAbsentTable(tableId));
+  }
+  // A queued write must never vanish with its Table, so it stops the run instead.
+  private _removeAbsentTable(tableId: string): void {
+    const { writeQueue } = tableStateOf(this.tablesStateRaw, tableId);
+    if (hasQueuedWrites(writeQueue)) {
+      throw new Error(
+        `Table ${tableId} is no longer on ${this.sheetLabel}, but it has queued writes; refetch before queuing writes to it.`,
+      );
+    }
+    this.tablesStateRaw.delete(tableId);
+  }
   protected _integrateSheetProperties(sheet: SheetSnapshot): void {
     if (sheet.title) {
       this.sheetState.working.title = sheet.title;
@@ -171,13 +187,12 @@ export class TableBaseRaw extends SpreadsheetBaseRaw {
   }
   // A grid fetch returns only the Tables its ranges overlap, so a Table it leaves out stays.
   private _integrateTables(tables: TableSnapshot[]): void {
+    const knownAndFetchedTableIds = new Set([
+      ...this.tableIds(),
+      ...tables.map(({ tableId }) => tableId),
+    ]);
     const tableIdReachedByGid = tableIdReachedAmong(
-      [
-        ...new Set([
-          ...this.tableIds(),
-          ...tables.map(({ tableId }) => tableId),
-        ]),
-      ],
+      [...knownAndFetchedTableIds],
       this.sheetGid,
     );
     tables.forEach((table) => {
@@ -199,22 +214,6 @@ export class TableBaseRaw extends SpreadsheetBaseRaw {
       integrateColumnProperties(tableState, table);
       this.tablesStateRaw.set(table.tableId, tableState);
     });
-  }
-  removeTablesAbsentFrom(tables: TableSnapshot[]): void {
-    const liveTableIds = tables.map(({ tableId }) => tableId);
-    this.tableIds()
-      .filter((tableId) => !liveTableIds.includes(tableId))
-      .forEach((tableId) => this._removeAbsentTable(tableId));
-  }
-  // A queued write must never vanish with its Table, so it stops the run instead.
-  private _removeAbsentTable(tableId: string): void {
-    const { writeQueue } = tableStateOf(this.tablesStateRaw, tableId);
-    if (hasQueuedWrites(writeQueue)) {
-      throw new Error(
-        `Table ${tableId} is no longer on ${this.sheetLabel}, but it has queued writes; refetch before queuing writes to it.`,
-      );
-    }
-    this.tablesStateRaw.delete(tableId);
   }
   // The Table its GID reaches takes over what was queued through the sheet before it was known.
   private _tableStateToIntegrate(

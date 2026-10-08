@@ -184,18 +184,16 @@ export const layoutBodyRows: Record<LayoutTableName, [string, number][]> = {
 export function layoutSheet(
   overrides: Partial<Record<LayoutTableName, Partial<FakeTable>>> = {},
 ): FakeSheetProperties {
-  const rows: FakeCell[][] = [];
-  const tables = layoutTableNames.map((tableName) => {
-    const table = layoutTable(tableName, overrides[tableName] ?? {});
-    const header = Val.assert(table.startRowIndex, "layout header row");
-    const startCol = Val.assert(table.startColumnIndex, "layout start column");
-    placeCells(rows, header, startCol, ["Entry", "Amount"]);
-    layoutBodyRows[tableName].forEach((cells, rowOffset) => {
-      placeCells(rows, header + 1 + rowOffset, startCol, cells);
-    });
-    return table;
-  });
-  return { sheetId: layoutGid, title: "Layout", rows, tables };
+  const placedTables = layoutTableNames.map((tableName) => ({
+    tableName,
+    table: layoutTable(tableName, overrides[tableName] ?? {}),
+  }));
+  return {
+    sheetId: layoutGid,
+    title: "Layout",
+    rows: gridRowsOf(placedTables.flatMap(headerAndBodyCells)),
+    tables: placedTables.map(({ table }) => table),
+  };
 }
 
 function layoutTable(
@@ -223,16 +221,43 @@ function layoutTable(
   };
 }
 
-function placeCells(
-  rows: FakeCell[][],
-  rowIndex: number,
-  colIndex: number,
-  cells: readonly FakeCell[],
-): void {
-  for (let index = rows.length; index <= rowIndex; index++) rows.push([]);
-  const row = Val.assert(rows[rowIndex], `layout row ${rowIndex}`);
-  for (let index = row.length; index < colIndex; index++) row.push(null);
-  cells.forEach((cell, offset) => {
-    row[colIndex + offset] = cell;
-  });
+interface PlacedCell {
+  rowIndex: number;
+  colIndex: number;
+  cell: FakeCell;
+}
+
+function headerAndBodyCells({
+  tableName,
+  table,
+}: {
+  tableName: LayoutTableName;
+  table: FakeTable;
+}): PlacedCell[] {
+  const headerRowIndex = Val.assert(table.startRowIndex, "layout header row");
+  const startColIndex = Val.assert(
+    table.startColumnIndex,
+    "layout start column",
+  );
+  const headerAndBody: readonly (readonly FakeCell[])[] = [
+    ["Entry", "Amount"],
+    ...layoutBodyRows[tableName],
+  ];
+  return headerAndBody.flatMap((cells, rowOffset) =>
+    cells.map((cell, colOffset) => ({
+      rowIndex: headerRowIndex + rowOffset,
+      colIndex: startColIndex + colOffset,
+      cell,
+    })),
+  );
+}
+
+function gridRowsOf(cells: PlacedCell[]): FakeCell[][] {
+  return cells.reduce<FakeCell[][]>((rows, { rowIndex, colIndex, cell }) => {
+    while (rows.length <= rowIndex) rows.push([]);
+    const row = Val.assert(rows[rowIndex], `layout row ${rowIndex}`);
+    while (row.length < colIndex) row.push(null);
+    row[colIndex] = cell;
+    return rows;
+  }, []);
 }
