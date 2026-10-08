@@ -60,20 +60,22 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
       };
     }
     // Read off the state, since the Table refuses a header-only body before placement is judged.
-    const properties = Val.assert(
-      this.spreadsheetStateRaw.tables.get(tableId)?.properties,
-      `properties of Table ${tableId}`,
+    const { properties, working } = Val.assert(
+      this.spreadsheetStateRaw.tables.get(tableId),
+      `state of Table ${tableId}`,
     );
-    if (!table.recordedOrigin.equals(originOf(properties))) {
-      const { startRowIndex, startColumnIndex } = properties;
+    const origin = originOf(
+      Val.assert(properties, `properties of Table ${tableId}`),
+    );
+    if (!working.placementIsChecked && !table.recordedOrigin.equals(origin)) {
       return {
         kind: "misplaced",
         misplacement: {
           kind: "moved",
           sheetGid,
           tableName,
-          startRowIndex,
-          startColumnIndex,
+          startRowIndex: origin.headerRowIndex,
+          startColumnIndex: origin.startColIndex,
         },
       };
     }

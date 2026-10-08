@@ -1008,4 +1008,31 @@ describe("Tables that share a sheet", () => {
       ],
     ]);
   });
+
+  it("keeps reading the Table below once growth has pushed it down, in the same run", () => {
+    const { ss } = fetchedLayout();
+    ss.table("layoutLeft").appendRowWithVals({ entry: "Left four", amount: 4 });
+    ss.batchUpdateGSheets();
+    ss.table("layoutBelow").prepFetchColumnsFull("entry", "amount");
+    ss.fetchAllPrepped();
+
+    expect(
+      ss.table("layoutBelow").rows.map((row) => row.value("entry")),
+    ).toEqual(["Below one", "Below two"]);
+  });
+
+  it("keeps reading the Table beside once a column insert has shifted it, in the same run", () => {
+    const { ss } = fetchedLayout();
+    ss.table("layoutLeft").raw.appendColumn({
+      columnId: "c:lyl:note",
+      header: "Note",
+    });
+    ss.batchUpdateGSheets();
+    ss.table("layoutRight").prepFetchColumnsFull("entry", "amount");
+    ss.fetchAllPrepped();
+
+    expect(
+      ss.table("layoutRight").rows.map((row) => row.value("amount")),
+    ).toEqual([10, 20]);
+  });
 });

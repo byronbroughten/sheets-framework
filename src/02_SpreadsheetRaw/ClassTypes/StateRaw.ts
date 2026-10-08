@@ -160,6 +160,8 @@ export interface TableWorkingStateRaw {
   cellStateIsStale: boolean;
   hasFetchedColumnIds: boolean;
   isPrunedToSelection: boolean;
+  // Once the run knows where the Table is, it moves the Table itself, so the recorded origin no longer applies.
+  placementIsChecked: boolean;
   rowStates: RowStatesRaw;
   columnStates: ColumnStatesRaw;
 }

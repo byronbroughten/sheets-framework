@@ -113,6 +113,7 @@ export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
     });
     this.spreadsheetStateRaw.tables.forEach((state, tableId) => {
       if (!finalizedSheetGids.includes(state.sheetGid)) return;
+      state.working.placementIsChecked = true;
       this.ss.table(tableId).finalizeFetches();
     });
     this.tableValidator.validateTablePlacement(
