@@ -1,4 +1,5 @@
-import { lazy } from "../utils/lazy";
+import { lazy } from "@byronbroughten/utils/lazy";
+
 import { Obj } from "../utils/Obj";
 import { Val } from "../utils/Val";
 import { type Configs, installedConfigs } from "./configRegister";

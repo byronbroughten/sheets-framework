@@ -13,6 +13,8 @@
     "useDefineForClassFields": false,
     "module": "esnext",
     "moduleResolution": "bundler",
+    // Resolves @byronbroughten/utils to its src/, so the workspace needs no build.
+    "customConditions": ["source"],
     "lib": ["esnext"],
     "types": ["google-apps-script"],
     "strict": false,

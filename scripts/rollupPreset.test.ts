@@ -1,4 +1,11 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -108,7 +115,8 @@ describe("rollupPreset", () => {
 
 // Two sibling folders under one root, like the two packages after the workspace move.
 function twoPackages(appSource: string): string {
-  const root = mkdtempSync(join(tmpdir(), "rollup-preset-"));
+  // A realpath, since the linked package resolves to one and macOS tmpdir() sits behind a symlink.
+  const root = mkdtempSync(join(realpathSync(tmpdir()), "rollup-preset-"));
   mkdirSync(join(root, "framework", "src"), { recursive: true });
   mkdirSync(join(root, "app", "src"), { recursive: true });
   writeFileSync(
@@ -140,6 +148,33 @@ function twoPackages(appSource: string): string {
     }),
   );
   return root;
+}
+
+// Links the framework folder into the app's node_modules as @scope/lib, exported the way @byronbroughten/utils is.
+function linkSourcePackage(root: string): void {
+  writeFileSync(
+    join(root, "framework", "package.json"),
+    JSON.stringify({
+      name: "@scope/lib",
+      type: "module",
+      exports: {
+        "./lib": {
+          source: "./src/lib.ts",
+          types: "./dist/lib.d.ts",
+          import: "./dist/lib.js",
+        },
+      },
+    }),
+  );
+  mkdirSync(join(root, "app", "node_modules", "@scope"), { recursive: true });
+  symlinkSync(
+    join(root, "framework"),
+    join(root, "app", "node_modules", "@scope", "lib"),
+  );
+  const tsconfigPath = join(root, "app", "tsconfig.json");
+  const appTsconfig = JSON.parse(readFileSync(tsconfigPath, "utf8"));
+  appTsconfig.compilerOptions.customConditions = ["source"];
+  writeFileSync(tsconfigPath, JSON.stringify(appTsconfig));
 }
 
 async function bundleOf(
@@ -192,6 +227,15 @@ describe("a build with the preset", () => {
     expect(code).toContain("function neverCalled()");
     expect(code).toContain("function triggerOnEdit()");
     expect(code).not.toMatch(/^export /m);
+  }, 60_000);
+
+  it("bundles a linked package's source through its source condition, with no dist/", async () => {
+    const root = twoPackages(
+      "import { usedByEntry } from '@scope/lib/lib';\nfunction triggerOnEdit() { return usedByEntry(); }\n",
+    );
+    linkSourcePackage(root);
+    const code = await bundleOf(root);
+    expect(code).toContain("function usedByEntry()");
   }, 60_000);
 
   it("fails on an import that does not resolve", async () => {

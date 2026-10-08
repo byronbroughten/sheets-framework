@@ -1,3 +1,4 @@
 import { rollupPreset } from "./scripts/rollupPreset.js";
 
-export default rollupPreset({ input: "dev/index.ts" });
+// rootDir covers packages/, where the utils source it bundles lives.
+export default rollupPreset({ input: "dev/index.ts", rootDir: ".." });

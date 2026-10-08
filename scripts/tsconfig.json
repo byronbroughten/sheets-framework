@@ -3,6 +3,7 @@
   "compilerOptions": {
     "target": "ES2023",
     "module": "preserve",
+    "customConditions": ["source"], // Reaches @byronbroughten/utils' src/, as the bin's resolve hook does at run time.
     "lib": ["esnext"],
     "types": ["node", "google-apps-script"],
     "noEmit": true,
