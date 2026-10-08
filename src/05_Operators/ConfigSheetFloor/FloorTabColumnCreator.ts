@@ -15,6 +15,8 @@ import {
   spreadsheetConfigFeedbackColumnNames,
 } from "./floorSeedLookups";
 
+export const retiredSheetGidHeader = "Sheet GID";
+
 export class FloorTabColumnCreator<
   TN extends FloorSheetName,
 > extends TableBaseNamed<TN> {
@@ -35,10 +37,19 @@ export class FloorTabColumnCreator<
     this._missingColumns().forEach((floorColumn) => {
       const columnName = columnNameByHeader(this.tableName, floorColumn.header);
       if (recreatable.includes(columnName)) return;
+      this._assertSheetGidIsConverted();
       throw new Error(
         `${floorColumnLabel(floorColumn.header)} is missing from ${this.table.raw.sheet.title}, and recreating it empty would lose what it held. Undo the delete, or insert a column headed "${floorColumn.header}" in its Table and fill it.`,
       );
     });
+  }
+  // A Sheet GID column means the tab predates Table IDs, which only the conversion chore carries over.
+  private _assertSheetGidIsConverted(): void {
+    const rawTable = this.table.raw;
+    if (!rawTable.headRow("header").hasValue(retiredSheetGidHeader)) return;
+    throw new Error(
+      `${rawTable.sheet.title} still has a "${retiredSheetGidHeader}" column. Run the convertSheetConfigToTableConfig chore before syncing or regenerating configs.`,
+    );
   }
   // Putting it back first would need a mid-Table insert, and column inserts land only at the Table end.
   private _assertTableMenuSpaceIsFirst(): void {

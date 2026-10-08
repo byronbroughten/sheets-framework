@@ -1368,6 +1368,26 @@ describe("ConfigSheetFloor", () => {
     },
   );
 
+  it("names the conversion chore when Column Config still has Sheet GID in place of Table ID, and sends no batch update", () => {
+    const { batchUpdateCount } = floorFixture({
+      columnConfigColumnOrder: [
+        "columnId",
+        "tableName",
+        "header",
+        "emptyValueAllowed",
+      ],
+      extraColumnConfigColumn: {
+        columnId: "c:ccf:oldGid1",
+        header: "Sheet GID",
+      },
+    });
+
+    expect(() => applyFloor()).toThrow(
+      'Column Config still has a "Sheet GID" column. Run the convertSheetConfigToTableConfig chore before syncing or regenerating configs.',
+    );
+    expect(batchUpdateCount()).toBe(0);
+  });
+
   it("makes two grid reads and sends no batch update from inside ensure when nothing is missing", () => {
     const { batchUpdateCount, getByDataFilterCalls } = floorFixture();
     ConfigSheetFloor.init().ensure();

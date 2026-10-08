@@ -3,14 +3,18 @@ import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
 import type { SpreadsheetRaw } from "../02_SpreadsheetRaw/SpreadsheetRaw";
 import type { TableRaw } from "../02_SpreadsheetRaw/TableRaw";
 import { retiredSheetConfigTitle } from "../05_Operators/ConfigSheetFloor";
+import { retiredSheetGidHeader } from "../05_Operators/ConfigSheetFloor/FloorTabColumnCreator";
 import { Val } from "../utils/Val";
 import type { Chore } from "./Chore";
 
 const tableConfigSeed = configSheetFloorSeed.tableConfig;
+const columnConfigSeed = configSheetFloorSeed.columnConfig;
 const headers = {
-  sheetGid: "Sheet GID",
+  sheetGid: retiredSheetGidHeader,
+  sheetTitle: "Sheet title",
   letApiAccess: "Let api access",
   tableId: "Table ID",
+  tableName: "Table name",
 } as const;
 
 interface RowConversion {
@@ -19,61 +23,99 @@ interface RowConversion {
   tableId: string | undefined;
 }
 
+interface TabsToConvert {
+  sheetConfig: TableRaw | undefined;
+  columnConfig: TableRaw | undefined;
+  skipReasons: string[];
+}
+
 // Finds the tab by title, not by generated config, since the configs may still key sheetConfig.
 export const convertSheetConfigToTableConfig: Chore = {
   description:
-    "Turns the Sheet Config tab into Table Config in place, keeping its GID and every tick: retitles the tab, renames its Table, rewrites Sheet GID as Table ID, and leaves the Table name column to the next config sync's floor. Run once per spreadsheet before gen:configs.",
+    "Turns the Sheet Config tab into Table Config in place, keeping its GID and every tick: retitles the tab, renames its Table, rewrites Sheet GID as Table ID, and leaves the Table name column to the next config sync's floor. On Column Config, rewrites Sheet GID as Table ID and Sheet title as Table name. Skips a tab already converted. Run once per spreadsheet before gen:configs.",
   action: (ss) => {
     const raw = ss.raw;
     raw.fetchAllSheetProperties();
-    const gidByTitle = new Map(
-      raw.activeSheetGids.map((gid) => [raw.sheet(gid).title, gid]),
-    );
-    if (gidByTitle.has(tableConfigSeed.title)) {
-      return `Nothing to convert: found a "${tableConfigSeed.title}" tab.`;
+    const tabs = tabsToConvert(raw);
+    if (tabs.sheetConfig === undefined && tabs.columnConfig === undefined) {
+      return `Nothing to convert: ${tabs.skipReasons.join(", and ")}.`;
     }
-    const sheetGid = gidByTitle.get(retiredSheetConfigTitle);
-    if (sheetGid === undefined) {
-      return `Nothing to convert: no "${retiredSheetConfigTitle}" tab.`;
-    }
-    const table = raw.tableOnSheet(sheetGid);
-    const oldTableName = table.name;
-    fetchSheetConfig(raw, table);
-    const conversions = rowConversions(raw, table);
-    validateTicksHaveOneTable(table, conversions);
-    updateSheetGidToTableId(table, conversions);
-    table.sheet.updateTitle(tableConfigSeed.title);
-    table.updateTableName(tableConfigSeed.liveTableName);
+    fetchConvertedColumns(raw, tabs);
+    const tableIdsByGid = tableIdsBySheetGid(raw);
+    const lines = [
+      ...convertSheetConfig(tabs.sheetConfig, tableIdsByGid),
+      ...convertColumnConfig(raw, tabs.columnConfig, tableIdsByGid),
+      ...tabs.skipReasons.map((reason) => `nothing else to convert: ${reason}`),
+    ];
     ss.batchUpdateGSheets();
-    return [
-      `"${retiredSheetConfigTitle}" → ${tableConfigSeed.title}, keeping GID ${sheetGid}`,
-      `Table "${oldTableName}" → ${tableConfigSeed.liveTableName}`,
-      ...conversionReport(conversions),
-    ].join("; ");
+    return lines.join("; ");
   },
 };
 
-function fetchSheetConfig(raw: SpreadsheetRaw, table: TableRaw): void {
-  table.headRow("header").gatherFetchFull();
-  table.headRow("columnId").gatherFetchFull();
-  raw.fetchAllGathered();
-  table.columnByHeader(headers.sheetGid).gatherFetchFull();
-  table.columnByHeader(headers.letApiAccess).gatherFetchFull();
-  raw.fetchAllGathered(true);
+function tabsToConvert(raw: SpreadsheetRaw): TabsToConvert {
+  const gidByTitle = new Map(
+    raw.activeSheetGids.map((gid) => [raw.sheet(gid).title, gid]),
+  );
+  const skipReasons: string[] = [];
+  let sheetConfig: TableRaw | undefined;
+  if (gidByTitle.has(tableConfigSeed.title)) {
+    skipReasons.push(`found a "${tableConfigSeed.title}" tab`);
+  } else if (gidByTitle.has(retiredSheetConfigTitle)) {
+    sheetConfig = tableTitled(raw, gidByTitle, retiredSheetConfigTitle);
+  } else {
+    skipReasons.push(`no "${retiredSheetConfigTitle}" tab`);
+  }
+  let columnConfig: TableRaw | undefined;
+  if (gidByTitle.has(columnConfigSeed.title)) {
+    columnConfig = tableTitled(raw, gidByTitle, columnConfigSeed.title);
+  } else {
+    skipReasons.push(`no "${columnConfigSeed.title}" tab`);
+  }
+  fetchHeadRows(raw, [sheetConfig, columnConfig]);
+  if (columnConfig?.headRow("header").hasValue(headers.tableId)) {
+    skipReasons.push(
+      `${columnConfigSeed.title} has a "${headers.tableId}" column`,
+    );
+    columnConfig = undefined;
+  } else if (
+    columnConfig !== undefined &&
+    !columnConfig.headRow("header").hasValue(headers.sheetGid)
+  ) {
+    skipReasons.push(
+      `${columnConfigSeed.title} has no "${headers.sheetGid}" column`,
+    );
+    columnConfig = undefined;
+  }
+  return { sheetConfig, columnConfig, skipReasons };
 }
 
-function rowConversions(raw: SpreadsheetRaw, table: TableRaw): RowConversion[] {
-  const tableIdsByGid = tableIdsBySheetGid(raw);
-  const gidCol = table.columnByHeader(headers.sheetGid);
-  return gidCol.workingCellIndexes.map((rowIndex) => {
-    const sheetGid = Number(gidCol.valueOrEmpty(rowIndex));
-    const tableIds = tableIdsByGid.get(sheetGid) ?? [];
-    return {
-      rowIndex,
-      sheetGid,
-      tableId: tableIds.length === 1 ? tableIds[0] : undefined,
-    };
+function tableTitled(
+  raw: SpreadsheetRaw,
+  gidByTitle: Map<string, number>,
+  title: string,
+): TableRaw {
+  return raw.tableOnSheet(Val.assert(gidByTitle.get(title), `"${title}" tab`));
+}
+
+function fetchHeadRows(
+  raw: SpreadsheetRaw,
+  tables: (TableRaw | undefined)[],
+): void {
+  tables.forEach((table) => {
+    table?.headRow("header").gatherFetchFull();
+    table?.headRow("columnId").gatherFetchFull();
   });
+  raw.fetchAllGathered();
+}
+
+function fetchConvertedColumns(
+  raw: SpreadsheetRaw,
+  { sheetConfig, columnConfig }: TabsToConvert,
+): void {
+  sheetConfig?.columnByHeader(headers.sheetGid).gatherFetchFull();
+  sheetConfig?.columnByHeader(headers.letApiAccess).gatherFetchFull();
+  columnConfig?.columnByHeader(headers.sheetGid).gatherFetchFull();
+  raw.fetchAllGathered(true);
 }
 
 function tableIdsBySheetGid(raw: SpreadsheetRaw): Map<number, string[]> {
@@ -84,6 +126,41 @@ function tableIdsBySheetGid(raw: SpreadsheetRaw): Map<number, string[]> {
     byGid.set(sheetGid, tableIds);
     return byGid;
   }, new Map<number, string[]>());
+}
+
+function convertSheetConfig(
+  table: TableRaw | undefined,
+  tableIdsByGid: Map<number, string[]>,
+): string[] {
+  if (table === undefined) return [];
+  const oldTitle = table.sheet.title;
+  const oldTableName = table.name;
+  const conversions = rowConversions(table, tableIdsByGid);
+  validateTicksHaveOneTable(table, conversions);
+  updateSheetGidToTableId(table, conversions);
+  table.sheet.updateTitle(tableConfigSeed.title);
+  table.updateTableName(tableConfigSeed.liveTableName);
+  return [
+    `"${oldTitle}" → ${tableConfigSeed.title}, keeping GID ${table.sheetGid}`,
+    `Table "${oldTableName}" → ${tableConfigSeed.liveTableName}`,
+    ...sheetConfigReport(conversions),
+  ];
+}
+
+function rowConversions(
+  table: TableRaw,
+  tableIdsByGid: Map<number, string[]>,
+): RowConversion[] {
+  const gidCol = table.columnByHeader(headers.sheetGid);
+  return gidCol.workingCellIndexes.map((rowIndex) => {
+    const sheetGid = Number(gidCol.valueOrEmpty(rowIndex));
+    const tableIds = tableIdsByGid.get(sheetGid) ?? [];
+    return {
+      rowIndex,
+      sheetGid,
+      tableId: tableIds.length === 1 ? tableIds[0] : undefined,
+    };
+  });
 }
 
 // A tick on a tab without exactly one Table has no row to carry it, so refuse rather than drop it.
@@ -107,27 +184,81 @@ function updateSheetGidToTableId(
   table: TableRaw,
   conversions: RowConversion[],
 ): void {
-  const idPrefix = Val.assert(table.profile.idPrefix(), "ID prefix");
   const gidCol = table.columnByHeader(headers.sheetGid);
   const colIndex = gidCol.colIndex;
   table.headRow("header").updateValue(colIndex, headers.tableId);
-  table.headRow("columnId").updateValue(colIndex, dimensionIds.col(idPrefix));
+  table.headRow("columnId").updateValue(colIndex, freshColumnId(table));
   gidCol.updateColumnType("TEXT");
   conversions.forEach(({ rowIndex, tableId }) => {
     gidCol.updateValue(rowIndex, tableId ?? "");
   });
 }
 
-function conversionReport(conversions: RowConversion[]): string[] {
-  const emptiedGids = conversions
-    .filter(({ tableId }) => tableId === undefined)
-    .map(({ sheetGid }) => sheetGid);
+function freshColumnId(table: TableRaw): string {
+  return dimensionIds.col(Val.assert(table.profile.idPrefix(), "ID prefix"));
+}
+
+function sheetConfigReport(conversions: RowConversion[]): string[] {
+  const emptiedGids = emptiedSheetGids(conversions);
   const lines = [
     `${headers.sheetGid} → ${headers.tableId} on ${conversions.length} row(s)`,
   ];
   if (emptiedGids.length > 0) {
     lines.push(
       `left ${headers.tableId} empty for unticked GID(s) ${emptiedGids.join(", ")}, whose tab doesn't hold exactly one Table; the sync drops those rows and appends their Tables unticked`,
+    );
+  }
+  return lines;
+}
+
+function emptiedSheetGids(conversions: RowConversion[]): number[] {
+  return [
+    ...new Set(
+      conversions
+        .filter(({ tableId }) => tableId === undefined)
+        .map(({ sheetGid }) => sheetGid),
+    ),
+  ];
+}
+
+function convertColumnConfig(
+  raw: SpreadsheetRaw,
+  table: TableRaw | undefined,
+  tableIdsByGid: Map<number, string[]>,
+): string[] {
+  if (table === undefined) return [];
+  const conversions = rowConversions(table, tableIdsByGid);
+  updateSheetGidToTableId(table, conversions);
+  updateSheetTitleToTableName(raw, table, conversions);
+  return columnConfigReport(conversions);
+}
+
+// Written now rather than left to the correction pass, so the tab reads true straight after the chore.
+function updateSheetTitleToTableName(
+  raw: SpreadsheetRaw,
+  table: TableRaw,
+  conversions: RowConversion[],
+): void {
+  const titleCol = table.columnByHeader(headers.sheetTitle);
+  const colIndex = titleCol.colIndex;
+  table.headRow("header").updateValue(colIndex, headers.tableName);
+  table.headRow("columnId").updateValue(colIndex, freshColumnId(table));
+  conversions.forEach(({ rowIndex, tableId }) => {
+    titleCol.updateValue(
+      rowIndex,
+      tableId === undefined ? "" : raw.table(tableId).name,
+    );
+  });
+}
+
+function columnConfigReport(conversions: RowConversion[]): string[] {
+  const emptiedGids = emptiedSheetGids(conversions);
+  const lines = [
+    `${columnConfigSeed.title}: ${headers.sheetGid} → ${headers.tableId} and ${headers.sheetTitle} → ${headers.tableName} on ${conversions.length} row(s)`,
+  ];
+  if (emptiedGids.length > 0) {
+    lines.push(
+      `left ${columnConfigSeed.title}'s ${headers.tableId} and ${headers.tableName} empty for GID(s) ${emptiedGids.join(", ")}, whose tab doesn't hold exactly one Table; the sync prunes those rows`,
     );
   }
   return lines;
