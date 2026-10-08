@@ -54,7 +54,7 @@ import { TableColumnResolverRaw } from "./TableRaw/TableColumnResolverRaw";
  * sampled column facts. Its sheet's title, grid size, conditional format rules
  * and edit protections are SheetRaw, reached as `table.sheet`.
  * Descriptive facts are TableProfileRaw and ColumnProfileRaw; column ID lookups are TableRaw/;
- * spreadsheet-wide fetch and flush are SpreadsheetRaw. By-name and columnId resolution are Identified/Named.
+ * spreadsheet-wide fetch and flush are SpreadsheetRaw. Config-aware lookups and names are Identified/Named.
  */
 export class TableRaw extends TableCommonRaw {
   get ss(): SpreadsheetRaw {

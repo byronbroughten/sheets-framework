@@ -11,7 +11,7 @@ const importPatterns = {
     regex:
       "^(\\.\\./)+01_SpreadsheetSchema/(TableSchema|ColumnSchema|columnConfigsTypes|valueConfigsTypes|generated/(columnConfigs|valueConfigs))(\\.js)?$",
     message:
-      "Raw is positional: it addresses by GID and index and never resolves a column. Column and value lookups belong in the Identified tier or above.",
+      "Raw never reads column or value config. It addresses by index, and resolves a column only from the Table's live head rows. Config-aware lookups belong in Identified or above.",
   },
   appConfigs: {
     regex: "(^|/)generated/",
