@@ -11,7 +11,7 @@ Map fragments, one file per heading. Open the file the task needs.
 | Queuing a write, flush order, stale indexes, row deletes, fills, formula writes, `findReplace`, discarding | [queued-writes.md](./architecture/queued-writes.md) |
 | Working vs fetched, the working view, writes without a fetch, reads that need one | [working-view.md](./architecture/working-view.md) |
 | A moved, missing or extra Table | [table-placement.md](./architecture/table-placement.md) |
-| Finding a moved Table: named ranges, developer metadata, whole-sheet `tables`, zone depth, and what each costs | [finding-tables.md](./architecture/finding-tables.md) |
+| Routes for finding a moved Table, probed live: named ranges, developer metadata, whole-sheet `tables`, zone depth, and what each costs | [finding-tables.md](./architecture/finding-tables.md) |
 | Last data row, blank-row reuse | [blank-row.md](./architecture/blank-row.md) |
 | Endpoint entry, `EndpointRun`, run report, selector behavior | [endpoint-dispatch.md](./architecture/endpoint-dispatch.md) |
 | Sheets round trips | [round-trips.md](./architecture/round-trips.md) |
