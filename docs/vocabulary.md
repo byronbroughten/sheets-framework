@@ -18,11 +18,11 @@ One line per term. The elaboration is one file away. Open a reasoning file only 
 
 - **Source** is the tier below everything that knows this spreadsheet: the `RawSource` port, the platform module (`GoogleSheets/`), and the cell values that cross the port.
 - **Platform** is the spreadsheet product (Google Sheets); **host** is where the code runs (Apps Script or Node). Platform-neutral code imports nothing from `src/00_Source/GoogleSheets/` and names no `GoogleAppsScript.*` type.
-- **Raw** is positional: it addresses a sheet by GID, a Table by its live `tableId`, and rows and columns by Table-relative index (`rowIndex` 0 is the first body row; head rows by role). It never resolves a column by name or `columnId`, and sheet coordinates appear only at gathering.
-- **Identified** addresses a Table by its live `tableId` and a column by its column ID, knows each column's config, and resolves the column's Table-relative index live from the Table's column ID row.
-- **Named** addresses a Table by Table name and a column by header, and a sheet only by its title, as a container.
+- **Raw** is positional: it addresses a sheet by GID, a Table by its live `tableId`, and rows and columns by Table-relative index (`rowIndex` 0 is the first body row; head rows by role). It is blind to column config, resolving a column only from the Table's live head rows, and sheet coordinates appear only at gathering.
+- **Identified** adds the committed column config, reached by column ID, and is typed by value name.
+- **Named** adds names: a Table by Table name, a column by header, a sheet by title as a container. It is the end developer's API.
 - **`rowIndex` is the body index**: 0 is the Table's first body row, and a row counted from the sheet's top is a `SheetRowIndex`.
-- **Schema** (`01_SpreadsheetSchema`) is everything that reads the generated configs, and sits below Raw. The spreadsheet schema classes and the value schema are two unrelated families sharing the word.
+- **Schema** (`01_SpreadsheetSchema`) is the declared layout plus every reader of the generated configs, and sits below Raw. The spreadsheet schema classes and the value schema are two unrelated families sharing the word.
 
 ## Class names
 

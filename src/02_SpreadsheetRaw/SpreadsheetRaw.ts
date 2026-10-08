@@ -25,7 +25,8 @@ import { TableRaw } from "./TableRaw";
  * `batchUpdateGSheets` via RawSource.flush), delegated to SpreadsheetRaw/.
  * A Table by tableId, its rows and columns by Table-relative index live on
  * TableRaw / RowRaw / ColumnRaw here;
- * by-name and columnId resolution are Identified/Named. Schema classes that
+ * Raw resolves a column only from live head rows; config-aware lookups and
+ * names are Identified/Named. Schema classes that
  * resolve columns live in Schema/ because they sit below both consumer tiers.
  * docs/architecture/round-trips.md, schema-classes.md, class-chains.md
  */

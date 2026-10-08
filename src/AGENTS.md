@@ -1,10 +1,10 @@
 # Rules for the framework's `src/`
 
 - `00_Source`: the Source: cell values, the host-neutral `RawSource` port, and `GoogleSheets/`, the platform module.
-- `01_SpreadsheetSchema`: everything that reads the generated configs, which live in each package's `generatedDir`.
-- `02_SpreadsheetRaw`: positional I/O by sheet GID and row/column index; never resolves a column.
-- `03_SpreadsheetIdentified`: addresses sheets and columns by generated identity (GID + column ID).
-- `04_SpreadsheetNamed`: the name-based API most code should use.
+- `01_SpreadsheetSchema`: the declared layout plus every reader of the generated configs, which live in each package's `generatedDir`.
+- `02_SpreadsheetRaw`: positional I/O by sheet GID and row/column index, blind to column config; resolves a column only from the Table's live head rows.
+- `03_SpreadsheetIdentified`: adds the committed column config, reached by column ID; typed by value name.
+- `04_SpreadsheetNamed`: adds names; the end developer's API.
 - `05_Operators`: classes on a Named base, suited to one data structure, config regeneration included.
 - `06_API`: generic endpoint dispatch (`Api`, `EndpointRun`), handed its endpoint map.
 - **Dependencies point only downward; lint holds the numbered tiers and `utils/` to it.** A file goes in the lowest tier that satisfies it. `utils/` is below every tier; `appsScriptHost/`, `chores/`, `nodeHost/` and the two entries sit above them all. **The app imports the framework only from `@byronbroughten/sheets-framework` (`framework.ts`), and `/testing` (`frameworkTesting.ts`) only in `*.test.ts` and its config setup file**; lint holds it. The app keeps its own `Arr` and `Val`.
