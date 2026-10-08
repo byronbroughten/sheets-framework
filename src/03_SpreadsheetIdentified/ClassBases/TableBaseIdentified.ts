@@ -68,7 +68,7 @@ export class TableBaseIdentified extends SpreadsheetBaseIdentified {
   // Absent until the sheet's one Table is fetched.
   get knownTableId(): string | undefined {
     if ("tableId" in this.tableAddress) return this.tableAddress.tableId;
-    return this.rawTable.onlyTableId();
+    return this.rawTable.tableIdReachedByGid();
   }
   clearFetchTargets(): void {
     this.tableState.fetchQueue.targets = [];
@@ -94,7 +94,7 @@ export class TableBaseIdentified extends SpreadsheetBaseIdentified {
     if (!this.tablesStateIdentified.has(tableId)) {
       this.tablesStateIdentified.set(tableId, emptyTableStateIdentified());
     }
-    if (this.rawTable.onlyTableId() === tableId) {
+    if (this.rawTable.tableIdReachedByGid() === tableId) {
       this._adoptTableStateBeforeProperties(tableId);
     }
   }

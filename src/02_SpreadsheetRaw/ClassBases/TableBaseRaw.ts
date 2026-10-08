@@ -56,7 +56,7 @@ export class TableBaseRaw extends SpreadsheetBaseRaw {
     if ("tableId" in this.tableAddress) {
       return tableStateOf(this.tablesStateRaw, this.tableAddress.tableId);
     }
-    const tableId = this.onlyTableId() ?? this.recordedTableId();
+    const tableId = this.tableIdReachedByGid();
     if (tableId === undefined) return this.sheetState.tableBeforeProperties;
     return tableStateOf(this.tablesStateRaw, tableId);
   }
@@ -92,6 +92,10 @@ export class TableBaseRaw extends SpreadsheetBaseRaw {
     const [tableId, ...otherTableIds] = this.tableIds();
     if (otherTableIds.length > 0) return undefined;
     return tableId;
+  }
+  // The Table a GID address reaches: the sheet's only one, else the one its configs record.
+  tableIdReachedByGid(): string | undefined {
+    return this.onlyTableId() ?? this.recordedTableId();
   }
   // Until sheets-framework#89, a managed sheet may hold unmanaged Tables beside the one its configs record.
   recordedTableId(): string | undefined {

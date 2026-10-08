@@ -186,9 +186,13 @@ function validateTicksHaveATable(
   );
   if (lostTick !== undefined) {
     throw new Error(
-      `${retiredSheetConfigTitle} ticks GID ${lostTick.sheetGid}, whose tab holds no Table, or several and none at the expected origin. Untick it or fix the tab, then rerun.`,
+      `${retiredSheetConfigTitle} ticks GID ${lostTick.sheetGid}, ${noTableOnTab()}. Untick it or fix the tab, then rerun.`,
     );
   }
+}
+
+function noTableOnTab(): string {
+  return "whose tab holds no Table, or several and none at the expected origin";
 }
 
 function updateSheetGidToTableId(
@@ -216,7 +220,7 @@ function sheetConfigReport(conversions: RowConversion[]): string[] {
   ];
   if (emptiedGids.length > 0) {
     lines.push(
-      `left ${headers.tableId} empty for unticked GID(s) ${emptiedGids.join(", ")}, whose tab holds no Table, or several and none at the expected origin; the sync drops those rows and appends their Tables unticked`,
+      `left ${headers.tableId} empty for unticked GID(s) ${emptiedGids.join(", ")}, ${noTableOnTab()}; the sync drops those rows and appends their Tables unticked`,
     );
   }
   return lines;
@@ -269,7 +273,7 @@ function columnConfigReport(conversions: RowConversion[]): string[] {
   ];
   if (emptiedGids.length > 0) {
     lines.push(
-      `left ${columnConfigSeed.title}'s ${headers.tableId} and ${headers.tableName} empty for GID(s) ${emptiedGids.join(", ")}, whose tab holds no Table, or several and none at the expected origin; the sync prunes those rows`,
+      `left ${columnConfigSeed.title}'s ${headers.tableId} and ${headers.tableName} empty for GID(s) ${emptiedGids.join(", ")}, ${noTableOnTab()}; the sync prunes those rows`,
     );
   }
   return lines;

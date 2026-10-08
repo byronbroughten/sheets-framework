@@ -899,6 +899,40 @@ describe("SpreadsheetIdentified Tables", () => {
     expect(column.valueOrEmpty(0)).toBe("r:vty:row4");
   });
 
+  it("reaches the recorded Table by its sheet when an unmanaged Table sits beside it", () => {
+    const recordedTableId = getTableTraitByName("valueTypes", "tableId");
+    stubSheetsService({
+      sheets: [
+        {
+          sheetId: valueTypesGid,
+          title: "Value Types",
+          rows: buildGridRows({
+            0: [valueTypesIdColumnId, checkboxColumnId],
+            3: ["ID", "Checkbox"],
+            4: ["r:vty:row4", true],
+          }),
+          tables: [
+            {
+              tableId: "unmanaged",
+              startColumnIndex: 10,
+              endColumnIndex: 11,
+              endRowIndex: 5,
+            },
+            { tableId: recordedTableId, endColumnIndex: 2, endRowIndex: 5 },
+          ],
+        },
+      ],
+    });
+    const ssi = initIdentified();
+    const table = ssi.tableOnSheet(valueTypesGid).ensureColumnIdsAreFetched();
+    const column = table.column(valueTypesIdColumnId);
+    column.prepFetchFull();
+    ssi.fetchAllPrepped();
+
+    expect(table.knownTableId).toBe(recordedTableId);
+    expect(column.valueOrEmpty(0)).toBe("r:vty:row4");
+  });
+
   it("queues fetches per Table, whether reached by its sheet or its tableId", () => {
     stubValueTypes(
       [valueTypesIdColumnId, checkboxColumnId],
