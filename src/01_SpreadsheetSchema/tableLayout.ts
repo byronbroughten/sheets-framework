@@ -1,5 +1,5 @@
-// Every sheet's layout and ID conventions; head-row offsets count up from the Table's header row, base 0.
-export const sheetLayout = {
+// Every Table's layout and ID conventions; head-row offsets count up from the header row, base 0.
+export const tableLayout = {
   idDelimiter: ":",
   idHeader: "ID",
   nameHeader: "Name",

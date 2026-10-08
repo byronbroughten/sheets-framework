@@ -1,70 +1,131 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { getColumnTraitByName } from "../01_SpreadsheetSchema/columnConfigsTypes";
-import { getSheetTraitByName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import type { Value, VnToCvn } from "../01_SpreadsheetSchema/valueSchemas";
 import {
-  blankSheetConfigRow,
-  filledSheetConfigRow,
-  sheetConfigColumnIdRow,
-  sheetConfigGid,
-  stubSheetConfigSheet,
-} from "../testSupport/fakeSheetConfigSheet";
+  itemTableId,
+  placedTableSheet,
+} from "../02_SpreadsheetRaw/spreadsheetRawTestSupport";
 import {
   buildGridRows,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
+import {
+  blankTableConfigRow,
+  filledTableConfigRow,
+  stubTableConfigSheet,
+  tableConfigColumnIdRow,
+  tableConfigGid,
+} from "../testSupport/fakeTableConfigSheet";
 import { assertType, type IsExactly } from "../testSupport/typeAssertions";
 import { Val } from "../utils/Val";
+import { CellIdentified } from "./CellIdentified";
 import { SpreadsheetBaseIdentified } from "./ClassBases/SpreadsheetBaseIdentified";
 import type { FetchTargetIdentified } from "./ClassTypes/StateIdentified";
 import { ColumnIdentified } from "./ColumnIdentified";
-import { ColumnMetaIdentified } from "./ColumnMetaIdentified";
+import { HeadRowIdentified } from "./HeadRowIdentified";
 import { RowIdentified } from "./RowIdentified";
-import { SheetMetaIdentified } from "./SheetMetaIdentified";
 import { SpreadsheetIdentified } from "./SpreadsheetIdentified";
 import { TableIdentified } from "./TableIdentified";
 
-const itemGid = getSheetTraitByName("item", "sheetGid");
+const itemGid = getTableTraitByName("item", "sheetGid");
 const itemIdColumnId = getColumnTraitByName("item", "id", "columnId");
 
 // A mis-wired accessor still type-checks; the instance checks catch it.
 describe("SpreadsheetIdentified navigation", () => {
+  function stubItemTable(): void {
+    stubSheetsService({
+      sheets: [placedTableSheet({ sheetId: itemGid, title: "Item" })],
+    });
+  }
+
   it("gives each accessor the class its return type names", () => {
-    stubSheetsService();
+    stubItemTable();
     const ssi = new SpreadsheetIdentified(
       SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
     );
-    const sheet = ssi.sheet(itemGid);
-    const sheetMeta = ssi.sheetMeta(itemGid);
-    const column = sheet.column(itemIdColumnId);
-    const columnMeta = sheetMeta.column(itemIdColumnId);
+    ssi.raw.fetchAllSheetProperties();
+    const table = ssi.table(itemTableId);
+    const tableOnSheet = ssi.tableOnSheet(itemGid);
+    const column = table.column(itemIdColumnId);
+    const headRow = table.headRow("action");
+    const headCell = column.headCell("action");
 
-    assertType<IsExactly<typeof sheet, TableIdentified>>(true);
-    assertType<IsExactly<typeof sheetMeta, SheetMetaIdentified>>(true);
-    assertType<IsExactly<typeof sheet.meta, SheetMetaIdentified>>(true);
-    assertType<IsExactly<typeof sheetMeta.primary, TableIdentified>>(true);
+    assertType<IsExactly<typeof table, TableIdentified>>(true);
+    assertType<IsExactly<typeof tableOnSheet, TableIdentified>>(true);
     assertType<IsExactly<typeof column, ColumnIdentified>>(true);
-    assertType<IsExactly<typeof columnMeta, ColumnMetaIdentified>>(true);
-    assertType<IsExactly<typeof column.sheet, TableIdentified>>(true);
-    assertType<IsExactly<typeof columnMeta.sheet, SheetMetaIdentified>>(true);
-    assertType<IsExactly<typeof column.meta, ColumnMetaIdentified>>(true);
-    assertType<IsExactly<typeof columnMeta.primary, ColumnIdentified>>(true);
-    assertType<IsExactly<ReturnType<typeof sheet.row>, RowIdentified>>(true);
+    assertType<IsExactly<typeof column.table, TableIdentified>>(true);
+    assertType<IsExactly<ReturnType<typeof table.row>, RowIdentified>>(true);
+    assertType<IsExactly<typeof headRow, HeadRowIdentified<"action">>>(true);
+    assertType<
+      IsExactly<ReturnType<typeof table.headRowByIndex>, HeadRowIdentified>
+    >(true);
+    assertType<
+      IsExactly<typeof headCell, CellIdentified<"boolean" | "string">>
+    >(true);
+    assertType<
+      IsExactly<ReturnType<typeof headCell.valueOrEmpty>, boolean | string>
+    >(true);
 
-    expect(sheet.meta).toBeInstanceOf(SheetMetaIdentified);
-    expect(sheetMeta.primary).toBeInstanceOf(TableIdentified);
+    expect(table).toBeInstanceOf(TableIdentified);
+    expect(tableOnSheet).toBeInstanceOf(TableIdentified);
     expect(column).toBeInstanceOf(ColumnIdentified);
-    expect(columnMeta).toBeInstanceOf(ColumnMetaIdentified);
-    expect(column.sheet).toBeInstanceOf(TableIdentified);
-    expect(columnMeta.sheet).toBeInstanceOf(SheetMetaIdentified);
-    expect(column.meta).toBeInstanceOf(ColumnMetaIdentified);
-    expect(columnMeta.primary).toBeInstanceOf(ColumnIdentified);
-    expect(sheet.row(0)).toBeInstanceOf(RowIdentified);
+    expect(column.table).toBeInstanceOf(TableIdentified);
+    expect(table.row(0)).toBeInstanceOf(RowIdentified);
+    expect(headRow).toBeInstanceOf(HeadRowIdentified);
+    expect(table.headRowByIndex(-2)).toBeInstanceOf(HeadRowIdentified);
+    expect(headCell).toBeInstanceOf(CellIdentified);
+  });
+
+  it("offers no profile: descriptive facts stay at Raw", () => {
+    assertType<
+      IsExactly<
+        Extract<"profile", keyof TableIdentified | keyof ColumnIdentified>,
+        never
+      >
+    >(true);
+  });
+
+  it("offers no Meta view", () => {
+    assertType<
+      IsExactly<
+        Extract<
+          "meta" | "sheetMeta",
+          | keyof SpreadsheetIdentified
+          | keyof TableIdentified
+          | keyof ColumnIdentified
+        >,
+        never
+      >
+    >(true);
+  });
+
+  it("reaches the Table back through each row's and column's table getter", () => {
+    stubItemTable();
+    const ssi = new SpreadsheetIdentified(
+      SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
+    );
+    ssi.raw.fetchAllSheetProperties();
+    const table = ssi.table(itemTableId);
+    const row = table.row(0);
+    const column = table.column(itemIdColumnId);
+    const headRow = table.headRow("header");
+
+    assertType<IsExactly<typeof row.table, TableIdentified>>(true);
+    assertType<IsExactly<typeof column.table, TableIdentified>>(true);
+    assertType<IsExactly<typeof headRow.table, TableIdentified>>(true);
+
+    expect(row.table).toBeInstanceOf(TableIdentified);
+    expect(column.table).toBeInstanceOf(TableIdentified);
+    expect(row.table).toEqual(table);
+    expect(column.table).toEqual(table);
+    expect(headRow.table).toBeInstanceOf(TableIdentified);
+    expect(headRow.table).toEqual(table);
   });
 });
 
-const valueTypesGid = getSheetTraitByName("valueTypes", "sheetGid");
+const valueTypesGid = getTableTraitByName("valueTypes", "sheetGid");
 const valueTypesIdColumnId = getColumnTraitByName(
   "valueTypes",
   "id",
@@ -101,7 +162,7 @@ function fetchedValueTypesSheet(): TableIdentified {
   const ssi = new SpreadsheetIdentified(
     SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
   );
-  const sheet = ssi.sheet(valueTypesGid);
+  const sheet = ssi.tableOnSheet(valueTypesGid);
   sheet.column(valueTypesIdColumnId).prepFetchFull();
   sheet.column(checkboxColumnId).prepFetchFull();
   ssi.fetchAllPrepped();
@@ -151,7 +212,7 @@ describe("Identified value accessors", () => {
     const ssi = new SpreadsheetIdentified(
       SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
     );
-    const sheet = ssi.sheet(valueTypesGid);
+    const sheet = ssi.tableOnSheet(valueTypesGid);
     sheet.column(valueTypesIdColumnId).prepFetchSpecific([blankRowIndex]);
     ssi.fetchAllPrepped();
 
@@ -227,51 +288,154 @@ describe("Identified value accessors", () => {
 });
 
 // Google omits a row nothing was ever written to, which is what "never read" looks like.
-function stubSheetConfigWithUnreadTopRow() {
-  return stubSheetConfigSheet({ 4: blankSheetConfigRow }, [4]);
+function stubTableConfigWithUnreadTopRow() {
+  return stubTableConfigSheet({ 4: blankTableConfigRow }, [4]);
 }
 
-function fetchedSheetConfig(): TableIdentified {
+function fetchedTableConfig(): TableIdentified {
   const ssi = new SpreadsheetIdentified(
     SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
   );
-  const sheet = ssi.sheet(sheetConfigGid);
+  const sheet = ssi.tableOnSheet(tableConfigGid);
   sheet.topRow.prepFetchFull();
   ssi.fetchAllPrepped();
   return sheet;
 }
 
-function unfetchedSheetConfig(): TableIdentified {
+function unfetchedTableConfig(): TableIdentified {
   const ssi = new SpreadsheetIdentified(
     SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
   );
-  ssi.sheetMeta(sheetConfigGid).ensureColumnIdsAreFetched();
-  return ssi.sheet(sheetConfigGid);
+  ssi.tableOnSheet(tableConfigGid).ensureColumnIdsAreFetched();
+  return ssi.tableOnSheet(tableConfigGid);
 }
+
+describe("Identified head rows", () => {
+  const actionSheetRow = 2;
+
+  function fetchedHeadRows() {
+    const { grid } = stubSheetsService({
+      sheets: [
+        {
+          sheetId: valueTypesGid,
+          title: "Value Types",
+          rows: buildGridRows({
+            0: [valueTypesIdColumnId, checkboxColumnId],
+            [actionSheetRow]: ["Due", true],
+            3: ["ID", "Checkbox"],
+            4: ["r:vty:row4", true],
+          }),
+          table: { endRowIndex: 5 },
+        },
+      ],
+    });
+    const ssi = new SpreadsheetIdentified(
+      SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
+    );
+    const table = ssi.tableOnSheet(valueTypesGid);
+    table.headRow("action").prepFetchFull();
+    table.headRow("header").prepFetchFull();
+    table.headRow("groupHeading1").prepFetchFull();
+    ssi.fetchAllPrepped();
+    return { grid, ssi, table };
+  }
+
+  it("reads head cells by column ID, through the column and through the row", () => {
+    const { table } = fetchedHeadRows();
+
+    expect(
+      table.column(checkboxColumnId).headCell("action").valueOrEmpty(),
+    ).toBe(true);
+    expect(
+      table.headRow("groupHeading2").valueOrEmpty(valueTypesIdColumnId),
+    ).toBe("Due");
+    expect(table.headRow("header").valueOrEmpty(checkboxColumnId)).toBe(
+      "Checkbox",
+    );
+  });
+
+  it("writes head cells by column ID, through the column and through the row", () => {
+    const { grid, ssi, table } = fetchedHeadRows();
+
+    table.column(checkboxColumnId).headCell("action").updateValue(false);
+    table.headRow("groupHeading2").updateValue(valueTypesIdColumnId, "Late");
+    ssi.raw.batchUpdateGSheets();
+
+    expect(grid.sheet(valueTypesGid).cell(actionSheetRow, 0)).toBe("Late");
+    expect(grid.sheet(valueTypesGid).cell(actionSheetRow, 1)).toBe(false);
+  });
+
+  it("reads a checkbox column's blank head cell as blank text", () => {
+    const { table } = fetchedHeadRows();
+
+    expect(
+      table.column(checkboxColumnId).headCell("groupHeading1").valueOrEmpty(),
+    ).toBe("");
+  });
+
+  it("finds the row at an index with every role it holds", () => {
+    const { table } = fetchedHeadRows();
+
+    expect(table.headRowByIndex(-2).roles).toEqual(["action", "groupHeading2"]);
+    expect(() => table.headRowByIndex(0)).toThrow(/not a head row/);
+  });
+});
+
+describe("TableIdentified.addMissingColumnIds", () => {
+  it("writes a column ID with the Table's prefix into each blank column-ID cell", () => {
+    const { grid } = stubSheetsService({
+      sheets: [
+        {
+          sheetId: valueTypesGid,
+          title: "Value Types",
+          rows: buildGridRows({
+            0: [valueTypesIdColumnId, ""],
+            3: ["ID", "Checkbox"],
+            4: ["r:vty:row4", true],
+          }),
+          table: { endRowIndex: 5 },
+        },
+      ],
+    });
+    const ssi = new SpreadsheetIdentified(
+      SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
+    );
+    const table = ssi.tableOnSheet(valueTypesGid);
+
+    const addedCount = table.ensureColumnIdsAreFetched().addMissingColumnIds();
+    ssi.raw.batchUpdateGSheets();
+
+    expect(addedCount).toBe(1);
+    expect(grid.sheet(valueTypesGid).cell(0, 0)).toBe(valueTypesIdColumnId);
+    expect(grid.sheet(valueTypesGid).cell(0, 1)).toMatch(
+      new RegExp(`^c:${table.schema.idPrefix}:`),
+    );
+  });
+});
 
 describe("RowIdentified.isBlank / isReusable", () => {
   it("calls a row whose every non-formula cell is empty blank", () => {
-    stubSheetConfigSheet({ 4: blankSheetConfigRow });
+    stubTableConfigSheet({ 4: blankTableConfigRow });
 
-    expect(fetchedSheetConfig().topRow.isBlank).toBe(true);
+    expect(fetchedTableConfig().topRow.isBlank).toBe(true);
   });
 
   it("calls a row holding any non-formula value not blank", () => {
-    stubSheetConfigSheet({ 4: filledSheetConfigRow });
+    stubTableConfigSheet({ 4: filledTableConfigRow });
 
-    expect(fetchedSheetConfig().topRow.isBlank).toBe(false);
+    expect(fetchedTableConfig().topRow.isBlank).toBe(false);
   });
 
   it("calls a row nothing fetched not blank, since nothing read it", () => {
-    stubSheetConfigWithUnreadTopRow();
+    stubTableConfigWithUnreadTopRow();
 
-    expect(unfetchedSheetConfig().topRow.isBlank).toBe(false);
+    expect(unfetchedTableConfig().topRow.isBlank).toBe(false);
   });
 
   it("makes a blank row reusable until an append reserves it", () => {
-    stubSheetConfigSheet({ 4: blankSheetConfigRow });
+    stubTableConfigSheet({ 4: blankTableConfigRow });
 
-    const sheet = fetchedSheetConfig();
+    const sheet = fetchedTableConfig();
     expect(sheet.topRow.isReusable).toBe(true);
 
     sheet.appendRowDefault();
@@ -281,19 +445,19 @@ describe("RowIdentified.isBlank / isReusable", () => {
 
 describe("TableIdentified.hasNoData", () => {
   it("is true for a sheet whose one row is blank", () => {
-    stubSheetConfigSheet({ 4: blankSheetConfigRow });
+    stubTableConfigSheet({ 4: blankTableConfigRow });
 
-    expect(fetchedSheetConfig().hasNoData).toBe(true);
+    expect(fetchedTableConfig().hasNoData).toBe(true);
   });
 
   it("is false while any row still holds data", () => {
-    stubSheetConfigSheet({ 4: blankSheetConfigRow, 5: filledSheetConfigRow });
+    stubTableConfigSheet({ 4: blankTableConfigRow, 5: filledTableConfigRow });
 
-    expect(fetchedSheetConfig().hasNoData).toBe(false);
+    expect(fetchedTableConfig().hasNoData).toBe(false);
   });
 });
 
-const runItemGid = getSheetTraitByName("runItem", "sheetGid");
+const runItemGid = getTableTraitByName("runItem", "sheetGid");
 const runItemColumnIds = (["id", "result", "runStatus"] as const).map(
   (columnName) => getColumnTraitByName("runItem", columnName, "columnId"),
 );
@@ -319,7 +483,7 @@ function runItemWithOneRow(topRow: (string | null)[]): TableIdentified {
       new Map([["runItem", new Set([runStatusColumnId])]]),
     ),
   );
-  const sheet = ssi.sheet(runItemGid);
+  const sheet = ssi.tableOnSheet(runItemGid);
   sheet.topRow.prepFetchFull();
   ssi.fetchAllPrepped();
   return sheet;
@@ -352,7 +516,7 @@ describe("the blank test, on a sheet with a feedback column", () => {
   });
 });
 
-const computedGid = getSheetTraitByName("computed", "sheetGid");
+const computedGid = getTableTraitByName("computed", "sheetGid");
 const amountColumnId = getColumnTraitByName("computed", "amount", "columnId");
 const rowNumberColumnId = getColumnTraitByName(
   "computed",
@@ -381,7 +545,7 @@ describe("RowIdentified.clearValues", () => {
     const ssi = new SpreadsheetIdentified(
       SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
     );
-    const sheet = ssi.sheet(computedGid);
+    const sheet = ssi.tableOnSheet(computedGid);
     sheet.topRow.prepFetchFull();
     ssi.fetchAllPrepped();
     sheet.topRow.clearValues();
@@ -393,14 +557,14 @@ describe("RowIdentified.clearValues", () => {
 
   // The cell is cleared to a blank on the wire; the value name is what reads it back.
   it("leaves a cleared checkbox reading unchecked rather than blank", () => {
-    stubSheetConfigSheet({ 4: filledSheetConfigRow });
+    stubTableConfigSheet({ 4: filledTableConfigRow });
 
-    const sheet = fetchedSheetConfig();
+    const sheet = fetchedTableConfig();
     sheet.topRow.clearValues();
 
     expect(
       sheet.topRow.valueOrEmpty(
-        getColumnTraitByName("sheetConfig", "letApiAccess", "columnId"),
+        getColumnTraitByName("tableConfig", "letApiAccess", "columnId"),
       ),
     ).toBe(false);
     expect(sheet.topRow.isBlank).toBe(true);
@@ -408,14 +572,14 @@ describe("RowIdentified.clearValues", () => {
 
   // The default and the blank must agree, or an append and a read back disagree.
   it("defaults a checkbox cell to the same unchecked a blank reads as", () => {
-    stubSheetConfigSheet({ 4: filledSheetConfigRow });
+    stubTableConfigSheet({ 4: filledTableConfigRow });
 
     const columnId = getColumnTraitByName(
-      "sheetConfig",
+      "tableConfig",
       "letApiAccess",
       "columnId",
     );
-    const cell = fetchedSheetConfig().topRow.cell(columnId);
+    const cell = fetchedTableConfig().topRow.cell(columnId);
     cell.updateToDefault();
 
     expect(cell.valueOrEmpty()).toBe(false);
@@ -443,7 +607,7 @@ describe("RowIdentified.clearValues", () => {
     const ssi = new SpreadsheetIdentified(
       SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
     );
-    const cell = ssi.sheet(valueTypesGid).topRow.cell(dateColumnId);
+    const cell = ssi.tableOnSheet(valueTypesGid).topRow.cell(dateColumnId);
     cell.prepFetch();
     ssi.fetchAllPrepped();
 
@@ -459,30 +623,30 @@ describe("RowIdentified.clearValues", () => {
 
 describe("TableIdentified.appendRowDefault", () => {
   it("throws when the Table's one data row was never fetched, naming the Table and the prefetch owed", () => {
-    stubSheetConfigWithUnreadTopRow();
+    stubTableConfigWithUnreadTopRow();
 
-    expect(() => unfetchedSheetConfig().appendRowDefault()).toThrowError(
-      /Table ".*" on "Sheet Config".*never fetched.*Prefetch its top data row/,
+    expect(() => unfetchedTableConfig().appendRowDefault()).toThrowError(
+      /Table ".*" on "Table Config".*never fetched.*Prefetch its top data row/,
     );
   });
 
   it("skips a configured column missing from the column-ID row and writes the rest", () => {
     const omittedColumnId = getColumnTraitByName(
-      "sheetConfig",
+      "tableConfig",
       "letApiAccess",
       "columnId",
     );
-    const columnIdRow = sheetConfigColumnIdRow.filter(
+    const columnIdRow = tableConfigColumnIdRow.filter(
       (columnId) => columnId !== omittedColumnId,
     );
     const { grid } = stubSheetsService({
       sheets: [
         {
-          sheetId: sheetConfigGid,
-          title: "Sheet Config",
+          sheetId: tableConfigGid,
+          title: "Table Config",
           rows: buildGridRows({
             0: columnIdRow,
-            4: [null, null],
+            4: [null, null, null],
           }),
           table: { endRowIndex: 5 },
         },
@@ -492,15 +656,15 @@ describe("TableIdentified.appendRowDefault", () => {
     const ssi = new SpreadsheetIdentified(
       SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
     );
-    const sheet = ssi.sheet(sheetConfigGid);
+    const sheet = ssi.tableOnSheet(tableConfigGid);
     sheet.topRow.prepFetchFull();
     ssi.fetchAllPrepped();
     sheet.appendRowDefault();
     ssi.raw.batchUpdateGSheets();
 
     expect(
-      grid.sheet(sheetConfigGid).values({ ...topRowRange, endColumnIndex: 3 }),
-    ).toEqual([["", "", null]]);
+      grid.sheet(tableConfigGid).values({ ...topRowRange, endColumnIndex: 4 }),
+    ).toEqual([["", "", "", null]]);
   });
 });
 
@@ -525,7 +689,10 @@ describe("Identified formula writes", () => {
     ssi.raw.fetchAllSheetProperties();
 
     expect(() =>
-      ssi.sheet(computedGid).column(amountColumnId).updateAllFormulas("=1"),
+      ssi
+        .tableOnSheet(computedGid)
+        .column(amountColumnId)
+        .updateAllFormulas("=1"),
     ).toThrowError(/not a formula column/);
   });
 
@@ -537,9 +704,23 @@ describe("Identified formula writes", () => {
 
     expect(() =>
       ssi
-        .sheet(computedGid)
+        .tableOnSheet(computedGid)
         .column(rowNumberColumnId)
         .updateAllFormulas("=ROW()"),
+    ).not.toThrow();
+  });
+  it("writes a formula column's head cell as plain text", () => {
+    const ssi = new SpreadsheetIdentified(
+      SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
+    );
+    ssi.raw.fetchAllSheetProperties();
+
+    expect(() =>
+      ssi
+        .tableOnSheet(computedGid)
+        .column(rowNumberColumnId)
+        .headCell("header")
+        .updateValue("Row number"),
     ).not.toThrow();
   });
 });
@@ -598,7 +779,7 @@ describe("SpreadsheetIdentified.fetchAllPrepped / FetchTargetIdentified", () => 
     const ssi = new SpreadsheetIdentified(
       SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
     );
-    ssi.sheet(valueTypesGid).topRow.prepFetchFull();
+    ssi.tableOnSheet(valueTypesGid).topRow.prepFetchFull();
     ssi.fetchAllPrepped();
 
     expect(lastFetchedRanges(getByDataFilterCalls)).toEqual(
@@ -619,7 +800,10 @@ describe("SpreadsheetIdentified.fetchAllPrepped / FetchTargetIdentified", () => 
     const ssi = new SpreadsheetIdentified(
       SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
     );
-    ssi.sheet(valueTypesGid).column(valueTypesIdColumnId).prepFetchFull();
+    ssi
+      .tableOnSheet(valueTypesGid)
+      .column(valueTypesIdColumnId)
+      .prepFetchFull();
     ssi.fetchAllPrepped();
 
     expect(lastFetchedRanges(getByDataFilterCalls)).toEqual(
@@ -641,7 +825,7 @@ describe("SpreadsheetIdentified.fetchAllPrepped / FetchTargetIdentified", () => 
       SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
     );
     ssi
-      .sheet(valueTypesGid)
+      .tableOnSheet(valueTypesGid)
       .column(valueTypesIdColumnId)
       .cell(filledRowIndex)
       .prepFetch();
@@ -693,7 +877,7 @@ describe("SpreadsheetIdentified Tables", () => {
       ["Checkbox", "ID"],
     );
     const ssi = initIdentified();
-    const column = ssi.sheet(valueTypesGid).column(valueTypesIdColumnId);
+    const column = ssi.tableOnSheet(valueTypesGid).column(valueTypesIdColumnId);
     column.prepFetchFull();
     ssi.fetchAllPrepped();
 
@@ -707,11 +891,45 @@ describe("SpreadsheetIdentified Tables", () => {
       ["ID", "Checkbox"],
     );
     const ssi = initIdentified();
-    ssi.sheet(valueTypesGid).meta.ensureColumnIdsAreFetched();
+    ssi.tableOnSheet(valueTypesGid).ensureColumnIdsAreFetched();
     const column = ssi.table(valueTypesTableId).column(valueTypesIdColumnId);
     column.prepFetchFull();
     ssi.fetchAllPrepped();
 
+    expect(column.valueOrEmpty(0)).toBe("r:vty:row4");
+  });
+
+  it("reaches the recorded Table by its sheet when an unmanaged Table sits beside it", () => {
+    const recordedTableId = getTableTraitByName("valueTypes", "tableId");
+    stubSheetsService({
+      sheets: [
+        {
+          sheetId: valueTypesGid,
+          title: "Value Types",
+          rows: buildGridRows({
+            0: [valueTypesIdColumnId, checkboxColumnId],
+            3: ["ID", "Checkbox"],
+            4: ["r:vty:row4", true],
+          }),
+          tables: [
+            {
+              tableId: "unmanaged",
+              startColumnIndex: 10,
+              endColumnIndex: 11,
+              endRowIndex: 5,
+            },
+            { tableId: recordedTableId, endColumnIndex: 2, endRowIndex: 5 },
+          ],
+        },
+      ],
+    });
+    const ssi = initIdentified();
+    const table = ssi.tableOnSheet(valueTypesGid).ensureColumnIdsAreFetched();
+    const column = table.column(valueTypesIdColumnId);
+    column.prepFetchFull();
+    ssi.fetchAllPrepped();
+
+    expect(table.knownTableId).toBe(recordedTableId);
     expect(column.valueOrEmpty(0)).toBe("r:vty:row4");
   });
 
@@ -721,8 +939,11 @@ describe("SpreadsheetIdentified Tables", () => {
       ["ID", "Checkbox"],
     );
     const ssi = initIdentified();
-    ssi.sheet(valueTypesGid).meta.ensureColumnIdsAreFetched();
-    ssi.sheet(valueTypesGid).column(valueTypesIdColumnId).prepFetchFull();
+    ssi.tableOnSheet(valueTypesGid).ensureColumnIdsAreFetched();
+    ssi
+      .tableOnSheet(valueTypesGid)
+      .column(valueTypesIdColumnId)
+      .prepFetchFull();
     ssi.table(valueTypesTableId).column(checkboxColumnId).prepFetchFull();
 
     expect(
@@ -741,8 +962,8 @@ describe("SpreadsheetIdentified Tables", () => {
       ["ID", "Checkbox"],
     );
     const ssi = initIdentified();
-    ssi.sheet(valueTypesGid).column(checkboxColumnId).prepFetchFull();
-    ssi.sheet(valueTypesGid).meta.ensureColumnIdsAreFetched();
+    ssi.tableOnSheet(valueTypesGid).column(checkboxColumnId).prepFetchFull();
+    ssi.tableOnSheet(valueTypesGid).ensureColumnIdsAreFetched();
     ssi.table(valueTypesTableId).column(valueTypesIdColumnId).prepFetchFull();
     ssi.fetchAllPrepped();
 
@@ -772,14 +993,16 @@ describe("SpreadsheetIdentified Tables", () => {
       ],
     });
     const ssi = initIdentified();
-    const sheet = ssi.sheet(valueTypesGid);
-    sheet.prepFetchConditionalFormatRules().prepFetchEditProtections();
+    const table = ssi.tableOnSheet(valueTypesGid);
+    table.raw.sheet
+      .gatherFetchConditionalFormatRules()
+      .gatherFetchEditProtections();
     ssi.fetchAllPrepped();
     const fetchCount = getByDataFilterCalls.length;
 
-    expect(sheet.conditionalFormatRules()).toEqual([]);
-    expect(sheet.editProtections()).toEqual([]);
-    expect(sheet.column(valueTypesIdColumnId).colIndex).toBe(0);
+    expect(table.raw.sheet.conditionalFormatRules()).toEqual([]);
+    expect(table.raw.sheet.editProtections()).toEqual([]);
+    expect(table.column(valueTypesIdColumnId).colIndex).toBe(0);
     expect(getByDataFilterCalls).toHaveLength(fetchCount);
   });
 });

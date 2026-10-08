@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { SheetsHttpRequest } from "../00_Source/GoogleSheets/GoogleSheetsAPI";
 import { getColumnTraitByName } from "../01_SpreadsheetSchema/columnConfigsTypes";
 import { installedConfigs } from "../01_SpreadsheetSchema/configRegister";
-import { getSheetTraitByName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import { SpreadsheetRaw } from "../02_SpreadsheetRaw/SpreadsheetRaw";
 import type { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
 import type { Endpoints } from "../06_API/Endpoints";
@@ -17,6 +17,7 @@ import { NodeHost } from "./NodeHost";
 
 const spreadsheetId = "spreadsheet-under-test";
 const gadgetsGid = 111;
+const gadgetsTableId = "fake-table";
 
 const gadgetsPayload = {
   sheets: [
@@ -24,7 +25,7 @@ const gadgetsPayload = {
       properties: { sheetId: gadgetsGid, title: "Gadgets" },
       tables: [
         {
-          tableId: "fake-table",
+          tableId: gadgetsTableId,
           range: {
             startRowIndex: expectedSheetLayout.tableHeaderRowIndex,
             endRowIndex: 11,
@@ -52,7 +53,7 @@ function seedHost(isDryRun: boolean) {
 function writeOneCell(): SpreadsheetRaw {
   const raw = SpreadsheetRaw.init();
   raw.fetchAllSheetProperties();
-  raw.sheet(gadgetsGid).row(1).cell(2).updateValue("Processing...");
+  raw.table(gadgetsTableId).row(1).cell(2).updateValue("Processing...");
   raw.batchUpdateGSheets();
   return raw;
 }
@@ -163,7 +164,7 @@ async function appendBeneathOneRow({
 }
 
 const runItemWithStatusOnly = {
-  sheetGid: getSheetTraitByName("runItem", "sheetGid"),
+  sheetGid: getTableTraitByName("runItem", "sheetGid"),
   title: "Run item",
   columnIds: [
     getColumnTraitByName("runItem", "id", "columnId"),
@@ -172,7 +173,7 @@ const runItemWithStatusOnly = {
   ],
   topRow: [null, null, "Succeeded"],
   append: (ss: SpreadsheetNamed) => {
-    const sheet = ss.sheet("runItem");
+    const sheet = ss.table("runItem");
     sheet.row(topDataRowIndex).prepFetchFull();
     ss.fetchAllPrepped();
     sheet.appendRowWithVals({ result: "appended" });
@@ -211,7 +212,7 @@ describe("NodeHost.ensureGlobals, the endpoints it installs", () => {
 
   it("counts the framework's own feedback columns on the config sheets with no endpoints given", async () => {
     const rows = await appendBeneathOneRow({
-      sheetGid: getSheetTraitByName("spreadsheetConfig", "sheetGid"),
+      sheetGid: getTableTraitByName("spreadsheetConfig", "sheetGid"),
       title: "Spreadsheet Config",
       columnIds: [
         getColumnTraitByName("spreadsheetConfig", "tableMenuSpace", "columnId"),
@@ -223,7 +224,7 @@ describe("NodeHost.ensureGlobals, the endpoints it installs", () => {
       ],
       topRow: [null, "Succeeded"],
       append: (ss) => {
-        const sheet = ss.sheet("spreadsheetConfig");
+        const sheet = ss.table("spreadsheetConfig");
         sheet.row(topDataRowIndex).prepFetchFull();
         ss.fetchAllPrepped();
         sheet.appendRowWithVals({ tableMenuSpace: "space" });

@@ -4,7 +4,7 @@ import {
   type ColumnValueName,
   getColumnTraitByName,
 } from "../01_SpreadsheetSchema/columnConfigsTypes";
-import { getSheetTraitByName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import type { ColumnNamedProps } from "../04_SpreadsheetNamed/ClassBases/ColumnBaseNamed";
 import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
@@ -19,7 +19,7 @@ import {
   CheckboxColumnOperator,
 } from "./CheckboxColumnOperator";
 
-const runItemGid = getSheetTraitByName("runItem", "sheetGid");
+const runItemGid = getTableTraitByName("runItem", "sheetGid");
 const columnIds = [
   getColumnTraitByName("runItem", "id", "columnId"),
   getColumnTraitByName("runItem", "selected", "columnId"),
@@ -49,7 +49,7 @@ function seedSelectedColumn(selectCells: readonly FakeCell[]) {
 function selectedProps(): ColumnNamedProps<"runItem", "selected"> {
   return {
     ...SpreadsheetNamed.initSpreadsheetNamedProps(),
-    sheetName: "runItem",
+    tableName: "runItem",
     columnName: "selected",
   };
 }
@@ -85,13 +85,13 @@ describe("CheckboxColumnOperator.rowIndexesChecked", () => {
   });
 });
 
-describe("CheckboxColumnOperator.uncheckActiveCells", () => {
+describe("CheckboxColumnOperator.uncheckWorkingCells", () => {
   it("unticks a pruned sheet's remaining rows and leaves the pruned rows ticked", () => {
     const { grid } = seedSelectedColumn([true, true, true]);
     const operator = initOperatorWithFetchedColumn();
 
-    operator.sheet.raw.removeRowsExcept(0, 2);
-    operator.uncheckActiveCells();
+    operator.table.raw.removeRowsExcept(0, 2);
+    operator.uncheckWorkingCells();
     operator.ss.batchUpdateGSheets();
 
     expect(grid.sheet(runItemGid).values(selectedColumnRange)).toEqual([
@@ -105,8 +105,8 @@ describe("CheckboxColumnOperator.uncheckActiveCells", () => {
     const { grid } = seedSelectedColumn([true, null, null]);
     const operator = initOperatorWithFetchedColumn();
 
-    operator.sheet.raw.removeRowsExcept(1, 2);
-    operator.uncheckActiveCells();
+    operator.table.raw.removeRowsExcept(1, 2);
+    operator.uncheckWorkingCells();
     operator.ss.batchUpdateGSheets();
 
     expect(grid.sheet(runItemGid).values(selectedColumnRange)).toEqual([
@@ -121,18 +121,18 @@ describe("CheckboxColumnOperator, column constraint", () => {
   it("accepts a declared non-formula checkbox column and rejects anything else", () => {
     const checkbox = new CheckboxColumnOperator({
       ...SpreadsheetNamed.initSpreadsheetNamedProps(),
-      sheetName: "runItem",
+      tableName: "runItem",
       columnName: "selected",
     });
     const text = new CheckboxColumnOperator({
       ...SpreadsheetNamed.initSpreadsheetNamedProps(),
-      sheetName: "runItem",
+      tableName: "runItem",
       // @ts-expect-error a string column is not a checkbox column
       columnName: "result",
     });
     const sampled = new CheckboxColumnOperator({
       ...SpreadsheetNamed.initSpreadsheetNamedProps(),
-      sheetName: "valueTypes",
+      tableName: "valueTypes",
       // @ts-expect-error an undeclared column that merely holds a boolean is not one either
       columnName: "sampledBoolean",
     });
@@ -151,7 +151,7 @@ describe("CheckboxColumnOperator, column constraint", () => {
 
   // A config-describing sheet, so regeneration can't churn the expected union.
   it("names exactly the declared non-formula checkbox columns of a sheet", () => {
-    assertType<IsExactly<CheckboxColumnName<"sheetConfig">, "letApiAccess">>(
+    assertType<IsExactly<CheckboxColumnName<"tableConfig">, "letApiAccess">>(
       true,
     );
   });

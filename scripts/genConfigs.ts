@@ -22,7 +22,7 @@ class ConfigFilesGenerator {
     this.sheetsConfig = sheetsConfig;
     const { generatedDir } = sheetsConfig;
     this.path = {
-      sheetConfigs: configFilePath(generatedDir, "sheetConfigs"),
+      tableConfigs: configFilePath(generatedDir, "tableConfigs"),
       columnConfigs: configFilePath(generatedDir, "columnConfigs"),
       valueConfigs: configFilePath(generatedDir, "valueConfigs"),
       appConfigs: join(generatedDir, "appConfigs.ts"),
@@ -33,7 +33,7 @@ class ConfigFilesGenerator {
   }
   async run(): Promise<void> {
     const {
-      sheetConfigs,
+      tableConfigs,
       columnConfigs,
       valueConfigs,
       untypedColumnsSummary,
@@ -44,7 +44,7 @@ class ConfigFilesGenerator {
 
     // Write nothing until all three configs are confirmed good; a subset would go stale.
     mkdirSync(this.sheetsConfig.generatedDir, { recursive: true });
-    writeFileSync(this.path.sheetConfigs, sheetConfigs);
+    writeFileSync(this.path.tableConfigs, tableConfigs);
     writeFileSync(this.path.columnConfigs, columnConfigs);
     writeFileSync(this.path.valueConfigs, valueConfigs);
     writeFileSync(this.path.appConfigs, appConfigsText());
@@ -122,10 +122,14 @@ export function appConfigsText(): string {
 import type {} from "@byronbroughten/sheets-framework";
 
 import { columnConfigs } from "./columnConfigs";
-import { sheetConfigs } from "./sheetConfigs";
+import { tableConfigs } from "./tableConfigs";
 import { valueConfigs } from "./valueConfigs";
 
-export const appConfigs = { sheetConfigs, columnConfigs, valueConfigs };
+export const appConfigs = {
+  tableConfigs,
+  columnConfigs,
+  valueConfigs,
+};
 
 declare module "@byronbroughten/sheets-framework" {
   interface Register {

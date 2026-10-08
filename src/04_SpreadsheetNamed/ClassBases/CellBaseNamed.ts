@@ -1,16 +1,16 @@
 import type { ColumnName } from "../../01_SpreadsheetSchema/columnConfigsTypes";
-import type { SheetName } from "../../01_SpreadsheetSchema/sheetConfigsTypes";
+import type { TableName } from "../../01_SpreadsheetSchema/tableConfigsTypes";
 import { ColumnBaseNamed, type ColumnNamedProps } from "./ColumnBaseNamed";
 
 export interface CellNamedProps<
-  TN extends SheetName,
+  TN extends TableName,
   CN extends ColumnName<TN>,
 > extends ColumnNamedProps<TN, CN> {
   rowIndex: number;
 }
 
 export class CellBaseNamed<
-  TN extends SheetName,
+  TN extends TableName,
   CN extends ColumnName<TN>,
 > extends ColumnBaseNamed<TN, CN> {
   readonly rowIndex: number;

@@ -12,7 +12,7 @@ import type {
   AddTableProps,
   FindReplaceProps,
 } from "./ClassTypes/StateRaw";
-import { SheetMetaRaw } from "./SheetMetaRaw";
+import { SheetRaw } from "./SheetRaw";
 import { SpreadsheetFetcherRaw } from "./SpreadsheetRaw/SpreadsheetFetcherRaw";
 import { SpreadsheetFlusherRaw } from "./SpreadsheetRaw/SpreadsheetFlusherRaw";
 import { TableRaw } from "./TableRaw";
@@ -22,8 +22,8 @@ import { TableRaw } from "./TableRaw";
  * (`fetchAllGathered` / `fetchSheetUsedGrid` via RawSource.fetchGrid,
  * `fetchAllSheetProperties` via RawSource.fetchSheetProperties,
  * `batchUpdateGSheets` via RawSource.flush), delegated to SpreadsheetRaw/.
- * A Table by tableId (or a sheet's one Table by GID), its rows and columns by
- * Table-relative index live on TableRaw / RowRaw / ColumnRaw here;
+ * A Table by tableId, its rows and columns by Table-relative index live on
+ * TableRaw / RowRaw / ColumnRaw here;
  * by-name and columnId resolution are Identified/Named. Schema classes that
  * resolve columns live in Schema/ because they sit below both consumer tiers.
  * docs/architecture/round-trips.md, schema-classes.md, class-chains.md
@@ -50,14 +50,14 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
   get activeSheetGids(): number[] {
     return Array.from(this.spreadsheetStateRaw.sheets.keys());
   }
-  get activeSheets(): TableRaw[] {
-    return Array.from(this.activeSheetGids, (sheetGid) => this.sheet(sheetGid));
+  tableIdIsActive(tableId: string): boolean {
+    return this.activeTableIds.includes(tableId);
   }
-  sheet(sheetGid: number): TableRaw {
-    return new TableRaw({
-      spreadsheetStateRaw: this.spreadsheetStateRaw,
-      sheetGid: sheetGid,
-    });
+  // A Table queued for creation has state but no properties until it is fetched.
+  get activeTableIds(): string[] {
+    return Array.from(this.tablesStateRaw.entries())
+      .filter(([, tableState]) => tableState.properties !== undefined)
+      .map(([tableId]) => tableId);
   }
   table(tableId: string): TableRaw {
     return new TableRaw({
@@ -65,14 +65,18 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
       tableId,
     });
   }
-  sheetMeta(sheetGid: number): SheetMetaRaw {
-    return new SheetMetaRaw({
+  // The sheet's one Table, reachable by GID before its tableId is fetched.
+  tableOnSheet(sheetGid: number): TableRaw {
+    return new TableRaw({
       spreadsheetStateRaw: this.spreadsheetStateRaw,
-      sheetGid: sheetGid,
+      sheetGid,
     });
   }
-  sheets(...sheetGids: number[]): TableRaw[] {
-    return sheetGids.map((sheetGid) => this.sheet(sheetGid));
+  sheet(sheetGid: number): SheetRaw {
+    return new SheetRaw({
+      spreadsheetStateRaw: this.spreadsheetStateRaw,
+      sheetGid,
+    });
   }
   ensureAllSheetPropertiesAreFetched(): void {
     this.fetcher.ensureAllSheetPropertiesAreFetched();

@@ -2,13 +2,13 @@
 /// <reference path="./TypeDeclarations/google-apps-script-ext.d.ts" />
 // The framework's public runtime entry (`.`): app code imports nothing else, bar `./testing` in tests.
 export type { Register } from "./01_SpreadsheetSchema/configRegister";
-export { SheetBaseNamed } from "./04_SpreadsheetNamed/ClassBases/SheetBaseNamed";
+export { TableBaseNamed } from "./04_SpreadsheetNamed/ClassBases/TableBaseNamed";
 export {
   SpreadsheetBaseNamed,
   type SpreadsheetNamedProps,
 } from "./04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
 export { RowNamed } from "./04_SpreadsheetNamed/RowNamed";
-export { SheetNamed } from "./04_SpreadsheetNamed/SheetNamed";
+export { TableNamed } from "./04_SpreadsheetNamed/TableNamed";
 export { SpreadsheetNamed } from "./04_SpreadsheetNamed/SpreadsheetNamed";
 export type { RowIdByName } from "./04_SpreadsheetNamed/Types/RowIdByName";
 export type {

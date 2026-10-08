@@ -11,15 +11,15 @@ Disclosed from [`docs/code-style.md`](../code-style.md), "Type modeling". The ru
 
 ## The framework's generic abbreviations
 
-The abbreviations are `SN` (SheetName), `VN` (ValueName), `CN` (ColumnName), `UN` (UniformRowName), `IF` (IsFormula) and `TN`. The domain-free utilities that keep bare `T`/`K`/`V`/`O` are `utils/` (`utils/Obj.ts`, for one) and `appUtils/`. Why two letters: `@byronbroughten/config`'s `docs/code-style/type-modeling.md`.
+The abbreviations are `TN` (TableName), `VN` (ValueName), `CN` (ColumnName), `HR` (HeadRole) and `IF` (IsFormula); `SN` (SheetName) was retired with Sheet Config. The domain-free utilities that keep bare `T`/`K`/`V`/`O` are `utils/` (`utils/Obj.ts`, for one) and `appUtils/`. Why two letters: `@byronbroughten/config`'s `docs/code-style/type-modeling.md`.
 
 ## The three accepted `as` idioms
 
 External values, such as Sheets cell data, go through `Val.validate.*`/`Val.is.*`; a cast is only for data that is already runtime-safe. The accepted idioms:
 
-- Seed a fully-typed empty accumulator up front, then fill it: `{} as SheetColumnNamesStandard<SN>`. Don't cast at the point of use.
+- Seed a fully-typed empty accumulator up front, then fill it: `{} as SheetColumnNamesStandard<TN>`. Don't cast at the point of use.
 - Use `as any` / `as unknown as X` as an escape hatch only inside low-level structural utilities (`utils/Obj.ts`, `utils/Arr.ts` and similar) that do generic structural-typing gymnastics. This is no licence to use it elsewhere; lint rejects explicit `any` everywhere but `Obj` and `Arr` and their subfolders.
-- Use `as unknown as X` in ordinary code **only to buy back type-check time, and only when a test already proves the same thing more cheaply.** Both conditions are required. The cost condition: the cast must remove real, measured work. Run `npx tsc --noEmit --extendedDiagnostics` before and after; if the saving isn't in the tens of thousands of instantiations, don't cast. The proof condition: a test elsewhere must already check the exact shape the cast claims, written against one named sheet rather than a type parameter. That test is what keeps the cast from being a hole. `SheetNamed.appendRowWithAllVals` is the only place in the repo that qualifies (#14). [`type-check-cost.md`](../architecture/type-check-cost.md) has the numbers, and the profile that found no second candidate.
+- Use `as unknown as X` in ordinary code **only to buy back type-check time, and only when a test already proves the same thing more cheaply.** Both conditions are required. The cost condition: the cast must remove real, measured work. Run `npx tsc --noEmit --extendedDiagnostics` before and after; if the saving isn't in the tens of thousands of instantiations, don't cast. The proof condition: a test elsewhere must already check the exact shape the cast claims, written against one named sheet rather than a type parameter. That test is what keeps the cast from being a hole. `TableNamed.appendRowWithAllVals` is the only place in the repo that qualifies (#14). [`type-check-cost.md`](../architecture/type-check-cost.md) has the numbers, and the profile that found no second candidate.
 
 Test files are separately mid-migration off `as` via the `migrate-to-shoehorn` skill. That is in-progress project state, not a rule that contradicts these.
 

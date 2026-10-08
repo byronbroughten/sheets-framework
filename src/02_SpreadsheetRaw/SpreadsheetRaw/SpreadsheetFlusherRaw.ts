@@ -49,7 +49,7 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
     // Row indexes only actually shift once the deletes have been sent, and a Table below the deleted rows shifts with them.
     sheetGidsWithRowDeletes.forEach((sheetGid) =>
       this.ss
-        .sheet(sheetGid)
+        .tableOnSheet(sheetGid)
         .tableIds()
         .forEach((tableId) => this.ss.table(tableId).markRowIndexesStale()),
     );
@@ -122,8 +122,8 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
     );
     const tablesBeforeProperties = Array.from(
       this.sheetsStateRaw.keys(),
-      (sheetGid) => this.ss.sheet(sheetGid),
-    ).filter((sheet) => !sheet.hasFetchedProperties);
+      (sheetGid) => this.ss.tableOnSheet(sheetGid),
+    ).filter((table) => !table.hasFetchedProperties);
     return [...knownTables, ...tablesBeforeProperties];
   }
   private _gatherRowWrites(
@@ -220,8 +220,8 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
     if (operation.kind !== "insertRange") return refusal;
     const split = this._fetchTableSplitBy(operation);
     if (split === undefined) return refusal;
-    const growth = this.writeOperations.appendTableRows.find(
-      ({ operations }) => operations.includes(operation),
+    const growth = this.writeOperations.appendTableRows.find(({ operations }) =>
+      operations.includes(operation),
     );
     if (growth !== undefined) {
       const grown = this.ss.table(growth.tableId);

@@ -2,10 +2,10 @@ import {
   type ColumnName,
   getColumnTraitByName,
 } from "../../01_SpreadsheetSchema/columnConfigsTypes";
-import { getSheetTraitByName } from "../../01_SpreadsheetSchema/sheetConfigsTypes";
-import { SheetBaseNamed } from "../../04_SpreadsheetNamed/ClassBases/SheetBaseNamed";
-import type { SheetNamed } from "../../04_SpreadsheetNamed/SheetNamed";
+import { getTableTraitByName } from "../../01_SpreadsheetSchema/tableConfigsTypes";
+import { TableBaseNamed } from "../../04_SpreadsheetNamed/ClassBases/TableBaseNamed";
 import { SpreadsheetNamed } from "../../04_SpreadsheetNamed/SpreadsheetNamed";
+import type { TableNamed } from "../../04_SpreadsheetNamed/TableNamed";
 import { liveColIndex } from "./floorColumnLocation";
 import {
   columnNameByHeader,
@@ -15,41 +15,52 @@ import {
   spreadsheetConfigFeedbackColumnNames,
 } from "./floorSeedLookups";
 
+export const retiredSheetGidHeader = "Sheet GID";
+
 export class FloorTabColumnCreator<
-  SN extends FloorSheetName,
-> extends SheetBaseNamed<SN> {
+  TN extends FloorSheetName,
+> extends TableBaseNamed<TN> {
   get ss(): SpreadsheetNamed {
     return new SpreadsheetNamed(this.spreadsheetNamedProps);
   }
-  get sheet(): SheetNamed<SN> {
-    return this.ss.sheet(this.sheetName);
+  get table(): TableNamed<TN> {
+    return this.ss.table(this.tableName);
   }
   hasFloorTable(): boolean {
-    const sheetGid = getSheetTraitByName(this.sheetName, "sheetGid");
+    const sheetGid = getTableTraitByName(this.tableName, "sheetGid");
     if (!this.ss.raw.gidIsActive(sheetGid)) return false;
-    return this.sheet.raw.hasOneTable();
+    return this.table.raw.hasOneTable();
   }
   assertMissingAreRecreatable(): void {
     this._assertTableMenuSpaceIsFirst();
-    const recreatable = recreatableColumns()[this.sheetName];
+    const recreatable = recreatableColumns()[this.tableName];
     this._missingColumns().forEach((floorColumn) => {
-      const columnName = columnNameByHeader(this.sheetName, floorColumn.header);
+      const columnName = columnNameByHeader(this.tableName, floorColumn.header);
       if (recreatable.includes(columnName)) return;
+      this._assertSheetGidIsConverted();
       throw new Error(
-        `${floorColumnLabel(floorColumn.header)} is missing from ${this.sheet.raw.title}, and recreating it empty would lose what it held. Undo the delete, or insert a column headed "${floorColumn.header}" in its Table and fill it.`,
+        `${floorColumnLabel(floorColumn.header)} is missing from ${this.table.raw.sheet.title}, and recreating it empty would lose what it held. Undo the delete, or insert a column headed "${floorColumn.header}" in its Table and fill it.`,
       );
     });
   }
+  // A Sheet GID column means the tab predates Table IDs, which only the conversion chore carries over.
+  private _assertSheetGidIsConverted(): void {
+    const rawTable = this.table.raw;
+    if (!rawTable.headRow("header").hasValue(retiredSheetGidHeader)) return;
+    throw new Error(
+      `${rawTable.sheet.title} still has a "${retiredSheetGidHeader}" column. Run the convertSheetConfigToTableConfig chore before syncing or regenerating configs.`,
+    );
+  }
   // Putting it back first would need a mid-Table insert, and column inserts land only at the Table end.
   private _assertTableMenuSpaceIsFirst(): void {
-    if (this.sheetName !== "spreadsheetConfig") return;
-    const meta = this.sheet.raw.meta;
+    if (this.tableName !== "spreadsheetConfig") return;
+    const rawTable = this.table.raw;
     const header = getColumnTraitByName(
       "spreadsheetConfig",
       "tableMenuSpace",
       "header",
     );
-    const colIndex = liveColIndex(meta, {
+    const colIndex = liveColIndex(rawTable, {
       header,
       columnId: getColumnTraitByName(
         "spreadsheetConfig",
@@ -57,46 +68,48 @@ export class FloorTabColumnCreator<
         "columnId",
       ),
     });
-    if (colIndex === undefined || colIndex === meta.fullTableColIndexes[0]) {
+    if (
+      colIndex === undefined ||
+      colIndex === rawTable.fullTableColIndexes[0]
+    ) {
       return;
     }
     throw new Error(
-      `${floorColumnLabel(header)} is no longer the first column of ${this.sheet.raw.title}'s Table. Undo the move, or move it back to the Table's first column.`,
+      `${floorColumnLabel(header)} is no longer the first column of ${this.table.raw.sheet.title}'s Table. Undo the move, or move it back to the Table's first column.`,
     );
   }
   createMissing(): string[] {
-    const meta = this.sheet.raw.meta;
     return this._missingColumns().map((floorColumn) => {
-      meta.insertColumnAtEnd({
+      this.table.raw.appendColumn({
         columnId: floorColumn.columnId,
         header: floorColumn.header,
-        colGroupName: floorColumn.groupHeading,
+        groupHeading1: floorColumn.groupHeading,
       });
-      return `${this.sheet.raw.title} · ${floorColumn.header} (${floorColumn.columnId})`;
+      return `${this.table.raw.sheet.title} · ${floorColumn.header} (${floorColumn.columnId})`;
     });
   }
   private _missingColumns(): FloorColumnRestore[] {
-    const meta = this.sheet.raw.meta;
-    return floorColumnsToRestore(this.sheetName).filter(
-      (floorColumn) => liveColIndex(meta, floorColumn) === undefined,
+    const rawTable = this.table.raw;
+    return floorColumnsToRestore(this.tableName).filter(
+      (floorColumn) => liveColIndex(rawTable, floorColumn) === undefined,
     );
   }
 }
 
-export function floorRecreatableColumns<SN extends FloorSheetName>(
-  sheetName: SN,
-): readonly ColumnName<SN>[] {
-  return recreatableColumns()[sheetName];
+export function floorRecreatableColumns<TN extends FloorSheetName>(
+  tableName: TN,
+): readonly ColumnName<TN>[] {
+  return recreatableColumns()[tableName];
 }
 
 // Only columns the sync or an endpoint refills by itself; recreating any other empty loses what it declared.
 function recreatableColumns(): {
-  [SN in FloorSheetName]: readonly ColumnName<SN>[];
+  [TN in FloorSheetName]: readonly ColumnName<TN>[];
 } {
   return {
     spreadsheetConfig: spreadsheetConfigFeedbackColumnNames(),
-    sheetConfig: ["sheetTitle"],
-    columnConfig: ["sheetTitle", "header"],
+    tableConfig: ["tableName", "sheetTitle"],
+    columnConfig: ["tableName", "header"],
   };
 }
 

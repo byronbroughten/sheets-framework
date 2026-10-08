@@ -1,11 +1,11 @@
 import type {
   ColumnConfigsBase,
-  SheetConfigsBase,
+  TableConfigsBase,
   ValueConfigsBase,
 } from "./makeConfigs";
 
 export interface ConfigSetBase {
-  sheetConfigs: SheetConfigsBase;
+  tableConfigs: TableConfigsBase;
   columnConfigs: ColumnConfigsBase;
   valueConfigs: ValueConfigsBase;
 }

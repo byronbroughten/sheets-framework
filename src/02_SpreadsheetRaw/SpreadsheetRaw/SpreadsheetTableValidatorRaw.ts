@@ -5,6 +5,7 @@ import type {
 import { SpreadsheetSchema } from "../../01_SpreadsheetSchema/SpreadsheetSchema";
 import { Val } from "../../utils/Val";
 import { SpreadsheetBaseRaw } from "../ClassBases/SpreadsheetBaseRaw";
+import { originOf } from "../ClassBases/TableBaseRaw";
 import { SpreadsheetRaw } from "../SpreadsheetRaw";
 
 interface SheetIdentity {
@@ -40,7 +41,9 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
     if (sheetState === undefined) {
       return { kind: "none" };
     }
-    const [tableId, ...otherTableIds] = this.ss.sheet(sheetGid).tableIds();
+    const [tableId, ...otherTableIds] = this.ss
+      .tableOnSheet(sheetGid)
+      .tableIds();
     if (otherTableIds.length > 0) {
       return { kind: "extra" };
     }
@@ -55,14 +58,21 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
       return { kind: "misplaced", misplacement: { kind: "missing", sheetGid } };
     }
     // Read off the state, since the Table refuses a header-only body before placement is judged.
-    const { startRowIndex, startColumnIndex } = Val.assert(
+    const properties = Val.assert(
       this.spreadsheetStateRaw.tables.get(tableId)?.properties,
       `properties of Table ${tableId}`,
     );
-    if (!this.schema.isTableStart(startRowIndex, startColumnIndex)) {
+    const { recordedOrigin } = this.schema.sheetByGid(sheetGid);
+    if (!recordedOrigin.equals(originOf(properties))) {
+      const { startRowIndex, startColumnIndex } = properties;
       return {
         kind: "misplaced",
-        misplacement: { kind: "moved", sheetGid, startRowIndex, startColumnIndex },
+        misplacement: {
+          kind: "moved",
+          sheetGid,
+          startRowIndex,
+          startColumnIndex,
+        },
       };
     }
     // Before the band test, which reads the column ID row through the Table's body origin.
@@ -103,14 +113,18 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
   }
   private _holdsOwnColumnIds(sheetGid: number): boolean {
     const { idPrefix } = this.schema.sheetByGid(sheetGid);
-    return this.ss.sheetMeta(sheetGid).holdsOnlyColumnIdsOf(idPrefix);
+    return this.ss
+      .tableOnSheet(sheetGid)
+      .columnResolver.holdsOnlyColumnIdsOf(idPrefix);
   }
   private _sheetsWithExtraTables(): SheetIdentity[] {
     const extraTables: SheetIdentity[] = [];
     this.spreadsheetStateRaw.sheets.forEach((_, sheetGid) => {
+      const table = this.ss.tableOnSheet(sheetGid);
       if (
-        this.ss.sheet(sheetGid).tableIds().length <= 1 ||
-        !this.schema.isInSheetGids(sheetGid)
+        table.tableIds().length <= 1 ||
+        !this.schema.isInSheetGids(sheetGid) ||
+        table.recordedTableId() !== undefined
       ) {
         return;
       }
@@ -129,21 +143,24 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
   }
   private _misplacementReason(misplacement: Misplacement): string {
     if (misplacement.kind === "missing") {
-      return `has no Table starting at ${this.schema.tableStartLabel}`;
+      return `has no Table starting at ${this._recordedStartLabel(misplacement)}`;
     } else if (misplacement.kind === "moved") {
       return `has a Table that starts at ${this.schema.positionLabel(
         misplacement.startRowIndex,
         misplacement.startColumnIndex,
-      )}, not ${this.schema.tableStartLabel}`;
+      )}, not ${this._recordedStartLabel(misplacement)}`;
     } else if (misplacement.kind === "band-shifted") {
       const { idPrefix } = this.schema.sheetByGid(misplacement.sheetGid);
       const colIdRowLabel = this.ss
-        .sheetMeta(misplacement.sheetGid)
+        .tableOnSheet(misplacement.sheetGid)
         .rowLabel(this.schema.colIdRowIndex);
       return `needs its own "${idPrefix}" column IDs, and only those, in ${colIdRowLabel}`;
     } else {
       throw new Error(`Unknown misplacement ${JSON.stringify(misplacement)}.`);
     }
+  }
+  private _recordedStartLabel({ sheetGid }: SheetIdentity): string {
+    return this.schema.sheetByGid(sheetGid).recordedStartLabel;
   }
   private _extraTablesSentence(extraTables: SheetIdentity[]): string {
     const names = extraTables
@@ -152,6 +169,6 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
     return `${extraTables.length} sheet(s) have more than one Table — delete the extras so each sheet has exactly one: ${names}`;
   }
   private _sheetLabel({ sheetGid }: SheetIdentity): string {
-    return this.ss.sheet(sheetGid).sheetLabel;
+    return this.ss.tableOnSheet(sheetGid).sheetLabel;
   }
 }

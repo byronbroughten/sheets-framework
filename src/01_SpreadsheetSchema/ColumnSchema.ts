@@ -8,69 +8,69 @@ import {
   getColumnTraitById,
   type MakeColumnFullName,
 } from "./columnConfigsTypes";
-import type { SheetName } from "./sheetConfigsTypes";
-import { SheetSchema, type SheetSchemaProps } from "./SheetSchema";
 import { SpreadsheetBaseSchema } from "./SpreadsheetBaseSchema";
+import type { TableName } from "./tableConfigsTypes";
+import { TableSchema, type TableSchemaProps } from "./TableSchema";
 import { getValTrait, type ValueSchema } from "./valueSchemas";
 
 interface ColumnSchemaProps<
-  SN extends SheetName,
-  CN extends ColumnName<SN>,
-> extends SheetSchemaProps<SN> {
+  TN extends TableName,
+  CN extends ColumnName<TN>,
+> extends TableSchemaProps<TN> {
   columnId: string;
   columnName: CN;
 }
 
 export class ColumnSchema<
-  SN extends SheetName = SheetName,
-  CN extends ColumnName<SN> = ColumnName<SN>,
+  TN extends TableName = TableName,
+  CN extends ColumnName<TN> = ColumnName<TN>,
 > extends SpreadsheetBaseSchema {
   readonly sheetGid: number;
-  readonly sheetName: SN;
+  readonly tableName: TN;
   readonly columnId: string;
   readonly columnName: CN;
   constructor({
     sheetGid,
-    sheetName,
+    tableName,
     columnId,
     columnName,
-  }: ColumnSchemaProps<SN, CN>) {
+  }: ColumnSchemaProps<TN, CN>) {
     super();
     this.sheetGid = sheetGid;
-    this.sheetName = sheetName;
+    this.tableName = tableName;
     this.columnId = columnId;
     this.columnName = columnName;
   }
-  static fromColumnName<SN extends SheetName, CN extends ColumnName<SN>>(
-    sheetName: SN,
+  static fromColumnName<TN extends TableName, CN extends ColumnName<TN>>(
+    tableName: TN,
     columnName: CN,
-  ): ColumnSchema<SN, CN> {
-    return SheetSchema.fromSheetName(sheetName).columnByName(columnName);
+  ): ColumnSchema<TN, CN> {
+    return TableSchema.fromSheetName(tableName).columnByName(columnName);
   }
   static fromColumnId(sheetGid: number, columnId: string): ColumnSchema {
-    return SheetSchema.fromSheetGid(sheetGid).columnById(columnId);
+    return TableSchema.fromSheetGid(sheetGid).columnById(columnId);
   }
-  get sheet(): SheetSchema<SN> {
-    return new SheetSchema({
+  get sheet(): TableSchema<TN> {
+    return new TableSchema({
       sheetGid: this.sheetGid,
-      sheetName: this.sheetName,
+      tableName: this.tableName,
     });
   }
   trait<TK extends keyof ColumnConfig>(
     key: TK,
-  ): ColumnConfigAt<SN, CN>[TK & keyof ColumnConfigAt<SN, CN>] {
+  ): ColumnConfigAt<TN, CN>[TK & keyof ColumnConfigAt<TN, CN>] {
     return getColumnTraitById(
       this.sheetGid,
       this.columnId,
       key,
-    ) as ColumnConfigAt<SN, CN>[TK & keyof ColumnConfigAt<SN, CN>];
+    ) as ColumnConfigAt<TN, CN>[TK & keyof ColumnConfigAt<TN, CN>];
   }
-  get valueName(): ColumnConfigAt<SN, CN>["valueName"] {
+  get valueName(): ColumnConfigAt<TN, CN>["valueName"] {
     return this.trait("valueName");
   }
   valTrait<VK extends ValueSchemaKey>(
     key: VK,
-  ): ValueSchema<ColumnConfigAt<SN, CN>["valueName"]>[VK] {
+  ): ValueSchema<ColumnConfigAt<TN, CN>["valueName"]>[VK] {
     return getValTrait(this.valueName, key);
   }
   get isFormula(): boolean {
@@ -79,23 +79,23 @@ export class ColumnSchema<
   get emptyValueAllowed(): boolean {
     return this.trait("emptyValueAllowed");
   }
-  get fullName(): MakeColumnFullName<SN, CN> & ColumnFullName {
+  get fullName(): MakeColumnFullName<TN, CN> & ColumnFullName {
     return this.combineNames(
-      this.sheetName,
+      this.tableName,
       this.columnName as string,
-    ) as MakeColumnFullName<SN, CN> & ColumnFullName;
+    ) as MakeColumnFullName<TN, CN> & ColumnFullName;
   }
   makeRowId(): string {
     return this.sheet.makeRowId();
   }
-  makeDefaultDataValue(): ColumnValue<SN, CN> {
+  makeDefaultDataValue(): ColumnValue<TN, CN> {
     if ((this.columnName as string) === "id") {
-      return this.makeRowId() as ColumnValue<SN, CN>;
+      return this.makeRowId() as ColumnValue<TN, CN>;
     } else {
-      return this.valTrait("makeDefault")() as ColumnValue<SN, CN>;
+      return this.valTrait("makeDefault")() as ColumnValue<TN, CN>;
     }
   }
-  validate(value: unknown): ColumnValue<SN, CN> | "" {
+  validate(value: unknown): ColumnValue<TN, CN> | "" {
     if (this.emptyValueAllowed && value === "") {
       return value;
     } else {

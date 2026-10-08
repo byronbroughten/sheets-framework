@@ -5,26 +5,31 @@ import {
   getColumnTraitByName,
 } from "../01_SpreadsheetSchema/columnConfigsTypes";
 import {
-  getSheetTraitByName,
-  type SheetName,
-} from "../01_SpreadsheetSchema/sheetConfigsTypes";
+  getTableTraitByName,
+  type TableName,
+} from "../01_SpreadsheetSchema/tableConfigsTypes";
+import { SheetRaw } from "../02_SpreadsheetRaw/SheetRaw";
+import { placedTableSheet } from "../02_SpreadsheetRaw/spreadsheetRawTestSupport";
+import { CellIdentified } from "../03_SpreadsheetIdentified/CellIdentified";
+import { HeadRowIdentified } from "../03_SpreadsheetIdentified/HeadRowIdentified";
 import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
-import {
-  blankSheetConfigRow,
-  filledSheetConfigRow,
-  sheetConfigColumnIdRow,
-  sheetConfigGid,
-  sheetTitleColIndex,
-  stubSheetConfigSheet,
-} from "../testSupport/fakeSheetConfigSheet";
 import {
   buildGridRows,
   type FakeCell,
   type FakeCellValue,
+  type FakeSheetProperties,
   type FakeSheetsService,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
+import {
+  blankTableConfigRow,
+  filledTableConfigRow,
+  sheetTitleColIndex,
+  stubTableConfigSheet,
+  tableConfigColumnIdRow,
+  tableConfigGid,
+} from "../testSupport/fakeTableConfigSheet";
 import {
   assertNotType,
   assertType,
@@ -32,12 +37,11 @@ import {
 } from "../testSupport/typeAssertions";
 import { SerialDate } from "../utils/SerialDate";
 import type { SpreadsheetNamedProps } from "./ClassBases/SpreadsheetBaseNamed";
-import { ColumnMetaNamed } from "./ColumnMetaNamed";
 import { ColumnNamed } from "./ColumnNamed";
 import { RowNamed } from "./RowNamed";
-import { SheetMetaNamed } from "./SheetMetaNamed";
 import { SheetNamed } from "./SheetNamed";
 import { SpreadsheetNamed } from "./SpreadsheetNamed";
+import { TableNamed } from "./TableNamed";
 
 describe("SpreadsheetNamed props", () => {
   it("have no Named-state member", () => {
@@ -88,42 +92,194 @@ describe("SpreadsheetNamed dates", () => {
 
 describe("SpreadsheetNamed navigation", () => {
   it("gives each accessor the class its return type names", () => {
+    stubSheetsService({ sheets: [itemSheet()] });
+    const ss = SpreadsheetNamed.init();
+    const table = ss.table("item");
+    const sheet = ss.sheet(itemSheetTitle);
+    const column = table.column("id");
+    const headRow = table.headRow("action");
+    const headCell = column.headCell("groupHeading2");
+
+    assertType<IsExactly<typeof table, TableNamed<"item">>>(true);
+    assertType<IsExactly<typeof sheet, SheetNamed>>(true);
+    assertType<IsExactly<typeof table.sheet, SheetNamed>>(true);
+    assertType<IsExactly<typeof sheet.raw, SheetRaw>>(true);
+    assertType<IsExactly<typeof column, ColumnNamed<"item", "id">>>(true);
+    assertType<IsExactly<typeof column.table, TableNamed<"item">>>(true);
+    assertType<IsExactly<ReturnType<typeof table.row>, RowNamed<"item">>>(true);
+    assertType<IsExactly<typeof headRow, HeadRowIdentified<"action">>>(true);
+    assertType<
+      IsExactly<typeof headCell, CellIdentified<"boolean" | "string">>
+    >(true);
+
+    expect(table).toBeInstanceOf(TableNamed);
+    expect(sheet).toBeInstanceOf(SheetNamed);
+    expect(table.sheet).toBeInstanceOf(SheetNamed);
+    expect(sheet.raw).toBeInstanceOf(SheetRaw);
+    expect(column).toBeInstanceOf(ColumnNamed);
+    expect(column.table).toBeInstanceOf(TableNamed);
+    expect(table.row(0)).toBeInstanceOf(RowNamed);
+    expect(headRow).toBeInstanceOf(HeadRowIdentified);
+    expect(headCell).toBeInstanceOf(CellIdentified);
+  });
+
+  it("offers no profile: descriptive facts stay at Raw", () => {
+    assertType<
+      IsExactly<
+        Extract<
+          "profile",
+          keyof TableNamed<"item"> | keyof ColumnNamed<"item", "id">
+        >,
+        never
+      >
+    >(true);
+  });
+
+  it("offers no Meta view", () => {
+    assertType<
+      IsExactly<
+        Extract<
+          "meta" | "sheetMeta",
+          | keyof SpreadsheetNamed
+          | keyof TableNamed<"item">
+          | keyof ColumnNamed<"item", "id">
+        >,
+        never
+      >
+    >(true);
+  });
+
+  it("reaches the Table through ss.tables and back through each row's and column's table getter", () => {
     stubSheetsService();
     const ss = SpreadsheetNamed.init();
-    const sheet = ss.sheet("item");
-    const sheetMeta = ss.sheetMeta("item");
-    const column = sheet.column("id");
-    const columnMeta = sheetMeta.column("id");
+    const table = ss.table("item");
+    const tables = ss.tables("item", "valueTypes");
+    const row = table.row(0);
+    const column = table.column("id");
 
-    assertType<IsExactly<typeof sheet, SheetNamed<"item">>>(true);
-    assertType<IsExactly<typeof sheetMeta, SheetMetaNamed<"item">>>(true);
-    assertType<IsExactly<typeof sheet.meta, SheetMetaNamed<"item">>>(true);
-    assertType<IsExactly<typeof sheetMeta.primary, SheetNamed<"item">>>(true);
-    assertType<IsExactly<typeof column, ColumnNamed<"item", "id">>>(true);
-    assertType<IsExactly<typeof columnMeta, ColumnMetaNamed<"item", "id">>>(
-      true,
-    );
-    assertType<IsExactly<typeof column.sheet, SheetNamed<"item">>>(true);
-    assertType<IsExactly<typeof columnMeta.sheet, SheetMetaNamed<"item">>>(
-      true,
-    );
-    assertType<IsExactly<typeof column.meta, ColumnMetaNamed<"item", "id">>>(
-      true,
-    );
-    assertType<IsExactly<typeof columnMeta.primary, ColumnNamed<"item", "id">>>(
-      true,
-    );
-    assertType<IsExactly<ReturnType<typeof sheet.row>, RowNamed<"item">>>(true);
+    assertType<IsExactly<typeof table, TableNamed<"item">>>(true);
+    assertType<
+      IsExactly<
+        typeof tables,
+        { item: TableNamed<"item">; valueTypes: TableNamed<"valueTypes"> }
+      >
+    >(true);
+    assertType<IsExactly<typeof row.table, TableNamed<"item">>>(true);
+    assertType<IsExactly<typeof column.table, TableNamed<"item">>>(true);
 
-    expect(sheet.meta).toBeInstanceOf(SheetMetaNamed);
-    expect(sheetMeta.primary).toBeInstanceOf(SheetNamed);
-    expect(column).toBeInstanceOf(ColumnNamed);
-    expect(columnMeta).toBeInstanceOf(ColumnMetaNamed);
-    expect(column.sheet).toBeInstanceOf(SheetNamed);
-    expect(columnMeta.sheet).toBeInstanceOf(SheetMetaNamed);
-    expect(column.meta).toBeInstanceOf(ColumnMetaNamed);
-    expect(columnMeta.primary).toBeInstanceOf(ColumnNamed);
-    expect(sheet.row(0)).toBeInstanceOf(RowNamed);
+    expect(table).toBeInstanceOf(TableNamed);
+    expect(tables.valueTypes).toBeInstanceOf(TableNamed);
+    expect(row.table).toBeInstanceOf(TableNamed);
+    expect(column.table).toBeInstanceOf(TableNamed);
+    expect(tables.item).toEqual(table);
+    expect(row.table).toEqual(table);
+    expect(column.table).toEqual(table);
+  });
+});
+
+describe("SheetNamed", () => {
+  it("reaches a tab by its title, the same container its Table reaches", () => {
+    stubSheetsService({ sheets: [itemSheet()] });
+    const ss = SpreadsheetNamed.init();
+    const sheet = ss.sheet(itemSheetTitle);
+
+    expect(sheet.title).toBe(itemSheetTitle);
+    expect(sheet.sheetGid).toBe(getTableTraitByName("item", "sheetGid"));
+    expect(ss.table("item").sheet.title).toBe(itemSheetTitle);
+  });
+
+  it("lists the managed Tables the configs place on it", () => {
+    stubSheetsService({ sheets: [itemSheet()] });
+    const ss = SpreadsheetNamed.init();
+
+    expect(ss.sheet(itemSheetTitle).tableNames).toEqual(["item"]);
+    expect(ss.table("item").sheet.tableNames).toEqual(["item"]);
+  });
+
+  it("refuses a title no tab carries", () => {
+    stubSheetsService({ sheets: [itemSheet()] });
+    const ss = SpreadsheetNamed.init();
+
+    expect(() => ss.sheet("No Such Tab")).toThrow(/No Such Tab/);
+  });
+});
+
+describe("Named head rows", () => {
+  const actionSheetRow = 2;
+  const checkboxColumnId = getColumnTraitByName(
+    "valueTypes",
+    "checkbox",
+    "columnId",
+  );
+
+  function fetchedHeadRows() {
+    const { grid } = stubSheetsService({
+      sheets: [
+        {
+          sheetId: valueTypesGid,
+          title: "Value Types",
+          rows: buildGridRows({
+            0: [checkboxColumnId],
+            [actionSheetRow]: [true],
+            3: ["Checkbox"],
+            4: [true],
+          }),
+          table: { endRowIndex: 5 },
+        },
+      ],
+    });
+    const ss = SpreadsheetNamed.init();
+    ss.table("valueTypes").headRow("action").prepFetchFull();
+    ss.table("valueTypes").headRow("groupHeading1").prepFetchFull();
+    ss.fetchAllPrepped();
+    return { grid, ss, table: ss.table("valueTypes") };
+  }
+
+  it("reads and writes a head cell by column name and a head row by column ID", () => {
+    const { grid, ss, table } = fetchedHeadRows();
+
+    expect(table.column("checkbox").headCell("action").valueOrEmpty()).toBe(
+      true,
+    );
+    expect(table.headRow("action").valueOrEmpty(checkboxColumnId)).toBe(true);
+
+    table.column("checkbox").headCell("groupHeading2").updateValue("Due");
+    ss.batchUpdateGSheets();
+
+    expect(grid.sheet(valueTypesGid).cell(actionSheetRow, 0)).toBe("Due");
+  });
+
+  it("reads a checkbox column's blank head cell as blank text", () => {
+    const { table } = fetchedHeadRows();
+
+    expect(
+      table.column("checkbox").headCell("groupHeading1").valueOrEmpty(),
+    ).toBe("");
+  });
+
+  it("writes a formula column's head cell as plain text", () => {
+    stubSheetsService({
+      sheets: [
+        {
+          sheetId: getTableTraitByName("computed", "sheetGid"),
+          title: "Computed",
+          rows: buildGridRows({
+            0: [getColumnTraitByName("computed", "rowNumber", "columnId")],
+          }),
+          table: { endRowIndex: 6 },
+        },
+      ],
+    });
+    const ss = SpreadsheetNamed.init();
+    ss.raw.fetchAllSheetProperties();
+
+    expect(() =>
+      ss
+        .table("computed")
+        .column("rowNumber")
+        .headCell("header")
+        .updateValue("Row number"),
+    ).not.toThrow();
   });
 });
 
@@ -141,8 +297,8 @@ describe("SpreadsheetNamed.fetch", () => {
 });
 
 const topDataRowIndex = expectedSheetLayout.tableHeaderRowIndex + 1;
-const datesGid = getSheetTraitByName("dates", "sheetGid");
-const valueTypesGid = getSheetTraitByName("valueTypes", "sheetGid");
+const datesGid = getTableTraitByName("dates", "sheetGid");
+const valueTypesGid = getTableTraitByName("valueTypes", "sheetGid");
 const idColumnId = getColumnTraitByName("dates", "id", "columnId");
 const requiredDateColumnId = getColumnTraitByName(
   "dates",
@@ -192,18 +348,18 @@ function stubDatesAndValueTypesWithBlankRow() {
   });
 }
 
-function fetchedDatesSheet(): SheetNamed<"dates"> {
+function fetchedDatesSheet(): TableNamed<"dates"> {
   const ss = SpreadsheetNamed.init();
-  ss.sheet("dates").prepFetchColumnsFull("id", "requiredDate", "optionalDate");
+  ss.table("dates").prepFetchColumnsFull("id", "requiredDate", "optionalDate");
   ss.fetchAllPrepped();
-  return ss.sheet("dates");
+  return ss.table("dates");
 }
 
-function fetchedValueTypesSheet(): SheetNamed<"valueTypes"> {
+function fetchedValueTypesSheet(): TableNamed<"valueTypes"> {
   const ss = SpreadsheetNamed.init();
-  ss.sheet("valueTypes").prepFetchColumnsFull("checkbox", "numberValue");
+  ss.table("valueTypes").prepFetchColumnsFull("checkbox", "numberValue");
   ss.fetchAllPrepped();
-  return ss.sheet("valueTypes");
+  return ss.table("valueTypes");
 }
 
 describe("Named value accessors", () => {
@@ -412,10 +568,11 @@ describe("Named value accessors", () => {
   });
 });
 
-function fetchedSheetConfig(): SpreadsheetNamed {
+function fetchedTableConfig(): SpreadsheetNamed {
   const ss = SpreadsheetNamed.init();
-  ss.sheet("sheetConfig").prepFetchColumnsFull(
-    "sheetGid",
+  ss.table("tableConfig").prepFetchColumnsFull(
+    "tableId",
+    "tableName",
     "sheetTitle",
     "letApiAccess",
   );
@@ -436,13 +593,13 @@ function tableDataRows(
   });
 }
 
-function sheetConfigTitles(service: FakeSheetsService): FakeCellValue[] {
-  return tableDataRows(service, sheetConfigGid).map(
+function tableConfigSheetTitles(service: FakeSheetsService): FakeCellValue[] {
+  return tableDataRows(service, tableConfigGid).map(
     (row) => row[sheetTitleColIndex] ?? null,
   );
 }
 
-describe("SheetNamed.rowByValue", () => {
+describe("TableNamed.rowByValue", () => {
   it("returns the one row whose column holds the value", () => {
     stubDatesAndValueTypesWithBlankRow();
 
@@ -495,135 +652,134 @@ function stubDatesWithDuplicateIds() {
   });
 }
 
-describe("SheetNamed.DELETE_ALL_DATA_ROWS", () => {
+describe("TableNamed.DELETE_ALL_DATA_ROWS", () => {
   it("deletes every data row but the top one, and leaves that one blank", () => {
-    const service = stubSheetConfigSheet({
-      4: filledSheetConfigRow,
-      5: filledSheetConfigRow,
-      6: filledSheetConfigRow,
+    const service = stubTableConfigSheet({
+      4: filledTableConfigRow,
+      5: filledTableConfigRow,
+      6: filledTableConfigRow,
     });
 
-    const ss = fetchedSheetConfig();
-    ss.sheet("sheetConfig").DELETE_ALL_DATA_ROWS();
+    const ss = fetchedTableConfig();
+    ss.table("tableConfig").DELETE_ALL_DATA_ROWS();
     ss.batchUpdateGSheets();
 
-    expect(tableDataRows(service, sheetConfigGid)).toEqual([["", "", ""]]);
-    expect(ss.sheet("sheetConfig").topRow.isBlank).toBe(true);
+    expect(tableDataRows(service, tableConfigGid)).toEqual([["", "", "", ""]]);
+    expect(ss.table("tableConfig").topRow.isBlank).toBe(true);
   });
 
   it("sends no batch update for a sheet already down to its blank row", () => {
-    const service = stubSheetConfigSheet({
-      4: blankSheetConfigRow,
+    const service = stubTableConfigSheet({
+      4: blankTableConfigRow,
     });
 
-    const ss = fetchedSheetConfig();
-    ss.sheet("sheetConfig").DELETE_ALL_DATA_ROWS();
+    const ss = fetchedTableConfig();
+    ss.table("tableConfig").DELETE_ALL_DATA_ROWS();
     ss.batchUpdateGSheets();
 
     expect(service.batchUpdateCount()).toBe(0);
   });
 });
 
-describe("SheetNamed.appendRowWithVals", () => {
+describe("TableNamed.appendRowWithVals", () => {
   it("reuses the blank row of an emptied sheet rather than appending beneath it", () => {
-    const service = stubSheetConfigSheet({
-      4: blankSheetConfigRow,
+    const service = stubTableConfigSheet({
+      4: blankTableConfigRow,
     });
 
-    const ss = fetchedSheetConfig();
-    const row = ss.sheet("sheetConfig").appendRowWithVals({
+    const ss = fetchedTableConfig();
+    const row = ss.table("tableConfig").appendRowWithVals({
       sheetTitle: "Item",
     });
     ss.batchUpdateGSheets();
 
     expect(row.rowIndex).toBe(0);
-    expect(sheetConfigTitles(service)).toEqual(["Item"]);
+    expect(tableConfigSheetTitles(service)).toEqual(["Item"]);
     expect(row.value("sheetTitle")).toBe("Item");
   });
 
   it("appends beneath a one-row sheet that still holds data", () => {
-    const service = stubSheetConfigSheet({
-      4: filledSheetConfigRow,
+    const service = stubTableConfigSheet({
+      4: filledTableConfigRow,
     });
 
-    const ss = fetchedSheetConfig();
+    const ss = fetchedTableConfig();
     const row = ss
-      .sheet("sheetConfig")
+      .table("tableConfig")
       .appendRowWithVals({ sheetTitle: "Log" });
     ss.batchUpdateGSheets();
 
     expect(row.rowIndex).toBe(1);
-    expect(sheetConfigTitles(service)).toEqual(["Item", "Log"]);
+    expect(tableConfigSheetTitles(service)).toEqual(["Item", "Log"]);
   });
 
   it("reuses the blank row once and appends for the second row", () => {
-    const service = stubSheetConfigSheet({
-      4: blankSheetConfigRow,
+    const service = stubTableConfigSheet({
+      4: blankTableConfigRow,
     });
 
-    const ss = fetchedSheetConfig();
-    const sheet = ss.sheet("sheetConfig");
+    const ss = fetchedTableConfig();
+    const sheet = ss.table("tableConfig");
     const first = sheet.appendRowWithVals({ sheetTitle: "one" });
     const second = sheet.appendRowWithVals({ sheetTitle: "two" });
     ss.batchUpdateGSheets();
 
     expect([first.rowIndex, second.rowIndex]).toEqual([0, 1]);
-    expect(sheetConfigTitles(service)).toEqual(["one", "two"]);
+    expect(tableConfigSheetTitles(service)).toEqual(["one", "two"]);
   });
 
   // The wipe has to lift the reservation the first append took, or the second strands a row.
   it("hands the same row to a second append once a wipe has released it", () => {
-    const service = stubSheetConfigSheet({
-      4: blankSheetConfigRow,
+    const service = stubTableConfigSheet({
+      4: blankTableConfigRow,
     });
 
-    const ss = fetchedSheetConfig();
-    const sheet = ss.sheet("sheetConfig");
+    const ss = fetchedTableConfig();
+    const sheet = ss.table("tableConfig");
     sheet.appendRowWithVals({ sheetTitle: "one" });
     sheet.DELETE_ALL_DATA_ROWS();
     const rebuilt = sheet.appendRowWithVals({ sheetTitle: "two" });
     ss.batchUpdateGSheets();
 
     expect(rebuilt.rowIndex).toBe(0);
-    expect(sheetConfigTitles(service)).toEqual(["two"]);
+    expect(tableConfigSheetTitles(service)).toEqual(["two"]);
     expect(rebuilt.value("sheetTitle")).toBe("two");
   });
 
   it("reuses the row a wipe just cleared, so the wipe and rebuild leave only rebuilt rows", () => {
-    const service = stubSheetConfigSheet({
-      4: filledSheetConfigRow,
-      5: filledSheetConfigRow,
+    const service = stubTableConfigSheet({
+      4: filledTableConfigRow,
+      5: filledTableConfigRow,
     });
 
-    const ss = fetchedSheetConfig();
-    const sheet = ss.sheet("sheetConfig");
+    const ss = fetchedTableConfig();
+    const sheet = ss.table("tableConfig");
     sheet.DELETE_ALL_DATA_ROWS();
     const row = sheet.appendRowWithVals({ sheetTitle: "new" });
     ss.batchUpdateGSheets();
 
     expect(row.rowIndex).toBe(0);
-    expect(sheetConfigTitles(service)).toEqual(["new"]);
+    expect(tableConfigSheetTitles(service)).toEqual(["new"]);
   });
 });
 
-describe("SheetNamed.appendRowWithVals, growing a lone blank row", () => {
+describe("TableNamed.appendRowWithVals, growing a lone blank row", () => {
   const blankRowColour = { red: 0.851, green: 0.918, blue: 0.827 };
   const looseRowIndex = topDataRowIndex + 2;
   // The inserted rows should copy the blank row's colour; the loose cell below shows any insert.
   function stubColouredBlankRowAboveLooseCell(): FakeSheetsService {
-    const blankRow = blankSheetConfigRow.map(
-      (cell, colIndex): FakeCell =>
-        colIndex === sheetTitleColIndex
-          ? { value: null, backgroundColor: blankRowColour }
-          : cell,
+    const blankRow = blankTableConfigRow.map((cell, colIndex): FakeCell =>
+      colIndex === sheetTitleColIndex
+        ? { value: null, backgroundColor: blankRowColour }
+        : cell,
     );
     return stubSheetsService({
       sheets: [
         {
-          sheetId: sheetConfigGid,
-          title: "Sheet Config",
+          sheetId: tableConfigGid,
+          title: "Table Config",
           rows: buildGridRows({
-            0: sheetConfigColumnIdRow,
+            0: tableConfigColumnIdRow,
             [topDataRowIndex]: blankRow,
             [looseRowIndex]: ["loose"],
           }),
@@ -636,15 +792,15 @@ describe("SheetNamed.appendRowWithVals, growing a lone blank row", () => {
   it("writes the blank row in place and inserts the rest beneath it, modelled on it", () => {
     const service = stubColouredBlankRowAboveLooseCell();
 
-    const ss = fetchedSheetConfig();
-    const sheet = ss.sheet("sheetConfig");
+    const ss = fetchedTableConfig();
+    const sheet = ss.table("tableConfig");
     const titles = ["one", "two", "three"];
     const rows = titles.map((sheetTitle) =>
       sheet.appendRowWithVals({ sheetTitle }),
     );
     ss.batchUpdateGSheets();
 
-    const grid = service.grid.sheet(sheetConfigGid);
+    const grid = service.grid.sheet(tableConfigGid);
     expect(rows.map((row) => row.rowIndex)).toEqual([0, 1, 2]);
     expect(grid.tables[0]?.range?.endRowIndex).toBe(topDataRowIndex + 3);
     expect(
@@ -655,23 +811,21 @@ describe("SheetNamed.appendRowWithVals, growing a lone blank row", () => {
         endColumnIndex: sheetTitleColIndex + 1,
       }),
     ).toEqual(
-      titles.map((value) => [
-        { value, backgroundColor: blankRowColour },
-      ]),
+      titles.map((value) => [{ value, backgroundColor: blankRowColour }]),
     );
     expect(grid.cell(looseRowIndex + 2, 0)).toBe("loose");
   });
 
   it("only fills the blank row when growing by one, inserting nothing", () => {
     const service = stubColouredBlankRowAboveLooseCell();
-    const rowCountBefore = service.grid.sheet(sheetConfigGid).rowCount;
+    const rowCountBefore = service.grid.sheet(tableConfigGid).rowCount;
 
-    const ss = fetchedSheetConfig();
-    ss.sheet("sheetConfig").appendRowWithVals({ sheetTitle: "one" });
+    const ss = fetchedTableConfig();
+    ss.table("tableConfig").appendRowWithVals({ sheetTitle: "one" });
     ss.batchUpdateGSheets();
 
-    const grid = service.grid.sheet(sheetConfigGid);
-    expect(sheetConfigTitles(service)).toEqual(["one"]);
+    const grid = service.grid.sheet(tableConfigGid);
+    expect(tableConfigSheetTitles(service)).toEqual(["one"]);
     expect(grid.tables[0]?.range?.endRowIndex).toBe(topDataRowIndex + 1);
     expect(grid.rowCount).toBe(rowCountBefore);
     expect(grid.cell(looseRowIndex, 0)).toBe("loose");
@@ -709,7 +863,7 @@ function stubValueTypesWithBlankRow() {
 
 function fetchedValueTypesSpreadsheet(): SpreadsheetNamed {
   const ss = SpreadsheetNamed.init();
-  ss.sheet("valueTypes").prepFetchColumnsFull(
+  ss.table("valueTypes").prepFetchColumnsFull(
     "id",
     "stringValue",
     "numberValue",
@@ -721,8 +875,8 @@ function fetchedValueTypesSpreadsheet(): SpreadsheetNamed {
   return ss;
 }
 
-type CompleteAppendBag<SN extends SheetName> = Parameters<
-  SheetNamed<SN>["appendRowWithAllVals"]
+type CompleteAppendBag<TN extends TableName> = Parameters<
+  TableNamed<TN>["appendRowWithAllVals"]
 >[0];
 
 const completeValueTypesRow: CompleteAppendBag<"valueTypes"> = {
@@ -733,12 +887,12 @@ const completeValueTypesRow: CompleteAppendBag<"valueTypes"> = {
   checkbox: true,
 };
 
-describe("SheetNamed.appendRowWithAllVals", () => {
+describe("TableNamed.appendRowWithAllVals", () => {
   it("mints the row ID itself, from a bag that cannot name one", () => {
     stubValueTypesWithBlankRow();
 
     const row = fetchedValueTypesSpreadsheet()
-      .sheet("valueTypes")
+      .table("valueTypes")
       .appendRowWithAllVals(completeValueTypesRow);
 
     expect(row.value("id")).toMatch(/^r:vty:[0-9a-zA-Z_-]{7}$/);
@@ -748,7 +902,7 @@ describe("SheetNamed.appendRowWithAllVals", () => {
     stubValueTypesWithBlankRow();
 
     const row = fetchedValueTypesSpreadsheet()
-      .sheet("valueTypes")
+      .table("valueTypes")
       .appendRowWithAllVals(completeValueTypesRow);
 
     expect([
@@ -771,7 +925,7 @@ describe("SheetNamed.appendRowWithAllVals", () => {
 
     const ss = fetchedValueTypesSpreadsheet();
     const row = ss
-      .sheet("valueTypes")
+      .table("valueTypes")
       .appendRowWithAllVals(completeValueTypesRow);
     ss.batchUpdateGSheets();
 
@@ -802,9 +956,10 @@ describe("SheetNamed.appendRowWithAllVals", () => {
   it("asks a sheet with no ID column for every writable column", () => {
     assertType<
       IsExactly<
-        CompleteAppendBag<"sheetConfig">,
+        CompleteAppendBag<"tableConfig">,
         {
-          sheetGid: number | "";
+          tableId: string;
+          tableName: string;
           sheetTitle: string;
           letApiAccess: boolean;
         }
@@ -847,9 +1002,9 @@ function fetchedBlankDatesRow(): RowNamed<"dates"> {
     ],
   });
   const ss = SpreadsheetNamed.init();
-  ss.sheet("dates").prepFetchColumnsFull("id", "requiredDate", "optionalDate");
+  ss.table("dates").prepFetchColumnsFull("id", "requiredDate", "optionalDate");
   ss.fetchAllPrepped();
-  return ss.sheet("dates").row(0);
+  return ss.table("dates").row(0);
 }
 
 describe("RowNamed.blankRequiredColumnNames", () => {
@@ -880,7 +1035,7 @@ describe("RowNamed.blankRequiredColumnNames", () => {
   });
 });
 
-const computedGid = getSheetTraitByName("computed", "sheetGid");
+const computedGid = getTableTraitByName("computed", "sheetGid");
 const computedColumnIdRow = [
   getColumnTraitByName("computed", "amount", "columnId"),
   getColumnTraitByName("computed", "rowNumber", "columnId"),
@@ -917,13 +1072,103 @@ function rowNumberCells(grid: FakeSheetsService["grid"]): FakeCellValue[] {
     .flat();
 }
 
+const renamedComputed = {
+  tableName: "renamedComputed",
+  besideTable: "beside the Table",
+  belowTable: "below the Table",
+} as const;
+
+// The live Table name and headers differ from the generated configs, as after a rename.
+function stubRenamedComputed() {
+  return stubSheetsService({
+    sheets: [
+      {
+        sheetId: computedGid,
+        title: "Computed",
+        rows: buildGridRows({
+          0: [...computedColumnIdRow, renamedComputed.besideTable],
+          [expectedSheetLayout.tableHeaderRowIndex]: [
+            "Amount total",
+            "Row count",
+            renamedComputed.besideTable,
+          ],
+          4: [10, 11, renamedComputed.besideTable],
+          5: [20, 21, renamedComputed.besideTable],
+          6: [
+            renamedComputed.belowTable,
+            renamedComputed.belowTable,
+            renamedComputed.belowTable,
+          ],
+        }),
+        table: {
+          endRowIndex: 6,
+          endColumnIndex: 2,
+          name: renamedComputed.tableName,
+        },
+      },
+    ],
+  });
+}
+
+describe("Named formula references", () => {
+  it("builds reference and single from the live Table name and header", () => {
+    stubRenamedComputed();
+
+    const ss = SpreadsheetNamed.init();
+    ss.fetchAllSheetProperties();
+    const amount = ss.table("computed").column("amount");
+
+    expect(amount.reference).toBe("renamedComputed[Amount total]");
+    expect(amount.single).toBe("SINGLE(renamedComputed[Amount total])");
+  });
+
+  it("refuses a reference for a column whose header is blank", () => {
+    stubComputedForFormulaWrite();
+
+    const ss = SpreadsheetNamed.init();
+    ss.fetchAllSheetProperties();
+
+    expect(() => ss.table("computed").column("amount").reference).toThrowError(
+      /blank header/,
+    );
+  });
+
+  it("writes a formula over the Table body only, leaving the head rows and a neighbour alone", () => {
+    const { grid } = stubRenamedComputed();
+
+    const ss = SpreadsheetNamed.init();
+    ss.fetchAllSheetProperties();
+    const table = ss.table("computed");
+    const formula = `=2+${table.column("amount").single}`;
+    table.column("rowNumber").updateAllFormulas(formula);
+    ss.batchUpdateGSheets();
+
+    expect(
+      grid.sheet(computedGid).values({
+        startRowIndex: 0,
+        endRowIndex: 7,
+        startColumnIndex: rowNumberColIndex,
+        endColumnIndex: rowNumberColIndex + 2,
+      }),
+    ).toEqual([
+      [computedColumnIdRow[1], renamedComputed.besideTable],
+      [null, null],
+      [null, null],
+      ["Row count", renamedComputed.besideTable],
+      ["=2+SINGLE(renamedComputed[Amount total])", renamedComputed.besideTable],
+      ["=2+SINGLE(renamedComputed[Amount total])", renamedComputed.besideTable],
+      [renamedComputed.belowTable, renamedComputed.belowTable],
+    ]);
+  });
+});
+
 describe("Named formula writes", () => {
   it("writes the formula into every Computed data row", () => {
     const { grid } = stubComputedForFormulaWrite();
 
     const ss = SpreadsheetNamed.init();
     ss.fetchAllSheetProperties();
-    ss.sheet("computed").column("rowNumber").updateAllFormulas(testFormula);
+    ss.table("computed").column("rowNumber").updateAllFormulas(testFormula);
     ss.batchUpdateGSheets();
 
     expect(rowNumberCells(grid)).toEqual([testFormula, testFormula]);
@@ -934,20 +1179,20 @@ describe("Named formula writes", () => {
 
     const ss = SpreadsheetNamed.init();
     ss.fetchAllSheetProperties();
-    ss.sheet("computed").column("rowNumber").cell(0).updateFormula(testFormula);
+    ss.table("computed").column("rowNumber").cell(0).updateFormula(testFormula);
     ss.batchUpdateGSheets();
 
     expect(rowNumberCells(grid)).toEqual([testFormula, 21]);
   });
 
-  it("writes the formula into only the active rows for updateActiveFormulas", () => {
+  it("writes the formula into only the working rows for updateWorkingFormulas", () => {
     const { grid } = stubComputedForFormulaWrite();
 
     const ss = SpreadsheetNamed.init();
-    ss.sheet("computed").prepFetchColumnsFull("rowNumber");
+    ss.table("computed").prepFetchColumnsFull("rowNumber");
     ss.fetchAllPrepped();
-    ss.sheet("computed").raw.removeRowsExcept(0);
-    ss.sheet("computed").column("rowNumber").updateActiveFormulas(testFormula);
+    ss.table("computed").raw.removeRowsExcept(0);
+    ss.table("computed").column("rowNumber").updateWorkingFormulas(testFormula);
     ss.batchUpdateGSheets();
 
     expect(rowNumberCells(grid)).toEqual([testFormula, 21]);
@@ -960,7 +1205,7 @@ describe("Named formula writes", () => {
     ss.fetchAllSheetProperties();
 
     expect(() =>
-      ss.sheet("computed").column("rowNumber").updateAllFormulas("2+1"),
+      ss.table("computed").column("rowNumber").updateAllFormulas("2+1"),
     ).toThrowError('Formula must start with "=". Got "2+1".');
   });
 
@@ -968,14 +1213,14 @@ describe("Named formula writes", () => {
     stubComputedForFormulaWrite();
 
     const ss = SpreadsheetNamed.init();
-    ss.sheet("computed").prepFetchColumnsFull("rowNumber", "amount");
+    ss.table("computed").prepFetchColumnsFull("rowNumber", "amount");
     ss.fetchAllPrepped();
-    ss.sheet("computed").column("rowNumber").updateAllFormulas(testFormula);
+    ss.table("computed").column("rowNumber").updateAllFormulas(testFormula);
 
-    expect(ss.sheet("computed").column("rowNumber").valueArrOrEmpty).toEqual([
+    expect(ss.table("computed").column("rowNumber").valueArrOrEmpty).toEqual([
       11, 21,
     ]);
-    expect(ss.sheet("computed").column("amount").valueArrOrEmpty).toEqual([
+    expect(ss.table("computed").column("amount").valueArrOrEmpty).toEqual([
       10, 20,
     ]);
   });
@@ -987,7 +1232,7 @@ describe("Named formula writes", () => {
     ss.fetchAllSheetProperties();
 
     expect(() =>
-      ss.sheet("computed").column("rowNumber").cell(0).updateValue(99),
+      ss.table("computed").column("rowNumber").cell(0).updateValue(99),
     ).toThrowError(/formula column/);
   });
 
@@ -997,7 +1242,7 @@ describe("Named formula writes", () => {
 
     const ss = SpreadsheetNamed.init();
     ss.fetchAllSheetProperties();
-    const cell = ss.sheet("computed").column("rowNumber").cell(0);
+    const cell = ss.table("computed").column("rowNumber").cell(0);
     cell.updateFormula(testFormula);
     cell.updateBackgroundColor(backgroundColor);
     ss.batchUpdateGSheets();
@@ -1012,12 +1257,12 @@ describe("Named formula writes", () => {
     stubComputedForFormulaWrite();
 
     const ss = SpreadsheetNamed.init();
-    ss.sheet("computed").prepFetchColumnsFull("rowNumber");
+    ss.table("computed").prepFetchColumnsFull("rowNumber");
     ss.fetchAllPrepped();
-    ss.sheet("computed").raw.removeRowsExcept(0);
+    ss.table("computed").raw.removeRowsExcept(0);
 
     expect(() =>
-      ss.sheet("computed").column("rowNumber").updateAllFormulas(testFormula),
+      ss.table("computed").column("rowNumber").updateAllFormulas(testFormula),
     ).toThrowError(/pruned to a selection/);
   });
 
@@ -1030,12 +1275,12 @@ describe("Named formula writes", () => {
       numColumn: ColumnNamed<"computed", "amount">,
     ) {
       formulaColumn.updateAllFormulas(testFormula);
-      formulaColumn.updateActiveFormulas(testFormula);
+      formulaColumn.updateWorkingFormulas(testFormula);
       formulaColumn.cell(0).updateFormula(testFormula);
       // @ts-expect-error Amount is not a formula column
       numColumn.updateAllFormulas(testFormula);
       // @ts-expect-error Amount is not a formula column
-      numColumn.updateActiveFormulas(testFormula);
+      numColumn.updateWorkingFormulas(testFormula);
       // @ts-expect-error Amount is not a formula column
       numColumn.cell(0).updateFormula(testFormula);
     }
@@ -1045,11 +1290,19 @@ describe("Named formula writes", () => {
 
   it("rejects a misspelled column type at the type level", () => {
     function columnTypeGate(column: ColumnNamed<"computed", "amount">) {
-      column.meta.updateColumnType("DOUBLE");
+      column.updateColumnType("DOUBLE");
       // @ts-expect-error DOUBEL is not a Table column type
-      column.meta.updateColumnType("DOUBEL");
+      column.updateColumnType("DOUBEL");
     }
 
     expect(columnTypeGate).toEqual(expect.any(Function));
   });
 });
+
+const itemSheetTitle = "Item Tab";
+function itemSheet(): FakeSheetProperties {
+  return placedTableSheet({
+    sheetId: getTableTraitByName("item", "sheetGid"),
+    title: itemSheetTitle,
+  });
+}

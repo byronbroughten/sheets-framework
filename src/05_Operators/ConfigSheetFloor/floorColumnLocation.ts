@@ -1,15 +1,17 @@
-import type { SheetMetaRaw } from "../../02_SpreadsheetRaw/SheetMetaRaw";
+import type { TableRaw } from "../../02_SpreadsheetRaw/TableRaw";
 
 export function liveColIndex(
-  meta: SheetMetaRaw,
+  table: TableRaw,
   { columnId, header }: { columnId: string; header: string },
 ): number | undefined {
-  const colIndexes = meta.fullTableColIndexes;
+  const colIndexes = table.fullTableColIndexes;
   const byId = colIndexes.find(
-    (colIndex) => String(meta.colIdRow.valueOrEmpty(colIndex)) === columnId,
+    (colIndex) =>
+      String(table.headRow("columnId").valueOrEmpty(colIndex)) === columnId,
   );
   if (byId !== undefined) return byId;
   return colIndexes.find(
-    (colIndex) => String(meta.tableHeaderRow.valueOrEmpty(colIndex)) === header,
+    (colIndex) =>
+      String(table.headRow("header").valueOrEmpty(colIndex)) === header,
   );
 }

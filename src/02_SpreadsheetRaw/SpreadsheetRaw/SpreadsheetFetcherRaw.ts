@@ -82,8 +82,7 @@ export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
     this.spreadsheetStateRaw.sheets.forEach((state, sheetGid) => {
       // Above the early return, so a range that arrived incidentally is still judged.
       const placement = this.tableValidator.tablePlacement(sheetGid);
-      state.tableBeforeProperties.fetchQueue =
-        emptyStateRaw.tableFetchQueue();
+      state.tableBeforeProperties.fetchQueue = emptyStateRaw.tableFetchQueue();
       state.fetchQueue.gatherPlacementStrip = false;
       if (placement.kind === "extra") {
         return;
@@ -154,8 +153,8 @@ export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
       this.spreadsheetStateRaw.timeZone = snapshot.timeZone;
     }
     snapshot.sheets.forEach((sheetSnapshot) => {
-      const sheet = this.ss.sheet(sheetSnapshot.sheetGid);
-      sheet.integrateSheetState(sheetSnapshot);
+      const table = this.ss.tableOnSheet(sheetSnapshot.sheetGid);
+      table.integrateSheetState(sheetSnapshot);
     });
   }
 }

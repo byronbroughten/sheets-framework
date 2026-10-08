@@ -19,7 +19,7 @@ const claspAuth = {
 const maxResponseBytes = 256 * 1024 * 1024;
 
 export const configFiles = [
-  "sheetConfigs",
+  "tableConfigs",
   "columnConfigs",
   "valueConfigs",
 ] as const;
@@ -182,7 +182,7 @@ export async function loadPackageConfigs({
   generatedDir,
 }: SheetsConfig): Promise<Configs> {
   return {
-    sheetConfigs: await importConfig(generatedDir, "sheetConfigs"),
+    tableConfigs: await importConfig(generatedDir, "tableConfigs"),
     columnConfigs: await importConfig(generatedDir, "columnConfigs"),
     valueConfigs: await importConfig(generatedDir, "valueConfigs"),
   };

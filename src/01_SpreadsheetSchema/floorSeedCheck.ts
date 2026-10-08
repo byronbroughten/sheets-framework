@@ -10,7 +10,7 @@ import {
 import type {
   ColumnConfigsGeneric,
   ColumnConfigStored,
-  SheetConfigsBase,
+  TableConfigsBase,
 } from "./makeConfigs";
 import type { ValueName } from "./valueSchemas";
 
@@ -24,40 +24,40 @@ const floorColumnTypeValueNames: Record<FloorColumnType, ValueName> = {
 
 // Resolves column IDs through the last generated configs, so it's sound only after the floor identity guard.
 export function assertFloorMatchesSeed(
-  sheetConfigs: SheetConfigsBase,
+  tableConfigs: TableConfigsBase,
   columnConfigs: ColumnConfigsGeneric,
 ): void {
-  assertFloorTabEntries(sheetConfigs);
+  assertFloorTabEntries(tableConfigs);
   assertFloorColumnEntries(columnConfigs);
 }
 
-function assertFloorTabEntries(sheetConfigs: SheetConfigsBase): void {
+function assertFloorTabEntries(tableConfigs: TableConfigsBase): void {
   const missing = floorTabNames.find(
-    (sheetName) => !Object.hasOwn(sheetConfigs, sheetName),
+    (tableKey) => !Object.hasOwn(tableConfigs, tableKey),
   );
   if (missing === undefined) return;
   throw new Error(
-    `Floor tab "${missing}" has no floor entry; Let api access may be unticked on its Sheet Config row.`,
+    `Floor tab "${missing}" has no floor entry; Let api access may be unticked on its Table Config row.`,
   );
 }
 
 function assertFloorColumnEntries(columnConfigs: ColumnConfigsGeneric): void {
-  const mismatches = floorTabNames.flatMap((sheetName) => {
+  const mismatches = floorTabNames.flatMap((tableName) => {
     const matched = new Set<FloorSeedColumn>();
     const entryMismatches = Object.entries(
-      columnConfigs[sheetName] ?? {},
+      columnConfigs[tableName] ?? {},
     ).flatMap(([, column]) => {
-      const seedColumn = floorSeedColumnInSheet(sheetName, column.columnId);
+      const seedColumn = floorSeedColumnInSheet(tableName, column.columnId);
       if (seedColumn === undefined) return [];
       matched.add(seedColumn);
-      const label = `${floorColumnLabel(sheetName, seedColumn.header)} (column ID "${column.columnId}")`;
+      const label = `${floorColumnLabel(tableName, seedColumn.header)} (column ID "${column.columnId}")`;
       return floorColumnMismatches(label, column, seedColumn);
     });
-    const missing = floorSeedColumns(sheetName)
+    const missing = floorSeedColumns(tableName)
       .filter((seedColumn) => !matched.has(seedColumn))
       .map(
         ({ header }) =>
-          `${floorColumnLabel(sheetName, header)} has no floor entry.`,
+          `${floorColumnLabel(tableName, header)} has no floor entry.`,
       );
     return [...entryMismatches, ...missing];
   });

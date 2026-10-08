@@ -1,17 +1,17 @@
 import { describe, expect, it } from "vitest";
 
 import { configSheetFloorSeed } from "../../01_SpreadsheetSchema/configSheetFloorSeed";
-import { getSheetTraitByName } from "../../01_SpreadsheetSchema/sheetConfigsTypes";
+import { getTableTraitByName } from "../../01_SpreadsheetSchema/tableConfigsTypes";
 import { floorChangeNotice } from "./floorChangeNotice";
 
 const businessSheetGid = 9001;
-const spreadsheetConfigGid = getSheetTraitByName(
+const spreadsheetConfigGid = getTableTraitByName(
   "spreadsheetConfig",
   "sheetGid",
 );
-const sheetConfigGid = getSheetTraitByName("sheetConfig", "sheetGid");
-const columnConfigGid = getSheetTraitByName("columnConfig", "sheetGid");
-const valueConfigGid = getSheetTraitByName("valueConfig", "sheetGid");
+const tableConfigGid = getTableTraitByName("tableConfig", "sheetGid");
+const columnConfigGid = getTableTraitByName("columnConfig", "sheetGid");
+const valueConfigGid = getTableTraitByName("valueConfig", "sheetGid");
 
 function liveTitles(
   overrides: Record<number, string | null> = {},
@@ -19,7 +19,7 @@ function liveTitles(
   const titles = new Map<number, string | null>([
     [businessSheetGid, "Widget"],
     [spreadsheetConfigGid, configSheetFloorSeed.spreadsheetConfig.title],
-    [sheetConfigGid, configSheetFloorSeed.sheetConfig.title],
+    [tableConfigGid, configSheetFloorSeed.tableConfig.title],
     [columnConfigGid, configSheetFloorSeed.columnConfig.title],
     [valueConfigGid, configSheetFloorSeed.valueConfig.title],
   ]);
@@ -68,7 +68,7 @@ describe("floorChangeNotice", () => {
 
   it.each([
     ["Spreadsheet Config", spreadsheetConfigGid],
-    ["Sheet Config", sheetConfigGid],
+    ["Table Config", tableConfigGid],
     ["Column Config", columnConfigGid],
   ])("says nothing when warned %s is renamed", (title, sheetGid) => {
     expect(

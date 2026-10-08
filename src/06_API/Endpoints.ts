@@ -4,13 +4,13 @@ import type {
   SheetNameOf,
 } from "../01_SpreadsheetSchema/columnConfigsTypes";
 import type { FloorTabName } from "../01_SpreadsheetSchema/configSheetFloorSeed";
-import type { SheetNameSimple } from "../01_SpreadsheetSchema/sheetConfigsTypes";
+import type { TableNameSimple } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import type { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
 import type { CheckboxColumnName } from "../05_Operators/CheckboxColumnOperator";
 
 // The only columns a run can report into: writable, and holding a sentence.
-export type FeedbackColumnName<SN extends SheetNameSimple> = ColumnNameFiltered<
-  SN,
+export type FeedbackColumnName<TN extends TableNameSimple> = ColumnNameFiltered<
+  TN,
   "string",
   false
 >;
@@ -39,13 +39,13 @@ export type EndpointAction = (
   args: EndpointArgs,
 ) => ActionReturn;
 
-export interface Endpoint<SN extends SheetNameSimple> {
+export interface Endpoint<TN extends TableNameSimple> {
   action: EndpointAction;
-  timeLastRan?: FeedbackColumnName<SN>;
-  runStatus?: FeedbackColumnName<SN>;
+  timeLastRan?: FeedbackColumnName<TN>;
+  runStatus?: FeedbackColumnName<TN>;
   // Inline, not a named type: a named one compares by variance, which the widened dispatch boundary rejects.
   selector?: {
-    column: CheckboxColumnName<SN>;
+    column: CheckboxColumnName<TN>;
     retainSelection?: boolean;
     requireOneRow?: boolean;
   };
@@ -53,8 +53,8 @@ export interface Endpoint<SN extends SheetNameSimple> {
 }
 
 // The entry as the dispatch hands it over — a structural copy, for the same reason.
-export type EndpointDispatched<SN extends SheetNameSimple> = {
-  [K in keyof Endpoint<SN>]: Endpoint<SN>[K];
+export type EndpointDispatched<TN extends TableNameSimple> = {
+  [K in keyof Endpoint<TN>]: Endpoint<TN>[K];
 };
 
 // Each key carries its own sheet, so a column from another sheet is unnameable.

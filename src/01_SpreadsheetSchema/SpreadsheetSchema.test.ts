@@ -16,14 +16,13 @@ import {
   type ValueOf,
 } from "./columnConfigsTypes";
 import { ColumnSchema } from "./ColumnSchema";
-import {
-  getSheetTraitByName,
-  sheetConfigsByGid,
-  type SheetName,
-} from "./sheetConfigsTypes";
-import { SheetSchema } from "./SheetSchema";
 import { SpreadsheetSchema } from "./SpreadsheetSchema";
-import { TableOrigin } from "./TableOrigin";
+import {
+  getTableTraitByName,
+  tableConfigsByGid,
+  type TableName,
+} from "./tableConfigsTypes";
+import { TableSchema } from "./TableSchema";
 import type { ValueName } from "./valueSchemas";
 
 describe("SpreadsheetSchema", () => {
@@ -35,60 +34,27 @@ describe("SpreadsheetSchema", () => {
     });
   });
 
-  describe("uniform row indexes", () => {
-    it("recognizes known uniform row indexes", () => {
-      expect(schema.isUniformRowIndex(schema.colIdRowIndex)).toBe(true);
-      expect(schema.isUniformRowIndex(schema.colIdRowIndex, "columnId")).toBe(
-        true,
-      );
-      expect(
-        schema.isUniformRowIndex(schema.colIdRowIndex, "tableHeader"),
-      ).toBe(false);
-      expect(schema.isUniformRowIndex(9999)).toBe(false);
-    });
-
-    it("maps a known index back to its name", () => {
-      expect(schema.uniformRowNameByIndex(schema.colIdRowIndex)).toBe(
-        "columnId",
-      );
-      expect(schema.uniformRowNameByIndex(schema.tableHeaderRowIndex)).toBe(
-        "tableHeader",
-      );
-    });
-
-    it("throws mapping an unknown index to a name", () => {
-      expect(() => schema.uniformRowNameByIndex(9999)).toThrow();
-    });
-
-    it("validateUniformRowIndex only throws for non-uniform rows", () => {
-      expect(() =>
-        schema.validateUniformRowIndex(
-          schema.tableHeaderRowIndex,
-          "tableHeader",
-        ),
-      ).not.toThrow();
-      expect(() => schema.validateUniformRowIndex(9999)).toThrow();
-    });
-  });
-
   describe("table placement", () => {
-    const { headerRowIndex, startColIndex } = TableOrigin.expected();
-    const rowAbove = SheetIndex.row(headerRowIndex - 1);
-    const colRight = SheetIndex.col(startColIndex + 1);
+    const runItem = schema.sheetByName("runItem");
 
-    it("accepts only the expected Table header row and start column as a Table's start", () => {
-      expect(schema.isTableStart(headerRowIndex, startColIndex)).toBe(true);
-      expect(schema.isTableStart(rowAbove, startColIndex)).toBe(false);
-      expect(schema.isTableStart(headerRowIndex, colRight)).toBe(false);
+    it("reads a Table's start from where its configs record it", () => {
+      const { headerRowIndex, startColIndex } = runItem.recordedOrigin;
+      expect(headerRowIndex).toBe(
+        getTableTraitByName("runItem", "headerRowIndex"),
+      );
+      expect(startColIndex).toBe(
+        getTableTraitByName("runItem", "startColIndex"),
+      );
+      expect(runItem.recordedStartLabel).toBe(
+        schema.positionLabel(headerRowIndex, startColIndex),
+      );
     });
 
-    it("validateTableStart only throws for a start the layout does not allow", () => {
-      expect(() =>
-        schema.validateTableStart(headerRowIndex, startColIndex),
-      ).not.toThrow();
-      expect(() =>
-        schema.validateTableStart(rowAbove, startColIndex),
-      ).toThrowError(/row 3, column A.*row 4, column A/);
+    it("maps a sheet gid to its managed Tables, and an unmanaged one to none", () => {
+      expect(
+        schema.tablesOnGid(runItem.sheetGid).map((table) => table.tableName),
+      ).toEqual(["runItem"]);
+      expect(schema.tablesOnGid(-1)).toEqual([]);
     });
 
     it("labels a position in the numbering Sheets shows the operator", () => {
@@ -102,7 +68,7 @@ describe("SpreadsheetSchema", () => {
 
   describe("isInSheetGids", () => {
     it("agrees with the generated sheet gid list", () => {
-      const [firstGid] = sheetConfigsByGid().keys();
+      const [firstGid] = tableConfigsByGid().keys();
       expect(firstGid).toBeDefined();
       expect(schema.isInSheetGids(firstGid as number)).toBe(true);
       expect(schema.isInSheetGids(Number.MAX_SAFE_INTEGER)).toBe(false);
@@ -121,70 +87,70 @@ describe("SpreadsheetSchema", () => {
 
 describe("type-level precision", () => {
   it("resolves a name-addressed column to its exact literal types", () => {
-    const column = ColumnSchema.fromColumnName("sheetConfig", "sheetGid");
+    const column = ColumnSchema.fromColumnName("item", "requiredCount");
     assertType<IsExactly<typeof column.valueName, "number">>(true);
-    assertType<IsExactly<typeof column.columnName, "sheetGid">>(true);
-    assertType<IsExactly<typeof column.sheetName, "sheetConfig">>(true);
-    assertType<IsExactly<typeof column.fullName, "sheetConfig_sheetGid">>(true);
+    assertType<IsExactly<typeof column.columnName, "requiredCount">>(true);
+    assertType<IsExactly<typeof column.tableName, "item">>(true);
+    assertType<IsExactly<typeof column.fullName, "item_requiredCount">>(true);
     assertType<
       IsExactly<ReturnType<typeof column.makeDefaultDataValue>, number | "">
     >(true);
-    assertType<IsExactly<ColumnValue<"sheetConfig", "sheetGid">, number | "">>(
+    assertType<IsExactly<ColumnValue<"item", "requiredCount">, number | "">>(
       true,
     );
     expect(column.valueName).toBe("number");
-    expect(column.fullName).toBe("sheetConfig_sheetGid");
+    expect(column.fullName).toBe("item_requiredCount");
   });
 
   it("resolves a gid-addressed column to the usable widened types, never `never`", () => {
-    const sheetGid = getSheetTraitByName("sheetConfig", "sheetGid");
+    const sheetGid = getTableTraitByName("item", "sheetGid");
     const column = ColumnSchema.fromColumnId(
       sheetGid,
-      getColumnTraitByName("sheetConfig", "sheetGid", "columnId"),
+      getColumnTraitByName("item", "requiredCount", "columnId"),
     );
     assertType<IsExactly<typeof column.valueName, ValueName>>(true);
-    assertType<IsExactly<typeof column.columnName, ColumnName<SheetName>>>(
+    assertType<IsExactly<typeof column.columnName, ColumnName<TableName>>>(
       true,
     );
     assertType<IsExactly<typeof column.fullName, ColumnFullName>>(true);
     expect(column.valueName).toBe("number");
-    expect(column.columnName).toBe("sheetGid");
+    expect(column.columnName).toBe("requiredCount");
   });
 
   it("keeps the sheet trait accessor's shape at both instantiations", () => {
-    const byName = SheetSchema.fromSheetName("sheetConfig");
-    const byGid = SheetSchema.fromSheetGid(byName.sheetGid);
-    assertType<IsExactly<typeof byName.sheetName, "sheetConfig">>(true);
-    assertType<IsExactly<typeof byGid.sheetName, SheetName>>(true);
+    const byName = TableSchema.fromSheetName("item");
+    const byGid = TableSchema.fromSheetGid(byName.sheetGid);
+    assertType<IsExactly<typeof byName.tableName, "item">>(true);
+    assertType<IsExactly<typeof byGid.tableName, TableName>>(true);
     assertType<
       IsExactly<ReturnType<typeof byName.trait<"hasIdColumn">>, boolean>
     >(true);
-    assertType<
-      IsExactly<typeof byName.columnNames, ColumnName<"sheetConfig">[]>
-    >(true);
-    expect(byGid.sheetName).toBe("sheetConfig");
-    expect(byName.columnNames).toContain("sheetGid");
+    assertType<IsExactly<typeof byName.columnNames, ColumnName<"item">[]>>(
+      true,
+    );
+    expect(byGid.tableName).toBe("item");
+    expect(byName.columnNames).toContain("requiredCount");
   });
 
   it("reaches a sheet from the spreadsheet schema by either address", () => {
     const ss = new SpreadsheetSchema();
-    const byName = ss.sheetByName("sheetConfig");
+    const byName = ss.sheetByName("item");
     const byGid = ss.sheetByGid(byName.sheetGid);
-    assertType<IsExactly<typeof byName, SheetSchema<"sheetConfig">>>(true);
-    assertType<IsExactly<typeof byGid, SheetSchema>>(true);
+    assertType<IsExactly<typeof byName, TableSchema<"item">>>(true);
+    assertType<IsExactly<typeof byGid, TableSchema>>(true);
     expect(byGid.sheetGid).toBe(byName.sheetGid);
   });
 
   it("navigates from a column schema back to its own sheet", () => {
-    const sheet = ColumnSchema.fromColumnName("sheetConfig", "sheetGid").sheet;
-    assertType<IsExactly<typeof sheet, SheetSchema<"sheetConfig">>>(true);
-    expect(sheet.sheetName).toBe("sheetConfig");
+    const sheet = ColumnSchema.fromColumnName("item", "requiredCount").sheet;
+    assertType<IsExactly<typeof sheet, TableSchema<"item">>>(true);
+    expect(sheet.tableName).toBe("item");
   });
 });
 
 function columnConfigOf(fullName: ColumnFullName) {
   const column = ColumnSchema.fromColumnName(
-    ...(fullName.split("_") as [SheetName, never]),
+    ...(fullName.split("_") as [TableName, never]),
   );
   return column;
 }
@@ -199,7 +165,7 @@ describe("ColumnFullName, absolute column addressing", () => {
   it("narrows to a proper subset of columns when filtered by value name", () => {
     const sampled: ColumnFullName<"boolean"> = "valueTypes_sampledBoolean";
     // @ts-expect-error a number column is not a boolean column
-    const numeric: ColumnFullName<"boolean"> = "sheetConfig_sheetGid";
+    const numeric: ColumnFullName<"boolean"> = "item_requiredCount";
     // @ts-expect-error a string column is not a boolean column
     const text: ColumnFullName<"boolean"> =
       "spreadsheetConfig_fillRowIdsTimeLastRan";
@@ -224,8 +190,8 @@ describe("ColumnFullName, absolute column addressing", () => {
     // Derived through the relative family, so this is an independent check
     // that collapsing the old "simple" union lost nothing.
     type EveryColumnFullName = {
-      [SN in SheetName]: MakeColumnFullName<SN, ColumnName<SN>>;
-    }[SheetName];
+      [TN in TableName]: MakeColumnFullName<TN, ColumnName<TN>>;
+    }[TableName];
     assertType<IsExactly<ColumnFullName, EveryColumnFullName>>(true);
   });
 
@@ -252,8 +218,8 @@ describe("ColumnFullName, absolute column addressing", () => {
     >(true);
     assertType<
       IsExactly<
-        ValueOf<"sheetConfig_sheetGid">,
-        ColumnValue<"sheetConfig", "sheetGid">
+        ValueOf<"item_requiredCount">,
+        ColumnValue<"item", "requiredCount">
       >
     >(true);
     assertType<
@@ -264,7 +230,7 @@ describe("ColumnFullName, absolute column addressing", () => {
   it("filters a column name within a sheet on the same two axes", () => {
     assertType<
       IsExactly<
-        ColumnNameFiltered<"sheetConfig", "checkbox", false>,
+        ColumnNameFiltered<"tableConfig", "checkbox", false>,
         "letApiAccess"
       >
     >(true);

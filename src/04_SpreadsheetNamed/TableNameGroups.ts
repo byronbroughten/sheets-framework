@@ -1,33 +1,33 @@
 import {
-  type SheetConfigs,
-  sheetConfigsByName,
-} from "../01_SpreadsheetSchema/sheetConfigsTypes";
+  type TableConfigs,
+  tableConfigsByName,
+} from "../01_SpreadsheetSchema/tableConfigsTypes";
 import { type SubType } from "../utils/Obj";
 
 export type SheetNameWithIdColumn = keyof SubType<
-  SheetConfigs,
+  TableConfigs,
   { hasIdColumn: true }
 >;
 
 export type SheetNameWithNameColumn = keyof SubType<
-  SheetConfigs,
+  TableConfigs,
   { hasNameColumn: true }
 >;
 
 export type SheetNameWithIdAndNameColumn = SheetNameWithIdColumn &
   SheetNameWithNameColumn;
 
-interface SheetNameGroups {
+interface TableNameGroups {
   hasIdColumn: SheetNameWithIdColumn[];
 }
-export type TnGroupName = keyof SheetNameGroups;
+export type TnGroupName = keyof TableNameGroups;
 
 export type SheetNameByGroup<GN extends TnGroupName> =
-  SheetNameGroups[GN][number];
+  TableNameGroups[GN][number];
 
 export function isInTnGroup<GN extends TnGroupName>(
   groupName: GN,
   sn: string,
 ): sn is SheetNameByGroup<GN> {
-  return sheetConfigsByName()[sn]?.[groupName] === true;
+  return tableConfigsByName()[sn]?.[groupName] === true;
 }

@@ -9,6 +9,7 @@ import type {
   EditWarningDeclaration,
 } from "../00_Source/RawSource/EditProtection";
 import type { RgbColor } from "../00_Source/RawSource/RgbColor";
+import { headRows } from "../01_SpreadsheetSchema/headRows";
 import {
   toWireValue,
   type Value,
@@ -33,8 +34,8 @@ export class CellIdentified<
       colIndex: this.column.colIndex,
     });
   }
-  get isActive(): boolean {
-    return this.raw.isActive;
+  get inWorking(): boolean {
+    return this.raw.inWorking;
   }
   prepFetch(): this {
     this.fetchTargets.push({
@@ -44,14 +45,15 @@ export class CellIdentified<
     });
     return this;
   }
+  // A head cell holds its head role's value, not the data column's.
+  get isHeadCell(): boolean {
+    return headRows.isIndex(this.rowIndex);
+  }
   // Identified is the lowest tier that knows the value name, so the blank is read here.
   valueOrEmpty(): Value<VN> {
     const value = this.raw.valueOrEmpty();
-    const blankReadsAs = this.schema.valTrait("blankReadsAs");
-    if (value === "" && blankReadsAs !== null) {
-      return blankReadsAs as Value<VN>;
-    }
-    return value as Value<VN>;
+    if (value !== "" || this.isHeadCell) return value as Value<VN>;
+    return (this.schema.valTrait("blankReadsAs") ?? value) as Value<VN>;
   }
   valueNotEmpty(): NotEmpty<Value<VN>> {
     const value = this.valueOrEmpty();
@@ -72,7 +74,7 @@ export class CellIdentified<
     return this;
   }
   updateValue(value: Value<VN>): this {
-    this.schema.validateDataNotFormula();
+    if (!this.isHeadCell) this.schema.validateDataNotFormula();
     this.raw.updateValue(toWireValue(value));
     return this;
   }

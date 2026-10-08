@@ -1,7 +1,4 @@
-import type {
-  ColumnConfigsGeneric,
-  SheetConfigsBase,
-} from "../01_SpreadsheetSchema/makeConfigs";
+import type { ColumnConfigsGeneric } from "../01_SpreadsheetSchema/makeConfigs";
 
 function oneLineJsonObject(record: object): string {
   const fields = Object.entries(record).map(
@@ -17,24 +14,25 @@ export function columnConfigsFileSource(
   if (sheets.length === 0) {
     return "{}";
   }
-  const blocks = sheets.map(([sheetName, tableColumnConfigs]) => {
+  const blocks = sheets.map(([tableName, tableColumnConfigs]) => {
     const columnLines = Object.entries(tableColumnConfigs).map(
       ([columnName, columnConfig]) =>
         `    ${JSON.stringify(columnName)}: ${oneLineJsonObject(columnConfig)}`,
     );
-    return `  ${JSON.stringify(sheetName)}: {\n${columnLines.join(",\n")}\n  }`;
+    return `  ${JSON.stringify(tableName)}: {\n${columnLines.join(",\n")}\n  }`;
   });
   return `{\n${blocks.join(",\n")}\n}`;
 }
 
-export function sheetConfigsFileSource(sheetConfigs: SheetConfigsBase): string {
-  const sheets = Object.entries(sheetConfigs);
-  if (sheets.length === 0) {
+export function oneLinePerEntryFileSource(
+  configs: Record<string, object>,
+): string {
+  const entries = Object.entries(configs);
+  if (entries.length === 0) {
     return "{}";
   }
-  const lines = sheets.map(
-    ([sheetName, sheetConfig]) =>
-      `  ${JSON.stringify(sheetName)}: ${oneLineJsonObject(sheetConfig)}`,
+  const lines = entries.map(
+    ([key, config]) => `  ${JSON.stringify(key)}: ${oneLineJsonObject(config)}`,
   );
   return `{\n${lines.join(",\n")}\n}`;
 }

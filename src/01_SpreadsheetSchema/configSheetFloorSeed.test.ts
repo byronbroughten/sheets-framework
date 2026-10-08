@@ -7,14 +7,14 @@ import {
 } from "./configSheetFloorSeed";
 
 function seedColumn(
-  sheetName: "spreadsheetConfig" | "sheetConfig" | "columnConfig",
+  tableName: "spreadsheetConfig" | "tableConfig" | "columnConfig",
   header: string,
 ): FloorSeedColumn {
-  const column = configSheetFloorSeed[sheetName].columns.find(
+  const column = configSheetFloorSeed[tableName].columns.find(
     (entry) => entry.header === header,
   );
   if (column === undefined) {
-    throw new Error(`Floor seed has no ${sheetName} column ${header}.`);
+    throw new Error(`Floor seed has no ${tableName} column ${header}.`);
   }
   return column;
 }
@@ -44,7 +44,7 @@ describe("configSheetFloorSeed Spreadsheet Config", () => {
 });
 
 describe("configSheetFloorSeed column types", () => {
-  it("declares TEXT, DOUBLE and BOOLEAN on the floor columns the spec names", () => {
+  it("declares TEXT and BOOLEAN on the floor columns the spec names", () => {
     expect(seedColumn("spreadsheetConfig", "Table menu space").columnType).toBe(
       "TEXT",
     );
@@ -57,15 +57,16 @@ describe("configSheetFloorSeed column types", () => {
       "TEXT",
     );
 
-    expect(seedColumn("sheetConfig", "Sheet GID").columnType).toBe("DOUBLE");
-    expect(seedColumn("sheetConfig", "Sheet title").columnType).toBe("TEXT");
-    expect(seedColumn("sheetConfig", "Let api access").columnType).toBe(
+    expect(seedColumn("tableConfig", "Table ID").columnType).toBe("TEXT");
+    expect(seedColumn("tableConfig", "Table name").columnType).toBe("TEXT");
+    expect(seedColumn("tableConfig", "Sheet title").columnType).toBe("TEXT");
+    expect(seedColumn("tableConfig", "Let api access").columnType).toBe(
       "BOOLEAN",
     );
 
-    expect(seedColumn("columnConfig", "Sheet GID").columnType).toBe("DOUBLE");
+    expect(seedColumn("columnConfig", "Table ID").columnType).toBe("TEXT");
     expect(seedColumn("columnConfig", "Column ID").columnType).toBe("TEXT");
-    expect(seedColumn("columnConfig", "Sheet title").columnType).toBe("TEXT");
+    expect(seedColumn("columnConfig", "Table name").columnType).toBe("TEXT");
     expect(seedColumn("columnConfig", "Header").columnType).toBe("TEXT");
     expect(seedColumn("columnConfig", "Empty value allowed").columnType).toBe(
       "BOOLEAN",
@@ -76,7 +77,7 @@ describe("configSheetFloorSeed column types", () => {
 describe("configSheetFloorSeed declared cells", () => {
   it("declares Let api access true per floor tab and Empty value allowed false per floor column, endpoints included", () => {
     expect(configSheetFloorSeed.spreadsheetConfig.letApiAccess).toBe(true);
-    expect(configSheetFloorSeed.sheetConfig.letApiAccess).toBe(true);
+    expect(configSheetFloorSeed.tableConfig.letApiAccess).toBe(true);
     expect(configSheetFloorSeed.columnConfig.letApiAccess).toBe(true);
     expect(configSheetFloorSeed.valueConfig.letApiAccess).toBe(true);
 
@@ -85,7 +86,7 @@ describe("configSheetFloorSeed declared cells", () => {
       ...Object.values(
         configSheetFloorSeed.spreadsheetConfig.endpoints,
       ).flatMap((endpoint) => [endpoint.timeLastRan, endpoint.runStatus]),
-      ...configSheetFloorSeed.sheetConfig.columns,
+      ...configSheetFloorSeed.tableConfig.columns,
       ...configSheetFloorSeed.columnConfig.columns,
     ];
     expect(floorColumns.length).toBeGreaterThan(0);
@@ -107,7 +108,7 @@ describe("configSheetFloorSeed data values", () => {
       ...configSheetFloorSeed.spreadsheetConfig.columns.filter(
         (column) => column.header !== "Table menu space",
       ),
-      ...configSheetFloorSeed.sheetConfig.columns,
+      ...configSheetFloorSeed.tableConfig.columns,
       ...configSheetFloorSeed.columnConfig.columns,
     ];
     otherColumns.forEach((column) => {

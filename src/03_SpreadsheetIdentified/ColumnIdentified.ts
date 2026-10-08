@@ -8,7 +8,15 @@ import type {
   EditProtection,
   EditWarningDeclaration,
 } from "../00_Source/RawSource/EditProtection";
-import type { GridRangeProps } from "../00_Source/RawSource/RawSource";
+import type {
+  GridRangeProps,
+  TableColumnType,
+} from "../00_Source/RawSource/RawSource";
+import {
+  type HeadRole,
+  headRows,
+  type HeadRowValueName,
+} from "../01_SpreadsheetSchema/headRows";
 import {
   toWireValue,
   type Value,
@@ -23,17 +31,13 @@ import { ColumnRaw } from "../02_SpreadsheetRaw/ColumnRaw";
 import { CellIdentified } from "./CellIdentified";
 import { ColumnCommonIdentified } from "./ClassBases/ColumnCommonIdentified";
 import type { CellChange } from "./ClassTypes/StateIdentified";
-import { ColumnMetaIdentified } from "./ColumnMetaIdentified";
 import { TableIdentified } from "./TableIdentified";
 
 export class ColumnIdentified<
   VN extends ValueName = ValueName,
 > extends ColumnCommonIdentified<VN> {
-  get sheet(): TableIdentified {
+  get table(): TableIdentified {
     return new TableIdentified(this.tableIdentifiedProps);
-  }
-  get meta(): ColumnMetaIdentified<VN> {
-    return new ColumnMetaIdentified(this.columnIdentifiedProps);
   }
   get raw(): ColumnRaw<VnToCvn<VN>> {
     return new ColumnRaw({
@@ -41,8 +45,14 @@ export class ColumnIdentified<
       colIndex: this.colIndex,
     });
   }
-  get cellIndexesActive(): number[] {
-    return this.raw.cellIndexesActive;
+  get reference(): string {
+    return this.raw.reference;
+  }
+  get single(): string {
+    return this.raw.single;
+  }
+  get workingCellIndexes(): number[] {
+    return this.raw.workingCellIndexes;
   }
   get cellIndexesFull(): number[] {
     return this.raw.cellIndexesFull;
@@ -50,14 +60,23 @@ export class ColumnIdentified<
   get cellsFull(): CellIdentified<VN>[] {
     return this.cellIndexesFull.map((rowIndex) => this.cell(rowIndex));
   }
+  headCell<HR extends HeadRole>(
+    headRole: HR,
+  ): CellIdentified<HeadRowValueName<HR>> {
+    return new CellIdentified<HeadRowValueName<HR>>({
+      ...this.tableIdentifiedProps,
+      columnId: this.columnId,
+      rowIndex: headRows.index(headRole),
+    });
+  }
   prepFetchSpecific(rowIndexes: number[]): this {
     rowIndexes.forEach((rowIndex) => {
       this.cell(rowIndex).prepFetch();
     });
     return this;
   }
-  prepFetchActive(): this {
-    return this.prepFetchSpecific(this.cellIndexesActive);
+  prepFetchWorking(): this {
+    return this.prepFetchSpecific(this.workingCellIndexes);
   }
   prepFetchFull(): this {
     this.fetchTargets.push({
@@ -68,7 +87,7 @@ export class ColumnIdentified<
   }
   // Through the cells, not straight to Raw, so the value name's blank is read here too.
   get valueArrOrEmpty(): Value<VN>[] {
-    return this.sheet.rowIndexesActive.map((rowIndex) =>
+    return this.table.workingRowIndexes.map((rowIndex) =>
       this.valueOrEmpty(rowIndex),
     );
   }
@@ -78,7 +97,7 @@ export class ColumnIdentified<
     );
   }
   get valueArrNotEmpty(): NotEmpty<Value<VN>>[] {
-    return this.sheet.rowIndexesActive.map((rowIndex) =>
+    return this.table.workingRowIndexes.map((rowIndex) =>
       this.cell(rowIndex).valueNotEmpty(),
     );
   }
@@ -97,11 +116,11 @@ export class ColumnIdentified<
       rowIndex,
     });
   }
-  get cellsActive(): CellIdentified<VN>[] {
-    return this.cellIndexesActive.map((rowIndex) => this.cell(rowIndex));
+  get workingCells(): CellIdentified<VN>[] {
+    return this.workingCellIndexes.map((rowIndex) => this.cell(rowIndex));
   }
-  activeCellsToDefault(): void {
-    this.cellsActive.forEach((cell) => {
+  workingCellsToDefault(): void {
+    this.workingCells.forEach((cell) => {
       cell.updateToDefault();
     });
   }
@@ -114,8 +133,8 @@ export class ColumnIdentified<
     this.raw.updateAllCells(this._rawChange(change));
     return this;
   }
-  updateActiveCells(change: CellChange<VN>): this {
-    this.raw.updateActiveCells(this._rawChange(change));
+  updateWorkingCells(change: CellChange<VN>): this {
+    this.raw.updateWorkingCells(this._rawChange(change));
     return this;
   }
   updateAllFormulas(formula: string): this {
@@ -123,9 +142,13 @@ export class ColumnIdentified<
     this.raw.updateAllFormulas(formula);
     return this;
   }
-  updateActiveFormulas(formula: string): this {
+  updateWorkingFormulas(formula: string): this {
     this.schema.validateIsFormula();
-    this.raw.updateActiveFormulas(formula);
+    this.raw.updateWorkingFormulas(formula);
+    return this;
+  }
+  updateColumnType(columnType: TableColumnType): this {
+    this.raw.updateColumnType(columnType);
     return this;
   }
   // Google matches the text, so neither string is checked against the value config.
@@ -184,7 +207,7 @@ export class ColumnIdentified<
     return this;
   }
   anchoredA1(colIndex = this.colIndex): string {
-    return this.sheet.anchoredA1(colIndex);
+    return this.table.anchoredA1(colIndex);
   }
   // A colour-only write is legitimate on a formula column; a value is not.
   private _rawChange({
@@ -195,8 +218,8 @@ export class ColumnIdentified<
     this.schema.validateDataNotFormula();
     return { ...rest, value: toWireValue(value) };
   }
-  emptyActiveCellsToDefualt(): this {
-    this.cellsActive.forEach((cell) => {
+  emptyWorkingCellsToDefault(): this {
+    this.workingCells.forEach((cell) => {
       if (cell.raw.isEmpty) {
         cell.updateToDefault();
       }

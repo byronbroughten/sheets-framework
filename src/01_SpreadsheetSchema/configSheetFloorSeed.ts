@@ -4,7 +4,11 @@ import {
   getColumnTraitByName,
   getSheetColumnNames,
 } from "./columnConfigsTypes";
-import { sheetConfigsByGid } from "./sheetConfigsTypes";
+import {
+  type TableConfig,
+  tableConfigsByGid,
+  tableConfigsByTableId,
+} from "./tableConfigsTypes";
 
 export type FloorColumnType = Extract<
   TableColumnType,
@@ -22,7 +26,7 @@ type FloorSeedGroupedColumn = FloorSeedColumn & { columnGroupHeading: string };
 
 interface FloorSeedSheet {
   title: string;
-  tableName: string;
+  liveTableName: string;
   letApiAccess: boolean;
   columns: readonly FloorSeedGroupedColumn[];
   endpoints?: Record<
@@ -43,7 +47,7 @@ interface FloorSeedSheet {
 export const configSheetFloorSeed = {
   spreadsheetConfig: {
     title: "Spreadsheet Config",
-    tableName: "spreadsheetConfig",
+    liveTableName: "spreadsheetConfig",
     letApiAccess: true,
     columns: [
       {
@@ -83,15 +87,21 @@ export const configSheetFloorSeed = {
       },
     },
   },
-  sheetConfig: {
-    title: "Sheet Config",
-    tableName: "sheetConfig",
+  tableConfig: {
+    title: "Table Config",
+    liveTableName: "tableConfig",
     letApiAccess: true,
     columns: [
       {
-        header: "Sheet GID",
+        header: "Table ID",
         columnGroupHeading: "",
-        columnType: "DOUBLE",
+        columnType: "TEXT",
+        emptyValueAllowed: false,
+      },
+      {
+        header: "Table name",
+        columnGroupHeading: "",
+        columnType: "TEXT",
         emptyValueAllowed: false,
       },
       {
@@ -110,13 +120,13 @@ export const configSheetFloorSeed = {
   },
   columnConfig: {
     title: "Column Config",
-    tableName: "columnConfig",
+    liveTableName: "columnConfig",
     letApiAccess: true,
     columns: [
       {
-        header: "Sheet GID",
+        header: "Table ID",
         columnGroupHeading: "",
-        columnType: "DOUBLE",
+        columnType: "TEXT",
         emptyValueAllowed: false,
       },
       {
@@ -126,7 +136,7 @@ export const configSheetFloorSeed = {
         emptyValueAllowed: false,
       },
       {
-        header: "Sheet title",
+        header: "Table name",
         columnGroupHeading: "",
         columnType: "TEXT",
         emptyValueAllowed: false,
@@ -147,7 +157,7 @@ export const configSheetFloorSeed = {
   },
   valueConfig: {
     title: "Value Config",
-    tableName: "valueConfig",
+    liveTableName: "valueConfig",
     letApiAccess: true,
     columns: [],
     exampleColumn: {
@@ -159,27 +169,45 @@ export const configSheetFloorSeed = {
 } as const satisfies Record<string, FloorSeedSheet>;
 
 export type FloorTabName = keyof typeof configSheetFloorSeed;
+type FloorTabSeed = (typeof configSheetFloorSeed)[FloorTabName];
 
 export function isFloorTabName(name: string): name is FloorTabName {
   return Object.hasOwn(configSheetFloorSeed, name);
 }
 
-export function floorTabSeedByGid(
-  sheetGid: number,
-): (typeof configSheetFloorSeed)[FloorTabName] | undefined {
-  const sheetConfig = sheetConfigsByGid().get(sheetGid);
-  if (sheetConfig === undefined || !isFloorTabName(sheetConfig.sheetName)) {
+export function floorTabSeedByGid(sheetGid: number): FloorTabSeed | undefined {
+  return floorTabSeedOf(tableConfigsByGid().get(sheetGid));
+}
+
+export function floorTabSeedByTableId(
+  tableId: string,
+): FloorTabSeed | undefined {
+  return floorTabSeedOf(tableConfigsByTableId().get(tableId));
+}
+
+function floorTabSeedOf(
+  tableConfig: TableConfig | undefined,
+): FloorTabSeed | undefined {
+  const tableKey = floorTableKeyOf(tableConfig);
+  if (tableKey === undefined) return undefined;
+  return configSheetFloorSeed[tableKey];
+}
+
+function floorTableKeyOf(
+  tableConfig: TableConfig | undefined,
+): FloorTabName | undefined {
+  if (tableConfig === undefined || !isFloorTabName(tableConfig.tableKey)) {
     return undefined;
   }
-  return configSheetFloorSeed[sheetConfig.sheetName];
+  return tableConfig.tableKey;
 }
 
 export function floorSeedColumns(
-  sheetName: FloorTabName,
+  tableName: FloorTabName,
 ): readonly FloorSeedColumn[] {
-  if (sheetName === "valueConfig") return [];
-  if (sheetName !== "spreadsheetConfig") {
-    return configSheetFloorSeed[sheetName].columns;
+  if (tableName === "valueConfig") return [];
+  if (tableName !== "spreadsheetConfig") {
+    return configSheetFloorSeed[tableName].columns;
   }
   return [
     ...configSheetFloorSeed.spreadsheetConfig.columns,
@@ -190,30 +218,28 @@ export function floorSeedColumns(
 }
 
 export function floorSeedColumnById(
-  sheetGid: number,
+  tableId: string,
   columnId: string,
 ): FloorSeedColumn | undefined {
-  const sheetConfig = sheetConfigsByGid().get(sheetGid);
-  if (sheetConfig === undefined || !isFloorTabName(sheetConfig.sheetName)) {
-    return undefined;
-  }
-  return floorSeedColumnInSheet(sheetConfig.sheetName, columnId);
+  const tableKey = floorTableKeyOf(tableConfigsByTableId().get(tableId));
+  if (tableKey === undefined) return undefined;
+  return floorSeedColumnInSheet(tableKey, columnId);
 }
 
 export function floorSeedColumnInSheet(
-  sheetName: FloorTabName,
+  tableName: FloorTabName,
   columnId: string,
 ): FloorSeedColumn | undefined {
-  return floorSeedColumns(sheetName).find((seedColumn) => {
-    const columnName = getSheetColumnNames(sheetName).find(
+  return floorSeedColumns(tableName).find((seedColumn) => {
+    const columnName = getSheetColumnNames(tableName).find(
       (name) =>
-        getColumnTraitByName(sheetName, name, "header") === seedColumn.header,
+        getColumnTraitByName(tableName, name, "header") === seedColumn.header,
     );
     if (columnName === undefined) return false;
-    return getColumnTraitByName(sheetName, columnName, "columnId") === columnId;
+    return getColumnTraitByName(tableName, columnName, "columnId") === columnId;
   });
 }
 
-export function floorColumnLabel(sheetName: string, header: string): string {
-  return `Floor column "${header}" on "${sheetName}"`;
+export function floorColumnLabel(tableName: string, header: string): string {
+  return `Floor column "${header}" on "${tableName}"`;
 }

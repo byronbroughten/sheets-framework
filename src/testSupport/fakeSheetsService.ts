@@ -8,6 +8,7 @@ import { cellReplays } from "./fakeSheetsService/cellReplays";
 import { dimensionReplays } from "./fakeSheetsService/dimensionReplays";
 import { FakeGoogleRefusal } from "./fakeSheetsService/FakeGoogleRefusal";
 import {
+  defaultTableId,
   type FakeSheetState,
   type FakeSpreadsheet,
   fakeSpreadsheet,
@@ -27,6 +28,7 @@ type GoogleCellData = GoogleAppsScript.Sheets.Schema.CellData;
 type Request = GoogleAppsScript.Sheets.Schema.Request;
 type Response = GoogleAppsScript.Sheets.Schema.Response;
 
+export { defaultTableId as fakeTableId };
 export const fakeSpreadsheetId = "fake-spreadsheet";
 export const fakeTimeZone = "America/Chicago";
 
@@ -66,10 +68,9 @@ export interface FakeTable {
    */
   endColumnIndex?: number;
   /**
-   * Where the Table's range starts, defaulting to where the layout expects
-   * every managed Table (`TableOrigin.expected()`).
-   * Override either one only to build a deliberately misplaced Table, which
-   * `SpreadsheetRaw`'s post-fetch placement check refuses.
+   * Where the Table's range starts, defaulting to `TableOrigin.expected()`,
+   * where the dev configs record every managed Table. Override either one to
+   * match a test's own recorded position, or to misplace the Table.
    */
   startRowIndex?: number;
   startColumnIndex?: number;
@@ -82,7 +83,7 @@ export interface FakeTable {
    * A column's live data-validation condition values (e.g.
    * `["=valueConfig[Transaction Description]"]`), keyed by absolute
    * column index — read by `ColumnConfigOperator`'s valueName detection
-   * (`ColumnMetaRaw.valueValidationStrings`). Omit for a table with no
+   * (`ColumnProfileRaw.valueValidationStrings`). Omit for a table with no
    * validated columns.
    */
   columnValidationValues?: Record<number, string[]>;
@@ -96,7 +97,7 @@ export interface FakeTable {
   /**
    * A column's declared Sheets column type (e.g. `"CURRENCY"`, `"DATE"`,
    * `"BOOLEAN"`), keyed by absolute column index — read by
-   * `ColumnMetaRaw.activeColumnType`, which `ColumnConfigOperator`'s
+   * `ColumnProfileRaw.columnType`, which `ColumnConfigOperator`'s
    * valueName derivation consults before falling back to the top-row
    * sample. Omit a column here to leave it untyped (Automatic), which is
    * what the real API reports for a column whose type was never set.
@@ -111,7 +112,7 @@ export interface FakeSheetProperties {
   /**
    * Row-major grid data, starting at row/column 0 — row indexes here are
    * literal sheet row indexes, so they must line up with
-   * `sheetLayout`'s row layout (row 0 is the columnId row, row 4 is
+   * `tableLayout`'s row layout (row 0 is the columnId row, row 4 is
    * the first data row, etc.) for anything above 02_SpreadsheetRaw to
    * resolve columns/values correctly. Omit for a sheet whose cell content
    * doesn't matter to the test (sheet-properties-only fixtures still work
@@ -120,9 +121,9 @@ export interface FakeSheetProperties {
   rows?: readonly (readonly FakeCell[])[];
   /**
    * The sheet's one Table, shorthand for `tables: [table]`. Required for any test that reads/appends
-   * *data* rows on this sheet (`TableRaw`'s `rowIndexesActive`/
+   * *data* rows on this sheet (`TableRaw`'s `workingRowIndexes`/
    * `appendDataRow` etc. read the Table's `dataRowCount`, which throws if no table was
-   * ever integrated) — not needed for sheets only read via a uniform row
+   * ever integrated) — not needed for sheets only read via a head row
    * (e.g. a business sheet's header row). `endRowIndex` is the exclusive
    * bound of existing data rows and must be strictly past the first data
    * row; a replayed Table append grows it, as the live API does.
@@ -146,7 +147,7 @@ export interface FakeSheetProperties {
    * against the live spreadsheet, for a row inside the grid whose every
    * cell lacks a value, a formula and an explicit number format. Contrast
    * a row present in `rows` with empty cells, which IS reported and so
-   * marks those cells active with an empty value. Use this to reproduce
+   * puts those cells in the working view with an empty value. Use this to reproduce
    * bugs where code assumes a row it explicitly fetched came back with
    * cells in the response.
    */
@@ -192,7 +193,7 @@ export interface FakeSheetsService {
  * Builds a `FakeSheetProperties["rows"]` array from a sparse `{ rowIndex:
  * cells }` map, padding the gaps with empty rows so array position lines
  * up with literal sheet row index (row 0 is the columnId row, row 4 is
- * the first data row, per `sheetLayout` — see `rows`' own doc).
+ * the first data row, per `tableLayout` — see `rows`' own doc).
  */
 export function buildGridRows(
   rowsByIndex: Record<number, readonly FakeCell[]>,

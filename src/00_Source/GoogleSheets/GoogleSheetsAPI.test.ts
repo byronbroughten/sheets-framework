@@ -797,6 +797,7 @@ describe("GoogleSheetsAPI payload mapping", () => {
                     {
                       value: 12,
                       isFormula: true,
+                      formula: "=A4",
                       numberFormatType: "CURRENCY",
                       dataValidationConditionType: "NUMBER_GREATER",
                     },

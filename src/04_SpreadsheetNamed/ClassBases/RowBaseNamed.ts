@@ -1,21 +1,21 @@
-import type { SheetName } from "../../01_SpreadsheetSchema/sheetConfigsTypes";
-import { SheetSchema } from "../../01_SpreadsheetSchema/SheetSchema";
-import { SheetBaseNamed, type SheetNamedProps } from "./SheetBaseNamed";
+import type { TableName } from "../../01_SpreadsheetSchema/tableConfigsTypes";
+import { TableSchema } from "../../01_SpreadsheetSchema/TableSchema";
+import { TableBaseNamed, type TableNamedProps } from "./TableBaseNamed";
 
 export interface RowNamedProps<
-  TN extends SheetName,
-> extends SheetNamedProps<TN> {
+  TN extends TableName,
+> extends TableNamedProps<TN> {
   rowIndex: number;
 }
 
-export class RowBaseNamed<TN extends SheetName> extends SheetBaseNamed<TN> {
+export class RowBaseNamed<TN extends TableName> extends TableBaseNamed<TN> {
   readonly rowIndex: number;
   constructor({ rowIndex, ...props }: RowNamedProps<TN>) {
     super(props);
     this.rowIndex = rowIndex;
   }
-  get schema(): SheetSchema<TN> {
-    return SheetSchema.fromSheetName(this.sheetName);
+  get schema(): TableSchema<TN> {
+    return TableSchema.fromSheetName(this.tableName);
   }
   get rowNamedProps(): RowNamedProps<TN> {
     return {

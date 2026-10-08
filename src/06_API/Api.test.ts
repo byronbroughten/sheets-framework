@@ -2,9 +2,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { SheetEdit } from "../00_Source/PlatformEvents/sheetEdit";
 import { SheetIndex } from "../00_Source/RawSource/SheetIndex";
-import { getColumnTraitByName } from "../01_SpreadsheetSchema/columnConfigsTypes";
+import {
+  getColumnTraitByName,
+  getSheetColumnNames,
+} from "../01_SpreadsheetSchema/columnConfigsTypes";
 import { installedConfigs } from "../01_SpreadsheetSchema/configRegister";
-import { getSheetTraitByName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {
@@ -16,7 +19,7 @@ import type { FakeGridView } from "../testSupport/fakeSheetsService/gridView";
 import { Api } from "./Api";
 import type { Endpoints } from "./Endpoints";
 
-const runItemGid = getSheetTraitByName("runItem", "sheetGid");
+const runItemGid = getTableTraitByName("runItem", "sheetGid");
 // The last column is deliberately left without a column id.
 const columnIds = [
   getColumnTraitByName("runItem", "id", "columnId"),
@@ -140,7 +143,7 @@ describe("Api.handleSheetChange", () => {
     stubSheetsService({
       sheets: [
         {
-          sheetId: getSheetTraitByName("valueConfig", "sheetGid"),
+          sheetId: getTableTraitByName("valueConfig", "sheetGid"),
           title: "Values",
         },
       ],
@@ -160,7 +163,7 @@ describe("Api.handleSheetChange", () => {
     stubSheetsService({
       sheets: [
         {
-          sheetId: getSheetTraitByName("valueConfig", "sheetGid"),
+          sheetId: getTableTraitByName("valueConfig", "sheetGid"),
           title: "Value Config",
         },
       ],
@@ -184,6 +187,134 @@ describe("Api.isSuspectedApiCall", () => {
     expect(
       Api.isSuspectedApiCall(actionRowEdit(twoWayColIndex, "some text")),
     ).toBe(false);
+  });
+  it("ignores a checkbox on the header row or a data row", () => {
+    const { tableHeaderRowIndex, topDataRowIndex } = expectedSheetLayout;
+    [tableHeaderRowIndex, topDataRowIndex].forEach((rowIndexBase0) => {
+      expect(
+        Api.isSuspectedApiCall({
+          ...actionRowEdit(twoWayColIndex, "TRUE"),
+          rowIndexBase0,
+        }),
+      ).toBe(false);
+    });
+  });
+  it("matches the action row across the Table's recorded columns and no further", () => {
+    const columnCount = getSheetColumnNames("runItem").length;
+    expect(
+      Api.isSuspectedApiCall(actionRowEdit(columnCount - 1, "TRUE")),
+    ).toBe(true);
+    expect(Api.isSuspectedApiCall(actionRowEdit(columnCount, "TRUE"))).toBe(
+      false,
+    );
+  });
+  it("ignores a sheet with no managed Table", () => {
+    expect(
+      Api.isSuspectedApiCall({
+        ...actionRowEdit(twoWayColIndex, "TRUE"),
+        sheetGid: -1,
+      }),
+    ).toBe(false);
+  });
+});
+
+describe("Api.handleSheetEdit, a tick the trigger doesn't match", () => {
+  it("costs no fetch for a data checkbox or a tick past the Table's columns", () => {
+    const { getByDataFilterCalls } = stubRunItemSheet();
+    const calls: string[] = [];
+    const installSource = vi.fn();
+    const pastColumns = getSheetColumnNames("runItem").length;
+    [
+      {
+        ...actionRowEdit(twoWayColIndex, "TRUE"),
+        rowIndexBase0: expectedSheetLayout.topDataRowIndex,
+      },
+      actionRowEdit(pastColumns, "TRUE"),
+    ].forEach((edit) => {
+      Api.handleSheetEdit(
+        { configs, endpoints: trackingEndpoints(calls) },
+        edit,
+        installSource,
+      );
+      Api.init(trackingEndpoints(calls)).handleSheetEdit(edit);
+    });
+    expect(calls).toEqual([]);
+    expect(installSource).not.toHaveBeenCalled();
+    expect(getByDataFilterCalls).toHaveLength(0);
+  });
+});
+
+describe("Api.handleSheetEdit, a Table recorded lower on its sheet", () => {
+  const headerRowIndex = 6;
+  const lowerConfigs = {
+    ...configs,
+    tableConfigs: {
+      ...configs.tableConfigs,
+      runItem: { ...configs.tableConfigs.runItem, headerRowIndex },
+    },
+  };
+  const lowerActionRowIndex = headerRowIndex - 1;
+
+  async function stubLowerRunItemSheet() {
+    vi.resetModules();
+    const fresh = await import("./Api");
+    const fake = await import("../testSupport/fakeSheetsService");
+    const stub = fake.stubSheetsService({
+      sheets: [
+        {
+          sheetId: runItemGid,
+          title: "Run item",
+          rows: buildGridRows({
+            [headerRowIndex - 3]: columnIds,
+            [lowerActionRowIndex]: tickedAt(buttonColIndex),
+            [headerRowIndex]: ["ID", "Selected", "Result", ""],
+            [headerRowIndex + 1]: ["r:rit:row7", false, "", ""],
+            [headerRowIndex + 2]: ["r:rit:row8", false, "", ""],
+          }),
+          table: { startRowIndex: headerRowIndex, endRowIndex: 9 },
+        },
+      ],
+    });
+    return { LowerApi: fresh.Api, ...stub };
+  }
+
+  it("runs the action ticked on the row above its recorded header", async () => {
+    const { LowerApi, grid } = await stubLowerRunItemSheet();
+    const calls: string[] = [];
+
+    LowerApi.handleSheetEdit(
+      { configs: lowerConfigs, endpoints: trackingEndpoints(calls) },
+      {
+        ...actionRowEdit(buttonColIndex, "TRUE"),
+        rowIndexBase0: SheetIndex.row(lowerActionRowIndex),
+      },
+      vi.fn(),
+    );
+
+    expect(calls).toEqual(["button"]);
+    expect(
+      grid
+        .sheet(runItemGid)
+        .rows({
+          startRowIndex: lowerActionRowIndex,
+          endRowIndex: lowerActionRowIndex + 1,
+        })
+        .flat(),
+    ).toEqual([null, null, false, null]);
+  });
+
+  it("ignores a tick on the fixed spot's action row, without a fetch", async () => {
+    const { LowerApi, getByDataFilterCalls } = await stubLowerRunItemSheet();
+    const calls: string[] = [];
+
+    LowerApi.handleSheetEdit(
+      { configs: lowerConfigs, endpoints: trackingEndpoints(calls) },
+      actionRowEdit(buttonColIndex, "TRUE"),
+      vi.fn(),
+    );
+
+    expect(calls).toEqual([]);
+    expect(getByDataFilterCalls).toHaveLength(0);
   });
 });
 
@@ -317,12 +448,12 @@ describe("Api.handleSheetEdit, the endpoints it installs", () => {
           runItem_selected: { action: vi.fn(), runStatus: "runStatus" },
         },
       },
-      { ...actionRowEdit(twoWayColIndex, "TRUE"), sheetGid: -1 },
+      actionRowEdit(idColIndex, "TRUE"),
       vi.fn(),
     );
 
     const ss = SpreadsheetNamed.init();
-    const sheet = ss.sheet("runItem");
+    const sheet = ss.table("runItem");
     sheet.row(4).prepFetchFull();
     ss.fetchAllPrepped();
     sheet.appendRowWithVals({ result: "appended" });

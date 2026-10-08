@@ -1,31 +1,28 @@
-import type {
-  ConditionalFormatDeclaration,
-  ConditionalFormatRule,
-} from "../00_Source/RawSource/ConditionalFormat";
+import type { ConditionalFormatDeclaration } from "../00_Source/RawSource/ConditionalFormat";
 import type {
   EditLockDeclaration,
-  EditProtection,
   EditWarningDeclaration,
-  WholeSheetEditLockDeclaration,
-  WholeSheetEditWarningDeclaration,
 } from "../00_Source/RawSource/EditProtection";
+import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
+import { type HeadRole, headRows } from "../01_SpreadsheetSchema/headRows";
 import type { Value } from "../01_SpreadsheetSchema/valueSchemas";
 import type { FindReplaceTerms } from "../02_SpreadsheetRaw/ClassTypes/StateRaw";
 import { TableRaw } from "../02_SpreadsheetRaw/TableRaw";
 import { TableCommonIdentified } from "./ClassBases/TableCommonIdentified";
 import { ColumnIdentified } from "./ColumnIdentified";
+import { HeadRowIdentified } from "./HeadRowIdentified";
 import { RowIdentified } from "./RowIdentified";
-import { SheetMetaIdentified } from "./SheetMetaIdentified";
+import { TableColumnResolverIdentified } from "./TableIdentified/TableColumnResolverIdentified";
 
 export class TableIdentified extends TableCommonIdentified {
-  get meta(): SheetMetaIdentified {
-    return new SheetMetaIdentified(this.tableIdentifiedProps);
-  }
   get raw(): TableRaw {
     return new TableRaw(this.tableIdentifiedProps);
   }
-  get rowIndexesActive(): number[] {
-    return this.raw.rowIndexesActive;
+  get columnResolver(): TableColumnResolverIdentified {
+    return new TableColumnResolverIdentified(this.tableIdentifiedProps);
+  }
+  get workingRowIndexes(): number[] {
+    return this.raw.workingRowIndexes;
   }
   get rows(): RowIdentified[] {
     return this.raw.rows.map((row) => this.row(row.rowIndex));
@@ -41,8 +38,8 @@ export class TableIdentified extends TableCommonIdentified {
     if (this.raw.dataRowCountAfterFlush === 0) return true;
     return this._isTopRowTheOnlyRow && this.topRow.isBlank;
   }
-  get rowIndexesActiveWithData(): number[] {
-    return this._withoutBlankRows(this.rowIndexesActive);
+  get workingRowIndexesWithData(): number[] {
+    return this._withoutBlankRows(this.workingRowIndexes);
   }
   get rowIndexesFullWithData(): number[] {
     return this._withoutBlankRows(this.raw.rowIndexesFull);
@@ -50,12 +47,12 @@ export class TableIdentified extends TableCommonIdentified {
   // A configured column the sheet doesn't have holds nothing to read, clear, or default.
   get nonFormulaColumnIds(): string[] {
     return this.schema.nonFormulaColumnIds.filter((columnId) =>
-      this.meta.isActiveColumnId(columnId),
+      this.columnResolver.hasColumnId(columnId),
     );
   }
   // Feedback columns only report on a row, so a row holding nothing else is still blank.
   get blankTestColumnIds(): string[] {
-    const feedbackColumnIds = this.feedbackColumnIds.get(this.sheetName);
+    const feedbackColumnIds = this.feedbackColumnIds.get(this.schema.tableId);
     return this.nonFormulaColumnIds.filter(
       (columnId) => !feedbackColumnIds?.has(columnId),
     );
@@ -66,16 +63,40 @@ export class TableIdentified extends TableCommonIdentified {
       columnId,
     });
   }
+  gatherFetchDataPrepped(): void {
+    // This is so that table dimensions and columnIndexes can be guaranteed
+    // before their fetch requests are generated.
+    this.fetchTargets.forEach((target) => {
+      if (target.kind === "fullRow") {
+        this.raw.rowCommon(target.row).gatherFetchFull();
+      } else if (target.kind === "fullDataColumn") {
+        this.column(target.column).raw.gatherFetchFull();
+      } else if (target.kind === "singleCell") {
+        const colIndex = this.column(target.column).colIndex;
+        this.raw.rowCommon(target.row).cell(colIndex).gatherFetchRange();
+      } else {
+        const exhaustive: never = target;
+        throw new Error(`Unknown fetch target: ${JSON.stringify(exhaustive)}`);
+      }
+    });
+  }
+  ensureColumnIdsAreFetched(): this {
+    this.columnResolver.gatherDataPrerequisites();
+    this.raw.ss.fetchAllGathered();
+    return this;
+  }
+  addMissingColumnIds(): number {
+    const colIndexes = this.raw.columnResolver.colIndexesWithoutColumnId;
+    colIndexes.forEach((colIndex) => {
+      this.raw
+        .headRow("columnId")
+        .updateValue(colIndex, dimensionIds.col(this.schema.idPrefix));
+    });
+    return colIndexes.length;
+  }
   findReplace(terms: FindReplaceTerms): this {
     this.raw.findReplace(terms);
     return this;
-  }
-  prepFetchConditionalFormatRules(): this {
-    this.raw.gatherFetchConditionalFormatRules();
-    return this;
-  }
-  conditionalFormatRules(): ConditionalFormatRule[] {
-    return this.raw.conditionalFormatRules();
   }
   addConditionalFormatRule(declaration: ConditionalFormatDeclaration): this {
     this.raw.addConditionalFormatRule(declaration);
@@ -85,17 +106,6 @@ export class TableIdentified extends TableCommonIdentified {
     this.raw.removeConditionalFormatRules();
     return this;
   }
-  removeConditionalFormatRule(rule: ConditionalFormatRule): this {
-    this.raw.removeConditionalFormatRule(rule);
-    return this;
-  }
-  prepFetchEditProtections(): this {
-    this.raw.gatherFetchEditProtections();
-    return this;
-  }
-  editProtections(): EditProtection[] {
-    return this.raw.editProtections();
-  }
   addEditWarning(declaration: EditWarningDeclaration = {}): this {
     this.raw.addEditWarning(declaration);
     return this;
@@ -104,30 +114,8 @@ export class TableIdentified extends TableCommonIdentified {
     this.raw.addEditLock(declaration);
     return this;
   }
-  addEditWarningWholeSheet(
-    declaration: WholeSheetEditWarningDeclaration = {},
-  ): this {
-    this.raw.addEditWarningWholeSheet(declaration);
-    return this;
-  }
-  addEditLockWholeSheet(declaration: WholeSheetEditLockDeclaration = {}): this {
-    this.raw.addEditLockWholeSheet(declaration);
-    return this;
-  }
   removeEditProtections(): this {
     this.raw.removeEditProtections();
-    return this;
-  }
-  removeEditProtection(protection: EditProtection): this {
-    this.raw.removeEditProtection(protection);
-    return this;
-  }
-  removeEditProtectionByDescription(description: string): this {
-    this.raw.removeEditProtectionByDescription(description);
-    return this;
-  }
-  removeEditProtectionById(protectionId: number): this {
-    this.raw.removeEditProtectionById(protectionId);
     return this;
   }
   anchoredA1(colIndex: number): string {
@@ -142,6 +130,12 @@ export class TableIdentified extends TableCommonIdentified {
       ...this.tableIdentifiedProps,
       rowIndex,
     });
+  }
+  headRow<HR extends HeadRole>(headRole: HR): HeadRowIdentified<HR> {
+    return new HeadRowIdentified({ ...this.tableIdentifiedProps, headRole });
+  }
+  headRowByIndex(rowIndex: number): HeadRowIdentified {
+    return this.headRow(headRows.rolesAt(rowIndex)[0]);
   }
   // The top data row survives, so which row a wipe leaves is predictable.
   DELETE_ALL_DATA_ROWS(): void {
@@ -174,7 +168,7 @@ export class TableIdentified extends TableCommonIdentified {
   }
   private _isTopRowReusable(): boolean {
     if (!this._isTopRowTheOnlyRow) return false;
-    if (!this.topRow.isActive) {
+    if (!this.topRow.inWorking) {
       throw new Error(
         `Cannot append to ${this.raw.tableLabel}: its one data row was never fetched, so whether the append may reuse it is unknown. Prefetch its top data row first.`,
       );

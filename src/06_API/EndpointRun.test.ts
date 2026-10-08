@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getColumnTraitByName } from "../01_SpreadsheetSchema/columnConfigsTypes";
-import { getSheetTraitByName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import { SpreadsheetBaseNamed } from "../04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
 import type { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
+import { TableNamed } from "../04_SpreadsheetNamed/TableNamed";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {
   buildGridRows,
@@ -12,13 +13,14 @@ import {
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
 import type { FakeGridView } from "../testSupport/fakeSheetsService/gridView";
+import { assertType, type IsExactly } from "../testSupport/typeAssertions";
 import { EndpointRun } from "./EndpointRun";
 import type { ActionReturn, Endpoint, EndpointsAll } from "./Endpoints";
 import { feedbackColumnIdsOf } from "./feedbackColumnIds";
 
 type Color = GoogleAppsScript.Sheets.Schema.Color;
 
-const runItemGid = getSheetTraitByName("runItem", "sheetGid");
+const runItemGid = getTableTraitByName("runItem", "sheetGid");
 const columnIds = (["id", "selected", "startTime", "runStatus"] as const).map(
   (columnName) => getColumnTraitByName("runItem", columnName, "columnId"),
 );
@@ -145,11 +147,11 @@ function runEndpoint(
     ...SpreadsheetBaseNamed.initSpreadsheetNamedProps(
       feedbackColumnIdsOf({ ...alsoDeclared, runItem_startTime: endpoint }),
     ),
-    sheetName: "runItem",
+    tableName: "runItem",
     entryColumnName: "startTime",
     endpoint,
   });
-  run.sheet.identified.meta.ensureColumnIdsAreFetched();
+  run.table.identified.ensureColumnIdsAreFetched();
   run.run(isChecked);
 }
 
@@ -193,7 +195,7 @@ function retainingEndpoint(
 function noOp() {}
 
 function appendRow(ss: SpreadsheetNamed): void {
-  const sheet = ss.sheet("runItem");
+  const sheet = ss.table("runItem");
   sheet.row(0).prepFetchFull();
   ss.fetchAllPrepped();
   sheet.appendRowWithVals({ result: "appended" });
@@ -275,6 +277,25 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
+});
+
+describe("EndpointRun navigation", () => {
+  it("reaches its Table through table", () => {
+    stubRunItemSheet();
+    const endpoint = reportingEndpoint(noOp);
+    const run = new EndpointRun({
+      ...SpreadsheetBaseNamed.initSpreadsheetNamedProps(
+        feedbackColumnIdsOf({ runItem_startTime: endpoint }),
+      ),
+      tableName: "runItem",
+      entryColumnName: "startTime",
+      endpoint,
+    });
+
+    assertType<IsExactly<typeof run.table, TableNamed<"runItem">>>(true);
+
+    expect(run.table).toBeInstanceOf(TableNamed);
+  });
 });
 
 describe("EndpointRun.run, an endpoint with a selector", () => {
@@ -404,7 +425,7 @@ describe("EndpointRun.run, the selection a successful run consumes", () => {
 
     runEndpoint(
       selectiveEndpoint((ss) => {
-        ss.sheet("runItem").row(0).updateValue("selected", true);
+        ss.table("runItem").row(0).updateValue("selected", true);
       }),
     );
 
@@ -487,7 +508,7 @@ describe("EndpointRun.run, an endpoint with no selector", () => {
 
     runEndpoint(
       reportingEndpoint((ss) => {
-        ss.sheet("runItem").DELETE_ALL_DATA_ROWS();
+        ss.table("runItem").DELETE_ALL_DATA_ROWS();
       }),
     );
     expect(
@@ -675,8 +696,8 @@ describe("EndpointRun.run, an endpoint declaring no feedback columns", () => {
 describe("EndpointRun.run, a run that fails", () => {
   // Reading a row past the table's last one is a real read on real state.
   function failingAction(ss: Parameters<Endpoint<"runItem">["action"]>[0]) {
-    ss.sheet("runItem").row(0).cell("id").updateValue("r:rit:written");
-    ss.sheet("runItem").row(pastLastRowIndex).value("id");
+    ss.table("runItem").row(0).cell("id").updateValue("r:rit:written");
+    ss.table("runItem").row(pastLastRowIndex).value("id");
   }
 
   it("writes the error text and red to the selected rows only", () => {
@@ -848,8 +869,8 @@ describe("EndpointRun.run, a run report naming rows", () => {
 
     runEndpoint(
       reportingEndpoint((ss) => {
-        ss.sheet("runItem").row(0).updateValue("runStatus", "mine");
-        ss.sheet("runItem").row(1).updateValue("runStatus", "mine");
+        ss.table("runItem").row(0).updateValue("runStatus", "mine");
+        ss.table("runItem").row(1).updateValue("runStatus", "mine");
         return twoRowsFailed();
       }),
     );
@@ -944,7 +965,7 @@ describe("EndpointRun.run, a run report naming rows", () => {
 
     runEndpoint(
       reportingEndpoint((ss) => {
-        ss.sheet("runItem").row(0).cell("id").updateValue("r:rit:written");
+        ss.table("runItem").row(0).cell("id").updateValue("r:rit:written");
         return twoRowsFailed();
       }),
     );
@@ -978,7 +999,10 @@ describe("EndpointRun.run, a run report naming rows", () => {
     runEndpoint(
       reportingEndpoint(() => ({
         rows: new Map([
-          [pastLastRowIndex, { runState: "failure" as const, message: "Nowhere" }],
+          [
+            pastLastRowIndex,
+            { runState: "failure" as const, message: "Nowhere" },
+          ],
         ]),
       })),
     );
@@ -1007,7 +1031,7 @@ describe("EndpointRun.run, a run report naming rows", () => {
 
     runEndpoint(
       reportingEndpoint((ss) => {
-        ss.sheet("runItem").row(1).delete();
+        ss.table("runItem").row(1).delete();
         return twoRowsFailed();
       }),
     );

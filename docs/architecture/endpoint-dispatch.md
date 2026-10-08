@@ -11,12 +11,12 @@ An endpoint is one entry keyed by the column whose action-row checkbox triggers 
 An endpoint is **one entry keyed by the column whose action-row checkbox triggers it**. Any column may be that key — there is no suffix requirement and no second endpoint kind. The entry's value names an action plus, optionally, the columns the framework manages on the endpoint's behalf — two feedback columns, and a selector declared as an object so the opt-out from clearing sits inside the thing it modifies:
 
 ```ts
-export interface Endpoint<SN extends SheetNameSimple> {
+export interface Endpoint<TN extends TableNameSimple> {
   action: EndpointAction;
-  timeLastRan?: FeedbackColumnName<SN>;
-  runStatus?: FeedbackColumnName<SN>;
+  timeLastRan?: FeedbackColumnName<TN>;
+  runStatus?: FeedbackColumnName<TN>;
   selector?: {
-    column: CheckboxColumnName<SN>;
+    column: CheckboxColumnName<TN>;
     retainSelection?: boolean;
     requireOneRow?: boolean;
   };
@@ -65,7 +65,7 @@ export type Endpoints = {
 1. preps the selector column's fetch, if one is declared, into the cycle `fetchAllPrepped` is already running — so a selection costs no round trip of its own, and an endpoint without one costs no read at all here;
 2. collects the checked row indexes, or — with no selector — every table data row index from the table bounds;
 3. resets the entry column's action cell, unless `runOnUncheck` makes the checkbox an input rather than a button;
-4. **prunes**, when a selector is declared: every unselected data row is removed from local state, so every later read of active rows means the selection without a call site being rewritten. `TableRaw.removeRowsExcept` keeps the uniform rows (dropping the columnId row would break column resolution), and marks the sheet, so a whole-column fill on it throws;
+4. **prunes**, when a selector is declared: every unselected data row is removed from local state, so every later read of working rows means the selection without a call site being rewritten. `TableRaw.removeRowsExcept` keeps the head rows (dropping the columnId row would break column resolution), and marks the sheet, so a whole-column fill on it throws;
 5. stamps the running state and flushes — that first flush is what puts "Running…" and yellow on the sheet *before* the work starts, which is the whole basis for a killed run staying distinguishable from one that never began;
 6. **refuses a selection of more than one row**, when the selector declares `requireOneRow` — as the *first statement inside the `try`*, so the operator sees the ordinary failed run state carrying the count. That placement is the rule spelled out in step 9: a precondition that must fail loudly goes inside the `try` and before the action, since throwing earlier would write no status at all and the error path's discard would take the entry checkbox's reset with it;
 7. runs the action inside `try`/`catch`/`finally`;
@@ -112,7 +112,7 @@ An endpoint with a selector but nothing ticked prunes every data row, leaving no
 
 ## How feedback is written
 
-Feedback is written with the two column fills from [column fills](./queued-writes.md#column-fills), **both feedback columns taking the run state's colour**: `updateActiveCells` when there's a selector (the selected rows are active by construction), `updateAllCells` when there isn't — that branch reaches rows nothing ever fetched, which is why whole-sheet feedback costs no read. The selection clearing uses the active-cells fill for the same reason, through `CheckboxColumnOperator.uncheckActiveCells` — the operator's only uncheck, since a whole-column one refuses to run on a pruned sheet by design and would throw in exactly the situation that wants it. Contiguous selected rows collapse into one request each, and the fill rides the flush the `finally` was already going to perform, so the clearing adds no round trip.
+Feedback is written with the two column fills from [column fills](./queued-writes.md#column-fills), **both feedback columns taking the run state's colour**: `updateWorkingCells` when there's a selector (the selected rows are in the working view by construction), `updateAllCells` when there isn't — that branch reaches rows nothing ever fetched, which is why whole-sheet feedback costs no read. The selection clearing uses the working-cells fill for the same reason, through `CheckboxColumnOperator.uncheckWorkingCells` — the operator's only uncheck, since a whole-column one refuses to run on a pruned sheet by design and would throw in exactly the situation that wants it. Contiguous selected rows collapse into one request each, and the fill rides the flush the `finally` was already going to perform, so the clearing adds no round trip.
 
 ## A per-row report is a per-cell write
 
@@ -130,7 +130,7 @@ Feedback is written with the two column fills from [column fills](./queued-write
 
 **The dispatch boundary is where the generic widens.** There is deliberately no type-level bridge from a column full name to a sheet-and-column pair, so `Api` — holding a full name resolved at runtime — instantiates `EndpointRun` at the widened sheet name, where a column parameter is the union across sheets rather than one sheet's. That is sound and does not collapse to `never`, because `ColumnNameFiltered` distributes over the sheet name; `Endpoints.test.ts` pins both ends.
 
-That widening is what forces the selector's shape to be spelled inline, and the run to take `EndpointDispatched` (the rule: [`src/06_API/AGENTS.md`](../../src/06_API/AGENTS.md)). Two generic references to the *same* named type are compared by that type's measured variance rather than property by property, and the column filter leaves the variance unmeasurable, so the comparison falls back to demanding identical sheet names. Nesting the selector inside a named `EndpointSelector<SN>` — interface or alias — therefore breaks `Api`'s assignment outright, and so does `Endpoint<SheetNameSimple>` as the run's prop type; an anonymous nested object plus a structural copy (`{ [K in keyof Endpoint<SN>]: Endpoint<SN>[K] }`) keeps both comparisons structural. Tidying either into a named type fails `npm run tsc` at `Api.ts`, not at the file you edited.
+That widening is what forces the selector's shape to be spelled inline, and the run to take `EndpointDispatched` (the rule: [`src/06_API/AGENTS.md`](../../src/06_API/AGENTS.md)). Two generic references to the *same* named type are compared by that type's measured variance rather than property by property, and the column filter leaves the variance unmeasurable, so the comparison falls back to demanding identical sheet names. Nesting the selector inside a named `EndpointSelector<TN>` — interface or alias — therefore breaks `Api`'s assignment outright, and so does `Endpoint<TableNameSimple>` as the run's prop type; an anonymous nested object plus a structural copy (`{ [K in keyof Endpoint<TN>]: Endpoint<TN>[K] }`) keeps both comparisons structural. Tidying either into a named type fails `npm run tsc` at `Api.ts`, not at the file you edited.
 
 ## An endpoint that appends into its own sheet
 

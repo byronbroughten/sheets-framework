@@ -2,6 +2,7 @@ import {
   type TableAddressRaw,
   TableBaseRaw,
 } from "../../02_SpreadsheetRaw/ClassBases/TableBaseRaw";
+import { SheetRaw } from "../../02_SpreadsheetRaw/SheetRaw";
 import { Val } from "../../utils/Val";
 import {
   emptyTableStateIdentified,
@@ -45,6 +46,12 @@ export class TableBaseIdentified extends SpreadsheetBaseIdentified {
       ...this.tableAddress,
     });
   }
+  private get rawSheet(): SheetRaw {
+    return new SheetRaw({
+      ...this.spreadsheetRawProps,
+      sheetGid: this.sheetGid,
+    });
+  }
   private get tableStateBeforeProperties(): TableStateIdentified | undefined {
     return this.tableBeforePropertiesBySheet.get(this.sheetGid);
   }
@@ -56,12 +63,12 @@ export class TableBaseIdentified extends SpreadsheetBaseIdentified {
   }
   // Rule and protection fetches still need the Table's column IDs.
   get isPreppedToFetch(): boolean {
-    return this.fetchTargets.length > 0 || this.rawTable.hasGatheredSheetFetch;
+    return this.fetchTargets.length > 0 || this.rawSheet.hasGatheredFetch;
   }
   // Absent until the sheet's one Table is fetched.
   get knownTableId(): string | undefined {
     if ("tableId" in this.tableAddress) return this.tableAddress.tableId;
-    return this.rawTable.onlyTableId();
+    return this.rawTable.tableIdReachedByGid();
   }
   clearFetchTargets(): void {
     this.tableState.fetchQueue.targets = [];
@@ -87,7 +94,7 @@ export class TableBaseIdentified extends SpreadsheetBaseIdentified {
     if (!this.tablesStateIdentified.has(tableId)) {
       this.tablesStateIdentified.set(tableId, emptyTableStateIdentified());
     }
-    if (this.rawTable.onlyTableId() === tableId) {
+    if (this.rawTable.tableIdReachedByGid() === tableId) {
       this._adoptTableStateBeforeProperties(tableId);
     }
   }

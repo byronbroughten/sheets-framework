@@ -16,7 +16,7 @@ import type {
   ColumnValueDeclared,
   ColumnValueName,
 } from "../01_SpreadsheetSchema/columnConfigsTypes";
-import type { SheetName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
+import type { TableName } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import type {
   Value,
   ValueName,
@@ -28,48 +28,48 @@ import { CellBaseNamed } from "./ClassBases/CellBaseNamed";
 import { ColumnNamed } from "./ColumnNamed";
 
 export class CellNamed<
-  SN extends SheetName,
-  CN extends ColumnName<SN> = ColumnName<SN>,
-> extends CellBaseNamed<SN, CN> {
-  get column(): ColumnNamed<SN, CN> {
+  TN extends TableName,
+  CN extends ColumnName<TN> = ColumnName<TN>,
+> extends CellBaseNamed<TN, CN> {
+  get column(): ColumnNamed<TN, CN> {
     return new ColumnNamed(this.columnNamedProps);
   }
-  get identified(): CellIdentified<ColumnValueName<SN, CN>> {
+  get identified(): CellIdentified<ColumnValueName<TN, CN>> {
     return this.column.identified.cell(this.rowIndex);
   }
-  get raw(): CellRaw<VnToCvn<ColumnValueName<SN, CN>>> {
+  get raw(): CellRaw<VnToCvn<ColumnValueName<TN, CN>>> {
     return this.identified.raw;
   }
-  get isActive(): boolean {
-    return this.identified.isActive;
+  get inWorking(): boolean {
+    return this.identified.inWorking;
   }
-  valueOrEmpty(): ColumnValue<SN, CN> {
+  valueOrEmpty(): ColumnValue<TN, CN> {
     return this.identified.valueOrEmpty();
   }
   // Checked here, not delegated, so the message names the column the caller wrote.
-  valueNotEmpty(): NotEmpty<ColumnValue<SN, CN>> {
+  valueNotEmpty(): NotEmpty<ColumnValue<TN, CN>> {
     const value = this.valueOrEmpty();
     if (value === "") {
       throw new Error(
-        `Column "${this.columnName}" of sheet "${this.sheetName}" is empty in ${this.identified.raw.rowLabel(this.rowIndex)}.`,
+        `Column "${this.columnName}" of sheet "${this.tableName}" is empty in ${this.identified.raw.rowLabel(this.rowIndex)}.`,
       );
     } else {
-      return value as NotEmpty<ColumnValue<SN, CN>>;
+      return value as NotEmpty<ColumnValue<TN, CN>>;
     }
   }
-  value(): ColumnValueDeclared<SN, CN> {
+  value(): ColumnValueDeclared<TN, CN> {
     if (this.schema.emptyValueAllowed) {
-      return this.valueOrEmpty() as ColumnValueDeclared<SN, CN>;
+      return this.valueOrEmpty() as ColumnValueDeclared<TN, CN>;
     } else {
-      return this.valueNotEmpty() as ColumnValueDeclared<SN, CN>;
+      return this.valueNotEmpty() as ColumnValueDeclared<TN, CN>;
     }
   }
-  updateValue(value: ColumnValue<SN, CN>): this {
+  updateValue(value: ColumnValue<TN, CN>): this {
     this.identified.updateValue(value);
     return this;
   }
   updateFormula(
-    formula: ColumnIsFormula<SN, CN> extends true ? string : never,
+    formula: ColumnIsFormula<TN, CN> extends true ? string : never,
   ): this {
     this.identified.updateFormula(formula);
     return this;
@@ -89,7 +89,7 @@ export class CellNamed<
       );
     }
     const validated = this.schema.validate(value);
-    this.updateValue(validated as ColumnValue<SN, CN>);
+    this.updateValue(validated as ColumnValue<TN, CN>);
     return this;
   }
   addConditionalFormatRule(declaration: ConditionalFormatDeclaration): this {
@@ -120,8 +120,8 @@ export class CellNamed<
     this.identified.removeEditProtection(protection);
     return this;
   }
-  anchoredA1(columnName: ColumnName<SN> = this.columnName): string {
-    const colIndex = this.column.sheet.column(columnName).identified.colIndex;
+  anchoredA1(columnName: ColumnName<TN> = this.columnName): string {
+    const colIndex = this.column.table.column(columnName).identified.colIndex;
     return this.identified.anchoredA1(colIndex);
   }
 }

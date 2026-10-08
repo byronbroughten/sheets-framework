@@ -14,16 +14,26 @@ import type {
 import type {
   BoundedGridRange,
   GridRangeProps,
+  TableColumnType,
 } from "../00_Source/RawSource/RawSource";
 import {
   SheetIndex,
   type SheetRowIndex,
 } from "../00_Source/RawSource/SheetIndex";
+import {
+  type HeadRole,
+  headRows,
+  type HeadRowValueName,
+} from "../01_SpreadsheetSchema/headRows";
 import { Arr } from "../utils/Arr";
 import { CellRaw, validateFormulaString } from "./CellRaw";
 import { ColumnBaseRaw } from "./ClassBases/ColumnBaseRaw";
-import type { CellFill, FindReplaceTerms } from "./ClassTypes/StateRaw";
-import { ColumnMetaRaw } from "./ColumnMetaRaw";
+import type {
+  CellFill,
+  FindReplaceTerms,
+  TableEndColumnHeadCells,
+} from "./ClassTypes/StateRaw";
+import { ColumnProfileRaw } from "./ColumnProfileRaw";
 import { SpreadsheetRaw } from "./SpreadsheetRaw";
 import { TableRaw } from "./TableRaw";
 
@@ -36,11 +46,24 @@ export class ColumnRaw<
   get table(): TableRaw {
     return new TableRaw(this.tableRawProps);
   }
-  get meta(): ColumnMetaRaw<VN> {
-    return new ColumnMetaRaw<VN>(this.columnRawProps);
+  get profile(): ColumnProfileRaw {
+    return new ColumnProfileRaw(this.columnRawProps);
+  }
+  // The live names, so formula text stays right after a rename without regenerating.
+  get reference(): string {
+    const { header } = this.profile;
+    if (header === "") {
+      throw new Error(
+        `Column ${this.colIndex} of ${this.table.tableLabel} has a blank header, so it has no Table reference.`,
+      );
+    }
+    return `${this.table.name}[${header}]`;
+  }
+  get single(): string {
+    return `SINGLE(${this.reference})`;
   }
   get valueArrOrEmpty(): (CellValue<VN> | "")[] {
-    return this.table.rowIndexesActive.map((rowIndex) =>
+    return this.table.workingRowIndexes.map((rowIndex) =>
       this.valueOrEmpty(rowIndex),
     );
   }
@@ -67,8 +90,8 @@ export class ColumnRaw<
       this.tableOrigin().sheetRowIndex(startRowIndex),
     );
   }
-  get cellIndexesActive(): number[] {
-    return this.table.rowIndexesActive;
+  get workingCellIndexes(): number[] {
+    return this.table.workingRowIndexes;
   }
   get cellIndexesFull(): number[] {
     return this.table.rowIndexesFull;
@@ -77,6 +100,12 @@ export class ColumnRaw<
     return new CellRaw<VN>({
       ...this.columnRawProps,
       rowIndex,
+    });
+  }
+  headCell<HR extends HeadRole>(headRole: HR): CellRaw<HeadRowValueName<HR>> {
+    return new CellRaw<HeadRowValueName<HR>>({
+      ...this.columnRawProps,
+      rowIndex: headRows.index(headRole),
     });
   }
   valueOrEmpty(rowIndex: number): CellValue<VN> | "" {
@@ -95,7 +124,7 @@ export class ColumnRaw<
     this.table.rowIndexesFull.forEach((rowIndex) => {
       const row = this.table.row(rowIndex);
       row.validateIsWritable();
-      if (value !== undefined && row.rowIsActive()) {
+      if (value !== undefined && row.rowInWorking()) {
         this.cell(rowIndex).setValueState(value);
       }
     });
@@ -125,9 +154,9 @@ export class ColumnRaw<
     });
     return this;
   }
-  updateActiveCells(change: Omit<CellFill<VN>, "formula">): this {
+  updateWorkingCells(change: Omit<CellFill<VN>, "formula">): this {
     this.table.assertRowIndexesNotStale();
-    const rowIndexes = this.cellIndexesActive;
+    const rowIndexes = this.workingCellIndexes;
     const { value } = change;
     if (value !== undefined) {
       rowIndexes.forEach((rowIndex) => {
@@ -145,10 +174,10 @@ export class ColumnRaw<
     });
     return this;
   }
-  updateActiveFormulas(formula: string): this {
+  updateWorkingFormulas(formula: string): this {
     this.table.assertRowIndexesNotStale();
     validateFormulaString(formula);
-    Arr.contiguousRanges(this.cellIndexesActive).forEach(
+    Arr.contiguousRanges(this.workingCellIndexes).forEach(
       ({ startIndex, endIndex }) => {
         this.table.queueTableWrite({
           action: "fillColumn",
@@ -173,58 +202,87 @@ export class ColumnRaw<
     });
     return this;
   }
+  // Called only by the Table's appendColumn, on the column it just queued.
+  _initHeadCells({
+    columnId,
+    header,
+    groupHeading1,
+  }: TableEndColumnHeadCells): this {
+    this.headCell("columnId").updateValue(columnId);
+    this.headCell("header").updateValue(header);
+    if (groupHeading1 !== undefined) {
+      this.headCell("groupHeading1").updateValue(groupHeading1);
+    }
+    return this;
+  }
+  updateColumnType(columnType: TableColumnType): this {
+    this.table.assertTableIsKnown();
+    this.table.queueTableWrite({
+      action: "updateColumnType",
+      colIndex: this.colIndex,
+      columnType,
+    });
+    this._ensureColumnState(this.colIndex).columnType = columnType;
+    return this;
+  }
   addConditionalFormatRule(declaration: ConditionalFormatDeclaration): this {
-    this.table.addConditionalFormatRuleAt(this.dataGridRange(), declaration);
+    this.table.sheet.addConditionalFormatRuleAt(
+      this.dataGridRange(),
+      declaration,
+    );
     return this;
   }
   removeConditionalFormatRules(): this {
-    this.table.removeConditionalFormatRulesAt(this.dataGridRange());
+    this.table.sheet.removeConditionalFormatRulesAt(this.dataGridRange());
     return this;
   }
   removeConditionalFormatRule(rule: ConditionalFormatRule): this {
-    this.table.removeConditionalFormatRule(rule);
+    this.table.sheet.removeConditionalFormatRule(rule);
     return this;
   }
   addEditWarning(declaration: EditWarningDeclaration = {}): this {
-    this.table.addEditWarningAt(this.dataGridRange(), declaration);
+    this.table.sheet.addEditWarningAt(this.dataGridRange(), declaration);
     return this;
   }
   addEditWarningFromRow(
     startRowIndex: number,
     declaration: EditWarningDeclaration = {},
   ): this {
-    this.table.addEditWarningAt(
+    this.table.sheet.addEditWarningAt(
       this.gridRangeFromRow(startRowIndex),
       declaration,
     );
     return this;
   }
   addEditWarningWholeColumn(declaration: EditWarningDeclaration = {}): this {
-    this.table.addEditWarningAt(this._wholeColumnGridRange(), declaration);
+    this.table.sheet.addEditWarningAt(
+      this._wholeColumnGridRange(),
+      declaration,
+    );
     return this;
   }
   addEditLock(declaration: EditLockDeclaration = {}): this {
-    this.table.addEditLockAt(this.dataGridRange(), declaration);
+    this.table.sheet.addEditLockAt(this.dataGridRange(), declaration);
     return this;
   }
   addEditLockWholeColumn(declaration: EditLockDeclaration = {}): this {
-    this.table.addEditLockAt(this._wholeColumnGridRange(), declaration);
+    this.table.sheet.addEditLockAt(this._wholeColumnGridRange(), declaration);
     return this;
   }
   removeEditProtections(): this {
-    this.table.removeEditProtectionsAt(this.dataGridRange());
+    this.table.sheet.removeEditProtectionsAt(this.dataGridRange());
     return this;
   }
   removeEditProtectionsWholeColumn(): this {
-    this.table.removeEditProtectionsAt(this._wholeColumnGridRange());
+    this.table.sheet.removeEditProtectionsAt(this._wholeColumnGridRange());
     return this;
   }
   removeEditProtection(protection: EditProtection): this {
-    this.table.removeEditProtection(protection);
+    this.table.sheet.removeEditProtection(protection);
     return this;
   }
-  gatherFetchActive(): this {
-    this.cellIndexesActive.forEach((rowIndex) => {
+  gatherFetchWorking(): this {
+    this.workingCellIndexes.forEach((rowIndex) => {
       this.cell(rowIndex).gatherFetchRange();
     });
     return this;
@@ -236,11 +294,11 @@ export class ColumnRaw<
   }
   // A full-column fetch can hit rows that are entirely blank across every
   // column, which Sheets omits from the response — ensureStateExists
-  // backfills those before ensureActive tries to touch a cell in them.
-  ensureFullActiveDataCells(): void {
+  // backfills those before ensureInWorking tries to touch a cell in them.
+  ensureFullWorkingDataCells(): void {
     this.table.rowIndexesFull.forEach((rowIndex) => {
       this.table.row(rowIndex).ensureStateExists();
-      this.cell(rowIndex).ensureActive();
+      this.cell(rowIndex).ensureInWorking();
     });
   }
   private _wholeColumnGridRange(): GridRangeProps {

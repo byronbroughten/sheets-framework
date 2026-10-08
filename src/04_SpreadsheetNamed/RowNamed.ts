@@ -5,115 +5,115 @@ import type {
   ColumnValueDeclared,
   SheetDataValues,
 } from "../01_SpreadsheetSchema/columnConfigsTypes";
-import type { SheetName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
+import type { TableName } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import type { Value, ValueName } from "../01_SpreadsheetSchema/valueSchemas";
 import { RowRaw } from "../02_SpreadsheetRaw/RowRaw";
 import { RowIdentified } from "../03_SpreadsheetIdentified/RowIdentified";
 import { Obj } from "../utils/Obj";
 import type { CellNamed } from "./CellNamed";
 import { RowBaseNamed } from "./ClassBases/RowBaseNamed";
-import { SheetNamed } from "./SheetNamed";
+import { TableNamed } from "./TableNamed";
 
-export class RowNamed<SN extends SheetName> extends RowBaseNamed<SN> {
-  get sheet(): SheetNamed<SN> {
-    return new SheetNamed(this.sheetNamedProps);
+export class RowNamed<TN extends TableName> extends RowBaseNamed<TN> {
+  get table(): TableNamed<TN> {
+    return new TableNamed(this.sheetNamedProps);
   }
   get identified(): RowIdentified {
     return new RowIdentified({
       ...this.rowNamedProps,
-      sheetGid: this.sheet.sheetGid,
+      sheetGid: this.table.sheetGid,
     });
   }
   get raw(): RowRaw {
     return new RowRaw({
-      ...this.sheet.raw.tableRawProps,
+      ...this.table.raw.tableRawProps,
       rowIndex: this.rowIndex,
     });
   }
-  cell<CN extends ColumnName<SN>>(columnName: CN): CellNamed<SN, CN> {
-    return this.sheet.column(columnName).cell(this.rowIndex);
+  cell<CN extends ColumnName<TN>>(columnName: CN): CellNamed<TN, CN> {
+    return this.table.column(columnName).cell(this.rowIndex);
   }
-  cellIsActive<CN extends ColumnName<SN>>(columnName: CN): boolean {
-    return this.cell(columnName).isActive;
+  cellInWorking<CN extends ColumnName<TN>>(columnName: CN): boolean {
+    return this.cell(columnName).inWorking;
   }
-  valueOrEmpty<CN extends ColumnName<SN>>(columnName: CN): ColumnValue<SN, CN> {
+  valueOrEmpty<CN extends ColumnName<TN>>(columnName: CN): ColumnValue<TN, CN> {
     return this.cell(columnName).valueOrEmpty();
   }
-  valueNotEmpty<CN extends ColumnName<SN>>(
+  valueNotEmpty<CN extends ColumnName<TN>>(
     columnName: CN,
-  ): NotEmpty<ColumnValue<SN, CN>> {
+  ): NotEmpty<ColumnValue<TN, CN>> {
     return this.cell(columnName).valueNotEmpty();
   }
-  value<CN extends ColumnName<SN>>(
+  value<CN extends ColumnName<TN>>(
     columnName: CN,
-  ): ColumnValueDeclared<SN, CN> {
+  ): ColumnValueDeclared<TN, CN> {
     return this.cell(columnName).value();
   }
-  valuesOrEmpty<CN extends ColumnName<SN> = ColumnName<SN>>(
+  valuesOrEmpty<CN extends ColumnName<TN> = ColumnName<TN>>(
     ...columnNames: readonly CN[]
-  ): SheetDataValues<SN, CN> {
+  ): SheetDataValues<TN, CN> {
     const keys =
-      columnNames.length > 0 ? columnNames : (this.activeCellNames as CN[]);
+      columnNames.length > 0 ? columnNames : (this.workingCellNames as CN[]);
     return keys.reduce(
       (values, columnName) => {
-        (values[columnName] as SheetDataValues<SN, CN>[CN]) = this.valueOrEmpty(
+        (values[columnName] as SheetDataValues<TN, CN>[CN]) = this.valueOrEmpty(
           columnName,
-        ) as SheetDataValues<SN, CN>[CN];
+        ) as SheetDataValues<TN, CN>[CN];
         return values;
       },
-      {} as SheetDataValues<SN, CN>,
+      {} as SheetDataValues<TN, CN>,
     );
   }
-  get activeCellNames(): ColumnName<SN>[] {
-    return this.identified.activeColumnIds.map((columnId) =>
+  get workingCellNames(): ColumnName<TN>[] {
+    return this.identified.workingColumnIds.map((columnId) =>
       this.schema.colNameByColumnId(columnId),
     );
   }
   // The column's own Empty value allowed tick is the only record of mandatoriness.
-  blankRequiredColumnNames(): ColumnName<SN>[] {
-    return this.activeCellNames.filter((columnName) => {
+  blankRequiredColumnNames(): ColumnName<TN>[] {
+    return this.workingCellNames.filter((columnName) => {
       const cell = this.cell(columnName);
       return !cell.schema.emptyValueAllowed && cell.valueOrEmpty() === "";
     });
   }
-  updateToDefault(...columnNames: ColumnName<SN>[]): RowNamed<SN> {
+  updateToDefault(...columnNames: ColumnName<TN>[]): RowNamed<TN> {
     columnNames.forEach((columnName) =>
       this.cell(columnName).updateToDefault(),
     );
     return this;
   }
-  updateCellToDefault(columnName: ColumnName<SN>): RowNamed<SN> {
+  updateCellToDefault(columnName: ColumnName<TN>): RowNamed<TN> {
     this.cell(columnName).updateToDefault();
     return this;
   }
-  updateValue<CN extends ColumnName<SN>>(
+  updateValue<CN extends ColumnName<TN>>(
     columnName: CN,
-    value: ColumnValue<SN, CN>,
-  ): RowNamed<SN> {
+    value: ColumnValue<TN, CN>,
+  ): RowNamed<TN> {
     this.cell(columnName).updateValue(value);
     return this;
   }
   get isBlank(): boolean {
     return this.identified.isBlank;
   }
-  clearValues(): RowNamed<SN> {
+  clearValues(): RowNamed<TN> {
     this.identified.clearValues();
     return this;
   }
   delete(): void {
     this.identified.delete();
   }
-  setValueType<CN extends ColumnName<SN>>(
+  setValueType<CN extends ColumnName<TN>>(
     columnName: CN,
     valueName: ValueName,
     value: Value,
-  ): RowNamed<SN> {
+  ): RowNamed<TN> {
     this.cell(columnName).setValueType(valueName, value);
     return this;
   }
-  updateValues(sectionValues: Partial<SheetDataValues<SN>>): RowNamed<SN> {
+  updateValues(sectionValues: Partial<SheetDataValues<TN>>): RowNamed<TN> {
     Obj.entries(sectionValues).forEach(([columnName, value]) => {
-      this.updateValue(columnName, value as ColumnValue<SN, typeof columnName>);
+      this.updateValue(columnName, value as ColumnValue<TN, typeof columnName>);
     });
     return this;
   }

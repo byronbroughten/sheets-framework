@@ -11,6 +11,7 @@ import {
   gridRanges,
   lightGreen,
   tableHeaderRowIndex,
+  tableId111,
   threeByThreeAround,
   topDataRowIndex,
 } from "./spreadsheetRawTestSupport";
@@ -35,7 +36,7 @@ describe("ColumnRaw.updateAllCells", () => {
   }
   function fetchedColumn() {
     const raw = SpreadsheetRaw.init();
-    raw.sheet(111).column(1).gatherFetchFull();
+    raw.tableOnSheet(111).column(1).gatherFetchFull();
     raw.fetchAllGathered();
     return raw;
   }
@@ -44,7 +45,7 @@ describe("ColumnRaw.updateAllCells", () => {
     const { grid } = stubFilledSheet();
 
     const raw = fetchedColumn();
-    raw.sheet(111).column(1).updateAllCells({ value: "new" });
+    raw.table(tableId111).column(1).updateAllCells({ value: "new" });
     raw.batchUpdateGSheets();
 
     expect(grid.sheet(111).values()).toEqual([
@@ -62,9 +63,9 @@ describe("ColumnRaw.updateAllCells", () => {
     stubFilledSheet();
 
     const raw = fetchedColumn();
-    raw.sheet(111).column(1).updateAllCells({ value: "new" });
+    raw.table(tableId111).column(1).updateAllCells({ value: "new" });
 
-    expect(raw.sheet(111).column(1).valueArrOrEmpty).toEqual([
+    expect(raw.table(tableId111).column(1).valueArrOrEmpty).toEqual([
       "new",
       "new",
       "new",
@@ -75,8 +76,8 @@ describe("ColumnRaw.updateAllCells", () => {
     const { grid } = stubFilledSheet();
 
     const raw = fetchedColumn();
-    raw.sheet(111).column(1).updateAllCells({ value: "filled" });
-    raw.sheet(111).row(1).cell(1).updateValue("overridden");
+    raw.table(tableId111).column(1).updateAllCells({ value: "filled" });
+    raw.table(tableId111).row(1).cell(1).updateValue("overridden");
     raw.batchUpdateGSheets();
 
     expect(grid.sheet(111).values(gridRanges.columnOneData)).toEqual([
@@ -91,7 +92,7 @@ describe("ColumnRaw.updateAllCells", () => {
 
     const raw = fetchedColumn();
     raw
-      .sheet(111)
+      .table(tableId111)
       .column(1)
       .updateAllCells({ value: "new", backgroundColor: lightGreen });
     raw.batchUpdateGSheets();
@@ -108,8 +109,8 @@ describe("ColumnRaw.updateAllCells", () => {
     const { grid } = stubFilledSheet();
 
     const raw = fetchedColumn();
-    raw.sheet(111).column(1).updateAllCells({ value: "filled" });
-    raw.sheet(111).appendDataRow();
+    raw.table(tableId111).column(1).updateAllCells({ value: "filled" });
+    raw.table(tableId111).appendDataRow();
     raw.batchUpdateGSheets();
 
     expect(
@@ -118,7 +119,7 @@ describe("ColumnRaw.updateAllCells", () => {
   });
 });
 
-describe("ColumnRaw.updateActiveCells", () => {
+describe("ColumnRaw.updateWorkingCells", () => {
   function stubSelectionSheet() {
     return stubSheetsService({
       sheets: [
@@ -141,16 +142,16 @@ describe("ColumnRaw.updateActiveCells", () => {
   function fetchedSelectionSheet() {
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheetMeta(111).colIdRow.gatherFetchFull();
-    raw.sheet(111).column(1).gatherFetchFull();
+    raw.tableOnSheet(111).headRow("columnId").gatherFetchFull();
+    raw.table(tableId111).column(1).gatherFetchFull();
     raw.fetchAllGathered();
     return raw;
   }
-  it("fills every active row of a column whose active rows are all contiguous", () => {
+  it("fills every working row of a column whose working rows are all contiguous", () => {
     const { grid } = stubSelectionSheet();
 
     const raw = fetchedSelectionSheet();
-    raw.sheet(111).column(1).updateActiveCells({ value: "new" });
+    raw.table(tableId111).column(1).updateWorkingCells({ value: "new" });
     raw.batchUpdateGSheets();
 
     expect(grid.sheet(111).values(gridRanges.columnOneData)).toEqual([
@@ -162,12 +163,12 @@ describe("ColumnRaw.updateActiveCells", () => {
     ]);
   });
 
-  it("fills only the active rows when they fall in separate runs", () => {
+  it("fills only the working rows when they fall in separate runs", () => {
     const { grid } = stubSelectionSheet();
 
     const raw = fetchedSelectionSheet();
-    raw.sheet(111).removeRowsExcept(0, 1, 4);
-    raw.sheet(111).column(1).updateActiveCells({ value: "new" });
+    raw.table(tableId111).removeRowsExcept(0, 1, 4);
+    raw.table(tableId111).column(1).updateWorkingCells({ value: "new" });
     raw.batchUpdateGSheets();
 
     expect(grid.sheet(111).values(gridRanges.columnOneData)).toEqual([
@@ -183,11 +184,11 @@ describe("ColumnRaw.updateActiveCells", () => {
     const { grid } = stubSelectionSheet();
 
     const raw = fetchedSelectionSheet();
-    raw.sheet(111).removeRowsExcept(0);
+    raw.table(tableId111).removeRowsExcept(0);
     raw
-      .sheet(111)
+      .table(tableId111)
       .column(1)
-      .updateActiveCells({ value: "new", backgroundColor: lightGreen });
+      .updateWorkingCells({ value: "new", backgroundColor: lightGreen });
     raw.batchUpdateGSheets();
 
     expect(
@@ -199,23 +200,26 @@ describe("ColumnRaw.updateActiveCells", () => {
     const { grid } = stubSelectionSheet();
 
     const raw = fetchedSelectionSheet();
-    raw.sheet(111).removeRowsExcept(0);
-    raw.sheet(111).column(1).updateActiveCells({ backgroundColor: lightGreen });
+    raw.table(tableId111).removeRowsExcept(0);
+    raw
+      .table(tableId111)
+      .column(1)
+      .updateWorkingCells({ backgroundColor: lightGreen });
     raw.batchUpdateGSheets();
 
     expect(grid.sheet(111).cell(4, 1)).toEqual({
       value: "old",
       backgroundColor: lightGreen,
     });
-    expect(raw.sheet(111).column(1).valueArrOrEmpty).toEqual(["old"]);
+    expect(raw.table(tableId111).column(1).valueArrOrEmpty).toEqual(["old"]);
   });
 
-  it("sends no batch update when no row is active", () => {
+  it("sends no batch update when no row is in the working view", () => {
     const { batchUpdateCount } = stubSelectionSheet();
 
     const raw = fetchedSelectionSheet();
-    raw.sheet(111).removeRowsExcept();
-    raw.sheet(111).column(1).updateActiveCells({ value: "new" });
+    raw.table(tableId111).removeRowsExcept();
+    raw.table(tableId111).column(1).updateWorkingCells({ value: "new" });
     raw.batchUpdateGSheets();
 
     expect(batchUpdateCount()).toBe(0);
@@ -225,10 +229,13 @@ describe("ColumnRaw.updateActiveCells", () => {
     stubSelectionSheet();
 
     const raw = fetchedSelectionSheet();
-    raw.sheet(111).removeRowsExcept(0, 4);
-    raw.sheet(111).column(1).updateActiveCells({ value: "new" });
+    raw.table(tableId111).removeRowsExcept(0, 4);
+    raw.table(tableId111).column(1).updateWorkingCells({ value: "new" });
 
-    expect(raw.sheet(111).column(1).valueArrOrEmpty).toEqual(["new", "new"]);
+    expect(raw.table(tableId111).column(1).valueArrOrEmpty).toEqual([
+      "new",
+      "new",
+    ]);
   });
 });
 
@@ -253,7 +260,7 @@ describe("ColumnRaw.updateAllFormulas", () => {
 
   function fetchedColumn() {
     const raw = SpreadsheetRaw.init();
-    raw.sheet(111).column(1).gatherFetchFull();
+    raw.tableOnSheet(111).column(1).gatherFetchFull();
     raw.fetchAllGathered();
     return raw;
   }
@@ -262,7 +269,7 @@ describe("ColumnRaw.updateAllFormulas", () => {
     const { grid } = stubFilledSheet();
 
     const raw = fetchedColumn();
-    raw.sheet(111).column(1).updateAllFormulas("=2+1");
+    raw.table(tableId111).column(1).updateAllFormulas("=2+1");
     raw.batchUpdateGSheets();
 
     expect(grid.sheet(111).rows(gridRanges.columnOneData)).toEqual([
@@ -276,10 +283,10 @@ describe("ColumnRaw.updateAllFormulas", () => {
     stubFilledSheet();
 
     const raw = fetchedColumn();
-    raw.sheet(111).column(1).updateAllFormulas("=2+1");
+    raw.table(tableId111).column(1).updateAllFormulas("=2+1");
     raw.batchUpdateGSheets();
 
-    expect(raw.sheet(111).column(1).valueArrOrEmpty).toEqual([
+    expect(raw.table(tableId111).column(1).valueArrOrEmpty).toEqual([
       "old",
       "old",
       "old",
@@ -292,7 +299,7 @@ describe("ColumnRaw.updateAllFormulas", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheet(111).row(0).cell(1).updateFormula(formula);
+    raw.table(tableId111).row(0).cell(1).updateFormula(formula);
     raw.batchUpdateGSheets();
 
     expect(grid.sheet(111).rows(threeByThreeAround(4, 1))).toEqual([
@@ -308,7 +315,7 @@ describe("ColumnRaw.updateAllFormulas", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheet(111).row(0).cell(1).updateFormula(formula);
+    raw.table(tableId111).row(0).cell(1).updateFormula(formula);
     raw.batchUpdateGSheets();
 
     expect(grid.sheet(111).rows(threeByThreeAround(4, 1))).toEqual([
@@ -323,8 +330,11 @@ describe("ColumnRaw.updateAllFormulas", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheet(111).column(1).updateAllFormulas("=2+1");
-    raw.sheet(111).column(1).updateAllCells({ backgroundColor: lightGreen });
+    raw.table(tableId111).column(1).updateAllFormulas("=2+1");
+    raw
+      .table(tableId111)
+      .column(1)
+      .updateAllCells({ backgroundColor: lightGreen });
     raw.batchUpdateGSheets();
 
     expect(batchUpdateCount()).toBe(1);
@@ -341,7 +351,7 @@ describe("ColumnRaw.updateAllFormulas", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    const cell = raw.sheet(111).row(0).cell(1);
+    const cell = raw.table(tableId111).row(0).cell(1);
     cell.updateValue("new");
     cell.updateFormula("=2+1");
     raw.batchUpdateGSheets();
@@ -354,8 +364,8 @@ describe("ColumnRaw.updateAllFormulas", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheet(111).column(1).updateAllFormulas("=2+1");
-    raw.sheet(111).row(1).cell(1).updateFormula("=9");
+    raw.table(tableId111).column(1).updateAllFormulas("=2+1");
+    raw.table(tableId111).row(1).cell(1).updateFormula("=9");
     raw.batchUpdateGSheets();
 
     expect(grid.sheet(111).rows(gridRanges.columnOneData)).toEqual([
@@ -392,7 +402,7 @@ describe("SpreadsheetRaw.findReplace", () => {
   }
   function fetchedColumn() {
     const raw = SpreadsheetRaw.init();
-    raw.sheet(111).column(1).gatherFetchFull();
+    raw.tableOnSheet(111).column(1).gatherFetchFull();
     raw.fetchAllGathered();
     return raw;
   }
@@ -401,7 +411,7 @@ describe("SpreadsheetRaw.findReplace", () => {
     const { grid } = stubFilledSheet();
 
     const raw = fetchedColumn();
-    raw.sheet(111).column(1).findReplace({
+    raw.table(tableId111).column(1).findReplace({
       find: "Currency",
       replacement: "Total",
       matchEntireCell: true,
@@ -423,7 +433,9 @@ describe("SpreadsheetRaw.findReplace", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheet(111).findReplace({ find: "Currency", replacement: "Total" });
+    raw
+      .table(tableId111)
+      .findReplace({ find: "Currency", replacement: "Total" });
     raw.batchUpdateGSheets();
 
     expect(
@@ -477,7 +489,9 @@ describe("SpreadsheetRaw.findReplace", () => {
     raw.table("top").appendDataRow().updateValue(1, "x");
     raw.batchUpdateGSheets();
 
-    expect(grid.sheet(111).values({ startRowIndex: tableHeaderRowIndex })).toEqual([
+    expect(
+      grid.sheet(111).values({ startRowIndex: tableHeaderRowIndex }),
+    ).toEqual([
       ["ID", "Name"],
       ["t1", "x"],
       [null, "x"],
@@ -521,8 +535,8 @@ describe("SpreadsheetRaw.findReplace", () => {
       replacement: "Total",
       scope: { allSheets: true },
     });
-    raw.sheet(111).row(1).cell(1).updateValue("Currency");
-    raw.sheet(111).row(2).delete();
+    raw.table(tableId111).row(1).cell(1).updateValue("Currency");
+    raw.table(tableId111).row(2).delete();
     raw.batchUpdateGSheets();
 
     expect(grid.sheet(111).values(gridRanges.columnOneData)).toEqual([
@@ -536,11 +550,11 @@ describe("SpreadsheetRaw.findReplace", () => {
 
     const raw = fetchedColumn();
     raw
-      .sheet(111)
+      .table(tableId111)
       .column(1)
       .findReplace({ find: "Currency", replacement: "Total" });
 
-    expect(raw.sheet(111).column(1).valueArrOrEmpty).toEqual([
+    expect(raw.table(tableId111).column(1).valueArrOrEmpty).toEqual([
       "Currency",
       "Caretaking",
       "Currency",
@@ -552,24 +566,24 @@ describe("SpreadsheetRaw.findReplace", () => {
 
     const raw = fetchedColumn();
     raw
-      .sheet(111)
+      .table(tableId111)
       .column(1)
       .findReplace({ find: "Currency", replacement: "Total" });
     raw.batchUpdateGSheets();
 
-    expect(() => raw.sheet(111).row(0).cell(1).valueOrEmpty()).toThrowError(
-      /went stale when a findReplace was sent/,
-    );
+    expect(() =>
+      raw.table(tableId111).row(0).cell(1).valueOrEmpty(),
+    ).toThrowError(/went stale when a findReplace was sent/);
   });
 
   it("leaves fetched values alone when no findReplace was queued", () => {
     stubFilledSheet();
 
     const raw = fetchedColumn();
-    raw.sheet(111).row(0).cell(1).updateValue("Total");
+    raw.table(tableId111).row(0).cell(1).updateValue("Total");
     raw.batchUpdateGSheets();
 
-    expect(raw.sheet(111).column(1).valueArrOrEmpty).toEqual([
+    expect(raw.table(tableId111).column(1).valueArrOrEmpty).toEqual([
       "Total",
       "Caretaking",
       "Currency",
@@ -581,14 +595,14 @@ describe("SpreadsheetRaw.findReplace", () => {
 
     const raw = fetchedColumn();
     raw
-      .sheet(111)
+      .table(tableId111)
       .column(1)
       .findReplace({ find: "Currency", replacement: "Total" });
     raw.batchUpdateGSheets();
-    raw.sheet(111).column(1).gatherFetchFull();
+    raw.table(tableId111).column(1).gatherFetchFull();
     raw.fetchAllGathered();
 
-    expect(raw.sheet(111).column(1).valueArrOrEmpty).toEqual([
+    expect(raw.table(tableId111).column(1).valueArrOrEmpty).toEqual([
       "Total",
       "Caretaking",
       "Total",

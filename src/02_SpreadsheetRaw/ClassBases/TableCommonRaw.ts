@@ -302,9 +302,7 @@ function isPushedRightBy(
   );
 }
 
-function headAndTableRange(
-  properties: TablePropertiesRaw,
-): TablePropertiesRaw {
+function headAndTableRange(properties: TablePropertiesRaw): TablePropertiesRaw {
   return {
     ...properties,
     startRowIndex: originOf(properties).headSheetRowIndex("columnId"),
@@ -321,7 +319,7 @@ function fitsWithinRowsOf(
   );
 }
 
-function rowIndexesStaleMessage(tableLabel: string): string {
+export function rowIndexesStaleMessage(tableLabel: string): string {
   return `Row indexes are stale for ${tableLabel}: a flush has moved its rows, so it needs a refetch, in a new run, before another row write.`;
 }
 

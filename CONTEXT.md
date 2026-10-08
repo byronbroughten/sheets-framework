@@ -7,7 +7,7 @@ A Google Sheets spreadsheet that a person operates directly, with an Apps Script
 ### Sheet layout
 
 **Table**:
-The Google Table (Insert > Table) laid over a sheet's data. Every sheet with **Let api access** must have exactly one, starting on the Table header row in the first column, with at least one data row (a **blank row** counts). What a run does about a moved, missing or extra Table: [`docs/architecture/table-placement.md`](./docs/architecture/table-placement.md).
+A Google Table (Insert > Table) laid over a block of a sheet's data; a sheet holds one or more. Each with **Let api access** starts on its Table header row, with at least one data row (a **blank row** counts). What a run does about a moved, missing or extra Table: [`docs/architecture/table-placement.md`](./docs/architecture/table-placement.md).
 _Avoid_: range, data range, grid
 
 **Table reference**:
@@ -15,23 +15,23 @@ A formula that names a Table column by the Table's name and the column header �
 _Avoid_: structured reference, A1, cell address
 
 **Head rows**:
-The rows above a Table's header row that belong to that Table: the column ID row, the column-group heading and the action row. They span the Table's columns and move with it, so nothing may shift some of them, or the Table, without the rest. A Table the app doesn't know about has none.
+The Table header row and the rows above it that belong to that Table: the column ID row, the group heading and the action row. They span the Table's columns and move with it, so nothing may shift some of them, or the Table, without the rest. A Table the app doesn't know about has none above its header.
 _Avoid_: bookkeeping rows, uniform rows, meta rows
 
 **Column ID row**:
-The head row of generated column identifiers, above the other two head rows. You never edit it by hand; the app fills a blank when a Table column has none.
+The top head row, of generated column identifiers. You never edit it by hand; the app fills a blank when a Table column has none.
 _Avoid_: ID row, metadata row, row 1
 
-**Column-group heading**:
-The head row of group names, between the column ID row and the action row. You never edit it by hand.
-_Avoid_: group row, section header
+**Group heading**:
+A name over a group of a Table's columns, at one of two levels. Level 1 has its own head row, between the column ID row and the action row; level 2 shares the action row, in its cells that hold no checkbox. You never edit either by hand.
+_Avoid_: column-group heading, group row, section header
 
 **Action row**:
-The row above the Table header row where an endpoint is triggered. Most of its cells are empty, and a cell may hold text used as a label. Only the cells wired to an endpoint hold a checkbox, and ticking one of those is what asks the spreadsheet to do something, one endpoint per column.
+The row above the Table header row where an endpoint is triggered. Most of its cells are empty, and a cell without a checkbox may hold a level-2 **group heading**. Only the cells wired to an endpoint hold a checkbox, and ticking one of those is what asks the spreadsheet to do something, one endpoint per column.
 _Avoid_: control row, button row, trigger row
 
 **Table header row**:
-The row of column titles you read across the top of a sheet's data, directly above the first data row, and the row the Table starts on. Its three head rows sit above it: the column ID row, the column-group heading, and the action row.
+The row of column titles you read across the top of a sheet's data, directly above the first data row, and the row the Table starts on. It is the bottom head row; the other three sit above it: the column ID row, the level-1 group heading, and the action row.
 _Avoid_: header row, title row, top row, row 1
 
 **First data row**:
@@ -39,16 +39,16 @@ The first row of the Table's data, always the row immediately below the Table he
 _Avoid_: data start, top data row, row 5
 
 **Blank row**:
-A data row with nothing in any of the columns you fill in yourself, which the app leaves when it deletes everything in a Table. The next row the app adds to that Table goes into it. Why, and how: [`docs/architecture/blank-row.md`](./docs/architecture/blank-row.md).
+A data row of a Table with nothing in any of the columns you fill in yourself, which the app leaves when it deletes everything in that Table. The next row the app adds to that Table goes into it. Why, and how: [`docs/architecture/blank-row.md`](./docs/architecture/blank-row.md).
 _Avoid_: empty row, placeholder row, spare row
 
 **ID prefix**:
-The short, readable code every row ID and column ID on a sheet begins with, so you can tell at a glance which sheet an ID belongs to. The app gives one to every sheet it knows about, taken from the tab title. No two sheets share one, and renaming the tab doesn't change it.
-_Avoid_: sheet prefix, ID code
+The short, readable code every row ID and column ID in a Table begins with, so you can tell at a glance which Table an ID belongs to. The app gives one to every Table it knows about, taken from the Table name. No two Tables share one, and renaming the Table doesn't change it.
+_Avoid_: sheet prefix, table prefix, ID code
 
 **Let api access**:
-The Sheet Config checkbox that says this tab is one the app knows about — not every tab, and not every catalogue row on Sheet Config.
-_Avoid_: enabled sheet, API sheet, known sheet
+The Table Config checkbox that says this Table is one the app knows about — not every Table, and not every catalogue row on Table Config.
+_Avoid_: enabled sheet, API sheet, known sheet, known Table
 
 **Edit protection**:
 Any protection the app finds on a sheet: an edit warning, an edit lock, or one it can't read as either, which it leaves alone.
@@ -67,7 +67,7 @@ A cell only the editors it names can change; a lock that names none stops nobody
 _Avoid_: protection, lock
 
 **Config-sheet floor**:
-Everything on the four config sheets that the app guarantees and restores on each config sync: tab titles, Table names, headers, column IDs, column-group headings, column types, Spreadsheet Config's Table menu space data cell, and the framework endpoints' columns. Edits to it are overwritten and reported ([`docs/generated-data/config-sheet-floor.md`](./docs/generated-data/config-sheet-floor.md)).
+Everything on the four config sheets that the app guarantees and restores on each config sync: tab titles, Table names, headers, column IDs, group headings, column types, Spreadsheet Config's Table menu space data cell, and the framework endpoints' columns. Edits to it are overwritten and reported ([`docs/generated-data/config-sheet-floor.md`](./docs/generated-data/config-sheet-floor.md)).
 _Avoid_: minimum floor, minimum headers, floor sheet
 
 **Floor seed**:
@@ -75,7 +75,7 @@ The app's own declaration of what the config-sheet floor looks like: its structu
 _Avoid_: template, default config
 
 **Self-describing row**:
-A Sheet Config or Column Config row describing a config-sheet floor tab or floor column; its declared cell is enforced from the floor seed.
+A Table Config or Column Config row describing a config-sheet floor Table or floor column; its declared cell is enforced from the floor seed.
 _Avoid_: config-about-config row
 
 **Seeded value**:
@@ -159,7 +159,7 @@ Said of a column whose type menu, checkbox validation, and first-data-row number
 _Avoid_: unset, automatic, missing type
 
 **Name column**:
-A column of names people type to refer to a row, such as a customer's or a project's name, on any sheet whose Table header row holds a **Name** header. An endpoint finds a row by what's in it; a name that matches no row, or several, is the endpoint's to report, and the app enforces nothing else about it.
+A column of names people type to refer to a row, such as a customer's or a project's name, in any Table whose header row holds a **Name** header. An endpoint finds a row by what's in it; a name that matches no row, or several, is the endpoint's to report, and the app enforces nothing else about it.
 _Avoid_: key column, label column, title column
 
 **Serial date**:

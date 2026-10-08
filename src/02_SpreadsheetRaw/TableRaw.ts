@@ -1,31 +1,21 @@
 import type { CellValueName } from "../00_Source/CellValues/cellValues";
+import type { ConditionalFormatDeclaration } from "../00_Source/RawSource/ConditionalFormat";
 import type {
-  ConditionalFormatDeclaration,
-  ConditionalFormatRule,
-} from "../00_Source/RawSource/ConditionalFormat";
-import {
-  type EditLockDeclaration,
-  type EditProtection,
-  type EditWarningDeclaration,
-  type ProtectionGridRange,
-  type WholeSheetEditLockDeclaration,
-  type WholeSheetEditWarningDeclaration,
+  EditLockDeclaration,
+  EditWarningDeclaration,
 } from "../00_Source/RawSource/EditProtection";
 import type {
   BoundedGridRange,
   CopyPasteOperation,
   GridBlockSnapshot,
+  GridCellSnapshot,
   GridRangeProps,
   SheetSnapshot,
   TableColumnPropertiesUpdate,
   TableColumnSnapshot,
 } from "../00_Source/RawSource/RawSource";
-import {
-  type SheetColIndex,
-  SheetIndex,
-  type SheetRowIndex,
-} from "../00_Source/RawSource/SheetIndex";
-import { TableOrigin } from "../01_SpreadsheetSchema/TableOrigin";
+import { SheetIndex } from "../00_Source/RawSource/SheetIndex";
+import { type HeadRole, headRows } from "../01_SpreadsheetSchema/headRows";
 import type { Value } from "../01_SpreadsheetSchema/valueSchemas";
 import { Arr } from "../utils/Arr";
 import { Val } from "../utils/Val";
@@ -37,37 +27,41 @@ import {
   type ColumnFill,
   type FindReplaceTerms,
   type SortParameters,
+  type TableEndColumnHeadCells,
   type TableFindReplace,
   type TableWrites,
 } from "./ClassTypes/StateRaw";
 import { ColumnRaw } from "./ColumnRaw";
+import { HeadRowRaw } from "./HeadRowRaw";
 import { RowRaw } from "./RowRaw";
-import { SheetMetaRaw } from "./SheetMetaRaw";
+import { SheetRaw } from "./SheetRaw";
 import { SpreadsheetRaw } from "./SpreadsheetRaw";
-import { SheetConditionalFormatsRaw } from "./TableRaw/SheetConditionalFormatsRaw";
-import { SheetEditProtectionsRaw } from "./TableRaw/SheetEditProtectionsRaw";
+import { TableProfileRaw } from "./TableProfileRaw";
+import { TableColumnResolverRaw } from "./TableRaw/TableColumnResolverRaw";
 
 /**
  * One Table's state by Table-relative index: rows, columns, pruning, queued
  * Table-level requests, and integrating fetched cells into its rows, cells and
- * Meta column facts. `ss.sheet(gid)` also reaches it through its sheet, so
- * sheet-level title, conditional format rules and edit protections live here
- * too, the latter two in TableRaw/ behind one-line delegations.
- * Uniform rows and column facts are SheetMetaRaw; spreadsheet-wide fetch and
- * flush are SpreadsheetRaw. By-name and columnId resolution are Identified/Named.
+ * sampled column facts. Its sheet's title, grid size, conditional format rules
+ * and edit protections are SheetRaw, reached as `table.sheet`.
+ * Descriptive facts are TableProfileRaw and ColumnProfileRaw; column ID lookups are TableRaw/;
+ * spreadsheet-wide fetch and flush are SpreadsheetRaw. By-name and columnId resolution are Identified/Named.
  */
 export class TableRaw extends TableCommonRaw {
   get ss(): SpreadsheetRaw {
     return new SpreadsheetRaw(this.spreadsheetRawProps);
   }
-  get meta(): SheetMetaRaw {
-    return new SheetMetaRaw(this.tableRawProps);
+  get sheet(): SheetRaw {
+    return new SheetRaw({
+      ...this.spreadsheetRawProps,
+      sheetGid: this.sheetGid,
+    });
   }
-  private get conditionalFormats(): SheetConditionalFormatsRaw {
-    return new SheetConditionalFormatsRaw(this.tableRawProps);
+  get profile(): TableProfileRaw {
+    return new TableProfileRaw(this.tableRawProps);
   }
-  private get protections(): SheetEditProtectionsRaw {
-    return new SheetEditProtectionsRaw(this.tableRawProps);
+  get columnResolver(): TableColumnResolverRaw {
+    return new TableColumnResolverRaw(this.tableRawProps);
   }
   get hasFetchedProperties(): boolean {
     return this.tableProperties !== undefined;
@@ -81,9 +75,6 @@ export class TableRaw extends TableCommonRaw {
       startColumnIndex: origin.sheetColIndex(0),
       endColumnIndex: origin.sheetColIndex(columnCount),
     };
-  }
-  get wholeSheetGridRange(): ProtectionGridRange {
-    return { sheetId: this.sheetGid };
   }
   rowGridRange(rowIndex: number): GridRangeProps {
     const origin = this.tableOrigin();
@@ -105,23 +96,6 @@ export class TableRaw extends TableCommonRaw {
       endColumnIndex: origin.sheetColIndex(columnCount),
     };
   }
-  get title(): string {
-    if (this.sheetState.working.title === undefined) {
-      throw new Error(
-        `Sheet title is null for sheetGid ${this.sheetGid}. Ensure that the sheet properties have been fetched.`,
-      );
-    }
-    return this.sheetState.working.title;
-  }
-  updateTitle(title: string): this {
-    this.writeOperations.renameSheet.push({
-      kind: "renameSheet",
-      sheetId: this.sheetGid,
-      title,
-    });
-    this.sheetState.working.title = title;
-    return this;
-  }
   updateTableName(name: string): this {
     const tableId = this.tableId;
     this.writeOperations.renameTable.push({
@@ -132,18 +106,18 @@ export class TableRaw extends TableCommonRaw {
     this._updateWorkingTableName(tableId, name);
     return this;
   }
-  get activeRowIndexes(): number[] {
+  get workingRowIndexesWithHead(): number[] {
     const indexes = Array.from(this.rowStates.keys());
     return Arr.sortAscending(indexes);
   }
-  get activeRowCount(): number {
+  get workingRowCount(): number {
     return this.rowStates.size;
   }
-  get lastActiveRowIndex(): number {
+  get lastWorkingRowIndex(): number {
     return Math.max(...this.rowStates.keys());
   }
-  get rowIndexesActive(): number[] {
-    return this.activeRowIndexes.filter((rowIndex) => rowIndex >= 0);
+  get workingRowIndexes(): number[] {
+    return this.workingRowIndexesWithHead.filter((rowIndex) => rowIndex >= 0);
   }
   get rowIndexesFull(): number[] {
     return Arr.indexesFromUntil(0, this.dataRowCount);
@@ -152,13 +126,13 @@ export class TableRaw extends TableCommonRaw {
     return this.rowIndexesFull.map((rowIndex) => this.row(rowIndex));
   }
   get rows(): RowRaw[] {
-    return this.rowIndexesActive.map((index) => this.row(index));
+    return this.workingRowIndexes.map((index) => this.row(index));
   }
   get topRow(): RowRaw {
     return this.row(0);
   }
   get rowCount(): number {
-    return this.rowIndexesActive.length;
+    return this.workingRowIndexes.length;
   }
   // The one place the invariant's threshold is written, so no tier can drift from it.
   get isDownToLastDataRow(): boolean {
@@ -193,6 +167,13 @@ export class TableRaw extends TableCommonRaw {
       endColIndex: this.columnCount,
     });
   }
+  // Past the inserts already queued, since each lands at the Table end as it stands then.
+  appendColumn(headCells: TableEndColumnHeadCells): number {
+    const colIndex = this.columnCount + this.writes.insertTableEndColumnCount;
+    this.queueTableWrite({ action: "insertTableEndColumn" });
+    this.column(colIndex)._initHeadCells(headCells);
+    return colIndex;
+  }
   row(rowIndex: number): RowRaw {
     return new RowRaw({
       rowIndex,
@@ -201,20 +182,26 @@ export class TableRaw extends TableCommonRaw {
   }
   // Every guess this sheet's columns made from a sample had none behind it.
   topDataRowIsBlank(): boolean {
-    if (this.topRow.rowIsActive()) {
+    if (this.topRow.rowInWorking()) {
       return this.fullTableColIndexes.every(
         (colIndex) => this.topRow.valueOrEmpty(colIndex) === "",
       );
     }
     // A queued-delete top row has no cells; column facts still describe the live sheet.
     return this.fullTableColIndexes.every(
-      (colIndex) => this.meta.column(colIndex).activeTopValue === "",
+      (colIndex) => this.column(colIndex).profile.topValue === "",
     );
+  }
+  headRow<HR extends HeadRole>(headRole: HR): HeadRowRaw<HR> {
+    return new HeadRowRaw({ ...this.tableRawProps, headRole });
+  }
+  headRowByIndex(rowIndex: number): HeadRowRaw {
+    return this.headRow(headRows.rolesAt(rowIndex)[0]);
   }
   // Either kind of row, for callers that only touch what the two share.
   rowCommon(rowIndex: number): RowCommonRaw {
-    if (this.schema.isUniformRowIndex(rowIndex)) {
-      return this.meta.uniformRowByIndex(rowIndex);
+    if (headRows.isIndex(rowIndex)) {
+      return this.headRowByIndex(rowIndex);
     } else {
       return this.row(rowIndex);
     }
@@ -230,7 +217,7 @@ export class TableRaw extends TableCommonRaw {
   columnByHeader<VN extends CellValueName = CellValueName>(
     header: string,
   ): ColumnRaw<VN> {
-    return this.column<VN>(this.meta.tableHeaderRow.colIndexOfValue(header));
+    return this.column<VN>(this.columnResolver.colIndexOfHeader(header));
   }
   gatherFetchDataColumnsUsingHeaders<HD extends string>(
     ...headers: HD[]
@@ -244,16 +231,16 @@ export class TableRaw extends TableCommonRaw {
     );
   }
   gatherFetchProperties(): this {
-    // The live start is unknown until this probe comes back, so it aims where the layout expects the Table.
-    const origin = TableOrigin.expected();
+    // The live start is unknown until this probe comes back, so it aims where the configs record the Table.
+    const origin = this.presumedOrigin;
     this.gatherFetchRange({
       startRowIndex: SheetIndex.row(0),
       endRowIndex: SheetIndex.row(origin.headerRowIndex + 1),
       startColumnIndex: origin.startColIndex,
       endColumnIndex: SheetIndex.col(origin.startColIndex + 1),
     });
-    this.schema.uniformRowNames.forEach((name) => {
-      this.meta.uniformRow(name).cell(0).prepFetchBackfill();
+    headRows.indexes().forEach((rowIndex) => {
+      this.headRowByIndex(rowIndex).cell(0).prepFetchBackfill();
     });
     this.sheetState.fetchQueue.gatherPlacementStrip = true;
     return this;
@@ -270,12 +257,12 @@ export class TableRaw extends TableCommonRaw {
       this.tableState.working.hasFetchedColumnIds = true;
     }
     toFinalize.rows.forEach((rowIndex) => {
-      this.rowCommon(rowIndex).ensureFullActiveDataCells();
+      this.rowCommon(rowIndex).ensureFullWorkingDataCells();
     });
     toFinalize.columns.forEach((colIndex) => {
-      this.column(colIndex).ensureFullActiveDataCells();
+      this.column(colIndex).ensureFullWorkingDataCells();
     });
-    this._ensureFetchedActiveFacts();
+    this._ensureFetchedSampledFacts();
     toFinalize.rows.clear();
     toFinalize.columns.clear();
   }
@@ -285,22 +272,43 @@ export class TableRaw extends TableCommonRaw {
         const row = this.rowCommon(rowIndex);
         row.ensureStateExists();
         colIndexes.forEach((colIndex) => {
-          row.cell(colIndex).ensureActive();
+          row.cell(colIndex).ensureInWorking();
         });
       },
     );
     this.tableState.fetchQueue.toFinalize.cells.clear();
   }
   // After the backfills above, so a blank fact is sampled rather than built.
-  private _ensureFetchedActiveFacts(): void {
+  private _ensureFetchedSampledFacts(): void {
     const { toFinalize } = this.tableState.fetchQueue;
+    // Only table columns: a fact is always reached through a column ID.
     if (toFinalize.rows.has(0)) {
-      this.meta.ensureTableColumnsActiveFacts();
+      this.fullTableColIndexes.forEach((colIndex) => {
+        this._ensureSampledFacts(colIndex);
+      });
     }
     toFinalize.columns.forEach((colIndex) => {
       if (!this.isTableColIndex(colIndex)) return;
-      this.meta.column(colIndex).ensureActiveFacts();
+      this._ensureSampledFacts(colIndex);
     });
+  }
+  // Gap-filling only, so a fact the payload described always wins.
+  private _ensureSampledFacts(colIndex: number): void {
+    if (this.columnStates.get(colIndex)?.sampledFacts !== undefined) return;
+    if (!this.column(colIndex).topCell.inWorking) return; // no top data row to sample
+    this._integrateSampledFacts(colIndex, undefined);
+  }
+  private _integrateSampledFacts(
+    colIndex: number,
+    cell: GridCellSnapshot | undefined,
+  ): void {
+    this._ensureColumnState(colIndex).sampledFacts = {
+      isFormula: cell?.isFormula ?? false,
+      numberFormatType: cell?.numberFormatType,
+      dataValidationConditionType: cell?.dataValidationConditionType,
+      topValue: cell?.value ?? "", // from the payload, so a deleted top data row still describes the column
+      topFormula: cell?.formula,
+    };
   }
   integrateSheetState(sheet: SheetSnapshot): void {
     this._integrateSheetProperties(sheet);
@@ -336,135 +344,48 @@ export class TableRaw extends TableCommonRaw {
           const colIndex = firstColIndex + colIdxOffset;
           if (colIndex < 0 || colIndex >= columnCount) continue;
           const cellData = rowSnapshot.cells[colIdxOffset];
-          if (row.rowIsActive()) {
+          if (row.rowInWorking()) {
             row.cell(colIndex).integrateSnapshot(cellData);
           }
           if (rowIndex === 0) {
-            this.meta.column(colIndex).integrateActiveFacts(cellData);
+            this._integrateSampledFacts(colIndex, cellData);
           }
         }
       });
     });
   }
-  gatherFetchConditionalFormatRules(): this {
-    this.conditionalFormats.gatherFetchConditionalFormatRules();
-    return this;
-  }
-  conditionalFormatRules(): ConditionalFormatRule[] {
-    return this.conditionalFormats.conditionalFormatRules();
-  }
   addConditionalFormatRule(declaration: ConditionalFormatDeclaration): this {
-    this.conditionalFormats.addConditionalFormatRule(declaration);
+    this.sheet.addConditionalFormatRuleAt(this.dataGridRange(), declaration);
     return this;
   }
   removeConditionalFormatRules(): this {
-    this.conditionalFormats.removeConditionalFormatRules();
+    this.sheet.removeConditionalFormatRulesAt(this.dataGridRange());
     return this;
-  }
-  addConditionalFormatRuleAt(
-    range: GridRangeProps,
-    declaration: ConditionalFormatDeclaration,
-  ): this {
-    this.conditionalFormats.addConditionalFormatRuleAt(range, declaration);
-    return this;
-  }
-  removeConditionalFormatRulesAt(range: GridRangeProps): this {
-    this.conditionalFormats.removeConditionalFormatRulesAt(range);
-    return this;
-  }
-  removeConditionalFormatRule(rule: ConditionalFormatRule): this {
-    this.conditionalFormats.removeConditionalFormatRule(rule);
-    return this;
-  }
-  markConditionalFormatIndexesStale(): void {
-    this.conditionalFormats.markConditionalFormatIndexesStale();
-  }
-  assertConditionalFormatIndexesNotStale(): void {
-    this.conditionalFormats.assertConditionalFormatIndexesNotStale();
-  }
-  integrateConditionalFormatRules(rules: ConditionalFormatRule[]): void {
-    this.conditionalFormats.integrateConditionalFormatRules(rules);
-  }
-  gatherFetchEditProtections(): this {
-    this.protections.gatherFetchEditProtections();
-    return this;
-  }
-  editProtections(): EditProtection[] {
-    return this.protections.editProtections();
   }
   addEditWarning(declaration: EditWarningDeclaration = {}): this {
-    this.protections.addEditWarning(declaration);
+    this.sheet.addEditWarningAt(this.dataGridRange(), declaration);
     return this;
   }
   addEditLock(declaration: EditLockDeclaration = {}): this {
-    this.protections.addEditLock(declaration);
-    return this;
-  }
-  addEditWarningWholeSheet(
-    declaration: WholeSheetEditWarningDeclaration = {},
-  ): this {
-    this.protections.addEditWarningWholeSheet(declaration);
-    return this;
-  }
-  addEditLockWholeSheet(declaration: WholeSheetEditLockDeclaration = {}): this {
-    this.protections.addEditLockWholeSheet(declaration);
-    return this;
-  }
-  addEditWarningAt(
-    range: ProtectionGridRange,
-    declaration: EditWarningDeclaration = {},
-  ): this {
-    this.protections.addEditWarningAt(range, declaration);
-    return this;
-  }
-  addEditLockAt(
-    range: ProtectionGridRange,
-    declaration: EditLockDeclaration = {},
-  ): this {
-    this.protections.addEditLockAt(range, declaration);
+    this.sheet.addEditLockAt(this.dataGridRange(), declaration);
     return this;
   }
   removeEditProtections(): this {
-    this.protections.removeEditProtections();
+    this.sheet.removeEditProtectionsAt(this.dataGridRange());
     return this;
   }
-  removeEditProtectionsAt(range: ProtectionGridRange): this {
-    this.protections.removeEditProtectionsAt(range);
-    return this;
-  }
-  removeEditProtection(protection: EditProtection): this {
-    this.protections.removeEditProtection(protection);
-    return this;
-  }
-  removeEditProtectionByDescription(description: string): this {
-    this.protections.removeEditProtectionByDescription(description);
-    return this;
-  }
-  removeEditProtectionById(protectionId: number): this {
-    this.protections.removeEditProtectionById(protectionId);
-    return this;
-  }
-  markEditProtectionsStale(): void {
-    this.protections.markEditProtectionsStale();
-  }
-  assertEditProtectionsNotStale(): void {
-    this.protections.assertEditProtectionsNotStale();
-  }
-  integrateEditProtections(protections: EditProtection[]): void {
-    this.protections.integrateEditProtections(protections);
-  }
-  // The uniform rows survive, or every later column-index resolution breaks.
+  // The head rows survive, or every later column-index resolution breaks.
   removeRowsExcept(...rowIdxesToKeep: number[]): void {
     const allRowIdxs = Array.from(this.rowStates.keys());
     allRowIdxs.forEach((rowIndex) => {
-      if (this.schema.isUniformRowIndex(rowIndex)) return;
+      if (headRows.isIndex(rowIndex)) return;
       if (!rowIdxesToKeep.includes(rowIndex)) {
         this.rowCommon(rowIndex).remove();
       }
     });
     this.tableState.working.isPrunedToSelection = true;
   }
-  // A whole-column fill ignores active rows, so it would rewrite what a prune excluded.
+  // A whole-column fill ignores working rows, so it would rewrite what a prune excluded.
   validateNotPrunedToSelection(): void {
     if (this.tableState.working.isPrunedToSelection) {
       throw new Error(
@@ -549,7 +470,7 @@ export class TableRaw extends TableCommonRaw {
       endColumnIndex: origin.sheetColIndex(columnCount + insertCount),
     };
     this._validateNoNeighbourSplitBy(newColumns);
-    this._queueGridColumnsThrough(newColumns.endColumnIndex);
+    this.sheet.queueGridColumnsThrough(newColumns.endColumnIndex);
     this.writeOperations.insertTableEndColumns.push({
       tableId: this.tableId,
       newColumns,
@@ -578,16 +499,6 @@ export class TableRaw extends TableCommonRaw {
       `${this.columnInsertSplitting(split.name)} with its head rows. Move "${split.name}" so that it and its head rows sit entirely within rows ${band.startRowIndex + 1}–${band.endRowIndex}, or entirely outside them.`,
     );
   }
-  private _queueGridColumnsThrough(endColumnIndex: SheetColIndex): void {
-    const { working, writeQueue } = this.sheetState;
-    const columnCount = Val.assert(
-      working.columnCount,
-      `${this.sheetLabel}'s column count`,
-    );
-    if (endColumnIndex <= columnCount) return;
-    writeQueue.appendedColumnCount += endColumnIndex - columnCount;
-    working.columnCount = endColumnIndex;
-  }
   // Before the Table-end column inserts are counted, since growth is sent ahead of them.
   gatherAppendTableRowsOperation(): void {
     const appendedRowIndexes = this._queuedRowAppendIndexes();
@@ -600,7 +511,7 @@ export class TableRaw extends TableCommonRaw {
       startRowIndex: modelRow.endRowIndex,
       endRowIndex: SheetIndex.row(modelRow.endRowIndex + appendedRowCount),
     };
-    this._queueGridRowsThrough(newRows.endRowIndex);
+    this.sheet.queueGridRowsThrough(newRows.endRowIndex);
     this.writeOperations.appendTableRows.push({
       tableId: this.tableId,
       newRows,
@@ -633,16 +544,6 @@ export class TableRaw extends TableCommonRaw {
     return Array.from(this.rowWrites).flatMap(([rowIndex, writes]) =>
       writes.appendRow ? [rowIndex] : [],
     );
-  }
-  private _queueGridRowsThrough(endRowIndex: SheetRowIndex): void {
-    const { working, writeQueue } = this.sheetState;
-    const rowCount = Val.assert(
-      working.rowCount,
-      `${this.sheetLabel}'s row count`,
-    );
-    if (endRowIndex <= rowCount) return;
-    writeQueue.appendedRowCount += endRowIndex - rowCount;
-    working.rowCount = endRowIndex;
   }
   // A typed column's validation is the Table's own, so only Automatic columns get theirs copied.
   private _untypedColumnRuns(): [number, number][] {
@@ -747,7 +648,7 @@ export class TableRaw extends TableCommonRaw {
     });
   }
   private _tableLabel(tableId: string): string {
-    return `Table ${tableId} on "${this.title}"`;
+    return `Table ${tableId} on "${this.sheet.title}"`;
   }
   // Sent after the row deletes, so it spans only the body rows they leave.
   gatherSortTableOperation({

@@ -1,11 +1,10 @@
-import type { UniformRowName } from "../00_Source/CellValues/cellValues";
 import {
   type SheetColIndex,
   SheetIndex,
   type SheetRowIndex,
 } from "../00_Source/RawSource/SheetIndex";
-import { sheetLayout } from "./sheetLayout";
-import { uniformRows } from "./uniformRows";
+import { type HeadRole, headRows } from "./headRows";
+import { tableLayout } from "./tableLayout";
 
 export interface TableOriginProps {
   headerRowIndex: SheetRowIndex;
@@ -20,11 +19,11 @@ export class TableOrigin {
     this.headerRowIndex = headerRowIndex;
     this.startColIndex = startColIndex;
   }
-  // Until each Table's position is recorded, its head rows start at the sheet's first cell.
+  // Where the framework creates a Table; a managed one is found where its configs record it.
   static expected(): TableOrigin {
     return new TableOrigin({
       headerRowIndex: SheetIndex.row(
-        Math.max(...Object.values(sheetLayout.headRowOffsets)),
+        Math.max(...Object.values(tableLayout.headRowOffsets)),
       ),
       startColIndex: SheetIndex.col(0),
     });
@@ -32,8 +31,8 @@ export class TableOrigin {
   sheetRowIndex(rowIndex: number): SheetRowIndex {
     return SheetIndex.row(this.headerRowIndex + 1 + rowIndex);
   }
-  headSheetRowIndex(name: UniformRowName): SheetRowIndex {
-    return this.sheetRowIndex(uniformRows.index(name));
+  headSheetRowIndex(role: HeadRole): SheetRowIndex {
+    return this.sheetRowIndex(headRows.index(role));
   }
   sheetColIndex(colIndex: number): SheetColIndex {
     return SheetIndex.col(this.startColIndex + colIndex);

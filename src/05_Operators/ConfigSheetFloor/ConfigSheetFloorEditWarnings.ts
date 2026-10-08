@@ -3,7 +3,7 @@ import {
   protectionRangeEqual,
   protectionRangesEqual,
 } from "../../00_Source/RawSource/EditProtection";
-import { getSheetTraitByName } from "../../01_SpreadsheetSchema/sheetConfigsTypes";
+import { getTableTraitByName } from "../../01_SpreadsheetSchema/tableConfigsTypes";
 import { SpreadsheetBaseNamed } from "../../04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
 import { SpreadsheetNamed } from "../../04_SpreadsheetNamed/SpreadsheetNamed";
 import { type FloorSheetName, floorSheetNames } from "./floorSeedLookups";
@@ -23,7 +23,7 @@ interface FloorTabDeclaration {
 
 /**
  * Reconciles the floor's edit warnings across the floor tabs: Spreadsheet
- * Config, Sheet Config and Column Config each get one, and any that drifted
+ * Config, Table Config and Column Config each get one, and any that drifted
  * or no floor tab declares is removed. ConfigSheetFloor runs this after its restores.
  * Each tab's declaration and the rules table live in FloorTabEditWarning; the
  * live column lookup is floorColumnLocation; seed lookups are floorSeedLookups;
@@ -36,18 +36,18 @@ export class ConfigSheetFloorEditWarnings extends SpreadsheetBaseNamed {
   }
   gatherIdentityColumns(): IdentityColIndexes {
     const identityColIndexes: IdentityColIndexes = new Map();
-    floorSheetNames().forEach((sheetName) => {
-      const colIndexes = this._floorTab(sheetName).gatherIdentityColumns();
+    floorSheetNames().forEach((tableName) => {
+      const colIndexes = this._floorTab(tableName).gatherIdentityColumns();
       if (colIndexes !== undefined) {
-        identityColIndexes.set(sheetName, colIndexes);
+        identityColIndexes.set(tableName, colIndexes);
       }
     });
     return identityColIndexes;
   }
   ensure(identityColIndexes: IdentityColIndexes): string[] {
     const report: string[] = [];
-    const tabs = this._activeFloorSheetNames().map((sheetName) =>
-      this._floorTab(sheetName),
+    const tabs = this._activeFloorSheetNames().map((tableName) =>
+      this._floorTab(tableName),
     );
     tabs.forEach((tab) => {
       const addedColumnLines = tab.addedColumnReportLines();
@@ -57,17 +57,17 @@ export class ConfigSheetFloorEditWarnings extends SpreadsheetBaseNamed {
     });
     const tabDeclarations = tabs.map((tab) => ({
       tab,
-      declaration: tab.declaration(identityColIndexes.get(tab.sheetName)),
+      declaration: tab.declaration(identityColIndexes.get(tab.tableName)),
     }));
     this._reconcile(tabDeclarations, report);
     return report;
   }
   private _floorTab(
-    sheetName: FloorSheetName,
+    tableName: FloorSheetName,
   ): FloorTabEditWarning<FloorSheetName> {
     return new FloorTabEditWarning({
       ...this.spreadsheetNamedProps,
-      sheetName,
+      tableName: tableName,
     });
   }
   private _reconcile(
@@ -111,15 +111,15 @@ export class ConfigSheetFloorEditWarnings extends SpreadsheetBaseNamed {
   }
   // A floor tab created this run is still absent after the refetch under a fake or dry run.
   private _activeFloorSheetNames(): FloorSheetName[] {
-    return floorSheetNames().filter((sheetName) =>
-      this.ss.raw.gidIsActive(getSheetTraitByName(sheetName, "sheetGid")),
+    return floorSheetNames().filter((tableName) =>
+      this.ss.raw.gidIsActive(getTableTraitByName(tableName, "sheetGid")),
     );
   }
   private _floorProtections(): ModelableEditProtection[] {
-    return this._activeFloorSheetNames().flatMap((sheetName) =>
+    return this._activeFloorSheetNames().flatMap((tableName) =>
       this.ss
-        .sheet(sheetName)
-        .editProtections()
+        .table(tableName)
+        .sheet.editProtections()
         .flatMap((protection) => {
           if (protection.kind === "unmodelable") return [];
           if (!protection.description.startsWith(floorWarningPrefix)) {
@@ -130,10 +130,10 @@ export class ConfigSheetFloorEditWarnings extends SpreadsheetBaseNamed {
     );
   }
   private _removeProtection(protection: ModelableEditProtection): void {
-    floorSheetNames().forEach((sheetName) => {
-      const sheet = this.ss.sheet(sheetName);
+    floorSheetNames().forEach((tableName) => {
+      const sheet = this.ss.table(tableName);
       if (sheet.schema.sheetGid !== protection.range.sheetId) return;
-      sheet.removeEditProtectionById(protection.id);
+      sheet.sheet.removeEditProtectionById(protection.id);
     });
   }
 }

@@ -1,13 +1,13 @@
 import type { RgbColor } from "../00_Source/RawSource/RgbColor";
 import type { ColumnName } from "../01_SpreadsheetSchema/columnConfigsTypes";
-import type { SheetNameSimple } from "../01_SpreadsheetSchema/sheetConfigsTypes";
+import type { TableNameSimple } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import type { CellChange } from "../03_SpreadsheetIdentified/ClassTypes/StateIdentified";
 import {
-  SheetBaseNamed,
-  type SheetNamedProps,
-} from "../04_SpreadsheetNamed/ClassBases/SheetBaseNamed";
-import type { SheetNamed } from "../04_SpreadsheetNamed/SheetNamed";
+  TableBaseNamed,
+  type TableNamedProps,
+} from "../04_SpreadsheetNamed/ClassBases/TableBaseNamed";
 import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
+import type { TableNamed } from "../04_SpreadsheetNamed/TableNamed";
 import {
   type CheckboxColumnName,
   CheckboxColumnOperator,
@@ -55,10 +55,10 @@ interface RunStateProps {
 }
 
 export interface EndpointRunProps<
-  SN extends SheetNameSimple,
-> extends SheetNamedProps<SN> {
-  entryColumnName: ColumnName<SN>;
-  endpoint: EndpointDispatched<SN>;
+  TN extends TableNameSimple,
+> extends TableNamedProps<TN> {
+  entryColumnName: ColumnName<TN>;
+  endpoint: EndpointDispatched<TN>;
 }
 
 /**
@@ -70,11 +70,11 @@ export interface EndpointRunProps<
  * docs/architecture/endpoint-dispatch.md
  */
 export class EndpointRun<
-  SN extends SheetNameSimple = SheetNameSimple,
-> extends SheetBaseNamed<SN> {
-  readonly entryColumnName: ColumnName<SN>;
-  readonly endpoint: EndpointDispatched<SN>;
-  constructor({ entryColumnName, endpoint, ...props }: EndpointRunProps<SN>) {
+  TN extends TableNameSimple = TableNameSimple,
+> extends TableBaseNamed<TN> {
+  readonly entryColumnName: ColumnName<TN>;
+  readonly endpoint: EndpointDispatched<TN>;
+  constructor({ entryColumnName, endpoint, ...props }: EndpointRunProps<TN>) {
     super(props);
     this.entryColumnName = entryColumnName;
     this.endpoint = endpoint;
@@ -82,8 +82,8 @@ export class EndpointRun<
   get ss(): SpreadsheetNamed {
     return new SpreadsheetNamed(this.spreadsheetNamedProps);
   }
-  get sheet(): SheetNamed<SN> {
-    return this.ss.sheet(this.sheetName);
+  get table(): TableNamed<TN> {
+    return this.ss.table(this.tableName);
   }
   run(isChecked: boolean): void {
     this._prepSelectorFetch();
@@ -112,8 +112,8 @@ export class EndpointRun<
     }
   }
   private _checkboxColumn(
-    columnName: CheckboxColumnName<SN>,
-  ): CheckboxColumnOperator<SN, CheckboxColumnName<SN>> {
+    columnName: CheckboxColumnName<TN>,
+  ): CheckboxColumnOperator<TN, CheckboxColumnName<TN>> {
     return new CheckboxColumnOperator({
       ...this.sheetNamedProps,
       columnName,
@@ -128,18 +128,21 @@ export class EndpointRun<
   // No selector means every data row that holds data; a blank row is no record.
   private _selectedRowIndexes(): number[] {
     const { selector } = this.endpoint;
-    if (!selector) return this.sheet.rowIndexesFullWithData;
+    if (!selector) return this.table.rowIndexesFullWithData;
     return this._checkboxColumn(selector.column).rowIndexesChecked;
   }
   // The entry cell is a button unless the endpoint also runs on unticking.
   private _resetEntryCheckbox(): void {
     if (this.endpoint.runOnUncheck) return;
-    this.sheet.meta.column(this.entryColumnName).actionRowToDefault();
+    this.table
+      .column(this.entryColumnName)
+      .headCell("action")
+      .updateValue(false);
   }
-  // Unselected rows go inactive, so every later read of active rows is the selection.
+  // Unselected rows leave the working view, so every later read of working rows is the selection.
   private _pruneToSelection(selectedRowIndexes: number[]): void {
     if (!this.endpoint.selector) return;
-    this.sheet.raw.removeRowsExcept(...selectedRowIndexes);
+    this.table.raw.removeRowsExcept(...selectedRowIndexes);
   }
   // The flush is what puts the running state on the sheet before the work runs.
   private _onRunSetup(): void {
@@ -152,14 +155,14 @@ export class EndpointRun<
     if (selectedRowIndexes.length <= 1) return;
     throw new Error(
       // The sheet's own title, not its config name: the operator reads this cell.
-      `This endpoint runs on one row of "${this.sheet.raw.title}" at a time, but ${selectedRowIndexes.length} are selected.`,
+      `This endpoint runs on one row of "${this.table.raw.sheet.title}" at a time, but ${selectedRowIndexes.length} are selected.`,
     );
   }
   // Inside the run's `try`, so an action that throws has its clearing discarded too.
   private _clearSelection(): void {
     const { selector } = this.endpoint;
     if (!selector || selector.retainSelection) return;
-    this._checkboxColumn(selector.column).uncheckActiveCells();
+    this._checkboxColumn(selector.column).uncheckWorkingCells();
   }
   // A string is a success with that message, and nothing at all is a bare success.
   private _applyActionReport(report: ActionReturn): void {
@@ -191,14 +194,14 @@ export class EndpointRun<
     });
   }
   private _fillFeedbackColumn(
-    columnName: FeedbackColumnName<SN> | undefined,
+    columnName: FeedbackColumnName<TN> | undefined,
     change: CellChange<"string">,
   ): void {
     if (!columnName) return;
     // Re-deriving the value type here would compose two mapped filters, at ~43k instantiations.
-    const column = this.sheet.columnIdentified(columnName);
+    const column = this.table.columnIdentified(columnName);
     if (this.endpoint.selector) {
-      column.updateActiveCells(change);
+      column.updateWorkingCells(change);
     } else {
       column.updateAllCells(change);
     }
@@ -218,18 +221,18 @@ export class EndpointRun<
   }
   // A key outside the data rows is a reporting bug, and would write somewhere surprising.
   private _validateIsDataRow(rowIndex: number): void {
-    if (this.sheet.raw.rowIndexesFull.includes(rowIndex)) return;
+    if (this.table.raw.rowIndexesFull.includes(rowIndex)) return;
     throw new Error(
-      `This run cannot report into ${this.sheet.raw.rowLabel(rowIndex)}: it is not a data row of "${this.sheet.raw.title}".`,
+      `This run cannot report into ${this.table.raw.rowLabel(rowIndex)}: it is not a data row of "${this.table.raw.sheet.title}".`,
     );
   }
   private _updateFeedbackCell(
-    columnName: FeedbackColumnName<SN> | undefined,
+    columnName: FeedbackColumnName<TN> | undefined,
     rowIndex: number,
     change: CellChange<"string">,
   ): void {
     if (!columnName) return;
-    this.sheet.columnIdentified(columnName).cell(rowIndex).update(change);
+    this.table.columnIdentified(columnName).cell(rowIndex).update(change);
   }
   // Queued changes are shared by reference, so a half-finished run must be dropped before status is written.
   private _onRunError(error: unknown): void {

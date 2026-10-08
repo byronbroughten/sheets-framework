@@ -2,6 +2,7 @@ import type {
   SheetSnapshot,
   TableSnapshot,
 } from "../../00_Source/RawSource/RawSource";
+import { SpreadsheetSchema } from "../../01_SpreadsheetSchema/SpreadsheetSchema";
 import { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin";
 import { Val } from "../../utils/Val";
 import { emptyStateRaw } from "../ClassTypes/emptyStateRaw";
@@ -21,7 +22,7 @@ import {
   type SpreadsheetRawProps,
 } from "./SpreadsheetBaseRaw";
 
-// `ss.sheet(gid)` still reaches a Table through its sheet, meaning the sheet's one Table.
+// `ss.tableOnSheet(gid)` reaches a Table through its sheet, meaning the sheet's one Table.
 export type TableAddressRaw = { sheetGid: number } | { tableId: string };
 export type TableRawProps = SpreadsheetRawProps & TableAddressRaw;
 
@@ -55,7 +56,7 @@ export class TableBaseRaw extends SpreadsheetBaseRaw {
     if ("tableId" in this.tableAddress) {
       return tableStateOf(this.tablesStateRaw, this.tableAddress.tableId);
     }
-    const tableId = this.onlyTableId();
+    const tableId = this.tableIdReachedByGid();
     if (tableId === undefined) return this.sheetState.tableBeforeProperties;
     return tableStateOf(this.tablesStateRaw, tableId);
   }
@@ -69,18 +70,11 @@ export class TableBaseRaw extends SpreadsheetBaseRaw {
   get rowStates(): RowStatesRaw {
     return this.tableState.working.rowStates;
   }
-  // Rules and protections are per sheet, so a Table reads its sheet's flags.
-  get hasGatheredSheetFetch(): boolean {
-    return (
-      this.sheetState.fetchQueue.gatherConditionalFormats ||
-      this.sheetState.fetchQueue.gatherEditProtections
-    );
-  }
   get sheetTitle(): string {
     return this.sheetState.working.title ?? "(untitled)";
   }
   get sheetLabel(): string {
-    return `"${this.sheetTitle}" (gid ${this.sheetGid})`;
+    return sheetLabel(this.sheetState.working.title, this.sheetGid);
   }
   get tableRawProps(): TableRawProps {
     return {
@@ -99,6 +93,23 @@ export class TableBaseRaw extends SpreadsheetBaseRaw {
     if (otherTableIds.length > 0) return undefined;
     return tableId;
   }
+  // The Table a GID address reaches: the sheet's only one, else the one its configs record.
+  tableIdReachedByGid(): string | undefined {
+    return this.onlyTableId() ?? this.recordedTableId();
+  }
+  // Until sheets-framework#89, a managed sheet may hold unmanaged Tables beside the one its configs record.
+  recordedTableId(): string | undefined {
+    const recordedTableIds = new Set(
+      new SpreadsheetSchema()
+        .tablesOnGid(this.sheetGid)
+        .map((table) => table.tableId),
+    );
+    const [tableId, ...otherTableIds] = this.tableIds().filter((id) =>
+      recordedTableIds.has(id),
+    );
+    if (otherTableIds.length > 0) return undefined;
+    return tableId;
+  }
   hasOneTable(): boolean {
     return this.onlyTableId() !== undefined;
   }
@@ -108,11 +119,14 @@ export class TableBaseRaw extends SpreadsheetBaseRaw {
       `rowState for ${this.rowLabel(rowIndex)} on sheetGid ${this.sheetGid}`,
     );
   }
-  // The live Table once fetched; before that, where the layout expects it.
+  // The live Table once fetched; before that, where the configs record it.
   tableOrigin(): TableOrigin {
     const properties = this.tableProperties;
-    if (properties === undefined) return TableOrigin.expected();
+    if (properties === undefined) return this.presumedOrigin;
     return originOf(properties);
+  }
+  get presumedOrigin(): TableOrigin {
+    return new SpreadsheetSchema().presumedOrigin(this.sheetGid);
   }
   rowLabel(rowIndex: number): string {
     return `row ${this.tableOrigin().rowNumber(rowIndex)}`;
@@ -211,6 +225,13 @@ export class TableBaseRaw extends SpreadsheetBaseRaw {
   }
 }
 
+export function sheetLabel(
+  title: string | undefined,
+  sheetGid: number,
+): string {
+  return `"${title ?? "(untitled)"}" (gid ${sheetGid})`;
+}
+
 function sheetGidOf(
   tables: TablesStateRaw,
   tableAddress: TableAddressRaw,
@@ -219,10 +240,7 @@ function sheetGidOf(
   return tableStateOf(tables, tableAddress.tableId).sheetGid;
 }
 
-function tableStateOf(
-  tables: TablesStateRaw,
-  tableId: string,
-): TableStateRaw {
+function tableStateOf(tables: TablesStateRaw, tableId: string): TableStateRaw {
   return Val.assert(tables.get(tableId), `Table state for tableId ${tableId}`);
 }
 

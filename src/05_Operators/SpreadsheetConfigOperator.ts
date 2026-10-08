@@ -1,13 +1,13 @@
-import { GenericSheetOperator } from "./GenericSheetOperator";
+import { GenericTableOperator } from "./GenericTableOperator";
 import {
   type OperatorProps,
   SpreadsheetBaseOperator,
 } from "./SpreadsheetBaseOperator";
 
-export class SpreadsheetConfigOperator extends GenericSheetOperator<"spreadsheetConfig"> {
+export class SpreadsheetConfigOperator extends GenericTableOperator<"spreadsheetConfig"> {
   constructor(props: OperatorProps) {
     super({
-      sheetName: "spreadsheetConfig",
+      tableName: "spreadsheetConfig",
       ...props,
     });
   }
@@ -17,7 +17,7 @@ export class SpreadsheetConfigOperator extends GenericSheetOperator<"spreadsheet
     );
   }
   validateExactlyOneDataRow(): void {
-    const dataRowCount = this.sheet.raw.dataRowCountAfterFlush;
+    const dataRowCount = this.table.raw.dataRowCountAfterFlush;
     if (dataRowCount !== 1) {
       throw new Error(
         `Spreadsheet Config Table must have exactly one data row; found ${dataRowCount}.`,

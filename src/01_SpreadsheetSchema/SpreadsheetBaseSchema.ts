@@ -1,19 +1,15 @@
 import {
   type CodebaseNameDelimiter,
   codebaseNameDelimiter,
-  getUniformRowValueName,
-  type UniformRowName,
-  type UniformRowValueName,
 } from "../00_Source/CellValues/cellValues";
 import type {
   SheetColIndex,
   SheetRowIndex,
 } from "../00_Source/RawSource/SheetIndex";
-import { Obj } from "../utils/Obj";
 import { Str } from "../utils/Str";
-import { sheetLayout } from "./sheetLayout";
-import { TableOrigin } from "./TableOrigin";
-import { uniformRows } from "./uniformRows";
+import { headRows } from "./headRows";
+import { tableLayout } from "./tableLayout";
+
 
 export class SpreadsheetBaseSchema {
   get codebaseNameDelimiter(): CodebaseNameDelimiter {
@@ -26,80 +22,13 @@ export class SpreadsheetBaseSchema {
     return `${name1}${this.codebaseNameDelimiter}${name2}`;
   }
   get idHeader(): string {
-    return sheetLayout.idHeader;
+    return tableLayout.idHeader;
   }
   get nameHeader(): string {
-    return sheetLayout.nameHeader;
+    return tableLayout.nameHeader;
   }
   titleToName(sheetTitle: string): string {
     return Str.sentenceToCamelCase(sheetTitle);
-  }
-  uniformValueName<UN extends UniformRowName>(
-    name: UN,
-  ): UniformRowValueName<UN> {
-    return getUniformRowValueName(name);
-  }
-  get uniformRowNames(): UniformRowName[] {
-    return Obj.keys(uniformRows.indexes());
-  }
-  uniformRowIndex(name: UniformRowName): number {
-    return uniformRows.index(name);
-  }
-  uniformRowNameByIndex(rowIndex: number): UniformRowName {
-    const uniformRowName = uniformRows.nameByIndex().get(rowIndex);
-    if (!uniformRowName) {
-      throw new Error(
-        `Row index ${rowIndex} does not correspond to a known uniform row name.`,
-      );
-    }
-    return uniformRowName;
-  }
-  isUniformRowIndex(rowIndex: number, rowName?: UniformRowName): boolean {
-    const isUniform = uniformRows.nameByIndex().has(rowIndex);
-    if (rowName) {
-      return isUniform && this.uniformRowNameByIndex(rowIndex) === rowName;
-    } else {
-      return isUniform;
-    }
-  }
-  validateUniformRowIndex(rowIndex: number, rowName?: UniformRowName): void {
-    if (!this.isUniformRowIndex(rowIndex, rowName)) {
-      throw new Error(
-        `Row index ${rowIndex} is not a uniform row. Uniform rows are: ${Obj.keys(
-          uniformRows.indexes(),
-        )
-          .map((name) => `${name} (index ${uniformRows.indexes()[name]})`)
-          .join(", ")}`,
-      );
-    }
-  }
-  isTableStart(
-    startRowIndex: SheetRowIndex,
-    startColumnIndex: SheetColIndex,
-  ): boolean {
-    return TableOrigin.expected().equals(
-      new TableOrigin({
-        headerRowIndex: startRowIndex,
-        startColIndex: startColumnIndex,
-      }),
-    );
-  }
-  validateTableStart(
-    startRowIndex: SheetRowIndex,
-    startColumnIndex: SheetColIndex,
-  ): void {
-    if (!this.isTableStart(startRowIndex, startColumnIndex)) {
-      throw new Error(
-        `A Table starting at ${this.positionLabel(
-          startRowIndex,
-          startColumnIndex,
-        )} must start at ${this.tableStartLabel}.`,
-      );
-    }
-  }
-  get tableStartLabel(): string {
-    const { headerRowIndex, startColIndex } = TableOrigin.expected();
-    return this.positionLabel(headerRowIndex, startColIndex);
   }
   positionLabel(rowIndex: SheetRowIndex, colIndex: SheetColIndex): string {
     return `row ${rowIndex + 1}, column ${this.columnLetter(colIndex)}`;
@@ -117,15 +46,15 @@ export class SpreadsheetBaseSchema {
     return `$${this.columnLetter(colIndex)}${rowIndex + 1}`;
   }
   get colIdRowIndex(): number {
-    return uniformRows.indexes().columnId;
+    return headRows.index("columnId");
   }
   get tableHeaderRowIndex(): number {
-    return uniformRows.indexes().tableHeader;
+    return headRows.index("header");
   }
   get actionRowIndex(): number {
-    return uniformRows.indexes().action;
+    return headRows.index("action");
   }
   get idDelimiter(): string {
-    return sheetLayout.idDelimiter;
+    return tableLayout.idDelimiter;
   }
 }

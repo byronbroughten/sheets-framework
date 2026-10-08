@@ -6,7 +6,7 @@ import {
   type SheetNameWithIdAndNameColumn,
   type SheetNameWithIdColumn,
   type SheetNameWithNameColumn,
-} from "./SheetNameGroups";
+} from "./TableNameGroups";
 
 describe("SheetNameWithIdColumn", () => {
   it("includes a sheet that declares an id column and excludes one that doesn't", () => {

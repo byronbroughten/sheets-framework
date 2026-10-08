@@ -11,14 +11,14 @@ export class RowIdentified extends RowCommonIdentified {
     super(props);
     void this.raw;
   }
-  get sheet(): TableIdentified {
+  get table(): TableIdentified {
     return new TableIdentified(this.tableIdentifiedProps);
   }
   get raw(): RowRaw {
     return new RowRaw(this.rowIdentifiedProps);
   }
-  get activeValueArr(): CellValue[] {
-    return this.raw.activeValueArr;
+  get workingValueArr(): CellValue[] {
+    return this.raw.workingValueArr;
   }
   valueOrEmpty(columnId: string): Value {
     return this.cell(columnId).valueOrEmpty();
@@ -40,21 +40,21 @@ export class RowIdentified extends RowCommonIdentified {
     columnIds.forEach((columnId) => this.cell(columnId).updateToDefault());
     return this;
   }
-  get activeColumnIds(): string[] {
+  get workingColumnIds(): string[] {
     return [...this.raw.rowState.keys()].map((colIndex) =>
-      this.sheet.meta.columnIdByIndex(colIndex),
+      this.table.columnResolver.columnIdAt(colIndex),
     );
   }
-  get isActive(): boolean {
-    return this.raw.rowIsActive();
+  get inWorking(): boolean {
+    return this.raw.rowInWorking();
   }
   get isQueuedForDelete(): boolean {
     return this.raw.isQueuedForDelete;
   }
   // Raw decides, since a checkbox column's blank reads as false and an unread row isn't empty.
   get isBlank(): boolean {
-    if (!this.isActive) return false;
-    return this._blankTestCellsActive.every((cell) => cell.raw.isEmpty);
+    if (!this.inWorking) return false;
+    return this._workingBlankTestCells.every((cell) => cell.raw.isEmpty);
   }
   get isReusable(): boolean {
     return this.isBlank && !this.raw.isReserved;
@@ -65,7 +65,7 @@ export class RowIdentified extends RowCommonIdentified {
   // A blank row needs no writes, but its reservation must lift either way.
   clearValues(): this {
     if (!this.isBlank) {
-      this.sheet.nonFormulaColumnIds.forEach((columnId) => {
+      this.table.nonFormulaColumnIds.forEach((columnId) => {
         this.updateValue(columnId, "");
       });
     }
@@ -73,16 +73,15 @@ export class RowIdentified extends RowCommonIdentified {
     return this;
   }
   delete(): void {
-    if (this.sheet.raw.isDownToLastDataRow) {
+    if (this.table.raw.isDownToLastDataRow) {
       this.clearValues();
     } else {
       this.raw.delete();
     }
   }
-  private get _blankTestCellsActive(): CellIdentified[] {
-    return this.sheet
-      .blankTestColumnIds
+  private get _workingBlankTestCells(): CellIdentified[] {
+    return this.table.blankTestColumnIds
       .map((columnId) => this.cell(columnId))
-      .filter((cell) => cell.isActive);
+      .filter((cell) => cell.inWorking);
   }
 }

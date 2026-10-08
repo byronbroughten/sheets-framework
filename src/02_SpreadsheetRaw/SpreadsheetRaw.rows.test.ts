@@ -9,10 +9,13 @@ import {
 import type { AddTableProps } from "./ClassTypes/StateRaw";
 import { SpreadsheetRaw } from "./SpreadsheetRaw";
 import {
+  expectedOrigin,
   formulaCell,
   scratchGid,
   startTableColIndex,
   tableHeaderRowIndex,
+  tableId111,
+  tableId222,
   topDataRowIndex,
 } from "./spreadsheetRawTestSupport";
 
@@ -61,7 +64,7 @@ describe("SpreadsheetRaw add sheet and add Table", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheet(111).updateTitle("Renamed");
+    raw.table(tableId111).sheet.updateTitle("Renamed");
     raw.gatherAddTableOperation(addTableProps);
     raw.gatherAddSheetOperation(addSheetProps);
     raw.batchUpdateGSheets();
@@ -297,7 +300,7 @@ describe("RowRaw.delete", () => {
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
 
-    expect(() => raw.sheet(111).topRow.delete()).toThrowError(
+    expect(() => raw.table(tableId111).topRow.delete()).toThrowError(
       /last data row.*may never be left with none/,
     );
   });
@@ -307,10 +310,10 @@ describe("RowRaw.delete", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheet(111).row(0).delete();
-    raw.sheet(111).row(1).delete();
+    raw.table(tableId111).row(0).delete();
+    raw.table(tableId111).row(1).delete();
 
-    expect(() => raw.sheet(111).row(2).delete()).toThrowError(
+    expect(() => raw.table(tableId111).row(2).delete()).toThrowError(
       /last data row.*may never be left with none/,
     );
   });
@@ -320,7 +323,7 @@ describe("RowRaw.delete", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheet(111).row(1).delete();
+    raw.table(tableId111).row(1).delete();
     raw.batchUpdateGSheets();
 
     expect(grid.sheet(111).values({ startRowIndex: topDataRowIndex })).toEqual([
@@ -333,9 +336,11 @@ describe("RowRaw.delete", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheet(111).appendDataRow().delete();
+    raw.table(tableId111).appendDataRow().delete();
 
-    expect(() => raw.sheet(111).topRow.delete()).toThrowError(/last data row/);
+    expect(() => raw.table(tableId111).topRow.delete()).toThrowError(
+      /last data row/,
+    );
   });
 
   it("does not change another sheet's data-row count when a row delete is queued", () => {
@@ -348,12 +353,12 @@ describe("RowRaw.delete", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    const unitsBefore = raw.sheet(222).dataRowCountAfterFlush;
+    const unitsBefore = raw.table(tableId222).dataRowCountAfterFlush;
 
-    raw.sheet(111).row(1).delete();
+    raw.table(tableId111).row(1).delete();
 
-    expect(raw.sheet(222).dataRowCountAfterFlush).toBe(unitsBefore);
-    expect(raw.sheet(111).dataRowCountAfterFlush).toBe(6);
+    expect(raw.table(tableId222).dataRowCountAfterFlush).toBe(unitsBefore);
+    expect(raw.table(tableId111).dataRowCountAfterFlush).toBe(6);
   });
 
   it("spans a column inserted at the Table end in the same flush, so the delete never covers part of the Table", () => {
@@ -361,8 +366,8 @@ describe("RowRaw.delete", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheetMeta(111).insertColumnAtEnd({ columnId: "c:x:new", header: "New" });
-    raw.sheet(111).row(0).delete();
+    raw.tableOnSheet(111).appendColumn({ columnId: "c:x:new", header: "New" });
+    raw.table(tableId111).row(0).delete();
     raw.batchUpdateGSheets();
 
     expect(
@@ -484,20 +489,20 @@ describe("RowRaw.delete", () => {
   });
 });
 
-describe("RowRaw.rowIsActive", () => {
-  it("makes an appended row active and grows the table end before the flush", () => {
+describe("RowRaw.rowInWorking", () => {
+  it("puts an appended row in the working view and grows the table end before the flush", () => {
     stubSheetsService({
       sheets: [{ sheetId: 111, title: "Records", table: { endRowIndex: 11 } }],
     });
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    const countBefore = raw.sheet(111).dataRowCount;
+    const countBefore = raw.table(tableId111).dataRowCount;
 
-    const row = raw.sheet(111).appendDataRow();
+    const row = raw.table(tableId111).appendDataRow();
 
-    expect(row.rowIsActive()).toBe(true);
-    expect(raw.sheet(111).dataRowCount).toBe(countBefore + 1);
+    expect(row.rowInWorking()).toBe(true);
+    expect(raw.table(tableId111).dataRowCount).toBe(countBefore + 1);
   });
 
   it("drops a removed row from the working view before the flush, leaving table indexes unmoved", () => {
@@ -514,19 +519,19 @@ describe("RowRaw.rowIsActive", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheet(111).row(1).gatherFetchFull();
+    raw.table(tableId111).row(1).gatherFetchFull();
     raw.fetchAllGathered();
-    expect(raw.sheet(111).row(1).rowIsActive()).toBe(true);
-    const countBefore = raw.sheet(111).dataRowCount;
+    expect(raw.table(tableId111).row(1).rowInWorking()).toBe(true);
+    const countBefore = raw.table(tableId111).dataRowCount;
 
-    raw.sheet(111).row(1).delete();
+    raw.table(tableId111).row(1).delete();
 
-    expect(raw.sheet(111).row(1).rowIsActive()).toBe(false);
-    expect(raw.sheet(111).dataRowCount).toBe(countBefore);
-    expect(raw.sheet(111).dataRowCountAfterFlush).toBe(6);
+    expect(raw.table(tableId111).row(1).rowInWorking()).toBe(false);
+    expect(raw.table(tableId111).dataRowCount).toBe(countBefore);
+    expect(raw.table(tableId111).dataRowCountAfterFlush).toBe(6);
   });
 
-  it("keeps pre-flush row indexes after a flushed delete, so the removed row stays inactive at its old index", () => {
+  it("keeps pre-flush row indexes after a flushed delete, so the removed row stays out of the working view at its old index", () => {
     stubSheetsService({
       sheets: [
         {
@@ -540,14 +545,16 @@ describe("RowRaw.rowIsActive", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheet(111).row(1).gatherFetchFull();
+    raw.table(tableId111).row(1).gatherFetchFull();
     raw.fetchAllGathered();
-    raw.sheet(111).row(1).delete();
+    raw.table(tableId111).row(1).delete();
     raw.batchUpdateGSheets();
 
-    expect(raw.sheet(111).row(1).rowIsActive()).toBe(false);
-    expect(raw.sheet(111).rowIndexesAreStale).toBe(true);
-    expect(() => raw.sheet(111).dataRowCount).toThrow(/Row indexes are stale/);
+    expect(raw.table(tableId111).row(1).rowInWorking()).toBe(false);
+    expect(raw.table(tableId111).rowIndexesAreStale).toBe(true);
+    expect(() => raw.table(tableId111).dataRowCount).toThrow(
+      /Row indexes are stale/,
+    );
   });
 });
 
@@ -572,8 +579,8 @@ describe("TableRaw.removeRowsExcept", () => {
   function fetchedPrunableSheet() {
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheetMeta(111).colIdRow.gatherFetchFull();
-    raw.sheet(111).column(1).gatherFetchFull();
+    raw.tableOnSheet(111).headRow("columnId").gatherFetchFull();
+    raw.table(tableId111).column(1).gatherFetchFull();
     raw.fetchAllGathered();
     return raw;
   }
@@ -582,28 +589,30 @@ describe("TableRaw.removeRowsExcept", () => {
     stubPrunableSheet();
 
     const raw = fetchedPrunableSheet();
-    raw.sheet(111).removeRowsExcept(1);
+    raw.table(tableId111).removeRowsExcept(1);
 
-    expect(raw.sheet(111).rowIndexesActive).toEqual([1]);
+    expect(raw.table(tableId111).workingRowIndexes).toEqual([1]);
   });
 
-  it("keeps the uniform rows, so a column still resolves by its id afterwards", () => {
+  it("keeps the head rows, so a column still resolves by its id afterwards", () => {
     stubPrunableSheet();
 
     const raw = fetchedPrunableSheet();
-    raw.sheet(111).removeRowsExcept(1);
+    raw.table(tableId111).removeRowsExcept(1);
 
-    expect(raw.sheetMeta(111).columnByActiveId("c:lse:bbb").colIndex).toBe(1);
+    expect(raw.table(tableId111).profile.columnById("c:lse:bbb").colIndex).toBe(
+      1,
+    );
   });
 
   it("makes a whole-column fill throw, so it can't overwrite the excluded rows", () => {
     stubPrunableSheet();
 
     const raw = fetchedPrunableSheet();
-    raw.sheet(111).removeRowsExcept(1);
+    raw.table(tableId111).removeRowsExcept(1);
 
     expect(() =>
-      raw.sheet(111).column(1).updateAllCells({ value: "new" }),
+      raw.table(tableId111).column(1).updateAllCells({ value: "new" }),
     ).toThrowError(/pruned to a selection/);
   });
 });
@@ -621,7 +630,7 @@ describe("TableRaw.dataRowCount", () => {
     });
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    return raw.sheet(111);
+    return raw.table(tableId111);
   }
 
   it("throws when the exclusive end row is the first data row", () => {
@@ -632,5 +641,79 @@ describe("TableRaw.dataRowCount", () => {
 
   it("accepts a Table whose exclusive end is one past the first data row", () => {
     expect(fetchedSheet(topDataRowIndex + 1).dataRowCount).toBe(1);
+  });
+});
+
+describe("TableRaw head rows", () => {
+  const sheetRow = {
+    action: expectedOrigin.headSheetRowIndex("action"),
+    header: expectedOrigin.headSheetRowIndex("header"),
+  };
+
+  function stubHeadRows() {
+    return stubSheetsService({
+      sheets: [
+        {
+          sheetId: 111,
+          title: "Records",
+          rows: buildGridRows({
+            [sheetRow.action]: [true, "Due"],
+            [sheetRow.header]: ["ID", "Amount"],
+            [topDataRowIndex]: ["r1", 5],
+          }),
+          table: { endRowIndex: topDataRowIndex + 1 },
+        },
+      ],
+    });
+  }
+
+  function fetchedHeadRows(): SpreadsheetRaw {
+    const raw = SpreadsheetRaw.init();
+    raw.fetchAllSheetProperties();
+    const table = raw.table(tableId111);
+    table.headRow("action").gatherFetchFull();
+    table.headRow("header").gatherFetchFull();
+    raw.fetchAllGathered();
+    return raw;
+  }
+
+  it("reads a checkbox and a heading from the row two roles share, by either role", () => {
+    stubHeadRows();
+    const table = fetchedHeadRows().table(tableId111);
+
+    expect(table.column(0).headCell("action").valueOrEmpty()).toBe(true);
+    expect(table.column(1).headCell("groupHeading2").valueOrEmpty()).toBe(
+      "Due",
+    );
+    expect(table.headRow("groupHeading2").valueOrEmpty(0)).toBe(true);
+    expect(table.headRow("header").valueOrEmpty(1)).toBe("Amount");
+  });
+
+  it("writes head cells through the column and through the row", () => {
+    const { grid } = stubHeadRows();
+    const raw = fetchedHeadRows();
+    const table = raw.table(tableId111);
+
+    table.column(0).headCell("action").updateValue(false);
+    table.headRow("groupHeading2").updateValue(1, "Late");
+    table.headRow("header").updateValue(1, "Total");
+    raw.batchUpdateGSheets();
+
+    expect(grid.sheet(111).cell(sheetRow.action, 0)).toBe(false);
+    expect(grid.sheet(111).cell(sheetRow.action, 1)).toBe("Late");
+    expect(grid.sheet(111).cell(sheetRow.header, 1)).toBe("Total");
+  });
+
+  it("finds the row at an index with every role it holds", () => {
+    stubHeadRows();
+    const table = fetchedHeadRows().table(tableId111);
+
+    expect(table.headRowByIndex(-2).roles).toEqual(["action", "groupHeading2"]);
+    expect(table.headRowByIndex(-1).roles).toEqual(["header"]);
+    expect(table.headRow("groupHeading2").roles).toEqual([
+      "action",
+      "groupHeading2",
+    ]);
+    expect(() => table.headRowByIndex(0)).toThrow(/not a head row/);
   });
 });

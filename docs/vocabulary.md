@@ -11,7 +11,7 @@ One line per term. The elaboration is one file away. Open a reasoning file only 
 | Source, Platform, Raw, Identified, Named, `rowIndex` | [`docs/vocabulary/tiers.md`](./vocabulary/tiers.md) |
 | Tier word, State, Base, Operator, Collaborator | [`docs/vocabulary/class-names.md`](./vocabulary/class-names.md) |
 | `xConfigs` / `XConfig` / trait, the config-sheet floor | [`docs/vocabulary/config.md`](./vocabulary/config.md) |
-| Meta vs primary, crossing views, which class a member belongs to, Active, Active facts | [`docs/vocabulary/meta-primary.md`](./vocabulary/meta-primary.md) |
+| Profile, sampled facts, which class a member belongs to, Working, head rows | [`docs/vocabulary/profile.md`](./vocabulary/profile.md) |
 | Schema, blank cells, `value` / `valueOrEmpty` / `valueNotEmpty`, checkbox, `SerialDate`, `emptyValueAllowed` | [`docs/vocabulary/values.md`](./vocabulary/values.md) |
 
 ## Tiers
@@ -46,13 +46,12 @@ One line per term. The elaboration is one file away. Open a reasoning file only 
 - **A field about one row or one column is singular (`appendRow`, `deleteRow`); a queue entry's field holding many is plural (`fillCells`, `fillColumns`); a `WriteOperations` key stays its kind.** A queue's flag is a directive to the flusher, like a config literal's, so it reads as a verb.
 - **`FillCellOperation` and `FillColumnOperation` stay separate** so the send order, column fills then cell writes, lives in the structure; a multi-column fill would be `FillRangeOperation`.
 
-## Meta / primary
+## Profile, working and head rows
 
-- **Meta / primary is an axis orthogonal to the tiers, not a fourth tier.** Primary deals in contents and takes the unmarked name; Meta is the structure's own shape and takes a `Meta` stem.
-- **Crossing views takes exactly one word**: `meta` from primary, `primary` from Meta. A sheet's `column(name)` and a column's `sheet` stay in the view you're in.
-- **A member belongs on the Meta class only if it acts on a uniform row, samples the top data row for a column-wide fact, or reads the table's own column properties.** Everything else is primary.
-- **Active means present in the working view, with row indexes at their pre-flush positions**, not "exists on the sheet".
-- **Active facts are the column-wide facts sampled from a column's top data row** (formula, number format type, top value), held in `ColumnStateRaw` for table columns only.
+- **A Table's or column's profile is its descriptive facts as the working state holds them** (column type, validation, head-row contents, and the facts sampled from the top data row), which config regeneration derives configs from. It is Raw-only (`table.profile`, `column.profile`). Identity and geometry (`tableId`, name, bounds) and everything you do to a Table or column are on the Table or column itself.
+- **Sampled facts are the column-wide facts read from a column's top data row** (formula, number format, top value), held in `ColumnStateRaw.sampledFacts`.
+- **Working means present in the working view, by fetch or queued write, with row indexes at their pre-flush positions** (`workingRows`, `cell.inWorking`). "Active" is retired.
+- **A head row is a row of the Table's head, the header row or one fixed above it, reached by its head role; two roles may share a row.**
 
 ## Values
 

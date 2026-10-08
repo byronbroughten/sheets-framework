@@ -13,6 +13,8 @@ import {
   lightGreen,
   startTableColIndex,
   tableHeaderRowIndex,
+  tableId111,
+  tableId222,
   threeByThreeAround,
   topDataRowIndex,
 } from "./spreadsheetRawTestSupport";
@@ -24,7 +26,7 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
     });
 
     const raw = SpreadsheetRaw.init();
-    raw.sheet(111).requestSortGSheet({
+    raw.tableOnSheet(111).requestSortGSheet({
       colIdxToSortBy: 0,
       sortOrder: "ASCENDING",
     });
@@ -55,9 +57,9 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheet(111).appendDataRow();
-    raw.sheet(111).appendDataRow();
-    raw.sheet(111).appendDataRow();
+    raw.table(tableId111).appendDataRow();
+    raw.table(tableId111).appendDataRow();
+    raw.table(tableId111).appendDataRow();
     raw.batchUpdateGSheets();
 
     expect(firstTableEndRowIndex(grid, 111)).toBe(14);
@@ -81,9 +83,9 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheet(111).appendDataRow();
-    raw.sheet(222).appendDataRow();
-    raw.sheet(111).appendDataRow();
+    raw.table(tableId111).appendDataRow();
+    raw.table(tableId222).appendDataRow();
+    raw.table(tableId111).appendDataRow();
     raw.batchUpdateGSheets();
 
     expect(firstTableEndRowIndex(grid, 111)).toBe(13);
@@ -104,8 +106,8 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheet(111).row(1).delete();
-    raw.sheet(111).appendDataRow();
+    raw.table(tableId111).row(1).delete();
+    raw.table(tableId111).appendDataRow();
 
     expect(() => raw.batchUpdateGSheets()).not.toThrow();
     expect(grid.sheet(111).values({ startRowIndex: 4 })).toEqual([
@@ -113,7 +115,7 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
       ["later"],
     ]);
     expect(firstTableEndRowIndex(grid, 111)).toBe(11);
-    expect(raw.sheet(111).rowIndexesAreStale).toBe(true);
+    expect(raw.table(tableId111).rowIndexesAreStale).toBe(true);
   });
 
   describe("Table growth", () => {
@@ -152,8 +154,8 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
 
       const raw = SpreadsheetRaw.init();
       raw.fetchAllSheetProperties();
-      raw.sheet(111).appendDataRow().updateValue(0, "r2");
-      raw.sheet(111).appendDataRow().cell(1).updateFormula("=1+1");
+      raw.table(tableId111).appendDataRow().updateValue(0, "r2");
+      raw.table(tableId111).appendDataRow().cell(1).updateFormula("=1+1");
       raw.batchUpdateGSheets();
 
       const sheet = grid.sheet(111);
@@ -196,8 +198,8 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
 
       const raw = SpreadsheetRaw.init();
       raw.fetchAllSheetProperties();
-      raw.sheet(111).appendDataRow().updateValue(0, "r2");
-      raw.sheet(111).appendDataRow().updateValue(0, "r3");
+      raw.table(tableId111).appendDataRow().updateValue(0, "r2");
+      raw.table(tableId111).appendDataRow().updateValue(0, "r3");
       raw.fetchAllSheetProperties();
       raw.batchUpdateGSheets();
 
@@ -215,8 +217,11 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
 
       const raw = SpreadsheetRaw.init();
       raw.fetchAllSheetProperties();
-      const deleted = raw.sheet(111).appendDataRow().updateValue(0, "gone");
-      raw.sheet(111).appendDataRow().updateValue(0, "r2");
+      const deleted = raw
+        .table(tableId111)
+        .appendDataRow()
+        .updateValue(0, "gone");
+      raw.table(tableId111).appendDataRow().updateValue(0, "r2");
       deleted.delete();
       raw.batchUpdateGSheets();
 
@@ -243,7 +248,7 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
 
       const raw = SpreadsheetRaw.init();
       raw.fetchAllSheetProperties();
-      raw.sheet(111).appendDataRow();
+      raw.table(tableId111).appendDataRow();
       raw.batchUpdateGSheets();
 
       expect(grid.sheet(111).rowCount).toBe(topDataRowIndex + 7);
@@ -540,7 +545,7 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
         const { raw } = flushedGrowthOfTop();
 
         expect(() =>
-          raw.sheet(111).row(0).cell(0).updateValue("late"),
+          raw.tableOnSheet(111).row(0).cell(0).updateValue("late"),
         ).toThrow(/sheet properties have been fetched/);
       });
 
@@ -631,10 +636,10 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
     if (fetchKeptRow) {
-      raw.sheet(111).row(0).gatherFetchFull();
+      raw.table(tableId111).row(0).gatherFetchFull();
       raw.fetchAllGathered();
     }
-    raw.sheet(111).row(1).delete();
+    raw.table(tableId111).row(1).delete();
     raw.batchUpdateGSheets();
     return raw;
   }
@@ -642,16 +647,16 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
   it("still reads table column properties after a flushed row delete, while the table end throws", () => {
     const raw = sheetAfterFlushedDataRowDelete();
 
-    const table = raw.sheet(111);
+    const table = raw.table(tableId111);
     expect(table.tableId).toBe("fake-table-111");
     expect(table.startRowIndex).toBe(tableHeaderRowIndex);
     expect(table.startColumnIndex).toBe(startTableColIndex);
     expect(table.columnCount).toBeGreaterThan(0);
-    const columnMeta = raw.sheet(111).meta.column(0);
-    expect(columnMeta.activeColumnType).toBe("TEXT");
-    expect(columnMeta.valueValidationStrings).toEqual(["=valueConfig[Notes]"]);
-    expect(columnMeta.validationConditionType).toBe("BOOLEAN");
-    expect(raw.sheet(111).isTableColIndex(0)).toBe(true);
+    const { profile } = raw.table(tableId111).column(0);
+    expect(profile.columnType).toBe("TEXT");
+    expect(profile.valueValidationStrings).toEqual(["=valueConfig[Notes]"]);
+    expect(profile.validationConditionType).toBe("BOOLEAN");
+    expect(raw.table(tableId111).isTableColIndex(0)).toBe(true);
     expect(() => table.dataRowCount).toThrow(staleRowIndexes);
     expect(() => table.growDataRowCount()).toThrow(staleRowIndexes);
   });
@@ -676,15 +681,15 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
 
-    const columnMeta = raw.sheet(111).meta.column(0);
-    expect(columnMeta.activeColumnType).toBe("TEXT");
-    expect(columnMeta.valueValidationStrings).toEqual(["=valueConfig[Notes]"]);
-    expect(columnMeta.validationConditionType).toBe("BOOLEAN");
+    const { profile } = raw.table(tableId111).column(0);
+    expect(profile.columnType).toBe("TEXT");
+    expect(profile.valueValidationStrings).toEqual(["=valueConfig[Notes]"]);
+    expect(profile.validationConditionType).toBe("BOOLEAN");
   });
 
   it("throws on per-cell value, formula, and colour writes after a flushed row delete", () => {
     const raw = sheetAfterFlushedDataRowDelete(true);
-    const cell = raw.sheet(111).row(0).cell(0);
+    const cell = raw.table(tableId111).row(0).cell(0);
 
     expect(() => cell.updateValue("painted")).toThrow(staleRowIndexes);
     expect(() => cell.updateFormula("=1")).toThrow(staleRowIndexes);
@@ -694,14 +699,14 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
     expect(() => cell.addCheckboxValidation()).toThrow(staleRowIndexes);
   });
 
-  it("throws on active-row and whole-column fills after a flushed row delete", () => {
+  it("throws on working-row and whole-column fills after a flushed row delete", () => {
     const raw = sheetAfterFlushedDataRowDelete(true);
-    const column = raw.sheet(111).column(0);
+    const column = raw.table(tableId111).column(0);
 
-    expect(() => column.updateActiveCells({ value: "fill" })).toThrow(
+    expect(() => column.updateWorkingCells({ value: "fill" })).toThrow(
       staleRowIndexes,
     );
-    expect(() => column.updateActiveFormulas("=1")).toThrow(staleRowIndexes);
+    expect(() => column.updateWorkingFormulas("=1")).toThrow(staleRowIndexes);
     expect(() => column.updateAllCells({ value: "fill" })).toThrow(
       staleRowIndexes,
     );
@@ -711,14 +716,16 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
   it("throws on a further data-row delete after a flushed row delete", () => {
     const raw = sheetAfterFlushedDataRowDelete();
 
-    expect(() => raw.sheet(111).row(2).delete()).toThrow(staleRowIndexes);
+    expect(() => raw.table(tableId111).row(2).delete()).toThrow(
+      staleRowIndexes,
+    );
   });
 
   it("refuses at the flush a sort queued after a flushed row delete", () => {
     const raw = sheetAfterFlushedDataRowDelete();
 
     raw
-      .sheet(111)
+      .table(tableId111)
       .requestSortGSheet({ colIdxToSortBy: 0, sortOrder: "ASCENDING" });
 
     expect(() => raw.batchUpdateGSheets()).toThrow(staleRowIndexes);
@@ -728,33 +735,35 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
     const raw = sheetAfterFlushedDataRowDelete();
 
     expect(() =>
-      raw.sheetMeta(111).insertColumnAtEnd({ columnId: "c:x:new", header: "New" }),
+      raw
+        .tableOnSheet(111)
+        .appendColumn({ columnId: "c:x:new", header: "New" }),
     ).toThrow(staleRowIndexes);
   });
 
   it("still reads an already-fetched cell after a flushed row delete", () => {
     const raw = sheetAfterFlushedDataRowDelete(true);
 
-    expect(raw.sheet(111).row(0).cell(0).valueOrEmpty()).toBe("kept");
+    expect(raw.table(tableId111).row(0).cell(0).valueOrEmpty()).toBe("kept");
   });
 
   it("leaves row indexes stale after a properties fetch that follows a flushed row delete", () => {
     const raw = sheetAfterFlushedDataRowDelete();
     raw.fetchAllSheetProperties();
 
-    expect(raw.sheet(111).rowIndexesAreStale).toBe(true);
-    expect(() => raw.sheet(111).dataRowCount).toThrow(staleRowIndexes);
+    expect(raw.table(tableId111).rowIndexesAreStale).toBe(true);
+    expect(() => raw.table(tableId111).dataRowCount).toThrow(staleRowIndexes);
   });
 
   it("clears row-index stale only when clearRowIndexStale is called, and then a write is allowed again", () => {
     const raw = sheetAfterFlushedDataRowDelete(true);
-    const cell = raw.sheet(111).row(0).cell(0);
+    const cell = raw.table(tableId111).row(0).cell(0);
     expect(() => cell.updateValue("painted")).toThrow(staleRowIndexes);
 
-    raw.sheet(111).clearRowIndexStale();
+    raw.table(tableId111).clearRowIndexStale();
 
-    expect(raw.sheet(111).rowIndexesAreStale).toBe(false);
-    expect(raw.sheet(111).dataRowCount).toBe(7);
+    expect(raw.table(tableId111).rowIndexesAreStale).toBe(false);
+    expect(raw.table(tableId111).dataRowCount).toBe(7);
     expect(() => cell.updateValue("painted")).not.toThrow();
   });
 
@@ -765,11 +774,13 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheet(111).row(1).delete();
+    raw.table(tableId111).row(1).delete();
     raw.discardQueuedChanges();
 
-    expect(raw.sheet(111).rowIndexesAreStale).toBe(false);
-    expect(() => raw.sheet(111).row(0).cell(0).updateValue("ok")).not.toThrow();
+    expect(raw.table(tableId111).rowIndexesAreStale).toBe(false);
+    expect(() =>
+      raw.table(tableId111).row(0).cell(0).updateValue("ok"),
+    ).not.toThrow();
   });
 
   it("deletes exactly the queued rows on one sheet, so an earlier deletion can't shift a later one out from under it", () => {
@@ -794,8 +805,8 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheet(111).row(1).delete();
-    raw.sheet(111).row(6).delete();
+    raw.table(tableId111).row(1).delete();
+    raw.table(tableId111).row(6).delete();
     raw.batchUpdateGSheets();
 
     expect(grid.sheet(111).values({ startRowIndex: 4 })).toEqual([
@@ -932,16 +943,22 @@ describe("SpreadsheetRaw.gatherRawOperation", () => {
 
   it("applies a raw request after every write the framework models, so it lands on the sheet those writes left", () => {
     const { grid } = stubSheetsService({
-      sheets: [{ sheetId: 111, title: "Records", table: { endRowIndex: 11, endColumnIndex: 3 } }],
+      sheets: [
+        {
+          sheetId: 111,
+          title: "Records",
+          table: { endRowIndex: 11, endColumnIndex: 3 },
+        },
+      ],
     });
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
     raw.gatherRawOperation(rawValueWrite(5, 2, "Raw"));
     raw.gatherRawOperation(rawValueWrite(8, 2, "Raw"));
-    raw.sheet(111).row(1).cell(2).updateValue("Processing...");
-    raw.sheet(111).row(5).cell(2).updateValue("Shifted up");
-    raw.sheet(111).row(4).delete();
+    raw.table(tableId111).row(1).cell(2).updateValue("Processing...");
+    raw.table(tableId111).row(5).cell(2).updateValue("Shifted up");
+    raw.table(tableId111).row(4).delete();
     raw.batchUpdateGSheets();
 
     expect(
@@ -991,41 +1008,41 @@ describe("queued writes outlive a same-run re-fetch", () => {
   function fetchedSpreadsheet() {
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheet(111).topRow.gatherFetchFull();
-    raw.sheet(111).row(1).gatherFetchFull();
+    raw.table(tableId111).topRow.gatherFetchFull();
+    raw.table(tableId111).row(1).gatherFetchFull();
     raw.fetchAllGathered();
     return raw;
   }
 
-  it("leaves a row queued for delete inactive after a re-fetch that returns it", () => {
+  it("leaves a row queued for delete out of the working view after a re-fetch that returns it", () => {
     stubTwoDataRows();
 
     const raw = fetchedSpreadsheet();
-    raw.sheet(111).topRow.delete();
-    raw.sheet(111).topRow.gatherFetchFull();
+    raw.table(tableId111).topRow.delete();
+    raw.table(tableId111).topRow.gatherFetchFull();
     raw.fetchAllGathered();
 
-    expect(raw.sheet(111).topRow.rowIsActive()).toBe(false);
+    expect(raw.table(tableId111).topRow.rowInWorking()).toBe(false);
   });
 
-  it("leaves the same row inactive when the re-fetch was a full row, so finalize backfilled", () => {
+  it("leaves the same row out of the working view when the re-fetch was a full row, so finalize backfilled", () => {
     stubTwoDataRows();
 
     const raw = fetchedSpreadsheet();
-    raw.sheet(111).topRow.delete();
-    raw.sheet(111).topRow.gatherFetchFull();
+    raw.table(tableId111).topRow.delete();
+    raw.table(tableId111).topRow.gatherFetchFull();
     expect(() => raw.fetchAllGathered()).not.toThrow();
-    expect(raw.sheet(111).topRow.rowIsActive()).toBe(false);
+    expect(raw.table(tableId111).topRow.rowInWorking()).toBe(false);
   });
 
-  it("leaves the same row inactive after a full-column fetch that covers it", () => {
+  it("leaves the same row out of the working view after a full-column fetch that covers it", () => {
     stubTwoDataRows();
 
     const raw = fetchedSpreadsheet();
-    raw.sheet(111).topRow.delete();
-    raw.sheet(111).column(1).gatherFetchFull();
+    raw.table(tableId111).topRow.delete();
+    raw.table(tableId111).column(1).gatherFetchFull();
     expect(() => raw.fetchAllGathered()).not.toThrow();
-    expect(raw.sheet(111).topRow.rowIsActive()).toBe(false);
+    expect(raw.table(tableId111).topRow.rowInWorking()).toBe(false);
   });
 
   it("still supplies Table column facts from a top data row queued for delete", () => {
@@ -1036,122 +1053,122 @@ describe("queued writes outlive a same-run re-fetch", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheet(111).topRow.gatherFetchFull();
+    raw.table(tableId111).topRow.gatherFetchFull();
     raw.fetchAllGathered(true);
-    raw.sheet(111).topRow.delete();
-    raw.sheet(111).topRow.gatherFetchFull();
+    raw.table(tableId111).topRow.delete();
+    raw.table(tableId111).topRow.gatherFetchFull();
     expect(() => raw.fetchAllGathered(true)).not.toThrow();
 
-    const column = raw.sheetMeta(111).column(1);
-    expect(column.activeIsFormula).toBe(true);
-    expect(column.activeNumberFormatType).toBe("CURRENCY");
-    expect(column.activeTopValue).toBe(42);
+    const { profile } = raw.table(tableId111).column(1);
+    expect(profile.isFormula).toBe(true);
+    expect(profile.numberFormatType).toBe("CURRENCY");
+    expect(profile.topValue).toBe(42);
   });
 
   it("still answers whether the top data row is blank from those facts", () => {
     stubTwoDataRows();
 
     const raw = fetchedSpreadsheet();
-    raw.sheet(111).topRow.delete();
-    raw.sheet(111).topRow.gatherFetchFull();
+    raw.table(tableId111).topRow.delete();
+    raw.table(tableId111).topRow.gatherFetchFull();
     raw.fetchAllGathered();
 
-    expect(raw.sheet(111).topDataRowIsBlank()).toBe(false);
+    expect(raw.table(tableId111).topDataRowIsBlank()).toBe(false);
   });
 
   it("keeps a queued value update after a re-fetch of that cell", () => {
     stubTwoDataRows();
 
     const raw = fetchedSpreadsheet();
-    raw.sheet(111).topRow.cell(1).updateValue("queued");
-    raw.sheet(111).topRow.gatherFetchFull();
+    raw.table(tableId111).topRow.cell(1).updateValue("queued");
+    raw.table(tableId111).topRow.gatherFetchFull();
     raw.fetchAllGathered();
 
-    expect(raw.sheet(111).topRow.valueOrEmpty(1)).toBe("queued");
+    expect(raw.table(tableId111).topRow.valueOrEmpty(1)).toBe("queued");
   });
 
   it("keeps a queued value fill after a re-fetch of a covered cell", () => {
     stubTwoDataRows();
 
     const raw = fetchedSpreadsheet();
-    raw.sheet(111).column(1).updateAllCells({ value: "filled" });
-    raw.sheet(111).topRow.gatherFetchFull();
+    raw.table(tableId111).column(1).updateAllCells({ value: "filled" });
+    raw.table(tableId111).topRow.gatherFetchFull();
     raw.fetchAllGathered();
 
-    expect(raw.sheet(111).topRow.valueOrEmpty(1)).toBe("filled");
+    expect(raw.table(tableId111).topRow.valueOrEmpty(1)).toBe("filled");
   });
 
   it("lets the most recently queued value fill win when several cover one cell", () => {
     stubTwoDataRows();
 
     const raw = fetchedSpreadsheet();
-    raw.sheet(111).column(1).updateAllCells({ value: "first" });
-    raw.sheet(111).column(1).updateAllCells({ value: "second" });
-    raw.sheet(111).topRow.gatherFetchFull();
+    raw.table(tableId111).column(1).updateAllCells({ value: "first" });
+    raw.table(tableId111).column(1).updateAllCells({ value: "second" });
+    raw.table(tableId111).topRow.gatherFetchFull();
     raw.fetchAllGathered();
 
-    expect(raw.sheet(111).topRow.valueOrEmpty(1)).toBe("second");
+    expect(raw.table(tableId111).topRow.valueOrEmpty(1)).toBe("second");
   });
 
   it("lets the cell's own queued value win over a covering fill", () => {
     stubTwoDataRows();
 
     const raw = fetchedSpreadsheet();
-    raw.sheet(111).column(1).updateAllCells({ value: "filled" });
-    raw.sheet(111).topRow.cell(1).updateValue("queued");
-    raw.sheet(111).topRow.gatherFetchFull();
+    raw.table(tableId111).column(1).updateAllCells({ value: "filled" });
+    raw.table(tableId111).topRow.cell(1).updateValue("queued");
+    raw.table(tableId111).topRow.gatherFetchFull();
     raw.fetchAllGathered();
 
-    expect(raw.sheet(111).topRow.valueOrEmpty(1)).toBe("queued");
+    expect(raw.table(tableId111).topRow.valueOrEmpty(1)).toBe("queued");
   });
 
   it("takes the live value when the cell has no queued value", () => {
     stubTwoDataRows();
 
     const raw = fetchedSpreadsheet();
-    raw.sheet(111).topRow.cell(1).updateValue("stale local");
+    raw.table(tableId111).topRow.cell(1).updateValue("stale local");
     raw.discardQueuedChanges();
-    raw.sheet(111).topRow.gatherFetchFull();
+    raw.table(tableId111).topRow.gatherFetchFull();
     raw.fetchAllGathered();
 
-    expect(raw.sheet(111).topRow.valueOrEmpty(1)).toBe("live");
+    expect(raw.table(tableId111).topRow.valueOrEmpty(1)).toBe("live");
   });
 
   it("takes the live value when only a formula update is queued", () => {
     stubTwoDataRows();
 
     const raw = fetchedSpreadsheet();
-    raw.sheet(111).topRow.cell(1).updateFormula("=A1");
-    raw.sheet(111).topRow.gatherFetchFull();
+    raw.table(tableId111).topRow.cell(1).updateFormula("=A1");
+    raw.table(tableId111).topRow.gatherFetchFull();
     raw.fetchAllGathered();
 
-    expect(raw.sheet(111).topRow.valueOrEmpty(1)).toBe("live");
+    expect(raw.table(tableId111).topRow.valueOrEmpty(1)).toBe("live");
   });
 
   it("takes the live value when only a formula fill is queued", () => {
     stubTwoDataRows();
 
     const raw = fetchedSpreadsheet();
-    raw.sheet(111).column(1).updateAllFormulas("=A1");
-    raw.sheet(111).topRow.gatherFetchFull();
+    raw.table(tableId111).column(1).updateAllFormulas("=A1");
+    raw.table(tableId111).topRow.gatherFetchFull();
     raw.fetchAllGathered();
 
-    expect(raw.sheet(111).topRow.valueOrEmpty(1)).toBe("live");
+    expect(raw.table(tableId111).topRow.valueOrEmpty(1)).toBe("live");
   });
 
   it("integrates live values after the flush has cleared the queue", () => {
     stubTwoDataRows();
 
     const raw = fetchedSpreadsheet();
-    raw.sheet(111).topRow.cell(1).updateValue("queued");
+    raw.table(tableId111).topRow.cell(1).updateValue("queued");
     raw.batchUpdateGSheets();
     const otherRun = fetchedSpreadsheet();
-    otherRun.sheet(111).topRow.cell(1).updateValue("live");
+    otherRun.table(tableId111).topRow.cell(1).updateValue("live");
     otherRun.batchUpdateGSheets();
-    raw.sheet(111).topRow.gatherFetchFull();
+    raw.table(tableId111).topRow.gatherFetchFull();
     raw.fetchAllGathered();
 
-    expect(raw.sheet(111).topRow.valueOrEmpty(1)).toBe("live");
+    expect(raw.table(tableId111).topRow.valueOrEmpty(1)).toBe("live");
   });
 
   it("applies a value queued before the row was fetched once that row is fetched", () => {
@@ -1159,11 +1176,11 @@ describe("queued writes outlive a same-run re-fetch", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheet(111).topRow.cell(1).updateValue("queued");
-    raw.sheet(111).topRow.gatherFetchFull();
+    raw.table(tableId111).topRow.cell(1).updateValue("queued");
+    raw.table(tableId111).topRow.gatherFetchFull();
     raw.fetchAllGathered();
 
-    expect(raw.sheet(111).topRow.valueOrEmpty(1)).toBe("queued");
+    expect(raw.table(tableId111).topRow.valueOrEmpty(1)).toBe("queued");
   });
 
   function stubNamedTables() {
@@ -1197,10 +1214,10 @@ describe("queued writes outlive a same-run re-fetch", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheet(111).updateTitle("Renamed");
+    raw.table(tableId111).sheet.updateTitle("Renamed");
     raw.fetchAllSheetProperties();
 
-    expect(raw.sheet(111).title).toBe("Renamed");
+    expect(raw.table(tableId111).sheet.title).toBe("Renamed");
   });
 
   it("keeps a queued Table name on the known Table and in the sheet's Tables after a re-fetch", () => {
@@ -1208,11 +1225,11 @@ describe("queued writes outlive a same-run re-fetch", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheet(111).updateTableName("renamedRecords");
+    raw.table(tableId111).updateTableName("renamedRecords");
     raw.fetchAllSheetProperties();
 
-    expect(raw.sheet(111).name).toBe("renamedRecords");
-    expect(raw.sheet(111).tableIds()).toEqual(["fake-table-111"]);
+    expect(raw.table(tableId111).name).toBe("renamedRecords");
+    expect(raw.table(tableId111).tableIds()).toEqual(["fake-table-111"]);
   });
 
   it("keeps a queued column type after a re-fetch of the sheet properties", () => {
@@ -1220,10 +1237,10 @@ describe("queued writes outlive a same-run re-fetch", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheetMeta(111).column(1).updateColumnType("DOUBLE");
+    raw.tableOnSheet(111).column(1).updateColumnType("DOUBLE");
     raw.fetchAllSheetProperties();
 
-    expect(raw.sheetMeta(111).column(1).activeColumnType).toBe("DOUBLE");
+    expect(raw.table(tableId111).column(1).profile.columnType).toBe("DOUBLE");
   });
 
   it("lets the last of two queued tab titles win after a re-fetch", () => {
@@ -1231,11 +1248,11 @@ describe("queued writes outlive a same-run re-fetch", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheet(111).updateTitle("First");
-    raw.sheet(111).updateTitle("Second");
+    raw.table(tableId111).sheet.updateTitle("First");
+    raw.table(tableId111).sheet.updateTitle("Second");
     raw.fetchAllSheetProperties();
 
-    expect(raw.sheet(111).title).toBe("Second");
+    expect(raw.table(tableId111).sheet.title).toBe("Second");
   });
 
   it("lets the last of two queued Table names win after a re-fetch", () => {
@@ -1243,11 +1260,11 @@ describe("queued writes outlive a same-run re-fetch", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheet(111).updateTableName("firstRecords");
-    raw.sheet(111).updateTableName("secondRecords");
+    raw.table(tableId111).updateTableName("firstRecords");
+    raw.table(tableId111).updateTableName("secondRecords");
     raw.fetchAllSheetProperties();
 
-    expect(raw.sheet(111).name).toBe("secondRecords");
+    expect(raw.table(tableId111).name).toBe("secondRecords");
   });
 
   it("leaves another sheet's queued title alone on a re-fetch of one sheet", () => {
@@ -1255,10 +1272,10 @@ describe("queued writes outlive a same-run re-fetch", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheet(222).updateTitle("Renamed");
+    raw.table(tableId222).sheet.updateTitle("Renamed");
     raw.fetchSheetUsedGrid(111);
 
-    expect(raw.sheet(222).title).toBe("Renamed");
+    expect(raw.table(tableId222).sheet.title).toBe("Renamed");
   });
 
   it("applies a sheet's queued title to that sheet only", () => {
@@ -1266,10 +1283,10 @@ describe("queued writes outlive a same-run re-fetch", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheet(111).updateTitle("Renamed");
+    raw.table(tableId111).sheet.updateTitle("Renamed");
     raw.fetchAllSheetProperties();
 
-    expect(raw.sheet(222).title).toBe("Entries");
+    expect(raw.table(tableId222).sheet.title).toBe("Entries");
   });
 
   it("integrates the live title and Table name after the flush has cleared the queue", () => {
@@ -1277,18 +1294,18 @@ describe("queued writes outlive a same-run re-fetch", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheet(111).updateTitle("Renamed");
-    raw.sheet(111).updateTableName("renamedRecords");
+    raw.table(tableId111).sheet.updateTitle("Renamed");
+    raw.table(tableId111).updateTableName("renamedRecords");
     raw.batchUpdateGSheets();
     const otherRun = SpreadsheetRaw.init();
     otherRun.fetchAllSheetProperties();
-    otherRun.sheet(111).updateTitle("Records");
-    otherRun.sheet(111).updateTableName("records");
+    otherRun.table(tableId111).sheet.updateTitle("Records");
+    otherRun.table(tableId111).updateTableName("records");
     otherRun.batchUpdateGSheets();
     raw.fetchAllSheetProperties();
 
-    expect(raw.sheet(111).title).toBe("Records");
-    expect(raw.sheet(111).name).toBe("records");
+    expect(raw.table(tableId111).sheet.title).toBe("Records");
+    expect(raw.table(tableId111).name).toBe("records");
   });
 });
 
@@ -1311,7 +1328,7 @@ describe("the last queued write wins between fills and cell writes", () => {
   }
   function fetchedColumn() {
     const raw = SpreadsheetRaw.init();
-    raw.sheet(111).column(1).gatherFetchFull();
+    raw.tableOnSheet(111).column(1).gatherFetchFull();
     raw.fetchAllGathered();
     return raw;
   }
@@ -1320,8 +1337,8 @@ describe("the last queued write wins between fills and cell writes", () => {
     const { grid } = stubFilledSheet();
 
     const raw = fetchedColumn();
-    raw.sheet(111).row(1).cell(1).updateValue("cell");
-    raw.sheet(111).column(1).updateAllCells({ value: "filled" });
+    raw.table(tableId111).row(1).cell(1).updateValue("cell");
+    raw.table(tableId111).column(1).updateAllCells({ value: "filled" });
     raw.batchUpdateGSheets();
 
     expect(grid.sheet(111).values(gridRanges.columnOneData)).toEqual([
@@ -1335,12 +1352,12 @@ describe("the last queued write wins between fills and cell writes", () => {
 
     const raw = fetchedColumn();
     raw
-      .sheet(111)
+      .table(tableId111)
       .row(1)
       .cell(1)
       .updateValue("cell")
       .updateBackgroundColor(lightGreen);
-    raw.sheet(111).column(1).updateAllCells({ value: "filled" });
+    raw.table(tableId111).column(1).updateAllCells({ value: "filled" });
     raw.batchUpdateGSheets();
 
     expect(grid.sheet(111).rows(gridRanges.columnOneData)).toEqual([
@@ -1353,8 +1370,11 @@ describe("the last queued write wins between fills and cell writes", () => {
     const { grid } = stubFilledSheet();
 
     const raw = fetchedColumn();
-    raw.sheet(111).row(1).cell(1).updateValue("cell");
-    raw.sheet(111).column(1).updateAllCells({ backgroundColor: lightGreen });
+    raw.table(tableId111).row(1).cell(1).updateValue("cell");
+    raw
+      .table(tableId111)
+      .column(1)
+      .updateAllCells({ backgroundColor: lightGreen });
     raw.batchUpdateGSheets();
 
     expect(grid.sheet(111).rows(gridRanges.columnOneData)).toEqual([
@@ -1367,8 +1387,8 @@ describe("the last queued write wins between fills and cell writes", () => {
     const { grid } = stubFilledSheet();
 
     const raw = fetchedColumn();
-    raw.sheet(111).row(1).cell(1).updateFormula("=1+1");
-    raw.sheet(111).column(1).updateAllCells({ value: "filled" });
+    raw.table(tableId111).row(1).cell(1).updateFormula("=1+1");
+    raw.table(tableId111).column(1).updateAllCells({ value: "filled" });
     raw.batchUpdateGSheets();
 
     expect(grid.sheet(111).rows(gridRanges.columnOneData)).toEqual([
@@ -1381,11 +1401,11 @@ describe("the last queued write wins between fills and cell writes", () => {
     const { grid } = stubFilledSheet();
 
     const raw = fetchedColumn();
-    raw.sheet(111).row(1).cell(1).updateValue("cell");
-    raw.sheet(111).column(1).updateAllCells({ value: "filled" });
-    raw.sheet(111).row(1).gatherFetchFull();
+    raw.table(tableId111).row(1).cell(1).updateValue("cell");
+    raw.table(tableId111).column(1).updateAllCells({ value: "filled" });
+    raw.table(tableId111).row(1).gatherFetchFull();
     raw.fetchAllGathered();
-    const readBeforeFlush = raw.sheet(111).row(1).valueOrEmpty(1);
+    const readBeforeFlush = raw.table(tableId111).row(1).valueOrEmpty(1);
     raw.batchUpdateGSheets();
 
     expect([readBeforeFlush, grid.sheet(111).cell(5, 1)]).toEqual([
@@ -1398,8 +1418,8 @@ describe("the last queued write wins between fills and cell writes", () => {
     const { grid } = stubFilledSheet();
 
     const raw = fetchedColumn();
-    raw.sheet(111).column(1).updateAllCells({ value: "filled" });
-    raw.sheet(111).appendDataRow().cell(1).updateValue("appended");
+    raw.table(tableId111).column(1).updateAllCells({ value: "filled" });
+    raw.table(tableId111).appendDataRow().cell(1).updateValue("appended");
     raw.batchUpdateGSheets();
 
     expect(
@@ -1416,13 +1436,13 @@ describe("SpreadsheetRaw.discardQueuedChanges", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheet(111).row(1).delete();
+    raw.table(tableId111).row(1).delete();
     raw.discardQueuedChanges();
     raw.batchUpdateGSheets();
 
     expect(batchUpdateCount()).toBe(0);
-    expect(raw.sheet(111).rowIndexesAreStale).toBe(false);
-    expect(raw.sheet(111).dataRowCount).toBe(7);
+    expect(raw.table(tableId111).rowIndexesAreStale).toBe(false);
+    expect(raw.table(tableId111).dataRowCount).toBe(7);
   });
 
   it("empties the spreadsheet and per-sheet write queues, so a later flush sends no batch update", () => {
@@ -1432,8 +1452,8 @@ describe("SpreadsheetRaw.discardQueuedChanges", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheet(111).row(1).delete();
-    raw.sheet(111).requestSortGSheet({
+    raw.table(tableId111).row(1).delete();
+    raw.table(tableId111).requestSortGSheet({
       colIdxToSortBy: 0,
       sortOrder: "ASCENDING",
     });
@@ -1460,9 +1480,9 @@ describe("SpreadsheetRaw.discardQueuedChanges", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheet(111).row(1).delete();
+    raw.table(tableId111).row(1).delete();
     raw.discardQueuedChanges();
-    raw.sheet(111).appendDataRow();
+    raw.table(tableId111).appendDataRow();
     raw.batchUpdateGSheets();
 
     expect(grid.sheet(111).values({ startRowIndex: 4 })).toEqual([
@@ -1481,7 +1501,7 @@ describe("CellRaw.updateValue", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheet(111).row(1).cell(2).updateValue("Processing...");
+    raw.table(tableId111).row(1).cell(2).updateValue("Processing...");
     raw.batchUpdateGSheets();
 
     expect(grid.sheet(111).values()).toEqual([
@@ -1501,7 +1521,7 @@ describe("CellRaw.updateValue", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    const cell = raw.sheet(111).row(1).cell(2);
+    const cell = raw.table(tableId111).row(1).cell(2);
     cell.updateValue("Processing...");
 
     expect(() => cell.valueOrEmpty()).toThrowError(/No value is set/);
@@ -1515,9 +1535,9 @@ describe("CellRaw.updateValue", () => {
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
 
-    expect(() => raw.sheet(111).row(7).cell(2).updateValue("x")).toThrowError(
-      /past the last row/,
-    );
+    expect(() =>
+      raw.table(tableId111).row(7).cell(2).updateValue("x"),
+    ).toThrowError(/past the last row/);
   });
 
   it("reflects the write in row state when the row was fetched, so a later read sees it", () => {
@@ -1537,9 +1557,9 @@ describe("CellRaw.updateValue", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheet(111).row(0).gatherFetchFull();
+    raw.table(tableId111).row(0).gatherFetchFull();
     raw.fetchAllGathered();
-    const cell = raw.sheet(111).row(0).cell(1);
+    const cell = raw.table(tableId111).row(0).cell(1);
     cell.updateValue("new");
 
     expect(cell.valueOrEmpty()).toBe("new");
@@ -1561,7 +1581,7 @@ describe("CellRaw.updateBackgroundColor", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheet(111).row(1).cell(2).updateBackgroundColor(lightGreen);
+    raw.table(tableId111).row(1).cell(2).updateBackgroundColor(lightGreen);
     raw.batchUpdateGSheets();
 
     expect(grid.sheet(111).cell(5, 2)).toEqual({
@@ -1577,8 +1597,8 @@ describe("CellRaw.updateBackgroundColor", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheet(111).row(1).cell(2).updateValue("2026-09-05 10:00:00");
-    raw.sheet(111).row(1).cell(2).updateBackgroundColor(lightGreen);
+    raw.table(tableId111).row(1).cell(2).updateValue("2026-09-05 10:00:00");
+    raw.table(tableId111).row(1).cell(2).updateBackgroundColor(lightGreen);
     raw.batchUpdateGSheets();
 
     expect(grid.sheet(111).cell(5, 2)).toEqual({
@@ -1594,10 +1614,10 @@ describe("CellRaw.updateBackgroundColor", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    const cell = raw.sheet(111).row(1).cell(2);
+    const cell = raw.table(tableId111).row(1).cell(2);
     cell.updateBackgroundColor(lightGreen);
 
-    expect(cell.isActive).toBe(false);
+    expect(cell.inWorking).toBe(false);
     expect(() => cell.valueOrEmpty()).toThrowError(/No value is set/);
   });
 });
@@ -1610,7 +1630,7 @@ describe("CellRaw.addCheckboxValidation", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.sheet(111).row(1).cell(2).addCheckboxValidation();
+    raw.table(tableId111).row(1).cell(2).addCheckboxValidation();
     raw.batchUpdateGSheets();
 
     const checkbox = { value: null, dataValidationConditionType: "BOOLEAN" };

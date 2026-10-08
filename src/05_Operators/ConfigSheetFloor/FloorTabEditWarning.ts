@@ -8,13 +8,13 @@ import {
 import {
   configSheetFloorSeed,
   floorSeedColumnById,
-  floorTabSeedByGid,
+  floorTabSeedByTableId,
 } from "../../01_SpreadsheetSchema/configSheetFloorSeed";
-import { getSheetTraitByName } from "../../01_SpreadsheetSchema/sheetConfigsTypes";
+import { getTableTraitByName } from "../../01_SpreadsheetSchema/tableConfigsTypes";
 import type { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin";
-import { SheetBaseNamed } from "../../04_SpreadsheetNamed/ClassBases/SheetBaseNamed";
-import type { SheetNamed } from "../../04_SpreadsheetNamed/SheetNamed";
+import { TableBaseNamed } from "../../04_SpreadsheetNamed/ClassBases/TableBaseNamed";
 import { SpreadsheetNamed } from "../../04_SpreadsheetNamed/SpreadsheetNamed";
+import type { TableNamed } from "../../04_SpreadsheetNamed/TableNamed";
 import { Arr } from "../../utils/Arr";
 import { Obj } from "../../utils/Obj";
 import { liveColIndex } from "./floorColumnLocation";
@@ -32,38 +32,38 @@ export interface FloorDeclaration {
   unprotectedRanges: ProtectionGridRange[];
 }
 
-interface SelfDescribingRowRule<SN extends FloorSheetName> {
-  declaredColumn: ColumnName<SN>;
-  identityColumns: readonly ColumnName<SN>[];
+interface SelfDescribingRowRule<TN extends FloorSheetName> {
+  declaredColumn: ColumnName<TN>;
+  identityColumns: readonly ColumnName<TN>[];
   isFloorIdentity: (identityValues: readonly CellValue[]) => boolean;
 }
 
-interface FloorTabRules<SN extends FloorSheetName> {
-  excludedDataColumns: readonly ColumnName<SN>[];
-  actionRowEditableColumns: readonly ColumnName<SN>[];
-  selfDescribingRow: SelfDescribingRowRule<SN> | undefined;
+interface FloorTabRules<TN extends FloorSheetName> {
+  excludedDataColumns: readonly ColumnName<TN>[];
+  actionRowEditableColumns: readonly ColumnName<TN>[];
+  selfDescribingRow: SelfDescribingRowRule<TN> | undefined;
 }
 
 export class FloorTabEditWarning<
-  SN extends FloorSheetName,
-> extends SheetBaseNamed<SN> {
+  TN extends FloorSheetName,
+> extends TableBaseNamed<TN> {
   get ss(): SpreadsheetNamed {
     return new SpreadsheetNamed(this.spreadsheetNamedProps);
   }
-  get sheet(): SheetNamed<SN> {
-    return this.ss.sheet(this.sheetName);
+  get table(): TableNamed<TN> {
+    return this.ss.table(this.tableName);
   }
   // Before the floor's fetch, so these ride it: a drifted column ID leaves only the Table header to find them by.
   gatherIdentityColumns(): number[] | undefined {
-    const rule = floorTabRules()[this.sheetName].selfDescribingRow;
+    const rule = floorTabRules()[this.tableName].selfDescribingRow;
     if (rule === undefined) return undefined;
-    const sheetGid = getSheetTraitByName(this.sheetName, "sheetGid");
+    const sheetGid = getTableTraitByName(this.tableName, "sheetGid");
     if (!this.ss.raw.gidIsActive(sheetGid)) return undefined;
-    const sheet = this.sheet;
+    const sheet = this.table;
     if (!sheet.raw.hasOneTable()) return undefined;
     const table = sheet.raw;
     const colIndexes = rule.identityColumns.flatMap((columnName) => {
-      const header = getColumnTraitByName(this.sheetName, columnName, "header");
+      const header = getColumnTraitByName(this.tableName, columnName, "header");
       const column = table.columnProperties.find(
         (colProps) => colProps.columnName === header,
       );
@@ -77,34 +77,37 @@ export class FloorTabEditWarning<
   }
   declaration(identityColIndexes: number[] | undefined): FloorDeclaration {
     return {
-      description: floorWarningDescription(this.sheetName),
-      range: this.sheet.raw.wholeSheetGridRange,
+      description: floorWarningDescription(this.tableName),
+      range: this.table.raw.sheet.wholeSheetGridRange,
       unprotectedRanges: this._editableRanges(
         this._carvedRowIndexesByColIndex(identityColIndexes),
       ),
     };
   }
   addedColumnReportLines(): string[] {
-    const sheet = this.sheet;
+    const sheet = this.table;
     return this._addedColIndexes().map(
       (colIndex) =>
-        `${sheet.raw.title} · ${String(sheet.raw.meta.tableHeaderRow.valueOrEmpty(colIndex))}`,
+        `${sheet.raw.sheet.title} · ${String(sheet.raw.headRow("header").valueOrEmpty(colIndex))}`,
     );
   }
   queueAdd({ description, unprotectedRanges }: FloorDeclaration): void {
-    this.sheet.addEditWarningWholeSheet({ description, unprotectedRanges });
+    this.table.sheet.addEditWarningWholeSheet({
+      description,
+      unprotectedRanges,
+    });
   }
   // Row indexes as fetched, before the sync moves rows.
   private _carvedRowIndexesByColIndex(
     identityColIndexes: number[] | undefined,
   ): Map<number, number[]> {
-    const rule = floorTabRules()[this.sheetName].selfDescribingRow;
+    const rule = floorTabRules()[this.tableName].selfDescribingRow;
     if (rule === undefined || identityColIndexes === undefined) {
       return new Map();
     }
     const colIndex = this._liveColIndexes().get(rule.declaredColumn);
     if (colIndex === undefined) return new Map();
-    const sheet = this.sheet;
+    const sheet = this.table;
     return new Map([
       [
         colIndex,
@@ -121,12 +124,12 @@ export class FloorTabEditWarning<
   private _editableRanges(
     carvedRowIndexesByColIndex: ReadonlyMap<number, readonly number[]>,
   ): ProtectionGridRange[] {
-    const rules = floorTabRules()[this.sheetName];
+    const rules = floorTabRules()[this.tableName];
     const liveIndexes = this._liveColIndexes();
-    const editableDataColumns = getSheetColumnNames(this.sheetName).filter(
+    const editableDataColumns = getSheetColumnNames(this.tableName).filter(
       (columnName) => !rules.excludedDataColumns.includes(columnName),
     );
-    const sheet = this.sheet;
+    const sheet = this.table;
     const sheetId = sheet.schema.sheetGid;
     const origin = sheet.raw.tableOrigin();
     const ranges = [
@@ -155,17 +158,17 @@ export class FloorTabEditWarning<
   }
   private _addedColIndexes(): number[] {
     const namedIndexes = new Set(this._liveColIndexes().values());
-    return this.sheet.raw.fullTableColIndexes.filter(
+    return this.table.raw.fullTableColIndexes.filter(
       (colIndex) => !namedIndexes.has(colIndex),
     );
   }
-  private _liveColIndexes(): Map<ColumnName<SN>, number> {
-    const indexes = new Map<ColumnName<SN>, number>();
-    const meta = this.sheet.raw.meta;
-    getSheetColumnNames(this.sheetName).forEach((columnName) => {
-      const colIndex = liveColIndex(meta, {
-        columnId: getColumnTraitByName(this.sheetName, columnName, "columnId"),
-        header: getColumnTraitByName(this.sheetName, columnName, "header"),
+  private _liveColIndexes(): Map<ColumnName<TN>, number> {
+    const indexes = new Map<ColumnName<TN>, number>();
+    const rawTable = this.table.raw;
+    getSheetColumnNames(this.tableName).forEach((columnName) => {
+      const colIndex = liveColIndex(rawTable, {
+        columnId: getColumnTraitByName(this.tableName, columnName, "columnId"),
+        header: getColumnTraitByName(this.tableName, columnName, "header"),
       });
       if (colIndex !== undefined) indexes.set(columnName, colIndex);
     });
@@ -173,15 +176,15 @@ export class FloorTabEditWarning<
   }
 }
 
-export function selfDescribingRowColumns<SN extends FloorSheetName>(
-  sheetName: SN,
-): readonly ColumnName<SN>[] {
-  const rule = floorTabRules()[sheetName].selfDescribingRow;
+export function selfDescribingRowColumns<TN extends FloorSheetName>(
+  tableName: TN,
+): readonly ColumnName<TN>[] {
+  const rule = floorTabRules()[tableName].selfDescribingRow;
   if (rule === undefined) return [];
   return [...rule.identityColumns, rule.declaredColumn];
 }
 
-function floorTabRules(): { [SN in FloorSheetName]: FloorTabRules<SN> } {
+function floorTabRules(): { [TN in FloorSheetName]: FloorTabRules<TN> } {
   return {
     spreadsheetConfig: {
       excludedDataColumns: [
@@ -191,26 +194,26 @@ function floorTabRules(): { [SN in FloorSheetName]: FloorTabRules<SN> } {
       actionRowEditableColumns: spreadsheetConfigTimeLastRanColumnNames(),
       selfDescribingRow: undefined,
     },
-    sheetConfig: {
-      excludedDataColumns: ["sheetGid", "sheetTitle"],
+    tableConfig: {
+      excludedDataColumns: ["tableId", "tableName", "sheetTitle"],
       actionRowEditableColumns: [],
       selfDescribingRow: {
         declaredColumn: "letApiAccess",
-        identityColumns: ["sheetGid"],
-        isFloorIdentity: ([sheetGid]) =>
-          typeof sheetGid === "number" &&
-          floorTabSeedByGid(sheetGid) !== undefined,
+        identityColumns: ["tableId"],
+        isFloorIdentity: ([tableId]) =>
+          typeof tableId === "string" &&
+          floorTabSeedByTableId(tableId) !== undefined,
       },
     },
     columnConfig: {
-      excludedDataColumns: ["sheetGid", "columnId", "sheetTitle", "header"],
+      excludedDataColumns: ["tableId", "columnId", "tableName", "header"],
       actionRowEditableColumns: [],
       selfDescribingRow: {
         declaredColumn: "emptyValueAllowed",
-        identityColumns: ["sheetGid", "columnId"],
-        isFloorIdentity: ([sheetGid, columnId]) =>
-          typeof sheetGid === "number" &&
-          floorSeedColumnById(sheetGid, String(columnId)) !== undefined,
+        identityColumns: ["tableId", "columnId"],
+        isFloorIdentity: ([tableId, columnId]) =>
+          typeof tableId === "string" &&
+          floorSeedColumnById(tableId, String(columnId)) !== undefined,
       },
     },
   };
@@ -223,13 +226,13 @@ function spreadsheetConfigTimeLastRanColumnNames(): ColumnName<"spreadsheetConfi
   );
 }
 
-function floorWarningDescription(sheetName: FloorSheetName): string {
-  return `${floorWarningPrefix} · ${configSheetFloorSeed[sheetName].title} · warning`;
+function floorWarningDescription(tableName: FloorSheetName): string {
+  return `${floorWarningPrefix} · ${configSheetFloorSeed[tableName].title} · warning`;
 }
 
-function liveColIndexesOf<SN extends FloorSheetName>(
-  liveIndexes: ReadonlyMap<ColumnName<SN>, number>,
-  columnNames: readonly ColumnName<SN>[],
+function liveColIndexesOf<TN extends FloorSheetName>(
+  liveIndexes: ReadonlyMap<ColumnName<TN>, number>,
+  columnNames: readonly ColumnName<TN>[],
 ): number[] {
   return columnNames.flatMap((columnName) => {
     const colIndex = liveIndexes.get(columnName);

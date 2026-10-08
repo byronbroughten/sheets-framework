@@ -11,7 +11,7 @@ export class RowBaseRaw extends TableBaseRaw {
     this.rowIndex = rowIndex;
   }
   ensureStateExists(): void {
-    if (!this.rowIsActive()) {
+    if (!this.rowInWorking()) {
       this.rowStates.set(this.rowIndex, new Map());
     }
   }
@@ -21,7 +21,7 @@ export class RowBaseRaw extends TableBaseRaw {
   get rowState(): RowStateRaw {
     return this.getRowState(this.rowIndex);
   }
-  rowIsActive(): boolean {
+  rowInWorking(): boolean {
     return this.tableState.working.rowStates.has(this.rowIndex);
   }
   get isReserved(): boolean {
@@ -34,17 +34,17 @@ export class RowBaseRaw extends TableBaseRaw {
     this.tableState.writeQueue.reservedRowIndexes.delete(this.rowIndex);
   }
   validateIsWritable(): void {
-    if (!this.isDataRow || this.rowIsActive()) return;
+    if (!this.isDataRow || this.rowInWorking()) return;
     if (this.tableProperties === undefined) {
       throw new Error(
         `Cannot write to ${this.rowLabel(this.rowIndex)} of sheetGid ${this.sheetGid} before its sheet properties have been fetched.`,
       );
     }
   }
-  validateIsActive(): void {
-    if (!this.rowIsActive()) {
+  validateInWorking(): void {
+    if (!this.rowInWorking()) {
       throw new Error(
-        `Cannot perform this operation: ${this.rowLabel(this.rowIndex)} is not active.`,
+        `Cannot perform this operation: ${this.rowLabel(this.rowIndex)} is not in the working view.`,
       );
     }
   }

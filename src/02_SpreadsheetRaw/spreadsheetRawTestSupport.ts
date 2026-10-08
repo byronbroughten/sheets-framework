@@ -1,29 +1,35 @@
 import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
-import { getSheetTraitByName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
+import { headRows } from "../01_SpreadsheetSchema/headRows";
 import { SpreadsheetSchema } from "../01_SpreadsheetSchema/SpreadsheetSchema";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import { TableOrigin } from "../01_SpreadsheetSchema/TableOrigin";
-import { uniformRows } from "../01_SpreadsheetSchema/uniformRows";
 import {
   buildGridRows,
   type FakeRichCellValue,
   type FakeSheetProperties,
+  fakeTableId,
   type stubSheetsService,
 } from "../testSupport/fakeSheetsService";
 import { SpreadsheetRaw } from "./SpreadsheetRaw";
 
 export const lightGreen = { red: 0.851, green: 0.918, blue: 0.827 };
 
-export const itemGid = getSheetTraitByName("item", "sheetGid");
-export const logGid = getSheetTraitByName("log", "sheetGid");
+export const itemGid = getTableTraitByName("item", "sheetGid");
+export const logGid = getTableTraitByName("log", "sheetGid");
+export const itemTableId = fakeTableId(itemGid, 0);
+export const logTableId = fakeTableId(logGid, 0);
 // Sheet rows and columns, for fixtures and grid reads; Raw itself counts from the Table.
 export const expectedOrigin = TableOrigin.expected();
 export const tableHeaderRowIndex: number = expectedOrigin.headerRowIndex;
 export const colIdRowIndex: number = expectedOrigin.sheetRowIndex(
-  uniformRows.index("columnId"),
+  headRows.index("columnId"),
 );
 export const startTableColIndex: number = expectedOrigin.startColIndex;
 export const topDataRowIndex = tableHeaderRowIndex + 1;
 export const scratchGid = 999999;
+export const scratchTableId = fakeTableId(scratchGid, 0);
+export const tableId111 = fakeTableId(111, 0);
+export const tableId222 = fakeTableId(222, 0);
 export const tableEndRowIndex = tableHeaderRowIndex + 3;
 export const gridRanges = {
   columnOneData: {

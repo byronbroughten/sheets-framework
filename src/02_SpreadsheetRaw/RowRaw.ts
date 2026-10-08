@@ -1,4 +1,4 @@
-// First, out of order: entering the RowCommonRaw <-> TableRaw cycle here loads UniformRowBaseRaw before its base class, in the bundle.
+// First, out of order: entering the RowCommonRaw <-> TableRaw cycle here loads HeadRowBaseRaw before its base class, in the bundle.
 import "./TableRaw";
 
 import type {
@@ -18,7 +18,7 @@ export class RowRaw extends RowCommonRaw {
   ): CellValue<VN> | "" {
     return this.cell<VN>(colIndex).valueOrEmpty();
   }
-  get activeValueArr(): CellValue[] {
+  get workingValueArr(): CellValue[] {
     return [...this.rowState.values()].map((cellState) => cellState.value);
   }
   private validateIsDataRow(): void {
@@ -36,9 +36,9 @@ export class RowRaw extends RowCommonRaw {
     // this.endRowIndex--;
   }
   append(): this {
-    if (this.rowIsActive()) {
+    if (this.rowInWorking()) {
       throw new Error(
-        `Cannot append ${this.rowLabel(this.rowIndex)} because it is already active.`,
+        `Cannot append ${this.rowLabel(this.rowIndex)} because it is already in the working view.`,
       );
     }
     this.tableState.working.rowStates.set(this.rowIndex, new Map());

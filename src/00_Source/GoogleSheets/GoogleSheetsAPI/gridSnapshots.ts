@@ -113,6 +113,7 @@ function toGridCell(
   return {
     value: effectiveCellValue(cell),
     isFormula: cell.userEnteredValue?.formulaValue !== undefined,
+    formula: cell.userEnteredValue?.formulaValue,
     numberFormatType: cell.effectiveFormat?.numberFormat?.type,
     dataValidationConditionType: cell.dataValidation?.condition?.type,
     ...(backgroundColor !== undefined

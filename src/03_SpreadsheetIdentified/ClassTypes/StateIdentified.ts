@@ -9,7 +9,7 @@ export interface CellChange<VN extends ValueName = ValueName> {
 
 export interface StateIdentified {
   tables: TablesStateIdentified;
-  // What `ss.sheet(gid)` preps before its Table is known.
+  // What `ss.tableOnSheet(gid)` preps before its Table is known.
   tableBeforePropertiesBySheet: Map<SheetId, TableStateIdentified>;
 }
 

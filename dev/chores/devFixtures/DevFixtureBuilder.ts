@@ -1,8 +1,8 @@
 import type { SheetColIndex } from "../../../src/00_Source/RawSource/SheetIndex";
 import { dimensionIds } from "../../../src/01_SpreadsheetSchema/dimensionIds";
-import { getSheetTraitByName } from "../../../src/01_SpreadsheetSchema/sheetConfigsTypes";
+import { headRows } from "../../../src/01_SpreadsheetSchema/headRows";
+import { getTableTraitByName } from "../../../src/01_SpreadsheetSchema/tableConfigsTypes";
 import { TableOrigin } from "../../../src/01_SpreadsheetSchema/TableOrigin";
-import { uniformRows } from "../../../src/01_SpreadsheetSchema/uniformRows";
 import { SpreadsheetBaseNamed } from "../../../src/04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
 import { SpreadsheetNamed } from "../../../src/04_SpreadsheetNamed/SpreadsheetNamed";
 import {
@@ -23,11 +23,11 @@ export class DevFixtureBuilder extends SpreadsheetBaseNamed {
     this.ss.fetchAllSheetProperties();
     this._validateConfigFloorPresent();
     this.ss
-      .sheet("sheetConfig")
-      .prepFetchColumnsFull("sheetGid", "letApiAccess");
+      .table("tableConfig")
+      .prepFetchColumnsFull("tableId", "letApiAccess");
     this.ss
-      .sheet("columnConfig")
-      .prepFetchColumnsFull("sheetGid", "columnId", "emptyValueAllowed");
+      .table("columnConfig")
+      .prepFetchColumnsFull("tableId", "columnId", "emptyValueAllowed");
     this.ss.fetchAllPrepped({ skipFetchingProperties: true });
     const missing = devFixtureSheets.filter(
       (fixture) => !this.ss.raw.gidIsActive(fixture.sheetGid),
@@ -44,9 +44,9 @@ export class DevFixtureBuilder extends SpreadsheetBaseNamed {
     return `Created ${missing.map((fixture) => fixture.title).join(", ")}.`;
   }
   private _validateConfigFloorPresent(): void {
-    const missing = (["sheetConfig", "columnConfig"] as const).filter(
+    const missing = (["tableConfig", "columnConfig"] as const).filter(
       (sheetName) =>
-        !this.ss.raw.gidIsActive(getSheetTraitByName(sheetName, "sheetGid")),
+        !this.ss.raw.gidIsActive(getTableTraitByName(sheetName, "sheetGid")),
     );
     if (missing.length > 0) {
       throw new Error(
@@ -68,6 +68,8 @@ export class DevFixtureBuilder extends SpreadsheetBaseNamed {
         columnCount: endColIdx,
       })
       .gatherAddTableOperation({
+        // The live fixture Tables carry their name as their ID, so a rebuilt one matches its generated entry.
+        tableId: fixture.tableName,
         name: fixture.tableName,
         range: {
           sheetId: sheetGid,
@@ -126,7 +128,7 @@ export class DevFixtureBuilder extends SpreadsheetBaseNamed {
       throw new Error(`${fixture.title} has no "${columnKey}" column.`);
     }
     const origin = TableOrigin.expected();
-    const actionRowIndex = uniformRows.index("action");
+    const actionRowIndex = headRows.index("action");
     const rowIndex = origin.sheetRowIndex(actionRowIndex);
     const colIndex = origin.sheetColIndex(columnIndex);
     this.ss.raw
@@ -145,11 +147,12 @@ export class DevFixtureBuilder extends SpreadsheetBaseNamed {
       });
   }
   private _ensureLetApiAccess(fixture: DevFixtureSheet): void {
-    const sheetConfig = this.ss.sheet("sheetConfig");
-    const [row] = sheetConfig.rowsFiltered({ sheetGid: fixture.sheetGid });
+    const tableConfig = this.ss.table("tableConfig");
+    const [row] = tableConfig.rowsFiltered({ tableId: fixture.tableName });
     if (row === undefined) {
-      sheetConfig.appendRowWithVals({
-        sheetGid: fixture.sheetGid,
+      tableConfig.appendRowWithVals({
+        tableId: fixture.tableName,
+        tableName: fixture.tableName,
         sheetTitle: fixture.title,
         letApiAccess: true,
       });
@@ -158,19 +161,19 @@ export class DevFixtureBuilder extends SpreadsheetBaseNamed {
     }
   }
   private _ensureEmptyValueAllowed(fixture: DevFixtureSheet): void {
-    const columnConfig = this.ss.sheet("columnConfig");
+    const columnConfig = this.ss.table("columnConfig");
     fixture.columns.forEach(({ key, header, emptyValueAllowed }) => {
       if (emptyValueAllowed === undefined) return;
       const columnId = dimensionIds.col(fixture.idPrefix, key);
       const [row] = columnConfig.rowsFiltered({
-        sheetGid: fixture.sheetGid,
+        tableId: fixture.tableName,
         columnId,
       });
       if (row === undefined) {
         columnConfig.appendRowWithVals({
-          sheetGid: fixture.sheetGid,
+          tableId: fixture.tableName,
           columnId,
-          sheetTitle: fixture.title,
+          tableName: fixture.tableName,
           header,
           emptyValueAllowed,
         });

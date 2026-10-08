@@ -3,21 +3,21 @@ import {
   type SpreadsheetNamedProps,
 } from "../04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
 
-export type UntypedHeadersBySheetTitle = Map<string, string[]>;
+export type UntypedHeadersByTableName = Map<string, string[]>;
 
 // Lives on operator props, not each collaborator, so getter rebuilds share it.
 export interface ConfigSyncState {
-  sheetConfigSync: {
+  tableConfigSync: {
     prepFetchIsComplete: boolean;
     syncedToSpreadsheet: boolean;
     declaredCellReportLines: string[];
   };
   columnConfigSync: {
     syncedToSpreadsheet: boolean;
-    untypedHeadersBySheetTitle: UntypedHeadersBySheetTitle;
+    untypedHeadersByTableName: UntypedHeadersByTableName;
     declaredCellReportLines: string[];
   };
-  valueConfigSync: { activeHeaders: Set<string> };
+  valueConfigSync: { profileValueTitles: Set<string> };
 }
 
 export interface OperatorProps extends SpreadsheetNamedProps {
@@ -38,17 +38,17 @@ export class SpreadsheetBaseOperator extends SpreadsheetBaseNamed {
   }
   static initConfigSyncState(): ConfigSyncState {
     return {
-      sheetConfigSync: {
+      tableConfigSync: {
         prepFetchIsComplete: false,
         syncedToSpreadsheet: false,
         declaredCellReportLines: [],
       },
       columnConfigSync: {
         syncedToSpreadsheet: false,
-        untypedHeadersBySheetTitle: new Map(),
+        untypedHeadersByTableName: new Map(),
         declaredCellReportLines: [],
       },
-      valueConfigSync: { activeHeaders: new Set() },
+      valueConfigSync: { profileValueTitles: new Set() },
     };
   }
   static initOperatorProps(): OperatorProps {

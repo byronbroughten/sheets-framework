@@ -6,7 +6,6 @@ import {
   installConfigs,
 } from "../01_SpreadsheetSchema/configRegister";
 import { SpreadsheetSchema } from "../01_SpreadsheetSchema/SpreadsheetSchema";
-import { TableOrigin } from "../01_SpreadsheetSchema/TableOrigin";
 import { SpreadsheetIdentified } from "../03_SpreadsheetIdentified/SpreadsheetIdentified";
 import {
   SpreadsheetBaseNamed,
@@ -72,23 +71,25 @@ export class Api extends SpreadsheetBaseNamed {
   static isSuspectedApiCall(edit: SheetEdit): boolean {
     return (
       (edit.value === "TRUE" || edit.value === "FALSE") &&
-      edit.rowIndexBase0 === TableOrigin.expected().headSheetRowIndex("action")
+      new SpreadsheetSchema().tableWithActionCell(edit) !== undefined
     );
   }
-  handleSheetEdit({ sheetGid, colIndexBase0, value }: SheetEdit): void {
-    if (!this.schema.isInSheetGids(sheetGid)) {
+  handleSheetEdit(edit: SheetEdit): void {
+    if (this.schema.tableWithActionCell(edit) === undefined) {
       return;
     }
-    const sheet = this.ssi.sheetMeta(sheetGid).ensureColumnIdsAreFetched();
-    const colIndex = sheet.raw.tableOrigin().colIndex(colIndexBase0);
-    if (!sheet.isTableColIndex(colIndex)) {
+    const { sheetGid, colIndexBase0, value } = edit;
+    const table = this.ssi.tableOnSheet(sheetGid).ensureColumnIdsAreFetched();
+    const { columnResolver } = table;
+    const colIndex = table.raw.tableOrigin().colIndex(colIndexBase0);
+    if (!columnResolver.isTableColIndex(colIndex)) {
       return;
     }
-    const columnId = sheet.columnIdByIndex(colIndex);
+    const columnId = columnResolver.columnIdAt(colIndex);
     if (columnId === "") {
       return;
     }
-    this._runEndpoint(sheet.schema.columnById(columnId), value === "TRUE");
+    this._runEndpoint(table.schema.columnById(columnId), value === "TRUE");
   }
   // An entry that doesn't run on uncheck is a button, so only ticking fires it.
   private _runEndpoint(entryColumn: ColumnSchema, isChecked: boolean): void {
@@ -102,7 +103,7 @@ export class Api extends SpreadsheetBaseNamed {
     // The full name is only known at runtime, so the run widens to every sheet.
     new EndpointRun({
       ...this.spreadsheetNamedProps,
-      sheetName: entryColumn.sheetName,
+      tableName: entryColumn.tableName,
       entryColumnName: entryColumn.columnName,
       endpoint,
     }).run(isChecked);

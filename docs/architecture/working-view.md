@@ -1,8 +1,8 @@
-# The working view: active, fetched and queued
+# The working view: fetched and queued
 
 Map fragment. Sibling headings live in this folder. How the queue is sent: [queued writes and the flush](./queued-writes.md).
 
-The working view is the fetched sheet plus every queued write, with row indexes at their pre-flush positions; "active" means present in it. A write needs no fetch, but a read does, and a queued write survives a re-fetch in the same run.
+The working view is the fetched sheet plus every queued write, with row indexes at their pre-flush positions; "working" means present in it, by fetch or queued write. A write needs no fetch, but a read does, and a queued write survives a re-fetch in the same run.
 
 ## Three groups of state per tier
 
@@ -14,15 +14,15 @@ Each tier's state has three groups. The **working** view is what the run sees: t
 
 ## A write does not require a fetch
 
-**A write does not require the row to have been fetched.** `update` queues its request either way and mirrors the value into local cell state only when the row is active; `validateIsWritable` needs nothing but the sheet properties. Feedback can therefore be written to every data row of a column without reading one of them.
+**A write does not require the row to have been fetched.** `update` queues its request either way and mirrors the value into local cell state only when the row is in the working view; `validateIsWritable` needs nothing but the sheet properties. Feedback can therefore be written to every data row of a column without reading one of them.
 
 ## A queued write outlives a re-fetch
 
 **A queued write outlives a re-fetch in the same run.** Between a fetch and the flush, local state is the live sheet plus the queued writes: a row queued for delete stays gone however it is re-fetched or backfilled, and a cell with a queued value keeps the latest one queued — its own update, else the most recently queued value fill that covers it, since a later fill erases the cell's earlier update — once the row is fetched. A queued tab title, Table name or column type is applied again, in queue order, on top of the sheet properties a fetch integrates, so the last one queued wins. Formula writes stay out of local state, so a re-fetch still shows the old effective value. The flush clears the queue, so a fetch after it integrates the live sheet only.
 
-## Active means present in the working view
+## Working means present in the working view
 
-The corollary is the trap: **"active" means present in the working view, with row indexes still at their pre-flush positions** — not "exists on the sheet". Queued appends and removes update that view immediately; the flush is what would shift live indexes, and until then a deleted row stays inactive at the index it had when it was queued. On the `triggerOnEdit` path only the columnId row is ever fetched, so *no data row is active* — anything working from `rowIndexesActive` writes nothing at all there. `rowIndexesFull`, derived from the table bounds, is what names every data row.
+The corollary is the trap: **"working" means present in the working view, by fetch or queued write, with row indexes still at their pre-flush positions** — not "exists on the sheet". Queued appends and removes update that view immediately; the flush is what would shift live indexes, and until then a deleted row stays out of the working view at the index it had when it was queued. On the `triggerOnEdit` path only the columnId row is ever fetched, so *no data row is working* — anything working from `workingRowIndexes` writes nothing at all there. `rowIndexesFull`, derived from the table bounds, is what names every data row.
 
 ## A read requires a fetch
 
@@ -30,4 +30,4 @@ The corollary is the trap: **"active" means present in the working view, with ro
 
 ## Presence in a range is not presence in a payload
 
-**Presence in a range and presence in a payload are different facts.** A row's membership in the table buys nothing about the response: Sheets omits every cell that holds no value, no formula and no explicit number format, and a row where that is true of *every* cell comes back as a grid-data block describing each column with no `rowData` at all — or, past the populated grid, as no block at all. Measured against `Add Property Expenses` on 10 September 2026, its single blank data row sits squarely inside the table range and still arrives with no cells (#17). That is exactly the state the [blank-row](./blank-row.md) policy leaves behind, so it is ordinary rather than exceptional. `SpreadsheetRaw`'s finalize pass exists to close that gap: after integration it backfills a cell for every row and column that was fetched in full, and seeds blank **active facts** for the table columns the payload described no cell for, so a column that was fetched and is simply empty is indistinguishable from one whose top cell was empty inside a returned row. A column nobody fetched still throws, because that is a programmer error rather than an empty sheet.
+**Presence in a range and presence in a payload are different facts.** A row's membership in the table buys nothing about the response: Sheets omits every cell that holds no value, no formula and no explicit number format, and a row where that is true of *every* cell comes back as a grid-data block describing each column with no `rowData` at all — or, past the populated grid, as no block at all. Measured against `Add Property Expenses` on 10 September 2026, its single blank data row sits squarely inside the table range and still arrives with no cells (#17). That is exactly the state the [blank-row](./blank-row.md) policy leaves behind, so it is ordinary rather than exceptional. `SpreadsheetRaw`'s finalize pass exists to close that gap: after integration it backfills a cell for every row and column that was fetched in full, and seeds blank **sampled facts** for the table columns the payload described no cell for, so a column that was fetched and is simply empty is indistinguishable from one whose top cell was empty inside a returned row. A column nobody fetched still throws, because that is a programmer error rather than an empty sheet.

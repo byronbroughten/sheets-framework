@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getColumnTraitByName } from "../01_SpreadsheetSchema/columnConfigsTypes";
 import { installedConfigs } from "../01_SpreadsheetSchema/configRegister";
-import { getSheetTraitByName } from "../01_SpreadsheetSchema/sheetConfigsTypes";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
 import {
   stubLogger,
@@ -14,7 +14,7 @@ import {
 } from "../testSupport/fakeSheetsService";
 import { AppsScriptApi } from "./AppsScriptApi";
 
-const runItemGid = getSheetTraitByName("runItem", "sheetGid");
+const runItemGid = getTableTraitByName("runItem", "sheetGid");
 const resultColIndex = 1;
 const configs = installedConfigs();
 
@@ -85,6 +85,43 @@ describe("AppsScriptApi.handleSheetEdit", () => {
     );
     expect(calls).toEqual(["result"]);
   });
+
+  it("decodes a data-row tick as no match, costing no fetch", () => {
+    const { getByDataFilterCalls } = stubSheetsService({
+      sheets: [
+        {
+          sheetId: runItemGid,
+          title: "Run item",
+          rows: buildGridRows({
+            3: ["ID", "Result"],
+            4: ["r:rit:row4", true],
+          }),
+          table: { endRowIndex: 5 },
+        },
+      ],
+    });
+    const calls: string[] = [];
+    AppsScriptApi.handleSheetEdit(
+      {
+        configs,
+        endpoints: {
+          runItem_result: {
+            action: () => {
+              calls.push("result");
+            },
+          },
+        },
+      },
+      onEditEvent(
+        runItemGid,
+        expectedSheetLayout.topDataRowIndex,
+        resultColIndex,
+        "TRUE",
+      ),
+    );
+    expect(calls).toEqual([]);
+    expect(getByDataFilterCalls).toHaveLength(0);
+  });
 });
 
 describe("AppsScriptApi.handleSheetEdit, with no source installed", () => {
@@ -111,7 +148,7 @@ describe("AppsScriptApi.handleSheetChange", () => {
     stubSheetsService({
       sheets: [
         {
-          sheetId: getSheetTraitByName("valueConfig", "sheetGid"),
+          sheetId: getTableTraitByName("valueConfig", "sheetGid"),
           title: "Values",
         },
       ],

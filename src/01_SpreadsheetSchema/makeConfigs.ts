@@ -3,9 +3,7 @@ import type { Value, ValueName } from "./valueSchemas";
 
 export function makeImportLine(
   configMagerName:
-    | "makeSheetConfigs"
-    | "makeColumnConfigs"
-    | "makeValueConfigs",
+    "makeTableConfigs" | "makeColumnConfigs" | "makeValueConfigs",
   makeConfigsImport: string,
 ): string {
   return `import { ${configMagerName} } from ${JSON.stringify(makeConfigsImport)};`;
@@ -18,23 +16,33 @@ function makeStructuredConfig<ST, const CF extends ST>(
   return t;
 }
 
-export interface SheetConfigStored<HI extends boolean = boolean> {
+export interface TableConfigStored {
+  tableId: string;
+  tableName: string;
   sheetGid: number;
-  hasIdColumn: HI;
-  hasNameColumn: boolean;
   idPrefix: string;
+  headerRowIndex: number;
+  startColIndex: number;
+  hasIdColumn: boolean;
+  hasNameColumn: boolean;
 }
-export type SheetConfigsBase = Record<string, SheetConfigStored>;
-export function makeSheetConfigs<SC extends SheetConfigsBase>(
-  sheetConfigs: SC,
-): SC {
+export type TableConfigsBase = Record<string, TableConfigStored>;
+export function makeTableConfigs<TC extends TableConfigsBase>(
+  tableConfigs: TC,
+): TC {
+  assertUniqueIdPrefixes(tableConfigs);
+  return tableConfigs;
+}
+
+function assertUniqueIdPrefixes(
+  configs: Record<string, { idPrefix: string }>,
+): void {
   idPrefixes.assertUnique(
-    Object.entries(sheetConfigs).map(([label, config]) => ({
+    Object.entries(configs).map(([label, config]) => ({
       label,
       idPrefix: config.idPrefix,
     })),
   );
-  return sheetConfigs;
 }
 
 export type ValueConfigsBase = Record<string, readonly string[]>;

@@ -4,25 +4,25 @@ import {
   type ValueConfigsBase,
 } from "../01_SpreadsheetSchema/makeConfigs";
 import { ColumnConfigOperator } from "./ColumnConfigOperator";
-import { GenericSheetOperator } from "./GenericSheetOperator";
+import { GenericTableOperator } from "./GenericTableOperator";
 import {
   type ConfigSyncState,
   type OperatorProps,
   SpreadsheetBaseOperator,
 } from "./SpreadsheetBaseOperator";
 
-export class ValueConfigOperator extends GenericSheetOperator<"valueConfig"> {
+export class ValueConfigOperator extends GenericTableOperator<"valueConfig"> {
   constructor(props: OperatorProps) {
     super({
-      sheetName: "valueConfig",
+      tableName: "valueConfig",
       ...props,
     });
   }
   get valueConfigSync(): ConfigSyncState["valueConfigSync"] {
     return this.configSyncState.valueConfigSync;
   }
-  get activeHeaders(): Set<string> {
-    return this.valueConfigSync.activeHeaders;
+  get profileValueTitles(): Set<string> {
+    return this.valueConfigSync.profileValueTitles;
   }
   static init(): ValueConfigOperator {
     return new ValueConfigOperator(SpreadsheetBaseOperator.initOperatorProps());
@@ -32,21 +32,21 @@ export class ValueConfigOperator extends GenericSheetOperator<"valueConfig"> {
   }
   fetchAfterColumnConfigSynced(): void {
     this.columnConfigOperator.assertSyncedToSpreadsheet();
-    this.valueConfigSync.activeHeaders = new Set(
+    this.valueConfigSync.profileValueTitles = new Set(
       this.columnConfigOperator
-        .activeValueTitles()
+        .profileValueTitles()
         .filter((valueName) => !isFrameworkValueName(valueName)),
     );
-    this.activeHeaders.forEach((header) => {
-      this.sheet.raw.columnByHeader(header).gatherFetchFull();
+    this.profileValueTitles.forEach((header) => {
+      this.table.raw.columnByHeader(header).gatherFetchFull();
     });
     this.ss.fetchAllPrepped({ skipFetchingProperties: true });
   }
   newValueConfigs(): ValueConfigsBase {
-    return [...this.activeHeaders].reduce(
+    return [...this.profileValueTitles].reduce(
       (acc, header) => {
         const valueNameDataCol =
-          this.sheet.raw.columnByHeader<"string">(header);
+          this.table.raw.columnByHeader<"string">(header);
         const valueName = this.schema.titleToName(header);
         acc[valueName] = valueNameDataCol.valueArrFilterEmpty;
         return acc;

@@ -1,13 +1,13 @@
 import type { ColumnName } from "../../01_SpreadsheetSchema/columnConfigsTypes";
-import type { SheetName } from "../../01_SpreadsheetSchema/sheetConfigsTypes";
+import type { TableName } from "../../01_SpreadsheetSchema/tableConfigsTypes";
 import type { StrictOmit } from "../../utils/Obj";
-import type { SheetNamed } from "../SheetNamed";
+import type { TableNamed } from "../TableNamed";
 
-type SheetColumnNames<SN extends SheetName> = {
-  [S in SN]?: ColumnSpecifierNamed<SN>;
+type SheetColumnNames<TN extends TableName> = {
+  [S in TN]?: ColumnSpecifierNamed<TN>;
 };
 
-export interface FetchSpecifierObjNamed<SN extends SheetName = SheetName> {
+export interface FetchSpecifierObjNamed<TN extends TableName = TableName> {
   all: {
     rowSpecifier: RowSpecifier;
     sheetColumnMode: "all";
@@ -15,45 +15,45 @@ export interface FetchSpecifierObjNamed<SN extends SheetName = SheetName> {
   allColumns: {
     rowSpecifier: RowSpecifier;
     sheetColumnMode: "allColumns";
-    sheetNames: SN | SN[];
+    sheetNames: TN | TN[];
   };
   specific: {
     rowSpecifier: RowSpecifier;
     sheetColumnMode: "specific";
-    sheetColumnNames: SheetColumnNames<SN>;
+    sheetColumnNames: SheetColumnNames<TN>;
   };
 }
 
-type FetchColumnsSpecifierObjNamed<SN extends SheetName = SheetName> = {
-  [S in keyof FetchSpecifierObjNamed<SN>]: StrictOmit<
-    FetchSpecifierObjNamed<SN>[S],
+type FetchColumnsSpecifierObjNamed<TN extends TableName = TableName> = {
+  [S in keyof FetchSpecifierObjNamed<TN>]: StrictOmit<
+    FetchSpecifierObjNamed<TN>[S],
     "rowSpecifier"
   >;
 };
 
-export type FetchColumnSpecifierNamed<SN extends SheetName> =
-  FetchColumnsSpecifierObjNamed<SN>[ColumnMode];
+export type FetchColumnSpecifierNamed<TN extends TableName> =
+  FetchColumnsSpecifierObjNamed<TN>[ColumnMode];
 
 type ColumnMode = keyof FetchSpecifierObjNamed;
 
-export type FetchPropsNamed<SN extends SheetName> =
-  FetchSpecifierObjNamed<SN>[ColumnMode];
+export type FetchPropsNamed<TN extends TableName> =
+  FetchSpecifierObjNamed<TN>[ColumnMode];
 
-export type SheetColumnNamesStandard<SN extends SheetName> = {
-  [S in SN]?: ColumnName<SN>[];
+export type SheetColumnNamesStandard<TN extends TableName> = {
+  [S in TN]?: ColumnName<TN>[];
 };
 
-export interface FetchPropsStandardNamed<SN extends SheetName = SheetName> {
+export interface FetchPropsStandardNamed<TN extends TableName = TableName> {
   rowSpecifier: RowSpecifier;
-  sheetColumnNames: SheetColumnNamesStandard<SN>;
+  sheetColumnNames: SheetColumnNamesStandard<TN>;
 }
 
 type RowSpecifier = RowSpecifierName | RowSpecifierName[];
-export type RowSpecifierBySchemaName = Exclude<RowSpecifierName, "activeRows">;
+export type RowSpecifierBySchemaName = Exclude<RowSpecifierName, "workingRows">;
 
 export const rowSpecifierNames = [
   "all",
-  "activeRows",
+  "workingRows",
   "data",
   "topDatum",
   "actions",
@@ -68,9 +68,9 @@ export function isRowName(value: unknown): value is RowSpecifierName {
   );
 }
 
-export type ColumnSpecifierNamed<TN extends SheetName> =
+export type ColumnSpecifierNamed<TN extends TableName> =
   ColumnName<TN> | ColumnName<TN>[] | "allColumns";
 
-export type NamedSheets<TN extends SheetName> = {
-  [T in TN]: SheetNamed<T>;
+export type NamedSheets<TN extends TableName> = {
+  [T in TN]: TableNamed<T>;
 };

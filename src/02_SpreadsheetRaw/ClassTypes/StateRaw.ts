@@ -90,7 +90,7 @@ export interface SheetStateRaw {
   working: SheetWorkingStateRaw;
   fetchQueue: SheetFetchQueueRaw;
   writeQueue: SheetWriteQueueRaw;
-  // `ss.sheet(gid)` reaches a Table through its sheet, so what is queued before that Table is known waits here.
+  // `ss.tableOnSheet(gid)` reaches a Table through its sheet, so what is queued before that Table is known waits here.
   tableBeforeProperties: TableStateRaw;
 }
 
@@ -180,17 +180,18 @@ export interface CellStateRaw {
 
 export type ColumnStatesRaw = Map<ColIndex, ColumnStateRaw>;
 export interface ColumnStateRaw {
-  activeFacts?: ActiveFactsRaw;
+  sampledFacts?: SampledFactsRaw;
   validationValues?: string[];
   validationConditionType?: string;
   // Absent for a column left on Automatic, which is what makes it "untyped".
   columnType?: string;
 }
-export interface ActiveFactsRaw {
+export interface SampledFactsRaw {
   isFormula: boolean;
   numberFormatType: string | undefined;
   dataValidationConditionType: string | undefined;
   topValue: CellValue;
+  topFormula: string | undefined;
 }
 
 type SheetId = number;
@@ -215,11 +216,11 @@ export interface CellFill<VN extends CellValueName = CellValueName> {
   formula?: string;
   backgroundColor?: RgbColor;
 }
-// The uniform cells a Table-end column insert writes.
-export interface TableEndColumnUniformCells {
+// The head cells a Table-end column insert writes.
+export interface TableEndColumnHeadCells {
   columnId: string;
   header: string;
-  colGroupName?: string;
+  groupHeading1?: string;
 }
 export interface TableWrites {
   sort: SortParameters | undefined;

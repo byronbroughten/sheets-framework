@@ -20,7 +20,7 @@ export abstract class RowCommonRaw extends RowBaseRaw {
   // A data row past the table's last row doesn't exist yet — append it instead.
   validateIsWritable(): void {
     super.validateIsWritable();
-    if (!this.isDataRow || this.rowIsActive()) return;
+    if (!this.isDataRow || this.rowInWorking()) return;
     if (this.rowIndex >= this.table.dataRowCount) {
       throw new Error(
         `Cannot write to ${this.rowLabel(this.rowIndex)} because it is past the last row of sheetGid ${this.sheetGid}'s table. Append the row first.`,
@@ -32,10 +32,10 @@ export abstract class RowCommonRaw extends RowBaseRaw {
     if (this.isQueuedForDelete) return;
     super.ensureStateExists();
   }
-  ensureFullActiveDataCells(): void {
+  ensureFullWorkingDataCells(): void {
     this.ensureStateExists();
     this.table.fullTableColIndexes.forEach((colIndex) => {
-      this.cell(colIndex).ensureActive();
+      this.cell(colIndex).ensureInWorking();
     });
   }
   cell<VN extends CellValueName = CellValueName>(
@@ -47,12 +47,12 @@ export abstract class RowCommonRaw extends RowBaseRaw {
       colIndex: colIndex,
     });
   }
-  abstract get activeValueArr(): CellValue[];
+  abstract get workingValueArr(): CellValue[];
   hasValue(value: unknown): boolean {
-    return this.activeValueArr.includes(value as CellValue);
+    return this.workingValueArr.includes(value as CellValue);
   }
   returnMissingValues<CV extends CellValue>(...values: CV[]): CV[] {
-    return values.filter((value) => !this.activeValueArr.includes(value));
+    return values.filter((value) => !this.workingValueArr.includes(value));
   }
   remove(): void {
     this.rowStates.delete(this.rowIndex);

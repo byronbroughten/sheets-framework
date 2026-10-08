@@ -4,21 +4,21 @@ Style fragment. The one-line rules live in [`docs/code-style.md`](../code-style.
 
 One heading per naming rule, in docs/code-style.md's order: grep `^## ` for the rule you're applying and read that section.
 
-## The `active` prefix marks a live read
+## The profile marks a live read
 
-**Prefix a getter `active` when it reads live/fetched sheet state that has a same-named counterpart sourced from schema/generated-config data** — disambiguates the live read from the committed one. `ColumnMetaRaw.activeIsFormula` (this run's live sheet data) vs. `ColumnSchema.isFormula` (the committed `columnConfigs.ts` trait) — same underlying concept, two different sources of truth. Matches the existing `active` vocabulary for "what's actually in the fetched state right now": `activeColumnIds`, `activeSheetGids`, `activeRowIndexes`.
+**A live read with a same-named schema/config counterpart takes the bare name on the profile, never an `active` prefix** — the profile is what disambiguates the live read from the committed one. `column.profile.isFormula` (this run's live sheet data) vs. `ColumnSchema.isFormula` (the committed `columnConfigs.ts` trait) — same underlying concept, two different sources of truth. The `active` prefix that once did this job is retired (sheets-framework#63): it clashed with Apps Script's active selection.
 
-## `_actualX` becomes `activeX` when a helper moves down
+## `_actualX` drops its prefix when a helper moves down
 
-**When a "compute the true/live value" helper moves from a coordinating Operator down onto the domain object it's actually about, rename it from `_actualX` to `activeX` to match that vocabulary.** `ColumnConfigOperator._actualValueTitle`/`_actualValidationValueName`/`_actualPrimitiveValueName` — named from the coordinator's point of view, contrasting a *live* value against the *stored config* value — became `ColumnMetaRaw.activeValueTitle()`/`.activeValidationValueTitle()`/`._actualPrimitiveValueName()` once they moved onto the column itself: from that object's own point of view it's just its current state, matching sibling getters like `activeHeader`/`activeIsFormula` on the same class. (The innermost helper, `_actualPrimitiveValueName`, kept its old name and stayed `private` — it has no live/committed counterpart to disambiguate, so `active` wouldn't fit; see the `_`-prefix note in `@byronbroughten/config`'s `docs/code-style/naming.md` for why it's still underscored while its siblings aren't.)
+**When a "compute the true/live value" helper with a committed counterpart moves from a coordinating Operator down onto the column it's actually about, it lands on the profile under the bare name.** `ColumnConfigOperator._actualValueTitle`/`_actualValidationValueName`/`_actualPrimitiveValueName` — named from the coordinator's point of view, contrasting a *live* value against the *stored config* value — became `activeValueTitle()`/`activeValidationValueTitle()` on the Meta column once they moved onto the column itself, and `column.profile.valueTitle()`/`.validationValueTitle()` once the profile replaced Meta (sheets-framework#116): from that object's own point of view it's just its current state. (The innermost helper, `_actualPrimitiveValueName`, kept its old name and stayed `private` — it has no live/committed counterpart to disambiguate; see the `_`-prefix note in `@byronbroughten/config`'s `docs/code-style/naming.md` for why it's still underscored while its siblings aren't.)
 
 ## `col` or `column`
 
-**`column` abbreviates to `col` by default — it's referenced constantly, so shortening it earns its keep (`colIndex`) — except when it's paired with an already-short suffix, where spelling it out keeps the identifier legible** (`columnId`, not `colId`: `Id` alone is too short to pair with `col` without the result reading as a cryptic blob). Whichever form fits, use it consistently within one scope: `activeColIds` next to `existingColumnIds` in the same method reads as a typo, not a style choice; it became `activeColumnIds` to match.
+**`column` abbreviates to `col` by default — it's referenced constantly, so shortening it earns its keep (`colIndex`) — except when it's paired with an already-short suffix, where spelling it out keeps the identifier legible** (`columnId`, not `colId`: `Id` alone is too short to pair with `col` without the result reading as a cryptic blob). Whichever form fits, use it consistently within one scope: `activeColIds` next to `existingColumnIds` in the same method reads as a typo, not a style choice; it became `activeColumnIds` to match, and is now the profile's `columnIds`.
 
 ## A sheet is unmarked, a row takes `Row`
 
-**A sheet takes the unmarked name; a row is marked with a spelled-out `Row` suffix.** `const occupancy = ss.sheet("occupancy")` is the sheet and `occupancyRow` is one of its rows, so the same identifier never means a sheet in one endpoint and a row in another (#22). Sheet locals outnumber row locals across the repo, which is the count "Give the common case the unmarked name" asks for before deciding which case goes unmarked, and a spelled-out `Row` reads to someone who has never opened the codebase where a coined abbreviation does not. A sheet-marking suffix was considered on the analogy of `col`, but that abbreviation marks a single column index rather than a collection, so the analogy doesn't hold.
+**A sheet takes the unmarked name; a row is marked with a spelled-out `Row` suffix.** `const occupancy = ss.table("occupancy")` is the sheet and `occupancyRow` is one of its rows, so the same identifier never means a sheet in one endpoint and a row in another (#22). Sheet locals outnumber row locals across the repo, which is the count "Give the common case the unmarked name" asks for before deciding which case goes unmarked, and a spelled-out `Row` reads to someone who has never opened the codebase where a coined abbreviation does not. A sheet-marking suffix was considered on the analogy of `col`, but that abbreviation marks a single column index rather than a collection, so the analogy doesn't hold.
 
 ## Google's API names stay at the wire
 
@@ -26,7 +26,7 @@ One heading per naming rule, in docs/code-style.md's order: grep `^## ` for the 
 
 ## A multi-row delete is `SHOUTING_SNAKE_CASE`
 
-**A method that deletes more than one row takes a `SHOUTING_SNAKE_CASE` name** (`TableIdentified.DELETE_ALL_DATA_ROWS` and the `SheetNamed` method that delegates to it). Nothing else in the codebase is spelled that way, so the shout is the warning: a caller can't reach one by reflex. It stays shouty even once a guard makes the operation safe — the point is that the reader stops, not that the operation is unguarded.
+**A method that deletes more than one row takes a `SHOUTING_SNAKE_CASE` name** (`TableIdentified.DELETE_ALL_DATA_ROWS` and the `TableNamed` method that delegates to it). Nothing else in the codebase is spelled that way, so the shout is the warning: a caller can't reach one by reflex. It stays shouty even once a guard makes the operation safe — the point is that the reader stops, not that the operation is unguarded.
 
 ## The controlled verb vocabulary
 
