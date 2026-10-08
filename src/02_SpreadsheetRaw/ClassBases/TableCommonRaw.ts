@@ -1,5 +1,6 @@
 import type {
   BoundedGridRange,
+  DeleteTableRowsOperation,
   TableColumnSnapshot,
 } from "../../00_Source/RawSource/RawSource";
 import {
@@ -100,6 +101,17 @@ export abstract class TableCommonRaw extends TableBaseRaw {
       properties.startRowIndex + rowCount,
     );
     properties.endRowIndex = SheetIndex.row(properties.endRowIndex + rowCount);
+  }
+  rowPullFrom(deletes: DeleteTableRowsOperation[]): number {
+    const properties = this.tableProperties;
+    if (properties === undefined) return 0;
+    return rowCountAbove(
+      deletes.map(({ range }) => range),
+      { ...properties, sheetId: this.sheetGid },
+    );
+  }
+  shiftRowsUp(rowCount: number): void {
+    this.shiftRowsDown(-rowCount);
   }
   columnShiftFrom(inserts: InsertTableEndColumns[]): number {
     const properties = this.tableProperties;
@@ -279,24 +291,34 @@ export function rowShiftFrom(
   growths: AppendTableRows[],
   tableRange: BoundedGridRange,
 ): number {
-  return growths
-    .filter(({ newRows }) => newRows.sheetId === tableRange.sheetId)
-    .filter(({ newRows }) => isPushedDownBy(newRows, tableRange))
+  return rowCountAbove(
+    growths.map(({ newRows }) => newRows),
+    tableRange,
+  );
+}
+
+// The rows inserted or deleted above a Table in its columns, which move it by their count.
+function rowCountAbove(
+  rowBands: BoundedGridRange[],
+  tableRange: BoundedGridRange,
+): number {
+  return rowBands
+    .filter((rows) => rows.sheetId === tableRange.sheetId)
+    .filter((rows) => isShiftedVerticallyBy(rows, tableRange))
     .reduce(
-      (rowCount, { newRows }) =>
-        rowCount + newRows.endRowIndex - newRows.startRowIndex,
+      (rowCount, rows) => rowCount + rows.endRowIndex - rows.startRowIndex,
       0,
     );
 }
 
-function isPushedDownBy(
-  newRows: BoundedGridRange,
+function isShiftedVerticallyBy(
+  rows: BoundedGridRange,
   properties: BoundedGridRange,
 ): boolean {
   return (
-    properties.startRowIndex >= newRows.startRowIndex &&
-    properties.startColumnIndex < newRows.endColumnIndex &&
-    newRows.startColumnIndex < properties.endColumnIndex
+    properties.startRowIndex >= rows.startRowIndex &&
+    properties.startColumnIndex < rows.endColumnIndex &&
+    rows.startColumnIndex < properties.endColumnIndex
   );
 }
 
