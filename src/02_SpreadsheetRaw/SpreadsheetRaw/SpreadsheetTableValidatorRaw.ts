@@ -120,9 +120,11 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
   private _sheetsWithExtraTables(): SheetIdentity[] {
     const extraTables: SheetIdentity[] = [];
     this.spreadsheetStateRaw.sheets.forEach((_, sheetGid) => {
+      const table = this.ss.tableOnSheet(sheetGid);
       if (
-        this.ss.tableOnSheet(sheetGid).tableIds().length <= 1 ||
-        !this.schema.isInSheetGids(sheetGid)
+        table.tableIds().length <= 1 ||
+        !this.schema.isInSheetGids(sheetGid) ||
+        table.recordedTableId() !== undefined
       ) {
         return;
       }

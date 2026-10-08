@@ -22,7 +22,7 @@ Any failure stops the run and names the sheet. The same step stops on a Table me
 
 ## More than one Table on a sheet
 
-If a fetch finds more than one Table on a sheet with **Let api access**, it refuses and names those sheets, so you can delete the extras; it never picks one for you. This one-Table-per-sheet refusal stays until several managed Tables may share a sheet.
+If a fetch finds more than one Table on a sheet with **Let api access**, it refuses and names those sheets, so you can delete the extras; it never guesses which one is managed. The exception is a sheet holding exactly one Table its configs record: the others beside it are unmanaged, and reaching the sheet's Table by GID reaches the recorded one. This refusal stays until several managed Tables may share a sheet (sheets-framework#89).
 
 ## Why the app never repairs a Table
 

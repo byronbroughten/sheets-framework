@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import { installedRawSource } from "../00_Source/RawSource/RawSource";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {
   buildGridRows,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
+import { Val } from "../utils/Val";
 import { SpreadsheetRaw } from "./SpreadsheetRaw";
 import {
   colIdRowIndex,
@@ -417,6 +419,35 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     raw.tableOnSheet(logGid).gatherFetchProperties();
 
     expect(() => raw.fetchAllGathered()).toThrowError(/"Item".*"Log"/);
+  });
+
+  it("accepts a known sheet whose recorded Table sits beside an unmanaged one, and reaches the recorded one by GID", () => {
+    const recordedTableId = getTableTraitByName("item", "tableId");
+    const { table, ...sheet } = placedTableSheet({
+      sheetId: itemGid,
+      title: "Item",
+    });
+    stubSheetsService({
+      sheets: [
+        {
+          ...sheet,
+          tables: [
+            {
+              tableId: "unmanaged",
+              startColumnIndex: 20,
+              endColumnIndex: 22,
+              endRowIndex: tableEndRowIndex,
+            },
+            { ...Val.assert(table, "placed Table"), tableId: recordedTableId },
+          ],
+        },
+      ],
+    });
+
+    const raw = SpreadsheetRaw.init();
+    raw.fetchAllSheetProperties();
+
+    expect(raw.tableOnSheet(itemGid).tableId).toBe(recordedTableId);
   });
 
   it("leaves a sheet the config does not know alone, even with two Tables", () => {

@@ -56,7 +56,7 @@ export class TableBaseRaw extends SpreadsheetBaseRaw {
     if ("tableId" in this.tableAddress) {
       return tableStateOf(this.tablesStateRaw, this.tableAddress.tableId);
     }
-    const tableId = this.onlyTableId();
+    const tableId = this.onlyTableId() ?? this.recordedTableId();
     if (tableId === undefined) return this.sheetState.tableBeforeProperties;
     return tableStateOf(this.tablesStateRaw, tableId);
   }
@@ -90,6 +90,19 @@ export class TableBaseRaw extends SpreadsheetBaseRaw {
   // Absent for a sheet that holds no Table or several.
   onlyTableId(): string | undefined {
     const [tableId, ...otherTableIds] = this.tableIds();
+    if (otherTableIds.length > 0) return undefined;
+    return tableId;
+  }
+  // Until sheets-framework#89, a managed sheet may hold unmanaged Tables beside the one its configs record.
+  recordedTableId(): string | undefined {
+    const recordedTableIds = new Set(
+      new SpreadsheetSchema()
+        .tablesOnGid(this.sheetGid)
+        .map((table) => table.tableId),
+    );
+    const [tableId, ...otherTableIds] = this.tableIds().filter((id) =>
+      recordedTableIds.has(id),
+    );
     if (otherTableIds.length > 0) return undefined;
     return tableId;
   }
