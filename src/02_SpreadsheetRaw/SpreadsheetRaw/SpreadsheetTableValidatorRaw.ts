@@ -111,6 +111,27 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
     return sheetTable.tableIdReachedByGid();
   }
   validateTablePlacements(placements: TablePlacement[]): void {
+    const fix = this._placementsFix(placements);
+    if (fix === undefined) return;
+    throw new Error(fix);
+  }
+  // A column insert can split a Table the zone missed from its head rows, so it uses every Table on its sheet.
+  validateTablesForColumnInsert(sheetGid: number, columnInsert: string): void {
+    if (this.spreadsheetStateRaw.isRegeneratingConfigs) return;
+    const { hasFetchedHeaderZone } = this._sheetState(sheetGid).working;
+    const fix = this._placementsFix(
+      this.schema
+        .tablesOnGid(sheetGid)
+        .map(({ tableName }) =>
+          this.tablePlacement(tableName, hasFetchedHeaderZone),
+        ),
+    );
+    if (fix === undefined) return;
+    throw new Error(
+      `${columnInsert} needs every managed Table on that sheet in place. ${fix}`,
+    );
+  }
+  private _placementsFix(placements: TablePlacement[]): string | undefined {
     const misplacements = placements.flatMap((placement) =>
       placement.kind === "misplaced" ? [placement.misplacement] : [],
     );
@@ -118,7 +139,7 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
       placement.kind === "header-only" ? [placement.tableId] : [],
     );
     if (misplacements.length === 0 && headerOnlyTableIds.length === 0) {
-      return;
+      return undefined;
     }
     const sentences: string[] = [];
     if (misplacements.length > 0) {
@@ -127,7 +148,7 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
     headerOnlyTableIds.forEach((tableId) => {
       sentences.push(this.ss.table(tableId).headerOnlyFix);
     });
-    throw new Error(sentences.join(" "));
+    return sentences.join(" ");
   }
   // Generation's counterpart to the placement check, so configs never record a Table a run would stop on.
   validateHeadersInZone(managedTableIds: string[]): void {

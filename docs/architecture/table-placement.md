@@ -2,7 +2,7 @@
 
 Map fragment. Sibling headings live in this folder. The operator-facing words are **Table** and **Header zone** in [`CONTEXT.md`](../../CONTEXT.md).
 
-Every managed Table keeps its header row in the sheet's header zone: its top rows, across every column, `tableLayout.headerZoneDepth` deep (4 by default: the column ID row, two group-heading rows, the header row). A Table moves freely within the zone, so the configs record no position, only its GID and `tableId`. A run that uses a managed Table outside the zone, or missing, stops and names it. A broken Table the run doesn't use stays silent until a run uses it. It never moves, rebuilds or picks a Table.
+Every managed Table keeps its header row in the sheet's header zone: its top rows, across every column, `tableLayout.headerZoneDepth` deep (4 by default: the column ID row, two group-heading rows, the header row). A Table moves freely within the zone, so the configs record no position, only its GID and `tableId`. A run that uses a managed Table outside the zone, or missing, stops and names it. A broken Table the run doesn't use stays silent until a run uses it, and a column insert uses every Table on its sheet. It never moves, rebuilds or picks a Table.
 
 ## The placement check
 
@@ -13,6 +13,13 @@ It runs in `SpreadsheetRaw`'s post-fetch step (`SpreadsheetTableValidatorRaw.tab
 - the column ID row (header −3) holds only blanks or this Table's own prefixed column IDs, and at least one ID, across the Table's columns. Judged on a fetch the zone rode, since the zone carries that row.
 
 A failure stops the run, naming the sheet and the Table, and holds back that Table's finalize; the Tables that passed finalize as usual. No warning names a broken Table the run didn't use. The message reads "must have its header row on row 4 — move it back", or "has no Table … with its header row on row 4 — move it back, or regenerate the configs … if it is gone". Only a missing Table or a failed column ID row is offered regeneration, since generation refuses a Table outside the zone. The same step stops on a Table met with only its header, once its header is in the zone ([blank row](./blank-row.md#a-table-met-with-only-its-header-stops-the-run)). For example, inserting a row above a Table pushes its header out of the zone, and the zone fetch no longer sees it, so the run reads it as missing. A band of head rows shifted by an inserted row, with the header left in place, fails the column ID row test.
+
+
+## A column insert uses every Table on its sheet
+
+A Table pushed below the zone is one the zone fetch never brings, so the column insert's split check can't see it ([queued writes](./queued-writes.md)). Its head rows can straddle the bottom of the insert's band while its Table sits below it, and Google, blind to head rows, lets that insert split them. So `TableRaw.gatherInsertTableEndColumnsOperation` judges every recorded Table on its sheet, used or not, before anything is sent (`SpreadsheetTableValidatorRaw.validateTablesForColumnInsert`). It judges from the zone already fetched, which `hasFetchedHeaderZone` on the sheet's state remembers past the fetch, so it costs no round trip. A failure stops the run with the placement check's message, behind "Inserting a column at the end of Table … needs every managed Table on that sheet in place."
+
+Growth and row deletes need no such judgment: they shift cells only within a Table's columns, so a band reaching a hidden Table's head rows also reaches its range, which Google refuses. Revisit this when stacked Tables return.
 
 ## Moves within the zone need no regeneration
 

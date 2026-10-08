@@ -15,7 +15,7 @@ A formula that names a Table column by the Table's name and the column header â€
 _Avoid_: structured reference, A1, cell address
 
 **Header zone**:
-The top rows of a sheet, across every column, where each Table with **Let api access** must have its Table header row. Its head rows then sit inside it too. It's four rows by default, so the header sits on row 4. A Table may move within it freely; one outside it stops a run that uses it.
+The top rows of a sheet, across every column, where each Table with **Let api access** must have its Table header row. Its head rows then sit inside it too. It's four rows by default, so the header sits on row 4. A Table may move within it freely; one outside it stops any run that reads or writes that Table, or inserts a column on its sheet.
 _Avoid_: search area, Table zone, header band
 
 **Head rows**:

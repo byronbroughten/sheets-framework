@@ -98,6 +98,9 @@ export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
       state.tablesBeforePropertiesById.forEach((tableState) => {
         tableState.fetchQueue = emptyStateRaw.tableFetchQueue();
       });
+      if (state.fetchQueue.gatherHeaderZone) {
+        state.working.hasFetchedHeaderZone = true;
+      }
       state.fetchQueue.gatherHeaderZone = false;
     });
     const heldTableIds = placements.flatMap(failedTableIdsOf);

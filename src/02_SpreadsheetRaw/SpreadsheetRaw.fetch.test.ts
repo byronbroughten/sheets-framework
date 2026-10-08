@@ -5,6 +5,7 @@ import { getTableTraitByName } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {
   buildGridRows,
+  type FakeSheetProperties,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
 import { Val } from "../utils/Val";
@@ -1125,6 +1126,62 @@ describe("several managed Tables on one sheet", () => {
     raw.table(leftId).columnResolver.gatherFetchColumnIds();
 
     expect(() => raw.fetchAllGathered()).not.toThrow();
+  });
+
+  describe("a column insert, which uses every Table on its sheet", () => {
+    // Right's head rows straddle the bottom of Left's insert band, its Table below it.
+    const rightBelowZone = { layoutRight: { startRowIndex: 8 } };
+    function fetchedLeft(sheet: FakeSheetProperties) {
+      const { batchUpdateCount } = stubSheetsService({ sheets: [sheet] });
+      const raw = SpreadsheetRaw.init();
+      raw.table(leftId).gatherFetchProperties();
+      raw.table(leftId).columnResolver.gatherFetchColumnIds();
+      raw.fetchAllGathered();
+      raw.table(leftId).row(0).gatherFetchFull();
+      raw.fetchAllGathered();
+      return { raw, batchUpdateCount };
+    }
+
+    it("stops on a neighbour below the header zone, which it would split from its head rows, sending nothing", () => {
+      const { raw, batchUpdateCount } = fetchedLeft(
+        layoutSheet(rightBelowZone),
+      );
+      raw.table(leftId).appendColumn({ columnId: "c:lyl:new", header: "New" });
+
+      expect(() => raw.batchUpdateGSheets()).toThrowError(
+        /^Inserting a column at the end of Table "layoutLeft" on sheet "Layout" needs every managed Table on that sheet in place\. 1 managed Table\(s\) .*has no Table "layoutRight" with its header row on row 4 — move it back, or regenerate the configs with sheets-framework gen-configs if it is gone$/,
+      );
+      expect(batchUpdateCount()).toBe(0);
+    });
+
+    it("stops on a neighbour gone from the sheet", () => {
+      const sheet = layoutSheet();
+      const { raw } = fetchedLeft({
+        ...sheet,
+        tables: sheet.tables?.filter((table) => table.tableId !== rightId),
+      });
+      raw.table(leftId).appendColumn({ columnId: "c:lyl:new", header: "New" });
+
+      expect(() => raw.batchUpdateGSheets()).toThrowError(
+        /has no Table "layoutRight"/,
+      );
+    });
+
+    it("lets a value write through with the same neighbour below the zone", () => {
+      const { raw } = fetchedLeft(layoutSheet(rightBelowZone));
+      raw.table(leftId).row(0).cell(1).updateValue(9);
+
+      expect(() => raw.batchUpdateGSheets()).not.toThrow();
+    });
+
+    it("inserts beside a neighbour in place that the run doesn't otherwise use, and shifts it", () => {
+      const { raw } = fetchedLeft(layoutSheet());
+      raw.table(leftId).appendColumn({ columnId: "c:lyl:new", header: "New" });
+      raw.batchUpdateGSheets();
+
+      expect(raw.table(leftId).columnCount).toBe(3);
+      expect(raw.table(rightId).startColumnIndex).toBe(4);
+    });
   });
 
   it("keeps a Table a filtered fetch did not return, with what was queued on it", () => {

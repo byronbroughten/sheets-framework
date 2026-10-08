@@ -108,6 +108,8 @@ export interface SheetWorkingStateRaw {
   title: string | undefined;
   rowCount: number | undefined;
   columnCount: number | undefined;
+  // So a column insert gathered later can judge the sheet's Tables from the zone already fetched.
+  hasFetchedHeaderZone: boolean;
   conditionalFormats: ConditionalFormatsStateRaw;
   editProtections: EditProtectionsStateRaw;
 }

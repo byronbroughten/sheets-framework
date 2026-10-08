@@ -90,6 +90,7 @@ export const emptyStateRaw = {
         title: undefined,
         rowCount: undefined,
         columnCount: undefined,
+        hasFetchedHeaderZone: false,
         conditionalFormats: { rules: undefined, isStale: false },
         editProtections: { protections: undefined, isStale: false },
       },
