@@ -134,6 +134,9 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
   validateHeadRowsClear(): void {
     this.ss.raw.validateHeadRowsClear(this.tableIdsApiAccesses());
   }
+  validateHeadersInZone(): void {
+    this.ss.raw.validateHeadersInZone(this.tableIdsApiAccesses());
+  }
   idPrefix(tableId: string): string {
     return Val.assert(this._idPrefixesByTableId().get(tableId), "ID prefix");
   }
@@ -187,15 +190,12 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
         );
       }
       const idPrefix = this.idPrefix(tableId);
-      const { headerRowIndex, startColIndex } = table.origin;
       const headerRow = table.headRow("header");
       tableConfigs[tableKey] = {
         tableId,
         tableName,
         sheetGid: table.sheetGid,
         idPrefix,
-        headerRowIndex,
-        startColIndex,
         hasIdColumn: headerRow.hasValue(this.schema.idHeader),
         hasNameColumn: headerRow.hasValue(this.schema.nameHeader),
       };

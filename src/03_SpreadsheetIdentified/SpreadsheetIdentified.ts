@@ -1,3 +1,4 @@
+import type { SheetEdit } from "../00_Source/PlatformEvents/sheetEdit";
 import { SpreadsheetSchema } from "../01_SpreadsheetSchema/SpreadsheetSchema";
 import type { TableSchema } from "../01_SpreadsheetSchema/TableSchema";
 import { SpreadsheetRaw } from "../02_SpreadsheetRaw/SpreadsheetRaw";
@@ -24,6 +25,18 @@ export class SpreadsheetIdentified extends SpreadsheetBaseIdentified {
       ...this.spreadsheetIdentifiedProps,
       tableId,
     });
+  }
+  // One fetch: the header zone brings every Table on the sheet with its column IDs.
+  fetchTableWithActionCell(edit: SheetEdit): TableIdentified | undefined {
+    if (!this.schema.mayHoldActionCell(edit)) return undefined;
+    const tables = this.schema
+      .tablesOnGid(edit.sheetGid)
+      .map((tableSchema) => this.managedTable(tableSchema));
+    tables.forEach((table) => table.columnResolver.gatherDataPrerequisites());
+    this.raw.fetchAllGathered();
+    return tables.find((table) =>
+      table.raw.holdsActionCellAt(edit.rowIndexBase0, edit.colIndexBase0),
+    );
   }
   managedTable(table: TableSchema): TableIdentified {
     return new TableIdentified({

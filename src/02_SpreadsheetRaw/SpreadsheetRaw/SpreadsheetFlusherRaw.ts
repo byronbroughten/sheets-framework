@@ -125,7 +125,7 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
       return { table, shiftCount: shiftOf(table) };
     }).filter(({ shiftCount }) => shiftCount > 0);
   }
-  // A Table not yet fetched holds its queue on its sheet, aimed where the configs record it.
+  // A Table not yet fetched holds its queue on its sheet, aimed where the framework creates Tables.
   private _tablesWithWriteQueues(): TableRaw[] {
     const knownTables = Array.from(this.tablesStateRaw.keys(), (tableId) =>
       this.ss.table(tableId),

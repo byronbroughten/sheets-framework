@@ -21,8 +21,6 @@ export interface TableConfigStored {
   tableName: string;
   sheetGid: number;
   idPrefix: string;
-  headerRowIndex: number;
-  startColIndex: number;
   hasIdColumn: boolean;
   hasNameColumn: boolean;
 }

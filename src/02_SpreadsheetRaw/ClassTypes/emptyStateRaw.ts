@@ -96,7 +96,7 @@ export const emptyStateRaw = {
       fetchQueue: {
         gatherConditionalFormats: false,
         gatherEditProtections: false,
-        placementStripTableIds: new Set(),
+        gatherHeaderZone: false,
       },
       writeQueue: emptyStateRaw.sheetWriteQueue(),
       tableBeforeProperties: emptyStateRaw.tableState(sheetGid),
@@ -110,7 +110,6 @@ function emptyTableWorkingState(): TableWorkingStateRaw {
     cellStateIsStale: false,
     hasFetchedColumnIds: false,
     isPrunedToSelection: false,
-    placementIsChecked: false,
     rowStates: new Map(),
     columnStates: new Map(),
   };

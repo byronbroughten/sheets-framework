@@ -7,12 +7,16 @@ A Google Sheets spreadsheet that a person operates directly, with an Apps Script
 ### Sheet layout
 
 **Table**:
-A Google Table (Insert > Table) laid over a block of a sheet's data; a sheet holds one or more. Each with **Let api access** starts on its Table header row, with at least one data row (a **blank row** counts). What a run does about a moved, missing or extra Table: [`docs/architecture/table-placement.md`](./docs/architecture/table-placement.md).
+A Google Table (Insert > Table) laid over a block of a sheet's data; a sheet holds one or more. Each with **Let api access** starts on its Table header row, with at least one data row (a **blank row** counts). What a run does about a missing Table, or one outside the header zone: [`docs/architecture/table-placement.md`](./docs/architecture/table-placement.md).
 _Avoid_: range, data range, grid
 
 **Table reference**:
 A formula that names a Table column by the Table's name and the column header — `test[Number]`, usually wrapped in `SINGLE(...)` when one cell is wanted — so the formula stays readable when columns move. It is not an A1 address like `$C5`.
 _Avoid_: structured reference, A1, cell address
+
+**Header zone**:
+The top rows of a sheet, across every column, where each Table with **Let api access** must have its Table header row. Its head rows then sit inside it too. It's four rows by default, so the header sits on row 4. A Table may move within it freely; one outside it stops the run.
+_Avoid_: search area, Table zone, header band
 
 **Head rows**:
 The Table header row and the rows above it that belong to that Table: the column ID row, the group heading and the action row. They span the Table's columns and move with it, so nothing may shift some of them, or the Table, without the rest. No other Table may sit on them. A Table the app doesn't know about has none above its header.

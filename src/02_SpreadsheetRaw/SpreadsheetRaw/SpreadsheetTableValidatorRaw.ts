@@ -1,12 +1,8 @@
-import type {
-  SheetColIndex,
-  SheetRowIndex,
-} from "../../00_Source/RawSource/SheetIndex";
+import { headerZone } from "../../01_SpreadsheetSchema/headerZone";
 import { SpreadsheetSchema } from "../../01_SpreadsheetSchema/SpreadsheetSchema";
 import type { TableName } from "../../01_SpreadsheetSchema/tableConfigsTypes";
 import { Val } from "../../utils/Val";
 import { SpreadsheetBaseRaw } from "../ClassBases/SpreadsheetBaseRaw";
-import { originOf } from "../ClassBases/TableBaseRaw";
 import { SpreadsheetRaw } from "../SpreadsheetRaw";
 
 interface RecordedTableIdentity {
@@ -16,28 +12,14 @@ interface RecordedTableIdentity {
 export type Misplacement = RecordedTableIdentity &
   (
     | { kind: "missing" }
-    | {
-        kind: "moved";
-        startRowIndex: SheetRowIndex;
-        startColumnIndex: SheetColIndex;
-      }
+    | { kind: "outside-zone"; tableId: string }
     | { kind: "band-shifted"; tableId: string }
   );
 export type TablePlacement =
   | { kind: "header-only"; tableId: string }
   | { kind: "misplaced"; misplacement: Misplacement }
   | { kind: "none" }
-  | { kind: "well-placed"; tableId: string; canBeMarkedChecked: boolean };
-
-// The well-placed Tables every placement test ran on, so their placement needn't be judged again this run.
-export function checkedTableIdsOf(placements: TablePlacement[]): string[] {
-  return placements.flatMap((placement) => {
-    if (placement.kind !== "well-placed" || !placement.canBeMarkedChecked) {
-      return [];
-    }
-    return [placement.tableId];
-  });
-}
+  | { kind: "well-placed" };
 
 export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
   get ss(): SpreadsheetRaw {
@@ -52,15 +34,16 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
       .tablesOnGid(sheetGid)
       .map(({ tableName }) => this._tablePlacement(tableName));
   }
+  // Missing and the column ID row wait for the zone, the one fetch sure to bring the Table.
   private _tablePlacement(tableName: TableName): TablePlacement {
     const table = this.schema.sheetByName(tableName);
     const { sheetGid } = table;
-    const isStripFetched = Val.assert(
+    const isZoneFetched = Val.assert(
       this.spreadsheetStateRaw.sheets.get(sheetGid),
       `sheetState for sheetGid ${sheetGid}`,
-    ).fetchQueue.placementStripTableIds.has(table.tableId);
+    ).fetchQueue.gatherHeaderZone;
     const tableId = this._liveTableIdOf(tableName);
-    if (tableId === undefined && !isStripFetched) {
+    if (tableId === undefined && !isZoneFetched) {
       return { kind: "none" };
     }
     if (tableId === undefined) {
@@ -70,42 +53,31 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
       };
     }
     // Read off the state, since the Table refuses a header-only body before placement is judged.
-    const { properties, working } = Val.assert(
+    const { properties } = Val.assert(
       this.spreadsheetStateRaw.tables.get(tableId),
       `state of Table ${tableId}`,
     );
-    const origin = originOf(
-      Val.assert(properties, `properties of Table ${tableId}`),
+    const { startRowIndex } = Val.assert(
+      properties,
+      `properties of Table ${tableId}`,
     );
-    if (!working.placementIsChecked && !table.recordedOrigin.equals(origin)) {
+    if (!headerZone.holdsHeaderRow(startRowIndex)) {
       return {
         kind: "misplaced",
-        misplacement: {
-          kind: "moved",
-          sheetGid,
-          tableName,
-          startRowIndex: origin.headerRowIndex,
-          startColumnIndex: origin.startColIndex,
-        },
+        misplacement: { kind: "outside-zone", sheetGid, tableName, tableId },
       };
     }
     // Before the band test, which reads the column ID row through the Table's body origin.
     if (this.ss.table(tableId).isHeaderOnly) {
       return { kind: "header-only", tableId };
     }
-    if (isStripFetched && !this._holdsOwnColumnIds(tableId, table.idPrefix)) {
+    if (isZoneFetched && !this._holdsOwnColumnIds(tableId, table.idPrefix)) {
       return {
         kind: "misplaced",
         misplacement: { kind: "band-shifted", sheetGid, tableName, tableId },
       };
     }
-    return {
-      kind: "well-placed",
-      tableId,
-      // The census lists every Table, and config sync never queues a strip after it.
-      canBeMarkedChecked:
-        isStripFetched || this.spreadsheetStateRaw.allSheetPropertiesAreFetched,
-    };
+    return { kind: "well-placed" };
   }
   // On a sheet the configs record several Tables on, each is known only by its recorded ID.
   private _liveTableIdOf(tableName: TableName): string | undefined {
@@ -129,6 +101,15 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
     headerOnlyTableIds.forEach((tableId) => {
       sentences.push(this.ss.table(tableId).headerOnlyFix);
     });
+    throw new Error(sentences.join(" "));
+  }
+  // Generation's counterpart to the placement check, so configs never record a Table a run would stop on.
+  validateHeadersInZone(managedTableIds: string[]): void {
+    const sentences = managedTableIds
+      .map((tableId) => this.ss.table(tableId))
+      .filter((table) => !headerZone.holdsHeaderRow(table.startRowIndex))
+      .map((table) => headerZoneFix(table.tableLabel));
+    if (sentences.length === 0) return;
     throw new Error(sentences.join(" "));
   }
   // By geometry alone: the column ID row may give way to metadata on the header row.
@@ -155,16 +136,17 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
           `${this._sheetLabel(misplacement)} ${this._misplacementReason(misplacement)}`,
       )
       .join("; ");
-    return `${misplacements.length} managed Table(s) are not where the configs record them — regenerate the configs with sheets-framework gen-configs: ${reasons}`;
+    return `${misplacements.length} managed Table(s) are missing or outside the header zone — move each back, or regenerate the configs with sheets-framework gen-configs: ${reasons}`;
   }
   private _misplacementReason(misplacement: Misplacement): string {
     if (misplacement.kind === "missing") {
-      return `has no Table starting at ${this._recordedStartLabel(misplacement)}`;
-    } else if (misplacement.kind === "moved") {
-      return `has a Table that starts at ${this.schema.positionLabel(
-        misplacement.startRowIndex,
-        misplacement.startColumnIndex,
-      )}, not ${this._recordedStartLabel(misplacement)}`;
+      const name = this.schema
+        .sheetByName(misplacement.tableName)
+        .trait("tableName");
+      return `has no Table "${name}" with ${headerRowPlace()}`;
+    } else if (misplacement.kind === "outside-zone") {
+      const { name } = this.ss.table(misplacement.tableId);
+      return `has Table "${name}", which must have ${headerRowPlace()}`;
     } else if (misplacement.kind === "band-shifted") {
       const { idPrefix } = this.schema.sheetByName(misplacement.tableName);
       const colIdRowLabel = this.ss
@@ -175,10 +157,15 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
       throw new Error(`Unknown misplacement ${JSON.stringify(misplacement)}.`);
     }
   }
-  private _recordedStartLabel({ tableName }: RecordedTableIdentity): string {
-    return this.schema.sheetByName(tableName).recordedStartLabel;
-  }
   private _sheetLabel({ sheetGid }: RecordedTableIdentity): string {
     return this.ss.sheet(sheetGid).label;
   }
+}
+
+function headerZoneFix(tableLabel: string): string {
+  return `${tableLabel} must have ${headerRowPlace()}.`;
+}
+
+function headerRowPlace(): string {
+  return `its header row on ${headerZone.headerRowsLabel}`;
 }

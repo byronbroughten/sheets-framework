@@ -30,8 +30,7 @@ type Request = GoogleAppsScript.Sheets.Schema.Request;
 type Table = GoogleAppsScript.Sheets.Schema.Table;
 
 type FakeFetch =
-  | { kind: "get" }
-  | { kind: "getByDataFilter"; filterRanges: GridRange[] };
+  { kind: "get" } | { kind: "getByDataFilter"; filterRanges: GridRange[] };
 type Response = GoogleAppsScript.Sheets.Schema.Response;
 
 export { defaultTableId as fakeTableId };
@@ -75,8 +74,8 @@ export interface FakeTable {
   endColumnIndex?: number;
   /**
    * Where the Table's range starts, defaulting to `TableOrigin.expected()`,
-   * where the dev configs record every managed Table. Override either one to
-   * match a test's own recorded position, or to misplace the Table.
+   * where the framework creates Tables. Override either one to move the
+   * Table within the header zone, or out of it.
    */
   startRowIndex?: number;
   startColumnIndex?: number;

@@ -18,7 +18,12 @@ import type {
   TableColumnPropertiesUpdate,
   TableColumnSnapshot,
 } from "../00_Source/RawSource/RawSource";
-import { SheetIndex } from "../00_Source/RawSource/SheetIndex";
+import {
+  type SheetColIndex,
+  SheetIndex,
+  type SheetRowIndex,
+} from "../00_Source/RawSource/SheetIndex";
+import { headerZone } from "../01_SpreadsheetSchema/headerZone";
 import { type HeadRole, headRows } from "../01_SpreadsheetSchema/headRows";
 import type { TableOrigin } from "../01_SpreadsheetSchema/TableOrigin";
 import type { Value } from "../01_SpreadsheetSchema/valueSchemas";
@@ -230,22 +235,29 @@ export class TableRaw extends TableCommonRaw {
     );
   }
   gatherFetchProperties(): this {
-    // The live start is unknown until this probe comes back, so it aims where the configs record the Table.
-    const origin = this.presumedOrigin;
-    this.gatherFetchRange({
-      startRowIndex: SheetIndex.row(0),
-      endRowIndex: SheetIndex.row(origin.headerRowIndex + 1),
-      startColumnIndex: origin.startColIndex,
-      endColumnIndex: SheetIndex.col(origin.startColIndex + 1),
-    });
+    const { fetchQueue } = this.sheetState;
+    if (!fetchQueue.gatherHeaderZone) {
+      fetchQueue.gatherHeaderZone = true;
+      this.gatherFetchRange({
+        startRowIndex: SheetIndex.row(0),
+        endRowIndex: headerZone.endRowIndex,
+      });
+    }
     headRows.indexes().forEach((rowIndex) => {
       this.headRowByIndex(rowIndex).cell(0).prepFetchBackfill();
     });
-    const { recordedTableId } = this;
-    if (recordedTableId !== undefined) {
-      this.sheetState.fetchQueue.placementStripTableIds.add(recordedTableId);
-    }
     return this;
+  }
+  holdsActionCellAt(
+    sheetRowIndex: SheetRowIndex,
+    sheetColIndex: SheetColIndex,
+  ): boolean {
+    if (!this.hasFetchedProperties) return false;
+    const { origin } = this;
+    return (
+      sheetRowIndex === origin.headSheetRowIndex("action") &&
+      this.isTableColIndex(origin.colIndex(sheetColIndex))
+    );
   }
   hasQueuedFullRowFetch(rowIndex: number): boolean {
     return this.tableState.fetchQueue.toFinalize.rows.has(rowIndex);

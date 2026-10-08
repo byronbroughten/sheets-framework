@@ -1,12 +1,12 @@
 import type { SheetEdit } from "../00_Source/PlatformEvents/sheetEdit";
 import { Val } from "../utils/Val";
+import { headerZone } from "./headerZone";
 import { SpreadsheetBaseSchema } from "./SpreadsheetBaseSchema";
 import {
   configTableNames,
   tableKeysByGid,
   type TableName,
 } from "./tableConfigsTypes";
-import { TableOrigin } from "./TableOrigin";
 import { TableSchema } from "./TableSchema";
 
 export class SpreadsheetSchema extends SpreadsheetBaseSchema {
@@ -27,22 +27,10 @@ export class SpreadsheetSchema extends SpreadsheetBaseSchema {
       TableSchema.fromSheetName(tableKey),
     );
   }
-  // A sheet the configs don't record has only the spot the framework creates Tables at.
-  presumedOrigin(sheetGid: number): TableOrigin {
-    if (!this.isInSheetGids(sheetGid)) return TableOrigin.expected();
-    return this.sheetByGid(sheetGid).recordedOrigin;
-  }
-  recordedOriginOfTable(tableId: string): TableOrigin {
-    return TableSchema.fromTableId(tableId).recordedOrigin;
-  }
-  // From recorded positions alone, so the edit trigger answers without a fetch.
-  tableWithActionCell({
-    sheetGid,
-    rowIndexBase0,
-    colIndexBase0,
-  }: SheetEdit): TableSchema | undefined {
-    return this.tablesOnGid(sheetGid).find((table) =>
-      table.holdsActionCellAt(rowIndexBase0, colIndexBase0),
+  // Without a fetch, so the edit trigger's pre-check is free; the dispatch confirms it on the live Table.
+  mayHoldActionCell({ sheetGid, rowIndexBase0 }: SheetEdit): boolean {
+    return (
+      this.isInSheetGids(sheetGid) && headerZone.holdsActionRow(rowIndexBase0)
     );
   }
   // The inverse of `ColumnSchema.fullName`; a camelCase sheet name never holds the delimiter.

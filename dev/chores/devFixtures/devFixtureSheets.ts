@@ -268,15 +268,6 @@ export const devFixtureSheets: readonly DevFixtureSheet[] = [
         }),
         columns: entryAmountColumns(["Right one", "Right two"], [10, 20]),
       },
-      {
-        tableName: "layoutBelow",
-        idPrefix: "lyb",
-        origin: new TableOrigin({
-          headerRowIndex: SheetIndex.row(11),
-          startColIndex: SheetIndex.col(0),
-        }),
-        columns: entryAmountColumns(["Below one", "Below two"], [100, 200]),
-      },
     ],
   },
 ];

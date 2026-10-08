@@ -61,6 +61,9 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
   validateHeadRowsClear(managedTableIds: string[]): void {
     this.tableValidator.validateHeadRowsClear(managedTableIds);
   }
+  validateHeadersInZone(managedTableIds: string[]): void {
+    this.tableValidator.validateHeadersInZone(managedTableIds);
+  }
   // A Table queued for creation has state but no properties until it is fetched.
   get activeTableIds(): string[] {
     return Array.from(this.tablesStateRaw.entries())

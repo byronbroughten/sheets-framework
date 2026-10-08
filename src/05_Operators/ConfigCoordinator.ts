@@ -121,6 +121,7 @@ export class ConfigCoordinator extends SpreadsheetBaseOperator {
     this.ss.fetchAllPrepped({ skipFetchingProperties: true });
     this.tableConfigOperator.syncToSpreadsheet();
     this.tableConfigOperator.validateHeadRowsClear();
+    this.tableConfigOperator.validateHeadersInZone();
     this.columnConfigOperator.fetchAfterTableConfigSynced();
     this.columnConfigOperator.syncToSpreadsheet();
     return this.columnConfigOperator.untypedColumnsSummary();

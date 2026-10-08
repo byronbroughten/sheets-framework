@@ -3,10 +3,7 @@ import type {
   TableSnapshot,
 } from "../../00_Source/RawSource/RawSource";
 import { SpreadsheetSchema } from "../../01_SpreadsheetSchema/SpreadsheetSchema";
-import {
-  tableConfigAloneOnGid,
-  tableConfigsByTableId,
-} from "../../01_SpreadsheetSchema/tableConfigsTypes";
+import { tableConfigsByTableId } from "../../01_SpreadsheetSchema/tableConfigsTypes";
 import { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin";
 import { Val } from "../../utils/Val";
 import { emptyStateRaw } from "../ClassTypes/emptyStateRaw";
@@ -126,30 +123,11 @@ export class TableBaseRaw extends SpreadsheetBaseRaw {
       `rowState for ${this.rowLabel(rowIndex)} on sheetGid ${this.sheetGid}`,
     );
   }
-  // The live Table once fetched; before that, where the configs record it.
+  // The live Table once fetched; before that, the spot the framework creates Tables at.
   tableOrigin(): TableOrigin {
     const properties = this.tableProperties;
-    if (properties === undefined) return this.presumedOrigin;
+    if (properties === undefined) return TableOrigin.expected();
     return originOf(properties);
-  }
-  get presumedOrigin(): TableOrigin {
-    const schema = new SpreadsheetSchema();
-    const tableId = this._recordedTableIdByAddress;
-    if (tableId !== undefined) return schema.recordedOriginOfTable(tableId);
-    return schema.presumedOrigin(this.sheetGid);
-  }
-  // Absent for a sheet the configs don't record.
-  get recordedTableId(): string | undefined {
-    return (
-      this._recordedTableIdByAddress ??
-      tableConfigAloneOnGid(this.sheetGid)?.tableId
-    );
-  }
-  private get _recordedTableIdByAddress(): string | undefined {
-    if (!("tableId" in this.tableAddress)) return undefined;
-    const { tableId } = this.tableAddress;
-    if (!tableConfigsByTableId().has(tableId)) return undefined;
-    return tableId;
   }
   rowLabel(rowIndex: number): string {
     return `row ${this.tableOrigin().rowNumber(rowIndex)}`;

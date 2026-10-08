@@ -123,8 +123,8 @@ export interface EditProtectionsStateRaw {
 export interface SheetFetchQueueRaw {
   gatherConditionalFormats: boolean;
   gatherEditProtections: boolean;
-  // The recorded tableIds whose placement strip rides the next fetch.
-  placementStripTableIds: Set<string>;
+  // So the sheet's recorded Tables are judged on the fetch it rides.
+  gatherHeaderZone: boolean;
 }
 
 // Summed over every growth or column insert on the sheet, and sent as one appendDimension each.
@@ -160,8 +160,6 @@ export interface TableWorkingStateRaw {
   cellStateIsStale: boolean;
   hasFetchedColumnIds: boolean;
   isPrunedToSelection: boolean;
-  // Once the run knows where the Table is, it moves the Table itself, so the recorded origin no longer applies.
-  placementIsChecked: boolean;
   rowStates: RowStatesRaw;
   columnStates: ColumnStatesRaw;
 }

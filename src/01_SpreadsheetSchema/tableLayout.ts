@@ -3,6 +3,7 @@ export const tableLayout = {
   idDelimiter: ":",
   idHeader: "ID",
   nameHeader: "Name",
+  headerZoneDepth: 4,
   headRowOffsets: {
     header: 0,
     action: 1,
