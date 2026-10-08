@@ -18,6 +18,7 @@ const tableConfigGid = getTableTraitByName("tableConfig", "sheetGid");
 const columnConfigGid = getTableTraitByName("columnConfig", "sheetGid");
 const itemGid = getTableTraitByName("item", "sheetGid");
 const twoTableGid = 999001;
+const offOriginGid = 999002;
 
 const sheetConfigColumns = {
   sheetGid: { columnId: "c:scf:oldGid1", header: "Sheet GID" },
@@ -114,8 +115,21 @@ function businessTabs(): FakeSheetProperties[] {
       sheetId: twoTableGid,
       title: "Two Tables",
       tables: [
-        { endRowIndex: 5, endColumnIndex: 1 },
+        {
+          tableId: "origin",
+          name: "originTable",
+          endRowIndex: 5,
+          endColumnIndex: 1,
+        },
         { endRowIndex: 5, startColumnIndex: 2, endColumnIndex: 3 },
+      ],
+    },
+    {
+      sheetId: offOriginGid,
+      title: "Off Origin",
+      tables: [
+        { endRowIndex: 5, startColumnIndex: 1, endColumnIndex: 2 },
+        { endRowIndex: 5, startColumnIndex: 3, endColumnIndex: 4 },
       ],
     },
   ];
@@ -167,8 +181,8 @@ describe("convertSheetConfigToTableConfig on Column Config", () => {
     );
   });
 
-  it("leaves Table ID and Table name empty on a row whose tab doesn't hold exactly one Table, and names its GID", () => {
-    const { grid, result } = runChore([
+  it("gives a row on a tab with several Tables the one at the expected origin", () => {
+    const { grid } = runChore([
       tableConfigTab(),
       columnConfigTab(unconvertedColumnConfigNames, [
         {
@@ -183,9 +197,29 @@ describe("convertSheetConfigToTableConfig on Column Config", () => {
     ]);
 
     expect(grid.sheet(columnConfigGid).bodyValues()).toEqual([
-      ["", "c:two:col0001", "", "Left", false],
+      ["origin", "c:two:col0001", "originTable", "Left", false],
     ]);
-    expect(result).toContain(`GID(s) ${twoTableGid}`);
+  });
+
+  it("leaves Table ID and Table name empty on a row whose tab has several Tables and none at the expected origin, and names its GID", () => {
+    const { grid, result } = runChore([
+      tableConfigTab(),
+      columnConfigTab(unconvertedColumnConfigNames, [
+        {
+          sheetGid: offOriginGid,
+          columnId: "c:off:col0001",
+          sheetTitle: "Off Origin",
+          header: "Left",
+          emptyValueAllowed: false,
+        },
+      ]),
+      ...businessTabs(),
+    ]);
+
+    expect(grid.sheet(columnConfigGid).bodyValues()).toEqual([
+      ["", "c:off:col0001", "", "Left", false],
+    ]);
+    expect(result).toContain(`GID(s) ${offOriginGid}`);
   });
 
   it("leaves a Column Config that already has a Table ID column alone, and sends no batch update", () => {
@@ -210,6 +244,43 @@ describe("convertSheetConfigToTableConfig on Column Config", () => {
     expect(result).toBe(
       'Nothing to convert: found a "Table Config" tab, and Column Config has a "Table ID" column.',
     );
+  });
+});
+
+describe("convertSheetConfigToTableConfig on Sheet Config", () => {
+  it("keeps a tick on a tab with several Tables on the one at the expected origin", () => {
+    const { grid } = runChore([
+      sheetConfigTab([
+        { sheetGid: twoTableGid, sheetTitle: "Two Tables", letApiAccess: true },
+      ]),
+      ...businessTabs(),
+    ]);
+
+    expect(grid.sheet(tableConfigGid).bodyValues()).toEqual([
+      ["origin", "Two Tables", true],
+    ]);
+  });
+
+  it("refuses a tick on a tab with several Tables and none at the expected origin, and sends no batch update", () => {
+    const service = stubSheetsService({
+      sheets: [
+        sheetConfigTab([
+          {
+            sheetGid: offOriginGid,
+            sheetTitle: "Off Origin",
+            letApiAccess: true,
+          },
+        ]),
+        ...businessTabs(),
+      ],
+    });
+
+    expect(() =>
+      convertSheetConfigToTableConfig.action(SpreadsheetNamed.init(), {
+        spreadsheetId: "fake",
+      }),
+    ).toThrow(`Sheet Config ticks GID ${offOriginGid}`);
+    expect(service.batchUpdateCount()).toBe(0);
   });
 });
 

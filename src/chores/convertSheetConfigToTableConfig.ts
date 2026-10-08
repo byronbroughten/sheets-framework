@@ -1,5 +1,6 @@
 import { configSheetFloorSeed } from "../01_SpreadsheetSchema/configSheetFloorSeed";
 import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
+import { TableOrigin } from "../01_SpreadsheetSchema/TableOrigin";
 import type { SpreadsheetRaw } from "../02_SpreadsheetRaw/SpreadsheetRaw";
 import type { TableRaw } from "../02_SpreadsheetRaw/TableRaw";
 import { retiredSheetConfigTitle } from "../05_Operators/ConfigSheetFloor";
@@ -41,10 +42,10 @@ export const convertSheetConfigToTableConfig: Chore = {
       return `Nothing to convert: ${tabs.skipReasons.join(", and ")}.`;
     }
     fetchConvertedColumns(raw, tabs);
-    const tableIdsByGid = tableIdsBySheetGid(raw);
+    const tableIdByGid = tableIdBySheetGid(raw);
     const lines = [
-      ...convertSheetConfig(tabs.sheetConfig, tableIdsByGid),
-      ...convertColumnConfig(raw, tabs.columnConfig, tableIdsByGid),
+      ...convertSheetConfig(tabs.sheetConfig, tableIdByGid),
+      ...convertColumnConfig(raw, tabs.columnConfig, tableIdByGid),
       ...tabs.skipReasons.map((reason) => `nothing else to convert: ${reason}`),
     ];
     ss.batchUpdateGSheets();
@@ -118,25 +119,40 @@ function fetchConvertedColumns(
   raw.fetchAllGathered(true);
 }
 
-function tableIdsBySheetGid(raw: SpreadsheetRaw): Map<number, string[]> {
-  return raw.activeTableIds.reduce((byGid, tableId) => {
+function tableIdBySheetGid(raw: SpreadsheetRaw): Map<number, string> {
+  const tableIdsByGid = raw.activeTableIds.reduce((byGid, tableId) => {
     const sheetGid = raw.table(tableId).sheetGid;
     const tableIds = byGid.get(sheetGid) ?? [];
     tableIds.push(tableId);
     byGid.set(sheetGid, tableIds);
     return byGid;
   }, new Map<number, string[]>());
+  return [...tableIdsByGid].reduce((byGid, [sheetGid, tableIds]) => {
+    const tableId = tableIdOnTab(raw, tableIds);
+    if (tableId !== undefined) byGid.set(sheetGid, tableId);
+    return byGid;
+  }, new Map<number, string>());
+}
+
+// A tab with several Tables keeps the one the sheet-centric framework read, at the expected origin.
+function tableIdOnTab(
+  raw: SpreadsheetRaw,
+  tableIds: string[],
+): string | undefined {
+  if (tableIds.length === 1) return tableIds[0];
+  const expected = TableOrigin.expected();
+  return tableIds.find((tableId) => raw.table(tableId).origin.equals(expected));
 }
 
 function convertSheetConfig(
   table: TableRaw | undefined,
-  tableIdsByGid: Map<number, string[]>,
+  tableIdByGid: Map<number, string>,
 ): string[] {
   if (table === undefined) return [];
   const oldTitle = table.sheet.title;
   const oldTableName = table.name;
-  const conversions = rowConversions(table, tableIdsByGid);
-  validateTicksHaveOneTable(table, conversions);
+  const conversions = rowConversions(table, tableIdByGid);
+  validateTicksHaveATable(table, conversions);
   updateSheetGidToTableId(table, conversions);
   table.sheet.updateTitle(tableConfigSeed.title);
   table.updateTableName(tableConfigSeed.liveTableName);
@@ -149,22 +165,17 @@ function convertSheetConfig(
 
 function rowConversions(
   table: TableRaw,
-  tableIdsByGid: Map<number, string[]>,
+  tableIdByGid: Map<number, string>,
 ): RowConversion[] {
   const gidCol = table.columnByHeader(headers.sheetGid);
   return gidCol.workingCellIndexes.map((rowIndex) => {
     const sheetGid = Number(gidCol.valueOrEmpty(rowIndex));
-    const tableIds = tableIdsByGid.get(sheetGid) ?? [];
-    return {
-      rowIndex,
-      sheetGid,
-      tableId: tableIds.length === 1 ? tableIds[0] : undefined,
-    };
+    return { rowIndex, sheetGid, tableId: tableIdByGid.get(sheetGid) };
   });
 }
 
-// A tick on a tab without exactly one Table has no row to carry it, so refuse rather than drop it.
-function validateTicksHaveOneTable(
+// A tick on a tab without a Table to carry it has no row, so refuse rather than drop it.
+function validateTicksHaveATable(
   table: TableRaw,
   conversions: RowConversion[],
 ): void {
@@ -175,7 +186,7 @@ function validateTicksHaveOneTable(
   );
   if (lostTick !== undefined) {
     throw new Error(
-      `${retiredSheetConfigTitle} ticks GID ${lostTick.sheetGid}, whose tab doesn't hold exactly one Table. Untick it or fix the tab, then rerun.`,
+      `${retiredSheetConfigTitle} ticks GID ${lostTick.sheetGid}, whose tab holds no Table, or several and none at the expected origin. Untick it or fix the tab, then rerun.`,
     );
   }
 }
@@ -205,7 +216,7 @@ function sheetConfigReport(conversions: RowConversion[]): string[] {
   ];
   if (emptiedGids.length > 0) {
     lines.push(
-      `left ${headers.tableId} empty for unticked GID(s) ${emptiedGids.join(", ")}, whose tab doesn't hold exactly one Table; the sync drops those rows and appends their Tables unticked`,
+      `left ${headers.tableId} empty for unticked GID(s) ${emptiedGids.join(", ")}, whose tab holds no Table, or several and none at the expected origin; the sync drops those rows and appends their Tables unticked`,
     );
   }
   return lines;
@@ -224,10 +235,10 @@ function emptiedSheetGids(conversions: RowConversion[]): number[] {
 function convertColumnConfig(
   raw: SpreadsheetRaw,
   table: TableRaw | undefined,
-  tableIdsByGid: Map<number, string[]>,
+  tableIdByGid: Map<number, string>,
 ): string[] {
   if (table === undefined) return [];
-  const conversions = rowConversions(table, tableIdsByGid);
+  const conversions = rowConversions(table, tableIdByGid);
   updateSheetGidToTableId(table, conversions);
   updateSheetTitleToTableName(raw, table, conversions);
   return columnConfigReport(conversions);
@@ -258,7 +269,7 @@ function columnConfigReport(conversions: RowConversion[]): string[] {
   ];
   if (emptiedGids.length > 0) {
     lines.push(
-      `left ${columnConfigSeed.title}'s ${headers.tableId} and ${headers.tableName} empty for GID(s) ${emptiedGids.join(", ")}, whose tab doesn't hold exactly one Table; the sync prunes those rows`,
+      `left ${columnConfigSeed.title}'s ${headers.tableId} and ${headers.tableName} empty for GID(s) ${emptiedGids.join(", ")}, whose tab holds no Table, or several and none at the expected origin; the sync prunes those rows`,
     );
   }
   return lines;
