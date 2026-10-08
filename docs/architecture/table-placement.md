@@ -6,15 +6,21 @@ A run checks each managed Table against where the configs record it, and stops w
 
 ## The placement check
 
-It runs per Table in `SpreadsheetRaw`'s post-fetch step, on each Let api access sheet whose placement strip rode the fetch:
+It runs per recorded Table in `SpreadsheetRaw`'s post-fetch step, on each Let api access Table whose placement strip rode the fetch:
 
-- the sheet has a Table
+- the Table is on its sheet: found by its recorded `tableId`, or, on a sheet the configs record only it on, as that sheet's one Table
 - its header sits at the recorded row and column
 - the column ID row (header −3) holds only blanks or this Table's own prefixed column IDs, and at least one ID, across the Table's columns as far as the fetch reached
 
-Any failure stops the run and names the sheet. The same step stops on a Table met with only its header, once its header is in place ([blank row](./blank-row.md#a-table-met-with-only-its-header-stops-the-run)). For example, deleting a row above a Table or inserting a column to its left moves its header, and a Table moved out of the strip's sight reads as missing. A band of head rows shifted by an inserted row, with the header left in place, fails the column ID row test.
+Any failure stops the run and names the sheet; the recorded start position tells apart Tables that share one. The same step stops on a Table met with only its header, once its header is in place ([blank row](./blank-row.md#a-table-met-with-only-its-header-stops-the-run)). For example, deleting a row above a Table or inserting a column to its left moves its header, and a Table moved out of the strip's sight reads as missing. A band of head rows shifted by an inserted row, with the header left in place, fails the column ID row test.
 
 "Recorded" means the GID, `headerRowIndex` and `startColIndex` in the Table's `tableConfigs` entry. The edit trigger and the fetches sent before a Table's properties arrive aim there too, so a managed Table may sit lower on its sheet. Only a sheet the configs don't record falls back to the spot the framework creates Tables at (`TableOrigin.expected()`).
+
+## Checked once per run
+
+A Table's position is checked on the fetch that first tells the run where it is. It counts as checked only once every test has run on it: its sheet passed on a fetch that also brought its strip, so the column ID row test ran too, or the census had been read, since config sync reads the census instead of strips (`checkedTableIdsOf`). A Table whose properties came without its strip is judged again on every later fetch. Once it counts as checked, the run moves it itself: growth pushes the Tables below whose columns it overlaps down, a column insert pushes the Tables to its right along, and a row delete pulls the Tables below up ([queued writes](./queued-writes.md)). So a later fetch in the same run doesn't take a pushed neighbour it had already fetched as moved. A neighbour it hadn't fetched yet isn't shifted in state, so it is still judged against its recorded origin.
+
+**Accepted gap:** the next run, or a same-run first fetch of a neighbour already pushed, stops on it. A Table one of these pushed sits off its recorded origin, and the run stops on it as moved or missing until the configs are regenerated. [sheets-framework#129](https://github.com/byronbroughten/sheets-framework/issues/129) replaces the recorded position with the header zone.
 
 ## The strip costs no round trip
 
@@ -30,9 +36,11 @@ The head rows' extent runs from `tableLayout`'s largest offset down to just abov
 
 **Accepted gap:** an unmanaged Table added on top of a managed Table's head rows, with no regeneration since, isn't caught.
 
-## More than one Table on a sheet
+## Several Tables on a sheet
 
-If a fetch finds more than one Table on a sheet with **Let api access**, it refuses and names those sheets, so you can delete the extras; it never guesses which one is managed. The exception is a sheet holding exactly one Table its configs record: the others beside it are unmanaged, and reaching the sheet's Table by GID reaches the recorded one. This refusal stays until several managed Tables may share a sheet (sheets-framework#89).
+Several managed Tables may share a sheet, side by side or stacked (sheets-framework#89). Each is reached by its recorded `tableId`, before its properties arrive too, and gathers its own strip at its own recorded origin. A GID reaches a Table only on a sheet the configs record one Table on: the sheet's only Table, else the recorded one, so unmanaged Tables may sit beside it.
+
+A grid fetch returns a sheet's `tables` only for the ranges it overlaps, so a Table it leaves out keeps its state. Only a fetch covering a whole sheet, the sheet-properties fetch or `fetchSheetUsedGrid`, removes a Table absent from it.
 
 ## Why the app never repairs a Table
 
@@ -40,4 +48,4 @@ It never moves or rebuilds a Table, because a Table that moved or multiplied usu
 
 ## Which sheets are checked
 
-Everyday Table-placement and extra-Table checks use last-generate sheet GIDs, one regen behind the live box ([`docs/generated-data.md`](../generated-data.md#what-a-regeneration-runs-on-the-node-host)).
+Everyday Table-placement checks use last-generate sheet GIDs, one regen behind the live box ([`docs/generated-data.md`](../generated-data.md#what-a-regeneration-runs-on-the-node-host)).

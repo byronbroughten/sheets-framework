@@ -9,31 +9,27 @@ export type FakeTablePlacement = Pick<
   "startRowIndex" | "startColumnIndex"
 >;
 
+type GridRange = GoogleAppsScript.Sheets.Schema.GridRange;
 type Table = GoogleAppsScript.Sheets.Schema.Table;
 type TableColumnProperties =
   GoogleAppsScript.Sheets.Schema.TableColumnProperties;
 
 export const fakeTables = {
   // Google's shape for a sheet's Tables, as `get` returns them and the grid view shows them.
-  googleTables(
+  googleTables(sheet: FakeSheetState): Table[] | undefined {
+    return toGoogleTables(sheet, sheet.tables);
+  },
+  // A filtered fetch returns only the Tables its ranges overlap.
+  googleTablesOverlapping(
     sheet: FakeSheetState,
-    isFilteredFetch: boolean,
+    filterRanges: readonly GridRange[],
   ): Table[] | undefined {
-    if (sheet.tables.length === 0) return undefined;
-    if (sheet.isTableHiddenFromFilteredFetch && isFilteredFetch) {
-      return undefined;
-    }
-    return sheet.tables.map((table) => ({
-      tableId: table.tableId,
-      ...(table.name !== undefined ? { name: table.name } : {}),
-      range: {
-        startRowIndex: table.startRowIndex,
-        endRowIndex: table.endRowIndex,
-        startColumnIndex: table.startColumnIndex,
-        endColumnIndex: table.endColumnIndex,
-      },
-      columnProperties: columnProperties(sheet, table),
-    }));
+    const tables = sheet.tables.filter((table) =>
+      filterRanges.some(
+        (range) => range.sheetId === sheet.sheetId && overlaps(table, range),
+      ),
+    );
+    return toGoogleTables(sheet, tables);
   },
   origin({ startRowIndex, startColumnIndex }: FakeTablePlacement): TableOrigin {
     const expected = TableOrigin.expected();
@@ -43,6 +39,34 @@ export const fakeTables = {
     });
   },
 };
+
+function toGoogleTables(
+  sheet: FakeSheetState,
+  tables: readonly FakeTableState[],
+): Table[] | undefined {
+  if (tables.length === 0) return undefined;
+  return tables.map((table) => ({
+    tableId: table.tableId,
+    ...(table.name !== undefined ? { name: table.name } : {}),
+    range: {
+      startRowIndex: table.startRowIndex,
+      endRowIndex: table.endRowIndex,
+      startColumnIndex: table.startColumnIndex,
+      endColumnIndex: table.endColumnIndex,
+    },
+    columnProperties: columnProperties(sheet, table),
+  }));
+}
+
+// An absent bound on the filter is unbounded, as in a Sheets GridRange.
+function overlaps(table: FakeTableState, range: GridRange): boolean {
+  return (
+    table.startRowIndex < (range.endRowIndex ?? Infinity) &&
+    (range.startRowIndex ?? 0) < table.endRowIndex &&
+    table.startColumnIndex < (range.endColumnIndex ?? Infinity) &&
+    (range.startColumnIndex ?? 0) < table.endColumnIndex
+  );
+}
 
 function columnProperties(
   sheet: FakeSheetState,

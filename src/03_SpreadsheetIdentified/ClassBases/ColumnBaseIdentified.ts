@@ -1,4 +1,4 @@
-import { ColumnSchema } from "../../01_SpreadsheetSchema/ColumnSchema";
+import type { ColumnSchema } from "../../01_SpreadsheetSchema/ColumnSchema";
 import type { ValueName } from "../../01_SpreadsheetSchema/valueSchemas";
 import {
   TableBaseIdentified,
@@ -19,7 +19,7 @@ export class ColumnBaseIdentified<
     this.valueName = valueName;
   }
   get schema(): ColumnSchema {
-    return ColumnSchema.fromColumnId(this.sheetGid, this.columnId);
+    return this.tableSchema.columnById(this.columnId);
   }
   get columnIdentifiedProps(): ColumnIdentifiedProps<VN> {
     return {

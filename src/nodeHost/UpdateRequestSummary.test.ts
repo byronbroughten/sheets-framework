@@ -44,6 +44,17 @@ describe("UpdateRequestSummary.lines", () => {
     ).toContain(`gid ${unknownGid}`);
   });
 
+  it("falls back to the gid for a sheet holding several managed Tables, since no one Table names it", () => {
+    const layoutGid = getTableTraitByName("layoutLeft", "sheetGid");
+    expect(
+      onlyLine({
+        updateCells: {
+          range: { sheetId: layoutGid, startRowIndex: 0, endRowIndex: 1 },
+        },
+      }),
+    ).toContain(`gid ${layoutGid}!`);
+  });
+
   it("counts every cell a column fill covers", () => {
     expect(
       onlyLine({

@@ -3,33 +3,40 @@ import {
   SheetIndex,
   type SheetRowIndex,
 } from "../00_Source/RawSource/SheetIndex";
+import { Val } from "../utils/Val";
 import {
   type ColumnName,
   getColumnTraitById,
   getColumnTraitByName,
-  getSheetColumnIds,
   getSheetColumnNames,
+  getTableColumnIds,
 } from "./columnConfigsTypes";
 import { ColumnSchema } from "./ColumnSchema";
 import { dimensionIds } from "./dimensionIds";
 import { SpreadsheetBaseSchema } from "./SpreadsheetBaseSchema";
 import {
-  getTableTraitByGid,
   getTableTraitByName,
   type TableConfig,
-  tableConfigsByGid,
+  tableConfigsByTableId,
+  tableKeysByGid,
   type TableName,
 } from "./tableConfigsTypes";
 import { TableOrigin } from "./TableOrigin";
 
-function sheetNameFromGid(sheetGid: number): TableName {
-  const byGid = tableConfigsByGid();
-  if (!byGid.has(sheetGid)) {
+function tableNameFromGid(sheetGid: number): TableName {
+  const byGid = tableKeysByGid();
+  const [tableKey, ...otherKeys] = byGid.get(sheetGid) ?? [];
+  if (tableKey === undefined) {
     throw new Error(
       `Invalid sheetGid: ${sheetGid}. Must be one of: ${[...byGid.keys()].join(", ")}`,
     );
   }
-  return getTableTraitByGid(sheetGid, "tableKey") as TableName;
+  if (otherKeys.length > 0) {
+    throw new Error(
+      `Sheet gid ${sheetGid} holds several managed Tables (${[tableKey, ...otherKeys].join(", ")}); reach one by its Table ID.`,
+    );
+  }
+  return tableKey;
 }
 
 export interface TableSchemaProps<TN extends TableName> {
@@ -53,14 +60,26 @@ export class TableSchema<
       sheetGid: getTableTraitByName(tableName, "sheetGid"),
     });
   }
+  // Only for a sheet the configs record one Table on.
   static fromSheetGid(sheetGid: number): TableSchema {
     return new TableSchema({
       sheetGid,
-      tableName: sheetNameFromGid(sheetGid),
+      tableName: tableNameFromGid(sheetGid),
     });
   }
+  static fromTableId(tableId: string): TableSchema {
+    const { tableKey } = Val.assert(
+      tableConfigsByTableId().get(tableId),
+      `Table config for tableId ${tableId}`,
+    );
+    return TableSchema.fromSheetName(tableKey as TableName);
+  }
+  // With another Table the configs record on its sheet.
+  get sharesSheet(): boolean {
+    return (tableKeysByGid().get(this.sheetGid)?.length ?? 0) > 1;
+  }
   trait<TK extends keyof TableConfig>(key: TK): TableConfig[TK] {
-    return getTableTraitByGid(this.sheetGid, key);
+    return getTableTraitByName(this.tableName, key);
   }
   get tableId(): string {
     return this.trait("tableId");
@@ -94,20 +113,20 @@ export class TableSchema<
     return dimensionIds.row(this.idPrefix);
   }
   get columnIds(): MapIterator<string> {
-    return getSheetColumnIds(this.sheetGid);
+    return getTableColumnIds(this.tableName);
   }
   get columnNames(): ColumnName<TN>[] {
     return getSheetColumnNames(this.tableName);
   }
   get nonFormulaColumnIds(): string[] {
     return [...this.columnIds].filter((columnId) => {
-      return !getColumnTraitById(this.sheetGid, columnId, "isFormula");
+      return !getColumnTraitById(this.tableName, columnId, "isFormula");
     });
   }
-  // Goes by gid, the only O(1) columnId -> columnName index; by name would scan the sheet.
+  // Goes by the columnId index, since by name would scan the Table.
   colNameByColumnId(columnId: string): ColumnName<TN> {
     return getColumnTraitById(
-      this.sheetGid,
+      this.tableName,
       columnId,
       "columnName",
     ) as ColumnName<TN>;
@@ -130,7 +149,7 @@ export class TableSchema<
   }
   columnIdByHeader(header: string): string {
     const columnId = [...this.columnIds].find(
-      (id) => getColumnTraitById(this.sheetGid, id, "header") === header,
+      (id) => getColumnTraitById(this.tableName, id, "header") === header,
     );
     if (columnId === undefined) {
       throw new Error(`"${this.tableName}" has no column headed "${header}".`);

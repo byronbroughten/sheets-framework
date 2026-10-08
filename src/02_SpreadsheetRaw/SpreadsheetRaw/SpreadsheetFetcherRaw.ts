@@ -1,5 +1,6 @@
 import type {
   GridFetchRange,
+  SheetSnapshot,
   SpreadsheetSnapshot,
 } from "../../00_Source/RawSource/RawSource";
 import { SpreadsheetSchema } from "../../01_SpreadsheetSchema/SpreadsheetSchema";
@@ -8,6 +9,7 @@ import { SpreadsheetBaseRaw } from "../ClassBases/SpreadsheetBaseRaw";
 import { emptyStateRaw } from "../ClassTypes/emptyStateRaw";
 import { SpreadsheetRaw } from "../SpreadsheetRaw";
 import {
+  checkedTableIdsOf,
   type Misplacement,
   SpreadsheetTableValidatorRaw,
 } from "./SpreadsheetTableValidatorRaw";
@@ -35,7 +37,6 @@ export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
   }
   fetchAllSheetProperties(): { activeSheetGids: number[] } {
     this._fetchAndIntegrateAllSheetProperties();
-    this.tableValidator.validateTablePlacement();
     return { activeSheetGids: this.ss.activeSheetGids };
   }
   fetchAllGathered(includeProgrammaticFacts = false): void {
@@ -55,6 +56,7 @@ export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
     if (sheets.length === 0) {
       throw new Error(`Sheet gid ${sheetGid} was missing from the Sheets get.`);
     }
+    this._removeTablesAbsentFrom(sheets);
     this._addDataToState({ ...data, sheets });
   }
   private _fetchTimeZone(): void {
@@ -69,8 +71,17 @@ export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
   }
   private _fetchAndIntegrateAllSheetProperties(): void {
     const data = this.spreadsheetStateRaw.rawSource.fetchSheetProperties();
+    this._removeTablesAbsentFrom(data.sheets);
     this._addDataToState(data);
     this.spreadsheetStateRaw.allSheetPropertiesAreFetched = true;
+  }
+  // Only a fetch covering the whole sheet lists every Table on it, so only it can tell one is gone.
+  private _removeTablesAbsentFrom(sheets: SheetSnapshot[]): void {
+    sheets.forEach((sheet) =>
+      this.ss
+        .tableOnSheet(sheet.sheetGid)
+        .removeTablesAbsentFrom(sheet.tables ?? []),
+    );
   }
   // Backfills cells for every range fetched this cycle so a Sheets
   // response that omits empty cells (or whole blank rows) never leaves
@@ -79,26 +90,35 @@ export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
     const misplacements: Misplacement[] = [];
     const headerOnlyTableIds: string[] = [];
     const finalizedSheetGids: number[] = [];
+    const checkedTableIds: string[] = [];
     this.spreadsheetStateRaw.sheets.forEach((state, sheetGid) => {
-      // Above the early return, so a range that arrived incidentally is still judged.
-      const placement = this.tableValidator.tablePlacement(sheetGid);
+      const placements = this.tableValidator.tablePlacements(sheetGid);
       state.tableBeforeProperties.fetchQueue = emptyStateRaw.tableFetchQueue();
-      state.fetchQueue.gatherPlacementStrip = false;
-      if (placement.kind === "extra") {
-        return;
+      state.tablesBeforePropertiesById.forEach((tableState) => {
+        tableState.fetchQueue = emptyStateRaw.tableFetchQueue();
+      });
+      state.fetchQueue.placementStripTableIds.clear();
+      placements.forEach((placement) => {
+        if (placement.kind === "misplaced") {
+          misplacements.push(placement.misplacement);
+        } else if (placement.kind === "header-only") {
+          headerOnlyTableIds.push(placement.tableId);
+        }
+      });
+      if (
+        placements.every(
+          ({ kind }) => kind === "none" || kind === "well-placed",
+        )
+      ) {
+        finalizedSheetGids.push(sheetGid);
+        checkedTableIds.push(...checkedTableIdsOf(placements));
       }
-      if (placement.kind === "misplaced") {
-        misplacements.push(placement.misplacement);
-        return;
-      }
-      if (placement.kind === "header-only") {
-        headerOnlyTableIds.push(placement.tableId);
-        return;
-      }
-      finalizedSheetGids.push(sheetGid);
     });
     this.spreadsheetStateRaw.tables.forEach((state, tableId) => {
       if (!finalizedSheetGids.includes(state.sheetGid)) return;
+      if (checkedTableIds.includes(tableId)) {
+        state.working.placementIsChecked = true;
+      }
       this.ss.table(tableId).finalizeFetches();
     });
     this.tableValidator.validateTablePlacement(

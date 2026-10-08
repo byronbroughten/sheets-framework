@@ -1,6 +1,8 @@
 import { SpreadsheetSchema } from "../01_SpreadsheetSchema/SpreadsheetSchema";
+import type { TableSchema } from "../01_SpreadsheetSchema/TableSchema";
 import { SpreadsheetRaw } from "../02_SpreadsheetRaw/SpreadsheetRaw";
 import { SpreadsheetBaseIdentified } from "./ClassBases/SpreadsheetBaseIdentified";
+import { managedTableAddress } from "./ClassBases/TableBaseIdentified";
 import { TableIdentified } from "./TableIdentified";
 import type { GatherDataPrerequisitesProps } from "./TableIdentified/TableColumnResolverIdentified";
 
@@ -21,6 +23,12 @@ export class SpreadsheetIdentified extends SpreadsheetBaseIdentified {
     return new TableIdentified({
       ...this.spreadsheetIdentifiedProps,
       tableId,
+    });
+  }
+  managedTable(table: TableSchema): TableIdentified {
+    return new TableIdentified({
+      ...this.spreadsheetIdentifiedProps,
+      ...managedTableAddress(table),
     });
   }
   get activeSheets(): TableIdentified[] {

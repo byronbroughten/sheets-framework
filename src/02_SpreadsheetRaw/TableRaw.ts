@@ -241,7 +241,10 @@ export class TableRaw extends TableCommonRaw {
     headRows.indexes().forEach((rowIndex) => {
       this.headRowByIndex(rowIndex).cell(0).prepFetchBackfill();
     });
-    this.sheetState.fetchQueue.gatherPlacementStrip = true;
+    const { recordedTableId } = this;
+    if (recordedTableId !== undefined) {
+      this.sheetState.fetchQueue.placementStripTableIds.add(recordedTableId);
+    }
     return this;
   }
   hasQueuedFullRowFetch(rowIndex: number): boolean {
@@ -804,6 +807,8 @@ export class TableRaw extends TableCommonRaw {
     return range;
   }
   private _queueEditProtection(protection: TableEditProtection): this {
+    // A same-batch shift carries only a Table whose properties have arrived.
+    this.assertTableIsKnown();
     if (hasTableRows(protection.range)) this.sheet.assertRowIndexesNotStale();
     this.sheet.assertEditProtectionsNotStale();
     const queued = this._tablesOnSheet().flatMap((table) =>
@@ -819,14 +824,9 @@ export class TableRaw extends TableCommonRaw {
     }
     return this.queueTableWrite({ action: "addEditProtection", ...protection });
   }
-  // This Table even before it is fetched, plus every known neighbour, since a head row's range spans them all.
+  // A head row's range spans every Table on the sheet.
   private _tablesOnSheet(): TableRaw[] {
-    const neighbours = this.tableIds()
-      .map((tableId) => this.ss.table(tableId))
-      .filter(
-        (table) => !this.hasFetchedProperties || table.tableId !== this.tableId,
-      );
-    return [this, ...neighbours];
+    return this.tableIds().map((tableId) => this.ss.table(tableId));
   }
   private _queuedSheetConditionalFormatRules(): ModelableConditionalFormatRule[] {
     const origin = this.tableOrigin();

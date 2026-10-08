@@ -19,7 +19,7 @@ import { ColumnSchema } from "./ColumnSchema";
 import { SpreadsheetSchema } from "./SpreadsheetSchema";
 import {
   getTableTraitByName,
-  tableConfigsByGid,
+  tableKeysByGid,
   type TableName,
 } from "./tableConfigsTypes";
 import { TableSchema } from "./TableSchema";
@@ -68,7 +68,7 @@ describe("SpreadsheetSchema", () => {
 
   describe("isInSheetGids", () => {
     it("agrees with the generated sheet gid list", () => {
-      const [firstGid] = tableConfigsByGid().keys();
+      const [firstGid] = tableKeysByGid().keys();
       expect(firstGid).toBeDefined();
       expect(schema.isInSheetGids(firstGid as number)).toBe(true);
       expect(schema.isInSheetGids(Number.MAX_SAFE_INTEGER)).toBe(false);
@@ -102,10 +102,9 @@ describe("type-level precision", () => {
     expect(column.fullName).toBe("item_requiredCount");
   });
 
-  it("resolves a gid-addressed column to the usable widened types, never `never`", () => {
-    const sheetGid = getTableTraitByName("item", "sheetGid");
+  it("resolves a columnId-addressed column to the usable widened types, never `never`", () => {
     const column = ColumnSchema.fromColumnId(
-      sheetGid,
+      "item",
       getColumnTraitByName("item", "requiredCount", "columnId"),
     );
     assertType<IsExactly<typeof column.valueName, ValueName>>(true);

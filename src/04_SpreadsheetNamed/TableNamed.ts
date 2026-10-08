@@ -42,7 +42,7 @@ export class TableNamed<
   get identified(): TableIdentified {
     return new TableIdentified({
       ...this.sheetNamedProps,
-      sheetGid: this.sheetGid,
+      ...this.tableAddress,
     });
   }
   get sheet(): SheetNamed {

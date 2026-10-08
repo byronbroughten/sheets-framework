@@ -3,7 +3,6 @@ import { Val } from "../utils/Val";
 import { SpreadsheetBaseSchema } from "./SpreadsheetBaseSchema";
 import {
   configTableNames,
-  tableConfigsByGid,
   tableKeysByGid,
   type TableName,
 } from "./tableConfigsTypes";
@@ -12,7 +11,7 @@ import { TableSchema } from "./TableSchema";
 
 export class SpreadsheetSchema extends SpreadsheetBaseSchema {
   isInSheetGids(sheetGid: number): boolean {
-    return tableConfigsByGid().has(sheetGid);
+    return tableKeysByGid().has(sheetGid);
   }
   get sheetNames(): TableName[] {
     return configTableNames();
@@ -32,6 +31,9 @@ export class SpreadsheetSchema extends SpreadsheetBaseSchema {
   presumedOrigin(sheetGid: number): TableOrigin {
     if (!this.isInSheetGids(sheetGid)) return TableOrigin.expected();
     return this.sheetByGid(sheetGid).recordedOrigin;
+  }
+  recordedOriginOfTable(tableId: string): TableOrigin {
+    return TableSchema.fromTableId(tableId).recordedOrigin;
   }
   // From recorded positions alone, so the edit trigger answers without a fetch.
   tableWithActionCell({

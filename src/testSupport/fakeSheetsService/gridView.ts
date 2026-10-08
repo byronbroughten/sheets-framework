@@ -86,7 +86,7 @@ function sheetView(state: FakeSheetState): FakeSheetView {
     columnCount: sheet.columnCount,
     hiddenRowIndexes: sheet.hiddenRowIndexes,
     hiddenColumnIndexes: sheet.hiddenColumnIndexes,
-    tables: fakeTables.googleTables(sheet, false) ?? [],
+    tables: fakeTables.googleTables(sheet) ?? [],
     protectedRanges: sheet.protectedRanges ?? [],
     conditionalFormats: sheet.conditionalFormats ?? [],
     cell(rowIndex, colIndex) {

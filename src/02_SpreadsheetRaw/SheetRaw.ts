@@ -138,7 +138,11 @@ export class SheetRaw extends SpreadsheetBaseRaw {
     const onSheet = Array.from(this.tablesStateRaw.values()).filter(
       (tableState) => tableState.sheetGid === this.sheetGid,
     );
-    return [...onSheet, this.sheetState.tableBeforeProperties];
+    return [
+      ...onSheet,
+      this.sheetState.tableBeforeProperties,
+      ...this.sheetState.tablesBeforePropertiesById.values(),
+    ];
   }
   gatherFetchConditionalFormatRules(): this {
     this.conditionalFormats.gatherFetchConditionalFormatRules();

@@ -6,8 +6,8 @@ import {
   configTableNames,
   getTableTraitByGid,
   getTableTraitByName,
-  tableConfigsByGid,
   tableConfigsByName,
+  tableKeysByGid,
   type TableNameSimple,
 } from "./tableConfigsTypes";
 
@@ -31,7 +31,7 @@ describe("tableConfigs lookups", () => {
 
   it("reads a Table's config, key included, by its sheet GID", () => {
     const { sheetGid } = tableConfigs.log;
-    expect(tableConfigsByGid().get(sheetGid)?.tableKey).toBe("log");
+    expect(tableKeysByGid().get(sheetGid)).toEqual(["log"]);
     expect(getTableTraitByGid(sheetGid, "idPrefix")).toBe(
       tableConfigs.log.idPrefix,
     );

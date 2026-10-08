@@ -3,15 +3,17 @@ import type {
   SheetRowIndex,
 } from "../../00_Source/RawSource/SheetIndex";
 import { SpreadsheetSchema } from "../../01_SpreadsheetSchema/SpreadsheetSchema";
+import type { TableName } from "../../01_SpreadsheetSchema/tableConfigsTypes";
 import { Val } from "../../utils/Val";
 import { SpreadsheetBaseRaw } from "../ClassBases/SpreadsheetBaseRaw";
 import { originOf } from "../ClassBases/TableBaseRaw";
 import { SpreadsheetRaw } from "../SpreadsheetRaw";
 
-interface SheetIdentity {
+interface RecordedTableIdentity {
   sheetGid: number;
+  tableName: TableName;
 }
-export type Misplacement = SheetIdentity &
+export type Misplacement = RecordedTableIdentity &
   (
     | { kind: "missing" }
     | {
@@ -19,14 +21,23 @@ export type Misplacement = SheetIdentity &
         startRowIndex: SheetRowIndex;
         startColumnIndex: SheetColIndex;
       }
-    | { kind: "band-shifted" }
+    | { kind: "band-shifted"; tableId: string }
   );
 export type TablePlacement =
-  | { kind: "extra" }
   | { kind: "header-only"; tableId: string }
   | { kind: "misplaced"; misplacement: Misplacement }
   | { kind: "none" }
-  | { kind: "well-placed" };
+  | { kind: "well-placed"; tableId: string; canBeMarkedChecked: boolean };
+
+// The well-placed Tables every placement test ran on, so their placement needn't be judged again this run.
+export function checkedTableIdsOf(placements: TablePlacement[]): string[] {
+  return placements.flatMap((placement) => {
+    if (placement.kind !== "well-placed" || !placement.canBeMarkedChecked) {
+      return [];
+    }
+    return [placement.tableId];
+  });
+}
 
 export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
   get ss(): SpreadsheetRaw {
@@ -35,43 +46,46 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
   get schema(): SpreadsheetSchema {
     return new SpreadsheetSchema();
   }
-  // A sheet outside the config never promised to follow the layout.
-  tablePlacement(sheetGid: number): TablePlacement {
-    const sheetState = this.spreadsheetStateRaw.sheets.get(sheetGid);
-    if (sheetState === undefined) {
-      return { kind: "none" };
-    }
-    const [tableId, ...otherTableIds] = this.ss
-      .tableOnSheet(sheetGid)
-      .tableIds();
-    if (otherTableIds.length > 0) {
-      return { kind: "extra" };
-    }
-    if (!this.schema.isInSheetGids(sheetGid)) {
-      return { kind: "none" };
-    }
-    const isStripFetched = sheetState.fetchQueue.gatherPlacementStrip;
+  // One per Table the configs record on the sheet; a sheet outside the config never promised to follow the layout.
+  tablePlacements(sheetGid: number): TablePlacement[] {
+    return this.schema
+      .tablesOnGid(sheetGid)
+      .map(({ tableName }) => this._tablePlacement(tableName));
+  }
+  private _tablePlacement(tableName: TableName): TablePlacement {
+    const table = this.schema.sheetByName(tableName);
+    const { sheetGid } = table;
+    const isStripFetched = Val.assert(
+      this.spreadsheetStateRaw.sheets.get(sheetGid),
+      `sheetState for sheetGid ${sheetGid}`,
+    ).fetchQueue.placementStripTableIds.has(table.tableId);
+    const tableId = this._liveTableIdOf(tableName);
     if (tableId === undefined && !isStripFetched) {
       return { kind: "none" };
     }
     if (tableId === undefined) {
-      return { kind: "misplaced", misplacement: { kind: "missing", sheetGid } };
+      return {
+        kind: "misplaced",
+        misplacement: { kind: "missing", sheetGid, tableName },
+      };
     }
     // Read off the state, since the Table refuses a header-only body before placement is judged.
-    const properties = Val.assert(
-      this.spreadsheetStateRaw.tables.get(tableId)?.properties,
-      `properties of Table ${tableId}`,
+    const { properties, working } = Val.assert(
+      this.spreadsheetStateRaw.tables.get(tableId),
+      `state of Table ${tableId}`,
     );
-    const { recordedOrigin } = this.schema.sheetByGid(sheetGid);
-    if (!recordedOrigin.equals(originOf(properties))) {
-      const { startRowIndex, startColumnIndex } = properties;
+    const origin = originOf(
+      Val.assert(properties, `properties of Table ${tableId}`),
+    );
+    if (!working.placementIsChecked && !table.recordedOrigin.equals(origin)) {
       return {
         kind: "misplaced",
         misplacement: {
           kind: "moved",
           sheetGid,
-          startRowIndex,
-          startColumnIndex,
+          tableName,
+          startRowIndex: origin.headerRowIndex,
+          startColumnIndex: origin.startColIndex,
         },
       };
     }
@@ -79,32 +93,38 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
     if (this.ss.table(tableId).isHeaderOnly) {
       return { kind: "header-only", tableId };
     }
-    if (isStripFetched && !this._holdsOwnColumnIds(sheetGid)) {
+    if (isStripFetched && !this._holdsOwnColumnIds(tableId, table.idPrefix)) {
       return {
         kind: "misplaced",
-        misplacement: { kind: "band-shifted", sheetGid },
+        misplacement: { kind: "band-shifted", sheetGid, tableName, tableId },
       };
     }
-    return { kind: "well-placed" };
+    return {
+      kind: "well-placed",
+      tableId,
+      // The census lists every Table, and config sync never queues a strip after it.
+      canBeMarkedChecked:
+        isStripFetched || this.spreadsheetStateRaw.allSheetPropertiesAreFetched,
+    };
+  }
+  // On a sheet the configs record several Tables on, each is known only by its recorded ID.
+  private _liveTableIdOf(tableName: TableName): string | undefined {
+    const table = this.schema.sheetByName(tableName);
+    const sheetTable = this.ss.tableOnSheet(table.sheetGid);
+    if (sheetTable.tableIds().includes(table.tableId)) return table.tableId;
+    if (table.sharesSheet) return undefined;
+    return sheetTable.tableIdReachedByGid();
   }
   validateTablePlacement(
-    misplacements: Misplacement[] = [],
-    headerOnlyTableIds: string[] = [],
+    misplacements: Misplacement[],
+    headerOnlyTableIds: string[],
   ): void {
-    const extraTables = this._sheetsWithExtraTables();
-    if (
-      misplacements.length === 0 &&
-      extraTables.length === 0 &&
-      headerOnlyTableIds.length === 0
-    ) {
+    if (misplacements.length === 0 && headerOnlyTableIds.length === 0) {
       return;
     }
     const sentences: string[] = [];
     if (misplacements.length > 0) {
       sentences.push(this._misplacementsSentence(misplacements));
-    }
-    if (extraTables.length > 0) {
-      sentences.push(this._extraTablesSentence(extraTables));
     }
     headerOnlyTableIds.forEach((tableId) => {
       sentences.push(this.ss.table(tableId).headerOnlyFix);
@@ -125,26 +145,8 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
     if (sentences.length === 0) return;
     throw new Error(sentences.join(" "));
   }
-  private _holdsOwnColumnIds(sheetGid: number): boolean {
-    const { idPrefix } = this.schema.sheetByGid(sheetGid);
-    return this.ss
-      .tableOnSheet(sheetGid)
-      .columnResolver.holdsOnlyColumnIdsOf(idPrefix);
-  }
-  private _sheetsWithExtraTables(): SheetIdentity[] {
-    const extraTables: SheetIdentity[] = [];
-    this.spreadsheetStateRaw.sheets.forEach((_, sheetGid) => {
-      const table = this.ss.tableOnSheet(sheetGid);
-      if (
-        table.tableIds().length <= 1 ||
-        !this.schema.isInSheetGids(sheetGid) ||
-        table.recordedTableId() !== undefined
-      ) {
-        return;
-      }
-      extraTables.push({ sheetGid });
-    });
-    return extraTables;
+  private _holdsOwnColumnIds(tableId: string, idPrefix: string): boolean {
+    return this.ss.table(tableId).columnResolver.holdsOnlyColumnIdsOf(idPrefix);
   }
   private _misplacementsSentence(misplacements: Misplacement[]): string {
     const reasons = misplacements
@@ -164,25 +166,19 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
         misplacement.startColumnIndex,
       )}, not ${this._recordedStartLabel(misplacement)}`;
     } else if (misplacement.kind === "band-shifted") {
-      const { idPrefix } = this.schema.sheetByGid(misplacement.sheetGid);
+      const { idPrefix } = this.schema.sheetByName(misplacement.tableName);
       const colIdRowLabel = this.ss
-        .tableOnSheet(misplacement.sheetGid)
+        .table(misplacement.tableId)
         .rowLabel(this.schema.colIdRowIndex);
       return `needs its own "${idPrefix}" column IDs, and only those, in ${colIdRowLabel}`;
     } else {
       throw new Error(`Unknown misplacement ${JSON.stringify(misplacement)}.`);
     }
   }
-  private _recordedStartLabel({ sheetGid }: SheetIdentity): string {
-    return this.schema.sheetByGid(sheetGid).recordedStartLabel;
+  private _recordedStartLabel({ tableName }: RecordedTableIdentity): string {
+    return this.schema.sheetByName(tableName).recordedStartLabel;
   }
-  private _extraTablesSentence(extraTables: SheetIdentity[]): string {
-    const names = extraTables
-      .map((extraTable) => this._sheetLabel(extraTable))
-      .join(", ");
-    return `${extraTables.length} sheet(s) have more than one Table — delete the extras so each sheet has exactly one: ${names}`;
-  }
-  private _sheetLabel({ sheetGid }: SheetIdentity): string {
-    return this.ss.tableOnSheet(sheetGid).sheetLabel;
+  private _sheetLabel({ sheetGid }: RecordedTableIdentity): string {
+    return this.ss.sheet(sheetGid).label;
   }
 }

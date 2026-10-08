@@ -2,6 +2,13 @@ import { describe, expect, it } from "vitest";
 
 import { getColumnTraitByName } from "../01_SpreadsheetSchema/columnConfigsTypes";
 import { getTableTraitByName } from "../01_SpreadsheetSchema/tableConfigsTypes";
+import {
+  layoutBodyRows,
+  layoutGid,
+  layoutSheet,
+  type LayoutTableName,
+  layoutTableNames,
+} from "../02_SpreadsheetRaw/spreadsheetRawTestSupport";
 import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
 import {
   buildGridRows,
@@ -875,5 +882,191 @@ describe("TableNamed.rowIdByName", () => {
       ss.table("spreadsheetConfig").prepFetchRowIdAndName();
     }
     expect(neverCalled).toBeTypeOf("function");
+  });
+});
+
+describe("Tables that share a sheet", () => {
+  function fetchedLayout(): {
+    ss: SpreadsheetNamed;
+    grid: FakeSheetsService["grid"];
+  } {
+    const { grid } = stubSheetsService({ sheets: [layoutSheet()] });
+    const ss = SpreadsheetNamed.init();
+    layoutTableNames.forEach((tableName) =>
+      ss.table(tableName).prepFetchColumnsFull("entry", "amount"),
+    );
+    ss.fetchAllPrepped();
+    return { ss, grid };
+  }
+
+  function placedRange(
+    grid: FakeSheetsService["grid"],
+    tableName: LayoutTableName,
+  ): number[] {
+    const table = Val.assert(
+      grid
+        .sheet(layoutGid)
+        .tables.find(
+          ({ tableId }) =>
+            tableId === getTableTraitByName(tableName, "tableId"),
+        ),
+      `${tableName} on the grid`,
+    );
+    const range = Val.assert(table.range, `${tableName}'s range`);
+    return [
+      range.startRowIndex ?? 0,
+      range.endRowIndex ?? 0,
+      range.startColumnIndex ?? 0,
+      range.endColumnIndex ?? 0,
+    ];
+  }
+
+  it("reads each Table's rows by its own name", () => {
+    const { ss } = fetchedLayout();
+
+    expect(
+      layoutTableNames.map((tableName) =>
+        ss
+          .table(tableName)
+          .rows.map((row) => [row.value("entry"), row.value("amount")]),
+      ),
+    ).toEqual(layoutTableNames.map((tableName) => layoutBodyRows[tableName]));
+  });
+
+  it("writes to a Table beside another in its own cells", () => {
+    const { ss, grid } = fetchedLayout();
+    ss.table("layoutRight").row(0).updateValue("amount", 11);
+    ss.batchUpdateGSheets();
+
+    expect(grid.sheet(layoutGid).cell(4, 4)).toBe(11);
+    expect(grid.sheet(layoutGid).cell(4, 1)).toBe(1);
+  });
+
+  it("pushes the Table below down intact when the one above it grows", () => {
+    const { ss, grid } = fetchedLayout();
+    ss.table("layoutLeft").appendRowWithVals({ entry: "Left four", amount: 4 });
+    ss.batchUpdateGSheets();
+
+    expect(placedRange(grid, "layoutLeft")).toEqual([3, 8, 0, 2]);
+    expect(placedRange(grid, "layoutBelow")).toEqual([12, 15, 0, 2]);
+    expect(placedRange(grid, "layoutRight")).toEqual([3, 6, 3, 5]);
+    expect(
+      grid
+        .sheet(layoutGid)
+        .values({ startRowIndex: 9, endRowIndex: 15, endColumnIndex: 2 }),
+    ).toEqual([
+      ["c:lyb:entry", "c:lyb:amount"],
+      [null, null],
+      [null, null],
+      ["Entry", "Amount"],
+      ["Below one", 100],
+      ["Below two", 200],
+    ]);
+  });
+
+  it("pulls the Table below up intact when a row above it is deleted", () => {
+    const { ss, grid } = fetchedLayout();
+    ss.table("layoutLeft").row(1).delete();
+    ss.batchUpdateGSheets();
+
+    expect(placedRange(grid, "layoutLeft")).toEqual([3, 6, 0, 2]);
+    expect(placedRange(grid, "layoutBelow")).toEqual([10, 13, 0, 2]);
+    expect(placedRange(grid, "layoutRight")).toEqual([3, 6, 3, 5]);
+    expect(
+      grid
+        .sheet(layoutGid)
+        .values({ startRowIndex: 4, endRowIndex: 6, endColumnIndex: 5 }),
+    ).toEqual([
+      ["Left one", 1, null, "Right one", 10],
+      ["Left three", 3, null, "Right two", 20],
+    ]);
+  });
+
+  it("shifts the Table beside it right, head rows included, when a column is inserted at its end", () => {
+    const { ss, grid } = fetchedLayout();
+    ss.table("layoutLeft").raw.appendColumn({
+      columnId: "c:lyl:note",
+      header: "Note",
+    });
+    ss.batchUpdateGSheets();
+
+    expect(placedRange(grid, "layoutLeft")).toEqual([3, 7, 0, 3]);
+    expect(placedRange(grid, "layoutRight")).toEqual([3, 6, 4, 6]);
+    expect(placedRange(grid, "layoutBelow")).toEqual([11, 14, 0, 2]);
+    expect(
+      grid
+        .sheet(layoutGid)
+        .values({ startRowIndex: 0, endRowIndex: 1, endColumnIndex: 6 }),
+    ).toEqual([
+      [
+        "c:lyl:entry",
+        "c:lyl:amount",
+        "c:lyl:note",
+        null,
+        "c:lyr:entry",
+        "c:lyr:amount",
+      ],
+    ]);
+  });
+
+  it("keeps reading the Table below once growth has pushed it down, in the same run", () => {
+    const { ss } = fetchedLayout();
+    ss.table("layoutLeft").appendRowWithVals({ entry: "Left four", amount: 4 });
+    ss.batchUpdateGSheets();
+    ss.table("layoutBelow").prepFetchColumnsFull("entry", "amount");
+    ss.fetchAllPrepped();
+
+    expect(
+      ss.table("layoutBelow").rows.map((row) => row.value("entry")),
+    ).toEqual(["Below one", "Below two"]);
+  });
+
+  it("keeps reading the Table beside once a column insert has shifted it, in the same run", () => {
+    const { ss } = fetchedLayout();
+    ss.table("layoutLeft").raw.appendColumn({
+      columnId: "c:lyl:note",
+      header: "Note",
+    });
+    ss.batchUpdateGSheets();
+    ss.table("layoutRight").prepFetchColumnsFull("entry", "amount");
+    ss.fetchAllPrepped();
+
+    expect(
+      ss.table("layoutRight").rows.map((row) => row.value("amount")),
+    ).toEqual([10, 20]);
+  });
+
+  describe("refuses an edit protection on a Table whose properties have not arrived", () => {
+    function fetchedLeftOnly(): SpreadsheetNamed {
+      stubSheetsService({ sheets: [layoutSheet()] });
+      const ss = SpreadsheetNamed.init();
+      ss.table("layoutLeft").column("amount").prepFetchSpecific([0, 1]);
+      ss.fetchAllPrepped();
+      return ss;
+    }
+
+    it("behind growth that would push it down", () => {
+      const ss = fetchedLeftOnly();
+      ss.table("layoutLeft").appendRowWithVals({
+        entry: "Left four",
+        amount: 4,
+      });
+
+      expect(() =>
+        ss.table("layoutBelow").raw.row(0).cell(1).addEditWarning(),
+      ).toThrowError(/Table is unknown for sheetGid \d+/);
+    });
+
+    it("behind a column insert that would push it along", () => {
+      const ss = fetchedLeftOnly();
+      ss.table("layoutLeft").raw.appendColumn({
+        columnId: "c:lyl:note",
+        header: "Note",
+      });
+
+      expect(() =>
+        ss.table("layoutRight").raw.row(0).cell(1).addEditLock(),
+      ).toThrowError(/Table is unknown for sheetGid \d+/);
+    });
   });
 });

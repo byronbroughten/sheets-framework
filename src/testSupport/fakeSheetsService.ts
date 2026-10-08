@@ -25,7 +25,13 @@ type BatchUpdateRequest =
 type BatchUpdateResponse =
   GoogleAppsScript.Sheets.Schema.BatchUpdateSpreadsheetResponse;
 type GoogleCellData = GoogleAppsScript.Sheets.Schema.CellData;
+type GridRange = GoogleAppsScript.Sheets.Schema.GridRange;
 type Request = GoogleAppsScript.Sheets.Schema.Request;
+type Table = GoogleAppsScript.Sheets.Schema.Table;
+
+type FakeFetch =
+  | { kind: "get" }
+  | { kind: "getByDataFilter"; filterRanges: GridRange[] };
 type Response = GoogleAppsScript.Sheets.Schema.Response;
 
 export { defaultTableId as fakeTableId };
@@ -158,16 +164,6 @@ export interface FakeSheetProperties {
    * past the populated grid, as opposed to a blank row inside it.
    */
   rowsWithNoGridBlock?: readonly number[];
-  /**
-   * Makes this sheet's Table come back from `Spreadsheets.get` but not from
-   * `getByDataFilter`, reproducing the real API's rule that a sheet's
-   * `tables` metadata is returned only for a filter whose range overlaps the
-   * table — the blind spot a Table that moved down or right falls into. A
-   * deliberate escape hatch, not filter awareness: teaching the fake real
-   * range arithmetic would put a second, subtly wrong model of the Sheets
-   * API into test support.
-   */
-  isTableHiddenFromFilteredFetch?: boolean;
 }
 
 export interface FakeSheetsServiceOptions {
@@ -176,6 +172,8 @@ export interface FakeSheetsServiceOptions {
   timeZone?: string | null;
   /** Counts batch updates without replaying them, as the Node host's dry run sends none. */
   isDryRun?: boolean;
+  /** Returns every Table on `getByDataFilter`, not only those a filter's range overlaps as Sheets does. */
+  isEveryTableInFilteredFetch?: boolean;
 }
 
 export interface FakeSheetsService {
@@ -322,9 +320,16 @@ export function stubSheetsService(
   const getCalls: { fields?: string }[] = [];
 
   function sheetsResponse(
-    isFilteredFetch: boolean,
+    fetch: FakeFetch,
     fields?: string,
   ): GoogleAppsScript.Sheets.Schema.Spreadsheet {
+    const isFilteredFetch = fetch.kind === "getByDataFilter";
+    function googleTables(s: FakeSheetState): Table[] | undefined {
+      if (fetch.kind === "get" || options.isEveryTableInFilteredFetch) {
+        return fakeTables.googleTables(s);
+      }
+      return fakeTables.googleTablesOverlapping(s, fetch.filterRanges);
+    }
     // Like Google: getByDataFilter drops rules, and an empty list is omitted.
     const includeConditionalFormats =
       !isFilteredFetch &&
@@ -355,7 +360,7 @@ export function stubSheetsService(
               : {}),
           },
           data: fakeRowsToGoogleSheetData(s),
-          tables: fakeTables.googleTables(s, isFilteredFetch),
+          tables: googleTables(s),
           ...(includeConditionalFormats && s.conditionalFormats?.length
             ? { conditionalFormats: s.conditionalFormats }
             : {}),
@@ -371,7 +376,7 @@ export function stubSheetsService(
     Spreadsheets: {
       get: (_spreadsheetId: string, params?: { fields?: string }) => {
         getCalls.push(params ?? {});
-        return sheetsResponse(false, params?.fields);
+        return sheetsResponse({ kind: "get" }, params?.fields);
       },
       getByDataFilter: (
         resource: object,
@@ -379,7 +384,10 @@ export function stubSheetsService(
         params?: { fields?: string },
       ) => {
         getByDataFilterCalls.push(resource);
-        return sheetsResponse(true, params?.fields);
+        return sheetsResponse(
+          { kind: "getByDataFilter", filterRanges: filterRangesOf(resource) },
+          params?.fields,
+        );
       },
       batchUpdate: (
         resource: BatchUpdateRequest,
@@ -402,6 +410,15 @@ export function stubSheetsService(
     getByDataFilterCalls,
     getCalls,
   };
+}
+
+function filterRangesOf(resource: object): GridRange[] {
+  const { dataFilters = [] } = resource as {
+    dataFilters?: { gridRange?: GridRange }[];
+  };
+  return dataFilters.flatMap(({ gridRange }) =>
+    gridRange === undefined ? [] : [gridRange],
+  );
 }
 
 // Every kind the adapter sends, plus the raw-request kinds a chore reaches for.

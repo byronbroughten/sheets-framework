@@ -1,4 +1,9 @@
 import {
+  tableConfigsByTableId,
+  type TableName,
+} from "../../01_SpreadsheetSchema/tableConfigsTypes";
+import { TableSchema } from "../../01_SpreadsheetSchema/TableSchema";
+import {
   type TableAddressRaw,
   TableBaseRaw,
 } from "../../02_SpreadsheetRaw/ClassBases/TableBaseRaw";
@@ -15,6 +20,14 @@ import {
 } from "./SpreadsheetBaseIdentified";
 
 export type TableIdentifiedProps = SpreadsheetIdentifiedProps & TableAddressRaw;
+
+// A sheet that holds several managed Tables can't name one, so each is reached by its recorded ID.
+export function managedTableAddress<TN extends TableName>(
+  table: TableSchema<TN>,
+): TableAddressRaw {
+  if (table.sharesSheet) return { tableId: table.tableId };
+  return { sheetGid: table.sheetGid };
+}
 
 export class TableBaseIdentified extends SpreadsheetBaseIdentified {
   readonly sheetGid: number;
@@ -64,6 +77,14 @@ export class TableBaseIdentified extends SpreadsheetBaseIdentified {
   // Rule and protection fetches still need the Table's column IDs.
   get isPreppedToFetch(): boolean {
     return this.fetchTargets.length > 0 || this.rawSheet.hasGatheredFetch;
+  }
+  // A Table its configs record is described by its own entry, since its sheet may record several.
+  protected get tableSchema(): TableSchema {
+    const tableId = this.knownTableId;
+    if (tableId !== undefined && tableConfigsByTableId().has(tableId)) {
+      return TableSchema.fromTableId(tableId);
+    }
+    return TableSchema.fromSheetGid(this.sheetGid);
   }
   // Absent until the sheet's one Table is fetched.
   get knownTableId(): string | undefined {

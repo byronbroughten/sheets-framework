@@ -125,7 +125,7 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
       return { table, shiftCount: shiftOf(table) };
     }).filter(({ shiftCount }) => shiftCount > 0);
   }
-  // A Table not yet fetched holds its queue on its sheet, aimed where the layout expects it.
+  // A Table not yet fetched holds its queue on its sheet, aimed where the configs record it.
   private _tablesWithWriteQueues(): TableRaw[] {
     const knownTables = Array.from(this.tablesStateRaw.keys(), (tableId) =>
       this.ss.table(tableId),
@@ -134,7 +134,18 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
       this.sheetsStateRaw.keys(),
       (sheetGid) => this.ss.tableOnSheet(sheetGid),
     ).filter((table) => !table.hasFetchedProperties);
-    return [...knownTables, ...tablesBeforeProperties];
+    const tablesBeforePropertiesById = Array.from(
+      this.sheetsStateRaw.values(),
+    ).flatMap((sheetState) =>
+      Array.from(sheetState.tablesBeforePropertiesById.keys(), (tableId) =>
+        this.ss.table(tableId),
+      ),
+    );
+    return [
+      ...knownTables,
+      ...tablesBeforeProperties,
+      ...tablesBeforePropertiesById,
+    ];
   }
   private _gatherRowWrites(
     table: TableRaw,

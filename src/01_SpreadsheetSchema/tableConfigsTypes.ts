@@ -30,11 +30,6 @@ export const tableConfigsByTableId = lazy(() =>
   Obj.toKeyedMap(tableConfigs(), "tableId", "tableKey"),
 );
 
-// A sheet holds one Table for now, so a GID still names one entry.
-export const tableConfigsByGid = lazy(() =>
-  Obj.toKeyedMap(tableConfigs(), "sheetGid", "tableKey"),
-);
-
 export const tableKeysByGid = lazy(() =>
   configTableNames().reduce((byGid, tableKey) => {
     const sheetGid = getTableTraitByName(tableKey, "sheetGid");
@@ -43,13 +38,22 @@ export const tableKeysByGid = lazy(() =>
   }, new Map<number, TableNameSimple[]>()),
 );
 
+// A sheet may hold several Tables, so a GID names a config only when its sheet records one.
+export function tableConfigAloneOnGid(
+  sheetGid: number,
+): TableConfig | undefined {
+  const [tableKey, ...otherKeys] = tableKeysByGid().get(sheetGid) ?? [];
+  if (tableKey === undefined || otherKeys.length > 0) return undefined;
+  return tableConfigsByTableId().get(getTableTraitByName(tableKey, "tableId"));
+}
+
 export function getTableTraitByGid<TK extends keyof TableConfig>(
   sheetGid: number,
   key: TK,
 ): TableConfig[TK] {
   return Val.assert(
-    tableConfigsByGid().get(sheetGid),
-    `Table config for sheet gid ${sheetGid}`,
+    tableConfigAloneOnGid(sheetGid),
+    `The one Table config for sheet gid ${sheetGid}`,
   )[key];
 }
 
