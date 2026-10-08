@@ -88,8 +88,11 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
         this._gatherRowWrites(table, { rowIndex, writes });
       }
     });
-    // After the Table queues, so the insert-column refusal sees this flush's inserts.
+    this._shiftTablesBelowRowDeletes(this.writeOperations.deleteTableRows);
     tables.forEach((table) => {
+      // After the delete shift, since sorts are the one sheet-coordinate write sent after the deletes.
+      table.gatherSortTableOperation();
+      // After the Table queues, so the insert-column refusal sees this flush's inserts.
       table.gatherSetTableColumnPropertiesOperation();
       table._clearWriteQueue();
     });
@@ -97,6 +100,13 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
   private _shiftTablesBelowGrowth(growths: AppendTableRows[]): void {
     this._measuredShifts((table) => table.rowShiftFrom(growths)).forEach(
       ({ table, shiftCount }) => table.shiftRowsDown(shiftCount),
+    );
+  }
+  private _shiftTablesBelowRowDeletes(
+    deletes: DeleteTableRowsOperation[],
+  ): void {
+    this._measuredShifts((table) => table.rowPullFrom(deletes)).forEach(
+      ({ table, shiftCount }) => table.shiftRowsUp(shiftCount),
     );
   }
   private _shiftTablesRightOfColumnInserts(

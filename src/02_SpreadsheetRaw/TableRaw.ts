@@ -486,9 +486,6 @@ export class TableRaw extends TableCommonRaw {
   }
   gatherQueuedTableWrites(): void {
     const { writes } = this;
-    if (writes.sort !== undefined) {
-      this.gatherSortTableOperation(writes.sort);
-    }
     writes.fillColumns.forEach((fill) => {
       this.gatherFillColumnOperation(fill);
     });
@@ -744,10 +741,10 @@ export class TableRaw extends TableCommonRaw {
     return `Table ${tableId} on "${this.sheet.title}"`;
   }
   // Sent after the row deletes, so it spans only the body rows they leave.
-  gatherSortTableOperation({
-    colIdxToSortBy,
-    sortOrder,
-  }: SortParameters): void {
+  gatherSortTableOperation(): void {
+    const { sort } = this.writes;
+    if (sort === undefined) return;
+    const { colIdxToSortBy, sortOrder } = sort;
     const body = this._bodyGridRangeAtGathering(this.dataRowCountAfterFlush);
     this.writeOperations.sortTable.push({
       kind: "sortTable",

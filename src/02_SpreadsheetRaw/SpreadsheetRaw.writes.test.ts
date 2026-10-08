@@ -562,15 +562,101 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
             },
           ],
         ]);
-        expect(grid.sheet(111).protectedRanges.map(({ range }) => range)).toEqual(
+        expect(
+          grid.sheet(111).protectedRanges.map(({ range }) => range),
+        ).toEqual([
+          {
+            ...lowerBody,
+            startColumnIndex: startTableColIndex + 1,
+            endColumnIndex: startTableColIndex + 2,
+          },
+        ]);
+      });
+
+      it("sorts a lower Table at its rows after a same-batch row delete above it, lands its fill and rule there too, and leaves a Table beside it in place", () => {
+        const { grid } = stubStackedTables();
+
+        const raw = SpreadsheetRaw.init();
+        raw.fetchAllSheetProperties();
+        raw.table("top").row(0).delete();
+        const lower = raw.table("lower");
+        lower.row(0).cell(1).updateValue("w");
+        lower.requestSortGSheet({ colIdxToSortBy: 1, sortOrder: "DESCENDING" });
+        lower.column(0).addConditionalFormatRule({
+          condition: { type: "NUMBER_EQ", value: true },
+          format: { backgroundColor: lightGreen },
+        });
+        raw
+          .table("aside")
+          .requestSortGSheet({ colIdxToSortBy: 1, sortOrder: "DESCENDING" });
+        raw.batchUpdateGSheets();
+
+        expect(tableRows(grid)).toEqual({
+          top: [tableHeaderRowIndex, topDataRowIndex + 1],
+          lower: [lowerHeaderRowIndex - 1, lowerHeaderRowIndex + 2],
+          aside: [lowerHeaderRowIndex, lowerHeaderRowIndex + 3],
+        });
+        expect(
+          grid.sheet(111).values({
+            startRowIndex: lowerHeaderRowIndex,
+            endRowIndex: lowerHeaderRowIndex + 2,
+            endColumnIndex: startTableColIndex + 2,
+          }),
+        ).toEqual([
+          ["b2", "y"],
+          ["b1", "w"],
+        ]);
+        expect(
+          grid.sheet(111).values({
+            startRowIndex: lowerHeaderRowIndex + 1,
+            endRowIndex: lowerHeaderRowIndex + 3,
+            startColumnIndex: asideStart,
+            endColumnIndex: asideStart + 2,
+          }),
+        ).toEqual([
+          ["c2", 6],
+          ["c1", 5],
+        ]);
+        expect(
+          grid.sheet(111).conditionalFormats.map(({ ranges }) => ranges),
+        ).toEqual([
           [
             {
-              ...lowerBody,
-              startColumnIndex: startTableColIndex + 1,
-              endColumnIndex: startTableColIndex + 2,
+              sheetId: 111,
+              startRowIndex: lowerHeaderRowIndex,
+              endRowIndex: lowerHeaderRowIndex + 2,
+              startColumnIndex: startTableColIndex,
+              endColumnIndex: startTableColIndex + 1,
             },
           ],
-        );
+        ]);
+      });
+
+      it("deletes a lower Table's own row before the delete above pulls it up, and fills the row it keeps", () => {
+        const { grid } = stubStackedTables();
+
+        const raw = SpreadsheetRaw.init();
+        raw.fetchAllSheetProperties();
+        raw.table("top").row(0).delete();
+        const lower = raw.table("lower");
+        lower.row(0).delete();
+        lower.row(1).cell(1).updateValue("z");
+        lower.requestSortGSheet({ colIdxToSortBy: 1, sortOrder: "ASCENDING" });
+        raw.batchUpdateGSheets();
+
+        expect(tableRows(grid)).toMatchObject({
+          lower: [lowerHeaderRowIndex - 1, lowerHeaderRowIndex + 1],
+        });
+        expect(
+          grid.sheet(111).values({
+            startRowIndex: lowerHeaderRowIndex - 1,
+            endRowIndex: lowerHeaderRowIndex + 1,
+            endColumnIndex: startTableColIndex + 2,
+          }),
+        ).toEqual([
+          ["ID", "Name"],
+          ["b2", "z"],
+        ]);
       });
 
       function flushedGrowthOfTop() {
