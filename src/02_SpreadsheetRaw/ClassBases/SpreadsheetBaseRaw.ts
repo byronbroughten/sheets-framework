@@ -42,6 +42,7 @@ export class SpreadsheetBaseRaw {
     return {
       spreadsheetStateRaw: {
         allSheetPropertiesAreFetched: false,
+        isRegeneratingConfigs: false,
         timeZone: undefined,
         rawSource: installedRawSource(),
         fetchQueue: emptyStateRaw.spreadsheetFetchQueue(),

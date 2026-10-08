@@ -33,6 +33,8 @@ import type { GridRangeProps } from "./AccessorsRaw";
 
 export interface StateRaw {
   allSheetPropertiesAreFetched: boolean;
+  // The run's placement check judges against the very configs a regeneration replaces.
+  isRegeneratingConfigs: boolean;
   timeZone: string | undefined;
   rawSource: RawSource;
   fetchQueue: SpreadsheetFetchQueueRaw;

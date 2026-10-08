@@ -18,7 +18,7 @@ export class TableOrigin {
     this.headerRowIndex = headerRowIndex;
     this.startColIndex = startColIndex;
   }
-  // Where the framework creates a Table; a managed one is found where its configs record it.
+  // Where the framework creates a Table; a managed one is found by fetching it.
   static expected(): TableOrigin {
     return new TableOrigin({
       headerRowIndex: SheetIndex.row(headRows.countAboveHeader),

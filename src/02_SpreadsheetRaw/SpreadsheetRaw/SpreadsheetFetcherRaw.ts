@@ -44,9 +44,10 @@ export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
     // An empty dataFilters list would fetch the whole spreadsheet's grid data.
     if (this.fetcherGridRanges.length === 0) return;
     const data = this._fetchByGridRanges(includeProgrammaticFacts);
+    // Before finalize, which clears the zone flags and may then stop on placement.
+    this.spreadsheetStateRaw.fetchQueue.gridRanges = [];
     this._addDataToState(data);
     this._finalizeGatheredFetches();
-    this.spreadsheetStateRaw.fetchQueue.gridRanges = [];
   }
   // One sheet by GID without Table-placement finalize, so a moved Table can wait for overlay.
   fetchSheetUsedGrid(sheetGid: number): void {

@@ -12,13 +12,13 @@ It runs per recorded Table in `SpreadsheetRaw`'s post-fetch step (`SpreadsheetTa
 - its header row is in the zone, with room for its head rows above it (`headerZone.holdsHeaderRow`). With the default depth that means row 4. Judged on every fetch that brings the Table, since it reads geometry alone.
 - the column ID row (header −3) holds only blanks or this Table's own prefixed column IDs, and at least one ID, across the Table's columns. Judged on a fetch the zone rode, since the zone carries that row.
 
-Any failure stops the run, naming the sheet and the Table: "must have its header row on row 4", or "has no Table … with its header row on row 4". The same step stops on a Table met with only its header, once its header is in the zone ([blank row](./blank-row.md#a-table-met-with-only-its-header-stops-the-run)). For example, inserting a row above a Table pushes its header out of the zone, and the zone fetch no longer sees it, so the run reads it as missing. A band of head rows shifted by an inserted row, with the header left in place, fails the column ID row test.
+Any failure stops the run, naming the sheet and the Table: "must have its header row on row 4 — move it back", or "has no Table … with its header row on row 4 — move it back, or regenerate the configs … if it is gone". Only a missing Table or a failed column ID row is offered regeneration, since generation refuses a Table outside the zone. The same step stops on a Table met with only its header, once its header is in the zone ([blank row](./blank-row.md#a-table-met-with-only-its-header-stops-the-run)). For example, inserting a row above a Table pushes its header out of the zone, and the zone fetch no longer sees it, so the run reads it as missing. A band of head rows shifted by an inserted row, with the header left in place, fails the column ID row test.
 
 ## Moves within the zone need no regeneration
 
 A column insert or delete to a Table's left, or a move along its rows, leaves its header in the zone, and the next run finds it there. The run's own column insert pushes the Tables to its right along, within the zone, so a later run reads them where they landed ([queued writes](./queued-writes.md)). No check is once-per-run: a Table moved within the zone is fine on every fetch.
 
-Before a Table's properties arrive, the few reads and writes that need a position aim at `TableOrigin.expected()`, the spot the framework creates Tables at. The column ID row's fetch, the one read every first fetch needs, rides the zone instead.
+Before a Table's properties arrive, the few reads that need a position, such as a row label, aim at `TableOrigin.expected()`, the spot the framework creates Tables at. A gathered write refuses such a Table (`originAtGathering`), since no recorded position stands behind the guess. The column ID row's fetch, the one read every first fetch needs, rides the zone instead.
 
 ## The zone costs no round trip
 
@@ -29,6 +29,8 @@ The zone costs the used cells it covers, not its depth ([finding Tables](./findi
 ## Generation refuses a ticked Table outside the zone
 
 A config sync checks each Table ticked **Let api access**, this sync's ticks included, in `ConfigCoordinator._syncConfigSheetRows`, right after the head-row overlap check below and before anything is flushed or a config file is returned (`SpreadsheetTableValidatorRaw.validateHeadersInZone`). Every Table outside the zone goes into one throw, naming it. So the configs never record a Table that every run would stop on.
+
+Generation itself skips the run's placement check (`isRegeneratingConfigs`, set by `ConfigCoordinator.init`), since that check judges the Tables against the very configs it replaces. Otherwise a recorded Table moved out of the zone would stop generation with the run's message, ticked or not, and could never be unticked. The sync endpoint shares its run's state and keeps the check.
 
 ## Head rows that sit on another Table stop the config sync
 

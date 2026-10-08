@@ -30,6 +30,7 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
   }
   // One per Table the configs record on the sheet; a sheet outside the config never promised to follow the layout.
   tablePlacements(sheetGid: number): TablePlacement[] {
+    if (this.spreadsheetStateRaw.isRegeneratingConfigs) return [];
     return this.schema
       .tablesOnGid(sheetGid)
       .map(({ tableName }) => this._tablePlacement(tableName));
@@ -136,23 +137,24 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
           `${this._sheetLabel(misplacement)} ${this._misplacementReason(misplacement)}`,
       )
       .join("; ");
-    return `${misplacements.length} managed Table(s) are missing or outside the header zone — move each back, or regenerate the configs with sheets-framework gen-configs: ${reasons}`;
+    return `${misplacements.length} managed Table(s) are missing or misplaced: ${reasons}`;
   }
+  // Generation refuses a Table outside the zone, so only the others are offered regeneration.
   private _misplacementReason(misplacement: Misplacement): string {
     if (misplacement.kind === "missing") {
       const name = this.schema
         .sheetByName(misplacement.tableName)
         .trait("tableName");
-      return `has no Table "${name}" with ${headerRowPlace()}`;
+      return `has no Table "${name}" with ${headerRowPlace()} — move it back, or ${regenerateFix} if it is gone`;
     } else if (misplacement.kind === "outside-zone") {
       const { name } = this.ss.table(misplacement.tableId);
-      return `has Table "${name}", which must have ${headerRowPlace()}`;
+      return `has Table "${name}", which must have ${headerRowPlace()} — move it back`;
     } else if (misplacement.kind === "band-shifted") {
       const { idPrefix } = this.schema.sheetByName(misplacement.tableName);
       const colIdRowLabel = this.ss
         .table(misplacement.tableId)
         .rowLabel(this.schema.colIdRowIndex);
-      return `needs its own "${idPrefix}" column IDs, and only those, in ${colIdRowLabel}`;
+      return `needs its own "${idPrefix}" column IDs, and only those, in ${colIdRowLabel} — move the Table back, or ${regenerateFix}`;
     } else {
       throw new Error(`Unknown misplacement ${JSON.stringify(misplacement)}.`);
     }
@@ -161,6 +163,9 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
     return this.ss.sheet(sheetGid).label;
   }
 }
+
+const regenerateFix =
+  "regenerate the configs with sheets-framework gen-configs";
 
 function headerZoneFix(tableLabel: string): string {
   return `${tableLabel} must have ${headerRowPlace()}.`;

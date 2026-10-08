@@ -193,6 +193,7 @@ function seedFixture(
   options: {
     testColumnId?: string;
     testTableId?: string;
+    itemHeaderRowIndex?: number;
     fillRowIdsRunStatusColumnId?: string;
     spreadsheetConfigTableEndRowIndex?: number;
     spreadsheetConfigExtraRows?: Record<
@@ -213,6 +214,7 @@ function seedFixture(
   } = {},
 ) {
   const testColumnId = options.testColumnId ?? "c:itm:xyz123";
+  const itemHeaderRowIndex = options.itemHeaderRowIndex ?? tableHeaderRowIndex;
   const columnConfigDataRows = options.columnConfigDataRows ?? [];
   return stubSheetsService({
     sheets: [
@@ -310,14 +312,15 @@ function seedFixture(
         // header row (3) needs real text — newColumnConfigs() now throws
         // rather than skips a column still missing one after a sync.
         rows: buildGridRows({
-          0: [testColumnId],
-          3: ["Some Header"],
-          4: [],
+          [itemHeaderRowIndex - 3]: [testColumnId],
+          [itemHeaderRowIndex]: ["Some Header"],
+          [itemHeaderRowIndex + 1]: [],
         }),
         table: {
           tableId: options.testTableId ?? "item",
           name: "Item",
-          endRowIndex: 5,
+          startRowIndex: itemHeaderRowIndex,
+          endRowIndex: itemHeaderRowIndex + 2,
         },
       },
       options.valueConfigSheet ?? floorValueConfigTab(),
@@ -1622,6 +1625,27 @@ describe("ConfigCoordinator.generateConfigFiles head-row overlap", () => {
     ).toThrowError(
       /^Table "Tenants" on "Records" \(gid \d+\) must have its header row on row 4\.$/,
     );
+  });
+
+  it("refuses a recorded, ticked Table moved below the header zone with generation's own fix", () => {
+    seedFixture({ itemHeaderRowIndex: tableHeaderRowIndex + 2 });
+
+    expect(() =>
+      ConfigCoordinator.init().generateConfigFiles("../makeConfigs"),
+    ).toThrowError(
+      /^Table "Item" on "Item" \(gid \d+\) must have its header row on row 4\.$/,
+    );
+  });
+
+  it("drops a recorded Table moved below the header zone once it is unticked", () => {
+    seedFixture({
+      itemHeaderRowIndex: tableHeaderRowIndex + 2,
+      extraTableConfigDataRows: { 4: ["item", "", "Item", false] },
+    });
+
+    const parsed =
+      ConfigCoordinator.init().generateConfigFiles("../makeConfigs");
+    expect(parsed.tableConfigs).not.toContain('"item"');
   });
 
   it("leaves an unticked Table below the header zone to the operator", () => {

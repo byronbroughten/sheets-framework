@@ -119,7 +119,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     raw.tableOnSheet(logGid).gatherFetchProperties();
 
     expect(() => raw.fetchAllGathered()).toThrowError(
-      /regenerate the configs.*"Item" \(gid \d+\) has no Table "item" with its header row on row 4.*"Log" \(gid \d+\) has no Table/,
+      /"Item" \(gid \d+\) has no Table "item" with its header row on row 4 — move it back, or regenerate the configs.*"Log" \(gid \d+\) has no Table/,
     );
   });
 
@@ -178,7 +178,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     raw.tableOnSheet(itemGid).gatherFetchProperties();
 
     expect(() => raw.fetchAllGathered()).toThrowError(
-      /outside the header zone.*"Item" \(gid \d+\) has Table ".*", which must have its header row on row 4/,
+      /"Item" \(gid \d+\) has Table ".*", which must have its header row on row 4 — move it back$/,
     );
   });
 
@@ -247,7 +247,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     raw.tableOnSheet(logGid).gatherFetchProperties();
 
     expect(() => raw.fetchAllGathered()).toThrowError(
-      /outside the header zone.*"Item".*Table "Logs" on "Log" \(gid \d+\) has only its header/,
+      /misplaced.*"Item".*Table "Logs" on "Log" \(gid \d+\) has only its header/,
     );
   });
 
@@ -323,7 +323,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     raw.tableOnSheet(itemGid).columnResolver.gatherFetchColumnIds();
 
     expect(() => raw.fetchAllGathered()).toThrowError(
-      /regenerate the configs.*"Item" \(gid \d+\) has no Table "item" with its header row on row 4/,
+      /"Item" \(gid \d+\) has no Table "item" with its header row on row 4 — move it back, or regenerate the configs/,
     );
     expect(getByDataFilterCalls).toHaveLength(1);
     expect(getCalls).toEqual([]);
@@ -360,7 +360,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     raw.tableOnSheet(itemGid).gatherFetchProperties();
 
     expect(() => raw.fetchAllGathered()).toThrowError(
-      /regenerate the configs.*"Item" \(gid \d+\) needs its own "itm" column IDs, and only those, in row 1/,
+      /"Item" \(gid \d+\) needs its own "itm" column IDs, and only those, in row 1 — move the Table back, or regenerate the configs/,
     );
   });
 
@@ -504,6 +504,32 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     ]);
   });
 
+  it("sends the header zone once on a fetch after one that stopped on placement", () => {
+    const { getByDataFilterCalls } = stubSheetsService({
+      sheets: [
+        misplacedTableSheet({
+          sheetId: itemGid,
+          title: "Item",
+          startRowIndex: tableHeaderRowIndex - 1,
+        }),
+      ],
+    });
+
+    const raw = SpreadsheetRaw.init();
+    raw.tableOnSheet(itemGid).gatherFetchProperties();
+    expect(() => raw.fetchAllGathered()).toThrowError(/must have/);
+    raw.tableOnSheet(itemGid).gatherFetchProperties();
+    expect(() => raw.fetchAllGathered()).toThrowError(/must have/);
+
+    expect(recordedGridRanges(getByDataFilterCalls.slice(1))).toEqual([
+      {
+        sheetId: itemGid,
+        startRowIndex: 0,
+        endRowIndex: tableHeaderRowIndex + 1,
+      },
+    ]);
+  });
+
   it("lets the column ID row ride the header zone before the Table is known", () => {
     const { getByDataFilterCalls } = stubSheetsService({
       sheets: [placedTableSheet({ sheetId: itemGid, title: "Item" })],
@@ -520,6 +546,18 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
         endRowIndex: tableHeaderRowIndex + 1,
       },
     ]);
+  });
+
+  it("refuses to aim a gathered write at a Table not yet fetched, since no position is recorded", () => {
+    stubSheetsService({
+      sheets: [placedTableSheet({ sheetId: itemGid, title: "Item" })],
+    });
+
+    const raw = SpreadsheetRaw.init();
+
+    expect(() => raw.tableOnSheet(itemGid).originAtGathering()).toThrowError(
+      /Table is unknown for sheetGid/,
+    );
   });
 
   it("refuses a full-row fetch before the sheet has a Table in state", () => {
@@ -994,7 +1032,7 @@ describe("several managed Tables on one sheet", () => {
 
     const message = thrownMessage(() => raw.fetchAllGathered());
     expect(message).toMatch(
-      /^1 managed Table\(s\) are missing or outside the header zone .*"Layout" \(gid \d+\) has Table "layoutRight", which must have its header row on row 4$/,
+      /^1 managed Table\(s\) are missing or misplaced: "Layout" \(gid \d+\) has Table "layoutRight", which must have its header row on row 4 — move it back$/,
     );
   });
 
@@ -1013,7 +1051,7 @@ describe("several managed Tables on one sheet", () => {
     gatherEveryZone(raw);
 
     expect(() => raw.fetchAllGathered()).toThrowError(
-      /^1 managed Table\(s\) .*"Layout" \(gid \d+\) has no Table "layoutRight" with its header row on row 4$/,
+      /^1 managed Table\(s\) .*"Layout" \(gid \d+\) has no Table "layoutRight" with its header row on row 4 — move it back, or regenerate the configs with sheets-framework gen-configs if it is gone$/,
     );
   });
 
@@ -1032,7 +1070,7 @@ describe("several managed Tables on one sheet", () => {
     gatherEveryZone(raw);
 
     expect(() => raw.fetchAllGathered()).toThrowError(
-      /^1 managed Table\(s\) .*"Layout" \(gid \d+\) needs its own "lyr" column IDs, and only those, in row 1$/,
+      /^1 managed Table\(s\) .*"Layout" \(gid \d+\) needs its own "lyr" column IDs, and only those, in row 1 — move the Table back, or regenerate the configs with sheets-framework gen-configs$/,
     );
   });
 
