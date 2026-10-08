@@ -485,6 +485,57 @@ describe("TableRaw.appendColumn", () => {
       ]);
     });
 
+    it("queues one protection when two side-by-side Tables protect the head row they share", () => {
+      const { raw, grid } = fetchedTablesAround();
+
+      raw.table("left").headRow("header").addEditWarning({ description: "h" });
+      raw.table("right").headRow("header").addEditWarning({ description: "h" });
+      raw.batchUpdateGSheets();
+
+      expect(grid.sheet(111).protectedRanges.map(({ range }) => range)).toEqual(
+        [
+          {
+            sheetId: 111,
+            startRowIndex: headerRow,
+            endRowIndex: headerRow + 1,
+          },
+        ],
+      );
+    });
+
+    it("lands a conditional-format rule and a whole-column protection queued on a Table it shifts right at its new columns", () => {
+      const { raw, grid } = fetchedTablesAround();
+
+      raw.table("left").appendColumn({ columnId: "c:lft:new", header: "New" });
+      const code = raw.table("right").column(1);
+      code.addConditionalFormatRule({
+        condition: { type: "NUMBER_EQ", value: true },
+        format: { backgroundColor: { red: 1, green: 0, blue: 0 } },
+      });
+      code.addEditWarningWholeColumn({ description: "code" });
+      raw.batchUpdateGSheets();
+
+      const codeColumn = {
+        sheetId: 111,
+        startColumnIndex: rightStart + 2,
+        endColumnIndex: rightStart + 3,
+      };
+      expect(
+        grid.sheet(111).conditionalFormats.map(({ ranges }) => ranges),
+      ).toEqual([
+        [
+          {
+            ...codeColumn,
+            startRowIndex: headerRow + 1,
+            endRowIndex: lastRow + 1,
+          },
+        ],
+      ]);
+      expect(grid.sheet(111).protectedRanges.map(({ range }) => range)).toEqual(
+        [{ ...codeColumn, startRowIndex: 0 }],
+      );
+    });
+
     it("lands inserts on two side-by-side Tables in one batch, each at its own end", () => {
       const { raw, grid } = fetchedTablesAround();
 

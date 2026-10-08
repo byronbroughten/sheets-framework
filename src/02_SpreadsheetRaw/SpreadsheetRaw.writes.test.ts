@@ -472,6 +472,66 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
         ).toEqual([["ID"], ["b2"]]);
       });
 
+      it("lands a checkbox, a conditional-format rule and a column protection queued on a lower Table at its rows after growth, and leaves a whole-sheet protection whole", () => {
+        const { grid } = stubStackedTables();
+
+        const raw = SpreadsheetRaw.init();
+        raw.fetchAllSheetProperties();
+        raw.table("top").appendDataRow().updateValue(0, "t3");
+        const lower = raw.table("lower");
+        lower.row(1).cell(1).addCheckboxValidation();
+        lower.column(0).addConditionalFormatRule({
+          condition: { type: "NUMBER_EQ", value: true },
+          format: { backgroundColor: lightGreen },
+        });
+        lower.column(1).addEditWarning({ description: "lower name" });
+        raw.sheet(111).addEditWarningWholeSheet({ description: "whole" });
+        raw.batchUpdateGSheets();
+
+        const lowerBody = {
+          sheetId: 111,
+          startRowIndex: lowerHeaderRowIndex + 2,
+          endRowIndex: lowerHeaderRowIndex + 4,
+        };
+        expect(
+          grid.sheet(111).rows({
+            ...lowerBody,
+            startColumnIndex: startTableColIndex + 1,
+            endColumnIndex: startTableColIndex + 2,
+          }),
+        ).toEqual([
+          ["x"],
+          [{ value: "y", dataValidationConditionType: "BOOLEAN" }],
+        ]);
+        expect(
+          grid.sheet(111).conditionalFormats.map(({ ranges }) => ranges),
+        ).toEqual([
+          [
+            {
+              ...lowerBody,
+              startColumnIndex: startTableColIndex,
+              endColumnIndex: startTableColIndex + 1,
+            },
+          ],
+        ]);
+        expect(
+          grid.sheet(111).protectedRanges.map(({ description, range }) => ({
+            description,
+            range,
+          })),
+        ).toEqual([
+          { description: "whole", range: { sheetId: 111 } },
+          {
+            description: "lower name",
+            range: {
+              ...lowerBody,
+              startColumnIndex: startTableColIndex + 1,
+              endColumnIndex: startTableColIndex + 2,
+            },
+          },
+        ]);
+      });
+
       function flushedGrowthOfTop() {
         const { grid } = stubStackedTables();
         const raw = SpreadsheetRaw.init();

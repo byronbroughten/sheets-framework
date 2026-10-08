@@ -1,11 +1,10 @@
 import type {
-  ConditionalFormatDeclaration,
   ConditionalFormatRule,
+  ModelableConditionalFormatRule,
 } from "../00_Source/RawSource/ConditionalFormat";
 import type {
-  EditLockDeclaration,
   EditProtection,
-  EditWarningDeclaration,
+  EditProtectionContent,
   ProtectionGridRange,
   WholeSheetEditLockDeclaration,
   WholeSheetEditWarningDeclaration,
@@ -148,12 +147,14 @@ export class SheetRaw extends SpreadsheetBaseRaw {
   conditionalFormatRules(): ConditionalFormatRule[] {
     return this.conditionalFormats.conditionalFormatRules();
   }
-  addConditionalFormatRuleAt(
-    range: GridRangeProps,
-    declaration: ConditionalFormatDeclaration,
-  ): this {
-    this.conditionalFormats.addConditionalFormatRuleAt(range, declaration);
-    return this;
+  hasPendingConditionalFormatRule(
+    rule: ModelableConditionalFormatRule,
+    queuedOnTable: ModelableConditionalFormatRule[],
+  ): boolean {
+    return this.conditionalFormats.hasPendingConditionalFormatRule(
+      rule,
+      queuedOnTable,
+    );
   }
   removeConditionalFormatRulesAt(range: GridRangeProps): this {
     this.conditionalFormats.removeConditionalFormatRulesAt(range);
@@ -189,19 +190,11 @@ export class SheetRaw extends SpreadsheetBaseRaw {
     this.protections.addEditLockWholeSheet(declaration);
     return this;
   }
-  addEditWarningAt(
-    range: ProtectionGridRange,
-    declaration: EditWarningDeclaration = {},
-  ): this {
-    this.protections.addEditWarningAt(range, declaration);
-    return this;
-  }
-  addEditLockAt(
-    range: ProtectionGridRange,
-    declaration: EditLockDeclaration = {},
-  ): this {
-    this.protections.addEditLockAt(range, declaration);
-    return this;
+  hasPendingEditProtection(
+    protection: EditProtectionContent,
+    queuedOnTable: EditProtectionContent[],
+  ): boolean {
+    return this.protections.hasPendingEditProtection(protection, queuedOnTable);
   }
   removeEditProtectionsAt(range: ProtectionGridRange): this {
     this.protections.removeEditProtectionsAt(range);

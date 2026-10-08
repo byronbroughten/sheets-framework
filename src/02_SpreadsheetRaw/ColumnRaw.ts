@@ -12,14 +12,9 @@ import type {
   EditWarningDeclaration,
 } from "../00_Source/RawSource/EditProtection";
 import type {
-  BoundedGridRange,
   GridRangeProps,
   TableColumnType,
 } from "../00_Source/RawSource/RawSource";
-import {
-  SheetIndex,
-  type SheetRowIndex,
-} from "../00_Source/RawSource/SheetIndex";
 import {
   type HeadRole,
   headRows,
@@ -32,6 +27,7 @@ import type {
   CellFill,
   FindReplaceTerms,
   TableEndColumnHeadCells,
+  TableGridRange,
 } from "./ClassTypes/StateRaw";
 import { ColumnProfileRaw } from "./ColumnProfileRaw";
 import { SpreadsheetRaw } from "./SpreadsheetRaw";
@@ -75,20 +71,21 @@ export class ColumnRaw<
   get topCell(): CellRaw<VN> {
     return this.cell(0);
   }
-  dataGridRange(): BoundedGridRange {
-    const { origin, dataRowCount } = this.table;
+  get dataTableGridRange(): TableGridRange {
     return {
-      sheetId: this.sheetGid,
-      startRowIndex: origin.sheetRowIndex(0),
-      endRowIndex: origin.sheetRowIndex(dataRowCount),
-      startColumnIndex: origin.sheetColIndex(this.colIndex),
-      endColumnIndex: origin.sheetColIndex(this.colIndex + 1),
+      startRowIndex: 0,
+      endRowIndex: this.table.dataRowCount,
+      ...this._wholeColumnTableGridRange,
     };
   }
   gridRangeFromRow(startRowIndex: number): GridRangeProps {
-    return this._gridRangeFromSheetRow(
-      this.tableOrigin().sheetRowIndex(startRowIndex),
-    );
+    const origin = this.tableOrigin();
+    return {
+      sheetId: this.sheetGid,
+      startRowIndex: origin.sheetRowIndex(startRowIndex),
+      startColumnIndex: origin.sheetColIndex(this.colIndex),
+      endColumnIndex: origin.sheetColIndex(this.colIndex + 1),
+    };
   }
   get workingCellIndexes(): number[] {
     return this.table.workingRowIndexes;
@@ -226,14 +223,11 @@ export class ColumnRaw<
     return this;
   }
   addConditionalFormatRule(declaration: ConditionalFormatDeclaration): this {
-    this.table.sheet.addConditionalFormatRuleAt(
-      this.dataGridRange(),
-      declaration,
-    );
+    this.table.addConditionalFormatRuleAt(this.dataTableGridRange, declaration);
     return this;
   }
   removeConditionalFormatRules(): this {
-    this.table.sheet.removeConditionalFormatRulesAt(this.dataGridRange());
+    this.table.removeConditionalFormatRulesAt(this.dataTableGridRange);
     return this;
   }
   removeConditionalFormatRule(rule: ConditionalFormatRule): this {
@@ -241,40 +235,37 @@ export class ColumnRaw<
     return this;
   }
   addEditWarning(declaration: EditWarningDeclaration = {}): this {
-    this.table.sheet.addEditWarningAt(this.dataGridRange(), declaration);
+    this.table.addEditWarningAt(this.dataTableGridRange, declaration);
     return this;
   }
   addEditWarningFromRow(
     startRowIndex: number,
     declaration: EditWarningDeclaration = {},
   ): this {
-    this.table.sheet.addEditWarningAt(
-      this.gridRangeFromRow(startRowIndex),
+    this.table.addEditWarningAt(
+      { startRowIndex, ...this._wholeColumnTableGridRange },
       declaration,
     );
     return this;
   }
   addEditWarningWholeColumn(declaration: EditWarningDeclaration = {}): this {
-    this.table.sheet.addEditWarningAt(
-      this._wholeColumnGridRange(),
-      declaration,
-    );
+    this.table.addEditWarningAt(this._wholeColumnTableGridRange, declaration);
     return this;
   }
   addEditLock(declaration: EditLockDeclaration = {}): this {
-    this.table.sheet.addEditLockAt(this.dataGridRange(), declaration);
+    this.table.addEditLockAt(this.dataTableGridRange, declaration);
     return this;
   }
   addEditLockWholeColumn(declaration: EditLockDeclaration = {}): this {
-    this.table.sheet.addEditLockAt(this._wholeColumnGridRange(), declaration);
+    this.table.addEditLockAt(this._wholeColumnTableGridRange, declaration);
     return this;
   }
   removeEditProtections(): this {
-    this.table.sheet.removeEditProtectionsAt(this.dataGridRange());
+    this.table.removeEditProtectionsAt(this.dataTableGridRange);
     return this;
   }
   removeEditProtectionsWholeColumn(): this {
-    this.table.sheet.removeEditProtectionsAt(this._wholeColumnGridRange());
+    this.table.removeEditProtectionsAt(this._wholeColumnTableGridRange);
     return this;
   }
   removeEditProtection(protection: EditProtection): this {
@@ -301,16 +292,8 @@ export class ColumnRaw<
       this.cell(rowIndex).ensureInWorking();
     });
   }
-  private _wholeColumnGridRange(): GridRangeProps {
-    return this._gridRangeFromSheetRow(SheetIndex.row(0));
-  }
-  private _gridRangeFromSheetRow(startRowIndex: SheetRowIndex): GridRangeProps {
-    const origin = this.tableOrigin();
-    return {
-      sheetId: this.sheetGid,
-      startRowIndex,
-      startColumnIndex: origin.sheetColIndex(this.colIndex),
-      endColumnIndex: origin.sheetColIndex(this.colIndex + 1),
-    };
+  // No start row, so it runs from the sheet's top.
+  private get _wholeColumnTableGridRange(): TableGridRange {
+    return { startColIndex: this.colIndex, endColIndex: this.colIndex + 1 };
   }
 }

@@ -48,6 +48,9 @@ export const emptyStateRaw = {
       fillColumns: [],
       findReplaces: [],
       columnTypes: new Map(),
+      checkboxCells: [],
+      conditionalFormatRules: [],
+      editProtections: [],
     };
   },
   rowWrites(): RowWrites {

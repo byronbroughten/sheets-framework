@@ -18,7 +18,7 @@ import type {
 import type { RgbColor } from "../00_Source/RawSource/RgbColor";
 import { CellBaseRaw } from "./ClassBases/CellBaseRaw";
 import type { RowCommonRaw } from "./ClassBases/RowCommonRaw";
-import type { CellFill } from "./ClassTypes/StateRaw";
+import type { CellFill, TableGridRange } from "./ClassTypes/StateRaw";
 import { TableRaw } from "./TableRaw";
 
 export class CellRaw<
@@ -38,6 +38,14 @@ export class CellRaw<
       endRowIndex: origin.sheetRowIndex(this.rowIndex + 1),
       startColumnIndex: origin.sheetColIndex(this.colIndex),
       endColumnIndex: origin.sheetColIndex(this.colIndex + 1),
+    };
+  }
+  get tableGridRange(): TableGridRange {
+    return {
+      startRowIndex: this.rowIndex,
+      endRowIndex: this.rowIndex + 1,
+      startColIndex: this.colIndex,
+      endColIndex: this.colIndex + 1,
     };
   }
   gatherFetchRange(): this {
@@ -142,15 +150,18 @@ export class CellRaw<
     return this;
   }
   addCheckboxValidation(): this {
-    this.table.addCheckboxValidationAt(this.gridRange());
+    this.table.addCheckboxValidationAt({
+      rowIndex: this.rowIndex,
+      colIndex: this.colIndex,
+    });
     return this;
   }
   addConditionalFormatRule(declaration: ConditionalFormatDeclaration): this {
-    this.table.sheet.addConditionalFormatRuleAt(this.gridRange(), declaration);
+    this.table.addConditionalFormatRuleAt(this.tableGridRange, declaration);
     return this;
   }
   removeConditionalFormatRules(): this {
-    this.table.sheet.removeConditionalFormatRulesAt(this.gridRange());
+    this.table.removeConditionalFormatRulesAt(this.tableGridRange);
     return this;
   }
   removeConditionalFormatRule(rule: ConditionalFormatRule): this {
@@ -158,15 +169,15 @@ export class CellRaw<
     return this;
   }
   addEditWarning(declaration: EditWarningDeclaration = {}): this {
-    this.table.sheet.addEditWarningAt(this.gridRange(), declaration);
+    this.table.addEditWarningAt(this.tableGridRange, declaration);
     return this;
   }
   addEditLock(declaration: EditLockDeclaration = {}): this {
-    this.table.sheet.addEditLockAt(this.gridRange(), declaration);
+    this.table.addEditLockAt(this.tableGridRange, declaration);
     return this;
   }
   removeEditProtections(): this {
-    this.table.sheet.removeEditProtectionsAt(this.gridRange());
+    this.table.removeEditProtectionsAt(this.tableGridRange);
     return this;
   }
   removeEditProtection(protection: EditProtection): this {

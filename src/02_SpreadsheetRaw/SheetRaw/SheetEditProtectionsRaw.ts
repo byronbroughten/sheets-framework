@@ -1,10 +1,8 @@
 import {
-  type EditLockDeclaration,
   type EditProtection,
   type EditProtectionContent,
   editProtectionContentSatisfies,
   editProtectionsEqual,
-  type EditWarningDeclaration,
   isWholeColumnGridRange,
   type ProtectionGridRange,
   protectionRangeEqual,
@@ -66,31 +64,14 @@ export class SheetEditProtectionsRaw extends SpreadsheetBaseRaw {
       unprotectedRanges: declaration.unprotectedRanges ?? [],
     });
   }
-  addEditWarningAt(
-    range: ProtectionGridRange,
-    declaration: EditWarningDeclaration = {},
-  ): void {
-    this._queueProtection({
-      kind: "warning",
-      range,
-      description: declaration.description ?? "",
-      users: [],
-      groups: [],
-      unprotectedRanges: [],
-    });
-  }
-  addEditLockAt(
-    range: ProtectionGridRange,
-    declaration: EditLockDeclaration = {},
-  ): void {
-    this._queueProtection({
-      kind: "lock",
-      range,
-      description: declaration.description ?? "",
-      users: declaration.users ?? [],
-      groups: declaration.groups ?? [],
-      unprotectedRanges: [],
-    });
+  // A Table's protections are queued on the Table, so it passes the ones it holds.
+  hasPendingEditProtection(
+    protection: EditProtectionContent,
+    queuedOnTable: EditProtectionContent[],
+  ): boolean {
+    return [...this._pendingEditProtectionContents(), ...queuedOnTable].some(
+      (pending) => editProtectionContentSatisfies(pending, protection),
+    );
   }
   private _queueProtection(protection: EditProtectionContent): void {
     this._assertProtectionWriteRowIndexesNotStale(
@@ -98,13 +79,7 @@ export class SheetEditProtectionsRaw extends SpreadsheetBaseRaw {
       protection.unprotectedRanges,
     );
     this.assertEditProtectionsNotStale();
-    if (
-      this._pendingEditProtectionContents().some((pending) =>
-        editProtectionContentSatisfies(pending, protection),
-      )
-    ) {
-      return;
-    }
+    if (this.hasPendingEditProtection(protection, [])) return;
     this.writeOperations.addProtectedRange.push({
       kind: "addProtectedRange",
       protection,
