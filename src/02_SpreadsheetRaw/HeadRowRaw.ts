@@ -10,6 +10,7 @@ import type {
   HeadRowValueName,
 } from "../01_SpreadsheetSchema/headRows";
 import { HeadRowBaseRaw } from "./ClassBases/HeadRowBaseRaw";
+import type { TableGridRange } from "./ClassTypes/StateRaw";
 
 export class HeadRowRaw<
   HR extends HeadRole = HeadRole,
@@ -21,24 +22,20 @@ export class HeadRowRaw<
     this.cell(colIndex).updateValue(value);
     return this;
   }
+  // The whole sheet row, not just the Table's columns.
+  get tableGridRange(): TableGridRange {
+    return { startRowIndex: this.rowIndex, endRowIndex: this.rowIndex + 1 };
+  }
   addEditWarning(declaration: EditWarningDeclaration = {}): this {
-    this.table.sheet.addEditWarningAt(
-      this.table.rowGridRange(this.rowIndex),
-      declaration,
-    );
+    this.table.addEditWarningAt(this.tableGridRange, declaration);
     return this;
   }
   addEditLock(declaration: EditLockDeclaration = {}): this {
-    this.table.sheet.addEditLockAt(
-      this.table.rowGridRange(this.rowIndex),
-      declaration,
-    );
+    this.table.addEditLockAt(this.tableGridRange, declaration);
     return this;
   }
   removeEditProtections(): this {
-    this.table.sheet.removeEditProtectionsAt(
-      this.table.rowGridRange(this.rowIndex),
-    );
+    this.table.removeEditProtectionsAt(this.tableGridRange);
     return this;
   }
   removeEditProtection(protection: EditProtection): this {

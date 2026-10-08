@@ -221,9 +221,18 @@ export abstract class TableCommonRaw extends TableBaseRaw {
       case "updateColumnType":
         writes.columnTypes.set(props.colIndex, props.columnType);
         break;
+      case "addCheckboxValidation":
+        writes.checkboxCells.push(Obj.strictOmit(props, "action"));
+        break;
+      case "addConditionalFormatRule":
+        writes.conditionalFormatRules.push(Obj.strictOmit(props, "action"));
+        break;
+      case "addEditProtection":
+        writes.editProtections.push(Obj.strictOmit(props, "action"));
+        break;
       default:
         throw new Error(
-          `Invalid action: ${(props as TableWriteProps).action}. Must be one of "sort", "insertTableEndColumn", "fillColumn", "findReplace" or "updateColumnType".`,
+          `Invalid action: ${(props as TableWriteProps).action}. Must be one of "sort", "insertTableEndColumn", "fillColumn", "findReplace", "updateColumnType", "addCheckboxValidation", "addConditionalFormatRule" or "addEditProtection".`,
         );
     }
     return this;

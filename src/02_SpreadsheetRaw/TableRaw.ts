@@ -1,7 +1,11 @@
 import type { CellValueName } from "../00_Source/CellValues/cellValues";
-import type { ConditionalFormatDeclaration } from "../00_Source/RawSource/ConditionalFormat";
+import type {
+  ConditionalFormatDeclaration,
+  ModelableConditionalFormatRule,
+} from "../00_Source/RawSource/ConditionalFormat";
 import type {
   EditLockDeclaration,
+  EditProtectionContent,
   EditWarningDeclaration,
 } from "../00_Source/RawSource/EditProtection";
 import type {
@@ -16,6 +20,7 @@ import type {
 } from "../00_Source/RawSource/RawSource";
 import { SheetIndex } from "../00_Source/RawSource/SheetIndex";
 import { type HeadRole, headRows } from "../01_SpreadsheetSchema/headRows";
+import type { TableOrigin } from "../01_SpreadsheetSchema/TableOrigin";
 import type { Value } from "../01_SpreadsheetSchema/valueSchemas";
 import { Arr } from "../utils/Arr";
 import { Val } from "../utils/Val";
@@ -27,8 +32,12 @@ import {
   type ColumnFill,
   type FindReplaceTerms,
   type SortParameters,
+  type TableCell,
+  type TableConditionalFormatRule,
+  type TableEditProtection,
   type TableEndColumnHeadCells,
   type TableFindReplace,
+  type TableGridRange,
   type TableWrites,
 } from "./ClassTypes/StateRaw";
 import { ColumnRaw } from "./ColumnRaw";
@@ -66,22 +75,12 @@ export class TableRaw extends TableCommonRaw {
   get hasFetchedProperties(): boolean {
     return this.tableProperties !== undefined;
   }
-  dataGridRange(): GridRangeProps {
-    const { origin, dataRowCount, columnCount } = this;
+  get dataTableGridRange(): TableGridRange {
     return {
-      sheetId: this.sheetGid,
-      startRowIndex: origin.sheetRowIndex(0),
-      endRowIndex: origin.sheetRowIndex(dataRowCount),
-      startColumnIndex: origin.sheetColIndex(0),
-      endColumnIndex: origin.sheetColIndex(columnCount),
-    };
-  }
-  rowGridRange(rowIndex: number): GridRangeProps {
-    const origin = this.tableOrigin();
-    return {
-      sheetId: this.sheetGid,
-      startRowIndex: origin.sheetRowIndex(rowIndex),
-      endRowIndex: origin.sheetRowIndex(rowIndex + 1),
+      startRowIndex: 0,
+      endRowIndex: this.dataRowCount,
+      startColIndex: 0,
+      endColIndex: this.columnCount,
     };
   }
   // The live Table's columns only, so a range built on it never reaches a neighbour.
@@ -355,23 +354,80 @@ export class TableRaw extends TableCommonRaw {
     });
   }
   addConditionalFormatRule(declaration: ConditionalFormatDeclaration): this {
-    this.sheet.addConditionalFormatRuleAt(this.dataGridRange(), declaration);
-    return this;
+    return this.addConditionalFormatRuleAt(
+      this.dataTableGridRange,
+      declaration,
+    );
   }
   removeConditionalFormatRules(): this {
-    this.sheet.removeConditionalFormatRulesAt(this.dataGridRange());
-    return this;
+    return this.removeConditionalFormatRulesAt(this.dataTableGridRange);
   }
   addEditWarning(declaration: EditWarningDeclaration = {}): this {
-    this.sheet.addEditWarningAt(this.dataGridRange(), declaration);
-    return this;
+    return this.addEditWarningAt(this.dataTableGridRange, declaration);
   }
   addEditLock(declaration: EditLockDeclaration = {}): this {
-    this.sheet.addEditLockAt(this.dataGridRange(), declaration);
-    return this;
+    return this.addEditLockAt(this.dataTableGridRange, declaration);
   }
   removeEditProtections(): this {
-    this.sheet.removeEditProtectionsAt(this.dataGridRange());
+    return this.removeEditProtectionsAt(this.dataTableGridRange);
+  }
+  // Checked against what the sheet holds now; converted again at gathering, after this batch's shifts.
+  addConditionalFormatRuleAt(
+    range: TableGridRange,
+    declaration: ConditionalFormatDeclaration,
+  ): this {
+    this.sheet.assertRowIndexesNotStale();
+    this.sheet.assertConditionalFormatIndexesNotStale();
+    const rule = this._sheetConditionalFormatRule(
+      { range, ...declaration },
+      this.tableOrigin(),
+    );
+    const queued = this._tablesOnSheet().flatMap((table) =>
+      table._queuedSheetConditionalFormatRules(),
+    );
+    if (this.sheet.hasPendingConditionalFormatRule(rule, queued)) return this;
+    return this.queueTableWrite({
+      action: "addConditionalFormatRule",
+      range,
+      ...declaration,
+    });
+  }
+  removeConditionalFormatRulesAt(range: TableGridRange): this {
+    this.sheet.removeConditionalFormatRulesAt(
+      this._sheetGridRange(range, this.tableOrigin()),
+    );
+    return this;
+  }
+  addEditWarningAt(
+    range: TableGridRange,
+    declaration: EditWarningDeclaration = {},
+  ): this {
+    return this._queueEditProtection({
+      kind: "warning",
+      range,
+      description: declaration.description ?? "",
+      users: [],
+      groups: [],
+      unprotectedRanges: [],
+    });
+  }
+  addEditLockAt(
+    range: TableGridRange,
+    declaration: EditLockDeclaration = {},
+  ): this {
+    return this._queueEditProtection({
+      kind: "lock",
+      range,
+      description: declaration.description ?? "",
+      users: declaration.users ?? [],
+      groups: declaration.groups ?? [],
+      unprotectedRanges: [],
+    });
+  }
+  removeEditProtectionsAt(range: TableGridRange): this {
+    this.sheet.removeEditProtectionsAt(
+      this._sheetGridRange(range, this.tableOrigin()),
+    );
     return this;
   }
   // The head rows survive, or every later column-index resolution breaks.
@@ -420,13 +476,13 @@ export class TableRaw extends TableCommonRaw {
       ...(formula !== undefined ? { formula } : {}),
     });
   }
-  addCheckboxValidationAt(range: BoundedGridRange): this {
+  addCheckboxValidationAt({ rowIndex, colIndex }: TableCell): this {
     this.assertRowIndexesNotStale();
-    this.writeOperations.addCheckboxValidation.push({
-      kind: "addCheckboxValidation",
-      range,
+    return this.queueTableWrite({
+      action: "addCheckboxValidation",
+      rowIndex,
+      colIndex,
     });
-    return this;
   }
   gatherQueuedTableWrites(): void {
     const { writes } = this;
@@ -438,6 +494,43 @@ export class TableRaw extends TableCommonRaw {
     });
     writes.findReplaces.forEach((findReplace) => {
       this.gatherFindReplaceOperation(findReplace);
+    });
+    writes.checkboxCells.forEach((cell) => {
+      this.gatherCheckboxValidationOperation(cell);
+    });
+    writes.conditionalFormatRules.forEach((rule) => {
+      this.gatherConditionalFormatRuleOperation(rule);
+    });
+    writes.editProtections.forEach((protection) => {
+      this.gatherEditProtectionOperation(protection);
+    });
+  }
+  gatherCheckboxValidationOperation({ rowIndex, colIndex }: TableCell): void {
+    const origin = this.originAtGathering();
+    this.writeOperations.addCheckboxValidation.push({
+      kind: "addCheckboxValidation",
+      range: {
+        sheetId: this.sheetGid,
+        startRowIndex: origin.sheetRowIndex(rowIndex),
+        endRowIndex: origin.sheetRowIndex(rowIndex + 1),
+        startColumnIndex: origin.sheetColIndex(colIndex),
+        endColumnIndex: origin.sheetColIndex(colIndex + 1),
+      },
+    });
+  }
+  gatherConditionalFormatRuleOperation(rule: TableConditionalFormatRule): void {
+    this.writeOperations.addConditionalFormatRule.push({
+      kind: "addConditionalFormatRule",
+      index: 0,
+      rule: this._sheetConditionalFormatRule(rule, this.originAtGathering()),
+    });
+  }
+  gatherEditProtectionOperation(protection: TableEditProtection): void {
+    let origin = this.tableOrigin();
+    if (hasTableRows(protection.range)) origin = this.originAtGathering();
+    this.writeOperations.addProtectedRange.push({
+      kind: "addProtectedRange",
+      protection: this._sheetEditProtection(protection, origin),
     });
   }
   // Sent before the row deletes, so it spans the body as it stands before them.
@@ -673,6 +766,83 @@ export class TableRaw extends TableCommonRaw {
       endColumnIndex: origin.sheetColIndex(this.columnCount),
     };
   }
+  private _sheetConditionalFormatRule(
+    { range, condition, format }: TableConditionalFormatRule,
+    origin: TableOrigin,
+  ): ModelableConditionalFormatRule {
+    return {
+      kind: "boolean",
+      ranges: [this._sheetGridRange(range, origin)],
+      condition,
+      format,
+    };
+  }
+  private _sheetEditProtection(
+    { range, ...protection }: TableEditProtection,
+    origin: TableOrigin,
+  ): EditProtectionContent {
+    return { ...protection, range: this._sheetGridRange(range, origin) };
+  }
+  // Absent bounds stay absent, as the matching of fetched rules and protections expects.
+  private _sheetGridRange(
+    { startRowIndex, endRowIndex, startColIndex, endColIndex }: TableGridRange,
+    origin: TableOrigin,
+  ): GridRangeProps {
+    const range: GridRangeProps = {
+      sheetId: this.sheetGid,
+      startRowIndex: SheetIndex.row(0),
+    };
+    if (startRowIndex !== undefined) {
+      range.startRowIndex = origin.sheetRowIndex(startRowIndex);
+    }
+    if (endRowIndex !== undefined) {
+      range.endRowIndex = origin.sheetRowIndex(endRowIndex);
+    }
+    if (startColIndex !== undefined) {
+      range.startColumnIndex = origin.sheetColIndex(startColIndex);
+    }
+    if (endColIndex !== undefined) {
+      range.endColumnIndex = origin.sheetColIndex(endColIndex);
+    }
+    return range;
+  }
+  private _queueEditProtection(protection: TableEditProtection): this {
+    if (hasTableRows(protection.range)) this.sheet.assertRowIndexesNotStale();
+    this.sheet.assertEditProtectionsNotStale();
+    const queued = this._tablesOnSheet().flatMap((table) =>
+      table._queuedSheetEditProtections(),
+    );
+    if (
+      this.sheet.hasPendingEditProtection(
+        this._sheetEditProtection(protection, this.tableOrigin()),
+        queued,
+      )
+    ) {
+      return this;
+    }
+    return this.queueTableWrite({ action: "addEditProtection", ...protection });
+  }
+  // This Table even before it is fetched, plus every known neighbour, since a head row's range spans them all.
+  private _tablesOnSheet(): TableRaw[] {
+    const neighbours = this.tableIds()
+      .map((tableId) => this.ss.table(tableId))
+      .filter(
+        (table) => !this.hasFetchedProperties || table.tableId !== this.tableId,
+      );
+    return [this, ...neighbours];
+  }
+  private _queuedSheetConditionalFormatRules(): ModelableConditionalFormatRule[] {
+    const origin = this.tableOrigin();
+    return this.writes.conditionalFormatRules.map((rule) =>
+      this._sheetConditionalFormatRule(rule, origin),
+    );
+  }
+  private _queuedSheetEditProtections(): EditProtectionContent[] {
+    const origin = this.tableOrigin();
+    return this.writes.editProtections.map((protection) =>
+      this._sheetEditProtection(protection, origin),
+    );
+  }
   appendDataRow(): RowRaw {
     return this.row(this.dataRowCount).append();
   }
@@ -686,6 +856,11 @@ export class TableRaw extends TableCommonRaw {
 }
 
 type ColumnTypes = TableWrites["columnTypes"];
+
+// A whole column has none, so moved rows don't bar it.
+function hasTableRows(range: TableGridRange): boolean {
+  return range.startRowIndex !== undefined;
+}
 
 function columnRun(
   rows: BoundedGridRange,

@@ -2,8 +2,14 @@ import type {
   CellValue,
   CellValueName,
 } from "../../00_Source/CellValues/cellValues";
-import type { ConditionalFormatRule } from "../../00_Source/RawSource/ConditionalFormat";
-import type { EditProtection } from "../../00_Source/RawSource/EditProtection";
+import type {
+  ConditionalFormatDeclaration,
+  ConditionalFormatRule,
+} from "../../00_Source/RawSource/ConditionalFormat";
+import type {
+  EditProtection,
+  EditProtectionContent,
+} from "../../00_Source/RawSource/EditProtection";
 import type {
   AddTableOperation,
   BoundedGridRange,
@@ -229,6 +235,29 @@ export interface TableWrites {
   findReplaces: TableFindReplace[];
   // Gathered into the Table's one setTableColumnProperties.
   columnTypes: Map<ColIndex, TableColumnType>;
+  checkboxCells: TableCell[];
+  conditionalFormatRules: TableConditionalFormatRule[];
+  editProtections: TableEditProtection[];
+}
+// Table-relative until gathering; an absent bound stays open, and an absent start row is the sheet's top.
+export interface TableGridRange {
+  startRowIndex?: RowIndex;
+  endRowIndex?: RowIndex;
+  startColIndex?: ColIndex;
+  endColIndex?: ColIndex;
+}
+export interface TableCell {
+  rowIndex: RowIndex;
+  colIndex: ColIndex;
+}
+export interface TableConditionalFormatRule extends ConditionalFormatDeclaration {
+  range: TableGridRange;
+}
+export interface TableEditProtection extends Omit<
+  EditProtectionContent,
+  "range"
+> {
+  range: TableGridRange;
 }
 // One contiguous run of a column's cells: value/colour as repeatCell, formula as pasteData.
 export interface ColumnFill extends CellFill {
@@ -273,6 +302,11 @@ export interface TableWritePropsObj {
     colIndex: ColIndex;
     columnType: TableColumnType;
   };
+  addCheckboxValidation: { action: "addCheckboxValidation" } & TableCell;
+  addConditionalFormatRule: {
+    action: "addConditionalFormatRule";
+  } & TableConditionalFormatRule;
+  addEditProtection: { action: "addEditProtection" } & TableEditProtection;
 }
 export type TableWriteProps = TableWritePropsObj[keyof TableWritePropsObj];
 

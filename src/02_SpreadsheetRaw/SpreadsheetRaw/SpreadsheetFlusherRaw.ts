@@ -190,12 +190,13 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
       ...queued.addCheckboxValidation,
       // Reads the text as it stands mid-batch, so it must follow what writes it.
       ...queued.findReplace,
-      ...this._deleteOperationsDescending(),
-      ...queued.sortTable,
+      // Before the row deletes, which carry them up with the rows, since they were gathered against the layout before.
       ...this._deleteConditionalFormatOperationsDescending(),
       ...queued.addConditionalFormatRule,
       ...queued.deleteProtectedRange,
       ...queued.addProtectedRange,
+      ...this._deleteOperationsDescending(),
+      ...queued.sortTable,
       // Outside the ordering rules the queue was built around, so last.
       ...queued.raw,
     ];

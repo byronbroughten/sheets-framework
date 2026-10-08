@@ -1,7 +1,7 @@
 import {
-  type ConditionalFormatDeclaration,
   type ConditionalFormatRule,
   conditionalFormatRulesEqual,
+  type ModelableConditionalFormatRule,
   rangeEqual,
 } from "../../00_Source/RawSource/ConditionalFormat";
 import type { GridRangeProps } from "../../00_Source/RawSource/RawSource";
@@ -36,30 +36,14 @@ export class SheetConditionalFormatsRaw extends SpreadsheetBaseRaw {
     }
     return rules;
   }
-  addConditionalFormatRuleAt(
-    range: GridRangeProps,
-    declaration: ConditionalFormatDeclaration,
-  ): void {
-    this.sheet.assertRowIndexesNotStale();
-    this.assertConditionalFormatIndexesNotStale();
-    const rule: Extract<ConditionalFormatRule, { kind: "boolean" }> = {
-      kind: "boolean",
-      ranges: [range],
-      condition: declaration.condition,
-      format: declaration.format,
-    };
-    if (
-      this._pendingConditionalFormatRules().some((pending) =>
-        conditionalFormatRulesEqual(pending, rule),
-      )
-    ) {
-      return;
-    }
-    this.writeOperations.addConditionalFormatRule.push({
-      kind: "addConditionalFormatRule",
-      index: 0,
-      rule,
-    });
+  // A Table's rules are queued on the Table, so it passes the ones it holds.
+  hasPendingConditionalFormatRule(
+    rule: ModelableConditionalFormatRule,
+    queuedOnTable: ModelableConditionalFormatRule[],
+  ): boolean {
+    return [...this._pendingConditionalFormatRules(), ...queuedOnTable].some(
+      (pending) => conditionalFormatRulesEqual(pending, rule),
+    );
   }
   private _pendingConditionalFormatRules(): ConditionalFormatRule[] {
     const fetched = this.sheetState.working.conditionalFormats.rules;
@@ -69,10 +53,6 @@ export class SheetConditionalFormatsRaw extends SpreadsheetBaseRaw {
       .sort((left, right) => right.index - left.index);
     deletes.forEach((operation) => {
       rules.splice(operation.index, 1);
-    });
-    this.writeOperations.addConditionalFormatRule.forEach((operation) => {
-      if (operation.rule.ranges[0]?.sheetId !== this.sheetGid) return;
-      rules.splice(operation.index, 0, operation.rule);
     });
     return rules;
   }
