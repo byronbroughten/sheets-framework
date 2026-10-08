@@ -27,8 +27,15 @@ export type HeadRowValue<HR extends HeadRole> = CellValue<HeadRowValueName<HR>>;
 
 // Table-relative, so a head row sits at a negative index above body row 0.
 function headRowIndex(role: HeadRole): number {
-  return -1 - tableLayout.headRowOffsets[role];
+  return indexAtOffset(tableLayout.headRowOffsets[role]);
 }
+
+function indexAtOffset(offset: number): number {
+  return -1 - offset;
+}
+
+// The largest offset, not a named role, so the extent follows tableLayout.
+const countAboveHeader = Math.max(...Object.values(tableLayout.headRowOffsets));
 
 // One per row, so a row two roles share appears once.
 const headRowIndexes: ReadonlySet<number> = new Set(
@@ -36,6 +43,9 @@ const headRowIndexes: ReadonlySet<number> = new Set(
 );
 
 export const headRows = {
+  countAboveHeader,
+  topIndex: indexAtOffset(countAboveHeader),
+  lastAboveHeaderIndex: indexAtOffset(1),
   index: headRowIndex,
   indexes(): number[] {
     return [...headRowIndexes];

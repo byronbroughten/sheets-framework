@@ -20,6 +20,16 @@ Any failure stops the run and names the sheet. The same step stops on a Table me
 
 `TableRaw.gatherFetchProperties` gathers one strip: from row 0 down to the recorded header, in the recorded start column. It overlaps the header cell, so Sheets returns the Table's properties with it, and it carries the column ID row's first cell. It rides the run's first fetch, so the check needs no fetch of its own; the old reclassifying sheet-properties fetch is gone ([round trips](./round-trips.md#table-ranges-and-table-bounded-reads)).
 
+## Head rows that sit on another Table stop the config sync
+
+Google refuses one Table's range over another's, but it can't see head rows, so it accepts a managed Table whose head rows sit on another Table. Head-row writes would then land in the other Table's cells. Nothing the framework does creates that overlap: growth, row deletes and the column insert move a neighbour together with its head rows. Only the operator's arrangement can, and every change to a managed Table's layout passes through a config sync.
+
+So a config sync checks it, in `ConfigCoordinator._syncConfigSheetRows`, once the Table Config rows are read and before anything is flushed or a config file is returned. Each Table ticked **Let api access** on the live sheet, this sync's ticks included, has its head rows compared with the range of every other Table on its sheet, managed or not. The comparison uses geometry alone and reads no cells. A managed Table's head rows on another managed Table's head rows also sit on that Table's range, since a range starts at its header row, so one message covers both. Every overlap goes into one throw, naming the Table, its head rows' 1-based rows and the Table under them.
+
+The head rows' extent runs from `tableLayout`'s largest offset down to just above the header (`headRows.topIndex`, `TableOrigin.topHeadSheetRowIndex`). The column insert's shift and split check uses the same extent.
+
+**Accepted gap:** an unmanaged Table added on top of a managed Table's head rows, with no regeneration since, isn't caught.
+
 ## More than one Table on a sheet
 
 If a fetch finds more than one Table on a sheet with **Let api access**, it refuses and names those sheets, so you can delete the extras; it never guesses which one is managed. The exception is a sheet holding exactly one Table its configs record: the others beside it are unmanaged, and reaching the sheet's Table by GID reaches the recorded one. This refusal stays until several managed Tables may share a sheet (sheets-framework#89).

@@ -8,6 +8,7 @@ import {
   SheetIndex,
   type SheetRowIndex,
 } from "../../00_Source/RawSource/SheetIndex";
+import { headRows } from "../../01_SpreadsheetSchema/headRows";
 import type { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin";
 import { Arr } from "../../utils/Arr";
 import { Obj } from "../../utils/Obj";
@@ -54,6 +55,11 @@ export abstract class TableCommonRaw extends TableBaseRaw {
   }
   get headerOnlyFix(): string {
     return `${this.tableLabel} has only its header: add a row below it holding its formulas.`;
+  }
+  headRowsOverlapFix(other: TableCommonRaw): string {
+    const { origin } = this;
+    const rows = `${origin.rowNumber(headRows.topIndex)}–${origin.rowNumber(headRows.lastAboveHeaderIndex)}`;
+    return `Table "${this.name}" on sheet "${this.sheetTitle}" has head rows in rows ${rows} that sit on Table "${other.name}". Move "${this.name}" so that the ${headRows.countAboveHeader} rows above its header sit clear of "${other.name}".`;
   }
   get dataRowCount(): number {
     this.assertRowIndexesNotStale();
@@ -135,6 +141,16 @@ export abstract class TableCommonRaw extends TableBaseRaw {
     }
     const range = headAndTableRange(properties);
     return isPushedRightBy(band, range) && !fitsWithinRowsOf(range, band);
+  }
+  // Google sees only the other Table's range, so it lets this overlap through.
+  headRowsSitOn(other: TableCommonRaw): boolean {
+    return (
+      this.sheetGid === other.sheetGid &&
+      rangesOverlap(
+        headRowsRange(this._knownTableProperties()),
+        other._knownTableProperties(),
+      )
+    );
   }
   shiftColumnsRight(columnCount: number): void {
     const properties = this._knownTableProperties();
@@ -335,8 +351,27 @@ function isPushedRightBy(
 function headAndTableRange(properties: TablePropertiesRaw): TablePropertiesRaw {
   return {
     ...properties,
-    startRowIndex: originOf(properties).headSheetRowIndex("columnId"),
+    startRowIndex: originOf(properties).topHeadSheetRowIndex,
   };
+}
+
+function headRowsRange(properties: TablePropertiesRaw): TablePropertiesRaw {
+  return {
+    ...headAndTableRange(properties),
+    endRowIndex: properties.startRowIndex,
+  };
+}
+
+function rangesOverlap(
+  range: TablePropertiesRaw,
+  other: TablePropertiesRaw,
+): boolean {
+  return (
+    range.startRowIndex < other.endRowIndex &&
+    other.startRowIndex < range.endRowIndex &&
+    range.startColumnIndex < other.endColumnIndex &&
+    other.startColumnIndex < range.endColumnIndex
+  );
 }
 
 function fitsWithinRowsOf(

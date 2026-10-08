@@ -131,6 +131,9 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
       return [col.tableId.value(rowIndex)];
     });
   }
+  validateHeadRowsClear(): void {
+    this.ss.raw.validateHeadRowsClear(this.tableIdsApiAccesses());
+  }
   idPrefix(tableId: string): string {
     return Val.assert(this._idPrefixesByTableId().get(tableId), "ID prefix");
   }

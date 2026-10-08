@@ -111,6 +111,20 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
     });
     throw new Error(sentences.join(" "));
   }
+  // By geometry alone: the column ID row may give way to metadata on the header row.
+  validateHeadRowsClear(managedTableIds: string[]): void {
+    const sentences = managedTableIds.flatMap((tableId) => {
+      const table = this.ss.table(tableId);
+      return table
+        .tableIds()
+        .filter((otherId) => otherId !== tableId)
+        .map((otherId) => this.ss.table(otherId))
+        .filter((other) => table.headRowsSitOn(other))
+        .map((other) => table.headRowsOverlapFix(other));
+    });
+    if (sentences.length === 0) return;
+    throw new Error(sentences.join(" "));
+  }
   private _holdsOwnColumnIds(sheetGid: number): boolean {
     const { idPrefix } = this.schema.sheetByGid(sheetGid);
     return this.ss

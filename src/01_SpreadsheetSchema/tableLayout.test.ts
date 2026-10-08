@@ -46,6 +46,12 @@ describe("headRows", () => {
     expect(headRows.isIndex(0)).toBe(false);
   });
 
+  it("takes the head rows' extent from the largest offset, not a named role", () => {
+    expect(headRows.countAboveHeader).toBe(3);
+    expect(headRows.topIndex).toBe(headRows.index("columnId"));
+    expect(headRows.lastAboveHeaderIndex).toBe(-2);
+  });
+
   it("throws for an index no head row sits at", () => {
     expect(() => headRows.rolesAt(0)).toThrow(/not a head row/);
     expect(() => headRows.rolesAt(-5)).toThrow(/not a head row/);

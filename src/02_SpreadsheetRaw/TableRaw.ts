@@ -546,7 +546,7 @@ export class TableRaw extends TableCommonRaw {
   columnInsertSplitting(neighbourName: string): string {
     return `Inserting a column at the end of Table "${this.name}" on sheet "${this.sheetTitle}" would shift only part of Table "${neighbourName}"`;
   }
-  // From the column ID row down, so the head rows move with the Table; the widen is what grows it.
+  // From the top head row down, so the head rows move with the Table; the widen is what grows it.
   gatherInsertTableEndColumnsOperation(): void {
     const insertCount = this.writes.insertTableEndColumnCount;
     if (insertCount === 0) return;
@@ -554,7 +554,7 @@ export class TableRaw extends TableCommonRaw {
     const { columnCount, dataRowCount } = this;
     const newColumns: BoundedGridRange = {
       sheetId: this.sheetGid,
-      startRowIndex: origin.headSheetRowIndex("columnId"),
+      startRowIndex: origin.topHeadSheetRowIndex,
       endRowIndex: origin.sheetRowIndex(dataRowCount),
       startColumnIndex: origin.sheetColIndex(columnCount),
       endColumnIndex: origin.sheetColIndex(columnCount + insertCount),
