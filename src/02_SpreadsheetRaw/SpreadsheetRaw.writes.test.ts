@@ -532,6 +532,47 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
         ]);
       });
 
+      it("lands a conditional-format rule and a column protection queued on a lower Table at its rows after a same-batch row delete above it", () => {
+        const { grid } = stubStackedTables();
+
+        const raw = SpreadsheetRaw.init();
+        raw.fetchAllSheetProperties();
+        raw.table("top").row(0).delete();
+        const lower = raw.table("lower");
+        lower.column(0).addConditionalFormatRule({
+          condition: { type: "NUMBER_EQ", value: true },
+          format: { backgroundColor: lightGreen },
+        });
+        lower.column(1).addEditWarning({ description: "lower name" });
+        raw.batchUpdateGSheets();
+
+        const lowerBody = {
+          sheetId: 111,
+          startRowIndex: lowerHeaderRowIndex,
+          endRowIndex: lowerHeaderRowIndex + 2,
+        };
+        expect(
+          grid.sheet(111).conditionalFormats.map(({ ranges }) => ranges),
+        ).toEqual([
+          [
+            {
+              ...lowerBody,
+              startColumnIndex: startTableColIndex,
+              endColumnIndex: startTableColIndex + 1,
+            },
+          ],
+        ]);
+        expect(grid.sheet(111).protectedRanges.map(({ range }) => range)).toEqual(
+          [
+            {
+              ...lowerBody,
+              startColumnIndex: startTableColIndex + 1,
+              endColumnIndex: startTableColIndex + 2,
+            },
+          ],
+        );
+      });
+
       function flushedGrowthOfTop() {
         const { grid } = stubStackedTables();
         const raw = SpreadsheetRaw.init();
