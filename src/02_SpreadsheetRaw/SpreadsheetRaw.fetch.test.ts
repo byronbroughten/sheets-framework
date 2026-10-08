@@ -284,7 +284,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     expect(() => raw.fetchAllGathered()).not.toThrow();
   });
 
-  it("names every misplaced sheet in one error, including one whose header zone was not queued", () => {
+  function stubItemAndLogMisplaced(): void {
     stubSheetsService({
       isEveryTableInFilteredFetch: true,
       sheets: [
@@ -300,11 +300,27 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
         }),
       ],
     });
+  }
+
+  it("names every misplaced sheet the run gathered for in one error", () => {
+    stubItemAndLogMisplaced();
+
+    const raw = SpreadsheetRaw.init();
+    raw.tableOnSheet(itemGid).gatherFetchProperties();
+    raw.tableOnSheet(logGid).gatherFetchProperties();
+
+    expect(() => raw.fetchAllGathered()).toThrowError(/"Item".*"Log"/);
+  });
+
+  it("leaves a misplaced Table the run did not gather for unnamed", () => {
+    stubItemAndLogMisplaced();
 
     const raw = SpreadsheetRaw.init();
     raw.tableOnSheet(itemGid).gatherFetchProperties();
 
-    expect(() => raw.fetchAllGathered()).toThrowError(/"Item".*"Log"/);
+    const message = thrownMessage(() => raw.fetchAllGathered());
+    expect(message).toMatch(/"Item"/);
+    expect(message).not.toMatch(/"Log"/);
   });
 
   it("stops on a Table moved below the header zone as missing, in the one round trip", () => {
@@ -1072,6 +1088,43 @@ describe("several managed Tables on one sheet", () => {
     expect(() => raw.fetchAllGathered()).toThrowError(
       /^1 managed Table\(s\) .*"Layout" \(gid \d+\) needs its own "lyr" column IDs, and only those, in row 1 — move the Table back, or regenerate the configs with sheets-framework gen-configs$/,
     );
+  });
+
+  it("reads one Table while a neighbour it doesn't use is missing", () => {
+    const sheet = layoutSheet();
+    stubSheetsService({
+      sheets: [
+        {
+          ...sheet,
+          tables: sheet.tables?.filter((table) => table.tableId !== rightId),
+        },
+      ],
+    });
+
+    const raw = SpreadsheetRaw.init();
+    raw.table(leftId).gatherFetchProperties();
+    raw.table(leftId).columnResolver.gatherFetchColumnIds();
+
+    expect(() => raw.fetchAllGathered()).not.toThrow();
+    expect(raw.table(leftId).columnResolver.hasFetchedColumnIds).toBe(true);
+  });
+
+  it("reads one Table while a neighbour it doesn't use holds another Table's column IDs", () => {
+    stubSheetsService({
+      sheets: [
+        layoutSheet({
+          layoutRight: {
+            headRows: { 3: ["c:lyl:entry", "c:lyl:amount"] },
+          },
+        }),
+      ],
+    });
+
+    const raw = SpreadsheetRaw.init();
+    raw.table(leftId).gatherFetchProperties();
+    raw.table(leftId).columnResolver.gatherFetchColumnIds();
+
+    expect(() => raw.fetchAllGathered()).not.toThrow();
   });
 
   it("keeps a Table a filtered fetch did not return, with what was queued on it", () => {

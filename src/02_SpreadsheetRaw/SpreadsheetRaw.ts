@@ -4,6 +4,7 @@ import type {
   OpaqueRawRequest,
 } from "../00_Source/RawSource/RawSource";
 import { SpreadsheetSchema } from "../01_SpreadsheetSchema/SpreadsheetSchema";
+import type { TableName } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import { validateFormulaString } from "./CellRaw";
 import { SpreadsheetBaseRaw } from "./ClassBases/SpreadsheetBaseRaw";
 import { emptyStateRaw } from "./ClassTypes/emptyStateRaw";
@@ -100,6 +101,9 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
   }
   fetchSheetUsedGrid(sheetGid: number): void {
     this.fetcher.fetchSheetUsedGrid(sheetGid);
+  }
+  integrateHeaderZoneTable(tableName: TableName, table: TableRaw): void {
+    this.fetcher.integrateHeaderZoneTable(tableName, table);
   }
   batchUpdateGSheets(): void {
     this.flusher.flush();

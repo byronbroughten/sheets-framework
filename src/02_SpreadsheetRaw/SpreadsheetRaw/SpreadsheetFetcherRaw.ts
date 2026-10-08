@@ -4,13 +4,15 @@ import type {
   SpreadsheetSnapshot,
 } from "../../00_Source/RawSource/RawSource";
 import { SpreadsheetSchema } from "../../01_SpreadsheetSchema/SpreadsheetSchema";
+import type { TableName } from "../../01_SpreadsheetSchema/tableConfigsTypes";
 import { Val } from "../../utils/Val";
 import { SpreadsheetBaseRaw } from "../ClassBases/SpreadsheetBaseRaw";
 import { emptyStateRaw } from "../ClassTypes/emptyStateRaw";
 import { SpreadsheetRaw } from "../SpreadsheetRaw";
+import type { TableRaw } from "../TableRaw";
 import {
-  type Misplacement,
   SpreadsheetTableValidatorRaw,
+  type TablePlacement,
 } from "./SpreadsheetTableValidatorRaw";
 
 export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
@@ -87,39 +89,30 @@ export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
   // response that omits empty cells (or whole blank rows) never leaves
   // them looking merely "not yet fetched" to callers.
   private _finalizeGatheredFetches(): void {
-    const misplacements: Misplacement[] = [];
-    const headerOnlyTableIds: string[] = [];
-    const finalizedSheetGids: number[] = [];
-    this.spreadsheetStateRaw.sheets.forEach((state, sheetGid) => {
-      const placements = this.tableValidator.tablePlacements(sheetGid);
+    // Before the reset below, which forgets which Tables gathered a fetch.
+    const placements = Array.from(this.spreadsheetStateRaw.sheets.keys()).flatMap(
+      (sheetGid) => this.tableValidator.tablePlacements(sheetGid),
+    );
+    this.spreadsheetStateRaw.sheets.forEach((state) => {
       state.tableBeforeProperties.fetchQueue = emptyStateRaw.tableFetchQueue();
       state.tablesBeforePropertiesById.forEach((tableState) => {
         tableState.fetchQueue = emptyStateRaw.tableFetchQueue();
       });
       state.fetchQueue.gatherHeaderZone = false;
-      placements.forEach((placement) => {
-        if (placement.kind === "misplaced") {
-          misplacements.push(placement.misplacement);
-        } else if (placement.kind === "header-only") {
-          headerOnlyTableIds.push(placement.tableId);
-        }
-      });
-      if (
-        placements.every(
-          ({ kind }) => kind === "none" || kind === "well-placed",
-        )
-      ) {
-        finalizedSheetGids.push(sheetGid);
-      }
     });
-    this.spreadsheetStateRaw.tables.forEach((state, tableId) => {
-      if (!finalizedSheetGids.includes(state.sheetGid)) return;
+    const heldTableIds = placements.flatMap(failedTableIdsOf);
+    this.spreadsheetStateRaw.tables.forEach((_state, tableId) => {
+      if (heldTableIds.includes(tableId)) return;
       this.ss.table(tableId).finalizeFetches();
     });
-    this.tableValidator.validateTablePlacement(
-      misplacements,
-      headerOnlyTableIds,
-    );
+    this.tableValidator.validateTablePlacements(placements);
+  }
+  // For the one Table a caller picked from the zone just fetched, after every other Table was left unjudged.
+  integrateHeaderZoneTable(tableName: TableName, table: TableRaw): void {
+    this.tableValidator.validateTablePlacements([
+      this.tableValidator.tablePlacement(tableName, true),
+    ]);
+    table.integrateHeaderZone();
   }
   // isFormula/numberFormatType (from rowData.values.userEnteredValue/
   // effectiveFormat) and column validation values/declared types (from
@@ -172,4 +165,12 @@ export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
       table.integrateSheetState(sheetSnapshot);
     });
   }
+}
+
+function failedTableIdsOf(placement: TablePlacement): string[] {
+  if (placement.kind === "header-only") return [placement.tableId];
+  if (placement.kind !== "misplaced") return [];
+  const { misplacement } = placement;
+  if (misplacement.kind === "missing") return [];
+  return [misplacement.tableId];
 }

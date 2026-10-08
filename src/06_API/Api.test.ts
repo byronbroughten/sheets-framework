@@ -12,6 +12,7 @@ import {
   layoutGid,
   layoutOrigins,
   layoutSheet,
+  layoutTableId,
 } from "../02_SpreadsheetRaw/spreadsheetRawTestSupport";
 import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
@@ -353,6 +354,62 @@ describe("Api.handleSheetEdit, a Table that shares its sheet", () => {
     });
 
     expect(calls).toEqual(["right amount"]);
+  });
+
+  it("runs the entry ticked on one Table while its neighbour is missing", () => {
+    const calls: string[] = [];
+    const sheet = layoutSheet();
+    stubSheetsService({
+      sheets: [
+        {
+          ...sheet,
+          tables: sheet.tables?.filter(
+            (table) => table.tableId !== layoutTableId("layoutRight"),
+          ),
+        },
+      ],
+    });
+    const endpoints: Endpoints = {
+      layoutLeft_amount: {
+        action: () => {
+          calls.push("left amount");
+        },
+      },
+    };
+
+    Api.init(endpoints).handleSheetEdit({
+      sheetGid: layoutGid,
+      rowIndexBase0: SheetIndex.row(layoutOrigins.layoutLeft.startRowIndex - 1),
+      colIndexBase0: SheetIndex.col(
+        layoutOrigins.layoutLeft.startColumnIndex + 1,
+      ),
+      value: "TRUE",
+    });
+
+    expect(calls).toEqual(["left amount"]);
+  });
+
+  it("stops on the ticked Table when its column ID row holds another Table's IDs", () => {
+    stubSheetsService({
+      sheets: [
+        layoutSheet({
+          layoutRight: { headRows: { 3: ["c:lyl:entry", "c:lyl:amount"] } },
+        }),
+      ],
+    });
+
+    expect(() =>
+      Api.init({}).handleSheetEdit({
+        sheetGid: layoutGid,
+        rowIndexBase0: SheetIndex.row(
+          layoutOrigins.layoutRight.startRowIndex - 1,
+        ),
+        colIndexBase0: SheetIndex.col(
+          layoutOrigins.layoutRight.startColumnIndex + 1,
+        ),
+        value: "TRUE",
+      }),
+    ).toThrowError(/needs its own "lyr" column IDs/);
   });
 });
 

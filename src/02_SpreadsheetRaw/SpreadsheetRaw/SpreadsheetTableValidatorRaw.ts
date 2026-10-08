@@ -3,6 +3,7 @@ import { SpreadsheetSchema } from "../../01_SpreadsheetSchema/SpreadsheetSchema"
 import type { TableName } from "../../01_SpreadsheetSchema/tableConfigsTypes";
 import { Val } from "../../utils/Val";
 import { SpreadsheetBaseRaw } from "../ClassBases/SpreadsheetBaseRaw";
+import type { SheetStateRaw, TableStateRaw } from "../ClassTypes/StateRaw";
 import { SpreadsheetRaw } from "../SpreadsheetRaw";
 
 interface RecordedTableIdentity {
@@ -28,21 +29,42 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
   get schema(): SpreadsheetSchema {
     return new SpreadsheetSchema();
   }
-  // One per Table the configs record on the sheet; a sheet outside the config never promised to follow the layout.
+  // One per recorded Table the run gathered a fetch for; a broken one it doesn't use stays silent.
   tablePlacements(sheetGid: number): TablePlacement[] {
     if (this.spreadsheetStateRaw.isRegeneratingConfigs) return [];
+    const { gatherHeaderZone } = this._sheetState(sheetGid).fetchQueue;
     return this.schema
       .tablesOnGid(sheetGid)
-      .map(({ tableName }) => this._tablePlacement(tableName));
+      .filter(({ tableName }) => this._hasGatheredFetch(tableName))
+      .map(({ tableName }) => this.tablePlacement(tableName, gatherHeaderZone));
   }
-  // Missing and the column ID row wait for the zone, the one fetch sure to bring the Table.
-  private _tablePlacement(tableName: TableName): TablePlacement {
+  // What a run gathered waits on the live Table, or, before it is known, on its ID or its sheet.
+  private _hasGatheredFetch(tableName: TableName): boolean {
     const table = this.schema.sheetByName(tableName);
-    const { sheetGid } = table;
-    const isZoneFetched = Val.assert(
+    const sheetState = this._sheetState(table.sheetGid);
+    const tableId = this._liveTableIdOf(tableName);
+    const liveTableState =
+      tableId === undefined
+        ? undefined
+        : this.spreadsheetStateRaw.tables.get(tableId);
+    return [
+      liveTableState,
+      sheetState.tablesBeforePropertiesById.get(table.tableId),
+      sheetState.tableBeforeProperties,
+    ].some(
+      (tableState) => tableState !== undefined && hasGatheredFetch(tableState),
+    );
+  }
+  private _sheetState(sheetGid: number): SheetStateRaw {
+    return Val.assert(
       this.spreadsheetStateRaw.sheets.get(sheetGid),
       `sheetState for sheetGid ${sheetGid}`,
-    ).fetchQueue.gatherHeaderZone;
+    );
+  }
+  // Missing and the column ID row wait for the zone, the one fetch sure to bring the Table.
+  tablePlacement(tableName: TableName, isZoneFetched: boolean): TablePlacement {
+    const table = this.schema.sheetByName(tableName);
+    const { sheetGid } = table;
     const tableId = this._liveTableIdOf(tableName);
     if (tableId === undefined && !isZoneFetched) {
       return { kind: "none" };
@@ -88,10 +110,13 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
     if (table.sharesSheet) return undefined;
     return sheetTable.tableIdReachedByGid();
   }
-  validateTablePlacement(
-    misplacements: Misplacement[],
-    headerOnlyTableIds: string[],
-  ): void {
+  validateTablePlacements(placements: TablePlacement[]): void {
+    const misplacements = placements.flatMap((placement) =>
+      placement.kind === "misplaced" ? [placement.misplacement] : [],
+    );
+    const headerOnlyTableIds = placements.flatMap((placement) =>
+      placement.kind === "header-only" ? [placement.tableId] : [],
+    );
     if (misplacements.length === 0 && headerOnlyTableIds.length === 0) {
       return;
     }
@@ -162,6 +187,11 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
   private _sheetLabel({ sheetGid }: RecordedTableIdentity): string {
     return this.ss.sheet(sheetGid).label;
   }
+}
+
+function hasGatheredFetch({ fetchQueue }: TableStateRaw): boolean {
+  const { rows, columns, cells } = fetchQueue.toFinalize;
+  return rows.size > 0 || columns.size > 0 || cells.size > 0;
 }
 
 const regenerateFix =

@@ -26,17 +26,23 @@ export class SpreadsheetIdentified extends SpreadsheetBaseIdentified {
       tableId,
     });
   }
-  // One fetch: the header zone brings every Table on the sheet with its column IDs.
+  // One fetch: the header zone brings every Table on the sheet with its column IDs, and only the ticked one is judged.
   fetchTableWithActionCell(edit: SheetEdit): TableIdentified | undefined {
     if (!this.schema.mayHoldActionCell(edit)) return undefined;
-    const tables = this.schema
-      .tablesOnGid(edit.sheetGid)
-      .map((tableSchema) => this.managedTable(tableSchema));
-    tables.forEach((table) => table.columnResolver.gatherDataPrerequisites());
+    this.raw.sheet(edit.sheetGid).gatherFetchHeaderZone();
     this.raw.fetchAllGathered();
-    return tables.find((table) =>
-      table.raw.holdsActionCellAt(edit.rowIndexBase0, edit.colIndexBase0),
-    );
+    const table = this.schema
+      .tablesOnGid(edit.sheetGid)
+      .map((tableSchema) => this.managedTable(tableSchema))
+      .find((managedTable) =>
+        managedTable.raw.holdsActionCellAt(
+          edit.rowIndexBase0,
+          edit.colIndexBase0,
+        ),
+      );
+    if (table === undefined) return undefined;
+    this.raw.integrateHeaderZoneTable(table.schema.tableName, table.raw);
+    return table;
   }
   managedTable(table: TableSchema): TableIdentified {
     return new TableIdentified({

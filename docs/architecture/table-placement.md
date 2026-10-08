@@ -1,18 +1,18 @@
-# Table placement: a missing Table, or one outside the header zone, stops the run
+# Table placement: a missing Table, or one outside the header zone, stops the run that uses it
 
 Map fragment. Sibling headings live in this folder. The operator-facing words are **Table** and **Header zone** in [`CONTEXT.md`](../../CONTEXT.md).
 
-Every managed Table keeps its header row in the sheet's header zone: its top rows, across every column, `tableLayout.headerZoneDepth` deep (4 by default: the column ID row, two group-heading rows, the header row). A Table moves freely within the zone, so the configs record no position, only its GID and `tableId`. A run that meets a managed Table outside the zone, or misses one, stops and names it. It never moves, rebuilds or picks a Table.
+Every managed Table keeps its header row in the sheet's header zone: its top rows, across every column, `tableLayout.headerZoneDepth` deep (4 by default: the column ID row, two group-heading rows, the header row). A Table moves freely within the zone, so the configs record no position, only its GID and `tableId`. A run that uses a managed Table outside the zone, or missing, stops and names it. A broken Table the run doesn't use stays silent until a run uses it. It never moves, rebuilds or picks a Table.
 
 ## The placement check
 
-It runs per recorded Table in `SpreadsheetRaw`'s post-fetch step (`SpreadsheetTableValidatorRaw.tablePlacements`):
+It runs in `SpreadsheetRaw`'s post-fetch step (`SpreadsheetTableValidatorRaw.tablePlacements`), per recorded Table the run uses: one it gathered a fetch for in that fetch cycle. Every read needs a fetch, and so does every gathered write (`originAtGathering`), so that covers both. The fetcher reads which Tables gathered before it resets their fetch queues:
 
 - the Table is on its sheet: found by its recorded `tableId`, or, on a sheet the configs record only it on, as that sheet's one Table. Judged only on a fetch the sheet's zone rode, since only the zone is sure to bring it.
 - its header row is in the zone, with room for its head rows above it (`headerZone.holdsHeaderRow`). With the default depth that means row 4. Judged on every fetch that brings the Table, since it reads geometry alone.
 - the column ID row (header −3) holds only blanks or this Table's own prefixed column IDs, and at least one ID, across the Table's columns. Judged on a fetch the zone rode, since the zone carries that row.
 
-Any failure stops the run, naming the sheet and the Table: "must have its header row on row 4 — move it back", or "has no Table … with its header row on row 4 — move it back, or regenerate the configs … if it is gone". Only a missing Table or a failed column ID row is offered regeneration, since generation refuses a Table outside the zone. The same step stops on a Table met with only its header, once its header is in the zone ([blank row](./blank-row.md#a-table-met-with-only-its-header-stops-the-run)). For example, inserting a row above a Table pushes its header out of the zone, and the zone fetch no longer sees it, so the run reads it as missing. A band of head rows shifted by an inserted row, with the header left in place, fails the column ID row test.
+A failure stops the run, naming the sheet and the Table, and holds back that Table's finalize; the Tables that passed finalize as usual. No warning names a broken Table the run didn't use. The message reads "must have its header row on row 4 — move it back", or "has no Table … with its header row on row 4 — move it back, or regenerate the configs … if it is gone". Only a missing Table or a failed column ID row is offered regeneration, since generation refuses a Table outside the zone. The same step stops on a Table met with only its header, once its header is in the zone ([blank row](./blank-row.md#a-table-met-with-only-its-header-stops-the-run)). For example, inserting a row above a Table pushes its header out of the zone, and the zone fetch no longer sees it, so the run reads it as missing. A band of head rows shifted by an inserted row, with the header left in place, fails the column ID row test.
 
 ## Moves within the zone need no regeneration
 
@@ -22,7 +22,7 @@ Before a Table's properties arrive, the few reads that need a position, such as 
 
 ## The zone costs no round trip
 
-`TableRaw.gatherFetchProperties` gathers the zone once per sheet: rows 0 to the zone's depth, every column. Sheets returns every Table a grid range overlaps ([confirmed live](./finding-tables.md#the-premise-under-the-header-zone-holds)), so every Table whose header sits in the zone arrives with it, with its head rows. It rides the run's first fetch, so the check needs no fetch of its own.
+`TableRaw.gatherFetchProperties` gathers the zone once per sheet: rows 0 to the zone's depth, every column. Sheets returns every Table a grid range overlaps ([confirmed live](./finding-tables.md#the-premise-under-the-header-zone-holds)), so every Table whose header sits in the zone arrives with it, with its head rows. It rides the run's first fetch, so the check needs no fetch of its own. A Table the zone brings isn't used by arriving: `SheetRaw.gatherFetchHeaderZone` gathers the range without marking any Table.
 
 The zone costs the used cells it covers, not its depth ([finding Tables](./finding-tables.md#what-each-route-costs)). On the dev Layout tab it came back smaller than the strips it replaced: 1,686 bytes for both Tables against 1,882 for two placement strips and their column ID rows.
 
@@ -52,7 +52,7 @@ A grid fetch returns a sheet's `tables` only for the ranges it overlaps, so a Ta
 
 ## The edit trigger reads the live Table
 
-`Api.isSuspectedApiCall` costs no fetch: a TRUE or FALSE on a recorded sheet, on the row an action row in the zone can sit on (`SpreadsheetSchema.mayHoldActionCell`). `Api.handleSheetEdit` then calls `SpreadsheetIdentified.fetchTableWithActionCell`, which gathers each recorded Table's prerequisites on that sheet, all riding one zone fetch, and picks the Table whose live action row and columns hold the edited cell (`TableRaw.holdsActionCellAt`). The dispatch stays at one read and one write ([round trips](./round-trips.md)).
+`Api.isSuspectedApiCall` costs no fetch: a TRUE or FALSE on a recorded sheet, on the row an action row in the zone can sit on (`SpreadsheetSchema.mayHoldActionCell`). `Api.handleSheetEdit` then calls `SpreadsheetIdentified.fetchTableWithActionCell`, which gathers the sheet's zone alone, so the fetch judges no Table, and picks the recorded Table whose live action row and columns hold the edited cell (`TableRaw.holdsActionCellAt`). Only that Table is judged, and its head rows, column ID row included, are finalized from the zone already fetched (`SpreadsheetRaw.integrateHeaderZoneTable`). So a tick on one Table runs while its neighbour is missing. A ticked Table pushed out of the zone took its action row with it, so the tick matches no Table and nothing runs; one in the zone whose column ID row fails stops the run. The dispatch stays at one read and one write ([round trips](./round-trips.md)).
 
 ## Why the app never repairs a Table
 

@@ -23,7 +23,6 @@ import {
   SheetIndex,
   type SheetRowIndex,
 } from "../00_Source/RawSource/SheetIndex";
-import { headerZone } from "../01_SpreadsheetSchema/headerZone";
 import { type HeadRole, headRows } from "../01_SpreadsheetSchema/headRows";
 import type { TableOrigin } from "../01_SpreadsheetSchema/TableOrigin";
 import type { Value } from "../01_SpreadsheetSchema/valueSchemas";
@@ -235,18 +234,20 @@ export class TableRaw extends TableCommonRaw {
     );
   }
   gatherFetchProperties(): this {
-    const { fetchQueue } = this.sheetState;
-    if (!fetchQueue.gatherHeaderZone) {
-      fetchQueue.gatherHeaderZone = true;
-      this.gatherFetchRange({
-        startRowIndex: SheetIndex.row(0),
-        endRowIndex: headerZone.endRowIndex,
-      });
-    }
+    this.sheet.gatherFetchHeaderZone();
+    this._prepFetchHeadRowBackfills();
+    return this;
+  }
+  // The zone holds every head row, so a Table it brought finalizes them with no fetch of its own.
+  integrateHeaderZone(): void {
+    this._prepFetchHeadRowBackfills();
+    this.tableState.fetchQueue.toFinalize.rows.add(this.schema.colIdRowIndex);
+    this.finalizeFetches();
+  }
+  private _prepFetchHeadRowBackfills(): void {
     headRows.indexes().forEach((rowIndex) => {
       this.headRowByIndex(rowIndex).cell(0).prepFetchBackfill();
     });
-    return this;
   }
   holdsActionCellAt(
     sheetRowIndex: SheetRowIndex,
