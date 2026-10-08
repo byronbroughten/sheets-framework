@@ -297,7 +297,6 @@ export function rowShiftFrom(
   );
 }
 
-// The rows inserted or deleted above a Table in its columns, which move it by their count.
 function rowCountAbove(
   rowBands: BoundedGridRange[],
   tableRange: BoundedGridRange,
@@ -313,12 +312,12 @@ function rowCountAbove(
 
 function isShiftedVerticallyBy(
   rows: BoundedGridRange,
-  properties: BoundedGridRange,
+  tableRange: BoundedGridRange,
 ): boolean {
   return (
-    properties.startRowIndex >= rows.startRowIndex &&
-    properties.startColumnIndex < rows.endColumnIndex &&
-    rows.startColumnIndex < properties.endColumnIndex
+    tableRange.startRowIndex >= rows.startRowIndex &&
+    tableRange.startColumnIndex < rows.endColumnIndex &&
+    rows.startColumnIndex < tableRange.endColumnIndex
   );
 }
 

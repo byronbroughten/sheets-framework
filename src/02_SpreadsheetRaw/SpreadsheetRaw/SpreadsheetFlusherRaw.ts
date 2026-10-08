@@ -89,10 +89,10 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
       }
     });
     this._shiftTablesBelowRowDeletes(this.writeOperations.deleteTableRows);
-    // After the Table queues, so the insert-column refusal sees this flush's inserts.
     tables.forEach((table) => {
       // After the delete shift, since sorts are the one sheet-coordinate write sent after the deletes.
-      table.gatherQueuedSortTableOperation();
+      table.gatherSortTableOperation();
+      // After the Table queues, so the insert-column refusal sees this flush's inserts.
       table.gatherSetTableColumnPropertiesOperation();
       table._clearWriteQueue();
     });

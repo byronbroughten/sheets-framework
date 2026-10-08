@@ -632,6 +632,33 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
         ]);
       });
 
+      it("deletes a lower Table's own row before the delete above pulls it up, and fills the row it keeps", () => {
+        const { grid } = stubStackedTables();
+
+        const raw = SpreadsheetRaw.init();
+        raw.fetchAllSheetProperties();
+        raw.table("top").row(0).delete();
+        const lower = raw.table("lower");
+        lower.row(0).delete();
+        lower.row(1).cell(1).updateValue("z");
+        lower.requestSortGSheet({ colIdxToSortBy: 1, sortOrder: "ASCENDING" });
+        raw.batchUpdateGSheets();
+
+        expect(tableRows(grid)).toMatchObject({
+          lower: [lowerHeaderRowIndex - 1, lowerHeaderRowIndex + 1],
+        });
+        expect(
+          grid.sheet(111).values({
+            startRowIndex: lowerHeaderRowIndex - 1,
+            endRowIndex: lowerHeaderRowIndex + 1,
+            endColumnIndex: startTableColIndex + 2,
+          }),
+        ).toEqual([
+          ["ID", "Name"],
+          ["b2", "z"],
+        ]);
+      });
+
       function flushedGrowthOfTop() {
         const { grid } = stubStackedTables();
         const raw = SpreadsheetRaw.init();
