@@ -13,7 +13,7 @@ async function buildDevBundle(): Promise<string> {
   const config = rollupPreset({
     input: join(frameworkRoot, "dev/index.ts"),
     tsconfig: join(frameworkRoot, "tsconfig.json"),
-    rootDir: frameworkRoot,
+    rootDir: join(frameworkRoot, ".."),
   });
   const bundle = await rollup({ ...config, onwarn: () => {} });
   const { output } = await bundle.generate(config.output);

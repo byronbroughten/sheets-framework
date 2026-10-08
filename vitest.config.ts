@@ -1,6 +1,8 @@
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
+  // Tests run in Vite's server environment, so the source condition goes on ssr.
+  ssr: { resolve: { conditions: ["source"] } },
   test: {
     environment: "node",
     restoreMocks: true,
