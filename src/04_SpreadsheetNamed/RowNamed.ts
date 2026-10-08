@@ -21,7 +21,7 @@ export class RowNamed<TN extends TableName> extends RowBaseNamed<TN> {
   get identified(): RowIdentified {
     return new RowIdentified({
       ...this.rowNamedProps,
-      sheetGid: this.table.sheetGid,
+      ...this.table.tableAddress,
     });
   }
   get raw(): RowRaw {

@@ -47,8 +47,8 @@ export class ColumnSchema<
   ): ColumnSchema<TN, CN> {
     return TableSchema.fromSheetName(tableName).columnByName(columnName);
   }
-  static fromColumnId(sheetGid: number, columnId: string): ColumnSchema {
-    return TableSchema.fromSheetGid(sheetGid).columnById(columnId);
+  static fromColumnId(tableName: TableName, columnId: string): ColumnSchema {
+    return TableSchema.fromSheetName(tableName).columnById(columnId);
   }
   get sheet(): TableSchema<TN> {
     return new TableSchema({
@@ -60,7 +60,7 @@ export class ColumnSchema<
     key: TK,
   ): ColumnConfigAt<TN, CN>[TK & keyof ColumnConfigAt<TN, CN>] {
     return getColumnTraitById(
-      this.sheetGid,
+      this.tableName,
       this.columnId,
       key,
     ) as ColumnConfigAt<TN, CN>[TK & keyof ColumnConfigAt<TN, CN>];

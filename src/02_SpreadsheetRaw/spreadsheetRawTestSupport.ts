@@ -5,11 +5,14 @@ import { getTableTraitByName } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import { TableOrigin } from "../01_SpreadsheetSchema/TableOrigin";
 import {
   buildGridRows,
+  type FakeCell,
   type FakeRichCellValue,
   type FakeSheetProperties,
+  type FakeTable,
   fakeTableId,
   type stubSheetsService,
 } from "../testSupport/fakeSheetsService";
+import { Val } from "../utils/Val";
 import { SpreadsheetRaw } from "./SpreadsheetRaw";
 
 export const lightGreen = { red: 0.851, green: 0.918, blue: 0.827 };
@@ -149,4 +152,87 @@ export function thrownMessage(fn: () => void): string {
     return (error as Error).message;
   }
   throw new Error("Expected the call to throw, but it did not.");
+}
+
+export const layoutGid = getTableTraitByName("layoutLeft", "sheetGid");
+export const layoutTableNames = [
+  "layoutLeft",
+  "layoutRight",
+  "layoutBelow",
+] as const;
+export type LayoutTableName = (typeof layoutTableNames)[number];
+export function layoutTableId(tableName: LayoutTableName): string {
+  return getTableTraitByName(tableName, "tableId");
+}
+export const layoutBodyRows: Record<LayoutTableName, [string, number][]> = {
+  layoutLeft: [
+    ["Left one", 1],
+    ["Left two", 2],
+    ["Left three", 3],
+  ],
+  layoutRight: [
+    ["Right one", 10],
+    ["Right two", 20],
+  ],
+  layoutBelow: [
+    ["Below one", 100],
+    ["Below two", 200],
+  ],
+};
+
+// The dev Layout sheet: Right beside Left, Below under Left, each at its recorded origin unless overridden.
+export function layoutSheet(
+  overrides: Partial<Record<LayoutTableName, Partial<FakeTable>>> = {},
+): FakeSheetProperties {
+  const rows: FakeCell[][] = [];
+  const tables = layoutTableNames.map((tableName) => {
+    const table = layoutTable(tableName, overrides[tableName] ?? {});
+    const header = Val.assert(table.startRowIndex, "layout header row");
+    const startCol = Val.assert(table.startColumnIndex, "layout start column");
+    placeCells(rows, header, startCol, ["Entry", "Amount"]);
+    layoutBodyRows[tableName].forEach((cells, rowOffset) => {
+      placeCells(rows, header + 1 + rowOffset, startCol, cells);
+    });
+    return table;
+  });
+  return { sheetId: layoutGid, title: "Layout", rows, tables };
+}
+
+function layoutTable(
+  tableName: LayoutTableName,
+  override: Partial<FakeTable>,
+): FakeTable {
+  const startRowIndex =
+    override.startRowIndex ?? getTableTraitByName(tableName, "headerRowIndex");
+  const startColumnIndex =
+    override.startColumnIndex ??
+    getTableTraitByName(tableName, "startColIndex");
+  return {
+    tableId: layoutTableId(tableName),
+    name: tableName,
+    headRows: {
+      3: ["entry", "amount"].map((columnKey) =>
+        dimensionIds.col(getTableTraitByName(tableName, "idPrefix"), columnKey),
+      ),
+    },
+    endRowIndex: startRowIndex + 1 + layoutBodyRows[tableName].length,
+    endColumnIndex: startColumnIndex + 2,
+    ...override,
+    startRowIndex,
+    startColumnIndex,
+  };
+}
+
+function placeCells(
+  rows: FakeCell[][],
+  rowIndex: number,
+  colIndex: number,
+  cells: readonly FakeCell[],
+): void {
+  for (let index = rows.length; index <= rowIndex; index++) rows.push([]);
+  const row = Val.assert(rows[rowIndex], `layout row ${rowIndex}`);
+  for (let index = row.length; index < colIndex; index++) row.push(null);
+  cells.forEach((cell, offset) => {
+    row[colIndex + offset] = cell;
+  });
 }

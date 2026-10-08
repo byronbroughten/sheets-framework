@@ -241,7 +241,10 @@ export class TableRaw extends TableCommonRaw {
     headRows.indexes().forEach((rowIndex) => {
       this.headRowByIndex(rowIndex).cell(0).prepFetchBackfill();
     });
-    this.sheetState.fetchQueue.gatherPlacementStrip = true;
+    const { recordedTableId } = this;
+    if (recordedTableId !== undefined) {
+      this.sheetState.fetchQueue.placementStripTableIds.add(recordedTableId);
+    }
     return this;
   }
   hasQueuedFullRowFetch(rowIndex: number): boolean {

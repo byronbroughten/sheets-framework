@@ -75,11 +75,14 @@ export class Api extends SpreadsheetBaseNamed {
     );
   }
   handleSheetEdit(edit: SheetEdit): void {
-    if (this.schema.tableWithActionCell(edit) === undefined) {
+    const tableSchema = this.schema.tableWithActionCell(edit);
+    if (tableSchema === undefined) {
       return;
     }
-    const { sheetGid, colIndexBase0, value } = edit;
-    const table = this.ssi.tableOnSheet(sheetGid).ensureColumnIdsAreFetched();
+    const { colIndexBase0, value } = edit;
+    const table = this.ssi
+      .managedTable(tableSchema)
+      .ensureColumnIdsAreFetched();
     const { columnResolver } = table;
     const colIndex = table.raw.tableOrigin().colIndex(colIndexBase0);
     if (!columnResolver.isTableColIndex(colIndex)) {

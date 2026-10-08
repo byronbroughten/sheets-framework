@@ -23,7 +23,11 @@ export const fakeTables = {
     if (sheet.isTableHiddenFromFilteredFetch && isFilteredFetch) {
       return undefined;
     }
-    return sheet.tables.map((table) => ({
+    const tables = sheet.tables.filter(
+      (table) => !(table.isHiddenFromFilteredFetch && isFilteredFetch),
+    );
+    if (tables.length === 0) return undefined;
+    return tables.map((table) => ({
       tableId: table.tableId,
       ...(table.name !== undefined ? { name: table.name } : {}),
       range: {

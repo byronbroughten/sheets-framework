@@ -8,6 +8,10 @@ import {
 } from "../01_SpreadsheetSchema/columnConfigsTypes";
 import { installedConfigs } from "../01_SpreadsheetSchema/configRegister";
 import { getTableTraitByName } from "../01_SpreadsheetSchema/tableConfigsTypes";
+import {
+  layoutGid,
+  layoutSheet,
+} from "../02_SpreadsheetRaw/spreadsheetRawTestSupport";
 import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {
@@ -201,9 +205,9 @@ describe("Api.isSuspectedApiCall", () => {
   });
   it("matches the action row across the Table's recorded columns and no further", () => {
     const columnCount = getSheetColumnNames("runItem").length;
-    expect(
-      Api.isSuspectedApiCall(actionRowEdit(columnCount - 1, "TRUE")),
-    ).toBe(true);
+    expect(Api.isSuspectedApiCall(actionRowEdit(columnCount - 1, "TRUE"))).toBe(
+      true,
+    );
     expect(Api.isSuspectedApiCall(actionRowEdit(columnCount, "TRUE"))).toBe(
       false,
     );
@@ -315,6 +319,33 @@ describe("Api.handleSheetEdit, a Table recorded lower on its sheet", () => {
 
     expect(calls).toEqual([]);
     expect(getByDataFilterCalls).toHaveLength(0);
+  });
+});
+
+describe("Api.handleSheetEdit, a Table that shares its sheet", () => {
+  it("runs the entry ticked on its own action row, beside another Table", () => {
+    const calls: string[] = [];
+    stubSheetsService({ sheets: [layoutSheet()] });
+    const endpoints: Endpoints = {
+      layoutRight_amount: {
+        action: () => {
+          calls.push("right amount");
+        },
+      },
+    };
+
+    Api.init(endpoints).handleSheetEdit({
+      sheetGid: layoutGid,
+      rowIndexBase0: SheetIndex.row(
+        getTableTraitByName("layoutRight", "headerRowIndex") - 1,
+      ),
+      colIndexBase0: SheetIndex.col(
+        getTableTraitByName("layoutRight", "startColIndex") + 1,
+      ),
+      value: "TRUE",
+    });
+
+    expect(calls).toEqual(["right amount"]);
   });
 });
 

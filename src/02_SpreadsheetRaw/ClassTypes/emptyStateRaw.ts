@@ -96,10 +96,11 @@ export const emptyStateRaw = {
       fetchQueue: {
         gatherConditionalFormats: false,
         gatherEditProtections: false,
-        gatherPlacementStrip: false,
+        placementStripTableIds: new Set(),
       },
       writeQueue: emptyStateRaw.sheetWriteQueue(),
       tableBeforeProperties: emptyStateRaw.tableState(sheetGid),
+      tablesBeforePropertiesById: new Map(),
     };
   },
 };

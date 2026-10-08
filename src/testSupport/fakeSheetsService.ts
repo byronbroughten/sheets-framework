@@ -61,6 +61,8 @@ export interface FakeTable {
   /** Head-row cells keyed by offset above the header, written from the Table's first column. */
   headRows?: Partial<Record<FakeHeadRowOffset, readonly FakeCell[]>>;
   endRowIndex: number;
+  /** Withholds this Table alone from `getByDataFilter`, as a filter that misses its range does live. */
+  isHiddenFromFilteredFetch?: boolean;
   /**
    * The exclusive bound of the Table's columns, defaulting to the widest
    * row in `rows`. Set it narrower to model the real payload's habit of

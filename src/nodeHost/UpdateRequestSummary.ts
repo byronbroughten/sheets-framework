@@ -2,7 +2,7 @@ import type {
   GoogleRequest,
   ModeledRequestVerb,
 } from "../00_Source/GoogleSheets/GoogleSheetsAPI";
-import { tableConfigsByGid } from "../01_SpreadsheetSchema/tableConfigsTypes";
+import { tableKeysByGid } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import { Obj } from "../utils/Obj";
 
 type GoogleUpdateRequest = GoogleRequest;
@@ -431,7 +431,7 @@ const label = {
   },
   sheet(sheetGid: number | undefined): string {
     if (sheetGid === undefined) return "(no sheet)";
-    return tableConfigsByGid().get(sheetGid)?.tableKey ?? `gid ${sheetGid}`;
+    return tableKeysByGid().get(sheetGid)?.join(", ") ?? `gid ${sheetGid}`;
   },
   dimensionSpan(
     dimension: string,

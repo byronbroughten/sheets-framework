@@ -98,6 +98,8 @@ export interface SheetStateRaw {
   writeQueue: SheetWriteQueueRaw;
   // `ss.tableOnSheet(gid)` reaches a Table through its sheet, so what is queued before that Table is known waits here.
   tableBeforeProperties: TableStateRaw;
+  // A recorded Table reached by its ID before its properties are fetched, keyed by that ID.
+  tablesBeforePropertiesById: Map<string, TableStateRaw>;
 }
 
 export interface SheetWorkingStateRaw {
@@ -121,7 +123,8 @@ export interface EditProtectionsStateRaw {
 export interface SheetFetchQueueRaw {
   gatherConditionalFormats: boolean;
   gatherEditProtections: boolean;
-  gatherPlacementStrip: boolean;
+  // The recorded tableIds whose placement strip rides the next fetch.
+  placementStripTableIds: Set<string>;
 }
 
 // Summed over every growth or column insert on the sheet, and sent as one appendDimension each.

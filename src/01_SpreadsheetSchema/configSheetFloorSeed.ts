@@ -6,7 +6,7 @@ import {
 } from "./columnConfigsTypes";
 import {
   type TableConfig,
-  tableConfigsByGid,
+  tableConfigAloneOnGid,
   tableConfigsByTableId,
 } from "./tableConfigsTypes";
 
@@ -176,7 +176,7 @@ export function isFloorTabName(name: string): name is FloorTabName {
 }
 
 export function floorTabSeedByGid(sheetGid: number): FloorTabSeed | undefined {
-  return floorTabSeedOf(tableConfigsByGid().get(sheetGid));
+  return floorTabSeedOf(tableConfigAloneOnGid(sheetGid));
 }
 
 export function floorTabSeedByTableId(
