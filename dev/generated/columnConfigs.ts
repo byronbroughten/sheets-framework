@@ -9,17 +9,17 @@ export const columnConfigs = makeColumnConfigs({
     "syncConfigSheetRowsRunStatus": { "columnId": "c:sscf:W-JABu_", "header": "Sync config sheet rows, run status", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null }
   },
   "tableConfig": {
-    "tableId": { "columnId": "c:scf:tableId", "header": "Table ID", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null },
-    "tableName": { "columnId": "c:scf:tableName", "header": "Table name", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null },
     "sheetTitle": { "columnId": "c:scf:0Ctj9xZ", "header": "Sheet title", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null },
-    "letApiAccess": { "columnId": "c:scf:GOJ0ixi", "header": "Let api access", "valueName": "checkbox", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null }
+    "letApiAccess": { "columnId": "c:scf:GOJ0ixi", "header": "Let api access", "valueName": "checkbox", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null },
+    "tableId": { "columnId": "c:scf:tableId", "header": "Table ID", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null },
+    "tableName": { "columnId": "c:scf:tableName", "header": "Table name", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null }
   },
   "columnConfig": {
-    "tableId": { "columnId": "c:ccf:tableId", "header": "Table ID", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null },
     "columnId": { "columnId": "c:ccf:vj9_rre", "header": "Column ID", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null },
-    "tableName": { "columnId": "c:ccf:tableName", "header": "Table name", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null },
     "header": { "columnId": "c:ccf:kqA31oK", "header": "Header", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null },
-    "emptyValueAllowed": { "columnId": "c:ccf:volkLl6", "header": "Empty value allowed", "valueName": "checkbox", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null }
+    "emptyValueAllowed": { "columnId": "c:ccf:volkLl6", "header": "Empty value allowed", "valueName": "checkbox", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null },
+    "tableId": { "columnId": "c:ccf:tableId", "header": "Table ID", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null },
+    "tableName": { "columnId": "c:ccf:tableName", "header": "Table name", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null }
   },
   "valueConfig": {
     "exampleValue": { "columnId": "c:vcf:AYSrgZf", "header": "Example value", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null }
