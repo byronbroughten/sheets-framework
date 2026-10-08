@@ -12,7 +12,7 @@ import {
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
 import { tableIdOnTab } from "../testSupport/fakeTableConfigSheet";
-import { ConfigCoordinator } from "./ConfigCoordinator";
+import { ConfigCoordinator, type ConfigRegeneration } from "./ConfigCoordinator";
 
 const { columnConfigs } = installedConfigs();
 const testSheetGid = getTableTraitByName("item", "sheetGid");
@@ -1393,5 +1393,254 @@ describe("ConfigCoordinator.generateConfigFiles ID prefix", () => {
         hasIdColumn: false,
       }),
     );
+  });
+});
+
+describe("ConfigCoordinator.generateConfigFiles head-row overlap", () => {
+  const recordsGid = 888000222;
+
+  interface RecordsTable {
+    name: string;
+    headerRowIndex: number;
+    startColumnIndex: number;
+    endColumnIndex: number;
+    endRowIndex: number;
+    isManaged: boolean;
+  }
+
+  function recordsTableId(table: RecordsTable): string {
+    return `records-${table.name.toLowerCase()}`;
+  }
+
+  function recordsSheet(tables: readonly RecordsTable[]): FakeSheetProperties {
+    const rows: Record<number, FakeCellValue[]> = {};
+    tables.forEach((table) => {
+      const headerRow = (rows[table.headerRowIndex] ??= []);
+      const topRow = (rows[table.headerRowIndex + 1] ??= []);
+      for (let col = table.startColumnIndex; col < table.endColumnIndex; col++) {
+        headerRow[col] = `${table.name} ${col}`;
+        topRow[col] ??= "";
+      }
+    });
+    return {
+      sheetId: recordsGid,
+      title: "Records",
+      rows: buildGridRows(
+        Object.fromEntries(
+          Object.entries(rows).map(([rowIndex, row]) => [
+            rowIndex,
+            Array.from(row, (cell) => cell ?? ""),
+          ]),
+        ),
+      ),
+      tables: tables.map((table) => ({
+        tableId: recordsTableId(table),
+        name: table.name,
+        startRowIndex: table.headerRowIndex,
+        startColumnIndex: table.startColumnIndex,
+        endRowIndex: table.endRowIndex,
+        endColumnIndex: table.endColumnIndex,
+      })),
+    };
+  }
+
+  function seedRecords(tables: readonly RecordsTable[]) {
+    const tableConfigRows = tables.reduce<
+      Record<number, readonly FakeCellValue[]>
+    >((byIndex, table, offset) => {
+      byIndex[5 + offset] = [
+        recordsTableId(table),
+        "",
+        "Records",
+        table.isManaged,
+      ];
+      return byIndex;
+    }, {});
+    return seedFixture({
+      extraSheets: [recordsSheet(tables)],
+      extraTableConfigDataRows: tableConfigRows,
+      tableConfigTableEndRowIndex: 5 + tables.length,
+    });
+  }
+
+  function expectRefused(
+    tables: readonly RecordsTable[],
+    ...messages: string[]
+  ): void {
+    const { grid } = seedRecords(tables);
+    const configRows = () => ({
+      tableConfig: grid.sheet(tableConfigGid).values({
+        startRowIndex: 0,
+        endRowIndex: 30,
+        endColumnIndex: 10,
+      }),
+      columnConfig: grid.sheet(columnConfigGid).values({
+        startRowIndex: 0,
+        endRowIndex: 30,
+        endColumnIndex: 10,
+      }),
+    });
+    const before = configRows();
+
+    let parsed: ConfigRegeneration | undefined;
+    expect(() => {
+      parsed = ConfigCoordinator.init().generateConfigFiles("../makeConfigs");
+    }).toThrow(messages.join(" "));
+    expect(parsed).toBeUndefined();
+    expect(configRows()).toEqual(before);
+  }
+
+  // Rows 4–9 are its body, 0-based.
+  const leases: RecordsTable = {
+    name: "Leases",
+    headerRowIndex: 3,
+    startColumnIndex: 1,
+    endColumnIndex: 4,
+    endRowIndex: 10,
+    isManaged: true,
+  };
+
+  it("refuses a Table stacked under another and starting left of it, its head rows on the other's last body row", () => {
+    expectRefused(
+      [
+        leases,
+        {
+          name: "Tenants",
+          headerRowIndex: 12,
+          startColumnIndex: 0,
+          endColumnIndex: 3,
+          endRowIndex: 14,
+          isManaged: true,
+        },
+      ],
+      `Table "Tenants" on sheet "Records" has head rows in rows 10–12 that sit on Table "Leases". Move "Tenants" so that the 3 rows above its header sit clear of "Leases".`,
+    );
+  });
+
+  it("refuses a Table whose head rows sit on another managed Table's head rows", () => {
+    expectRefused(
+      [
+        {
+          name: "Leases",
+          headerRowIndex: 3,
+          startColumnIndex: 0,
+          endColumnIndex: 3,
+          endRowIndex: 5,
+          isManaged: true,
+        },
+        {
+          name: "Tenants",
+          headerRowIndex: 5,
+          startColumnIndex: 0,
+          endColumnIndex: 3,
+          endRowIndex: 7,
+          isManaged: true,
+        },
+      ],
+      `Table "Tenants" on sheet "Records" has head rows in rows 3–5 that sit on Table "Leases". Move "Tenants" so that the 3 rows above its header sit clear of "Leases".`,
+    );
+  });
+
+  it("refuses a managed Table whose head rows sit on a Table the app doesn't manage", () => {
+    expectRefused(
+      [
+        { ...leases, isManaged: false },
+        {
+          name: "Tenants",
+          headerRowIndex: 12,
+          startColumnIndex: 0,
+          endColumnIndex: 3,
+          endRowIndex: 14,
+          isManaged: true,
+        },
+      ],
+      `Table "Tenants" on sheet "Records" has head rows in rows 10–12 that sit on Table "Leases". Move "Tenants" so that the 3 rows above its header sit clear of "Leases".`,
+    );
+  });
+
+  it("lists two overlaps on one sheet in one message", () => {
+    expectRefused(
+      [
+        {
+          name: "Leases",
+          headerRowIndex: 3,
+          startColumnIndex: 0,
+          endColumnIndex: 2,
+          endRowIndex: 10,
+          isManaged: true,
+        },
+        {
+          name: "Units",
+          headerRowIndex: 3,
+          startColumnIndex: 3,
+          endColumnIndex: 5,
+          endRowIndex: 10,
+          isManaged: true,
+        },
+        {
+          name: "Tenants",
+          headerRowIndex: 12,
+          startColumnIndex: 0,
+          endColumnIndex: 2,
+          endRowIndex: 14,
+          isManaged: true,
+        },
+        {
+          name: "Owners",
+          headerRowIndex: 11,
+          startColumnIndex: 3,
+          endColumnIndex: 5,
+          endRowIndex: 13,
+          isManaged: true,
+        },
+      ],
+      `Table "Tenants" on sheet "Records" has head rows in rows 10–12 that sit on Table "Leases". Move "Tenants" so that the 3 rows above its header sit clear of "Leases".`,
+      `Table "Owners" on sheet "Records" has head rows in rows 9–11 that sit on Table "Units". Move "Owners" so that the 3 rows above its header sit clear of "Units".`,
+    );
+  });
+
+  it("allows a Table stacked with exactly enough room for its head rows below another", () => {
+    seedRecords([
+      leases,
+      {
+        name: "Tenants",
+        headerRowIndex: 13,
+        startColumnIndex: 0,
+        endColumnIndex: 3,
+        endRowIndex: 15,
+        isManaged: true,
+      },
+    ]);
+
+    const parsed =
+      ConfigCoordinator.init().generateConfigFiles("../makeConfigs");
+    expect(parsed.tableConfigs).toContain('"tenants"');
+    expect(parsed.tableConfigs).toContain('"leases"');
+  });
+
+  it("allows two Tables side by side, touching", () => {
+    seedRecords([
+      {
+        name: "Leases",
+        headerRowIndex: 3,
+        startColumnIndex: 0,
+        endColumnIndex: 2,
+        endRowIndex: 6,
+        isManaged: true,
+      },
+      {
+        name: "Tenants",
+        headerRowIndex: 3,
+        startColumnIndex: 2,
+        endColumnIndex: 4,
+        endRowIndex: 5,
+        isManaged: true,
+      },
+    ]);
+
+    const parsed =
+      ConfigCoordinator.init().generateConfigFiles("../makeConfigs");
+    expect(parsed.tableConfigs).toContain('"tenants"');
+    expect(parsed.tableConfigs).toContain('"leases"');
   });
 });

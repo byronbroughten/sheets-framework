@@ -15,6 +15,7 @@ import type {
 import { SheetRaw } from "./SheetRaw";
 import { SpreadsheetFetcherRaw } from "./SpreadsheetRaw/SpreadsheetFetcherRaw";
 import { SpreadsheetFlusherRaw } from "./SpreadsheetRaw/SpreadsheetFlusherRaw";
+import { SpreadsheetTableValidatorRaw } from "./SpreadsheetRaw/SpreadsheetTableValidatorRaw";
 import { TableRaw } from "./TableRaw";
 
 /**
@@ -41,6 +42,9 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
   private get flusher(): SpreadsheetFlusherRaw {
     return new SpreadsheetFlusherRaw(this.spreadsheetRawProps);
   }
+  private get tableValidator(): SpreadsheetTableValidatorRaw {
+    return new SpreadsheetTableValidatorRaw(this.spreadsheetRawProps);
+  }
   get timeZone(): string {
     return this.fetcher.ensureTimeZoneIsFetched();
   }
@@ -52,6 +56,9 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
   }
   tableIdIsActive(tableId: string): boolean {
     return this.activeTableIds.includes(tableId);
+  }
+  validateHeadRowsClear(managedTableIds: string[]): void {
+    this.tableValidator.validateHeadRowsClear(managedTableIds);
   }
   // A Table queued for creation has state but no properties until it is fetched.
   get activeTableIds(): string[] {

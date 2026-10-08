@@ -4,7 +4,6 @@ import {
   type SheetRowIndex,
 } from "../00_Source/RawSource/SheetIndex";
 import { type HeadRole, headRows } from "./headRows";
-import { tableLayout } from "./tableLayout";
 
 export interface TableOriginProps {
   headerRowIndex: SheetRowIndex;
@@ -22,9 +21,7 @@ export class TableOrigin {
   // Where the framework creates a Table; a managed one is found where its configs record it.
   static expected(): TableOrigin {
     return new TableOrigin({
-      headerRowIndex: SheetIndex.row(
-        Math.max(...Object.values(tableLayout.headRowOffsets)),
-      ),
+      headerRowIndex: SheetIndex.row(headRows.countAboveHeader),
       startColIndex: SheetIndex.col(0),
     });
   }
@@ -33,6 +30,9 @@ export class TableOrigin {
   }
   headSheetRowIndex(role: HeadRole): SheetRowIndex {
     return this.sheetRowIndex(headRows.index(role));
+  }
+  get topHeadSheetRowIndex(): SheetRowIndex {
+    return this.sheetRowIndex(headRows.topIndex);
   }
   sheetColIndex(colIndex: number): SheetColIndex {
     return SheetIndex.col(this.startColIndex + colIndex);

@@ -19,6 +19,10 @@ describe("TableOrigin", () => {
     expect(lowerOrigin.sheetRowIndex(-4)).toBe(6);
   });
 
+  it("puts the topmost head row the head-row count above the header", () => {
+    expect(lowerOrigin.topHeadSheetRowIndex).toBe(6);
+  });
+
   it("puts column 0 on the Table's first sheet column", () => {
     expect(lowerOrigin.sheetColIndex(0)).toBe(2);
     expect(lowerOrigin.colIndex(SheetIndex.col(4))).toBe(2);

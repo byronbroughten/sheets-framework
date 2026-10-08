@@ -15,7 +15,7 @@ A formula that names a Table column by the Table's name and the column header â€
 _Avoid_: structured reference, A1, cell address
 
 **Head rows**:
-The Table header row and the rows above it that belong to that Table: the column ID row, the group heading and the action row. They span the Table's columns and move with it, so nothing may shift some of them, or the Table, without the rest. A Table the app doesn't know about has none above its header.
+The Table header row and the rows above it that belong to that Table: the column ID row, the group heading and the action row. They span the Table's columns and move with it, so nothing may shift some of them, or the Table, without the rest. No other Table may sit on them. A Table the app doesn't know about has none above its header.
 _Avoid_: bookkeeping rows, uniform rows, meta rows
 
 **Column ID row**:
