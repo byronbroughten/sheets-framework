@@ -109,6 +109,7 @@ beforeEach(() => {
 function initSyncedColumnConfigOperator(): ColumnConfigOperator {
   const columnConfigOperator = ColumnConfigOperator.init();
   const tableConfigOperator = columnConfigOperator.tableConfigOperator;
+  columnConfigOperator.ss.fetchAllSheetProperties();
   tableConfigOperator.table.prepFetchColumnsFull("letApiAccess");
   tableConfigOperator.prepFetchForSync();
   columnConfigOperator.table.prepFetchColumnsFull(
@@ -117,7 +118,7 @@ function initSyncedColumnConfigOperator(): ColumnConfigOperator {
     "header",
     "emptyValueAllowed",
   );
-  columnConfigOperator.ss.fetchAllPrepped();
+  columnConfigOperator.ss.fetchAllPrepped({ skipFetchingProperties: true });
   tableConfigOperator.syncToSpreadsheet();
   columnConfigOperator.fetchAfterTableConfigSynced();
   return columnConfigOperator;

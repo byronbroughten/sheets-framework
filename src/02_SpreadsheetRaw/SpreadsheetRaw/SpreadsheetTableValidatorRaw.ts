@@ -27,7 +27,17 @@ export type TablePlacement =
   | { kind: "header-only"; tableId: string }
   | { kind: "misplaced"; misplacement: Misplacement }
   | { kind: "none" }
-  | { kind: "well-placed" };
+  | { kind: "well-placed"; tableId: string; canBeMarkedChecked: boolean };
+
+// The well-placed Tables every placement test ran on, so their placement needn't be judged again this run.
+export function checkedTableIdsOf(placements: TablePlacement[]): string[] {
+  return placements.flatMap((placement) => {
+    if (placement.kind !== "well-placed" || !placement.canBeMarkedChecked) {
+      return [];
+    }
+    return [placement.tableId];
+  });
+}
 
 export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
   get ss(): SpreadsheetRaw {
@@ -89,7 +99,13 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
         misplacement: { kind: "band-shifted", sheetGid, tableName, tableId },
       };
     }
-    return { kind: "well-placed" };
+    return {
+      kind: "well-placed",
+      tableId,
+      // The census lists every Table, and config sync never queues a strip after it.
+      canBeMarkedChecked:
+        isStripFetched || this.spreadsheetStateRaw.allSheetPropertiesAreFetched,
+    };
   }
   // On a sheet the configs record several Tables on, each is known only by its recorded ID.
   private _liveTableIdOf(tableName: TableName): string | undefined {

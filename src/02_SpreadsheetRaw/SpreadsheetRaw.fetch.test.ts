@@ -183,6 +183,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
 
   it("names both positions for a Table one column to the right of the layout", () => {
     stubSheetsService({
+      isEveryTableInFilteredFetch: true,
       sheets: [
         misplacedTableSheet({
           sheetId: itemGid,
@@ -277,6 +278,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
 
   it("names every misplaced sheet in one error, including one nothing was queued for", () => {
     stubSheetsService({
+      isEveryTableInFilteredFetch: true,
       sheets: [
         misplacedTableSheet({
           sheetId: itemGid,
@@ -300,14 +302,11 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
   it("stops on a Table moved out of the strip's sight as missing, in the one round trip", () => {
     const { getByDataFilterCalls, getCalls } = stubSheetsService({
       sheets: [
-        {
-          ...misplacedTableSheet({
-            sheetId: itemGid,
-            title: "Item",
-            startRowIndex: tableHeaderRowIndex + 2,
-          }),
-          isTableHiddenFromFilteredFetch: true,
-        },
+        misplacedTableSheet({
+          sheetId: itemGid,
+          title: "Item",
+          startRowIndex: tableHeaderRowIndex + 2,
+        }),
       ],
     });
 
@@ -448,6 +447,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
 
   it("takes a recorded Table as missing when its sheet holds several Tables and none carries its ID", () => {
     stubSheetsService({
+      isEveryTableInFilteredFetch: true,
       sheets: [extraTablesSheet({ sheetId: itemGid, title: "Item" })],
     });
 
@@ -457,26 +457,6 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     expect(() => raw.fetchAllGathered()).toThrowError(
       /"Item" \(gid \d+\) has no Table starting at row 4, column A/,
     );
-  });
-
-  it("stops on a Table the strip could not see as missing, without fetching sheet properties", () => {
-    const { getCalls } = stubSheetsService({
-      sheets: [
-        {
-          ...placedTableSheet({ sheetId: itemGid, title: "Item" }),
-          isTableHiddenFromFilteredFetch: true,
-        },
-      ],
-    });
-
-    const raw = SpreadsheetRaw.init();
-    raw.tableOnSheet(itemGid).gatherFetchProperties();
-    raw.tableOnSheet(itemGid).columnResolver.gatherFetchColumnIds();
-
-    expect(() => raw.fetchAllGathered()).toThrowError(
-      /"Item" \(gid \d+\) has no Table/,
-    );
-    expect(getCalls).toEqual([]);
   });
 
   it("sends no request when no ranges were gathered, since empty dataFilters would fetch the whole spreadsheet", () => {
@@ -887,6 +867,15 @@ describe("several managed Tables on one sheet", () => {
   const rightId = layoutTableId("layoutRight");
   const belowId = layoutTableId("layoutBelow");
 
+  // Moves layoutRight one column right under a run that has already fetched.
+  function stubMovedRight(raw: SpreadsheetRaw): void {
+    stubSheetsService({
+      isEveryTableInFilteredFetch: true,
+      sheets: [layoutSheet({ layoutRight: { startColumnIndex: 4 } })],
+    });
+    raw.spreadsheetRawProps.spreadsheetStateRaw.rawSource =
+      installedRawSource();
+  }
   function gatherEveryStrip(raw: SpreadsheetRaw): void {
     layoutTableNames.forEach((tableName) => {
       const table = raw.table(layoutTableId(tableName));
@@ -942,8 +931,40 @@ describe("several managed Tables on one sheet", () => {
     ).toEqual(layoutTableNames.map((tableName) => layoutBodyRows[tableName]));
   });
 
+  it("checks again a Table whose strip did not ride the fetch its sheet passed", () => {
+    stubSheetsService({
+      isEveryTableInFilteredFetch: true,
+      sheets: [layoutSheet()],
+    });
+    const raw = SpreadsheetRaw.init();
+    raw.table(leftId).gatherFetchProperties();
+    raw.fetchAllGathered();
+    stubMovedRight(raw);
+    raw.table(leftId).row(0).gatherFetchFull();
+
+    expect(() => raw.fetchAllGathered()).toThrowError(
+      /"Layout" \(gid \d+\) has a Table that starts at row 4, column E, not row 4, column D$/,
+    );
+  });
+
+  it("takes a Table the census listed as checked once its sheet passes", () => {
+    stubSheetsService({
+      isEveryTableInFilteredFetch: true,
+      sheets: [layoutSheet()],
+    });
+    const raw = SpreadsheetRaw.init();
+    raw.fetchAllSheetProperties();
+    raw.table(leftId).row(0).gatherFetchFull();
+    raw.fetchAllGathered();
+    stubMovedRight(raw);
+    raw.table(leftId).row(0).gatherFetchFull();
+
+    expect(() => raw.fetchAllGathered()).not.toThrow();
+  });
+
   it("names a Table moved off its recorded origin while its neighbours pass", () => {
     stubSheetsService({
+      isEveryTableInFilteredFetch: true,
       sheets: [layoutSheet({ layoutRight: { startColumnIndex: 4 } })],
     });
 
@@ -996,9 +1017,7 @@ describe("several managed Tables on one sheet", () => {
 
   it("keeps a Table a filtered fetch did not return, with what was queued on it", () => {
     const { grid } = stubSheetsService({
-      sheets: [
-        layoutSheet({ layoutRight: { isHiddenFromFilteredFetch: true } }),
-      ],
+      sheets: [layoutSheet()],
     });
 
     const raw = SpreadsheetRaw.init();

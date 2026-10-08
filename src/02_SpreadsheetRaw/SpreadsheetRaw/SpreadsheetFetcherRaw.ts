@@ -9,6 +9,7 @@ import { SpreadsheetBaseRaw } from "../ClassBases/SpreadsheetBaseRaw";
 import { emptyStateRaw } from "../ClassTypes/emptyStateRaw";
 import { SpreadsheetRaw } from "../SpreadsheetRaw";
 import {
+  checkedTableIdsOf,
   type Misplacement,
   SpreadsheetTableValidatorRaw,
 } from "./SpreadsheetTableValidatorRaw";
@@ -89,6 +90,7 @@ export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
     const misplacements: Misplacement[] = [];
     const headerOnlyTableIds: string[] = [];
     const finalizedSheetGids: number[] = [];
+    const checkedTableIds: string[] = [];
     this.spreadsheetStateRaw.sheets.forEach((state, sheetGid) => {
       const placements = this.tableValidator.tablePlacements(sheetGid);
       state.tableBeforeProperties.fetchQueue = emptyStateRaw.tableFetchQueue();
@@ -109,11 +111,14 @@ export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
         )
       ) {
         finalizedSheetGids.push(sheetGid);
+        checkedTableIds.push(...checkedTableIdsOf(placements));
       }
     });
     this.spreadsheetStateRaw.tables.forEach((state, tableId) => {
       if (!finalizedSheetGids.includes(state.sheetGid)) return;
-      state.working.placementIsChecked = true;
+      if (checkedTableIds.includes(tableId)) {
+        state.working.placementIsChecked = true;
+      }
       this.ss.table(tableId).finalizeFetches();
     });
     this.tableValidator.validateTablePlacement(

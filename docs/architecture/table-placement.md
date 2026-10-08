@@ -18,9 +18,9 @@ Any failure stops the run and names the sheet; the recorded start position tells
 
 ## Checked once per run
 
-A Table's position is checked on the fetch that first tells the run where it is. After that the run moves it itself: growth pushes the Tables below whose columns it overlaps down, a column insert pushes the Tables to its right along, and a row delete pulls the Tables below up ([queued writes](./queued-writes.md)). So a later fetch in the same run doesn't take a pushed neighbour it had already fetched as moved. A neighbour it hadn't fetched yet isn't shifted in state, so it is still judged against its recorded origin.
+A Table's position is checked on the fetch that first tells the run where it is. It counts as checked only once every test has run on it: its sheet passed on a fetch that also brought its strip, so the column ID row test ran too, or the census had been read, since config sync reads the census instead of strips (`checkedTableIdsOf`). A Table whose properties came without its strip is judged again on every later fetch. Once it counts as checked, the run moves it itself: growth pushes the Tables below whose columns it overlaps down, a column insert pushes the Tables to its right along, and a row delete pulls the Tables below up ([queued writes](./queued-writes.md)). So a later fetch in the same run doesn't take a pushed neighbour it had already fetched as moved. A neighbour it hadn't fetched yet isn't shifted in state, so it is still judged against its recorded origin.
 
-**Accepted gap:** the next run, or a same-run first fetch of a neighbour already pushed, stops on it. A Table one of these pushed sits off its recorded origin, and the run stops on it as moved or missing until the configs are regenerated.
+**Accepted gap:** the next run, or a same-run first fetch of a neighbour already pushed, stops on it. A Table one of these pushed sits off its recorded origin, and the run stops on it as moved or missing until the configs are regenerated. [sheets-framework#129](https://github.com/byronbroughten/sheets-framework/issues/129) replaces the recorded position with the header zone.
 
 ## The strip costs no round trip
 

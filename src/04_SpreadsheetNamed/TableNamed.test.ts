@@ -1035,4 +1035,38 @@ describe("Tables that share a sheet", () => {
       ss.table("layoutRight").rows.map((row) => row.value("amount")),
     ).toEqual([10, 20]);
   });
+
+  describe("refuses an edit protection on a Table whose properties have not arrived", () => {
+    function fetchedLeftOnly(): SpreadsheetNamed {
+      stubSheetsService({ sheets: [layoutSheet()] });
+      const ss = SpreadsheetNamed.init();
+      ss.table("layoutLeft").column("amount").prepFetchSpecific([0, 1]);
+      ss.fetchAllPrepped();
+      return ss;
+    }
+
+    it("behind growth that would push it down", () => {
+      const ss = fetchedLeftOnly();
+      ss.table("layoutLeft").appendRowWithVals({
+        entry: "Left four",
+        amount: 4,
+      });
+
+      expect(() =>
+        ss.table("layoutBelow").raw.row(0).cell(1).addEditWarning(),
+      ).toThrowError(/Table is unknown for sheetGid \d+/);
+    });
+
+    it("behind a column insert that would push it along", () => {
+      const ss = fetchedLeftOnly();
+      ss.table("layoutLeft").raw.appendColumn({
+        columnId: "c:lyl:note",
+        header: "Note",
+      });
+
+      expect(() =>
+        ss.table("layoutRight").raw.row(0).cell(1).addEditLock(),
+      ).toThrowError(/Table is unknown for sheetGid \d+/);
+    });
+  });
 });
