@@ -1,7 +1,5 @@
 import { Val } from "@byronbroughten/utils/val";
 
-import { SpreadsheetSchema } from "../01_SpreadsheetSchema/configReaders/SpreadsheetSchema";
-import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
 import { headRows } from "../01_SpreadsheetSchema/headRows";
 import { TableOrigin } from "../01_SpreadsheetSchema/TableOrigin";
@@ -11,17 +9,27 @@ import {
   type FakeRichCellValue,
   type FakeSheetProperties,
   type FakeTable,
-  fakeTableId,
   type stubSheetsService,
 } from "../testSupport/fakeSheetsService";
+import { defaultTableId } from "../testSupport/fakeSheetsService/fakeSpreadsheet";
 import { SpreadsheetRaw } from "./SpreadsheetRaw";
 
 export const lightGreen = { red: 0.851, green: 0.918, blue: 0.827 };
 
-export const itemGid = getTableTraitByName("item", "sheetGid");
-export const logGid = getTableTraitByName("log", "sheetGid");
-export const itemTableId = fakeTableId(itemGid);
-export const logTableId = fakeTableId(logGid);
+// Raw reads no configs; these match the dev Tables of the same names so the tiers above can reuse them.
+const fixtureTables = {
+  item: { sheetGid: 1100001, tableId: "item", idPrefix: "itm" },
+  log: { sheetGid: 1100003, tableId: "log", idPrefix: "log" },
+  layoutLeft: { sheetGid: 1100007, tableId: "layoutLeft", idPrefix: "lyl" },
+  layoutRight: { sheetGid: 1100007, tableId: "layoutRight", idPrefix: "lyr" },
+  // Unmanaged: the configs record no stacked Table until the header zone deepens.
+  layoutBelow: { sheetGid: 1100007, tableId: "layoutBelow", idPrefix: "lyb" },
+} as const;
+
+export const itemGid: number = fixtureTables.item.sheetGid;
+export const logGid: number = fixtureTables.log.sheetGid;
+export const itemTableId: string = fixtureTables.item.tableId;
+export const logTableId: string = fixtureTables.log.tableId;
 // Sheet rows and columns, for fixtures and grid reads; Raw itself counts from the Table.
 export const expectedOrigin = TableOrigin.expected();
 export const tableHeaderRowIndex: number = expectedOrigin.headerRowIndex;
@@ -31,9 +39,9 @@ export const colIdRowIndex: number = expectedOrigin.sheetRowIndex(
 export const startTableColIndex: number = expectedOrigin.startColIndex;
 export const topDataRowIndex = tableHeaderRowIndex + 1;
 export const scratchGid = 999999;
-export const scratchTableId = fakeTableId(scratchGid);
-export const tableId111 = fakeTableId(111);
-export const tableId222 = fakeTableId(222);
+export const scratchTableId = defaultTableId(scratchGid, 0);
+export const tableId111 = defaultTableId(111, 0);
+export const tableId222 = defaultTableId(222, 0);
 export const tableEndRowIndex = tableHeaderRowIndex + 3;
 export const gridRanges = {
   columnOneData: {
@@ -81,15 +89,27 @@ export function placedTableSheet(sheet: {
       [colIdRowIndex]: [ownColumnId(sheet.sheetId)],
       [tableHeaderRowIndex]: ["ID"],
     }),
-    table: { endRowIndex: tableEndRowIndex },
+    table: {
+      endRowIndex: tableEndRowIndex,
+      tableId: loneFixtureTable(sheet.sheetId)?.tableId,
+    },
   };
 }
 
-// A sheet the config doesn't know has no prefix of its own, so any well-formed ID does.
+// A sheet the fixtures don't name has no prefix of its own, so any well-formed ID does.
 export function ownColumnId(sheetGid: number): string {
-  const schema = new SpreadsheetSchema();
-  if (!schema.isInSheetGids(sheetGid)) return dimensionIds.col("x", "id");
-  return dimensionIds.col(schema.sheetByGid(sheetGid).idPrefix, "id");
+  const fixture = loneFixtureTable(sheetGid);
+  if (!fixture) return dimensionIds.col("x", "id");
+  return dimensionIds.col(fixture.idPrefix, "id");
+}
+
+// The Layout sheet holds three Tables, so only item and log name one by GID.
+function loneFixtureTable(
+  sheetGid: number,
+): (typeof fixtureTables)["item" | "log"] | undefined {
+  return [fixtureTables.item, fixtureTables.log].find(
+    (table) => table.sheetGid === sheetGid,
+  );
 }
 
 export function misplacedTableSheet({
@@ -155,7 +175,7 @@ export function thrownMessage(fn: () => void): string {
   throw new Error("Expected the call to throw, but it did not.");
 }
 
-export const layoutGid = getTableTraitByName("layoutLeft", "sheetGid");
+export const layoutGid: number = fixtureTables.layoutLeft.sheetGid;
 export const layoutTableNames = [
   "layoutLeft",
   "layoutRight",
@@ -163,18 +183,6 @@ export const layoutTableNames = [
 ] as const;
 export type LayoutTableName = (typeof layoutTableNames)[number];
 export const managedLayoutTableNames = ["layoutLeft", "layoutRight"] as const;
-// Unmanaged: the configs record no stacked Table until the header zone deepens.
-const unmanagedLayoutTable = { tableId: "layoutBelow", idPrefix: "lyb" };
-function layoutTableTraits(tableName: LayoutTableName): {
-  tableId: string;
-  idPrefix: string;
-} {
-  if (tableName === "layoutBelow") return unmanagedLayoutTable;
-  return {
-    tableId: getTableTraitByName(tableName, "tableId"),
-    idPrefix: getTableTraitByName(tableName, "idPrefix"),
-  };
-}
 export const layoutOrigins: Record<
   LayoutTableName,
   Required<Pick<FakeTable, "startRowIndex" | "startColumnIndex">>
@@ -184,7 +192,7 @@ export const layoutOrigins: Record<
   layoutBelow: { startRowIndex: 11, startColumnIndex: 0 },
 };
 export function layoutTableId(tableName: LayoutTableName): string {
-  return layoutTableTraits(tableName).tableId;
+  return fixtureTables[tableName].tableId;
 }
 export const layoutBodyRows: Record<LayoutTableName, [string, number][]> = {
   layoutLeft: [
@@ -231,7 +239,7 @@ function layoutTable(
     name: tableName,
     headRows: {
       3: ["entry", "amount"].map((columnKey) =>
-        dimensionIds.col(layoutTableTraits(tableName).idPrefix, columnKey),
+        dimensionIds.col(fixtureTables[tableName].idPrefix, columnKey),
       ),
     },
     endRowIndex: startRowIndex + 1 + layoutBodyRows[tableName].length,

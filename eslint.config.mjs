@@ -8,10 +8,9 @@ import {
 
 const importPatterns = {
   raw: {
-    regex:
-      "^(\\.\\./)+01_SpreadsheetSchema/(configReaders/(TableSchema|ColumnSchema|columnConfigsTypes|valueConfigsTypes)|generated/(columnConfigs|valueConfigs))(\\.js)?$",
+    regex: "^(\\.\\./)+01_SpreadsheetSchema/configReaders(/|$)",
     message:
-      "Raw never reads column or value config. It addresses by index, and resolves a column only from the Table's live head rows. Config-aware lookups belong in Identified or above.",
+      "Raw reads no configs. It addresses Tables by tableId and resolves columns only from the Table's live head rows. Config-aware work belongs in Identified or above.",
   },
   appConfigs: {
     regex: "(^|/)generated/",
