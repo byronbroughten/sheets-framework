@@ -94,11 +94,12 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
     const presentFloorSheets = floorTabNames().flatMap((tableName) => {
       const sheetGid = getTableTraitByName(tableName, "sheetGid");
       if (!this.ss.raw.gidIsActive(sheetGid)) return [];
+      const floorTableId = getTableTraitByName(tableName, "tableId");
       return [
         {
-          sheet: this.ss.raw.tableOnSheet(sheetGid),
+          sheet: this.ss.raw.table(floorTableId),
           seed: configSheetFloorSeed[tableName],
-          floorTableId: getTableTraitByName(tableName, "tableId"),
+          floorTableId,
         },
       ];
     });
@@ -306,7 +307,12 @@ function assertOnlyFloorTable(sheet: TableRaw, floorTableId: string): void {
   if (tableIds.length === 0) {
     throw new Error(`${floorTabLabel(sheet)} has no Table.`);
   }
-  if (tableIds.length === 1) return;
+  if (tableIds.length === 1 && tableIds[0] === floorTableId) return;
+  if (tableIds.length === 1) {
+    throw new Error(
+      `${floorTabLabel(sheet)} has ${tableNamesLabel(sheet, tableIds)}, not its floor Table (Table ID "${floorTableId}"); regenerate the configs if it replaced the floor Table.`,
+    );
+  }
   if (!tableIds.includes(floorTableId)) {
     throw new Error(
       `${floorTabLabel(sheet)} has ${tableNamesLabel(sheet, tableIds)} and none is its floor Table (Table ID "${floorTableId}").`,

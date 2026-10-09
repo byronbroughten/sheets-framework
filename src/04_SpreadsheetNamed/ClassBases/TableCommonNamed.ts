@@ -1,6 +1,5 @@
 import type { TableName } from "../../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { TableSchema } from "../../01_SpreadsheetSchema/configReaders/TableSchema";
-import type { TableAddressRaw } from "../../02_SpreadsheetRaw/ClassBases/TableBaseRaw";
 import { managedTableAddress } from "../../03_SpreadsheetIdentified/ClassBases/TableBaseIdentified";
 import { TableBaseNamed } from "./TableBaseNamed";
 
@@ -13,7 +12,7 @@ export abstract class TableCommonNamed<
   get sheetGid(): number {
     return this.schema.sheetGid;
   }
-  get tableAddress(): TableAddressRaw {
+  get tableAddress(): { tableId: string } {
     return managedTableAddress(this.schema);
   }
 }

@@ -1,3 +1,4 @@
+import { SpreadsheetSchema } from "../../01_SpreadsheetSchema/configReaders/SpreadsheetSchema";
 import type {
   FakeCell,
   FakeSheetProperties,
@@ -82,7 +83,9 @@ function sheetState(fixture: FakeSheetProperties): FakeSheetState {
   }
   const placed = (fixtureTables ?? (table === undefined ? [] : [table])).map(
     (fixtureTable, tableIndex) =>
-      placedTable(fixtureTable, defaultTableId(copy.sheetId, tableIndex)),
+      placedTable(fixtureTable, () =>
+        defaultTableId(copy.sheetId, tableIndex, fixtureTables?.length ?? 1),
+      ),
   );
   const rows = placed.reduce(
     withHeadRows,
@@ -105,20 +108,31 @@ function sheetState(fixture: FakeSheetProperties): FakeSheetState {
   };
 }
 
-export function defaultTableId(sheetId: number, tableIndex: number): string {
-  return tableIndex === 0
-    ? `fake-table-${sheetId}`
-    : `fake-table-${sheetId}-${tableIndex}`;
+// A lone Table on a sheet the configs record one Table on gets its recorded ID, since runs reach a Table by it.
+export function defaultTableId(
+  sheetId: number,
+  tableIndex: number,
+  tableCount = 1,
+): string {
+  if (tableIndex > 0) return `fake-table-${sheetId}-${tableIndex}`;
+  if (tableCount > 1) return `fake-table-${sheetId}`;
+  const [recorded, ...otherRecorded] = new SpreadsheetSchema().tablesOnGid(
+    sheetId,
+  );
+  if (recorded !== undefined && otherRecorded.length === 0) {
+    return recorded.tableId;
+  }
+  return `fake-table-${sheetId}`;
 }
 
 type PlacedTable = FakeTable &
   Pick<FakeTableState, "tableId" | "startRowIndex" | "startColumnIndex">;
 
-function placedTable(table: FakeTable, defaultId: string): PlacedTable {
+function placedTable(table: FakeTable, defaultId: () => string): PlacedTable {
   const origin = fakeTables.origin(table);
   return {
     ...table,
-    tableId: table.tableId ?? defaultId,
+    tableId: table.tableId ?? defaultId(),
     startRowIndex: origin.headerRowIndex,
     startColumnIndex: origin.startColIndex,
   };

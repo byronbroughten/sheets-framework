@@ -163,7 +163,11 @@ describe("stubSheetsService replays row and column changes", () => {
           ...widgetSheet(),
           rows: buildGridRows({
             0: ["h1", "h2", "h3"],
-            1: [1, "x", { value: true, dataValidationConditionType: "BOOLEAN" }],
+            1: [
+              1,
+              "x",
+              { value: true, dataValidationConditionType: "BOOLEAN" },
+            ],
             2: [2, "y", { value: 3, numberFormatType: "CURRENCY" }],
             3: [3, "z", { value: "r", backgroundColor: green }],
           }),
@@ -615,9 +619,8 @@ function tableRange(
   grid: FakeGridView,
   tableId: string,
 ): GoogleAppsScript.Sheets.Schema.GridRange | undefined {
-  return grid
-    .sheet(bandGid)
-    .tables.find((table) => table.tableId === tableId)?.range;
+  return grid.sheet(bandGid).tables.find((table) => table.tableId === tableId)
+    ?.range;
 }
 
 describe("stubSheetsService places each fixture Table with its own head rows", () => {
@@ -630,12 +633,9 @@ describe("stubSheetsService places each fixture Table with its own head rows", (
     expect(sheet.values({ endRowIndex: 1, endColumnIndex: 3 })).toEqual([
       ["a:1", "a:2", "a:3"],
     ]);
-    expect(sheet.values({ startRowIndex: 7, endRowIndex: 11, endColumnIndex: 1 })).toEqual([
-      ["c:1"],
-      [null],
-      [null],
-      ["Low"],
-    ]);
+    expect(
+      sheet.values({ startRowIndex: 7, endRowIndex: 11, endColumnIndex: 1 }),
+    ).toEqual([["c:1"], [null], [null], ["Low"]]);
     expect(sheet.tables.map((table) => table.tableId)).toEqual(["a", "c"]);
   });
 
@@ -701,15 +701,15 @@ describe("stubSheetsService replays Table-bounded inserts and deletes", () => {
     send(
       { appendDimension: { sheetId: bandGid, dimension: "ROWS", length: 2 } },
       {
-      insertRange: {
-        range: bandRange({
-          startRowIndex: 6,
-          endRowIndex: 8,
-          startColumnIndex: 0,
-          endColumnIndex: 3,
-        }),
-        shiftDimension: "ROWS",
-      },
+        insertRange: {
+          range: bandRange({
+            startRowIndex: 6,
+            endRowIndex: 8,
+            startColumnIndex: 0,
+            endColumnIndex: 3,
+          }),
+          shiftDimension: "ROWS",
+        },
       },
     );
 
@@ -915,7 +915,9 @@ describe("stubSheetsService replays Table-bounded inserts and deletes", () => {
     const sheet = grid.sheet(bandGid);
     expect(tableRange(grid, "a")?.endRowIndex).toBe(5);
     expect(tableRange(grid, "b")?.endRowIndex).toBe(6);
-    expect(sheet.values({ startRowIndex: 4, endRowIndex: 7, endColumnIndex: 5 })).toEqual([
+    expect(
+      sheet.values({ startRowIndex: 4, endRowIndex: 7, endColumnIndex: 5 }),
+    ).toEqual([
       [4, 5, 6, null, null],
       ["belowA", null, null, null, null],
       [null, null, null, null, "beside"],
@@ -1036,7 +1038,11 @@ describe("stubSheetsService replays copyPaste of format and validation", () => {
                 }),
               ],
             },
-            { ranges: [{ sheetId: bandGid, startColumnIndex: 1, endColumnIndex: 2 }] },
+            {
+              ranges: [
+                { sheetId: bandGid, startColumnIndex: 1, endColumnIndex: 2 },
+              ],
+            },
           ],
         },
       ],
@@ -1055,9 +1061,25 @@ describe("stubSheetsService replays copyPaste of format and validation", () => {
     );
 
     const sheet = grid.sheet(bandGid);
-    expect(sheet.rows({ startRowIndex: 6, endRowIndex: 8, endColumnIndex: 2 })).toEqual([
-      [{ value: "belowA", backgroundColor: modelGreen, numberFormatType: "CURRENCY" }, null],
-      [{ value: null, backgroundColor: modelGreen, numberFormatType: "CURRENCY" }, null],
+    expect(
+      sheet.rows({ startRowIndex: 6, endRowIndex: 8, endColumnIndex: 2 }),
+    ).toEqual([
+      [
+        {
+          value: "belowA",
+          backgroundColor: modelGreen,
+          numberFormatType: "CURRENCY",
+        },
+        null,
+      ],
+      [
+        {
+          value: null,
+          backgroundColor: modelGreen,
+          numberFormatType: "CURRENCY",
+        },
+        null,
+      ],
     ]);
     expect(sheet.conditionalFormats.map((rule) => rule.ranges)).toEqual([
       [
@@ -1088,7 +1110,9 @@ describe("stubSheetsService replays copyPaste of format and validation", () => {
     );
 
     expect(
-      grid.sheet(bandGid).rows({ startRowIndex: 6, endRowIndex: 8, endColumnIndex: 2 }),
+      grid
+        .sheet(bandGid)
+        .rows({ startRowIndex: 6, endRowIndex: 8, endColumnIndex: 2 }),
     ).toEqual([
       ["belowA", { value: null, dataValidationConditionType: "BOOLEAN" }],
       [null, { value: null, dataValidationConditionType: "BOOLEAN" }],
@@ -1121,7 +1145,9 @@ describe("stubSheetsService replays copyPaste of format and validation", () => {
           pasteType: "PASTE_NORMAL",
         },
       }),
-    ).toThrowError("The fake Sheets service does not replay copyPaste type PASTE_NORMAL.");
+    ).toThrowError(
+      "The fake Sheets service does not replay copyPaste type PASTE_NORMAL.",
+    );
   });
 });
 
@@ -1132,9 +1158,7 @@ const gadgetColumnConfigs = {
   unused: { columnId: "g:unused", header: "Unused" },
 };
 
-function gadgetSheet(
-  placement: FakeTablePlacement = {},
-): FakeSheetProperties {
+function gadgetSheet(placement: FakeTablePlacement = {}): FakeSheetProperties {
   return fakeTableSheet.build({
     sheetId: gadgetGid,
     title: "Gadget",

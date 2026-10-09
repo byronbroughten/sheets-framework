@@ -107,13 +107,12 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
     }
     return { kind: "well-placed" };
   }
-  // On a sheet the configs record several Tables on, each is known only by its recorded ID.
+  // A Table is known only by its recorded ID, so one inserted again reads as missing.
   private _liveTableIdOf(tableName: TableName): string | undefined {
     const table = this.schema.sheetByName(tableName);
     const sheetTable = this.ss.tableOnSheet(table.sheetGid);
     if (sheetTable.tableIds().includes(table.tableId)) return table.tableId;
-    if (table.sharesSheet) return undefined;
-    return sheetTable.tableIdReachedByGid();
+    return undefined;
   }
   validateTablePlacements(placements: TablePlacement[]): void {
     const fix = this._placementsFix(placements);

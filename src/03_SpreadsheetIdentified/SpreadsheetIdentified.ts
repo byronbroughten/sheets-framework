@@ -1,3 +1,5 @@
+import { Val } from "@byronbroughten/utils/val";
+
 import type { SheetEdit } from "../00_Source/PlatformEvents/sheetEdit";
 import { SpreadsheetSchema } from "../01_SpreadsheetSchema/configReaders/SpreadsheetSchema";
 import type { TableSchema } from "../01_SpreadsheetSchema/configReaders/TableSchema";
@@ -14,11 +16,17 @@ export class SpreadsheetIdentified extends SpreadsheetBaseIdentified {
   get raw(): SpreadsheetRaw {
     return new SpreadsheetRaw(this.spreadsheetRawProps);
   }
+  // The one managed Table the configs record on that sheet.
   tableOnSheet(sheetGid: number): TableIdentified {
-    return new TableIdentified({
-      ...this.spreadsheetIdentifiedProps,
-      sheetGid,
-    });
+    const [table, ...otherTables] = this.schema.tablesOnGid(sheetGid);
+    if (otherTables.length > 0) {
+      throw new Error(
+        `The configs record several Tables on sheetGid ${sheetGid}, so reach one by its Table ID.`,
+      );
+    }
+    return this.managedTable(
+      Val.assert(table, `Table the configs record on sheetGid ${sheetGid}`),
+    );
   }
   table(tableId: string): TableIdentified {
     return new TableIdentified({
@@ -55,11 +63,8 @@ export class SpreadsheetIdentified extends SpreadsheetBaseIdentified {
       this.tableOnSheet(sheetGid),
     );
   }
-  // Sheets first: building a sheet's handle hands its queue to its known Table.
   get tablesPreppedForFetch(): TableIdentified[] {
-    return [...this._sheetsWaitingOnTable(), ...this._knownTables()].filter(
-      (table) => table.isPreppedToFetch,
-    );
+    return this._knownTables().filter((table) => table.isPreppedToFetch);
   }
   // A rule or protection fetch is queued on the sheet, but it still needs its Table's column IDs.
   private _ensureGatheringSheetsHaveTables(): void {
@@ -67,7 +72,8 @@ export class SpreadsheetIdentified extends SpreadsheetBaseIdentified {
     this.raw.activeSheetGids
       .filter((sheetGid) => this.raw.sheet(sheetGid).hasGatheredFetch)
       .filter((sheetGid) => !knownGids.includes(sheetGid))
-      .forEach((sheetGid) => this.tableOnSheet(sheetGid));
+      .flatMap((sheetGid) => this.schema.tablesOnGid(sheetGid))
+      .forEach((table) => this.managedTable(table));
   }
   fetchAllPrepped({
     includeProgrammaticFacts = false,
@@ -86,11 +92,6 @@ export class SpreadsheetIdentified extends SpreadsheetBaseIdentified {
     tablesPreppedForFetch.forEach((table) => {
       table.clearFetchTargets();
     });
-  }
-  private _sheetsWaitingOnTable(): TableIdentified[] {
-    return [...this.tableBeforePropertiesBySheet.keys()]
-      .map((sheetGid) => this.tableOnSheet(sheetGid))
-      .filter((table) => table.knownTableId === undefined);
   }
   private _knownTables(): TableIdentified[] {
     return [...this.tablesStateIdentified.keys()].map((tableId) =>

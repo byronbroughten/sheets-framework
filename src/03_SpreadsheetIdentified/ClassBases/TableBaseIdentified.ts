@@ -5,10 +5,7 @@ import {
   type TableName,
 } from "../../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { TableSchema } from "../../01_SpreadsheetSchema/configReaders/TableSchema";
-import {
-  type TableAddressRaw,
-  TableBaseRaw,
-} from "../../02_SpreadsheetRaw/ClassBases/TableBaseRaw";
+import { TableBaseRaw } from "../../02_SpreadsheetRaw/ClassBases/TableBaseRaw";
 import { SheetRaw } from "../../02_SpreadsheetRaw/SheetRaw";
 import {
   emptyTableStateIdentified,
@@ -20,44 +17,47 @@ import {
   type SpreadsheetIdentifiedProps,
 } from "./SpreadsheetBaseIdentified";
 
-export type TableIdentifiedProps = SpreadsheetIdentifiedProps & TableAddressRaw;
+export type TableIdentifiedProps = SpreadsheetIdentifiedProps & {
+  tableId: string;
+};
 
-// A sheet that holds several managed Tables can't name one, so each is reached by its recorded ID.
+// A Table deleted and inserted again carries a new ID, so it reads as missing until the configs are regenerated.
 export function managedTableAddress<TN extends TableName>(
   table: TableSchema<TN>,
-): TableAddressRaw {
-  if (table.sharesSheet) return { tableId: table.tableId };
-  return { sheetGid: table.sheetGid };
+): { tableId: string } {
+  return { tableId: table.tableId };
 }
 
 export class TableBaseIdentified extends SpreadsheetBaseIdentified {
   readonly sheetGid: number;
-  private readonly tableAddress: TableAddressRaw;
+  readonly knownTableId: string;
   constructor({
     spreadsheetStateRaw,
     spreadsheetStateIdentified,
     feedbackColumnIds,
-    ...tableAddress
+    tableId,
   }: TableIdentifiedProps) {
     super({
       spreadsheetStateRaw,
       spreadsheetStateIdentified,
       feedbackColumnIds,
     });
-    this.tableAddress = tableAddress;
+    this.knownTableId = tableId;
     this.sheetGid = this.rawTable.sheetGid;
-    this._ensureTableState();
+    if (!this.tablesStateIdentified.has(tableId)) {
+      this.tablesStateIdentified.set(tableId, emptyTableStateIdentified());
+    }
   }
   get tableIdentifiedProps(): TableIdentifiedProps {
     return {
       ...this.spreadsheetIdentifiedProps,
-      ...this.tableAddress,
+      tableId: this.knownTableId,
     };
   }
   private get rawTable(): TableBaseRaw {
     return new TableBaseRaw({
       ...this.spreadsheetRawProps,
-      ...this.tableAddress,
+      tableId: this.knownTableId,
     });
   }
   private get rawSheet(): SheetRaw {
@@ -66,11 +66,11 @@ export class TableBaseIdentified extends SpreadsheetBaseIdentified {
       sheetGid: this.sheetGid,
     });
   }
-  private get tableStateBeforeProperties(): TableStateIdentified | undefined {
-    return this.tableBeforePropertiesBySheet.get(this.sheetGid);
-  }
   protected get tableState(): TableStateIdentified {
-    return this._resolveTableState();
+    return Val.assert(
+      this.tablesStateIdentified.get(this.knownTableId),
+      `Identified Table state for tableId ${this.knownTableId}`,
+    );
   }
   get fetchTargets(): FetchTargetIdentified[] {
     return this.tableState.fetchQueue.targets;
@@ -81,61 +81,12 @@ export class TableBaseIdentified extends SpreadsheetBaseIdentified {
   }
   // A Table its configs record is described by its own entry, since its sheet may record several.
   protected get tableSchema(): TableSchema {
-    const tableId = this.knownTableId;
-    if (tableId !== undefined && tableConfigsByTableId().has(tableId)) {
-      return TableSchema.fromTableId(tableId);
+    if (tableConfigsByTableId().has(this.knownTableId)) {
+      return TableSchema.fromTableId(this.knownTableId);
     }
     return TableSchema.fromSheetGid(this.sheetGid);
   }
-  // Absent until the sheet's one Table is fetched.
-  get knownTableId(): string | undefined {
-    if ("tableId" in this.tableAddress) return this.tableAddress.tableId;
-    return this.rawTable.tableIdReachedByGid();
-  }
   clearFetchTargets(): void {
     this.tableState.fetchQueue.targets = [];
-  }
-  // Before its Table is known, a handle reads the sheet's queue.
-  private _resolveTableState(): TableStateIdentified {
-    const tableId = this.knownTableId;
-    const tableState =
-      tableId === undefined
-        ? undefined
-        : this.tablesStateIdentified.get(tableId);
-    return Val.assert(
-      tableState ?? this.tableStateBeforeProperties,
-      `Identified Table state for sheetGid ${this.sheetGid}`,
-    );
-  }
-  private _ensureTableState(): void {
-    const tableId = this.knownTableId;
-    if (tableId === undefined) {
-      this._ensureTableStateBeforeProperties();
-      return;
-    }
-    if (!this.tablesStateIdentified.has(tableId)) {
-      this.tablesStateIdentified.set(tableId, emptyTableStateIdentified());
-    }
-    if (this.rawTable.tableIdReachedByGid() === tableId) {
-      this._adoptTableStateBeforeProperties(tableId);
-    }
-  }
-  private _ensureTableStateBeforeProperties(): void {
-    if (this.tableStateBeforeProperties !== undefined) return;
-    this.tableBeforePropertiesBySheet.set(
-      this.sheetGid,
-      emptyTableStateIdentified(),
-    );
-  }
-  // The sheet's one Table takes over what was prepped before it was known.
-  private _adoptTableStateBeforeProperties(tableId: string): void {
-    const adopted = this.tableStateBeforeProperties;
-    if (adopted === undefined) return;
-    const tableState = Val.assert(
-      this.tablesStateIdentified.get(tableId),
-      `Identified Table state for tableId ${tableId}`,
-    );
-    tableState.fetchQueue.targets.push(...adopted.fetchQueue.targets);
-    this.tableBeforePropertiesBySheet.delete(this.sheetGid);
   }
 }

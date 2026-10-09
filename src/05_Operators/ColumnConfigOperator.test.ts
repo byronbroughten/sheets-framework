@@ -400,12 +400,7 @@ describe("ColumnConfigOperator.newColumnConfigs / toFileSource", () => {
 });
 
 describe("ColumnConfigOperator.syncToSpreadsheet -> _updateProgrammaticValues", () => {
-  const testTableConfigRowWithApiAccess = [
-    testTableId,
-    "",
-    "Item",
-    true,
-  ];
+  const testTableConfigRowWithApiAccess = [testTableId, "", "Item", true];
 
   function seedTableConfigFixture() {
     return {
@@ -862,15 +857,17 @@ function syncColumnsUnderTest({
 
 function valueTitles(operator: ColumnConfigOperator, count: number) {
   const col = operator.table.columns("tableId", "columnId");
-  const titles = operator.table.workingRowIndexesWithData.flatMap((rowIndex) => {
-    if (col.tableId.valueOrEmpty(rowIndex) !== testTableId) return [];
-    return [
-      operator.ss.raw
-        .table(testTableId)
-        .profile.columnById(col.columnId.value(rowIndex))
-        .valueTitle(),
-    ];
-  });
+  const titles = operator.table.workingRowIndexesWithData.flatMap(
+    (rowIndex) => {
+      if (col.tableId.valueOrEmpty(rowIndex) !== testTableId) return [];
+      return [
+        operator.ss.raw
+          .table(testTableId)
+          .profile.columnById(col.columnId.value(rowIndex))
+          .valueTitle(),
+      ];
+    },
+  );
   expect(titles).toHaveLength(count);
   return titles;
 }
@@ -1437,9 +1434,9 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> _pruneColumnRows", () => {
 
     expect(() => syncColumnConfigOperator(operator)).not.toThrow();
     expect(operator.table.column("columnId").hasValue("c:???:eee")).toBe(false);
-    expect(
-      operator.table.column("tableId").hasValue(columnConfigTableId),
-    ).toBe(true);
+    expect(operator.table.column("tableId").hasValue(columnConfigTableId)).toBe(
+      true,
+    );
     expect(operator.newColumnConfigs().columnConfig).toBeDefined();
   });
 

@@ -1,5 +1,8 @@
 import type { RgbColor } from "../../00_Source/RawSource/RgbColor";
-import type { Value, ValueName } from "../../01_SpreadsheetSchema/configReaders/valueSchemas";
+import type {
+  Value,
+  ValueName,
+} from "../../01_SpreadsheetSchema/configReaders/valueSchemas";
 
 // Mirrors the raw queued entry's optional pair, so a run can write either or both.
 export interface CellChange<VN extends ValueName = ValueName> {
@@ -9,8 +12,6 @@ export interface CellChange<VN extends ValueName = ValueName> {
 
 export interface StateIdentified {
   tables: TablesStateIdentified;
-  // What `ss.tableOnSheet(gid)` preps before its Table is known.
-  tableBeforePropertiesBySheet: Map<SheetId, TableStateIdentified>;
 }
 
 export type TablesStateIdentified = Map<TableId, TableStateIdentified>;
@@ -27,7 +28,6 @@ export function emptyTableStateIdentified(): TableStateIdentified {
   return { fetchQueue: { targets: [] } };
 }
 
-type SheetId = number;
 type TableId = string;
 
 interface FullRowTarget {
