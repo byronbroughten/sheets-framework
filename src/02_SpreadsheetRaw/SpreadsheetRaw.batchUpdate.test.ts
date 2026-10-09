@@ -919,7 +919,7 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
 
     expect(() =>
       raw
-        .tableOnSheet(111)
+        .table(tableId111)
         .appendColumn({ columnId: "c:x:new", header: "New" }),
     ).toThrow(staleRowIndexes);
   });
