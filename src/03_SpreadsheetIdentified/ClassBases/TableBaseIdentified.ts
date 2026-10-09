@@ -14,7 +14,6 @@ import {
 } from "./SpreadsheetBaseIdentified";
 
 // Always the recorded ID: a Table deleted and inserted again reads as missing until the configs are regenerated.
-// `sheetGid` rides along so the Raw Tables built from these props are placed before their properties arrive.
 export interface TableAddressIdentified {
   tableId: string;
   sheetGid?: number;

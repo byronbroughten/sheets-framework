@@ -53,10 +53,7 @@ export class SheetRaw extends SpreadsheetBaseRaw {
   }
   private _ensureSheetState(): void {
     if (this.sheetsStateRaw.has(this.sheetGid)) return;
-    this.sheetsStateRaw.set(
-      this.sheetGid,
-      emptyStateRaw.sheetState(),
-    );
+    this.sheetsStateRaw.set(this.sheetGid, emptyStateRaw.sheetState());
   }
   get schema(): SpreadsheetSchema {
     return new SpreadsheetSchema();
@@ -114,10 +111,6 @@ export class SheetRaw extends SpreadsheetBaseRaw {
     });
     this.sheetState.working.title = title;
     return this;
-  }
-  // The managed Tables only: the configs place them, so a tab's unmanaged Tables aren't listed.
-  get tableIds(): string[] {
-    return this.schema.tablesOnGid(this.sheetGid).map((table) => table.tableId);
   }
   get rowCount(): number {
     return Val.assert(
@@ -247,20 +240,20 @@ export class SheetRaw extends SpreadsheetBaseRaw {
     this.protections.integrateEditProtections(protections);
   }
   // Every Table fetched onto the sheet, managed or not.
-  liveTableIds(): string[] {
+  get tableIds(): string[] {
     return Array.from(this.tablesStateRaw.entries())
       .filter(([, tableState]) => tableState.sheetGid === this.sheetGid)
       .map(([tableId]) => tableId);
   }
   // Row indexes only actually shift once the deletes have been sent, and a Table below the deleted rows shifts with them.
   markRowIndexesStale(): void {
-    this.liveTableIds().forEach((tableId) =>
+    this.tableIds.forEach((tableId) =>
       this._table(tableId).markRowIndexesStale(),
     );
   }
   integrateSnapshot(sheet: SheetSnapshot): void {
     this._integrateSheetProperties(sheet);
-    this.liveTableIds().forEach((tableId) => {
+    this.tableIds.forEach((tableId) => {
       this._table(tableId).integrateGridBlocks(sheet.gridBlocks ?? []);
     });
   }
@@ -269,7 +262,7 @@ export class SheetRaw extends SpreadsheetBaseRaw {
   }
   removeTablesAbsentFrom(tables: TableSnapshot[]): void {
     const liveTableIds = tables.map(({ tableId }) => tableId);
-    this.liveTableIds()
+    this.tableIds
       .filter((tableId) => !liveTableIds.includes(tableId))
       .forEach((tableId) => this._removeAbsentTable(tableId));
   }

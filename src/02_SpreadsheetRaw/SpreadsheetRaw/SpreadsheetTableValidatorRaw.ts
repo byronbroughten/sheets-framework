@@ -105,7 +105,7 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
   // A Table is known only by its recorded ID, so one inserted again reads as missing.
   private _liveTableIdOf(tableName: TableName): string | undefined {
     const table = this.schema.sheetByName(tableName);
-    return this.ss.sheet(table.sheetGid).liveTableIds().includes(table.tableId)
+    return this.ss.sheet(table.sheetGid).tableIds.includes(table.tableId)
       ? table.tableId
       : undefined;
   }

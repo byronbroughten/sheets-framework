@@ -100,11 +100,15 @@ describe("SheetRaw", () => {
     expect(raw.table(tableId111).sheet.title).toBe("Task Generic");
   });
 
-  it("lists the managed Tables the configs place on it, and none on an unmanaged tab", () => {
-    stubSheetsService();
-    const raw = SpreadsheetRaw.init();
+  it("lists the Tables fetched onto it, and none before the fetch", () => {
     const itemGid = getTableTraitByName("item", "sheetGid");
+    stubSheetsService({
+      sheets: [placedTableSheet({ sheetId: itemGid, title: "Item" })],
+    });
+    const raw = SpreadsheetRaw.init();
 
+    expect(raw.sheet(itemGid).tableIds).toEqual([]);
+    raw.fetchAllSheetProperties();
     expect(raw.sheet(itemGid).tableIds).toEqual([
       getTableTraitByName("item", "tableId"),
     ]);

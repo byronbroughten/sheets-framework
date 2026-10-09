@@ -33,16 +33,17 @@ export class TableBaseRaw extends SpreadsheetBaseRaw {
   constructor({ spreadsheetStateRaw, tableId, sheetGid }: TableRawProps) {
     super({ spreadsheetStateRaw });
     this.addressedTableId = tableId;
-    this.sheetGid = sheetGidOf(spreadsheetStateRaw.tables, tableId, sheetGid);
+    this.sheetGid = sheetGidOf({
+      tables: spreadsheetStateRaw.tables,
+      tableId,
+      sheetGid,
+    });
     this._ensureSheetState();
     this._ensureTableBeforePropertiesById();
   }
   private _ensureSheetState(): void {
     if (!this.sheetsStateRaw.has(this.sheetGid)) {
-      this.sheetsStateRaw.set(
-        this.sheetGid,
-        emptyStateRaw.sheetState(),
-      );
+      this.sheetsStateRaw.set(this.sheetGid, emptyStateRaw.sheetState());
     }
   }
   private _ensureTableBeforePropertiesById(): void {
@@ -141,11 +142,15 @@ export function sheetLabel(
 }
 
 // A Table in state carries its GID; one reached before its properties arrive is placed by the caller.
-function sheetGidOf(
-  tables: TablesStateRaw,
-  tableId: string,
-  sheetGid: number | undefined,
-): number {
+function sheetGidOf({
+  tables,
+  tableId,
+  sheetGid,
+}: {
+  tables: TablesStateRaw;
+  tableId: string;
+  sheetGid: number | undefined;
+}): number {
   return Val.assert(
     tables.get(tableId)?.sheetGid ?? sheetGid,
     `sheetGid for tableId ${tableId}`,

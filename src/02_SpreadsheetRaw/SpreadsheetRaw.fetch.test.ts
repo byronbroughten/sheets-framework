@@ -59,7 +59,7 @@ describe("SpreadsheetRaw.fetchAllSheetProperties", () => {
     raw.fetchAllSheetProperties();
 
     expect(raw.sheet(layoutGid).tableIds).toEqual(
-      managedLayoutTableNames.map(layoutTableId),
+      layoutTableNames.map(layoutTableId),
     );
     expect(
       layoutTableNames.map(
@@ -455,7 +455,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     raw.fetchAllSheetProperties();
 
     expect(raw.table(itemTableId, itemGid).tableId).toBe(recordedTableId);
-    expect(raw.sheet(itemGid).liveTableIds().sort()).toEqual(
+    expect(raw.sheet(itemGid).tableIds.sort()).toEqual(
       ["unmanaged", recordedTableId].sort(),
     );
   });

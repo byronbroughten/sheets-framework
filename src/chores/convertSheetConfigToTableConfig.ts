@@ -98,7 +98,7 @@ function tableTitled(
 ): TableRaw {
   const sheetGid = Val.assert(gidByTitle.get(title), `"${title}" tab`);
   const tableId = Val.assert(
-    tableIdOnTab(raw, raw.sheet(sheetGid).liveTableIds()),
+    tableIdOnTab(raw, raw.sheet(sheetGid).tableIds),
     `Table on the "${title}" tab`,
   );
   return raw.table(tableId);
