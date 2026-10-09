@@ -7,7 +7,7 @@ A Google Sheets spreadsheet that a person operates directly, with an Apps Script
 ### Sheet layout
 
 **Table**:
-A Google Table (Insert > Table) laid over a block of a sheet's data; a sheet holds one or more. Each with **Let api access** starts on its Table header row, with at least one data row (a **blank row** counts). What a run does about a missing Table, or one outside the header zone: [`docs/architecture/table-placement.md`](./docs/architecture/table-placement.md).
+A Google Table (Insert > Table) laid over a block of a sheet's data; a sheet holds one or more. Each with **Let api access** starts on its Table header row, with at least one data row (a **blank row** counts). A Table deleted and inserted again is a different Table, even with the same name and columns, so runs read it as missing until the configs are regenerated. What a run does about a missing Table, or one outside the header zone: [`docs/architecture/table-placement.md`](./docs/architecture/table-placement.md).
 _Avoid_: range, data range, grid
 
 **Table reference**:
