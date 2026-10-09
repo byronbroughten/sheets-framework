@@ -14,7 +14,7 @@ One line per rule. The reasoning and worked examples are one file away. Open a r
 | A guard, a blank-tolerant read, a `catch` | [`docs/code-style/error-handling.md`](./code-style/error-handling.md) |
 | Writing or changing a test | [`docs/code-style/tests.md`](./code-style/tests.md) |
 | A file-level navigation block | [`docs/code-style/comments.md`](./code-style/comments.md) |
-| A barrel, or a utility bundle's file name | [`docs/code-style/file-organization.md`](./code-style/file-organization.md) |
+| A barrel | [`docs/code-style/file-organization.md`](./code-style/file-organization.md) |
 
 ## Class shape
 
@@ -61,15 +61,15 @@ One line per rule. The reasoning and worked examples are one file away. Open a r
 
 ## Type modeling
 
-- **Generic params use the framework's abbreviations** (`TN`, `VN`, `CN`, `UN`, `HR`, `IF`); its domain-free utilities are `utils/` and `appUtils/`.
+- **Generic params use the framework's abbreviations** (`TN`, `VN`, `CN`, `UN`, `HR`, `IF`).
 - **Verify a type-level claim with `IsExactly` / `assertType` / `assertNotType` from `src/testSupport/typeAssertions.ts`, never an assignment.** Measure a mapped type over the config unions before adopting it.
-- **`as` casts narrow data that's already runtime-safe; they never substitute for validation.** External values go through `Val.validate.*`/`Val.is.*`. The three accepted cast idioms are in the reasoning file.
+- **`as` casts narrow data that's already runtime-safe; they never substitute for validation.** External values go through `Val.validate.*`/`Val.is.*`. The two accepted cast idioms are in the reasoning file.
 - **A registry keyed by a finite name union takes a plain `: Type` annotation, not `makeStructuredConfig`**, which stays for the generated config files.
-- **A custom generic utility type lives in the bundle file whose subject it transforms**: string types with `utils/Str.ts`, object and union types in `utils/Obj.ts` or `utils/Obj/`. PascalCase, one clear transform per name.
+- **A custom generic utility type goes in `@byronbroughten/utils`**, whose `AGENTS.md` places it, unless it transforms a framework concept, as `NotEmpty` does.
 
 ## Functional vs. imperative idioms
 
-- **`for…in` appears only in `utils/`**, the framework's structural utilities.
+- **`for…in` appears only in `@byronbroughten/utils`**, where the structural utilities live.
 
 ## Tests
 
@@ -85,5 +85,4 @@ One line per rule. The reasoning and worked examples are one file away. Open a r
 ## Imports & file organization
 
 - **The framework's two public entries, `src/framework.ts` and `src/frameworkTesting.ts`, are its only barrels**; `src/index.ts` is the Apps Script entry point, not a barrel.
-- **A utility bundle takes a short abbreviation (`Str`, `Obj`, `Arr`, `Val`) or the name of the type it works on (`SerialDate`, `SerialDateTime`).**
 - **Tier subfolders**: `ClassBases/` for base and Common classes + their prop interfaces; `Types/`/`ClassTypes/` for supporting state/shape types consumed by that tier's classes.

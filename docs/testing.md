@@ -14,7 +14,7 @@ A test is co-located with what it tests — `Foo.ts` → `Foo.test.ts` in the sa
 
 ## Faking spreadsheet I/O with `stubSheetsService`
 
-This is not a Node app at runtime (see [`docs/how-it-runs.md`](./how-it-runs.md)). Tests that construct `SpreadsheetRaw` inject a `RawSource` via `stubSheetsService()`, which builds a `GoogleSheetsAPI` on a fixture-backed Advanced Service lookalike — they do not install `globalThis.Sheets`. `src/testSupport/` holds shared fakes, sitting outside the numbered tiers (like `utils/`) so any tier's tests can import it:
+This is not a Node app at runtime (see [`docs/how-it-runs.md`](./how-it-runs.md)). Tests that construct `SpreadsheetRaw` inject a `RawSource` via `stubSheetsService()`, which builds a `GoogleSheetsAPI` on a fixture-backed Advanced Service lookalike — they do not install `globalThis.Sheets`. `src/testSupport/` holds shared fakes, sitting outside the numbered tiers so any tier's tests can import it:
 
 ## `fakeSheetsService.ts`: the fixture-backed Sheets service
 
@@ -68,7 +68,7 @@ Schema/config resolution and ID encode/decode need no mocking. The GAS-touching 
 
 ## Two test programs, two config sets
 
-The framework tests (tiers `00`–`06`, `appsScriptHost/`, `nodeHost/`, `testSupport/` and `utils/`) run on the dev spreadsheet's configs, and the app's tests, today `businessEndpoints/`, run on the app's. Each package is its own Vitest project and `tsc` program, so each program carries one `Register` augmentation, in the `appConfigs.ts` that `gen-configs` writes into its `generatedDir`, installed for its tests by `dev/installDevConfigs.ts` and `src/installAppConfigs.ts`. The app's program reaches framework source only through imports, so framework tests never enter it, and `testSupport/` compiles in both. An app test takes its fakes and `EndpointRun` only from `@byronbroughten/sheets-framework/testing`. A framework test reads a GID or column ID through `getTableTraitByName`/`getColumnTraitByName`, and a config sheet's columns through `installedConfigs()`, never by importing a `generated/` file. It never names a real-estate sheet or column, and a made-up sheet in a fixture takes a neutral name such as `Widget`.
+The framework tests (tiers `00`–`06`, `appsScriptHost/`, `nodeHost/` and `testSupport/`) run on the dev spreadsheet's configs, and the app's tests, today `businessEndpoints/`, run on the app's. Each package is its own Vitest project and `tsc` program, so each program carries one `Register` augmentation, in the `appConfigs.ts` that `gen-configs` writes into its `generatedDir`, installed for its tests by `dev/installDevConfigs.ts` and `src/installAppConfigs.ts`. The app's program reaches framework source only through imports, so framework tests never enter it, and `testSupport/` compiles in both. An app test takes its fakes and `EndpointRun` only from `@byronbroughten/sheets-framework/testing`. A framework test reads a GID or column ID through `getTableTraitByName`/`getColumnTraitByName`, and a config sheet's columns through `installedConfigs()`, never by importing a `generated/` file. It never names a real-estate sheet or column, and a made-up sheet in a fixture takes a neutral name such as `Widget`.
 
 ## The dev fixtures and their exemplar columns
 
