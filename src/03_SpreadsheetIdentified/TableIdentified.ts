@@ -12,6 +12,7 @@ import { TableCommonIdentified } from "./ClassBases/TableCommonIdentified";
 import { ColumnIdentified } from "./ColumnIdentified";
 import { HeadRowIdentified } from "./HeadRowIdentified";
 import { RowIdentified } from "./RowIdentified";
+import { SpreadsheetTableValidatorIdentified } from "./SpreadsheetIdentified/SpreadsheetTableValidatorIdentified";
 import { TableColumnResolverIdentified } from "./TableIdentified/TableColumnResolverIdentified";
 
 export class TableIdentified extends TableCommonIdentified {
@@ -83,6 +84,9 @@ export class TableIdentified extends TableCommonIdentified {
   ensureColumnIdsAreFetched(): this {
     this.columnResolver.gatherDataPrerequisites();
     this.raw.ss.fetchAllGathered();
+    new SpreadsheetTableValidatorIdentified(
+      this.tableIdentifiedProps,
+    ).validateUsedTables();
     return this;
   }
   addMissingColumnIds(): number {

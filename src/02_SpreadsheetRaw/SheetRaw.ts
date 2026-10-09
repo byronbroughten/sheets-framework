@@ -76,6 +76,10 @@ export class SheetRaw extends SpreadsheetBaseRaw {
       fetchQueue.gatherConditionalFormats || fetchQueue.gatherEditProtections
     );
   }
+  // Kept past the fetch, so a check run after it can still read the zone's rows.
+  get hasFetchedHeaderZone(): boolean {
+    return this.sheetState.working.hasFetchedHeaderZone;
+  }
   // Brings every Table on the sheet without counting any of them as used.
   gatherFetchHeaderZone(): this {
     const { fetchQueue } = this.sheetState;

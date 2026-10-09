@@ -7,8 +7,23 @@ import type {
   VnToCvn,
 } from "../01_SpreadsheetSchema/configReaders/valueSchemas";
 import {
+  colIdRowIndex,
+  extraTablesSheet,
   itemTableId,
+  layoutGid,
+  layoutSheet,
+  layoutTableId,
+  logGid,
+  logTableId,
+  managedLayoutTableNames,
+  misplacedTableSheet,
+  ownColumnId,
   placedTableSheet,
+  recordedGridRanges,
+  tableEndRowIndex,
+  tableHeaderRowIndex,
+  thrownMessage,
+  topDataRowIndex,
 } from "../02_SpreadsheetRaw/spreadsheetRawTestSupport";
 import {
   buildGridRows,
@@ -1032,5 +1047,311 @@ describe("SpreadsheetIdentified Tables", () => {
     expect(table.raw.sheet.editProtections()).toEqual([]);
     expect(table.column(valueTypesIdColumnId).colIndex).toBe(0);
     expect(getByDataFilterCalls).toHaveLength(fetchCount);
+  });
+});
+
+describe("SpreadsheetIdentified.fetchAllGathered, the placement check", () => {
+  function initIdentified(): SpreadsheetIdentified {
+    return new SpreadsheetIdentified(
+      SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
+    );
+  }
+
+  it("stops naming every managed sheet whose header zone found no Table, and says to regenerate", () => {
+    const { batchUpdateCount } = stubSheetsService({
+      sheets: [
+        { sheetId: itemGid, title: "Item" },
+        { sheetId: logGid, title: "Log" },
+      ],
+    });
+
+    const ssi = initIdentified();
+    ssi.raw.sheet(itemGid).table(itemTableId).gatherFetchProperties();
+    ssi.raw.table(itemTableId).columnResolver.gatherFetchColumnIds();
+    ssi.raw.sheet(logGid).table(logTableId).gatherFetchProperties();
+
+    expect(() => ssi.fetchAllGathered()).toThrowError(
+      /"Item" \(gid \d+\) has no Table "item" with its header row on row 4 — move it back, or regenerate the configs.*"Log" \(gid \d+\) has no Table/,
+    );
+    expect(batchUpdateCount()).toBe(0);
+  });
+
+  it("stops on a Table one row too high for its head rows to fit, naming the header row it needs", () => {
+    const { batchUpdateCount } = stubSheetsService({
+      sheets: [
+        misplacedTableSheet({
+          sheetId: itemGid,
+          title: "Item",
+          startRowIndex: tableHeaderRowIndex - 1,
+        }),
+      ],
+    });
+
+    const ssi = initIdentified();
+    ssi.raw.sheet(itemGid).table(itemTableId).gatherFetchProperties();
+
+    expect(() => ssi.fetchAllGathered()).toThrowError(
+      /"Item" \(gid \d+\) has Table ".*", which must have its header row on row 4 — move it back$/,
+    );
+    expect(batchUpdateCount()).toBe(0);
+  });
+
+  it("judges a Table that fetches its own column IDs", () => {
+    stubSheetsService({
+      sheets: [
+        misplacedTableSheet({
+          sheetId: itemGid,
+          title: "Item",
+          startRowIndex: tableHeaderRowIndex - 1,
+        }),
+      ],
+    });
+
+    const ssi = initIdentified();
+
+    expect(() =>
+      ssi.tableOnSheet(itemGid).ensureColumnIdsAreFetched(),
+    ).toThrowError(/"Item" \(gid \d+\) has Table ".*", which must have/);
+  });
+
+  it("names the header-only Table alone when a misplaced one is used beside it", () => {
+    stubSheetsService({
+      sheets: [
+        misplacedTableSheet({
+          sheetId: itemGid,
+          title: "Item",
+          startRowIndex: tableHeaderRowIndex - 1,
+        }),
+        {
+          ...placedTableSheet({ sheetId: logGid, title: "Log" }),
+          table: { endRowIndex: topDataRowIndex, name: "Logs" },
+        },
+      ],
+    });
+
+    const ssi = initIdentified();
+    ssi.raw.sheet(itemGid).table(itemTableId).gatherFetchProperties();
+    ssi.raw.sheet(logGid).table(logTableId).gatherFetchProperties();
+
+    expect(thrownMessage(() => ssi.fetchAllGathered())).toMatch(
+      /^Table "Logs" on "Log" \(gid \d+\) has only its header: add a row below it holding its formulas\.$/,
+    );
+  });
+
+  function stubItemAndLogMisplaced(): void {
+    stubSheetsService({
+      isEveryTableInFilteredFetch: true,
+      sheets: [
+        misplacedTableSheet({
+          sheetId: itemGid,
+          title: "Item",
+          startRowIndex: tableHeaderRowIndex - 1,
+        }),
+        misplacedTableSheet({
+          sheetId: logGid,
+          title: "Log",
+          startRowIndex: tableHeaderRowIndex - 2,
+        }),
+      ],
+    });
+  }
+
+  it("names every misplaced sheet the run gathered for in one error", () => {
+    stubItemAndLogMisplaced();
+
+    const ssi = initIdentified();
+    ssi.raw.sheet(itemGid).table(itemTableId).gatherFetchProperties();
+    ssi.raw.sheet(logGid).table(logTableId).gatherFetchProperties();
+
+    expect(() => ssi.fetchAllGathered()).toThrowError(/"Item".*"Log"/);
+  });
+
+  it("leaves a misplaced Table the run did not gather for unnamed", () => {
+    stubItemAndLogMisplaced();
+
+    const ssi = initIdentified();
+    ssi.raw.sheet(itemGid).table(itemTableId).gatherFetchProperties();
+
+    const message = thrownMessage(() => ssi.fetchAllGathered());
+    expect(message).toMatch(/"Item"/);
+    expect(message).not.toMatch(/"Log"/);
+  });
+
+  it("stops on a Table moved below the header zone as missing, in the one round trip", () => {
+    const { getByDataFilterCalls, getCalls, batchUpdateCount } =
+      stubSheetsService({
+        sheets: [
+          misplacedTableSheet({
+            sheetId: itemGid,
+            title: "Item",
+            startRowIndex: tableHeaderRowIndex + 2,
+          }),
+        ],
+      });
+
+    const ssi = initIdentified();
+    ssi.raw.sheet(itemGid).table(itemTableId).gatherFetchProperties();
+    ssi.raw.table(itemTableId).columnResolver.gatherFetchColumnIds();
+
+    expect(() => ssi.fetchAllGathered()).toThrowError(
+      /"Item" \(gid \d+\) has no Table "item" with its header row on row 4 — move it back, or regenerate the configs/,
+    );
+    expect(getByDataFilterCalls).toHaveLength(1);
+    expect(getCalls).toEqual([]);
+    expect(batchUpdateCount()).toBe(0);
+  });
+
+  it("stops on a head band shifted down by an inserted row while the header stayed put", () => {
+    const { batchUpdateCount } = stubSheetsService({
+      sheets: [
+        {
+          ...placedTableSheet({ sheetId: itemGid, title: "Item" }),
+          rows: buildGridRows({
+            [colIdRowIndex + 1]: [ownColumnId(itemGid)],
+            [tableHeaderRowIndex]: ["ID"],
+          }),
+        },
+      ],
+    });
+
+    const ssi = initIdentified();
+    ssi.raw.sheet(itemGid).table(itemTableId).gatherFetchProperties();
+
+    expect(() => ssi.fetchAllGathered()).toThrowError(
+      /"Item" \(gid \d+\) needs its own "itm" column IDs, and only those, in row 1 — move the Table back, or regenerate the configs/,
+    );
+    expect(batchUpdateCount()).toBe(0);
+  });
+
+  it("stops on another Table's column ID in the column ID row", () => {
+    const { batchUpdateCount } = stubSheetsService({
+      sheets: [
+        {
+          ...placedTableSheet({ sheetId: itemGid, title: "Item" }),
+          rows: buildGridRows({
+            [colIdRowIndex]: [ownColumnId(itemGid), ownColumnId(logGid)],
+            [tableHeaderRowIndex]: ["ID", "Name"],
+          }),
+          table: { endRowIndex: tableEndRowIndex, endColumnIndex: 2 },
+        },
+      ],
+    });
+
+    const ssi = initIdentified();
+    ssi.raw.sheet(itemGid).table(itemTableId).gatherFetchProperties();
+    ssi.raw.table(itemTableId).columnResolver.gatherFetchColumnIds();
+
+    expect(() => ssi.fetchAllGathered()).toThrowError(
+      /"Item" \(gid \d+\) needs its own "itm" column IDs, and only those, in row 1/,
+    );
+    expect(batchUpdateCount()).toBe(0);
+  });
+
+  it("takes a recorded Table as missing when its sheet holds several Tables and none carries its ID", () => {
+    const { batchUpdateCount } = stubSheetsService({
+      isEveryTableInFilteredFetch: true,
+      sheets: [extraTablesSheet({ sheetId: itemGid, title: "Item" })],
+    });
+
+    const ssi = initIdentified();
+    ssi.raw.sheet(itemGid).table(itemTableId).gatherFetchProperties();
+
+    expect(() => ssi.fetchAllGathered()).toThrowError(
+      /"Item" \(gid \d+\) has no Table "item" with its header row on row 4/,
+    );
+    expect(batchUpdateCount()).toBe(0);
+  });
+
+  it("sends the header zone once on a fetch after one that stopped on placement", () => {
+    const { getByDataFilterCalls } = stubSheetsService({
+      sheets: [
+        misplacedTableSheet({
+          sheetId: itemGid,
+          title: "Item",
+          startRowIndex: tableHeaderRowIndex - 1,
+        }),
+      ],
+    });
+
+    const ssi = initIdentified();
+    ssi.raw.sheet(itemGid).table(itemTableId).gatherFetchProperties();
+    expect(() => ssi.fetchAllGathered()).toThrowError(/must have/);
+    ssi.raw.table(itemTableId).gatherFetchProperties();
+    expect(() => ssi.fetchAllGathered()).toThrowError(/must have/);
+
+    expect(recordedGridRanges(getByDataFilterCalls.slice(1))).toEqual([
+      {
+        sheetId: itemGid,
+        startRowIndex: 0,
+        endRowIndex: tableHeaderRowIndex + 1,
+      },
+    ]);
+  });
+
+  describe("several managed Tables on one sheet", () => {
+    const rightId = layoutTableId("layoutRight");
+
+    function gatherEveryZone(ssi: SpreadsheetIdentified): void {
+      managedLayoutTableNames.forEach((tableName) => {
+        const table = ssi.raw.sheet(layoutGid).table(layoutTableId(tableName));
+        table.gatherFetchProperties();
+        table.columnResolver.gatherFetchColumnIds();
+      });
+    }
+
+    it("names a Table met below the header zone while its neighbours pass", () => {
+      const { batchUpdateCount } = stubSheetsService({
+        isEveryTableInFilteredFetch: true,
+        sheets: [layoutSheet({ layoutRight: { startRowIndex: 5 } })],
+      });
+
+      const ssi = initIdentified();
+      gatherEveryZone(ssi);
+
+      expect(thrownMessage(() => ssi.fetchAllGathered())).toMatch(
+        /^1 managed Table\(s\) are missing or misplaced: "Layout" \(gid \d+\) has Table "layoutRight", which must have its header row on row 4 — move it back$/,
+      );
+      expect(batchUpdateCount()).toBe(0);
+    });
+
+    it("names a Table missing from the sheet it shares", () => {
+      const sheet = layoutSheet();
+      const { batchUpdateCount } = stubSheetsService({
+        sheets: [
+          {
+            ...sheet,
+            tables: sheet.tables?.filter((table) => table.tableId !== rightId),
+          },
+        ],
+      });
+
+      const ssi = initIdentified();
+      gatherEveryZone(ssi);
+
+      expect(() => ssi.fetchAllGathered()).toThrowError(
+        /^1 managed Table\(s\) .*"Layout" \(gid \d+\) has no Table "layoutRight" with its header row on row 4 — move it back, or regenerate the configs with sheets-framework gen-configs if it is gone$/,
+      );
+      expect(batchUpdateCount()).toBe(0);
+    });
+
+    it("names a Table whose column ID row holds another Table's IDs", () => {
+      const { batchUpdateCount } = stubSheetsService({
+        sheets: [
+          layoutSheet({
+            layoutRight: {
+              headRows: { 3: ["c:lyl:entry", "c:lyl:amount"] },
+            },
+          }),
+        ],
+      });
+
+      const ssi = initIdentified();
+      gatherEveryZone(ssi);
+
+      expect(() => ssi.fetchAllGathered()).toThrowError(
+        /^1 managed Table\(s\) .*"Layout" \(gid \d+\) needs its own "lyr" column IDs, and only those, in row 1 — move the Table back, or regenerate the configs with sheets-framework gen-configs$/,
+      );
+      expect(batchUpdateCount()).toBe(0);
+    });
   });
 });
