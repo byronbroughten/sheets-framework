@@ -47,10 +47,14 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
       tableId === undefined
         ? undefined
         : this.spreadsheetStateRaw.tables.get(tableId);
+    // A fetch through a shared sheet reaches none of its Tables, so it uses none of them.
+    const sheetQueueState = table.sharesSheet
+      ? undefined
+      : sheetState.tableBeforeProperties;
     return [
       liveTableState,
       sheetState.tablesBeforePropertiesById.get(table.tableId),
-      sheetState.tableBeforeProperties,
+      sheetQueueState,
     ].some(
       (tableState) => tableState !== undefined && hasGatheredFetch(tableState),
     );

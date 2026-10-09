@@ -51,7 +51,9 @@ The head rows' extent runs from `tableLayout`'s largest offset down to just abov
 
 ## Several Tables on a sheet
 
-Several managed Tables may share a sheet side by side, each with its header in the zone (sheets-framework#89). Each is reached by its recorded `tableId`, before its properties arrive too, and one zone fetch brings them all. A GID reaches a Table only on a sheet the configs record one Table on: the sheet's only Table, else the recorded one, so unmanaged Tables may sit beside it.
+Several managed Tables may share a sheet side by side, each with its header in the zone (sheets-framework#89). Each is reached by its recorded `tableId`, before its properties arrive too, and one zone fetch brings them all. A GID reaches a Table only on a sheet the configs record one Table on: the sheet's only Table, else the recorded one, so unmanaged Tables may sit beside it. A fetch through a shared sheet's GID reaches none of its Tables, so it uses none of them.
+
+**Accepted gap:** a managed Table recreated under a new `tableId` beside an unmanaged Table in the zone matches no recorded ID, so its GID reaches neither. A run that uses it reads it as missing until a regeneration records the new ID. The placement strip used to bring only the managed Table, so its GID reached it.
 
 **Stacked managed Tables wait for a deepenable zone.** A Table below another has its header below the zone, so generation refuses it. Growth, row deletes and the column insert still push and pull the Tables below, and the fake covers it with an unmanaged Table under the managed ones. When stacked Tables return, deepen the zone to just below the lowest stacked header in the layout, not a blanket large number ([finding Tables](./finding-tables.md#keep-the-header-zone-and-deepen-it-for-stacked-tables)).
 

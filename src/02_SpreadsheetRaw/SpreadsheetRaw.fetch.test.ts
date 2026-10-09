@@ -1110,6 +1110,24 @@ describe("several managed Tables on one sheet", () => {
     expect(raw.table(leftId).columnResolver.hasFetchedColumnIds).toBe(true);
   });
 
+  it("reads past a missing neighbour when a fetch names only the shared sheet", () => {
+    const sheet = layoutSheet();
+    stubSheetsService({
+      sheets: [
+        {
+          ...sheet,
+          tables: sheet.tables?.filter((table) => table.tableId !== rightId),
+        },
+      ],
+    });
+
+    const raw = SpreadsheetRaw.init();
+    raw.tableOnSheet(layoutGid).gatherFetchProperties();
+    raw.table(leftId).columnResolver.gatherFetchColumnIds();
+
+    expect(() => raw.fetchAllGathered()).not.toThrow();
+  });
+
   it("reads one Table while a neighbour it doesn't use holds another Table's column IDs", () => {
     stubSheetsService({
       sheets: [
@@ -1150,6 +1168,23 @@ describe("several managed Tables on one sheet", () => {
 
       expect(() => raw.batchUpdateGSheets()).toThrowError(
         /^Inserting a column at the end of Table "layoutLeft" on sheet "Layout" needs every managed Table on that sheet in place\. 1 managed Table\(s\) .*has no Table "layoutRight" with its header row on row 4 — move it back, or regenerate the configs with sheets-framework gen-configs if it is gone$/,
+      );
+      expect(batchUpdateCount()).toBe(0);
+    });
+
+    it("stops on a neighbour below the header zone once a whole-sheet fetch, not the zone, placed the Table", () => {
+      const { batchUpdateCount } = stubSheetsService({
+        sheets: [layoutSheet(rightBelowZone)],
+      });
+      const raw = SpreadsheetRaw.init();
+      raw.fetchAllSheetProperties();
+      raw.table(leftId).columnResolver.gatherFetchColumnIds();
+      raw.table(leftId).row(0).gatherFetchFull();
+      raw.fetchAllGathered();
+      raw.table(leftId).appendColumn({ columnId: "c:lyl:new", header: "New" });
+
+      expect(() => raw.batchUpdateGSheets()).toThrowError(
+        /needs every managed Table on that sheet in place\. .*has Table "layoutRight", which must have its header row on row 4 — move it back$/,
       );
       expect(batchUpdateCount()).toBe(0);
     });

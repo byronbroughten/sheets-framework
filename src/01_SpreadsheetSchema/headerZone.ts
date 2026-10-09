@@ -4,7 +4,6 @@ import {
 } from "../00_Source/RawSource/SheetIndex";
 import { headRows } from "./headRows";
 import { tableLayout } from "./tableLayout";
-import { TableOrigin } from "./TableOrigin";
 
 const bounds = {
   depth: tableLayout.headerZoneDepth,
@@ -15,13 +14,6 @@ const bounds = {
 function holdsHeaderRow(sheetRowIndex: SheetRowIndex): boolean {
   return (
     sheetRowIndex >= bounds.topHeaderRowIndex && sheetRowIndex < bounds.depth
-  );
-}
-
-function headerRowIndexes(): SheetRowIndex[] {
-  return Array.from(
-    { length: bounds.depth - bounds.topHeaderRowIndex },
-    (_, offset) => SheetIndex.row(bounds.topHeaderRowIndex + offset),
   );
 }
 
@@ -37,12 +29,8 @@ export const headerZone = {
   headerRowsLabel: headerRowsLabel(),
   holdsHeaderRow,
   holdsActionRow(sheetRowIndex: SheetRowIndex): boolean {
-    return headerRowIndexes().some(
-      (headerRowIndex) =>
-        new TableOrigin({
-          headerRowIndex,
-          startColIndex: SheetIndex.col(0),
-        }).headSheetRowIndex("action") === sheetRowIndex,
+    return holdsHeaderRow(
+      SheetIndex.row(sheetRowIndex + tableLayout.headRowOffsets.action),
     );
   },
 };
