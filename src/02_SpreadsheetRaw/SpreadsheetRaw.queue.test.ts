@@ -324,7 +324,7 @@ describe("queued writes outlive a same-run re-fetch", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.tableOnSheet(111).column(1).updateColumnType("DOUBLE");
+    raw.table(tableId111).column(1).updateColumnType("DOUBLE");
     raw.fetchAllSheetProperties();
 
     expect(raw.table(tableId111).column(1).profile.columnType).toBe("DOUBLE");
