@@ -1,7 +1,10 @@
 import { Arr } from "@byronbroughten/utils/arr";
 import { Val } from "@byronbroughten/utils/val";
 
-import type { CellValueName } from "../00_Source/CellValues/cellValues";
+import type {
+  CellValue,
+  CellValueName,
+} from "../00_Source/CellValues/cellValues";
 import type {
   ConditionalFormatDeclaration,
   ModelableConditionalFormatRule,
@@ -25,7 +28,6 @@ import {
   SheetIndex,
   type SheetRowIndex,
 } from "../00_Source/RawSource/SheetIndex";
-import type { Value } from "../01_SpreadsheetSchema/configReaders/valueSchemas";
 import { type HeadRole, headRows } from "../01_SpreadsheetSchema/headRows";
 import type { TableOrigin } from "../01_SpreadsheetSchema/TableOrigin";
 import { assertValueAndFormulaExclusive } from "./CellRaw";
@@ -856,7 +858,7 @@ export class TableRaw extends TableCommonRaw {
   appendDataRow(): RowRaw {
     return this.row(this.dataRowCount).append();
   }
-  appendDataRowValues(colValues: Map<number, Value>): RowRaw {
+  appendDataRowValues(colValues: Map<number, CellValue>): RowRaw {
     const row = this.appendDataRow();
     for (const [colIndex, value] of colValues.entries()) {
       row.updateValue(colIndex, value);

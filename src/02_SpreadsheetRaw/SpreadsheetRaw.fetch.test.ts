@@ -2,7 +2,6 @@ import { Val } from "@byronbroughten/utils/val";
 import { describe, expect, it } from "vitest";
 
 import { installedRawSource } from "../00_Source/RawSource/RawSource";
-import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {
   buildGridRows,
@@ -278,8 +277,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     expect(() => raw.fetchAllGathered()).not.toThrow();
   });
 
-  it("lists an unmanaged Table beside the recorded one on the sheet's Tables", () => {
-    const recordedTableId = getTableTraitByName("item", "tableId");
+  it("lists an unmanaged Table beside the placed one on the sheet's Tables", () => {
     const { table, ...sheet } = placedTableSheet({
       sheetId: itemGid,
       title: "Item",
@@ -295,7 +293,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
               endColumnIndex: 22,
               endRowIndex: tableEndRowIndex,
             },
-            { ...Val.assert(table, "placed Table"), tableId: recordedTableId },
+            { ...Val.assert(table, "placed Table"), tableId: itemTableId },
           ],
         },
       ],
@@ -305,7 +303,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     raw.fetchAllSheetProperties();
 
     expect(raw.sheet(itemGid).tableIds.sort()).toEqual(
-      ["unmanaged", recordedTableId].sort(),
+      ["unmanaged", itemTableId].sort(),
     );
   });
 

@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import { type CellValue } from "../00_Source/CellValues/cellValues";
 import { type RgbColor } from "../00_Source/RawSource/RgbColor";
-import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { type HeadRowValueName } from "../01_SpreadsheetSchema/headRows";
 import { stubSheetsService } from "../testSupport/fakeSheetsService";
 import { assertType, type IsExactly } from "../testSupport/typeAssertions";
@@ -17,7 +16,12 @@ import { HeadRowRaw } from "./HeadRowRaw";
 import { RowRaw } from "./RowRaw";
 import { SheetRaw } from "./SheetRaw";
 import { SpreadsheetRaw } from "./SpreadsheetRaw";
-import { placedTableSheet, tableId111 } from "./spreadsheetRawTestSupport";
+import {
+  itemGid,
+  itemTableId,
+  placedTableSheet,
+  tableId111,
+} from "./spreadsheetRawTestSupport";
 import { TableProfileRaw } from "./TableProfileRaw";
 import { TableRaw } from "./TableRaw";
 
@@ -116,7 +120,6 @@ describe("SheetRaw", () => {
   });
 
   it("lists the Tables fetched onto it, and none before the fetch", () => {
-    const itemGid = getTableTraitByName("item", "sheetGid");
     stubSheetsService({
       sheets: [placedTableSheet({ sheetId: itemGid, title: "Item" })],
     });
@@ -124,9 +127,7 @@ describe("SheetRaw", () => {
 
     expect(raw.sheet(itemGid).tableIds).toEqual([]);
     raw.fetchAllSheetProperties();
-    expect(raw.sheet(itemGid).tableIds).toEqual([
-      getTableTraitByName("item", "tableId"),
-    ]);
+    expect(raw.sheet(itemGid).tableIds).toEqual([itemTableId]);
     expect(raw.sheet(111).tableIds).toEqual([]);
   });
 });

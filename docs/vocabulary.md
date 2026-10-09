@@ -18,7 +18,7 @@ One line per term. The elaboration is one file away. Open a reasoning file only 
 
 - **Source** is the tier below everything that knows this spreadsheet: the `RawSource` port, the platform module (`GoogleSheets/`), and the cell values that cross the port.
 - **Platform** is the spreadsheet product (Google Sheets); **host** is where the code runs (Apps Script or Node). Platform-neutral code imports nothing from `src/00_Source/GoogleSheets/` and names no `GoogleAppsScript.*` type.
-- **Raw** is positional: it addresses a sheet by GID, a Table by its live `tableId`, and rows and columns by Table-relative index (`rowIndex` 0 is the first body row; head rows by role). It is blind to column config, resolving a column only from the Table's live head rows, and sheet coordinates appear only at gathering.
+- **Raw** is positional: it addresses a sheet by GID, a Table by its live `tableId`, and rows and columns by Table-relative index (`rowIndex` 0 is the first body row; head rows by role). It reads no configs, resolving a column only from the Table's live head rows, and lint holds it; sheet coordinates appear only at gathering.
 - **Identified** adds the committed column config, reached by column ID, and is typed by value name.
 - **Named** adds names: a Table by Table name, a column by header, a sheet by title as a container. It is the end developer's API.
 - **`rowIndex` is the body index**: 0 is the Table's first body row, and a row counted from the sheet's top is a `SheetRowIndex`.
