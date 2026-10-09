@@ -11,7 +11,11 @@ import type {
   WholeSheetEditLockDeclaration,
   WholeSheetEditWarningDeclaration,
 } from "../00_Source/RawSource/EditProtection";
-import type { GridRangeProps } from "../00_Source/RawSource/RawSource";
+import type {
+  GridRangeProps,
+  SheetSnapshot,
+  TableSnapshot,
+} from "../00_Source/RawSource/RawSource";
 import {
   type SheetColIndex,
   SheetIndex,
@@ -23,12 +27,19 @@ import {
   SpreadsheetBaseRaw,
   type SpreadsheetRawProps,
 } from "./ClassBases/SpreadsheetBaseRaw";
-import { sheetLabel } from "./ClassBases/TableBaseRaw";
+import {
+  hasQueuedWrites,
+  integrateColumnProperties,
+  sheetLabel,
+  tableIdReachedAmong,
+  tableStateOf,
+} from "./ClassBases/TableBaseRaw";
 import { rowIndexesStaleMessage } from "./ClassBases/TableCommonRaw";
 import { emptyStateRaw } from "./ClassTypes/emptyStateRaw";
 import type { SheetStateRaw, TableStateRaw } from "./ClassTypes/StateRaw";
 import { SheetConditionalFormatsRaw } from "./SheetRaw/SheetConditionalFormatsRaw";
 import { SheetEditProtectionsRaw } from "./SheetRaw/SheetEditProtectionsRaw";
+import { TableRaw } from "./TableRaw";
 
 export interface SheetRawProps extends SpreadsheetRawProps {
   sheetGid: number;
@@ -239,5 +250,140 @@ export class SheetRaw extends SpreadsheetBaseRaw {
   }
   integrateEditProtections(protections: EditProtection[]): void {
     this.protections.integrateEditProtections(protections);
+  }
+  // Every Table fetched onto the sheet, managed or not.
+  liveTableIds(): string[] {
+    return Array.from(this.tablesStateRaw.entries())
+      .filter(([, tableState]) => tableState.sheetGid === this.sheetGid)
+      .map(([tableId]) => tableId);
+  }
+  // The Table reached by GID, while its properties are still unfetched.
+  tableBeforeProperties(): TableRaw | undefined {
+    const table = new TableRaw({
+      ...this.spreadsheetRawProps,
+      sheetGid: this.sheetGid,
+    });
+    return table.hasFetchedProperties ? undefined : table;
+  }
+  // Row indexes only actually shift once the deletes have been sent, and a Table below the deleted rows shifts with them.
+  markRowIndexesStale(): void {
+    this.liveTableIds().forEach((tableId) =>
+      this._table(tableId).markRowIndexesStale(),
+    );
+  }
+  integrateSnapshot(sheet: SheetSnapshot): void {
+    this._integrateSheetProperties(sheet);
+    this.liveTableIds().forEach((tableId) => {
+      this._table(tableId).integrateGridBlocks(sheet.gridBlocks ?? []);
+    });
+  }
+  private _table(tableId: string): TableRaw {
+    return new TableRaw({ ...this.spreadsheetRawProps, tableId });
+  }
+  removeTablesAbsentFrom(tables: TableSnapshot[]): void {
+    const liveTableIds = tables.map(({ tableId }) => tableId);
+    this.liveTableIds()
+      .filter((tableId) => !liveTableIds.includes(tableId))
+      .forEach((tableId) => this._removeAbsentTable(tableId));
+  }
+  // A queued write must never vanish with its Table, so it stops the run instead.
+  private _removeAbsentTable(tableId: string): void {
+    const { writeQueue } = tableStateOf(this.tablesStateRaw, tableId);
+    if (hasQueuedWrites(writeQueue)) {
+      throw new Error(
+        `Table ${tableId} is no longer on ${this.label}, but it has queued writes; refetch before queuing writes to it.`,
+      );
+    }
+    this.tablesStateRaw.delete(tableId);
+  }
+  private _integrateSheetProperties(sheet: SheetSnapshot): void {
+    if (sheet.title) {
+      this.sheetState.working.title = sheet.title;
+    }
+    if (sheet.rowCount !== undefined) {
+      this.sheetState.working.rowCount = sheet.rowCount;
+    }
+    if (sheet.columnCount !== undefined) {
+      this.sheetState.working.columnCount = sheet.columnCount;
+    }
+    if (sheet.tables !== undefined) {
+      this._integrateTables(sheet.tables);
+    }
+    this._integrateQueuedSheetProperties();
+  }
+  // A grid fetch returns only the Tables its ranges overlap, so a Table it leaves out stays.
+  private _integrateTables(tables: TableSnapshot[]): void {
+    const knownAndFetchedTableIds = new Set([
+      ...this.liveTableIds(),
+      ...tables.map(({ tableId }) => tableId),
+    ]);
+    const tableIdReachedByGid = tableIdReachedAmong(
+      [...knownAndFetchedTableIds],
+      this.sheetGid,
+    );
+    tables.forEach((table) => {
+      const tableState = this._tableStateToIntegrate(
+        table.tableId,
+        table.tableId === tableIdReachedByGid,
+      );
+      tableState.sheetGid = this.sheetGid;
+      tableState.properties = {
+        tableId: table.tableId,
+        name: table.name,
+        startRowIndex: table.startRowIndex,
+        endRowIndex: table.endRowIndex,
+        startColumnIndex: table.startColumnIndex,
+        endColumnIndex: table.endColumnIndex,
+        columnProperties: table.columnProperties,
+        rowIndexesAreStale: tableState.properties?.rowIndexesAreStale ?? false,
+      };
+      integrateColumnProperties(tableState, table);
+      this.tablesStateRaw.set(table.tableId, tableState);
+    });
+  }
+  // The Table its GID reaches takes over what was queued through the sheet before it was known.
+  private _tableStateToIntegrate(
+    tableId: string,
+    isReachedByGid: boolean,
+  ): TableStateRaw {
+    const existing =
+      this.tablesStateRaw.get(tableId) ??
+      this._takeTableBeforePropertiesById(tableId);
+    if (existing !== undefined) {
+      if (isReachedByGid) this._validateNoWritesQueuedThroughSheet();
+      return existing;
+    }
+    if (!isReachedByGid) return emptyStateRaw.tableState(this.sheetGid);
+    const adopted = this.sheetState.tableBeforeProperties;
+    this.sheetState.tableBeforeProperties = emptyStateRaw.tableState(
+      this.sheetGid,
+    );
+    return adopted;
+  }
+  private _takeTableBeforePropertiesById(
+    tableId: string,
+  ): TableStateRaw | undefined {
+    const { tablesBeforePropertiesById } = this.sheetState;
+    const tableState = tablesBeforePropertiesById.get(tableId);
+    tablesBeforePropertiesById.delete(tableId);
+    return tableState;
+  }
+  // Once the sheet resolves to a Table it already knew, the flush no longer reads what was queued through the sheet.
+  private _validateNoWritesQueuedThroughSheet(): void {
+    if (hasQueuedWrites(this.sheetState.tableBeforeProperties.writeQueue)) {
+      throw new Error(
+        `Writes were queued through ${this.label} while it had several Tables, and it now has one; refetch before queuing writes to it.`,
+      );
+    }
+  }
+  // Queued properties outlive a re-fetch until the flush sends them.
+  private _integrateQueuedSheetProperties(): void {
+    this.writeOperations.renameSheet.forEach(({ sheetId, title }) => {
+      if (sheetId === this.sheetGid) this.sheetState.working.title = title;
+    });
+    this.writeOperations.renameTable.forEach(({ tableId, name }) => {
+      const properties = this.tablesStateRaw.get(tableId)?.properties;
+      if (properties !== undefined) properties.name = name;
+    });
   }
 }

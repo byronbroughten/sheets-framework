@@ -46,12 +46,8 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
     tableIdsWithColumnTypeUpdates.forEach((tableId) =>
       this.ss.table(tableId).markColumnPropertiesStale(),
     );
-    // Row indexes only actually shift once the deletes have been sent, and a Table below the deleted rows shifts with them.
     sheetGidsWithRowDeletes.forEach((sheetGid) =>
-      this.ss
-        .tableOnSheet(sheetGid)
-        .tableIds()
-        .forEach((tableId) => this.ss.table(tableId).markRowIndexesStale()),
+      this.ss.sheet(sheetGid).markRowIndexesStale(),
     );
     tableIdsWithSorts.forEach((tableId) =>
       this.ss.table(tableId).markRowIndexesStale(),
@@ -130,10 +126,9 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
     const knownTables = Array.from(this.tablesStateRaw.keys(), (tableId) =>
       this.ss.table(tableId),
     );
-    const tablesBeforeProperties = Array.from(
-      this.sheetsStateRaw.keys(),
-      (sheetGid) => this.ss.tableOnSheet(sheetGid),
-    ).filter((table) => !table.hasFetchedProperties);
+    const tablesBeforeProperties = Array.from(this.sheetsStateRaw.keys())
+      .map((sheetGid) => this.ss.sheet(sheetGid).tableBeforeProperties())
+      .filter((table) => table !== undefined);
     const tablesBeforePropertiesById = Array.from(
       this.sheetsStateRaw.values(),
     ).flatMap((sheetState) =>
