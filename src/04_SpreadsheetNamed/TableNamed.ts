@@ -1,3 +1,4 @@
+import { Arr } from "@byronbroughten/utils/arr";
 import { Obj } from "@byronbroughten/utils/obj";
 import { Val } from "@byronbroughten/utils/val";
 
@@ -19,7 +20,6 @@ import type { TableRaw } from "../02_SpreadsheetRaw/TableRaw";
 import { ColumnIdentified } from "../03_SpreadsheetIdentified/ColumnIdentified";
 import type { HeadRowIdentified } from "../03_SpreadsheetIdentified/HeadRowIdentified";
 import { TableIdentified } from "../03_SpreadsheetIdentified/TableIdentified";
-import { Arr } from "../utils/Arr";
 import { TableCommonNamed } from "./ClassBases/TableCommonNamed";
 import { ColumnNamed } from "./ColumnNamed";
 import { RowNamed } from "./RowNamed";

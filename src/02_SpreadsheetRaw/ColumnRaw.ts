@@ -1,3 +1,5 @@
+import { Arr } from "@byronbroughten/utils/arr";
+
 import type {
   CellValue,
   CellValueName,
@@ -20,7 +22,6 @@ import {
   headRows,
   type HeadRowValueName,
 } from "../01_SpreadsheetSchema/headRows";
-import { Arr } from "../utils/Arr";
 import { CellRaw, validateFormulaString } from "./CellRaw";
 import { ColumnBaseRaw } from "./ClassBases/ColumnBaseRaw";
 import type {

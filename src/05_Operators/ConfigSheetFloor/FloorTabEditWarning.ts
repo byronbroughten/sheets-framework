@@ -1,3 +1,4 @@
+import { Arr } from "@byronbroughten/utils/arr";
 import { Obj } from "@byronbroughten/utils/obj";
 
 import type { CellValue } from "../../00_Source/CellValues/cellValues";
@@ -17,7 +18,6 @@ import type { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin";
 import { TableBaseNamed } from "../../04_SpreadsheetNamed/ClassBases/TableBaseNamed";
 import { SpreadsheetNamed } from "../../04_SpreadsheetNamed/SpreadsheetNamed";
 import type { TableNamed } from "../../04_SpreadsheetNamed/TableNamed";
-import { Arr } from "../../utils/Arr";
 import { liveColIndex } from "./floorColumnLocation";
 import {
   columnNameByHeader,
