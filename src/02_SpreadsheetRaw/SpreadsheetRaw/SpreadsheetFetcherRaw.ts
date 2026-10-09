@@ -32,7 +32,7 @@ export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
   fetchAllGathered(includeProgrammaticFacts = false): void {
     this._fetchGatheredConditionalFormatRules();
     this._fetchGatheredEditProtections();
-    this.spreadsheetStateRaw.usedTableIds = this._gatheringTableIds();
+    this.spreadsheetStateRaw.usedTableIds = this._usedTableIds();
     // An empty dataFilters list would fetch the whole spreadsheet's grid data.
     if (this.fetcherGridRanges.length === 0) return;
     const data = this._fetchByGridRanges(includeProgrammaticFacts);
@@ -91,7 +91,7 @@ export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
     });
   }
   // A Table reached before its properties gathers under its ID on the sheet, so both count.
-  private _gatheringTableIds(): Set<string> {
+  private _usedTableIds(): Set<string> {
     const beforeProperties = Array.from(
       this.spreadsheetStateRaw.sheets.values(),
     ).flatMap((state) => Array.from(state.tablesBeforePropertiesById));

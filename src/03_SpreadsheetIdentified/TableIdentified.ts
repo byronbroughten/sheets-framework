@@ -19,6 +19,9 @@ export class TableIdentified extends TableCommonIdentified {
   get raw(): TableRaw {
     return new TableRaw(this.tableIdentifiedProps);
   }
+  get tableValidator(): SpreadsheetTableValidatorIdentified {
+    return new SpreadsheetTableValidatorIdentified(this.tableIdentifiedProps);
+  }
   get columnResolver(): TableColumnResolverIdentified {
     return new TableColumnResolverIdentified(this.tableIdentifiedProps);
   }
@@ -84,9 +87,7 @@ export class TableIdentified extends TableCommonIdentified {
   ensureColumnIdsAreFetched(): this {
     this.columnResolver.gatherDataPrerequisites();
     this.raw.ss.fetchAllGathered();
-    new SpreadsheetTableValidatorIdentified(
-      this.tableIdentifiedProps,
-    ).validateUsedTables();
+    this.tableValidator.validateUsedTables();
     return this;
   }
   addMissingColumnIds(): number {

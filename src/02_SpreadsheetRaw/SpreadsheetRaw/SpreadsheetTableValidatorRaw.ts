@@ -4,7 +4,6 @@ import { SpreadsheetSchema } from "../../01_SpreadsheetSchema/configReaders/Spre
 import type { TableName } from "../../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { headerZone } from "../../01_SpreadsheetSchema/headerZone";
 import { SpreadsheetBaseRaw } from "../ClassBases/SpreadsheetBaseRaw";
-import type { SheetStateRaw } from "../ClassTypes/StateRaw";
 import { SpreadsheetRaw } from "../SpreadsheetRaw";
 
 interface RecordedTableIdentity {
@@ -30,12 +29,7 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
   get schema(): SpreadsheetSchema {
     return new SpreadsheetSchema();
   }
-  private _sheetState(sheetGid: number): SheetStateRaw {
-    return Val.assert(
-      this.spreadsheetStateRaw.sheets.get(sheetGid),
-      `sheetState for sheetGid ${sheetGid}`,
-    );
-  }
+
   // Missing and the column ID row wait for the zone, the one fetch sure to bring the Table.
   tablePlacement(tableName: TableName, isZoneFetched: boolean): TablePlacement {
     const table = this.schema.sheetByName(tableName);
@@ -87,7 +81,7 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
   // A column insert can split a Table the zone missed from its head rows, so it uses every Table on its sheet.
   validateTablesForColumnInsert(sheetGid: number, columnInsert: string): void {
     if (this.spreadsheetStateRaw.isRegeneratingConfigs) return;
-    const { hasFetchedHeaderZone } = this._sheetState(sheetGid).working;
+    const { hasFetchedHeaderZone } = this.ss.sheet(sheetGid);
     const fix = this._placementsFix(
       this.schema
         .tablesOnGid(sheetGid)

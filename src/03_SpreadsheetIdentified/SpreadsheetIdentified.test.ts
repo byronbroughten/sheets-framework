@@ -1097,7 +1097,7 @@ describe("SpreadsheetIdentified.fetchAllGathered, the placement check", () => {
   });
 
   it("judges a Table that fetches its own column IDs", () => {
-    stubSheetsService({
+    const { batchUpdateCount } = stubSheetsService({
       sheets: [
         misplacedTableSheet({
           sheetId: itemGid,
@@ -1112,10 +1112,11 @@ describe("SpreadsheetIdentified.fetchAllGathered, the placement check", () => {
     expect(() =>
       ssi.tableOnSheet(itemGid).ensureColumnIdsAreFetched(),
     ).toThrowError(/"Item" \(gid \d+\) has Table ".*", which must have/);
+    expect(batchUpdateCount()).toBe(0);
   });
 
   it("names the header-only Table alone when a misplaced one is used beside it", () => {
-    stubSheetsService({
+    const { batchUpdateCount } = stubSheetsService({
       sheets: [
         misplacedTableSheet({
           sheetId: itemGid,
@@ -1136,10 +1137,11 @@ describe("SpreadsheetIdentified.fetchAllGathered, the placement check", () => {
     expect(thrownMessage(() => ssi.fetchAllGathered())).toMatch(
       /^Table "Logs" on "Log" \(gid \d+\) has only its header: add a row below it holding its formulas\.$/,
     );
+    expect(batchUpdateCount()).toBe(0);
   });
 
-  function stubItemAndLogMisplaced(): void {
-    stubSheetsService({
+  function stubItemAndLogMisplaced(): { batchUpdateCount(): number } {
+    return stubSheetsService({
       isEveryTableInFilteredFetch: true,
       sheets: [
         misplacedTableSheet({
@@ -1157,17 +1159,18 @@ describe("SpreadsheetIdentified.fetchAllGathered, the placement check", () => {
   }
 
   it("names every misplaced sheet the run gathered for in one error", () => {
-    stubItemAndLogMisplaced();
+    const { batchUpdateCount } = stubItemAndLogMisplaced();
 
     const ssi = initIdentified();
     ssi.raw.sheet(itemGid).table(itemTableId).gatherFetchProperties();
     ssi.raw.sheet(logGid).table(logTableId).gatherFetchProperties();
 
     expect(() => ssi.fetchAllGathered()).toThrowError(/"Item".*"Log"/);
+    expect(batchUpdateCount()).toBe(0);
   });
 
   it("leaves a misplaced Table the run did not gather for unnamed", () => {
-    stubItemAndLogMisplaced();
+    const { batchUpdateCount } = stubItemAndLogMisplaced();
 
     const ssi = initIdentified();
     ssi.raw.sheet(itemGid).table(itemTableId).gatherFetchProperties();
@@ -1175,6 +1178,7 @@ describe("SpreadsheetIdentified.fetchAllGathered, the placement check", () => {
     const message = thrownMessage(() => ssi.fetchAllGathered());
     expect(message).toMatch(/"Item"/);
     expect(message).not.toMatch(/"Log"/);
+    expect(batchUpdateCount()).toBe(0);
   });
 
   it("stops on a Table moved below the header zone as missing, in the one round trip", () => {
