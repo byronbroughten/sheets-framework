@@ -21,7 +21,6 @@ import {
   SheetIndex,
   type SheetRowIndex,
 } from "../00_Source/RawSource/SheetIndex";
-import { SpreadsheetSchema } from "../01_SpreadsheetSchema/configReaders/SpreadsheetSchema";
 import { headerZone } from "../01_SpreadsheetSchema/headerZone";
 import {
   SpreadsheetBaseRaw,
@@ -31,6 +30,7 @@ import {
   hasQueuedWrites,
   integrateColumnProperties,
   sheetLabel,
+  tableIdsOnSheet,
   tableStateOf,
 } from "./ClassBases/TableBaseRaw";
 import { rowIndexesStaleMessage } from "./ClassBases/TableCommonRaw";
@@ -54,9 +54,6 @@ export class SheetRaw extends SpreadsheetBaseRaw {
   private _ensureSheetState(): void {
     if (this.sheetsStateRaw.has(this.sheetGid)) return;
     this.sheetsStateRaw.set(this.sheetGid, emptyStateRaw.sheetState());
-  }
-  get schema(): SpreadsheetSchema {
-    return new SpreadsheetSchema();
   }
   private get conditionalFormats(): SheetConditionalFormatsRaw {
     return new SheetConditionalFormatsRaw(this.sheetRawProps);
@@ -249,9 +246,7 @@ export class SheetRaw extends SpreadsheetBaseRaw {
   }
   // Every Table fetched onto the sheet, managed or not.
   get tableIds(): string[] {
-    return Array.from(this.tablesStateRaw.entries())
-      .filter(([, tableState]) => tableState.sheetGid === this.sheetGid)
-      .map(([tableId]) => tableId);
+    return tableIdsOnSheet(this.tablesStateRaw, this.sheetGid);
   }
   // Row indexes only actually shift once the deletes have been sent, and a Table below the deleted rows shifts with them.
   markRowIndexesStale(): void {

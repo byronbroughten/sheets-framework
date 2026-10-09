@@ -100,6 +100,21 @@ describe("SheetRaw", () => {
     expect(raw.table(tableId111).sheet.title).toBe("Task Generic");
   });
 
+  it("refuses to reach a fetched Table through a sheet it isn't on", () => {
+    stubSheetsService({
+      sheets: [
+        placedTableSheet({ sheetId: 111, title: "Task Generic" }),
+        { sheetId: 222, title: "Other" },
+      ],
+    });
+    const raw = SpreadsheetRaw.init();
+    raw.fetchAllSheetProperties();
+
+    expect(() => raw.sheet(222).table(tableId111)).toThrowError(
+      `Table ${tableId111} is on sheetGid 111, not sheetGid 222, which reached it.`,
+    );
+  });
+
   it("lists the Tables fetched onto it, and none before the fetch", () => {
     const itemGid = getTableTraitByName("item", "sheetGid");
     stubSheetsService({

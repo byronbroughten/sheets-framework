@@ -87,11 +87,12 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
   private _sheetGidOf(tableId: string): number {
     const liveSheetGid = this.tablesStateRaw.get(tableId)?.sheetGid;
     if (liveSheetGid !== undefined) return liveSheetGid;
-    const [placedSheetGid] = Array.from(this.sheetsStateRaw.entries())
-      .filter(([, sheetState]) =>
-        sheetState.tablesBeforePropertiesById.has(tableId),
-      )
-      .map(([sheetGid]) => sheetGid);
+    const placedSheetGid = Array.from(this.sheetsStateRaw.keys()).find(
+      (sheetGid) =>
+        this.sheetsStateRaw
+          .get(sheetGid)
+          ?.tablesBeforePropertiesById.has(tableId),
+    );
     return Val.assert(placedSheetGid, `sheetGid for tableId ${tableId}`);
   }
   sheet(sheetGid: number): SheetRaw {

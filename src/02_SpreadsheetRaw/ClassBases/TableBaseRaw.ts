@@ -22,7 +22,7 @@ import {
 export interface TableAddressRaw {
   tableId: string;
 }
-// `sheetGid` places a Table not yet in state; one in state stays on its own sheet.
+// `sheetGid` places a Table not yet in state, and must match a fetched one's.
 export interface TableRawProps extends SpreadsheetRawProps, TableAddressRaw {
   sheetGid: number;
 }
@@ -33,8 +33,8 @@ export class TableBaseRaw extends SpreadsheetBaseRaw {
   constructor({ spreadsheetStateRaw, tableId, sheetGid }: TableRawProps) {
     super({ spreadsheetStateRaw });
     this.addressedTableId = tableId;
-    this.sheetGid =
-      spreadsheetStateRaw.tables.get(tableId)?.sheetGid ?? sheetGid;
+    this.sheetGid = sheetGid;
+    validateTableOnSheet(spreadsheetStateRaw.tables, tableId, sheetGid);
     this._ensureSheetState();
     this._ensureTableBeforePropertiesById();
   }
@@ -94,9 +94,7 @@ export class TableBaseRaw extends SpreadsheetBaseRaw {
     };
   }
   tableIds(): string[] {
-    return Array.from(this.tablesStateRaw.entries())
-      .filter(([, tableState]) => tableState.sheetGid === this.sheetGid)
-      .map(([tableId]) => tableId);
+    return tableIdsOnSheet(this.tablesStateRaw, this.sheetGid);
   }
   // Absent for a sheet that holds no Table or several.
   onlyTableId(): string | undefined {
@@ -136,6 +134,28 @@ export function sheetLabel(
   sheetGid: number,
 ): string {
   return `"${title ?? "(untitled)"}" (gid ${sheetGid})`;
+}
+
+export function tableIdsOnSheet(
+  tables: TablesStateRaw,
+  sheetGid: number,
+): string[] {
+  return Array.from(tables.entries())
+    .filter(([, tableState]) => tableState.sheetGid === sheetGid)
+    .map(([tableId]) => tableId);
+}
+
+// A Table reached through a sheet it isn't on would read and write the wrong grid.
+function validateTableOnSheet(
+  tables: TablesStateRaw,
+  tableId: string,
+  sheetGid: number,
+): void {
+  const liveSheetGid = tables.get(tableId)?.sheetGid;
+  if (liveSheetGid === undefined || liveSheetGid === sheetGid) return;
+  throw new Error(
+    `Table ${tableId} is on sheetGid ${liveSheetGid}, not sheetGid ${sheetGid}, which reached it.`,
+  );
 }
 
 export function tableStateOf(
