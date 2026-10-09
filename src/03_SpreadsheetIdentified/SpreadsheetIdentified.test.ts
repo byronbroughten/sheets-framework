@@ -27,6 +27,7 @@ import {
 } from "../02_SpreadsheetRaw/spreadsheetRawTestSupport";
 import {
   buildGridRows,
+  type FakeSheetProperties,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
 import {
@@ -1376,5 +1377,107 @@ describe("SpreadsheetIdentified.fetchAllGathered, the placement check", () => {
       );
       expect(batchUpdateCount()).toBe(0);
     });
+  });
+});
+
+describe("SpreadsheetIdentified.batchUpdateGSheets, a column insert, which uses every Table on its sheet", () => {
+  const leftId = layoutTableId("layoutLeft");
+  const rightId = layoutTableId("layoutRight");
+  // Right's head rows straddle the bottom of Left's insert band, its Table below it.
+  const rightBelowZone = { layoutRight: { startRowIndex: 8 } };
+  function initIdentified(
+    isRegeneratingConfigs = false,
+  ): SpreadsheetIdentified {
+    const props = SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps();
+    props.spreadsheetStateIdentified.isRegeneratingConfigs =
+      isRegeneratingConfigs;
+    return new SpreadsheetIdentified(props);
+  }
+  function fetchedLeft(
+    sheet: FakeSheetProperties,
+    isRegeneratingConfigs = false,
+  ) {
+    const { batchUpdateCount } = stubSheetsService({ sheets: [sheet] });
+    const ssi = initIdentified(isRegeneratingConfigs);
+    ssi.raw.sheet(layoutGid).table(leftId).gatherFetchProperties();
+    ssi.raw.table(leftId).columnResolver.gatherFetchColumnIds();
+    ssi.fetchAllGathered();
+    ssi.raw.table(leftId).row(0).gatherFetchFull();
+    ssi.fetchAllGathered();
+    return { ssi, batchUpdateCount };
+  }
+
+  it("stops on a neighbour below the header zone, which it would split from its head rows, sending nothing", () => {
+    const { ssi, batchUpdateCount } = fetchedLeft(layoutSheet(rightBelowZone));
+    ssi.raw
+      .table(leftId)
+      .appendColumn({ columnId: "c:lyl:new", header: "New" });
+
+    expect(() => ssi.batchUpdateGSheets()).toThrowError(
+      /^Inserting a column at the end of Table "layoutLeft" on sheet "Layout" needs every managed Table on that sheet in place\. 1 managed Table\(s\) .*has no Table "layoutRight" with its header row on row 4 — move it back, or regenerate the configs with sheets-framework gen-configs if it is gone$/,
+    );
+    expect(batchUpdateCount()).toBe(0);
+  });
+
+  it("stops on a neighbour below the header zone once a whole-sheet fetch, not the zone, placed the Table", () => {
+    const { batchUpdateCount } = stubSheetsService({
+      sheets: [layoutSheet(rightBelowZone)],
+    });
+    const ssi = initIdentified();
+    ssi.raw.fetchAllSheetProperties();
+    ssi.raw.table(leftId).columnResolver.gatherFetchColumnIds();
+    ssi.raw.table(leftId).row(0).gatherFetchFull();
+    ssi.fetchAllGathered();
+    ssi.raw
+      .table(leftId)
+      .appendColumn({ columnId: "c:lyl:new", header: "New" });
+
+    expect(() => ssi.batchUpdateGSheets()).toThrowError(
+      /needs every managed Table on that sheet in place\. .*has Table "layoutRight", which must have its header row on row 4 — move it back$/,
+    );
+    expect(batchUpdateCount()).toBe(0);
+  });
+
+  it("stops on a neighbour gone from the sheet", () => {
+    const sheet = layoutSheet();
+    const { ssi } = fetchedLeft({
+      ...sheet,
+      tables: sheet.tables?.filter((table) => table.tableId !== rightId),
+    });
+    ssi.raw
+      .table(leftId)
+      .appendColumn({ columnId: "c:lyl:new", header: "New" });
+
+    expect(() => ssi.batchUpdateGSheets()).toThrowError(
+      /has no Table "layoutRight"/,
+    );
+  });
+
+  it("skips the judgment while the configs regenerate, and lands the insert", () => {
+    const { ssi } = fetchedLeft(layoutSheet(rightBelowZone), true);
+    ssi.raw
+      .table(leftId)
+      .appendColumn({ columnId: "c:lyl:new", header: "New" });
+    ssi.batchUpdateGSheets();
+
+    expect(ssi.raw.table(leftId).columnCount).toBe(3);
+  });
+
+  it("lets a value write through with the same neighbour below the zone", () => {
+    const { ssi } = fetchedLeft(layoutSheet(rightBelowZone));
+    ssi.raw.table(leftId).row(0).cell(1).updateValue(9);
+
+    expect(() => ssi.batchUpdateGSheets()).not.toThrow();
+  });
+
+  it("inserts beside a neighbour in place that the run doesn't otherwise use, and shifts it", () => {
+    const { ssi } = fetchedLeft(layoutSheet());
+    ssi.raw
+      .table(leftId)
+      .appendColumn({ columnId: "c:lyl:new", header: "New" });
+    ssi.batchUpdateGSheets();
+
+    expect(ssi.raw.table(leftId).columnCount).toBe(3);
+    expect(ssi.raw.table(rightId).startColumnIndex).toBe(4);
   });
 });

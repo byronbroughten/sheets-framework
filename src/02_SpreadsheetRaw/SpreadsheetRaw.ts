@@ -66,8 +66,10 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
   validateHeadersInZone(managedTableIds: string[]): void {
     this.tableValidator.validateHeadersInZone(managedTableIds);
   }
-  validateTablesForColumnInsert(sheetGid: number, columnInsert: string): void {
-    this.tableValidator.validateTablesForColumnInsert(sheetGid, columnInsert);
+  get tablesWithQueuedColumnInsert(): TableRaw[] {
+    return this.activeTableIds
+      .map((tableId) => this.table(tableId))
+      .filter((table) => table.hasQueuedColumnInsert);
   }
   // A Table queued for creation has state but no properties until it is fetched.
   get activeTableIds(): string[] {

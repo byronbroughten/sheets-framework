@@ -2,16 +2,11 @@ import { SpreadsheetSchema } from "../../01_SpreadsheetSchema/configReaders/Spre
 import type { TableSchema } from "../../01_SpreadsheetSchema/configReaders/TableSchema";
 import { headerZone } from "../../01_SpreadsheetSchema/headerZone";
 import { SpreadsheetRaw } from "../../02_SpreadsheetRaw/SpreadsheetRaw";
-import {
-  headerRowPlace,
-  regenerateFix,
-} from "../../02_SpreadsheetRaw/SpreadsheetRaw/SpreadsheetTableValidatorRaw";
+import { headerRowPlace } from "../../02_SpreadsheetRaw/SpreadsheetRaw/SpreadsheetTableValidatorRaw";
 import { SpreadsheetBaseIdentified } from "../ClassBases/SpreadsheetBaseIdentified";
 
 type Misplacement = { table: TableSchema } & (
-  | { kind: "missing" }
-  | { kind: "outside-zone" }
-  | { kind: "band-shifted" }
+  { kind: "missing" } | { kind: "outside-zone" } | { kind: "band-shifted" }
 );
 
 export class SpreadsheetTableValidatorIdentified extends SpreadsheetBaseIdentified {
@@ -32,20 +27,39 @@ export class SpreadsheetTableValidatorIdentified extends SpreadsheetBaseIdentifi
     );
   }
   validateTables(tables: TableSchema[]): void {
-    this._validateNotHeaderOnly(tables);
+    const fix = this._placementFix(tables);
+    if (fix === undefined) return;
+    throw new Error(fix);
+  }
+  // A column insert can split a Table the zone missed from its head rows, so it uses every Table on its sheet.
+  validateTablesForColumnInserts(): void {
+    if (this.spreadsheetStateIdentified.isRegeneratingConfigs) return;
+    for (const tableRaw of this.raw.tablesWithQueuedColumnInsert) {
+      const fix = this._placementFix(
+        this.schema.tablesOnGid(tableRaw.sheetGid),
+      );
+      if (fix === undefined) continue;
+      throw new Error(
+        `${tableRaw.columnInsertLabel} needs every managed Table on that sheet in place. ${fix}`,
+      );
+    }
+  }
+  private _placementFix(tables: TableSchema[]): string | undefined {
+    const headerOnlyFix = this._headerOnlyFix(tables);
+    if (headerOnlyFix !== undefined) return headerOnlyFix;
     const misplacements = tables.flatMap((table) => this._misplacements(table));
-    if (misplacements.length === 0) return;
-    throw new Error(this._misplacementsSentence(misplacements));
+    if (misplacements.length === 0) return undefined;
+    return this._misplacementsSentence(misplacements);
   }
   // First and alone, since the band test reads the column ID row through the body origin.
-  private _validateNotHeaderOnly(tables: TableSchema[]): void {
+  private _headerOnlyFix(tables: TableSchema[]): string | undefined {
     const fixes = tables
       .filter((table) => this._isLive(table))
       .map(({ tableId }) => this.raw.table(tableId))
       .filter((tableRaw) => tableRaw.isHeaderOnly)
       .map((tableRaw) => tableRaw.headerOnlyFix);
-    if (fixes.length === 0) return;
-    throw new Error(fixes.join(" "));
+    if (fixes.length === 0) return undefined;
+    return fixes.join(" ");
   }
   // Missing and the column ID row wait for the zone, the one fetch sure to bring the Table.
   private _misplacements(table: TableSchema): Misplacement[] {
@@ -96,3 +110,6 @@ export class SpreadsheetTableValidatorIdentified extends SpreadsheetBaseIdentifi
     }
   }
 }
+
+const regenerateFix =
+  "regenerate the configs with sheets-framework gen-configs";
