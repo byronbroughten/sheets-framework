@@ -17,7 +17,6 @@ import type {
   GridBlockSnapshot,
   GridCellSnapshot,
   GridRangeProps,
-  SheetSnapshot,
   TableColumnPropertiesUpdate,
   TableColumnSnapshot,
 } from "../00_Source/RawSource/RawSource";
@@ -325,12 +324,6 @@ export class TableRaw extends TableCommonRaw {
       topValue: cell?.value ?? "", // from the payload, so a deleted top data row still describes the column
       topFormula: cell?.formula,
     };
-  }
-  integrateSheetState(sheet: SheetSnapshot): void {
-    this._integrateSheetProperties(sheet);
-    this.tableIds().forEach((tableId) => {
-      this.ss.table(tableId).integrateGridBlocks(sheet.gridBlocks ?? []);
-    });
   }
   // Each Table takes only the cells inside its own area, so a loose cell reaches no state.
   integrateGridBlocks(gridBlocks: GridBlockSnapshot[]): void {

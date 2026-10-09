@@ -1,9 +1,6 @@
 import { Val } from "@byronbroughten/utils/val";
 
-import type {
-  SheetSnapshot,
-  TableSnapshot,
-} from "../../00_Source/RawSource/RawSource";
+import type { TableSnapshot } from "../../00_Source/RawSource/RawSource";
 import { SpreadsheetSchema } from "../../01_SpreadsheetSchema/configReaders/SpreadsheetSchema";
 import { tableConfigsByTableId } from "../../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin";
@@ -133,111 +130,6 @@ export class TableBaseRaw extends SpreadsheetBaseRaw {
   rowLabel(rowIndex: number): string {
     return `row ${this.tableOrigin().rowNumber(rowIndex)}`;
   }
-  removeTablesAbsentFrom(tables: TableSnapshot[]): void {
-    const liveTableIds = tables.map(({ tableId }) => tableId);
-    this.tableIds()
-      .filter((tableId) => !liveTableIds.includes(tableId))
-      .forEach((tableId) => this._removeAbsentTable(tableId));
-  }
-  // A queued write must never vanish with its Table, so it stops the run instead.
-  private _removeAbsentTable(tableId: string): void {
-    const { writeQueue } = tableStateOf(this.tablesStateRaw, tableId);
-    if (hasQueuedWrites(writeQueue)) {
-      throw new Error(
-        `Table ${tableId} is no longer on ${this.sheetLabel}, but it has queued writes; refetch before queuing writes to it.`,
-      );
-    }
-    this.tablesStateRaw.delete(tableId);
-  }
-  protected _integrateSheetProperties(sheet: SheetSnapshot): void {
-    if (sheet.title) {
-      this.sheetState.working.title = sheet.title;
-    }
-    if (sheet.rowCount !== undefined) {
-      this.sheetState.working.rowCount = sheet.rowCount;
-    }
-    if (sheet.columnCount !== undefined) {
-      this.sheetState.working.columnCount = sheet.columnCount;
-    }
-    if (sheet.tables !== undefined) {
-      this._integrateTables(sheet.tables);
-    }
-    this._integrateQueuedSheetProperties();
-  }
-  // A grid fetch returns only the Tables its ranges overlap, so a Table it leaves out stays.
-  private _integrateTables(tables: TableSnapshot[]): void {
-    const knownAndFetchedTableIds = new Set([
-      ...this.tableIds(),
-      ...tables.map(({ tableId }) => tableId),
-    ]);
-    const tableIdReachedByGid = tableIdReachedAmong(
-      [...knownAndFetchedTableIds],
-      this.sheetGid,
-    );
-    tables.forEach((table) => {
-      const tableState = this._tableStateToIntegrate(
-        table.tableId,
-        table.tableId === tableIdReachedByGid,
-      );
-      tableState.sheetGid = this.sheetGid;
-      tableState.properties = {
-        tableId: table.tableId,
-        name: table.name,
-        startRowIndex: table.startRowIndex,
-        endRowIndex: table.endRowIndex,
-        startColumnIndex: table.startColumnIndex,
-        endColumnIndex: table.endColumnIndex,
-        columnProperties: table.columnProperties,
-        rowIndexesAreStale: tableState.properties?.rowIndexesAreStale ?? false,
-      };
-      integrateColumnProperties(tableState, table);
-      this.tablesStateRaw.set(table.tableId, tableState);
-    });
-  }
-  // The Table its GID reaches takes over what was queued through the sheet before it was known.
-  private _tableStateToIntegrate(
-    tableId: string,
-    isReachedByGid: boolean,
-  ): TableStateRaw {
-    const existing =
-      this.tablesStateRaw.get(tableId) ??
-      this._takeTableBeforePropertiesById(tableId);
-    if (existing !== undefined) {
-      if (isReachedByGid) this._validateNoWritesQueuedThroughSheet();
-      return existing;
-    }
-    if (!isReachedByGid) return emptyStateRaw.tableState(this.sheetGid);
-    const adopted = this.sheetState.tableBeforeProperties;
-    this.sheetState.tableBeforeProperties = emptyStateRaw.tableState(
-      this.sheetGid,
-    );
-    return adopted;
-  }
-  private _takeTableBeforePropertiesById(
-    tableId: string,
-  ): TableStateRaw | undefined {
-    const { tablesBeforePropertiesById } = this.sheetState;
-    const tableState = tablesBeforePropertiesById.get(tableId);
-    tablesBeforePropertiesById.delete(tableId);
-    return tableState;
-  }
-  // Once the sheet resolves to a Table it already knew, the flush no longer reads what was queued through the sheet.
-  private _validateNoWritesQueuedThroughSheet(): void {
-    if (hasQueuedWrites(this.sheetState.tableBeforeProperties.writeQueue)) {
-      throw new Error(
-        `Writes were queued through ${this.sheetLabel} while it had several Tables, and it now has one; refetch before queuing writes to it.`,
-      );
-    }
-  }
-  // Queued properties outlive a re-fetch until the flush sends them.
-  private _integrateQueuedSheetProperties(): void {
-    this.writeOperations.renameSheet.forEach(({ sheetId, title }) => {
-      if (sheetId === this.sheetGid) this.sheetState.working.title = title;
-    });
-    this.writeOperations.renameTable.forEach(({ tableId, name }) => {
-      this._updateWorkingTableName(tableId, name);
-    });
-  }
   protected _updateWorkingTableName(tableId: string, name: string): void {
     const properties = this.tablesStateRaw.get(tableId)?.properties;
     if (properties !== undefined) properties.name = name;
@@ -268,7 +160,7 @@ function sheetGidOf(
 }
 
 // The sheet's only Table, else the one its configs record.
-function tableIdReachedAmong(
+export function tableIdReachedAmong(
   tableIds: string[],
   sheetGid: number,
 ): string | undefined {
@@ -284,11 +176,14 @@ function tableIdReachedAmong(
   return recordedTableId;
 }
 
-function tableStateOf(tables: TablesStateRaw, tableId: string): TableStateRaw {
+export function tableStateOf(
+  tables: TablesStateRaw,
+  tableId: string,
+): TableStateRaw {
   return Val.assert(tables.get(tableId), `Table state for tableId ${tableId}`);
 }
 
-function hasQueuedWrites({ table, rows }: TableWriteQueueRaw): boolean {
+export function hasQueuedWrites({ table, rows }: TableWriteQueueRaw): boolean {
   return (
     rows.size > 0 ||
     table.sort !== undefined ||
@@ -309,7 +204,7 @@ export function originOf(properties: TablePropertiesRaw): TableOrigin {
   });
 }
 
-function integrateColumnProperties(
+export function integrateColumnProperties(
   tableState: TableStateRaw,
   table: TableSnapshot,
 ): void {

@@ -81,9 +81,7 @@ export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
   // Only a fetch covering the whole sheet lists every Table on it, so only it can tell one is gone.
   private _removeTablesAbsentFrom(sheets: SheetSnapshot[]): void {
     sheets.forEach((sheet) =>
-      this.ss
-        .tableOnSheet(sheet.sheetGid)
-        .removeTablesAbsentFrom(sheet.tables ?? []),
+      this.ss.sheet(sheet.sheetGid).removeTablesAbsentFrom(sheet.tables ?? []),
     );
   }
   // Backfills cells for every range fetched this cycle so a Sheets
@@ -91,9 +89,9 @@ export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
   // them looking merely "not yet fetched" to callers.
   private _finalizeGatheredFetches(): void {
     // Before the reset below, which forgets which Tables gathered a fetch.
-    const placements = Array.from(this.spreadsheetStateRaw.sheets.keys()).flatMap(
-      (sheetGid) => this.tableValidator.tablePlacements(sheetGid),
-    );
+    const placements = Array.from(
+      this.spreadsheetStateRaw.sheets.keys(),
+    ).flatMap((sheetGid) => this.tableValidator.tablePlacements(sheetGid));
     this.spreadsheetStateRaw.sheets.forEach((state) => {
       state.tableBeforeProperties.fetchQueue = emptyStateRaw.tableFetchQueue();
       state.tablesBeforePropertiesById.forEach((tableState) => {
@@ -164,10 +162,9 @@ export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
     if (snapshot.timeZone !== null) {
       this.spreadsheetStateRaw.timeZone = snapshot.timeZone;
     }
-    snapshot.sheets.forEach((sheetSnapshot) => {
-      const table = this.ss.tableOnSheet(sheetSnapshot.sheetGid);
-      table.integrateSheetState(sheetSnapshot);
-    });
+    snapshot.sheets.forEach((sheetSnapshot) =>
+      this.ss.sheet(sheetSnapshot.sheetGid).integrateSnapshot(sheetSnapshot),
+    );
   }
 }
 
