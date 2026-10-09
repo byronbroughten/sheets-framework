@@ -36,7 +36,7 @@ export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
     // An empty dataFilters list would fetch the whole spreadsheet's grid data.
     if (this.fetcherGridRanges.length === 0) return;
     const data = this._fetchByGridRanges(includeProgrammaticFacts);
-    // Before finalize, which clears the zone flags and may then stop on a header-only Table.
+    // Before finalize, which clears the zone flags.
     this.spreadsheetStateRaw.fetchQueue.gridRanges = [];
     this._addDataToState(data);
     this._finalizeGatheredFetches();

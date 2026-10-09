@@ -33,8 +33,6 @@ import type { GridRangeProps } from "./AccessorsRaw";
 
 export interface StateRaw {
   allSheetPropertiesAreFetched: boolean;
-  // The run's placement check judges against the very configs a regeneration replaces.
-  isRegeneratingConfigs: boolean;
   // The Tables the last grid fetch gathered for, kept past its queue reset for the placement check.
   usedTableIds: Set<string>;
   timeZone: string | undefined;

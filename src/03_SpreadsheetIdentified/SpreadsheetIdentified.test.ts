@@ -1115,6 +1115,25 @@ describe("SpreadsheetIdentified.fetchAllGathered, the placement check", () => {
     expect(batchUpdateCount()).toBe(0);
   });
 
+  it("stops a run using a header-only managed Table with its fix, sending nothing", () => {
+    const { batchUpdateCount } = stubSheetsService({
+      sheets: [
+        {
+          ...placedTableSheet({ sheetId: logGid, title: "Log" }),
+          table: { endRowIndex: topDataRowIndex, name: "Logs" },
+        },
+      ],
+    });
+
+    const ssi = initIdentified();
+    ssi.raw.sheet(logGid).table(logTableId).gatherFetchProperties();
+
+    expect(thrownMessage(() => ssi.fetchAllGathered())).toMatch(
+      /^Table "Logs" on "Log" \(gid \d+\) has only its header: add a row below it holding its formulas\.$/,
+    );
+    expect(batchUpdateCount()).toBe(0);
+  });
+
   it("names the header-only Table alone when a misplaced one is used beside it", () => {
     const { batchUpdateCount } = stubSheetsService({
       sheets: [

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister";
 import { configSheetFloorSeed } from "../01_SpreadsheetSchema/configReaders/configSheetFloorSeed";
 import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
+import { SpreadsheetBaseNamed } from "../04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
 import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {
@@ -1691,5 +1692,63 @@ describe("ConfigCoordinator.generateConfigFiles head-row overlap", () => {
       ConfigCoordinator.init().generateConfigFiles("../makeConfigs");
     expect(parsed.tableConfigs).toContain('"tenants"');
     expect(parsed.tableConfigs).toContain('"leases"');
+  });
+});
+
+describe("ConfigCoordinator placement check", () => {
+  const logGid = getTableTraitByName("log", "sheetGid");
+  const bandShiftedItemColumnId = "c:oth:xyz123";
+
+  // The band test waits for the zone; this stands in for a fetch that brought it.
+  function withItemZoneGathered(
+    coordinator: ConfigCoordinator,
+  ): ConfigCoordinator {
+    coordinator.ss.fetchAllSheetProperties();
+    coordinator.ss.raw.sheet(testSheetGid).gatherFetchHeaderZone();
+    return coordinator;
+  }
+
+  it("stops the config-sync endpoint's column-config fetch on a misplaced recorded Table it uses", () => {
+    seedFixture({ testColumnId: bandShiftedItemColumnId });
+    const coordinator = withItemZoneGathered(
+      new ConfigCoordinator(SpreadsheetBaseNamed.initSpreadsheetNamedProps()),
+    );
+
+    expect(() => coordinator.syncConfigSheetRows()).toThrowError(
+      /managed Table\(s\) are missing or misplaced: "Item" \(gid \d+\) needs its own "itm" column IDs/,
+    );
+  });
+
+  it("generates the configs with that same misplaced recorded Table", () => {
+    seedFixture({ testColumnId: bandShiftedItemColumnId });
+    const coordinator = withItemZoneGathered(ConfigCoordinator.init());
+
+    const parsed = coordinator.generateConfigFiles("../makeConfigs");
+    expect(parsed.tableConfigs).toContain('"item"');
+  });
+
+  it("generates the configs with a header-only recorded Table whose Let api access is off and that gathers a fetch", () => {
+    seedFixture({
+      extraSheets: [
+        {
+          sheetId: logGid,
+          title: "Log",
+          rows: buildGridRows({ [tableHeaderRowIndex]: ["Name"] }),
+          table: {
+            tableId: "log",
+            name: "Log",
+            endRowIndex: headerOnlyTableEndRowIndex,
+          },
+        },
+      ],
+      extraTableConfigDataRows: { 5: ["log", "", "Log", false] },
+      tableConfigTableEndRowIndex: 6,
+    });
+    const coordinator = ConfigCoordinator.init();
+    coordinator.ss.fetchAllSheetProperties();
+    coordinator.ss.raw.sheet(logGid).table("log").gatherFetchProperties();
+
+    const parsed = coordinator.generateConfigFiles("../makeConfigs");
+    expect(parsed.tableConfigs).not.toContain('"log"');
   });
 });

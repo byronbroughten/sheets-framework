@@ -11,6 +11,8 @@ export interface CellChange<VN extends ValueName = ValueName> {
 }
 
 export interface StateIdentified {
+  // The run's placement check judges against the very configs a regeneration replaces.
+  isRegeneratingConfigs: boolean;
   tables: TablesStateIdentified;
 }
 

@@ -42,7 +42,6 @@ export class SpreadsheetBaseRaw {
     return {
       spreadsheetStateRaw: {
         allSheetPropertiesAreFetched: false,
-        isRegeneratingConfigs: false,
         usedTableIds: new Set(),
         timeZone: undefined,
         rawSource: installedRawSource(),

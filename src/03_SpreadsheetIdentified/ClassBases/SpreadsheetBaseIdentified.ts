@@ -37,7 +37,10 @@ export class SpreadsheetBaseIdentified extends SpreadsheetBaseRaw {
   ): SpreadsheetIdentifiedProps {
     return {
       ...SpreadsheetBaseRaw.initSpreadsheetRawProps(),
-      spreadsheetStateIdentified: { tables: new Map() },
+      spreadsheetStateIdentified: {
+        isRegeneratingConfigs: false,
+        tables: new Map(),
+      },
       feedbackColumnIds,
     };
   }

@@ -88,7 +88,7 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
       table.headRow("columnId").gatherFetchFull();
       table.topRow.gatherFetchFull();
     });
-    this.ss.raw.fetchAllGathered(true);
+    this.ss.identified.fetchAllGathered(true);
     return this;
   }
   syncToSpreadsheet(): this {

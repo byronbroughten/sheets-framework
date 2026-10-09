@@ -41,7 +41,7 @@ export class ConfigCoordinator extends SpreadsheetBaseOperator {
   // Generation's own state, so the sync's refusals judge the live Tables in place of the configs it replaces.
   static init(): ConfigCoordinator {
     const props = SpreadsheetBaseNamed.initSpreadsheetNamedProps();
-    props.spreadsheetStateRaw.isRegeneratingConfigs = true;
+    props.spreadsheetStateIdentified.isRegeneratingConfigs = true;
     return new ConfigCoordinator(props);
   }
   get ss(): SpreadsheetNamed {
