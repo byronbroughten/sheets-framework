@@ -20,13 +20,13 @@ export type {
 } from "./06_API/Endpoints";
 export { AppsScriptApi as Api } from "./appsScriptHost/AppsScriptApi";
 export type { Chore } from "./chores/Chore";
-export {
+export type {
+  DateInRange,
+  DateRange,
+  FirstAndLastOfMonth,
+  MonthRange,
+  MonthYear,
+  MonthYearRange,
   SerialDate,
-  type DateInRange,
-  type DateRange,
-  type FirstAndLastOfMonth,
-  type MonthRange,
-  type MonthYear,
-  type MonthYearRange,
-  type Ymd,
-} from "./utils/SerialDate";
+  Ymd,
+} from "@byronbroughten/utils/serial-date";

@@ -1,7 +1,7 @@
+import type { SerialDate } from "@byronbroughten/utils/serial-date";
 import { describe, expect, it } from "vitest";
 
 import { assertType, type IsExactly } from "../testSupport/typeAssertions";
-import type { SerialDate } from "./SerialDate";
 import { Val, validationError } from "./Val";
 
 describe("validationError", () => {

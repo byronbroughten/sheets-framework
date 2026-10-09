@@ -1,3 +1,4 @@
+import { SerialDate } from "@byronbroughten/utils/serial-date";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -35,7 +36,6 @@ import {
   assertType,
   type IsExactly,
 } from "../testSupport/typeAssertions";
-import { SerialDate } from "../utils/SerialDate";
 import type { SpreadsheetNamedProps } from "./ClassBases/SpreadsheetBaseNamed";
 import { ColumnNamed } from "./ColumnNamed";
 import { RowNamed } from "./RowNamed";
