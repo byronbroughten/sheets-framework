@@ -14,7 +14,6 @@ type Misplacement = { table: TableSchema } & (
   | { kind: "band-shifted" }
 );
 
-// Runs after Raw's fetch, whose finalize has already refused a header-only Table on its own.
 export class SpreadsheetTableValidatorIdentified extends SpreadsheetBaseIdentified {
   get raw(): SpreadsheetRaw {
     return new SpreadsheetRaw(this.spreadsheetRawProps);
@@ -24,7 +23,7 @@ export class SpreadsheetTableValidatorIdentified extends SpreadsheetBaseIdentifi
   }
   // One per recorded Table the last fetch gathered for; a broken one the run doesn't use stays silent.
   validateUsedTables(): void {
-    if (this.spreadsheetStateRaw.isRegeneratingConfigs) return;
+    if (this.spreadsheetStateIdentified.isRegeneratingConfigs) return;
     const { usedTableIds } = this.raw;
     this.validateTables(
       this.raw.activeSheetGids
@@ -33,9 +32,20 @@ export class SpreadsheetTableValidatorIdentified extends SpreadsheetBaseIdentifi
     );
   }
   validateTables(tables: TableSchema[]): void {
+    this._validateNotHeaderOnly(tables);
     const misplacements = tables.flatMap((table) => this._misplacements(table));
     if (misplacements.length === 0) return;
     throw new Error(this._misplacementsSentence(misplacements));
+  }
+  // First and alone, since the band test reads the column ID row through the body origin.
+  private _validateNotHeaderOnly(tables: TableSchema[]): void {
+    const fixes = tables
+      .filter((table) => this._isLive(table))
+      .map(({ tableId }) => this.raw.table(tableId))
+      .filter((tableRaw) => tableRaw.isHeaderOnly)
+      .map((tableRaw) => tableRaw.headerOnlyFix);
+    if (fixes.length === 0) return;
+    throw new Error(fixes.join(" "));
   }
   // Missing and the column ID row wait for the zone, the one fetch sure to bring the Table.
   private _misplacements(table: TableSchema): Misplacement[] {

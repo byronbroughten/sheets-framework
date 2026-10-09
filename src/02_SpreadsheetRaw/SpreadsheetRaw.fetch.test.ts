@@ -192,7 +192,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     );
   });
 
-  it("stops on a managed Table met with only its header, naming the Table and the fix", () => {
+  it("fetches a Table met with only its header, leaving the refusal to its position reads", () => {
     stubSheetsService({
       sheets: [
         {
@@ -205,7 +205,8 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     const raw = SpreadsheetRaw.init();
     raw.sheet(itemGid).table(itemTableId).gatherFetchProperties();
 
-    expect(thrownMessage(() => raw.fetchAllGathered())).toMatch(
+    expect(() => raw.fetchAllGathered()).not.toThrow();
+    expect(thrownMessage(() => raw.table(itemTableId).dataRowCount)).toMatch(
       /^Table "Items" on "Item" \(gid \d+\) has only its header: add a row below it holding its formulas\.$/,
     );
   });

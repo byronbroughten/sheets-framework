@@ -80,7 +80,6 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
   }
   // A column insert can split a Table the zone missed from its head rows, so it uses every Table on its sheet.
   validateTablesForColumnInsert(sheetGid: number, columnInsert: string): void {
-    if (this.spreadsheetStateRaw.isRegeneratingConfigs) return;
     const { hasFetchedHeaderZone } = this.ss.sheet(sheetGid);
     const fix = this._placementsFix(
       this.schema
