@@ -84,7 +84,9 @@ function sheetState(fixture: FakeSheetProperties): FakeSheetState {
   const placed = (fixtureTables ?? (table === undefined ? [] : [table])).map(
     (fixtureTable, tableIndex) =>
       placedTable(fixtureTable, () =>
-        defaultTableId(copy.sheetId, tableIndex, fixtureTables?.length ?? 1),
+        (fixtureTables?.length ?? 1) === 1
+          ? loneTableId(copy.sheetId)
+          : defaultTableId(copy.sheetId, tableIndex),
       ),
   );
   const rows = placed.reduce(
@@ -108,21 +110,18 @@ function sheetState(fixture: FakeSheetProperties): FakeSheetState {
   };
 }
 
-// A lone Table on a sheet the configs record one Table on gets its recorded ID, since runs reach a Table by it.
-export function defaultTableId(
-  sheetId: number,
-  tableIndex: number,
-  tableCount = 1,
-): string {
-  if (tableIndex > 0) return `fake-table-${sheetId}-${tableIndex}`;
-  if (tableCount > 1) return `fake-table-${sheetId}`;
-  const [recorded, ...otherRecorded] = new SpreadsheetSchema().tablesOnGid(
-    sheetId,
+export function defaultTableId(sheetId: number, tableIndex: number): string {
+  return tableIndex === 0
+    ? `fake-table-${sheetId}`
+    : `fake-table-${sheetId}-${tableIndex}`;
+}
+
+// The recorded ID where the configs record one Table on the sheet, since runs reach a Table by it.
+export function loneTableId(sheetId: number): string {
+  return (
+    new SpreadsheetSchema().loneTableOnGid(sheetId)?.tableId ??
+    defaultTableId(sheetId, 0)
   );
-  if (recorded !== undefined && otherRecorded.length === 0) {
-    return recorded.tableId;
-  }
-  return `fake-table-${sheetId}`;
 }
 
 type PlacedTable = FakeTable &

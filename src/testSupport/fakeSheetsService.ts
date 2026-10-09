@@ -9,10 +9,10 @@ import { cellReplays } from "./fakeSheetsService/cellReplays";
 import { dimensionReplays } from "./fakeSheetsService/dimensionReplays";
 import { FakeGoogleRefusal } from "./fakeSheetsService/FakeGoogleRefusal";
 import {
-  defaultTableId,
   type FakeSheetState,
   type FakeSpreadsheet,
   fakeSpreadsheet,
+  loneTableId,
 } from "./fakeSheetsService/fakeSpreadsheet";
 import { fakeTables } from "./fakeSheetsService/fakeTables";
 import { type FakeGridView, gridView } from "./fakeSheetsService/gridView";
@@ -34,7 +34,7 @@ type FakeFetch =
   { kind: "get" } | { kind: "getByDataFilter"; filterRanges: GridRange[] };
 type Response = GoogleAppsScript.Sheets.Schema.Response;
 
-export { defaultTableId as fakeTableId };
+export { loneTableId as fakeTableId };
 export const fakeSpreadsheetId = "fake-spreadsheet";
 export const fakeTimeZone = "America/Chicago";
 

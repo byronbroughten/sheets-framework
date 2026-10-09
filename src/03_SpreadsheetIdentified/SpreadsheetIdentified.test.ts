@@ -1,4 +1,3 @@
-import { Val } from "@byronbroughten/utils/val";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { getColumnTraitByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
@@ -509,10 +508,9 @@ describe("the blank test, on a sheet with a feedback column", () => {
 
   it("leaves the feedback column out of a Table reached by its tableId", () => {
     const sheet = runItemWithOneRow([null, null, "Succeeded"]);
-    const tableId = Val.assert(sheet.knownTableId, "runItem tableId");
     const table = new SpreadsheetIdentified(
       sheet.spreadsheetIdentifiedProps,
-    ).table(tableId);
+    ).table(sheet.tableId);
 
     expect(table.blankTestColumnIds).not.toContain(runStatusColumnId);
     expect(table.topRow.isBlank).toBe(true);
@@ -959,7 +957,7 @@ describe("SpreadsheetIdentified Tables", () => {
     column.prepFetchFull();
     ssi.fetchAllPrepped();
 
-    expect(table.knownTableId).toBe(recordedTableId);
+    expect(table.tableId).toBe(recordedTableId);
     expect(column.valueOrEmpty(0)).toBe("r:vty:row4");
   });
 

@@ -1,11 +1,8 @@
-import { Val } from "@byronbroughten/utils/val";
-
 import type { SheetEdit } from "../00_Source/PlatformEvents/sheetEdit";
 import { SpreadsheetSchema } from "../01_SpreadsheetSchema/configReaders/SpreadsheetSchema";
 import type { TableSchema } from "../01_SpreadsheetSchema/configReaders/TableSchema";
 import { SpreadsheetRaw } from "../02_SpreadsheetRaw/SpreadsheetRaw";
 import { SpreadsheetBaseIdentified } from "./ClassBases/SpreadsheetBaseIdentified";
-import { managedTableAddress } from "./ClassBases/TableBaseIdentified";
 import { TableIdentified } from "./TableIdentified";
 import type { GatherDataPrerequisitesProps } from "./TableIdentified/TableColumnResolverIdentified";
 
@@ -18,15 +15,13 @@ export class SpreadsheetIdentified extends SpreadsheetBaseIdentified {
   }
   // The one managed Table the configs record on that sheet.
   tableOnSheet(sheetGid: number): TableIdentified {
-    const [table, ...otherTables] = this.schema.tablesOnGid(sheetGid);
-    if (otherTables.length > 0) {
+    const table = this.schema.loneTableOnGid(sheetGid);
+    if (table === undefined) {
       throw new Error(
-        `The configs record several Tables on sheetGid ${sheetGid}, so reach one by its Table ID.`,
+        `The configs record no Table or several on sheetGid ${sheetGid}; reach a shared sheet's Tables by Table ID.`,
       );
     }
-    return this.managedTable(
-      Val.assert(table, `Table the configs record on sheetGid ${sheetGid}`),
-    );
+    return this.managedTable(table);
   }
   table(tableId: string): TableIdentified {
     return new TableIdentified({
@@ -55,7 +50,7 @@ export class SpreadsheetIdentified extends SpreadsheetBaseIdentified {
   managedTable(table: TableSchema): TableIdentified {
     return new TableIdentified({
       ...this.spreadsheetIdentifiedProps,
-      ...managedTableAddress(table),
+      tableId: table.tableId,
     });
   }
   get activeSheets(): TableIdentified[] {

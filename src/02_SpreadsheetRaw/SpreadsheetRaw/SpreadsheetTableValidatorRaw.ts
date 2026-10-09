@@ -111,8 +111,9 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
   private _liveTableIdOf(tableName: TableName): string | undefined {
     const table = this.schema.sheetByName(tableName);
     const sheetTable = this.ss.tableOnSheet(table.sheetGid);
-    if (sheetTable.tableIds().includes(table.tableId)) return table.tableId;
-    return undefined;
+    return sheetTable.tableIds().includes(table.tableId)
+      ? table.tableId
+      : undefined;
   }
   validateTablePlacements(placements: TablePlacement[]): void {
     const fix = this._placementsFix(placements);

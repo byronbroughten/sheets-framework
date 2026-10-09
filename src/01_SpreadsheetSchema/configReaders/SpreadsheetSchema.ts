@@ -28,6 +28,11 @@ export class SpreadsheetSchema extends SpreadsheetBaseSchema {
       TableSchema.fromSheetName(tableKey),
     );
   }
+  // Absent when the configs record no Table or several on that sheet.
+  loneTableOnGid(sheetGid: number): TableSchema | undefined {
+    const [table, ...otherTables] = this.tablesOnGid(sheetGid);
+    return otherTables.length === 0 ? table : undefined;
+  }
   // Without a fetch, so the edit trigger's pre-check is free; the dispatch confirms it on the live Table.
   mayHoldActionCell({ sheetGid, rowIndexBase0 }: SheetEdit): boolean {
     return (
