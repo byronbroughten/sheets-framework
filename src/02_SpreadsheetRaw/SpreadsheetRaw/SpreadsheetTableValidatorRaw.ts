@@ -4,20 +4,19 @@ import { SpreadsheetSchema } from "../../01_SpreadsheetSchema/configReaders/Spre
 import type { TableName } from "../../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { headerZone } from "../../01_SpreadsheetSchema/headerZone";
 import { SpreadsheetBaseRaw } from "../ClassBases/SpreadsheetBaseRaw";
-import type { SheetStateRaw, TableStateRaw } from "../ClassTypes/StateRaw";
 import { SpreadsheetRaw } from "../SpreadsheetRaw";
 
 interface RecordedTableIdentity {
   sheetGid: number;
   tableName: TableName;
 }
-export type Misplacement = RecordedTableIdentity &
+type Misplacement = RecordedTableIdentity &
   (
     | { kind: "missing" }
     | { kind: "outside-zone"; tableId: string }
     | { kind: "band-shifted"; tableId: string }
   );
-export type TablePlacement =
+type TablePlacement =
   | { kind: "header-only"; tableId: string }
   | { kind: "misplaced"; misplacement: Misplacement }
   | { kind: "none" }
@@ -30,37 +29,7 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
   get schema(): SpreadsheetSchema {
     return new SpreadsheetSchema();
   }
-  // One per recorded Table the run gathered a fetch for; a broken one it doesn't use stays silent.
-  tablePlacements(sheetGid: number): TablePlacement[] {
-    if (this.spreadsheetStateRaw.isRegeneratingConfigs) return [];
-    const { gatherHeaderZone } = this._sheetState(sheetGid).fetchQueue;
-    return this.schema
-      .tablesOnGid(sheetGid)
-      .filter(({ tableName }) => this._hasGatheredFetch(tableName))
-      .map(({ tableName }) => this.tablePlacement(tableName, gatherHeaderZone));
-  }
-  // What a run gathered waits on the live Table, or, before it is known, on its ID.
-  private _hasGatheredFetch(tableName: TableName): boolean {
-    const table = this.schema.sheetByName(tableName);
-    const sheetState = this._sheetState(table.sheetGid);
-    const tableId = this._liveTableIdOf(tableName);
-    const liveTableState =
-      tableId === undefined
-        ? undefined
-        : this.spreadsheetStateRaw.tables.get(tableId);
-    return [
-      liveTableState,
-      sheetState.tablesBeforePropertiesById.get(table.tableId),
-    ].some(
-      (tableState) => tableState !== undefined && hasGatheredFetch(tableState),
-    );
-  }
-  private _sheetState(sheetGid: number): SheetStateRaw {
-    return Val.assert(
-      this.spreadsheetStateRaw.sheets.get(sheetGid),
-      `sheetState for sheetGid ${sheetGid}`,
-    );
-  }
+
   // Missing and the column ID row wait for the zone, the one fetch sure to bring the Table.
   tablePlacement(tableName: TableName, isZoneFetched: boolean): TablePlacement {
     const table = this.schema.sheetByName(tableName);
@@ -109,15 +78,10 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
       ? table.tableId
       : undefined;
   }
-  validateTablePlacements(placements: TablePlacement[]): void {
-    const fix = this._placementsFix(placements);
-    if (fix === undefined) return;
-    throw new Error(fix);
-  }
   // A column insert can split a Table the zone missed from its head rows, so it uses every Table on its sheet.
   validateTablesForColumnInsert(sheetGid: number, columnInsert: string): void {
     if (this.spreadsheetStateRaw.isRegeneratingConfigs) return;
-    const { hasFetchedHeaderZone } = this._sheetState(sheetGid).working;
+    const { hasFetchedHeaderZone } = this.ss.sheet(sheetGid);
     const fix = this._placementsFix(
       this.schema
         .tablesOnGid(sheetGid)
@@ -209,18 +173,13 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
   }
 }
 
-function hasGatheredFetch({ fetchQueue }: TableStateRaw): boolean {
-  const { rows, columns, cells } = fetchQueue.toFinalize;
-  return rows.size > 0 || columns.size > 0 || cells.size > 0;
-}
-
-const regenerateFix =
+export const regenerateFix =
   "regenerate the configs with sheets-framework gen-configs";
 
 function headerZoneFix(tableLabel: string): string {
   return `${tableLabel} must have ${headerRowPlace()}.`;
 }
 
-function headerRowPlace(): string {
+export function headerRowPlace(): string {
   return `its header row on ${headerZone.headerRowsLabel}`;
 }

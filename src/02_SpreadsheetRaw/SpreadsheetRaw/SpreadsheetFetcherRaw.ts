@@ -5,26 +5,14 @@ import type {
   SheetSnapshot,
   SpreadsheetSnapshot,
 } from "../../00_Source/RawSource/RawSource";
-import { SpreadsheetSchema } from "../../01_SpreadsheetSchema/configReaders/SpreadsheetSchema";
-import type { TableName } from "../../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { SpreadsheetBaseRaw } from "../ClassBases/SpreadsheetBaseRaw";
 import { emptyStateRaw } from "../ClassTypes/emptyStateRaw";
+import type { TableStateRaw } from "../ClassTypes/StateRaw";
 import { SpreadsheetRaw } from "../SpreadsheetRaw";
-import type { TableRaw } from "../TableRaw";
-import {
-  SpreadsheetTableValidatorRaw,
-  type TablePlacement,
-} from "./SpreadsheetTableValidatorRaw";
 
 export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
   get ss(): SpreadsheetRaw {
     return new SpreadsheetRaw(this.spreadsheetRawProps);
-  }
-  get schema(): SpreadsheetSchema {
-    return new SpreadsheetSchema();
-  }
-  get tableValidator(): SpreadsheetTableValidatorRaw {
-    return new SpreadsheetTableValidatorRaw(this.spreadsheetRawProps);
   }
   ensureAllSheetPropertiesAreFetched(): void {
     if (!this.spreadsheetStateRaw.allSheetPropertiesAreFetched) {
@@ -44,15 +32,16 @@ export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
   fetchAllGathered(includeProgrammaticFacts = false): void {
     this._fetchGatheredConditionalFormatRules();
     this._fetchGatheredEditProtections();
+    this.spreadsheetStateRaw.usedTableIds = this._usedTableIds();
     // An empty dataFilters list would fetch the whole spreadsheet's grid data.
     if (this.fetcherGridRanges.length === 0) return;
     const data = this._fetchByGridRanges(includeProgrammaticFacts);
-    // Before finalize, which clears the zone flags and may then stop on placement.
+    // Before finalize, which clears the zone flags and may then stop on a header-only Table.
     this.spreadsheetStateRaw.fetchQueue.gridRanges = [];
     this._addDataToState(data);
     this._finalizeGatheredFetches();
   }
-  // One sheet by GID without Table-placement finalize, so a moved Table can wait for overlay.
+  // One sheet by GID without finalize, so a moved Table can wait for overlay.
   fetchSheetUsedGrid(sheetGid: number): void {
     const data = this._fetchByGridRanges(false, [{ sheetId: sheetGid }]);
     const sheets = data.sheets.filter((sheet) => sheet.sheetGid === sheetGid);
@@ -88,10 +77,6 @@ export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
   // response that omits empty cells (or whole blank rows) never leaves
   // them looking merely "not yet fetched" to callers.
   private _finalizeGatheredFetches(): void {
-    // Before the reset below, which forgets which Tables gathered a fetch.
-    const placements = Array.from(
-      this.spreadsheetStateRaw.sheets.keys(),
-    ).flatMap((sheetGid) => this.tableValidator.tablePlacements(sheetGid));
     this.spreadsheetStateRaw.sheets.forEach((state) => {
       state.tablesBeforePropertiesById.forEach((tableState) => {
         tableState.fetchQueue = emptyStateRaw.tableFetchQueue();
@@ -101,19 +86,20 @@ export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
       }
       state.fetchQueue.gatherHeaderZone = false;
     });
-    const heldTableIds = placements.flatMap(failedTableIdsOf);
     this.spreadsheetStateRaw.tables.forEach((_state, tableId) => {
-      if (heldTableIds.includes(tableId)) return;
       this.ss.table(tableId).finalizeFetches();
     });
-    this.tableValidator.validateTablePlacements(placements);
   }
-  // For the one Table a caller picked from the zone just fetched, after every other Table was left unjudged.
-  integrateHeaderZoneTable(tableName: TableName, table: TableRaw): void {
-    this.tableValidator.validateTablePlacements([
-      this.tableValidator.tablePlacement(tableName, true),
-    ]);
-    table.integrateHeaderZone();
+  // A Table reached before its properties gathers under its ID on the sheet, so both count.
+  private _usedTableIds(): Set<string> {
+    const beforeProperties = Array.from(
+      this.spreadsheetStateRaw.sheets.values(),
+    ).flatMap((state) => Array.from(state.tablesBeforePropertiesById));
+    return new Set(
+      [...this.spreadsheetStateRaw.tables, ...beforeProperties]
+        .filter(([, tableState]) => hasGatheredFetch(tableState))
+        .map(([tableId]) => tableId),
+    );
   }
   // isFormula/numberFormatType (from rowData.values.userEnteredValue/
   // effectiveFormat) and column validation values/declared types (from
@@ -167,10 +153,7 @@ export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
   }
 }
 
-function failedTableIdsOf(placement: TablePlacement): string[] {
-  if (placement.kind === "header-only") return [placement.tableId];
-  if (placement.kind !== "misplaced") return [];
-  const { misplacement } = placement;
-  if (misplacement.kind === "missing") return [];
-  return [misplacement.tableId];
+function hasGatheredFetch({ fetchQueue }: TableStateRaw): boolean {
+  const { rows, columns, cells } = fetchQueue.toFinalize;
+  return rows.size > 0 || columns.size > 0 || cells.size > 0;
 }

@@ -260,12 +260,20 @@ export class TableRaw extends TableCommonRaw {
       this.isTableColIndex(origin.colIndex(sheetColIndex))
     );
   }
+  get hasGatheredFetch(): boolean {
+    const { rows, columns, cells } = this.tableState.fetchQueue.toFinalize;
+    return rows.size > 0 || columns.size > 0 || cells.size > 0;
+  }
   hasQueuedFullRowFetch(rowIndex: number): boolean {
     return this.tableState.fetchQueue.toFinalize.rows.has(rowIndex);
   }
   // Backfills every range fetched this cycle, since Sheets omits empty cells and whole blank rows.
   finalizeFetches(): void {
     const { toFinalize } = this.tableState.fetchQueue;
+    // A head-row backfill reads no position, so the refusal every position read makes is made here.
+    if (this.hasGatheredFetch && this.isHeaderOnly) {
+      throw new Error(this.headerOnlyFix);
+    }
     this._finalizeFetchedCells();
     if (toFinalize.rows.size === 0 && toFinalize.columns.size === 0) return;
     if (toFinalize.rows.has(this.schema.colIdRowIndex)) {

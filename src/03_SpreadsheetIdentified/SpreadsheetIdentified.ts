@@ -3,6 +3,7 @@ import { SpreadsheetSchema } from "../01_SpreadsheetSchema/configReaders/Spreads
 import { TableSchema } from "../01_SpreadsheetSchema/configReaders/TableSchema";
 import { SpreadsheetRaw } from "../02_SpreadsheetRaw/SpreadsheetRaw";
 import { SpreadsheetBaseIdentified } from "./ClassBases/SpreadsheetBaseIdentified";
+import { SpreadsheetTableValidatorIdentified } from "./SpreadsheetIdentified/SpreadsheetTableValidatorIdentified";
 import { TableIdentified } from "./TableIdentified";
 import type { GatherDataPrerequisitesProps } from "./TableIdentified/TableColumnResolverIdentified";
 
@@ -12,6 +13,11 @@ export class SpreadsheetIdentified extends SpreadsheetBaseIdentified {
   }
   get raw(): SpreadsheetRaw {
     return new SpreadsheetRaw(this.spreadsheetRawProps);
+  }
+  get tableValidator(): SpreadsheetTableValidatorIdentified {
+    return new SpreadsheetTableValidatorIdentified(
+      this.spreadsheetIdentifiedProps,
+    );
   }
   // The one managed Table the configs record on that sheet.
   tableOnSheet(sheetGid: number): TableIdentified {
@@ -30,7 +36,7 @@ export class SpreadsheetIdentified extends SpreadsheetBaseIdentified {
   fetchTableWithActionCell(edit: SheetEdit): TableIdentified | undefined {
     if (!this.schema.mayHoldActionCell(edit)) return undefined;
     this.raw.sheet(edit.sheetGid).gatherFetchHeaderZone();
-    this.raw.fetchAllGathered();
+    this.fetchAllGathered();
     const table = this.schema
       .tablesOnGid(edit.sheetGid)
       .map((tableSchema) => this.managedTable(tableSchema))
@@ -41,8 +47,14 @@ export class SpreadsheetIdentified extends SpreadsheetBaseIdentified {
         ),
       );
     if (table === undefined) return undefined;
-    this.raw.integrateHeaderZoneTable(table.schema.tableName, table.raw);
+    this.tableValidator.validateTables([table.schema]);
+    table.raw.integrateHeaderZone();
     return table;
+  }
+  // Judges the Tables the fetch used once it has finalized them all.
+  fetchAllGathered(includeProgrammaticFacts = false): void {
+    this.raw.fetchAllGathered(includeProgrammaticFacts);
+    this.tableValidator.validateUsedTables();
   }
   managedTable(table: TableSchema): TableIdentified {
     return new TableIdentified({
@@ -77,11 +89,11 @@ export class SpreadsheetIdentified extends SpreadsheetBaseIdentified {
     tablesPreppedForFetch.forEach((table) => {
       table.columnResolver.gatherDataPrerequisites(props);
     });
-    this.raw.fetchAllGathered(includeProgrammaticFacts);
+    this.fetchAllGathered(includeProgrammaticFacts);
     tablesPreppedForFetch.forEach((table) => {
       table.gatherFetchDataPrepped();
     });
-    this.raw.fetchAllGathered(includeProgrammaticFacts);
+    this.fetchAllGathered(includeProgrammaticFacts);
     tablesPreppedForFetch.forEach((table) => {
       table.clearFetchTargets();
     });
