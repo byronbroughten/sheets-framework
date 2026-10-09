@@ -7,7 +7,7 @@ import { installRawSource } from "../00_Source/RawSource/RawSource";
 import {
   type Configs,
   installConfigs,
-} from "../01_SpreadsheetSchema/configRegister";
+} from "../01_SpreadsheetSchema/configReaders/configRegister";
 import type { Endpoints } from "../06_API/Endpoints";
 import { installEndpoints } from "../06_API/feedbackColumnIds";
 import { UpdateRequestSummary } from "./UpdateRequestSummary";

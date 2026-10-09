@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { configSheetFloorSeed } from "../../01_SpreadsheetSchema/configSheetFloorSeed";
-import { getTableTraitByName } from "../../01_SpreadsheetSchema/tableConfigsTypes";
+import { configSheetFloorSeed } from "../../01_SpreadsheetSchema/configReaders/configSheetFloorSeed";
+import { getTableTraitByName } from "../../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { floorChangeNotice } from "./floorChangeNotice";
 
 const businessSheetGid = 9001;

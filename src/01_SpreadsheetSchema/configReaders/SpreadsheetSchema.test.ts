@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { SheetIndex } from "../00_Source/RawSource/SheetIndex";
-import { assertType, type IsExactly } from "../testSupport/typeAssertions";
+import { SheetIndex } from "../../00_Source/RawSource/SheetIndex";
+import { assertType, type IsExactly } from "../../testSupport/typeAssertions";
 import {
   type ColumnFullName,
   type ColumnName,

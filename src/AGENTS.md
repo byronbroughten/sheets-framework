@@ -1,7 +1,7 @@
 # Rules for the framework's `src/`
 
 - `00_Source`: the Source: cell values, the host-neutral `RawSource` port, and `GoogleSheets/`, the platform module.
-- `01_SpreadsheetSchema`: the declared layout plus every reader of the generated configs, which live in each package's `generatedDir`.
+- `01_SpreadsheetSchema`: two halves. The config-free declared layout sits at its root; every reader of the generated configs, which live in each package's `generatedDir`, sits in `configReaders/`.
 - `02_SpreadsheetRaw`: positional I/O by sheet GID and row/column index, blind to column config; resolves a column only from the Table's live head rows.
 - `03_SpreadsheetIdentified`: adds the committed column config, reached by column ID; typed by value name.
 - `04_SpreadsheetNamed`: adds names; the end developer's API.

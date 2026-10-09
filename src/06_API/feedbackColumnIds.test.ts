@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { getColumnTraitByName } from "../01_SpreadsheetSchema/columnConfigsTypes";
-import { getTableTraitByName } from "../01_SpreadsheetSchema/tableConfigsTypes";
+import { getColumnTraitByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { feedbackColumnIdsOf } from "./feedbackColumnIds";
 
 describe("installEndpoints", () => {

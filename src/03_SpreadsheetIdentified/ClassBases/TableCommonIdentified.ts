@@ -1,5 +1,5 @@
-import type { TableName } from "../../01_SpreadsheetSchema/tableConfigsTypes";
-import { type TableSchema } from "../../01_SpreadsheetSchema/TableSchema";
+import type { TableName } from "../../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
+import { type TableSchema } from "../../01_SpreadsheetSchema/configReaders/TableSchema";
 import { TableBaseIdentified } from "./TableBaseIdentified";
 
 export abstract class TableCommonIdentified extends TableBaseIdentified {

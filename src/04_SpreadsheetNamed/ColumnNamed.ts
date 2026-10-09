@@ -18,13 +18,13 @@ import type {
   ColumnValue,
   ColumnValueDeclared,
   ColumnValueName,
-} from "../01_SpreadsheetSchema/columnConfigsTypes";
+} from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
+import type { TableName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
+import type { VnToCvn } from "../01_SpreadsheetSchema/configReaders/valueSchemas";
 import type {
   HeadRole,
   HeadRowValueName,
 } from "../01_SpreadsheetSchema/headRows";
-import type { TableName } from "../01_SpreadsheetSchema/tableConfigsTypes";
-import type { VnToCvn } from "../01_SpreadsheetSchema/valueSchemas";
 import type { FindReplaceTerms } from "../02_SpreadsheetRaw/ClassTypes/StateRaw";
 import type { ColumnRaw } from "../02_SpreadsheetRaw/ColumnRaw";
 import type { CellIdentified } from "../03_SpreadsheetIdentified/CellIdentified";

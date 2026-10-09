@@ -1,7 +1,7 @@
 import { Val } from "@byronbroughten/utils/val";
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { getTableTraitByName } from "../01_SpreadsheetSchema/tableConfigsTypes";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {

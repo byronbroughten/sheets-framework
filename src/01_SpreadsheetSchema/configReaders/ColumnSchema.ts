@@ -1,4 +1,5 @@
-import type { ValueSchemaKey } from "../00_Source/CellValues/valueSchema";
+import type { ValueSchemaKey } from "../../00_Source/CellValues/valueSchema";
+import { SpreadsheetBaseSchema } from "../SpreadsheetBaseSchema";
 import {
   type ColumnConfig,
   type ColumnConfigAt,
@@ -8,7 +9,6 @@ import {
   getColumnTraitById,
   type MakeColumnFullName,
 } from "./columnConfigsTypes";
-import { SpreadsheetBaseSchema } from "./SpreadsheetBaseSchema";
 import type { TableName } from "./tableConfigsTypes";
 import { TableSchema, type TableSchemaProps } from "./TableSchema";
 import { getValTrait, type ValueSchema } from "./valueSchemas";

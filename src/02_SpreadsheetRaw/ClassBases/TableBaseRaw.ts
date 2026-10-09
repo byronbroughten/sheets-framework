@@ -4,8 +4,8 @@ import type {
   SheetSnapshot,
   TableSnapshot,
 } from "../../00_Source/RawSource/RawSource";
-import { SpreadsheetSchema } from "../../01_SpreadsheetSchema/SpreadsheetSchema";
-import { tableConfigsByTableId } from "../../01_SpreadsheetSchema/tableConfigsTypes";
+import { SpreadsheetSchema } from "../../01_SpreadsheetSchema/configReaders/SpreadsheetSchema";
+import { tableConfigsByTableId } from "../../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin";
 import { emptyStateRaw } from "../ClassTypes/emptyStateRaw";
 import type {

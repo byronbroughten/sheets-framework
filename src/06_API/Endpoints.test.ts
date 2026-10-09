@@ -3,9 +3,9 @@ import { describe, it } from "vitest";
 import type {
   ColumnFullName,
   ColumnNameFiltered,
-} from "../01_SpreadsheetSchema/columnConfigsTypes";
-import type { FloorTabName } from "../01_SpreadsheetSchema/configSheetFloorSeed";
-import type { TableNameSimple } from "../01_SpreadsheetSchema/tableConfigsTypes";
+} from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
+import type { FloorTabName } from "../01_SpreadsheetSchema/configReaders/configSheetFloorSeed";
+import type { TableNameSimple } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { assertType, type IsExactly } from "../testSupport/typeAssertions";
 import type { Endpoint, Endpoints, EndpointsAll } from "./Endpoints";
 

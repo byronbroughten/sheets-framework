@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getColumnTraitByName } from "../01_SpreadsheetSchema/columnConfigsTypes";
-import { getTableTraitByName } from "../01_SpreadsheetSchema/tableConfigsTypes";
+import { getColumnTraitByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { SpreadsheetBaseNamed } from "../04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
 import type { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
 import { TableNamed } from "../04_SpreadsheetNamed/TableNamed";

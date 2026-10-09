@@ -4,8 +4,8 @@ import type {
   WholeSheetEditLockDeclaration,
   WholeSheetEditWarningDeclaration,
 } from "../00_Source/RawSource/EditProtection";
-import { SpreadsheetSchema } from "../01_SpreadsheetSchema/SpreadsheetSchema";
-import type { TableName } from "../01_SpreadsheetSchema/tableConfigsTypes";
+import { SpreadsheetSchema } from "../01_SpreadsheetSchema/configReaders/SpreadsheetSchema";
+import type { TableName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { SheetRaw } from "../02_SpreadsheetRaw/SheetRaw";
 import {
   SpreadsheetBaseNamed,

@@ -7,13 +7,13 @@ import {
   type ColumnName,
   getColumnTraitByName,
   getSheetColumnNames,
-} from "../../01_SpreadsheetSchema/columnConfigsTypes";
+} from "../../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
 import {
   configSheetFloorSeed,
   floorSeedColumnById,
   floorTabSeedByTableId,
-} from "../../01_SpreadsheetSchema/configSheetFloorSeed";
-import { getTableTraitByName } from "../../01_SpreadsheetSchema/tableConfigsTypes";
+} from "../../01_SpreadsheetSchema/configReaders/configSheetFloorSeed";
+import { getTableTraitByName } from "../../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import type { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin";
 import { TableBaseNamed } from "../../04_SpreadsheetNamed/ClassBases/TableBaseNamed";
 import { SpreadsheetNamed } from "../../04_SpreadsheetNamed/SpreadsheetNamed";

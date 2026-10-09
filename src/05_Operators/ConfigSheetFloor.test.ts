@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import type { ModelableEditProtection } from "../00_Source/RawSource/EditProtection";
-import { installedConfigs } from "../01_SpreadsheetSchema/configRegister";
+import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister";
 import {
   configSheetFloorSeed,
   floorSeedColumns,
-} from "../01_SpreadsheetSchema/configSheetFloorSeed";
-import { getTableTraitByName } from "../01_SpreadsheetSchema/tableConfigsTypes";
+} from "../01_SpreadsheetSchema/configReaders/configSheetFloorSeed";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {

@@ -4,11 +4,11 @@ import {
   type ColumnName,
   getColumnTraitByName,
   getSheetColumnNames,
-} from "../../01_SpreadsheetSchema/columnConfigsTypes";
+} from "../../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
 import {
   configSheetFloorSeed,
   type FloorTabName,
-} from "../../01_SpreadsheetSchema/configSheetFloorSeed";
+} from "../../01_SpreadsheetSchema/configReaders/configSheetFloorSeed";
 
 export type FloorSheetName = Exclude<FloorTabName, "valueConfig">;
 

@@ -9,13 +9,13 @@ import type {
   EditWarningDeclaration,
 } from "../00_Source/RawSource/EditProtection";
 import type { RgbColor } from "../00_Source/RawSource/RgbColor";
-import { headRows } from "../01_SpreadsheetSchema/headRows";
 import {
   toWireValue,
   type Value,
   type ValueName,
   type VnToCvn,
-} from "../01_SpreadsheetSchema/valueSchemas";
+} from "../01_SpreadsheetSchema/configReaders/valueSchemas";
+import { headRows } from "../01_SpreadsheetSchema/headRows";
 import { CellRaw } from "../02_SpreadsheetRaw/CellRaw";
 import { CellBaseIdentified } from "./ClassBases/CellBaseIdentified";
 import type { CellChange } from "./ClassTypes/StateIdentified";

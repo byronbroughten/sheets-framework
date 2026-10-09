@@ -6,9 +6,9 @@ import type {
   ColumnValue,
   ColumnValueDeclared,
   SheetDataValues,
-} from "../01_SpreadsheetSchema/columnConfigsTypes";
-import type { TableName } from "../01_SpreadsheetSchema/tableConfigsTypes";
-import type { Value, ValueName } from "../01_SpreadsheetSchema/valueSchemas";
+} from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
+import type { TableName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
+import type { Value, ValueName } from "../01_SpreadsheetSchema/configReaders/valueSchemas";
 import { RowRaw } from "../02_SpreadsheetRaw/RowRaw";
 import { RowIdentified } from "../03_SpreadsheetIdentified/RowIdentified";
 import type { CellNamed } from "./CellNamed";

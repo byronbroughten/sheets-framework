@@ -4,7 +4,7 @@ import type {
   GoogleRequest,
   ModeledRequestVerb,
 } from "../00_Source/GoogleSheets/GoogleSheetsAPI";
-import { tableConfigAloneOnGid } from "../01_SpreadsheetSchema/tableConfigsTypes";
+import { tableConfigAloneOnGid } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 
 type GoogleUpdateRequest = GoogleRequest;
 type GoogleGridRange = GoogleAppsScript.Sheets.Schema.GridRange;

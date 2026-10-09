@@ -1,8 +1,8 @@
 import { Val } from "@byronbroughten/utils/val";
 
-import type { SheetEdit } from "../00_Source/PlatformEvents/sheetEdit";
-import { headerZone } from "./headerZone";
-import { SpreadsheetBaseSchema } from "./SpreadsheetBaseSchema";
+import type { SheetEdit } from "../../00_Source/PlatformEvents/sheetEdit";
+import { headerZone } from "../headerZone";
+import { SpreadsheetBaseSchema } from "../SpreadsheetBaseSchema";
 import {
   configTableNames,
   tableKeysByGid,

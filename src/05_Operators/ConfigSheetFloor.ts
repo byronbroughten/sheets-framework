@@ -1,15 +1,15 @@
 import { Obj } from "@byronbroughten/utils/obj";
 
 import type { SheetChange } from "../00_Source/PlatformEvents/sheetChange";
-import type { ColumnName } from "../01_SpreadsheetSchema/columnConfigsTypes";
+import type { ColumnName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
 import {
   configSheetFloorSeed,
   type FloorSeedColumn,
   floorSeedColumns,
   type FloorTabName,
   floorTabSeedByGid,
-} from "../01_SpreadsheetSchema/configSheetFloorSeed";
-import { getTableTraitByName } from "../01_SpreadsheetSchema/tableConfigsTypes";
+} from "../01_SpreadsheetSchema/configReaders/configSheetFloorSeed";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import type { TableRaw } from "../02_SpreadsheetRaw/TableRaw";
 import { SpreadsheetBaseNamed } from "../04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
 import type { ColumnNamed } from "../04_SpreadsheetNamed/ColumnNamed";

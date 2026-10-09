@@ -2,9 +2,9 @@ import type {
   ColumnFullName,
   ColumnNameFiltered,
   SheetNameOf,
-} from "../01_SpreadsheetSchema/columnConfigsTypes";
-import type { FloorTabName } from "../01_SpreadsheetSchema/configSheetFloorSeed";
-import type { TableNameSimple } from "../01_SpreadsheetSchema/tableConfigsTypes";
+} from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
+import type { FloorTabName } from "../01_SpreadsheetSchema/configReaders/configSheetFloorSeed";
+import type { TableNameSimple } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import type { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
 import type { CheckboxColumnName } from "../05_Operators/CheckboxColumnOperator";
 

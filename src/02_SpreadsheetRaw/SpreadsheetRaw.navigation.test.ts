@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { type CellValue } from "../00_Source/CellValues/cellValues";
 import { type RgbColor } from "../00_Source/RawSource/RgbColor";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { type HeadRowValueName } from "../01_SpreadsheetSchema/headRows";
-import { getTableTraitByName } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import { stubSheetsService } from "../testSupport/fakeSheetsService";
 import { assertType, type IsExactly } from "../testSupport/typeAssertions";
 import { CellRaw } from "./CellRaw";

@@ -1,4 +1,4 @@
-import type { configSheetFloorSeed } from "../01_SpreadsheetSchema/configSheetFloorSeed";
+import type { configSheetFloorSeed } from "../01_SpreadsheetSchema/configReaders/configSheetFloorSeed";
 import { ConfigCoordinator } from "../05_Operators/ConfigCoordinator";
 import type { Endpoint, Endpoints, EndpointsAll } from "./Endpoints";
 

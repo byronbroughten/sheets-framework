@@ -1,6 +1,6 @@
-import { columnConfigsByName } from "../01_SpreadsheetSchema/columnConfigsTypes";
-import { assertFloorMatchesSeed } from "../01_SpreadsheetSchema/floorSeedCheck";
-import { tableConfigsByName } from "../01_SpreadsheetSchema/tableConfigsTypes";
+import { columnConfigsByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
+import { assertFloorMatchesSeed } from "../01_SpreadsheetSchema/configReaders/floorSeedCheck";
+import { tableConfigsByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import {
   SpreadsheetBaseNamed,
   type SpreadsheetNamedProps,

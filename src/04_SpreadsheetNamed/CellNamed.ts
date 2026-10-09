@@ -15,13 +15,13 @@ import type {
   ColumnValue,
   ColumnValueDeclared,
   ColumnValueName,
-} from "../01_SpreadsheetSchema/columnConfigsTypes";
-import type { TableName } from "../01_SpreadsheetSchema/tableConfigsTypes";
+} from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
+import type { TableName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import type {
   Value,
   ValueName,
   VnToCvn,
-} from "../01_SpreadsheetSchema/valueSchemas";
+} from "../01_SpreadsheetSchema/configReaders/valueSchemas";
 import type { CellRaw } from "../02_SpreadsheetRaw/CellRaw";
 import type { CellIdentified } from "../03_SpreadsheetIdentified/CellIdentified";
 import { CellBaseNamed } from "./ClassBases/CellBaseNamed";

@@ -1,9 +1,9 @@
-import { getColumnTraitByName } from "../01_SpreadsheetSchema/columnConfigsTypes";
-import { floorTabSeedByGid } from "../01_SpreadsheetSchema/configSheetFloorSeed";
+import { getColumnTraitByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
+import { floorTabSeedByGid } from "../01_SpreadsheetSchema/configReaders/configSheetFloorSeed";
 import {
   getTableTraitByGid,
   getTableTraitByName,
-} from "../01_SpreadsheetSchema/tableConfigsTypes";
+} from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import {
   buildGridRows,
   type FakeCell,

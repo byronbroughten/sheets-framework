@@ -1,6 +1,6 @@
 import type { SheetEdit } from "../00_Source/PlatformEvents/sheetEdit";
-import { SpreadsheetSchema } from "../01_SpreadsheetSchema/SpreadsheetSchema";
-import type { TableSchema } from "../01_SpreadsheetSchema/TableSchema";
+import { SpreadsheetSchema } from "../01_SpreadsheetSchema/configReaders/SpreadsheetSchema";
+import type { TableSchema } from "../01_SpreadsheetSchema/configReaders/TableSchema";
 import { SpreadsheetRaw } from "../02_SpreadsheetRaw/SpreadsheetRaw";
 import { SpreadsheetBaseIdentified } from "./ClassBases/SpreadsheetBaseIdentified";
 import { managedTableAddress } from "./ClassBases/TableBaseIdentified";

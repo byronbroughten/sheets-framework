@@ -1,6 +1,6 @@
 import { describe, it } from "vitest";
 
-import type { configSheetFloorSeed } from "../01_SpreadsheetSchema/configSheetFloorSeed";
+import type { configSheetFloorSeed } from "../01_SpreadsheetSchema/configReaders/configSheetFloorSeed";
 import { assertType, type IsExactly } from "../testSupport/typeAssertions";
 import type { frameworkEndpoints } from "./frameworkEndpoints";
 

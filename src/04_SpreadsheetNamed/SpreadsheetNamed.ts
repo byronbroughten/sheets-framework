@@ -3,8 +3,8 @@ import { SerialDate } from "@byronbroughten/utils/serial-date";
 import { SerialDateTime } from "@byronbroughten/utils/serial-date-time";
 import { Val } from "@byronbroughten/utils/val";
 
-import { SpreadsheetSchema } from "../01_SpreadsheetSchema/SpreadsheetSchema";
-import type { TableName } from "../01_SpreadsheetSchema/tableConfigsTypes.js";
+import { SpreadsheetSchema } from "../01_SpreadsheetSchema/configReaders/SpreadsheetSchema";
+import type { TableName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes.js";
 import type { FindReplaceProps } from "../02_SpreadsheetRaw/ClassTypes/StateRaw";
 import { SpreadsheetRaw } from "../02_SpreadsheetRaw/SpreadsheetRaw.js";
 import { SpreadsheetIdentified } from "../03_SpreadsheetIdentified/SpreadsheetIdentified.js";

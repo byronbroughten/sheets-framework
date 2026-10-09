@@ -93,7 +93,10 @@ class ConfigFilesGenerator {
 
   _makeConfigsImport(): string {
     const makeConfigsPath = fileURLToPath(
-      new URL("../src/01_SpreadsheetSchema/makeConfigs", import.meta.url),
+      new URL(
+        "../src/01_SpreadsheetSchema/configReaders/makeConfigs",
+        import.meta.url,
+      ),
     );
     return relative(this.sheetsConfig.generatedDir, makeConfigsPath);
   }

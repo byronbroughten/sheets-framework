@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { installedConfigs } from "../01_SpreadsheetSchema/configRegister";
+import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister";
 import type {
   ColumnConfigStored,
   TableConfigsBase,
   TableConfigStored,
-} from "../01_SpreadsheetSchema/makeConfigs";
+} from "../01_SpreadsheetSchema/configReaders/makeConfigs";
 import {
   assertFloorIdentityUnchanged,
   type FloorIdentitySource,

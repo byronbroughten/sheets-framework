@@ -26,9 +26,9 @@ import {
   SheetIndex,
   type SheetRowIndex,
 } from "../00_Source/RawSource/SheetIndex";
+import type { Value } from "../01_SpreadsheetSchema/configReaders/valueSchemas";
 import { type HeadRole, headRows } from "../01_SpreadsheetSchema/headRows";
 import type { TableOrigin } from "../01_SpreadsheetSchema/TableOrigin";
-import type { Value } from "../01_SpreadsheetSchema/valueSchemas";
 import { assertValueAndFormulaExclusive } from "./CellRaw";
 import type { RowCommonRaw } from "./ClassBases/RowCommonRaw";
 import { originOf } from "./ClassBases/TableBaseRaw";

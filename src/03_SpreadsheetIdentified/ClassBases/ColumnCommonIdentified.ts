@@ -1,4 +1,4 @@
-import type { ValueName } from "../../01_SpreadsheetSchema/valueSchemas";
+import type { ValueName } from "../../01_SpreadsheetSchema/configReaders/valueSchemas";
 import { TableColumnResolverRaw } from "../../02_SpreadsheetRaw/TableRaw/TableColumnResolverRaw";
 import { ColumnBaseIdentified } from "./ColumnBaseIdentified";
 

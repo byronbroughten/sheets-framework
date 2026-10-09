@@ -1,4 +1,4 @@
-import type { TableName } from "../../01_SpreadsheetSchema/tableConfigsTypes";
+import type { TableName } from "../../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import {
   SpreadsheetBaseNamed,
   type SpreadsheetNamedProps,

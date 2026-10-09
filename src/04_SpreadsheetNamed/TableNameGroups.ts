@@ -3,7 +3,7 @@ import { type SubType } from "@byronbroughten/utils/obj";
 import {
   type TableConfigs,
   tableConfigsByName,
-} from "../01_SpreadsheetSchema/tableConfigsTypes";
+} from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 
 export type SheetNameWithIdColumn = keyof SubType<
   TableConfigs,

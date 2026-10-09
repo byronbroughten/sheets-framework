@@ -5,7 +5,7 @@ import { Val } from "@byronbroughten/utils/val";
 import type {
   CodebaseNameDelimiter,
   NotEmpty,
-} from "../00_Source/CellValues/cellValues";
+} from "../../00_Source/CellValues/cellValues";
 import { type Configs, installedConfigs } from "./configRegister";
 import type { ColumnConfigsGeneric, ColumnConfigStored } from "./makeConfigs";
 import { configTableNames, type TableNameSimple } from "./tableConfigsTypes";
