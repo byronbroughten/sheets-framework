@@ -96,7 +96,12 @@ function tableTitled(
   gidByTitle: Map<string, number>,
   title: string,
 ): TableRaw {
-  return raw.tableOnSheet(Val.assert(gidByTitle.get(title), `"${title}" tab`));
+  const sheetGid = Val.assert(gidByTitle.get(title), `"${title}" tab`);
+  const tableId = Val.assert(
+    tableIdOnTab(raw, raw.sheet(sheetGid).liveTableIds()),
+    `Table on the "${title}" tab`,
+  );
+  return raw.table(tableId);
 }
 
 function fetchHeadRows(

@@ -126,21 +126,14 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
     const knownTables = Array.from(this.tablesStateRaw.keys(), (tableId) =>
       this.ss.table(tableId),
     );
-    const tablesBeforeProperties = Array.from(this.sheetsStateRaw.keys())
-      .map((sheetGid) => this.ss.sheet(sheetGid).tableBeforeProperties())
-      .filter((table) => table !== undefined);
     const tablesBeforePropertiesById = Array.from(
-      this.sheetsStateRaw.values(),
-    ).flatMap((sheetState) =>
+      this.sheetsStateRaw.entries(),
+    ).flatMap(([sheetGid, sheetState]) =>
       Array.from(sheetState.tablesBeforePropertiesById.keys(), (tableId) =>
-        this.ss.table(tableId),
+        this.ss.table(tableId, sheetGid),
       ),
     );
-    return [
-      ...knownTables,
-      ...tablesBeforeProperties,
-      ...tablesBeforePropertiesById,
-    ];
+    return [...knownTables, ...tablesBeforePropertiesById];
   }
   private _gatherRowWrites(
     table: TableRaw,

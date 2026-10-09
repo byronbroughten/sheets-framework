@@ -39,7 +39,7 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
       .filter(({ tableName }) => this._hasGatheredFetch(tableName))
       .map(({ tableName }) => this.tablePlacement(tableName, gatherHeaderZone));
   }
-  // What a run gathered waits on the live Table, or, before it is known, on its ID or its sheet.
+  // What a run gathered waits on the live Table, or, before it is known, on its ID.
   private _hasGatheredFetch(tableName: TableName): boolean {
     const table = this.schema.sheetByName(tableName);
     const sheetState = this._sheetState(table.sheetGid);
@@ -48,14 +48,9 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
       tableId === undefined
         ? undefined
         : this.spreadsheetStateRaw.tables.get(tableId);
-    // A fetch through a shared sheet reaches none of its Tables, so it uses none of them.
-    const sheetQueueState = table.sharesSheet
-      ? undefined
-      : sheetState.tableBeforeProperties;
     return [
       liveTableState,
       sheetState.tablesBeforePropertiesById.get(table.tableId),
-      sheetQueueState,
     ].some(
       (tableState) => tableState !== undefined && hasGatheredFetch(tableState),
     );
@@ -110,8 +105,7 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
   // A Table is known only by its recorded ID, so one inserted again reads as missing.
   private _liveTableIdOf(tableName: TableName): string | undefined {
     const table = this.schema.sheetByName(tableName);
-    const sheetTable = this.ss.tableOnSheet(table.sheetGid);
-    return sheetTable.tableIds().includes(table.tableId)
+    return this.ss.sheet(table.sheetGid).liveTableIds().includes(table.tableId)
       ? table.tableId
       : undefined;
   }

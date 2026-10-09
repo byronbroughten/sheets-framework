@@ -74,16 +74,11 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
       .filter(([, tableState]) => tableState.properties !== undefined)
       .map(([tableId]) => tableId);
   }
-  table(tableId: string): TableRaw {
+  // `sheetGid` places a Table whose ID is not yet in state.
+  table(tableId: string, sheetGid?: number): TableRaw {
     return new TableRaw({
       spreadsheetStateRaw: this.spreadsheetStateRaw,
       tableId,
-    });
-  }
-  // The sheet's one Table, reachable by GID before its tableId is fetched.
-  tableOnSheet(sheetGid: number): TableRaw {
-    return new TableRaw({
-      spreadsheetStateRaw: this.spreadsheetStateRaw,
       sheetGid,
     });
   }
@@ -169,7 +164,6 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
     });
     this.sheetsStateRaw.forEach((state) => {
       state.writeQueue = emptyStateRaw.sheetWriteQueue();
-      state.tableBeforeProperties.writeQueue = emptyStateRaw.tableWriteQueue();
       state.tablesBeforePropertiesById.forEach((tableState) => {
         tableState.writeQueue = emptyStateRaw.tableWriteQueue();
       });

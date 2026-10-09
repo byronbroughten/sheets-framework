@@ -14,8 +14,10 @@ import {
 } from "./SpreadsheetBaseIdentified";
 
 // Always the recorded ID: a Table deleted and inserted again reads as missing until the configs are regenerated.
+// `sheetGid` rides along so the Raw Tables built from these props are placed before their properties arrive.
 export interface TableAddressIdentified {
   tableId: string;
+  sheetGid?: number;
 }
 
 export type TableIdentifiedProps = SpreadsheetIdentifiedProps &
@@ -36,7 +38,7 @@ export class TableBaseIdentified extends SpreadsheetBaseIdentified {
       feedbackColumnIds,
     });
     this.tableId = tableId;
-    this.sheetGid = this.rawTable.sheetGid;
+    this.sheetGid = TableSchema.fromTableId(tableId).sheetGid;
     if (!this.tablesStateIdentified.has(tableId)) {
       this.tablesStateIdentified.set(tableId, emptyTableStateIdentified());
     }
@@ -45,12 +47,14 @@ export class TableBaseIdentified extends SpreadsheetBaseIdentified {
     return {
       ...this.spreadsheetIdentifiedProps,
       tableId: this.tableId,
+      sheetGid: this.sheetGid,
     };
   }
   private get rawTable(): TableBaseRaw {
     return new TableBaseRaw({
       ...this.spreadsheetRawProps,
       tableId: this.tableId,
+      sheetGid: this.sheetGid,
     });
   }
   private get rawSheet(): SheetRaw {

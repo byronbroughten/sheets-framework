@@ -56,9 +56,9 @@ describe("ColumnProfileRaw sampled facts", () => {
   function fetchedItemColumnProfile(colIndex: number): ColumnProfileRaw {
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.table(itemTableId).topRow.gatherFetchFull();
+    raw.table(itemTableId, itemGid).topRow.gatherFetchFull();
     raw.fetchAllGathered(true);
-    return raw.table(itemTableId).column(colIndex).profile;
+    return raw.table(itemTableId, itemGid).column(colIndex).profile;
   }
 
   function expectBlankFacts(column: ColumnProfileRaw): void {
@@ -114,21 +114,21 @@ describe("ColumnProfileRaw sampled facts", () => {
     stubSheetWithTopDataRow([], "rowsWithNoGridData");
 
     const raw = SpreadsheetRaw.init();
-    raw.table(itemTableId).gatherFetchProperties();
+    raw.table(itemTableId, itemGid).gatherFetchProperties();
     raw.fetchAllGathered();
-    raw.table(itemTableId).column(1).gatherFetchFull();
+    raw.table(itemTableId, itemGid).column(1).gatherFetchFull();
     raw.fetchAllGathered(true);
 
-    expectBlankFacts(raw.table(itemTableId).column(1).profile);
+    expectBlankFacts(raw.table(itemTableId, itemGid).column(1).profile);
   });
 
   it("reads a specifically fetched cell omitted from the payload as empty, not unfetched", () => {
     stubSheetWithTopDataRow([], "rowsWithNoGridData");
 
     const raw = SpreadsheetRaw.init();
-    raw.table(itemTableId).gatherFetchProperties();
+    raw.table(itemTableId, itemGid).gatherFetchProperties();
     raw.fetchAllGathered();
-    const cell = raw.table(itemTableId).row(0).cell(0);
+    const cell = raw.table(itemTableId, itemGid).row(0).cell(0);
     cell.gatherFetchRange();
     raw.fetchAllGathered();
 
@@ -151,11 +151,11 @@ describe("ColumnProfileRaw sampled facts", () => {
     });
 
     const raw = SpreadsheetRaw.init();
-    raw.table(itemTableId).gatherFetchProperties();
+    raw.table(itemTableId, itemGid).gatherFetchProperties();
     raw.fetchAllGathered();
 
     const message = thrownMessage(
-      () => raw.table(itemTableId).column(0).profile.isFormula,
+      () => raw.table(itemTableId, itemGid).column(0).profile.isFormula,
     );
     expect(message).toContain(`"Item" (gid ${itemGid})`);
     expect(message).toMatch(/top data row/);
@@ -179,12 +179,14 @@ describe("ColumnProfileRaw sampled facts", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.table(itemTableId).topRow.gatherFetchFull();
+    raw.table(itemTableId, itemGid).topRow.gatherFetchFull();
     raw.fetchAllGathered(true);
 
-    expect(raw.table(itemTableId).column(0).profile.topValue).toBe(100000);
+    expect(raw.table(itemTableId, itemGid).column(0).profile.topValue).toBe(
+      100000,
+    );
     expect(
-      () => raw.table(itemTableId).column(1).profile.topValue,
+      () => raw.table(itemTableId, itemGid).column(1).profile.topValue,
     ).toThrowError(/No sampled facts/);
   });
 });

@@ -84,7 +84,7 @@ export const emptyStateRaw = {
       writeQueue: emptyStateRaw.tableWriteQueue(),
     };
   },
-  sheetState(sheetGid: number): SheetStateRaw {
+  sheetState(): SheetStateRaw {
     return {
       working: {
         title: undefined,
@@ -100,7 +100,6 @@ export const emptyStateRaw = {
         gatherHeaderZone: false,
       },
       writeQueue: emptyStateRaw.sheetWriteQueue(),
-      tableBeforeProperties: emptyStateRaw.tableState(sheetGid),
       tablesBeforePropertiesById: new Map(),
     };
   },

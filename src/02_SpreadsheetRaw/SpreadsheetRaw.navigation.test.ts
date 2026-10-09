@@ -29,7 +29,7 @@ describe("SpreadsheetRaw navigation", () => {
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
     const table = raw.table(tableId111);
-    const tableOnSheet = raw.tableOnSheet(111);
+    const tableOnSheet = raw.table(tableId111, 111);
     const sheet = raw.sheet(111);
     const column = table.column(0);
     const headRow = table.headRow("action");
