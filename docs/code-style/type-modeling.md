@@ -11,15 +11,16 @@ Disclosed from [`docs/code-style.md`](../code-style.md), "Type modeling". The ru
 
 ## The framework's generic abbreviations
 
-The abbreviations are `TN` (TableName), `VN` (ValueName), `CN` (ColumnName), `HR` (HeadRole) and `IF` (IsFormula); `SN` (SheetName) was retired with Sheet Config. The domain-free utilities that keep bare `T`/`K`/`V`/`O` are `utils/` (`utils/Obj.ts`, for one) and `appUtils/`. Why two letters: `@byronbroughten/config`'s `docs/code-style/type-modeling.md`.
+The abbreviations are `TN` (TableName), `VN` (ValueName), `CN` (ColumnName), `HR` (HeadRole) and `IF` (IsFormula); `SN` (SheetName) was retired with Sheet Config. The domain-free utilities in `@byronbroughten/utils` keep bare `T`/`K`/`V`/`O`. Why two letters: `@byronbroughten/config`'s `docs/code-style/type-modeling.md`.
 
-## The three accepted `as` idioms
+## The two accepted `as` idioms
 
 External values, such as Sheets cell data, go through `Val.validate.*`/`Val.is.*`; a cast is only for data that is already runtime-safe. The accepted idioms:
 
 - Seed a fully-typed empty accumulator up front, then fill it: `{} as SheetColumnNamesStandard<TN>`. Don't cast at the point of use.
-- Use `as any` / `as unknown as X` as an escape hatch only inside low-level structural utilities (`utils/Obj.ts`, `utils/Arr.ts` and similar) that do generic structural-typing gymnastics. This is no licence to use it elsewhere; lint rejects explicit `any` everywhere but `Obj` and `Arr` and their subfolders.
 - Use `as unknown as X` in ordinary code **only to buy back type-check time, and only when a test already proves the same thing more cheaply.** Both conditions are required. The cost condition: the cast must remove real, measured work. Run `npx tsc --noEmit --extendedDiagnostics` before and after; if the saving isn't in the tens of thousands of instantiations, don't cast. The proof condition: a test elsewhere must already check the exact shape the cast claims, written against one named sheet rather than a type parameter. That test is what keeps the cast from being a hole. `TableNamed.appendRowWithAllVals` is the only place in the repo that qualifies (#14). [`type-check-cost.md`](../architecture/type-check-cost.md) has the numbers, and the profile that found no second candidate.
+
+The `as any` / `as unknown as X` escape hatch for structural-typing gymnastics belongs to `@byronbroughten/utils`'s structural bundles (its `AGENTS.md`); lint rejects explicit `any` throughout the framework.
 
 Test files are separately mid-migration off `as` via the `migrate-to-shoehorn` skill. That is in-progress project state, not a rule that contradicts these.
 
@@ -29,6 +30,6 @@ Test files are separately mid-migration off `as` via the `migrate-to-shoehorn` s
 
 ## Where utility types live
 
-A custom generic utility type lives in the bundle file whose subject it transforms, PascalCase, one transform per name. String template types sit with `Str` (`RemoveFirstN`, `SentenceToCamelCase`); object and union types sit in `utils/Obj.ts` (`StrictOmit`, `StrictExtract`, `PickStartsWith`) or the type-only files under `utils/Obj/` (`MergeUnion`, `UnionObj`).
+A custom generic utility type lives in `@byronbroughten/utils`, and that package's `AGENTS.md` says which bundle file takes it.
 
-`NotEmpty<V>` is the one deliberate exception to that rule: it sits in `00_Source/CellValues/cellValues.ts` beside the wire value types, because the blank it removes is the cell blank those types define, not a general structural transform (#12).
+`NotEmpty<V>` is the one deliberate exception: it sits in `00_Source/CellValues/cellValues.ts` beside the wire value types, because the blank it removes is the cell blank those types define, not a general structural transform (#12).
