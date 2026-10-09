@@ -177,7 +177,7 @@ export class SpreadsheetNamed extends SpreadsheetBaseNamed {
     return this.schema.sheetNames.map((tableName) => this.table(tableName));
   }
   batchUpdateGSheets(): void {
-    this.raw.batchUpdateGSheets();
+    this.identified.batchUpdateGSheets();
   }
   // The scope is explicit here because allSheets has no narrower home.
   findReplace(props: FindReplaceProps): this {

@@ -56,6 +56,10 @@ export class SpreadsheetIdentified extends SpreadsheetBaseIdentified {
     this.raw.fetchAllGathered(includeProgrammaticFacts);
     this.tableValidator.validateUsedTables();
   }
+  batchUpdateGSheets(): void {
+    this.tableValidator.validateTablesForColumnInserts();
+    this.raw.batchUpdateGSheets();
+  }
   managedTable(table: TableSchema): TableIdentified {
     return new TableIdentified({
       ...this.spreadsheetIdentifiedProps,
