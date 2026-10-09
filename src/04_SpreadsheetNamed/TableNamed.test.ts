@@ -6,6 +6,7 @@ import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/table
 import {
   layoutBodyRows,
   layoutGid,
+  layoutOrigins,
   layoutSheet,
   layoutTableId,
   type LayoutTableName,
@@ -14,6 +15,8 @@ import {
 import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
 import {
   buildGridRows,
+  type FakeCell,
+  type FakeSheetProperties,
   type FakeSheetsService,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
@@ -887,11 +890,11 @@ describe("TableNamed.rowIdByName", () => {
 });
 
 describe("Tables that share a sheet", () => {
-  function fetchedLayout(): {
+  function fetchedLayout(fixture: FakeSheetProperties = layoutSheet()): {
     ss: SpreadsheetNamed;
     grid: FakeSheetsService["grid"];
   } {
-    const { grid } = stubSheetsService({ sheets: [layoutSheet()] });
+    const { grid } = stubSheetsService({ sheets: [fixture] });
     const ss = SpreadsheetNamed.init();
     managedLayoutTableNames.forEach((tableName) =>
       ss.table(tableName).prepFetchColumnsFull("entry", "amount"),
@@ -1024,6 +1027,66 @@ describe("Tables that share a sheet", () => {
     ).toEqual([10, 20]);
   });
 
+  it("reads the grid as wide as its widest Table, and one column wider after a column insert", () => {
+    const { ss, grid } = fetchedLayout();
+    const fetchedColumnCount = ss.table("layoutLeft").raw.sheet.columnCount;
+    ss.table("layoutLeft").raw.appendColumn({
+      columnId: "c:lyl:note",
+      header: "Note",
+    });
+    ss.batchUpdateGSheets();
+
+    expect([fetchedColumnCount, grid.sheet(layoutGid).columnCount]).toEqual([
+      5, 6,
+    ]);
+  });
+
+  it("gives an inserted column's cells no format or validation, even beside a formatted column", () => {
+    const fixture = layoutSheet();
+    const firstBodyRowIndex = layoutOrigins.layoutLeft.startRowIndex + 1;
+    const amountColIndex = 1;
+    const { ss, grid } = fetchedLayout({
+      ...fixture,
+      rows: fixture.rows?.map((row, rowIndex) =>
+        rowIndex < firstBodyRowIndex
+          ? row
+          : row.map(withNumberFormatInColumn(amountColIndex)),
+      ),
+    });
+    ss.table("layoutLeft").raw.appendColumn({
+      columnId: "c:lyl:note",
+      header: "Note",
+    });
+    ss.batchUpdateGSheets();
+
+    expect(
+      grid.sheet(layoutGid).rows({
+        startRowIndex: 4,
+        endRowIndex: 7,
+        startColumnIndex: 2,
+        endColumnIndex: 3,
+      }),
+    ).toEqual([[null], [null], [null]]);
+  });
+
+  it("deletes only its own Table's rows when a Table beside another is wiped", () => {
+    const { ss, grid } = fetchedLayout();
+    ss.table("layoutLeft").DELETE_ALL_DATA_ROWS();
+    ss.batchUpdateGSheets();
+
+    expect(placedRange(grid, "layoutLeft")).toEqual([3, 5, 0, 2]);
+    expect(placedRange(grid, "layoutRight")).toEqual([3, 6, 3, 5]);
+    expect(placedRange(grid, "layoutBelow")).toEqual([9, 12, 0, 2]);
+    expect(
+      grid
+        .sheet(layoutGid)
+        .values({ startRowIndex: 4, endRowIndex: 6, endColumnIndex: 5 }),
+    ).toEqual([
+      ["", "", null, "Right one", 10],
+      [null, null, null, "Right two", 20],
+    ]);
+  });
+
   it("writes to the neighbour the header zone brought in its pushed cells, behind a column insert", () => {
     const { grid } = stubSheetsService({ sheets: [layoutSheet()] });
     const ss = SpreadsheetNamed.init();
@@ -1039,3 +1102,13 @@ describe("Tables that share a sheet", () => {
     expect(grid.sheet(layoutGid).cell(4, 5)).toBe(11);
   });
 });
+
+function withNumberFormatInColumn(
+  formattedColIndex: number,
+): (cell: FakeCell, colIndex: number) => FakeCell {
+  return (cell, colIndex) => {
+    if (colIndex !== formattedColIndex || cell === null) return cell;
+    if (typeof cell === "object") return cell;
+    return { value: cell, numberFormatType: "NUMBER" };
+  };
+}
