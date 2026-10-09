@@ -1,5 +1,7 @@
+import { Obj } from "@byronbroughten/utils/obj";
 import { SerialDate } from "@byronbroughten/utils/serial-date";
 import { SerialDateTime } from "@byronbroughten/utils/serial-date-time";
+import { Val } from "@byronbroughten/utils/val";
 
 import { SpreadsheetSchema } from "../01_SpreadsheetSchema/SpreadsheetSchema";
 import type { TableName } from "../01_SpreadsheetSchema/tableConfigsTypes.js";
@@ -8,8 +10,6 @@ import { SpreadsheetRaw } from "../02_SpreadsheetRaw/SpreadsheetRaw.js";
 import { SpreadsheetIdentified } from "../03_SpreadsheetIdentified/SpreadsheetIdentified.js";
 import type { TableIdentified } from "../03_SpreadsheetIdentified/TableIdentified";
 import type { GatherDataPrerequisitesProps } from "../03_SpreadsheetIdentified/TableIdentified/TableColumnResolverIdentified";
-import { Obj } from "../utils/Obj";
-import { Val } from "../utils/Val";
 import { SpreadsheetBaseNamed } from "./ClassBases/SpreadsheetBaseNamed.js";
 import { SheetNamed } from "./SheetNamed";
 import { TableNamed } from "./TableNamed.js";

@@ -1,8 +1,9 @@
+import { Obj } from "@byronbroughten/utils/obj";
+
 import type {
   CellValue,
   CellValueName,
 } from "../00_Source/CellValues/cellValues";
-import { Obj } from "../utils/Obj";
 import { tableLayout } from "./tableLayout";
 
 type HeadRowOffsets = typeof tableLayout.headRowOffsets;

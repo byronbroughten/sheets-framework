@@ -1,3 +1,5 @@
+import { Obj } from "@byronbroughten/utils/obj";
+
 import type { NotEmpty } from "../00_Source/CellValues/cellValues";
 import type {
   ColumnName,
@@ -9,7 +11,6 @@ import type { TableName } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import type { Value, ValueName } from "../01_SpreadsheetSchema/valueSchemas";
 import { RowRaw } from "../02_SpreadsheetRaw/RowRaw";
 import { RowIdentified } from "../03_SpreadsheetIdentified/RowIdentified";
-import { Obj } from "../utils/Obj";
 import type { CellNamed } from "./CellNamed";
 import { RowBaseNamed } from "./ClassBases/RowBaseNamed";
 import { TableNamed } from "./TableNamed";

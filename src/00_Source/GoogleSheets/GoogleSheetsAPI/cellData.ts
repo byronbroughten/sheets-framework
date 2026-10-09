@@ -1,4 +1,5 @@
-import { Obj } from "../../../utils/Obj";
+import { Obj } from "@byronbroughten/utils/obj";
+
 import type { CellValue } from "../../CellValues/cellValues";
 import type {
   FillCellOperation,

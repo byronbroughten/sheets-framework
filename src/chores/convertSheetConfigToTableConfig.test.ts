@@ -1,3 +1,4 @@
+import { Val } from "@byronbroughten/utils/val";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { getTableTraitByName } from "../01_SpreadsheetSchema/tableConfigsTypes";
@@ -11,7 +12,6 @@ import {
   type FakeBodyRow,
   fakeTableSheet,
 } from "../testSupport/fakeSheetsService/fakeTableSheet";
-import { Val } from "../utils/Val";
 import { convertSheetConfigToTableConfig } from "./convertSheetConfigToTableConfig";
 
 const tableConfigGid = getTableTraitByName("tableConfig", "sheetGid");

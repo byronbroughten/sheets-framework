@@ -1,7 +1,8 @@
+import { Val } from "@byronbroughten/utils/val";
+
 import { headerZone } from "../../01_SpreadsheetSchema/headerZone";
 import { SpreadsheetSchema } from "../../01_SpreadsheetSchema/SpreadsheetSchema";
 import type { TableName } from "../../01_SpreadsheetSchema/tableConfigsTypes";
-import { Val } from "../../utils/Val";
 import { SpreadsheetBaseRaw } from "../ClassBases/SpreadsheetBaseRaw";
 import type { SheetStateRaw, TableStateRaw } from "../ClassTypes/StateRaw";
 import { SpreadsheetRaw } from "../SpreadsheetRaw";

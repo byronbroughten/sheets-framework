@@ -1,4 +1,5 @@
-import { Val } from "../../utils/Val";
+import { Val } from "@byronbroughten/utils/val";
+
 import type { SheetChange } from "../PlatformEvents/sheetChange";
 import type { SheetEdit } from "../PlatformEvents/sheetEdit";
 import { SheetIndex } from "../RawSource/SheetIndex";

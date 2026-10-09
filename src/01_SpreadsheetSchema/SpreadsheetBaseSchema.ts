@@ -1,3 +1,5 @@
+import { Str } from "@byronbroughten/utils/str";
+
 import {
   type CodebaseNameDelimiter,
   codebaseNameDelimiter,
@@ -6,7 +8,6 @@ import type {
   SheetColIndex,
   SheetRowIndex,
 } from "../00_Source/RawSource/SheetIndex";
-import { Str } from "../utils/Str";
 import { headRows } from "./headRows";
 import { tableLayout } from "./tableLayout";
 

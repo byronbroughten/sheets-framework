@@ -1,5 +1,6 @@
+import { Obj } from "@byronbroughten/utils/obj";
+
 import type { TableColumnType } from "../00_Source/RawSource/RawSource";
-import { Obj } from "../utils/Obj";
 import {
   getColumnTraitByName,
   getSheetColumnNames,

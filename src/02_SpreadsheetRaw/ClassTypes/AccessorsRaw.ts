@@ -1,5 +1,6 @@
+import type { StrictOmit, StrictPick } from "@byronbroughten/utils/obj";
+
 import type { GridRangeProps as BaseGridRangeProps } from "../../00_Source/RawSource/RawSource";
-import type { StrictOmit, StrictPick } from "../../utils/Obj";
 
 export type GridRangeProps = BaseGridRangeProps;
 

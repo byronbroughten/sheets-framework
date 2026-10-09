@@ -1,3 +1,5 @@
+import { Val } from "@byronbroughten/utils/val";
+
 import type {
   GridFetchRange,
   SheetSnapshot,
@@ -5,7 +7,6 @@ import type {
 } from "../../00_Source/RawSource/RawSource";
 import { SpreadsheetSchema } from "../../01_SpreadsheetSchema/SpreadsheetSchema";
 import type { TableName } from "../../01_SpreadsheetSchema/tableConfigsTypes";
-import { Val } from "../../utils/Val";
 import { SpreadsheetBaseRaw } from "../ClassBases/SpreadsheetBaseRaw";
 import { emptyStateRaw } from "../ClassTypes/emptyStateRaw";
 import { SpreadsheetRaw } from "../SpreadsheetRaw";

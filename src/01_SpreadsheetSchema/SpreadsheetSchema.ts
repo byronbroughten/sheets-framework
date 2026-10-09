@@ -1,5 +1,6 @@
+import { Val } from "@byronbroughten/utils/val";
+
 import type { SheetEdit } from "../00_Source/PlatformEvents/sheetEdit";
-import { Val } from "../utils/Val";
 import { headerZone } from "./headerZone";
 import { SpreadsheetBaseSchema } from "./SpreadsheetBaseSchema";
 import {

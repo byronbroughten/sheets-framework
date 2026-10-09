@@ -1,4 +1,5 @@
-import { Obj } from "../utils/Obj";
+import { Obj } from "@byronbroughten/utils/obj";
+
 import { type Configs, installedConfigs } from "./configRegister";
 
 export type ValueConfigs = Configs["valueConfigs"];

@@ -1,4 +1,5 @@
-import { Val } from "../../../utils/Val";
+import { Val } from "@byronbroughten/utils/val";
+
 import {
   type EditProtection,
   type EditProtectionContent,

@@ -1,3 +1,5 @@
+import { Val } from "@byronbroughten/utils/val";
+
 import { getColumnTraitByName } from "../01_SpreadsheetSchema/columnConfigsTypes";
 import {
   configSheetFloorSeed,
@@ -13,7 +15,6 @@ import {
 } from "../01_SpreadsheetSchema/makeConfigs";
 import { tableConfigsByTableId } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import type { TableRaw } from "../02_SpreadsheetRaw/TableRaw";
-import { Val } from "../utils/Val";
 import { oneLinePerEntryFileSource } from "./configFileSource";
 import { GenericTableOperator } from "./GenericTableOperator";
 import {

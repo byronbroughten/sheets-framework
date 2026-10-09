@@ -1,3 +1,5 @@
+import { Val } from "@byronbroughten/utils/val";
+
 import type {
   ConditionalFormatRule,
   ModelableConditionalFormatRule,
@@ -17,7 +19,6 @@ import {
 } from "../00_Source/RawSource/SheetIndex";
 import { headerZone } from "../01_SpreadsheetSchema/headerZone";
 import { SpreadsheetSchema } from "../01_SpreadsheetSchema/SpreadsheetSchema";
-import { Val } from "../utils/Val";
 import {
   SpreadsheetBaseRaw,
   type SpreadsheetRawProps,

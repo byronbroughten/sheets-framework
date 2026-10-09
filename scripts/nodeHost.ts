@@ -5,11 +5,12 @@ import { homedir } from "node:os";
 import { basename, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+import { Val } from "@byronbroughten/utils/val";
+
 import type { SheetsHttpRequest } from "../src/00_Source/GoogleSheets/GoogleSheetsAPI.ts";
 import type { Configs } from "../src/01_SpreadsheetSchema/configRegister.ts";
 import type { Endpoints } from "../src/06_API/Endpoints.ts";
 import type { NodeHost } from "../src/nodeHost/NodeHost.ts";
-import { Val } from "../src/utils/Val.ts";
 import type { SheetsConfig } from "./sheetsConfig.ts";
 
 const claspAuth = {

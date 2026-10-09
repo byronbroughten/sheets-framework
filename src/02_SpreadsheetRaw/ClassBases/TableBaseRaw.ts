@@ -1,3 +1,5 @@
+import { Val } from "@byronbroughten/utils/val";
+
 import type {
   SheetSnapshot,
   TableSnapshot,
@@ -5,7 +7,6 @@ import type {
 import { SpreadsheetSchema } from "../../01_SpreadsheetSchema/SpreadsheetSchema";
 import { tableConfigsByTableId } from "../../01_SpreadsheetSchema/tableConfigsTypes";
 import { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin";
-import { Val } from "../../utils/Val";
 import { emptyStateRaw } from "../ClassTypes/emptyStateRaw";
 import type {
   ColumnStateRaw,

@@ -1,5 +1,6 @@
+import { Obj } from "@byronbroughten/utils/obj";
+
 import type { CopyPasteType } from "../../00_Source/RawSource/RawSource";
-import { Obj } from "../../utils/Obj";
 import { fakeCells, type PastedFact } from "./fakeCells";
 import { type BandChange, type BoundedRange, fakeGrid } from "./fakeGrid";
 import {

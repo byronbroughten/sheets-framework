@@ -1,4 +1,5 @@
-import { Val } from "../../../utils/Val";
+import { Val } from "@byronbroughten/utils/val";
+
 import type { CellValue } from "../../CellValues/cellValues";
 import type {
   GridCellSnapshot,

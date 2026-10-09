@@ -1,4 +1,4 @@
-import { Val } from "./Val";
+import { Val } from "@byronbroughten/utils/val";
 
 export interface IndexRange {
   startIndex: number;

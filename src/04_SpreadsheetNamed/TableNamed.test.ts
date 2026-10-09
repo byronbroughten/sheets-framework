@@ -1,3 +1,4 @@
+import { Val } from "@byronbroughten/utils/val";
 import { describe, expect, it } from "vitest";
 
 import { getColumnTraitByName } from "../01_SpreadsheetSchema/columnConfigsTypes";
@@ -16,7 +17,6 @@ import {
   type FakeSheetsService,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
-import { Val } from "../utils/Val";
 import { SpreadsheetNamed } from "./SpreadsheetNamed";
 
 const topDataRowIndex = expectedSheetLayout.tableHeaderRowIndex + 1;

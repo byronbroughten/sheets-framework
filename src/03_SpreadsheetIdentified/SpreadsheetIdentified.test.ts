@@ -1,3 +1,4 @@
+import { Val } from "@byronbroughten/utils/val";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { getColumnTraitByName } from "../01_SpreadsheetSchema/columnConfigsTypes";
@@ -19,7 +20,6 @@ import {
   tableConfigGid,
 } from "../testSupport/fakeTableConfigSheet";
 import { assertType, type IsExactly } from "../testSupport/typeAssertions";
-import { Val } from "../utils/Val";
 import { CellIdentified } from "./CellIdentified";
 import { SpreadsheetBaseIdentified } from "./ClassBases/SpreadsheetBaseIdentified";
 import type { FetchTargetIdentified } from "./ClassTypes/StateIdentified";
