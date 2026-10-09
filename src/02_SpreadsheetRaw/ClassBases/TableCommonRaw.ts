@@ -1,3 +1,4 @@
+import { Arr } from "@byronbroughten/utils/arr";
 import { Obj } from "@byronbroughten/utils/obj";
 
 import type {
@@ -12,7 +13,6 @@ import {
 } from "../../00_Source/RawSource/SheetIndex";
 import { headRows } from "../../01_SpreadsheetSchema/headRows";
 import type { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin";
-import { Arr } from "../../utils/Arr";
 import type { SheetGridRangeProps } from "../ClassTypes/AccessorsRaw";
 import { emptyStateRaw } from "../ClassTypes/emptyStateRaw";
 import type {

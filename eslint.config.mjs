@@ -19,9 +19,7 @@ const importPatterns = {
       "Tiers take config types from Register and values from installedConfigs(); only the generated appConfigs, the framework's dev/generated/appConfigs.ts included, gathers the generated configs.",
   },
 };
-// utils/ sits below every numbered tier.
 const layerFolders = [
-  "utils",
   "00_Source",
   "01_SpreadsheetSchema",
   "02_SpreadsheetRaw",
@@ -30,7 +28,7 @@ const layerFolders = [
   "05_Operators",
   "06_API",
 ];
-// The framework's un-numbered folders built on the tiers; utils/ and testSupport/ are not among them.
+// The framework's un-numbered folders built on the tiers; testSupport/ is not among them.
 const aboveTierFolders = [
   "appsScriptHost",
   "chores",
@@ -79,9 +77,9 @@ export default defineConfig(
   ...eslintPreset,
   // tsc checks these for undefined names, as typescript-eslint leaves it to tsc in .ts files.
   { files: ["scripts/**/*.js"], rules: { "no-undef": "off" } },
-  // Domain-free utilities and type assertions keep bare T, K and V.
+  // Type assertions keep bare T, K and V.
   {
-    files: ["src/utils/**/*.ts", "src/testSupport/typeAssertions.ts"],
+    files: ["src/testSupport/typeAssertions.ts"],
     rules: {
       "@typescript-eslint/naming-convention": ["error", variableNaming],
     },
