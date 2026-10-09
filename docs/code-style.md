@@ -46,7 +46,7 @@ One line per rule. The reasoning and worked examples are one file away. Open a r
   - `init` — factory setup
   - `sync`/`flush` — coordinate multiple operators / send a batched write
   - `discard` — drop queued changes without sending them; the counterpart to `flush`
-  - **The list governs framework methods.** A business operator's public method takes its verb from the app's `packages/real-estate/CONTEXT.md` instead.
+  - **The list governs framework methods.** A business operator's public method takes its verb from the app's `packages/real-estate/GLOSSARY.md` instead.
 
 ## Comments
 

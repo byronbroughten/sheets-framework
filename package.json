@@ -19,7 +19,7 @@
     "tsconfig.base.json",
     "scripts",
     "docs",
-    "CONTEXT.md",
+    "GLOSSARY.md",
     "!**/AGENTS.md",
     "!**/CLAUDE.md"
   ],

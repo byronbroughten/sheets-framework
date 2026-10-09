@@ -42,7 +42,7 @@ One heading per naming rule, in docs/code-style.md's order: grep `^## ` for the 
 - `init` — factory setup
 - `sync`/`flush` — coordinate multiple operators / send a batched write
 - `discard` — drop queued changes without sending them; the counterpart to `flush`
-- **The list governs framework methods.** A business operator's public method takes its verb from the app's `packages/real-estate/CONTEXT.md` instead, so the code and the operator-facing vocabulary agree: the glossary says a ledger is _built_, so the method is `build`.
+- **The list governs framework methods.** A business operator's public method takes its verb from the app's `packages/real-estate/GLOSSARY.md` instead, so the code and the operator-facing vocabulary agree: the glossary says a ledger is _built_, so the method is `build`.
 
 ## Collaborator names: `<Subject><Role><Tier>`
 

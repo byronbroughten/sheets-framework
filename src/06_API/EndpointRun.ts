@@ -66,7 +66,7 @@ export interface EndpointRunProps<
  * flush, action try/catch, selection consume, outcome flush.
  * Api only decodes the edit event and looks up the endpoint map.
  * Action bodies live in businessEndpoints/<name>.ts; the registry is
- * businessEndpoints.ts. Run-report shape and flags: CONTEXT.md.
+ * businessEndpoints.ts. Run-report shape and flags: GLOSSARY.md.
  * docs/architecture/endpoint-dispatch.md
  */
 export class EndpointRun<

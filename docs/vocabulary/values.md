@@ -1,6 +1,6 @@
 # Schema and cell values
 
-The elaboration behind [docs/vocabulary.md](../vocabulary.md), whose one-line entries are the rules. These are the **architecture** words; the operator-facing ones live in [CONTEXT.md](../../CONTEXT.md).
+The elaboration behind [docs/vocabulary.md](../vocabulary.md), whose one-line entries are the rules. These are the **architecture** words; the operator-facing ones live in [GLOSSARY.md](../../GLOSSARY.md).
 
 If you're renaming or relocating something and aren't sure which word fits, ask rather than guess: these distinctions were deliberately hashed out, and folder placement depends on them.
 

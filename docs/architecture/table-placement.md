@@ -1,6 +1,6 @@
 # Table placement: a missing Table, or one outside the header zone, stops the run that uses it
 
-Map fragment. Sibling headings live in this folder. The operator-facing words are **Table** and **Header zone** in [`CONTEXT.md`](../../CONTEXT.md).
+Map fragment. Sibling headings live in this folder. The operator-facing words are **Table** and **Header zone** in [`GLOSSARY.md`](../../GLOSSARY.md).
 
 Every managed Table keeps its header row in the sheet's header zone: its top rows, across every column, `tableLayout.headerZoneDepth` deep (4 by default: the column ID row, two group-heading rows, the header row). A Table moves freely within the zone, so the configs record no position, only its GID and `tableId`. A run that uses a managed Table outside the zone, or missing, stops and names it. A broken Table the run doesn't use stays silent until a run uses it, and a column insert uses every Table on its sheet. It never moves, rebuilds or picks a Table.
 

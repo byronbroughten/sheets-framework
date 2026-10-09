@@ -1,6 +1,6 @@
 # @byronbroughten/sheets-framework
 
-A TypeScript framework for typed apps on Google Sheets + Apps Script. A live spreadsheet is both the database and the UI: an operator ticks a checkbox in a sheet's action row, and the framework runs the **endpoint** wired to that column, then writes its status back into the rows it was about. The words for what the operator sees are in [`CONTEXT.md`](./CONTEXT.md).
+A TypeScript framework for typed apps on Google Sheets + Apps Script. A live spreadsheet is both the database and the UI: an operator ticks a checkbox in a sheet's action row, and the framework runs the **endpoint** wired to that column, then writes its status back into the rows it was about. The words for what the operator sees are in [`GLOSSARY.md`](./GLOSSARY.md).
 
 ## Install
 
@@ -72,7 +72,7 @@ Details: [how it runs](./docs/how-it-runs.md).
 
 ## Docs
 
-- [`CONTEXT.md`](./CONTEXT.md): the operator-facing words.
+- [`GLOSSARY.md`](./GLOSSARY.md): the operator-facing words.
 - [`docs/vocabulary.md`](./docs/vocabulary.md): the architecture words.
 - [`docs/architecture.md`](./docs/architecture.md): the mechanics.
 - [`docs/design.md`](./docs/design.md): why it is shaped this way.
