@@ -1,3 +1,5 @@
+import { Val } from "@byronbroughten/utils/val";
+
 import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
 import { headRows } from "../01_SpreadsheetSchema/headRows";
 import { SpreadsheetSchema } from "../01_SpreadsheetSchema/SpreadsheetSchema";
@@ -12,7 +14,6 @@ import {
   fakeTableId,
   type stubSheetsService,
 } from "../testSupport/fakeSheetsService";
-import { Val } from "../utils/Val";
 import { SpreadsheetRaw } from "./SpreadsheetRaw";
 
 export const lightGreen = { red: 0.851, green: 0.918, blue: 0.827 };

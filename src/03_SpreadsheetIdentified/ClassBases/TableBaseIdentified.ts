@@ -1,3 +1,5 @@
+import { Val } from "@byronbroughten/utils/val";
+
 import {
   tableConfigsByTableId,
   type TableName,
@@ -8,7 +10,6 @@ import {
   TableBaseRaw,
 } from "../../02_SpreadsheetRaw/ClassBases/TableBaseRaw";
 import { SheetRaw } from "../../02_SpreadsheetRaw/SheetRaw";
-import { Val } from "../../utils/Val";
 import {
   emptyTableStateIdentified,
   type FetchTargetIdentified,

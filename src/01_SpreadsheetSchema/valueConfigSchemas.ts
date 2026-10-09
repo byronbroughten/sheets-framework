@@ -1,5 +1,6 @@
+import { validationError } from "@byronbroughten/utils/val";
+
 import { type ValueSchemaBase, vsc } from "../00_Source/CellValues/valueSchema";
-import { validationError } from "../utils/Val";
 import {
   getValueConfigValueArr,
   type ValueConfigName,

@@ -1,5 +1,6 @@
+import { Val } from "@byronbroughten/utils/val";
+
 import { dimensionIds } from "../../01_SpreadsheetSchema/dimensionIds";
-import { Val } from "../../utils/Val";
 import { TableCommonRaw } from "../ClassBases/TableCommonRaw";
 import { SpreadsheetRaw } from "../SpreadsheetRaw";
 import { TableRaw } from "../TableRaw";

@@ -1,3 +1,4 @@
+import { Val } from "@byronbroughten/utils/val";
 import { describe, expect, it } from "vitest";
 
 import { installedRawSource } from "../00_Source/RawSource/RawSource";
@@ -8,7 +9,6 @@ import {
   type FakeSheetProperties,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
-import { Val } from "../utils/Val";
 import { SpreadsheetRaw } from "./SpreadsheetRaw";
 import {
   colIdRowIndex,

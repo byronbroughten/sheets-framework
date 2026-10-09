@@ -1,11 +1,11 @@
 import { lazy } from "@byronbroughten/utils/lazy";
+import { type FlattenTwoLevels, type KeyedMap, Obj } from "@byronbroughten/utils/obj";
+import { Val } from "@byronbroughten/utils/val";
 
 import type {
   CodebaseNameDelimiter,
   NotEmpty,
 } from "../00_Source/CellValues/cellValues";
-import { type FlattenTwoLevels, type KeyedMap, Obj } from "../utils/Obj";
-import { Val } from "../utils/Val";
 import { type Configs, installedConfigs } from "./configRegister";
 import type { ColumnConfigsGeneric, ColumnConfigStored } from "./makeConfigs";
 import { configTableNames, type TableNameSimple } from "./tableConfigsTypes";

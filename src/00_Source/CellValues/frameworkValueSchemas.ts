@@ -1,6 +1,6 @@
 import type { SerialDate } from "@byronbroughten/utils/serial-date";
+import { Val } from "@byronbroughten/utils/val";
 
-import { Val } from "../../utils/Val";
 import { cellValueNames, type CellValueNameToValue } from "./cellValues";
 import { type ValueSchemaBase, vsc } from "./valueSchema";
 

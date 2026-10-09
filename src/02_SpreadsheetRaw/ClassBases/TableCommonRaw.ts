@@ -1,3 +1,5 @@
+import { Obj } from "@byronbroughten/utils/obj";
+
 import type {
   BoundedGridRange,
   DeleteTableRowsOperation,
@@ -11,7 +13,6 @@ import {
 import { headRows } from "../../01_SpreadsheetSchema/headRows";
 import type { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin";
 import { Arr } from "../../utils/Arr";
-import { Obj } from "../../utils/Obj";
 import type { SheetGridRangeProps } from "../ClassTypes/AccessorsRaw";
 import { emptyStateRaw } from "../ClassTypes/emptyStateRaw";
 import type {

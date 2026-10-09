@@ -1,3 +1,6 @@
+import { Obj } from "@byronbroughten/utils/obj";
+import { Val } from "@byronbroughten/utils/val";
+
 import type { ConditionalFormatDeclaration } from "../00_Source/RawSource/ConditionalFormat";
 import type {
   EditLockDeclaration,
@@ -17,8 +20,6 @@ import { ColumnIdentified } from "../03_SpreadsheetIdentified/ColumnIdentified";
 import type { HeadRowIdentified } from "../03_SpreadsheetIdentified/HeadRowIdentified";
 import { TableIdentified } from "../03_SpreadsheetIdentified/TableIdentified";
 import { Arr } from "../utils/Arr";
-import { Obj } from "../utils/Obj";
-import { Val } from "../utils/Val";
 import { TableCommonNamed } from "./ClassBases/TableCommonNamed";
 import { ColumnNamed } from "./ColumnNamed";
 import { RowNamed } from "./RowNamed";

@@ -1,9 +1,10 @@
+import { Obj } from "@byronbroughten/utils/obj";
+
 import type {
   GoogleRequest,
   ModeledRequestVerb,
 } from "../00_Source/GoogleSheets/GoogleSheetsAPI";
 import { tableConfigAloneOnGid } from "../01_SpreadsheetSchema/tableConfigsTypes";
-import { Obj } from "../utils/Obj";
 
 type GoogleUpdateRequest = GoogleRequest;
 type GoogleGridRange = GoogleAppsScript.Sheets.Schema.GridRange;

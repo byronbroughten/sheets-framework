@@ -1,3 +1,6 @@
+import { Obj } from "@byronbroughten/utils/obj";
+import { Str } from "@byronbroughten/utils/str";
+
 import {
   configSheetFloorSeed,
   floorColumnLabel,
@@ -8,8 +11,6 @@ import type {
   ColumnConfigsGeneric,
   TableConfigsBase,
 } from "../01_SpreadsheetSchema/makeConfigs";
-import { Obj } from "../utils/Obj";
-import { Str } from "../utils/Str";
 
 export interface FloorIdentitySource {
   tableConfigs: TableConfigsBase;

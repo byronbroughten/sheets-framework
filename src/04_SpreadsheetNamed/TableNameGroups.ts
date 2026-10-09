@@ -1,8 +1,9 @@
+import { type SubType } from "@byronbroughten/utils/obj";
+
 import {
   type TableConfigs,
   tableConfigsByName,
 } from "../01_SpreadsheetSchema/tableConfigsTypes";
-import { type SubType } from "../utils/Obj";
 
 export type SheetNameWithIdColumn = keyof SubType<
   TableConfigs,

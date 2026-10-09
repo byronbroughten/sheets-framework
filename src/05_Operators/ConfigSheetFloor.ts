@@ -1,3 +1,5 @@
+import { Obj } from "@byronbroughten/utils/obj";
+
 import type { SheetChange } from "../00_Source/PlatformEvents/sheetChange";
 import type { ColumnName } from "../01_SpreadsheetSchema/columnConfigsTypes";
 import {
@@ -12,7 +14,6 @@ import type { TableRaw } from "../02_SpreadsheetRaw/TableRaw";
 import { SpreadsheetBaseNamed } from "../04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
 import type { ColumnNamed } from "../04_SpreadsheetNamed/ColumnNamed";
 import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
-import { Obj } from "../utils/Obj";
 import { ConfigSheetFloorCreator } from "./ConfigSheetFloor/ConfigSheetFloorCreator";
 import {
   ConfigSheetFloorEditWarnings,

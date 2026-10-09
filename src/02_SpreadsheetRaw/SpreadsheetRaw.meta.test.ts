@@ -1,3 +1,4 @@
+import { Val } from "@byronbroughten/utils/val";
 import { describe, expect, it } from "vitest";
 
 import { googleRawRequest } from "../00_Source/GoogleSheets/GoogleSheetsAPI";
@@ -9,7 +10,6 @@ import {
   type FakeTable,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
-import { Val } from "../utils/Val";
 import { type ColumnProfileRaw } from "./ColumnProfileRaw";
 import { SpreadsheetRaw } from "./SpreadsheetRaw";
 import {

@@ -1,4 +1,5 @@
 import { lazy } from "@byronbroughten/utils/lazy";
+import type { Merge } from "@byronbroughten/utils/obj";
 
 import type {
   CellValue,
@@ -14,7 +15,6 @@ import type {
   ValueSchemaBase,
   ValueSchemaKey,
 } from "../00_Source/CellValues/valueSchema";
-import type { Merge } from "../utils/Obj/merge";
 import { makeSchemasFromValueConfig } from "./valueConfigSchemas";
 import type { ValueConfigName, ValueConfigValues } from "./valueConfigsTypes";
 

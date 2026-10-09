@@ -1,4 +1,4 @@
-import { Str } from "../utils/Str";
+import { Str } from "@byronbroughten/utils/str";
 
 export interface IdPrefixLabel {
   label: string;

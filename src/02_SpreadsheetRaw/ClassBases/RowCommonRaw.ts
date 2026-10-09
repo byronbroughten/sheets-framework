@@ -1,8 +1,9 @@
+import { Obj } from "@byronbroughten/utils/obj";
+
 import type {
   CellValue,
   CellValueName,
 } from "../../00_Source/CellValues/cellValues";
-import { Obj } from "../../utils/Obj";
 import { CellRaw } from "../CellRaw";
 import { emptyStateRaw } from "../ClassTypes/emptyStateRaw";
 import type {

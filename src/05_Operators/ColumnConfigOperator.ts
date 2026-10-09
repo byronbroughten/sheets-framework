@@ -1,3 +1,5 @@
+import { Str } from "@byronbroughten/utils/str";
+
 import { getColumnTraitByName } from "../01_SpreadsheetSchema/columnConfigsTypes";
 import {
   configSheetFloorSeed,
@@ -10,7 +12,6 @@ import {
 } from "../01_SpreadsheetSchema/makeConfigs";
 import { type ValueName } from "../01_SpreadsheetSchema/valueSchemas";
 import type { ColumnProfileRaw } from "../02_SpreadsheetRaw/ColumnProfileRaw";
-import { Str } from "../utils/Str";
 import { columnConfigsFileSource } from "./configFileSource";
 import { GenericTableOperator } from "./GenericTableOperator";
 import {

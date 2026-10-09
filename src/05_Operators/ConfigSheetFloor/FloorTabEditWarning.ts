@@ -1,3 +1,5 @@
+import { Obj } from "@byronbroughten/utils/obj";
+
 import type { CellValue } from "../../00_Source/CellValues/cellValues";
 import type { ProtectionGridRange } from "../../00_Source/RawSource/EditProtection";
 import {
@@ -16,7 +18,6 @@ import { TableBaseNamed } from "../../04_SpreadsheetNamed/ClassBases/TableBaseNa
 import { SpreadsheetNamed } from "../../04_SpreadsheetNamed/SpreadsheetNamed";
 import type { TableNamed } from "../../04_SpreadsheetNamed/TableNamed";
 import { Arr } from "../../utils/Arr";
-import { Obj } from "../../utils/Obj";
 import { liveColIndex } from "./floorColumnLocation";
 import {
   columnNameByHeader,

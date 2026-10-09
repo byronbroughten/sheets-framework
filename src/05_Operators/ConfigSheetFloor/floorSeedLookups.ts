@@ -1,3 +1,5 @@
+import { Obj } from "@byronbroughten/utils/obj";
+
 import {
   type ColumnName,
   getColumnTraitByName,
@@ -7,7 +9,6 @@ import {
   configSheetFloorSeed,
   type FloorTabName,
 } from "../../01_SpreadsheetSchema/configSheetFloorSeed";
-import { Obj } from "../../utils/Obj";
 
 export type FloorSheetName = Exclude<FloorTabName, "valueConfig">;
 

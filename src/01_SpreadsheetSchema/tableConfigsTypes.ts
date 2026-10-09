@@ -1,7 +1,7 @@
 import { lazy } from "@byronbroughten/utils/lazy";
+import { Obj } from "@byronbroughten/utils/obj";
+import { Val } from "@byronbroughten/utils/val";
 
-import { Obj } from "../utils/Obj";
-import { Val } from "../utils/Val";
 import { type Configs, installedConfigs } from "./configRegister";
 import type { TableConfigsBase, TableConfigStored } from "./makeConfigs";
 

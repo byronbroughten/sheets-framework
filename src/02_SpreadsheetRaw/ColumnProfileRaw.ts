@@ -1,7 +1,8 @@
+import { type PrimitiveValueName, Val } from "@byronbroughten/utils/val";
+
 import type { CellValue } from "../00_Source/CellValues/cellValues";
 import type { FrameworkValueName } from "../00_Source/CellValues/frameworkValueSchemas";
 import type { TableColumnType } from "../00_Source/RawSource/RawSource";
-import { type PrimitiveValueName, Val } from "../utils/Val";
 import { ColumnBaseRaw } from "./ClassBases/ColumnBaseRaw";
 import type { ColumnStateRaw, SampledFactsRaw } from "./ClassTypes/StateRaw";
 import { ColumnRaw } from "./ColumnRaw";

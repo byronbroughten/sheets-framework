@@ -1,3 +1,5 @@
+import { Val } from "@byronbroughten/utils/val";
+
 import type { CellValueName } from "../00_Source/CellValues/cellValues";
 import type {
   ConditionalFormatDeclaration,
@@ -27,7 +29,6 @@ import { type HeadRole, headRows } from "../01_SpreadsheetSchema/headRows";
 import type { TableOrigin } from "../01_SpreadsheetSchema/TableOrigin";
 import type { Value } from "../01_SpreadsheetSchema/valueSchemas";
 import { Arr } from "../utils/Arr";
-import { Val } from "../utils/Val";
 import { assertValueAndFormulaExclusive } from "./CellRaw";
 import type { RowCommonRaw } from "./ClassBases/RowCommonRaw";
 import { originOf } from "./ClassBases/TableBaseRaw";

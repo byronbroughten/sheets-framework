@@ -1,3 +1,5 @@
+import { Val } from "@byronbroughten/utils/val";
+
 import { configSheetFloorSeed } from "../01_SpreadsheetSchema/configSheetFloorSeed";
 import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
 import { TableOrigin } from "../01_SpreadsheetSchema/TableOrigin";
@@ -5,7 +7,6 @@ import type { SpreadsheetRaw } from "../02_SpreadsheetRaw/SpreadsheetRaw";
 import type { TableRaw } from "../02_SpreadsheetRaw/TableRaw";
 import { retiredSheetConfigTitle } from "../05_Operators/ConfigSheetFloor";
 import { retiredSheetGidHeader } from "../05_Operators/ConfigSheetFloor/FloorTabColumnCreator";
-import { Val } from "../utils/Val";
 import type { Chore } from "./Chore";
 
 const tableConfigSeed = configSheetFloorSeed.tableConfig;

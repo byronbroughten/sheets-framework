@@ -1,3 +1,4 @@
+import type { StrictOmit } from "@byronbroughten/utils/obj";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { installedConfigs } from "../01_SpreadsheetSchema/configRegister";
@@ -10,7 +11,6 @@ import {
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
 import { tableIdOnTab } from "../testSupport/fakeTableConfigSheet";
-import type { StrictOmit } from "../utils/Obj";
 import { ColumnConfigOperator } from "./ColumnConfigOperator";
 
 const { columnConfigs } = installedConfigs();

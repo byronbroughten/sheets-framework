@@ -1,4 +1,5 @@
-import { Val } from "../../utils/Val";
+import { Val } from "@byronbroughten/utils/val";
+
 import type { CellStateRaw, RowStateRaw } from "../ClassTypes/StateRaw";
 import { ColumnBaseRaw, type ColumnRawProps } from "./ColumnBaseRaw";
 
