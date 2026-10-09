@@ -1,5 +1,5 @@
 import type { CellValue, NotEmpty } from "../00_Source/CellValues/cellValues";
-import { type Value } from "../01_SpreadsheetSchema/valueSchemas";
+import { type Value } from "../01_SpreadsheetSchema/configReaders/valueSchemas";
 import { RowRaw } from "../02_SpreadsheetRaw/RowRaw";
 import { CellIdentified } from "./CellIdentified";
 import type { RowIdentifiedProps } from "./ClassBases/RowBaseIdentified";

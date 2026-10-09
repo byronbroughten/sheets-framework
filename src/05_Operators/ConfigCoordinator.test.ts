@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { installedConfigs } from "../01_SpreadsheetSchema/configRegister";
-import { configSheetFloorSeed } from "../01_SpreadsheetSchema/configSheetFloorSeed";
-import { getTableTraitByName } from "../01_SpreadsheetSchema/tableConfigsTypes";
+import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister";
+import { configSheetFloorSeed } from "../01_SpreadsheetSchema/configReaders/configSheetFloorSeed";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {

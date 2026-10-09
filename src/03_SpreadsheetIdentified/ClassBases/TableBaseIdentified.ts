@@ -3,8 +3,8 @@ import { Val } from "@byronbroughten/utils/val";
 import {
   tableConfigsByTableId,
   type TableName,
-} from "../../01_SpreadsheetSchema/tableConfigsTypes";
-import { TableSchema } from "../../01_SpreadsheetSchema/TableSchema";
+} from "../../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
+import { TableSchema } from "../../01_SpreadsheetSchema/configReaders/TableSchema";
 import {
   type TableAddressRaw,
   TableBaseRaw,

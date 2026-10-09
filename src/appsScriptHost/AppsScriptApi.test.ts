@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getColumnTraitByName } from "../01_SpreadsheetSchema/columnConfigsTypes";
-import { installedConfigs } from "../01_SpreadsheetSchema/configRegister";
-import { getTableTraitByName } from "../01_SpreadsheetSchema/tableConfigsTypes";
+import { getColumnTraitByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
+import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
 import {
   stubLogger,

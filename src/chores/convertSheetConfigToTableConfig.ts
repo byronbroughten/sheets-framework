@@ -1,6 +1,6 @@
 import { Val } from "@byronbroughten/utils/val";
 
-import { configSheetFloorSeed } from "../01_SpreadsheetSchema/configSheetFloorSeed";
+import { configSheetFloorSeed } from "../01_SpreadsheetSchema/configReaders/configSheetFloorSeed";
 import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
 import { TableOrigin } from "../01_SpreadsheetSchema/TableOrigin";
 import type { SpreadsheetRaw } from "../02_SpreadsheetRaw/SpreadsheetRaw";

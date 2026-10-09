@@ -1,4 +1,4 @@
-import type { ColumnConfigsGeneric } from "../01_SpreadsheetSchema/makeConfigs";
+import type { ColumnConfigsGeneric } from "../01_SpreadsheetSchema/configReaders/makeConfigs";
 
 function oneLineJsonObject(record: object): string {
   const fields = Object.entries(record).map(

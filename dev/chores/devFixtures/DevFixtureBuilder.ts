@@ -2,9 +2,9 @@ import type {
   SheetColIndex,
   SheetRowIndex,
 } from "../../../src/00_Source/RawSource/SheetIndex";
+import { getTableTraitByName } from "../../../src/01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { dimensionIds } from "../../../src/01_SpreadsheetSchema/dimensionIds";
 import { headRows } from "../../../src/01_SpreadsheetSchema/headRows";
-import { getTableTraitByName } from "../../../src/01_SpreadsheetSchema/tableConfigsTypes";
 import type { TableOrigin } from "../../../src/01_SpreadsheetSchema/TableOrigin";
 import { SpreadsheetBaseNamed } from "../../../src/04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
 import { SpreadsheetNamed } from "../../../src/04_SpreadsheetNamed/SpreadsheetNamed";

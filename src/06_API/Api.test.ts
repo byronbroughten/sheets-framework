@@ -5,9 +5,9 @@ import { SheetIndex } from "../00_Source/RawSource/SheetIndex";
 import {
   getColumnTraitByName,
   getSheetColumnNames,
-} from "../01_SpreadsheetSchema/columnConfigsTypes";
-import { installedConfigs } from "../01_SpreadsheetSchema/configRegister";
-import { getTableTraitByName } from "../01_SpreadsheetSchema/tableConfigsTypes";
+} from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
+import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import {
   layoutGid,
   layoutOrigins,

@@ -12,9 +12,9 @@ import type {
   ColumnValue,
   SheetDataValues,
   SheetDataValuesAll,
-} from "../01_SpreadsheetSchema/columnConfigsTypes";
+} from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
+import type { TableName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import type { HeadRole } from "../01_SpreadsheetSchema/headRows";
-import type { TableName } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import type { FindReplaceTerms } from "../02_SpreadsheetRaw/ClassTypes/StateRaw";
 import type { TableRaw } from "../02_SpreadsheetRaw/TableRaw";
 import { ColumnIdentified } from "../03_SpreadsheetIdentified/ColumnIdentified";

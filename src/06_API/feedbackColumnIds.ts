@@ -1,4 +1,4 @@
-import { SpreadsheetSchema } from "../01_SpreadsheetSchema/SpreadsheetSchema";
+import { SpreadsheetSchema } from "../01_SpreadsheetSchema/configReaders/SpreadsheetSchema";
 import {
   type FeedbackColumnIds,
   installFeedbackColumnIds,

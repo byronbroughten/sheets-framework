@@ -1,4 +1,4 @@
-import { idPrefixes } from "./idPrefixes";
+import { idPrefixes } from "../idPrefixes";
 import type { Value, ValueName } from "./valueSchemas";
 
 export function makeImportLine(

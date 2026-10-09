@@ -1,8 +1,8 @@
 import {
   type ColumnName,
   getColumnTraitByName,
-} from "../../01_SpreadsheetSchema/columnConfigsTypes";
-import { getTableTraitByName } from "../../01_SpreadsheetSchema/tableConfigsTypes";
+} from "../../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
+import { getTableTraitByName } from "../../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { TableBaseNamed } from "../../04_SpreadsheetNamed/ClassBases/TableBaseNamed";
 import { SpreadsheetNamed } from "../../04_SpreadsheetNamed/SpreadsheetNamed";
 import type { TableNamed } from "../../04_SpreadsheetNamed/TableNamed";

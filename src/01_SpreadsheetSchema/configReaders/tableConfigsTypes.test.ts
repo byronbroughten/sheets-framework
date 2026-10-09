@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { assertType, type IsExactly } from "../testSupport/typeAssertions";
+import { assertType, type IsExactly } from "../../testSupport/typeAssertions";
 import { installedConfigs } from "./configRegister";
 import {
   configTableNames,

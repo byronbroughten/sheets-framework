@@ -2,7 +2,7 @@ import { isFrameworkValueName } from "../00_Source/CellValues/frameworkValueSche
 import {
   makeImportLine,
   type ValueConfigsBase,
-} from "../01_SpreadsheetSchema/makeConfigs";
+} from "../01_SpreadsheetSchema/configReaders/makeConfigs";
 import { ColumnConfigOperator } from "./ColumnConfigOperator";
 import { GenericTableOperator } from "./GenericTableOperator";
 import {

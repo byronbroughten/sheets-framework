@@ -1,9 +1,9 @@
 import { Val } from "@byronbroughten/utils/val";
 
+import { SpreadsheetSchema } from "../01_SpreadsheetSchema/configReaders/SpreadsheetSchema";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
 import { headRows } from "../01_SpreadsheetSchema/headRows";
-import { SpreadsheetSchema } from "../01_SpreadsheetSchema/SpreadsheetSchema";
-import { getTableTraitByName } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import { TableOrigin } from "../01_SpreadsheetSchema/TableOrigin";
 import {
   buildGridRows,

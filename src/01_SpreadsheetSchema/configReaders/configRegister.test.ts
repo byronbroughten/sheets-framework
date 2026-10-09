@@ -4,7 +4,7 @@ import {
   assertNotType,
   assertType,
   type IsExactly,
-} from "../testSupport/typeAssertions";
+} from "../../testSupport/typeAssertions";
 import {
   type Configs,
   type ConfigSetBase,

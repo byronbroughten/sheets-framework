@@ -4,11 +4,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   type ColumnIsFormula,
   getColumnTraitByName,
-} from "../01_SpreadsheetSchema/columnConfigsTypes";
+} from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
 import {
   getTableTraitByName,
   type TableName,
-} from "../01_SpreadsheetSchema/tableConfigsTypes";
+} from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { SheetRaw } from "../02_SpreadsheetRaw/SheetRaw";
 import { placedTableSheet } from "../02_SpreadsheetRaw/spreadsheetRawTestSupport";
 import { CellIdentified } from "../03_SpreadsheetIdentified/CellIdentified";

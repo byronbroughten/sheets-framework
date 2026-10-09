@@ -2,8 +2,8 @@ import type { SheetChange } from "../../00_Source/PlatformEvents/sheetChange";
 import {
   configSheetFloorSeed,
   type FloorTabName,
-} from "../../01_SpreadsheetSchema/configSheetFloorSeed";
-import { getTableTraitByName } from "../../01_SpreadsheetSchema/tableConfigsTypes";
+} from "../../01_SpreadsheetSchema/configReaders/configSheetFloorSeed";
+import { getTableTraitByName } from "../../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 
 export interface FloorNotice {
   title: string;

@@ -3,8 +3,8 @@ import type {
   BoundedGridRange,
   OpaqueRawRequest,
 } from "../00_Source/RawSource/RawSource";
-import { SpreadsheetSchema } from "../01_SpreadsheetSchema/SpreadsheetSchema";
-import type { TableName } from "../01_SpreadsheetSchema/tableConfigsTypes";
+import { SpreadsheetSchema } from "../01_SpreadsheetSchema/configReaders/SpreadsheetSchema";
+import type { TableName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { validateFormulaString } from "./CellRaw";
 import { SpreadsheetBaseRaw } from "./ClassBases/SpreadsheetBaseRaw";
 import { emptyStateRaw } from "./ClassTypes/emptyStateRaw";

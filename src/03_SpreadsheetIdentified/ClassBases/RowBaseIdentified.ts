@@ -1,4 +1,4 @@
-import { type TableSchema } from "../../01_SpreadsheetSchema/TableSchema";
+import { type TableSchema } from "../../01_SpreadsheetSchema/configReaders/TableSchema";
 import {
   TableBaseIdentified,
   type TableIdentifiedProps,

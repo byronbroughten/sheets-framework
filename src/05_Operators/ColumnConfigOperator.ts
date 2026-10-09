@@ -1,16 +1,16 @@
 import { Str } from "@byronbroughten/utils/str";
 
-import { getColumnTraitByName } from "../01_SpreadsheetSchema/columnConfigsTypes";
+import { getColumnTraitByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
 import {
   configSheetFloorSeed,
   floorSeedColumnById,
-} from "../01_SpreadsheetSchema/configSheetFloorSeed";
-import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
+} from "../01_SpreadsheetSchema/configReaders/configSheetFloorSeed";
 import {
   type ColumnConfigsGeneric,
   makeImportLine,
-} from "../01_SpreadsheetSchema/makeConfigs";
-import { type ValueName } from "../01_SpreadsheetSchema/valueSchemas";
+} from "../01_SpreadsheetSchema/configReaders/makeConfigs";
+import { type ValueName } from "../01_SpreadsheetSchema/configReaders/valueSchemas";
+import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
 import type { ColumnProfileRaw } from "../02_SpreadsheetRaw/ColumnProfileRaw";
 import { columnConfigsFileSource } from "./configFileSource";
 import { GenericTableOperator } from "./GenericTableOperator";

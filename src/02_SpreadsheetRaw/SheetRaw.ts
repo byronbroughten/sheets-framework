@@ -17,8 +17,8 @@ import {
   SheetIndex,
   type SheetRowIndex,
 } from "../00_Source/RawSource/SheetIndex";
+import { SpreadsheetSchema } from "../01_SpreadsheetSchema/configReaders/SpreadsheetSchema";
 import { headerZone } from "../01_SpreadsheetSchema/headerZone";
-import { SpreadsheetSchema } from "../01_SpreadsheetSchema/SpreadsheetSchema";
 import {
   SpreadsheetBaseRaw,
   type SpreadsheetRawProps,

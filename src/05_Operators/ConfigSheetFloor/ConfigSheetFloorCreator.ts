@@ -3,9 +3,9 @@ import {
   type FloorSeedColumn,
   floorSeedColumns,
   type FloorTabName,
-} from "../../01_SpreadsheetSchema/configSheetFloorSeed";
+} from "../../01_SpreadsheetSchema/configReaders/configSheetFloorSeed";
+import { getTableTraitByName } from "../../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { dimensionIds } from "../../01_SpreadsheetSchema/dimensionIds";
-import { getTableTraitByName } from "../../01_SpreadsheetSchema/tableConfigsTypes";
 import { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin";
 import { SpreadsheetBaseNamed } from "../../04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
 import { SpreadsheetNamed } from "../../04_SpreadsheetNamed/SpreadsheetNamed";

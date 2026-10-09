@@ -1,9 +1,9 @@
 import { Val } from "@byronbroughten/utils/val";
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { getColumnTraitByName } from "../01_SpreadsheetSchema/columnConfigsTypes";
-import { getTableTraitByName } from "../01_SpreadsheetSchema/tableConfigsTypes";
-import type { Value, VnToCvn } from "../01_SpreadsheetSchema/valueSchemas";
+import { getColumnTraitByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
+import type { Value, VnToCvn } from "../01_SpreadsheetSchema/configReaders/valueSchemas";
 import {
   itemTableId,
   placedTableSheet,

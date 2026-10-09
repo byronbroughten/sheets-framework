@@ -6,11 +6,11 @@ import {
   floorColumnLabel,
   floorSeedColumns,
   type FloorTabName,
-} from "../01_SpreadsheetSchema/configSheetFloorSeed";
+} from "../01_SpreadsheetSchema/configReaders/configSheetFloorSeed";
 import type {
   ColumnConfigsGeneric,
   TableConfigsBase,
-} from "../01_SpreadsheetSchema/makeConfigs";
+} from "../01_SpreadsheetSchema/configReaders/makeConfigs";
 
 export interface FloorIdentitySource {
   tableConfigs: TableConfigsBase;

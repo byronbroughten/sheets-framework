@@ -1,19 +1,19 @@
 import { Val } from "@byronbroughten/utils/val";
 
-import { getColumnTraitByName } from "../01_SpreadsheetSchema/columnConfigsTypes";
+import { getColumnTraitByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
 import {
   configSheetFloorSeed,
   floorTabSeedByTableId,
-} from "../01_SpreadsheetSchema/configSheetFloorSeed";
+} from "../01_SpreadsheetSchema/configReaders/configSheetFloorSeed";
+import {
+  makeImportLine,
+  type TableConfigsBase,
+} from "../01_SpreadsheetSchema/configReaders/makeConfigs";
+import { tableConfigsByTableId } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import {
   idPrefixes,
   type IdPrefixLabel,
 } from "../01_SpreadsheetSchema/idPrefixes";
-import {
-  makeImportLine,
-  type TableConfigsBase,
-} from "../01_SpreadsheetSchema/makeConfigs";
-import { tableConfigsByTableId } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import type { TableRaw } from "../02_SpreadsheetRaw/TableRaw";
 import { oneLinePerEntryFileSource } from "./configFileSource";
 import { GenericTableOperator } from "./GenericTableOperator";

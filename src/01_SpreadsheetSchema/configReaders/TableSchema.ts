@@ -1,5 +1,7 @@
 import { Val } from "@byronbroughten/utils/val";
 
+import { dimensionIds } from "../dimensionIds";
+import { SpreadsheetBaseSchema } from "../SpreadsheetBaseSchema";
 import {
   type ColumnName,
   getColumnTraitById,
@@ -8,8 +10,6 @@ import {
   getTableColumnIds,
 } from "./columnConfigsTypes";
 import { ColumnSchema } from "./ColumnSchema";
-import { dimensionIds } from "./dimensionIds";
-import { SpreadsheetBaseSchema } from "./SpreadsheetBaseSchema";
 import {
   getTableTraitByName,
   type TableConfig,

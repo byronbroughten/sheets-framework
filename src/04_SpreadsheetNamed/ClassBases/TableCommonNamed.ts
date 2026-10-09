@@ -1,5 +1,5 @@
-import type { TableName } from "../../01_SpreadsheetSchema/tableConfigsTypes";
-import { TableSchema } from "../../01_SpreadsheetSchema/TableSchema";
+import type { TableName } from "../../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
+import { TableSchema } from "../../01_SpreadsheetSchema/configReaders/TableSchema";
 import type { TableAddressRaw } from "../../02_SpreadsheetRaw/ClassBases/TableBaseRaw";
 import { managedTableAddress } from "../../03_SpreadsheetIdentified/ClassBases/TableBaseIdentified";
 import { TableBaseNamed } from "./TableBaseNamed";

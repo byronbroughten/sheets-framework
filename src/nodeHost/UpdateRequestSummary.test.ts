@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { GoogleRequest } from "../00_Source/GoogleSheets/GoogleSheetsAPI";
-import { getTableTraitByName } from "../01_SpreadsheetSchema/tableConfigsTypes";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { UpdateRequestSummary } from "./UpdateRequestSummary";
 
 const itemGid = getTableTraitByName("item", "sheetGid");

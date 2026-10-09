@@ -3,7 +3,7 @@ import {
   protectionRangeEqual,
   protectionRangesEqual,
 } from "../../00_Source/RawSource/EditProtection";
-import { getTableTraitByName } from "../../01_SpreadsheetSchema/tableConfigsTypes";
+import { getTableTraitByName } from "../../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { SpreadsheetBaseNamed } from "../../04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
 import { SpreadsheetNamed } from "../../04_SpreadsheetNamed/SpreadsheetNamed";
 import { type FloorSheetName, floorSheetNames } from "./floorSeedLookups";

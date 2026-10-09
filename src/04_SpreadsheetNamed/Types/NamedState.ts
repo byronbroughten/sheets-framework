@@ -1,7 +1,7 @@
 import type { StrictOmit } from "@byronbroughten/utils/obj";
 
-import type { ColumnName } from "../../01_SpreadsheetSchema/columnConfigsTypes";
-import type { TableName } from "../../01_SpreadsheetSchema/tableConfigsTypes";
+import type { ColumnName } from "../../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
+import type { TableName } from "../../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import type { TableNamed } from "../TableNamed";
 
 type SheetColumnNames<TN extends TableName> = {

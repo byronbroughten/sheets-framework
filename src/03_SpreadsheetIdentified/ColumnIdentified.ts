@@ -13,16 +13,16 @@ import type {
   TableColumnType,
 } from "../00_Source/RawSource/RawSource";
 import {
-  type HeadRole,
-  headRows,
-  type HeadRowValueName,
-} from "../01_SpreadsheetSchema/headRows";
-import {
   toWireValue,
   type Value,
   type ValueName,
   type VnToCvn,
-} from "../01_SpreadsheetSchema/valueSchemas";
+} from "../01_SpreadsheetSchema/configReaders/valueSchemas";
+import {
+  type HeadRole,
+  headRows,
+  type HeadRowValueName,
+} from "../01_SpreadsheetSchema/headRows";
 import type {
   CellFill,
   FindReplaceTerms,

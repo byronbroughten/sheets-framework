@@ -1,11 +1,11 @@
 import type { SheetChange } from "../00_Source/PlatformEvents/sheetChange";
 import type { SheetEdit } from "../00_Source/PlatformEvents/sheetEdit";
-import type { ColumnSchema } from "../01_SpreadsheetSchema/ColumnSchema";
+import type { ColumnSchema } from "../01_SpreadsheetSchema/configReaders/ColumnSchema";
 import {
   type Configs,
   installConfigs,
-} from "../01_SpreadsheetSchema/configRegister";
-import { SpreadsheetSchema } from "../01_SpreadsheetSchema/SpreadsheetSchema";
+} from "../01_SpreadsheetSchema/configReaders/configRegister";
+import { SpreadsheetSchema } from "../01_SpreadsheetSchema/configReaders/SpreadsheetSchema";
 import { SpreadsheetIdentified } from "../03_SpreadsheetIdentified/SpreadsheetIdentified";
 import {
   SpreadsheetBaseNamed,

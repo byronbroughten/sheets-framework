@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { SheetsHttpRequest } from "../00_Source/GoogleSheets/GoogleSheetsAPI";
-import { getColumnTraitByName } from "../01_SpreadsheetSchema/columnConfigsTypes";
-import { installedConfigs } from "../01_SpreadsheetSchema/configRegister";
-import { getTableTraitByName } from "../01_SpreadsheetSchema/tableConfigsTypes";
+import { getColumnTraitByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
+import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { SpreadsheetRaw } from "../02_SpreadsheetRaw/SpreadsheetRaw";
 import type { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
 import type { Endpoints } from "../06_API/Endpoints";
