@@ -1,4 +1,4 @@
-import { SerialDate } from "./SerialDate";
+import { SerialDate } from "@byronbroughten/utils/serial-date";
 
 export function validationError(value: unknown, notAWhat: string): Error {
   return new Error(`value "${value}" is not a ${notAWhat}`);

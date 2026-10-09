@@ -1,3 +1,6 @@
+import { SerialDate } from "@byronbroughten/utils/serial-date";
+import { SerialDateTime } from "@byronbroughten/utils/serial-date-time";
+
 import { SpreadsheetSchema } from "../01_SpreadsheetSchema/SpreadsheetSchema";
 import type { TableName } from "../01_SpreadsheetSchema/tableConfigsTypes.js";
 import type { FindReplaceProps } from "../02_SpreadsheetRaw/ClassTypes/StateRaw";
@@ -6,8 +9,6 @@ import { SpreadsheetIdentified } from "../03_SpreadsheetIdentified/SpreadsheetId
 import type { TableIdentified } from "../03_SpreadsheetIdentified/TableIdentified";
 import type { GatherDataPrerequisitesProps } from "../03_SpreadsheetIdentified/TableIdentified/TableColumnResolverIdentified";
 import { Obj } from "../utils/Obj";
-import { SerialDate } from "../utils/SerialDate";
-import { SerialDateTime } from "../utils/SerialDateTime";
 import { Val } from "../utils/Val";
 import { SpreadsheetBaseNamed } from "./ClassBases/SpreadsheetBaseNamed.js";
 import { SheetNamed } from "./SheetNamed";
