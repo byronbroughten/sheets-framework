@@ -20,8 +20,8 @@ export const lightGreen = { red: 0.851, green: 0.918, blue: 0.827 };
 
 export const itemGid = getTableTraitByName("item", "sheetGid");
 export const logGid = getTableTraitByName("log", "sheetGid");
-export const itemTableId = fakeTableId(itemGid, 0);
-export const logTableId = fakeTableId(logGid, 0);
+export const itemTableId = fakeTableId(itemGid);
+export const logTableId = fakeTableId(logGid);
 // Sheet rows and columns, for fixtures and grid reads; Raw itself counts from the Table.
 export const expectedOrigin = TableOrigin.expected();
 export const tableHeaderRowIndex: number = expectedOrigin.headerRowIndex;
@@ -31,9 +31,9 @@ export const colIdRowIndex: number = expectedOrigin.sheetRowIndex(
 export const startTableColIndex: number = expectedOrigin.startColIndex;
 export const topDataRowIndex = tableHeaderRowIndex + 1;
 export const scratchGid = 999999;
-export const scratchTableId = fakeTableId(scratchGid, 0);
-export const tableId111 = fakeTableId(111, 0);
-export const tableId222 = fakeTableId(222, 0);
+export const scratchTableId = fakeTableId(scratchGid);
+export const tableId111 = fakeTableId(111);
+export const tableId222 = fakeTableId(222);
 export const tableEndRowIndex = tableHeaderRowIndex + 3;
 export const gridRanges = {
   columnOneData: {

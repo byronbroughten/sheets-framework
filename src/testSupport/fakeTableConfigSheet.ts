@@ -34,8 +34,9 @@ export const sheetTitleColIndex = tableConfigColumnIdRow.indexOf(
 
 /** The tableId a tab's one Table carries: a floor tab's generated one, else the fake's default. */
 export function tableIdOnTab(sheetGid: number): string {
-  if (floorTabSeedByGid(sheetGid) === undefined)
-    {return fakeTableId(sheetGid, 0);}
+  if (floorTabSeedByGid(sheetGid) === undefined) {
+    return fakeTableId(sheetGid);
+  }
   return getTableTraitByGid(sheetGid, "tableId");
 }
 

@@ -532,7 +532,10 @@ describe("Api.handleSheetEdit, the endpoints it installs", () => {
             ],
             4: [null, null, "Succeeded"],
           }),
-          table: { endRowIndex: 5 },
+          table: {
+            endRowIndex: 5,
+            tableId: getTableTraitByName("runItem", "tableId"),
+          },
         },
       ],
     });

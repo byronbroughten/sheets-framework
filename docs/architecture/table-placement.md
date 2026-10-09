@@ -8,7 +8,7 @@ Every managed Table keeps its header row in the sheet's header zone: its top row
 
 It runs in `SpreadsheetRaw`'s post-fetch step (`SpreadsheetTableValidatorRaw.tablePlacements`), per recorded Table the run uses: one it gathered a fetch for in that fetch cycle. Every read needs a fetch, and so does every gathered write (`originAtGathering`), so that covers both. The fetcher reads which Tables gathered before it resets their fetch queues:
 
-- the Table is on its sheet: found by its recorded `tableId`, or, on a sheet the configs record only it on, as that sheet's one Table. Judged only on a fetch the sheet's zone rode, since only the zone is sure to bring it.
+- the Table is on its sheet: found by its recorded `tableId`. Judged only on a fetch the sheet's zone rode, since only the zone is sure to bring it.
 - its header row is in the zone, with room for its head rows above it (`headerZone.holdsHeaderRow`). With the default depth that means row 4. Judged on every fetch that brings the Table, since it reads geometry alone.
 - the column ID row (header −3) holds only blanks or this Table's own prefixed column IDs, and at least one ID, across the Table's columns. Judged on a fetch the zone rode, since the zone carries that row.
 
@@ -51,9 +51,9 @@ The head rows' extent runs from `tableLayout`'s largest offset down to just abov
 
 ## Several Tables on a sheet
 
-Several managed Tables may share a sheet side by side, each with its header in the zone (sheets-framework#89). Each is reached by its recorded `tableId`, before its properties arrive too, and one zone fetch brings them all. A GID reaches a Table only on a sheet the configs record one Table on: the sheet's only Table, else the recorded one, so unmanaged Tables may sit beside it. A fetch through a shared sheet's GID reaches none of its Tables, so it uses none of them.
+Several managed Tables may share a sheet side by side, each with its header in the zone (sheets-framework#89). Each is reached by its recorded `tableId`, before its properties arrive too, and one zone fetch brings them all. Every managed Table is reached that way, alone on its sheet or not, so unmanaged Tables may sit beside it. `SpreadsheetIdentified.tableOnSheet` resolves a GID to the one Table the configs record on that sheet, and throws on a sheet they record several on.
 
-**Accepted gap:** a managed Table recreated under a new `tableId` beside an unmanaged Table in the zone matches no recorded ID, so its GID reaches neither. A run that uses it reads it as missing until a regeneration records the new ID. The placement strip used to bring only the managed Table, so its GID reached it.
+**A Table deleted and inserted again is a different Table.** It carries a new `tableId` that matches no recorded one, on every sheet, shared or not, so a run that uses it reads it as missing until a regeneration records the new ID.
 
 **Stacked managed Tables wait for a deepenable zone.** A Table below another has its header below the zone, so generation refuses it. Growth, row deletes and the column insert still push and pull the Tables below, and the fake covers it with an unmanaged Table under the managed ones. When stacked Tables return, deepen the zone to just below the lowest stacked header in the layout, not a blanket large number ([finding Tables](./finding-tables.md#keep-the-header-zone-and-deepen-it-for-stacked-tables)).
 

@@ -750,7 +750,7 @@ describe("ConfigCoordinator.generateConfigFiles", () => {
       );
     });
 
-    it("throws when a floor tab's Table ID changed", () => {
+    it("stops at the floor when a floor tab's Table ID changed", () => {
       const replacedTableId = "tbl-replaced01";
       seedFixture({
         valueConfigSheet: floorValueConfigTab(replacedTableId),
@@ -764,7 +764,7 @@ describe("ConfigCoordinator.generateConfigFiles", () => {
       expect(() =>
         ConfigCoordinator.init().generateConfigFiles("../makeConfigs"),
       ).toThrow(
-        `Floor tab "valueConfig" Table ID was "${tableIdOnTab(valueConfigFloorGid)}" and is now "${replacedTableId}".`,
+        `Floor tab "Value Config" has Table "valueConfig", not its floor Table (Table ID "${tableIdOnTab(valueConfigFloorGid)}")`,
       );
     });
 

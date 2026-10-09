@@ -1,9 +1,11 @@
-import { Val } from "@byronbroughten/utils/val";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { getColumnTraitByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
 import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
-import type { Value, VnToCvn } from "../01_SpreadsheetSchema/configReaders/valueSchemas";
+import type {
+  Value,
+  VnToCvn,
+} from "../01_SpreadsheetSchema/configReaders/valueSchemas";
 import {
   itemTableId,
   placedTableSheet,
@@ -506,10 +508,9 @@ describe("the blank test, on a sheet with a feedback column", () => {
 
   it("leaves the feedback column out of a Table reached by its tableId", () => {
     const sheet = runItemWithOneRow([null, null, "Succeeded"]);
-    const tableId = Val.assert(sheet.knownTableId, "runItem tableId");
     const table = new SpreadsheetIdentified(
       sheet.spreadsheetIdentifiedProps,
-    ).table(tableId);
+    ).table(sheet.tableId);
 
     expect(table.blankTestColumnIds).not.toContain(runStatusColumnId);
     expect(table.topRow.isBlank).toBe(true);
@@ -846,7 +847,7 @@ describe("SpreadsheetIdentified.fetchAllPrepped / FetchTargetIdentified", () => 
 });
 
 describe("SpreadsheetIdentified Tables", () => {
-  const valueTypesTableId = `fake-table-${valueTypesGid}`;
+  const valueTypesTableId = getTableTraitByName("valueTypes", "tableId");
 
   function stubValueTypes(columnIdRow: string[], header: string[]) {
     const idAt = columnIdRow.indexOf(valueTypesIdColumnId);
@@ -883,6 +884,33 @@ describe("SpreadsheetIdentified Tables", () => {
 
     expect(column.colIndex).toBe(1);
     expect(column.valueOrEmpty(0)).toBe("r:vty:row4");
+  });
+
+  it("stops on a lone Table inserted again under a new ID, offering regeneration, and sends nothing", () => {
+    const { batchUpdateCount } = stubSheetsService({
+      sheets: [
+        {
+          sheetId: valueTypesGid,
+          title: "Value Types",
+          rows: buildGridRows({
+            0: [valueTypesIdColumnId],
+            3: ["ID"],
+            4: ["r:vty:row4"],
+          }),
+          table: { tableId: "recreated", endRowIndex: 5 },
+        },
+      ],
+    });
+    const ssi = initIdentified();
+    ssi
+      .tableOnSheet(valueTypesGid)
+      .column(valueTypesIdColumnId)
+      .prepFetchFull();
+
+    expect(() => ssi.fetchAllPrepped()).toThrow(
+      /"Value Types" \(gid \d+\) has no Table "valueTypes" .*regenerate the configs/,
+    );
+    expect(batchUpdateCount()).toBe(0);
   });
 
   it("addresses a known Table by its tableId", () => {
@@ -929,11 +957,11 @@ describe("SpreadsheetIdentified Tables", () => {
     column.prepFetchFull();
     ssi.fetchAllPrepped();
 
-    expect(table.knownTableId).toBe(recordedTableId);
+    expect(table.tableId).toBe(recordedTableId);
     expect(column.valueOrEmpty(0)).toBe("r:vty:row4");
   });
 
-  it("queues fetches per Table, whether reached by its sheet or its tableId", () => {
+  it("queues fetches per Table, whether reached through its sheet or its tableId", () => {
     stubValueTypes(
       [valueTypesIdColumnId, checkboxColumnId],
       ["ID", "Checkbox"],
@@ -956,7 +984,7 @@ describe("SpreadsheetIdentified Tables", () => {
     ]);
   });
 
-  it("keeps a fetch prepped through the sheet before its Table is known", () => {
+  it("keeps a fetch prepped through the sheet before its properties arrive", () => {
     stubValueTypes(
       [valueTypesIdColumnId, checkboxColumnId],
       ["ID", "Checkbox"],

@@ -37,17 +37,11 @@ export class SpreadsheetBaseIdentified extends SpreadsheetBaseRaw {
   ): SpreadsheetIdentifiedProps {
     return {
       ...SpreadsheetBaseRaw.initSpreadsheetRawProps(),
-      spreadsheetStateIdentified: {
-        tables: new Map(),
-        tableBeforePropertiesBySheet: new Map(),
-      },
+      spreadsheetStateIdentified: { tables: new Map() },
       feedbackColumnIds,
     };
   }
   protected get tablesStateIdentified(): StateIdentified["tables"] {
     return this.spreadsheetStateIdentified.tables;
-  }
-  protected get tableBeforePropertiesBySheet(): StateIdentified["tableBeforePropertiesBySheet"] {
-    return this.spreadsheetStateIdentified.tableBeforePropertiesBySheet;
   }
 }
