@@ -6,8 +6,9 @@ import {
   layoutBodyRows,
   layoutGid,
   layoutSheet,
+  layoutTableId,
   type LayoutTableName,
-  layoutTableNames,
+  managedLayoutTableNames,
 } from "../02_SpreadsheetRaw/spreadsheetRawTestSupport";
 import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
 import {
@@ -892,7 +893,7 @@ describe("Tables that share a sheet", () => {
   } {
     const { grid } = stubSheetsService({ sheets: [layoutSheet()] });
     const ss = SpreadsheetNamed.init();
-    layoutTableNames.forEach((tableName) =>
+    managedLayoutTableNames.forEach((tableName) =>
       ss.table(tableName).prepFetchColumnsFull("entry", "amount"),
     );
     ss.fetchAllPrepped();
@@ -906,10 +907,7 @@ describe("Tables that share a sheet", () => {
     const table = Val.assert(
       grid
         .sheet(layoutGid)
-        .tables.find(
-          ({ tableId }) =>
-            tableId === getTableTraitByName(tableName, "tableId"),
-        ),
+        .tables.find(({ tableId }) => tableId === layoutTableId(tableName)),
       `${tableName} on the grid`,
     );
     const range = Val.assert(table.range, `${tableName}'s range`);
@@ -925,12 +923,14 @@ describe("Tables that share a sheet", () => {
     const { ss } = fetchedLayout();
 
     expect(
-      layoutTableNames.map((tableName) =>
+      managedLayoutTableNames.map((tableName) =>
         ss
           .table(tableName)
           .rows.map((row) => [row.value("entry"), row.value("amount")]),
       ),
-    ).toEqual(layoutTableNames.map((tableName) => layoutBodyRows[tableName]));
+    ).toEqual(
+      managedLayoutTableNames.map((tableName) => layoutBodyRows[tableName]),
+    );
   });
 
   it("writes to a Table beside another in its own cells", () => {
@@ -1009,18 +1009,6 @@ describe("Tables that share a sheet", () => {
     ]);
   });
 
-  it("keeps reading the Table below once growth has pushed it down, in the same run", () => {
-    const { ss } = fetchedLayout();
-    ss.table("layoutLeft").appendRowWithVals({ entry: "Left four", amount: 4 });
-    ss.batchUpdateGSheets();
-    ss.table("layoutBelow").prepFetchColumnsFull("entry", "amount");
-    ss.fetchAllPrepped();
-
-    expect(
-      ss.table("layoutBelow").rows.map((row) => row.value("entry")),
-    ).toEqual(["Below one", "Below two"]);
-  });
-
   it("keeps reading the Table beside once a column insert has shifted it, in the same run", () => {
     const { ss } = fetchedLayout();
     ss.table("layoutLeft").raw.appendColumn({
@@ -1036,37 +1024,18 @@ describe("Tables that share a sheet", () => {
     ).toEqual([10, 20]);
   });
 
-  describe("refuses an edit protection on a Table whose properties have not arrived", () => {
-    function fetchedLeftOnly(): SpreadsheetNamed {
-      stubSheetsService({ sheets: [layoutSheet()] });
-      const ss = SpreadsheetNamed.init();
-      ss.table("layoutLeft").column("amount").prepFetchSpecific([0, 1]);
-      ss.fetchAllPrepped();
-      return ss;
-    }
-
-    it("behind growth that would push it down", () => {
-      const ss = fetchedLeftOnly();
-      ss.table("layoutLeft").appendRowWithVals({
-        entry: "Left four",
-        amount: 4,
-      });
-
-      expect(() =>
-        ss.table("layoutBelow").raw.row(0).cell(1).addEditWarning(),
-      ).toThrowError(/Table is unknown for sheetGid \d+/);
+  it("writes to the neighbour the header zone brought in its pushed cells, behind a column insert", () => {
+    const { grid } = stubSheetsService({ sheets: [layoutSheet()] });
+    const ss = SpreadsheetNamed.init();
+    ss.table("layoutLeft").column("amount").prepFetchSpecific([0, 1]);
+    ss.fetchAllPrepped();
+    ss.table("layoutLeft").raw.appendColumn({
+      columnId: "c:lyl:note",
+      header: "Note",
     });
+    ss.table("layoutRight").raw.row(0).updateValue(1, 11);
+    ss.batchUpdateGSheets();
 
-    it("behind a column insert that would push it along", () => {
-      const ss = fetchedLeftOnly();
-      ss.table("layoutLeft").raw.appendColumn({
-        columnId: "c:lyl:note",
-        header: "Note",
-      });
-
-      expect(() =>
-        ss.table("layoutRight").raw.row(0).cell(1).addEditLock(),
-      ).toThrowError(/Table is unknown for sheetGid \d+/);
-    });
+    expect(grid.sheet(layoutGid).cell(4, 5)).toBe(11);
   });
 });

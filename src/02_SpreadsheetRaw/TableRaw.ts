@@ -18,7 +18,11 @@ import type {
   TableColumnPropertiesUpdate,
   TableColumnSnapshot,
 } from "../00_Source/RawSource/RawSource";
-import { SheetIndex } from "../00_Source/RawSource/SheetIndex";
+import {
+  type SheetColIndex,
+  SheetIndex,
+  type SheetRowIndex,
+} from "../00_Source/RawSource/SheetIndex";
 import { type HeadRole, headRows } from "../01_SpreadsheetSchema/headRows";
 import type { TableOrigin } from "../01_SpreadsheetSchema/TableOrigin";
 import type { Value } from "../01_SpreadsheetSchema/valueSchemas";
@@ -230,22 +234,31 @@ export class TableRaw extends TableCommonRaw {
     );
   }
   gatherFetchProperties(): this {
-    // The live start is unknown until this probe comes back, so it aims where the configs record the Table.
-    const origin = this.presumedOrigin;
-    this.gatherFetchRange({
-      startRowIndex: SheetIndex.row(0),
-      endRowIndex: SheetIndex.row(origin.headerRowIndex + 1),
-      startColumnIndex: origin.startColIndex,
-      endColumnIndex: SheetIndex.col(origin.startColIndex + 1),
-    });
+    this.sheet.gatherFetchHeaderZone();
+    this._prepFetchHeadRowBackfills();
+    return this;
+  }
+  // The zone holds every head row, so a Table it brought finalizes them with no fetch of its own.
+  integrateHeaderZone(): void {
+    this._prepFetchHeadRowBackfills();
+    this.tableState.fetchQueue.toFinalize.rows.add(this.schema.colIdRowIndex);
+    this.finalizeFetches();
+  }
+  private _prepFetchHeadRowBackfills(): void {
     headRows.indexes().forEach((rowIndex) => {
       this.headRowByIndex(rowIndex).cell(0).prepFetchBackfill();
     });
-    const { recordedTableId } = this;
-    if (recordedTableId !== undefined) {
-      this.sheetState.fetchQueue.placementStripTableIds.add(recordedTableId);
-    }
-    return this;
+  }
+  holdsActionCellAt(
+    sheetRowIndex: SheetRowIndex,
+    sheetColIndex: SheetColIndex,
+  ): boolean {
+    if (!this.hasFetchedProperties) return false;
+    const { origin } = this;
+    return (
+      sheetRowIndex === origin.headSheetRowIndex("action") &&
+      this.isTableColIndex(origin.colIndex(sheetColIndex))
+    );
   }
   hasQueuedFullRowFetch(rowIndex: number): boolean {
     return this.tableState.fetchQueue.toFinalize.rows.has(rowIndex);
@@ -547,7 +560,10 @@ export class TableRaw extends TableCommonRaw {
     });
   }
   columnInsertSplitting(neighbourName: string): string {
-    return `Inserting a column at the end of Table "${this.name}" on sheet "${this.sheetTitle}" would shift only part of Table "${neighbourName}"`;
+    return `${this._columnInsert} would shift only part of Table "${neighbourName}"`;
+  }
+  private get _columnInsert(): string {
+    return `Inserting a column at the end of Table "${this.name}" on sheet "${this.sheetTitle}"`;
   }
   // From the top head row down, so the head rows move with the Table; the widen is what grows it.
   gatherInsertTableEndColumnsOperation(): void {
@@ -562,6 +578,7 @@ export class TableRaw extends TableCommonRaw {
       startColumnIndex: origin.sheetColIndex(columnCount),
       endColumnIndex: origin.sheetColIndex(columnCount + insertCount),
     };
+    this.ss.validateTablesForColumnInsert(this.sheetGid, this._columnInsert);
     this._validateNoNeighbourSplitBy(newColumns);
     this.sheet.queueGridColumnsThrough(newColumns.endColumnIndex);
     this.writeOperations.insertTableEndColumns.push({

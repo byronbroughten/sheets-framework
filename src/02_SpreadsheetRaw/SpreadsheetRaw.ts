@@ -4,6 +4,7 @@ import type {
   OpaqueRawRequest,
 } from "../00_Source/RawSource/RawSource";
 import { SpreadsheetSchema } from "../01_SpreadsheetSchema/SpreadsheetSchema";
+import type { TableName } from "../01_SpreadsheetSchema/tableConfigsTypes";
 import { validateFormulaString } from "./CellRaw";
 import { SpreadsheetBaseRaw } from "./ClassBases/SpreadsheetBaseRaw";
 import { emptyStateRaw } from "./ClassTypes/emptyStateRaw";
@@ -61,6 +62,12 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
   validateHeadRowsClear(managedTableIds: string[]): void {
     this.tableValidator.validateHeadRowsClear(managedTableIds);
   }
+  validateHeadersInZone(managedTableIds: string[]): void {
+    this.tableValidator.validateHeadersInZone(managedTableIds);
+  }
+  validateTablesForColumnInsert(sheetGid: number, columnInsert: string): void {
+    this.tableValidator.validateTablesForColumnInsert(sheetGid, columnInsert);
+  }
   // A Table queued for creation has state but no properties until it is fetched.
   get activeTableIds(): string[] {
     return Array.from(this.tablesStateRaw.entries())
@@ -97,6 +104,9 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
   }
   fetchSheetUsedGrid(sheetGid: number): void {
     this.fetcher.fetchSheetUsedGrid(sheetGid);
+  }
+  integrateHeaderZoneTable(tableName: TableName, table: TableRaw): void {
+    this.fetcher.integrateHeaderZoneTable(tableName, table);
   }
   batchUpdateGSheets(): void {
     this.flusher.flush();

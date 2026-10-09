@@ -24,8 +24,6 @@ const tableConfigEntry: TableConfigStored = {
   tableName: "tableConfig",
   sheetGid: 1,
   idPrefix: "scf",
-  headerRowIndex: 3,
-  startColIndex: 0,
   hasIdColumn: false,
   hasNameColumn: false,
 };

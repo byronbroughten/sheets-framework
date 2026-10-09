@@ -2,11 +2,12 @@ import type { SpreadsheetNamed } from "../../src/04_SpreadsheetNamed/Spreadsheet
 import type { Chore } from "../../src/chores/Chore";
 import { devSpreadsheetId } from "./devFixtures/devFixtureSheets";
 
-const layoutTableNames = ["layoutLeft", "layoutRight", "layoutBelow"] as const;
+const layoutTableNames = ["layoutLeft", "layoutRight"] as const;
+const noteColumnId = "c:lyl:note";
 
 export const exerciseLayout: Chore = {
   description:
-    "Dev spreadsheet only: reads the three Layout Tables, then sends one batch that appends a row to layoutLeft (pushing layoutBelow down), inserts a column at its end (shifting layoutRight right) and deletes its second row (pulling layoutBelow back up). The batch leaves the tab off its recipe: delete the Layout tab, then rerun buildDevFixtures and dev:gen:configs.",
+    "Dev spreadsheet only: reads both Layout Tables. On a Layout tab built to its recipe, it then sends one batch that appends a row to layoutLeft, inserts a column at its end (pushing layoutRight right) and deletes its second row; run it again to read the pushed layoutRight without regenerating. The batch leaves the tab off its recipe: delete the Layout tab, then rerun buildDevFixtures and dev:gen:configs.",
   action: (ss, { spreadsheetId }) => {
     if (spreadsheetId !== devSpreadsheetId) {
       throw new Error(
@@ -15,8 +16,11 @@ export const exerciseLayout: Chore = {
     }
     const report = readEveryTable(ss);
     const left = ss.table("layoutLeft");
+    if (left.raw.columnResolver.hasColumnId(noteColumnId)) {
+      return `${report}\nAlready exercised; nothing sent.`;
+    }
     left.appendRowWithVals({ entry: "Left four", amount: 4 });
-    left.raw.appendColumn({ columnId: "c:lyl:note", header: "Note" });
+    left.raw.appendColumn({ columnId: noteColumnId, header: "Note" });
     left.rowsFiltered({ entry: "Left two" }).forEach((row) => row.delete());
     ss.batchUpdateGSheets();
     return report;

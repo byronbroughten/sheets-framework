@@ -12,7 +12,10 @@ import {
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
 import { tableIdOnTab } from "../testSupport/fakeTableConfigSheet";
-import { ConfigCoordinator, type ConfigRegeneration } from "./ConfigCoordinator";
+import {
+  ConfigCoordinator,
+  type ConfigRegeneration,
+} from "./ConfigCoordinator";
 
 const { columnConfigs } = installedConfigs();
 const testSheetGid = getTableTraitByName("item", "sheetGid");
@@ -190,6 +193,7 @@ function seedFixture(
   options: {
     testColumnId?: string;
     testTableId?: string;
+    itemHeaderRowIndex?: number;
     fillRowIdsRunStatusColumnId?: string;
     spreadsheetConfigTableEndRowIndex?: number;
     spreadsheetConfigExtraRows?: Record<
@@ -210,6 +214,7 @@ function seedFixture(
   } = {},
 ) {
   const testColumnId = options.testColumnId ?? "c:itm:xyz123";
+  const itemHeaderRowIndex = options.itemHeaderRowIndex ?? tableHeaderRowIndex;
   const columnConfigDataRows = options.columnConfigDataRows ?? [];
   return stubSheetsService({
     sheets: [
@@ -307,14 +312,15 @@ function seedFixture(
         // header row (3) needs real text — newColumnConfigs() now throws
         // rather than skips a column still missing one after a sync.
         rows: buildGridRows({
-          0: [testColumnId],
-          3: ["Some Header"],
-          4: [],
+          [itemHeaderRowIndex - 3]: [testColumnId],
+          [itemHeaderRowIndex]: ["Some Header"],
+          [itemHeaderRowIndex + 1]: [],
         }),
         table: {
           tableId: options.testTableId ?? "item",
           name: "Item",
-          endRowIndex: 5,
+          startRowIndex: itemHeaderRowIndex,
+          endRowIndex: itemHeaderRowIndex + 2,
         },
       },
       options.valueConfigSheet ?? floorValueConfigTab(),
@@ -429,7 +435,7 @@ function tableConfigsEntry({
   idPrefix,
   hasIdColumn,
 }: TableConfigsEntryFixture): string {
-  return `"${tableKey}": { "tableId": "${tableIdOnTab(sheetGid)}", "tableName": "${tableName}", "sheetGid": ${sheetGid}, "idPrefix": "${idPrefix}", "headerRowIndex": ${tableHeaderRowIndex}, "startColIndex": ${startTableColIndex}, "hasIdColumn": ${hasIdColumn}, "hasNameColumn": true }`;
+  return `"${tableKey}": { "tableId": "${tableIdOnTab(sheetGid)}", "tableName": "${tableName}", "sheetGid": ${sheetGid}, "idPrefix": "${idPrefix}", "hasIdColumn": ${hasIdColumn}, "hasNameColumn": true }`;
 }
 
 function driftedFloorWarningProtection(): GoogleAppsScript.Sheets.Schema.ProtectedRange {
@@ -476,8 +482,6 @@ describe("ConfigCoordinator.syncAndFlushConfigSheets", () => {
       tableName: "Item",
       sheetGid: testSheetGid,
       idPrefix: "itm",
-      headerRowIndex: tableHeaderRowIndex,
-      startColIndex: startTableColIndex,
       hasIdColumn: false,
       hasNameColumn: false,
     });
@@ -1417,7 +1421,11 @@ describe("ConfigCoordinator.generateConfigFiles head-row overlap", () => {
     tables.forEach((table) => {
       const headerRow = (rows[table.headerRowIndex] ??= []);
       const topRow = (rows[table.headerRowIndex + 1] ??= []);
-      for (let col = table.startColumnIndex; col < table.endColumnIndex; col++) {
+      for (
+        let col = table.startColumnIndex;
+        col < table.endColumnIndex;
+        col++
+      ) {
         headerRow[col] = `${table.name} ${col}`;
         topRow[col] ??= "";
       }
@@ -1599,7 +1607,7 @@ describe("ConfigCoordinator.generateConfigFiles head-row overlap", () => {
     );
   });
 
-  it("allows a Table stacked with exactly enough room for its head rows below another", () => {
+  it("refuses a ticked Table stacked clear of another but below the header zone, naming it", () => {
     seedRecords([
       leases,
       {
@@ -1612,10 +1620,51 @@ describe("ConfigCoordinator.generateConfigFiles head-row overlap", () => {
       },
     ]);
 
+    expect(() =>
+      ConfigCoordinator.init().generateConfigFiles("../makeConfigs"),
+    ).toThrowError(
+      /^Table "Tenants" on "Records" \(gid \d+\) must have its header row on row 4\.$/,
+    );
+  });
+
+  it("refuses a recorded, ticked Table moved below the header zone with generation's own fix", () => {
+    seedFixture({ itemHeaderRowIndex: tableHeaderRowIndex + 2 });
+
+    expect(() =>
+      ConfigCoordinator.init().generateConfigFiles("../makeConfigs"),
+    ).toThrowError(
+      /^Table "Item" on "Item" \(gid \d+\) must have its header row on row 4\.$/,
+    );
+  });
+
+  it("drops a recorded Table moved below the header zone once it is unticked", () => {
+    seedFixture({
+      itemHeaderRowIndex: tableHeaderRowIndex + 2,
+      extraTableConfigDataRows: { 4: ["item", "", "Item", false] },
+    });
+
     const parsed =
       ConfigCoordinator.init().generateConfigFiles("../makeConfigs");
-    expect(parsed.tableConfigs).toContain('"tenants"');
+    expect(parsed.tableConfigs).not.toContain('"item"');
+  });
+
+  it("leaves an unticked Table below the header zone to the operator", () => {
+    seedRecords([
+      leases,
+      {
+        name: "Tenants",
+        headerRowIndex: 13,
+        startColumnIndex: 0,
+        endColumnIndex: 3,
+        endRowIndex: 15,
+        isManaged: false,
+      },
+    ]);
+
+    const parsed =
+      ConfigCoordinator.init().generateConfigFiles("../makeConfigs");
     expect(parsed.tableConfigs).toContain('"leases"');
+    expect(parsed.tableConfigs).not.toContain('"tenants"');
   });
 
   it("allows two Tables side by side, touching", () => {

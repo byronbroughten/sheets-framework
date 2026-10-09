@@ -71,24 +71,17 @@ export class Api extends SpreadsheetBaseNamed {
   static isSuspectedApiCall(edit: SheetEdit): boolean {
     return (
       (edit.value === "TRUE" || edit.value === "FALSE") &&
-      new SpreadsheetSchema().tableWithActionCell(edit) !== undefined
+      new SpreadsheetSchema().mayHoldActionCell(edit)
     );
   }
   handleSheetEdit(edit: SheetEdit): void {
-    const tableSchema = this.schema.tableWithActionCell(edit);
-    if (tableSchema === undefined) {
+    const table = this.ssi.fetchTableWithActionCell(edit);
+    if (table === undefined) {
       return;
     }
     const { colIndexBase0, value } = edit;
-    const table = this.ssi
-      .managedTable(tableSchema)
-      .ensureColumnIdsAreFetched();
-    const { columnResolver } = table;
     const colIndex = table.raw.tableOrigin().colIndex(colIndexBase0);
-    if (!columnResolver.isTableColIndex(colIndex)) {
-      return;
-    }
-    const columnId = columnResolver.columnIdAt(colIndex);
+    const columnId = table.columnResolver.columnIdAt(colIndex);
     if (columnId === "") {
       return;
     }

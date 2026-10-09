@@ -45,7 +45,7 @@ export class TableColumnResolverRaw extends TableCommonRaw {
     }
     return Val.assert(tableColIndexes[colIndex], "Table column index");
   }
-  // Fetched cells only: the placement strip carries just the first column's.
+  // Fetched cells only.
   holdsOnlyColumnIdsOf(idPrefix: string): boolean {
     const columnIds = this.fullTableColIndexes
       .map((colIndex) => this.table.headRow("columnId").cell(colIndex))
@@ -63,7 +63,12 @@ export class TableColumnResolverRaw extends TableCommonRaw {
   }
   gatherFetchColumnIds(): this {
     const colIdRowIndex = this.schema.colIdRowIndex;
-    this.gatherFetchRange(this.fullRowFetchRange(colIdRowIndex));
+    // Before the Table is known, its column ID row rides the header zone.
+    if (this.table.hasFetchedProperties) {
+      this.gatherFetchRange(this.fullRowFetchRange(colIdRowIndex));
+    } else {
+      this.table.gatherFetchProperties();
+    }
     this.tableState.fetchQueue.toFinalize.rows.add(colIdRowIndex);
     return this;
   }

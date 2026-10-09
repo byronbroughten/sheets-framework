@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { installedConfigs } from "../01_SpreadsheetSchema/configRegister";
-import { TableOrigin } from "../01_SpreadsheetSchema/TableOrigin";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {
   buildGridRows,
@@ -226,14 +225,11 @@ describe("TableConfigOperator.newTableConfigs / toFileSource", () => {
     syncTableConfigOperator(operator);
     const tableConfigs = operator.newTableConfigs();
 
-    const { headerRowIndex, startColIndex } = TableOrigin.expected();
     expect(tableConfigs.widget).toEqual({
       tableId: widgetTableId,
       tableName: "Widget",
       sheetGid: widgetGid,
       idPrefix: "wdg",
-      headerRowIndex,
-      startColIndex,
       hasIdColumn: false,
       hasNameColumn: false,
     });
@@ -279,14 +275,11 @@ describe("TableConfigOperator.newTableConfigs / toFileSource", () => {
     expect(operator.tableKeysByTableId().get(newSheetTableId)).toBe(
       "brandNewSheet",
     );
-    const { headerRowIndex, startColIndex } = TableOrigin.expected();
     expect(operator.newTableConfigs().brandNewSheet).toEqual({
       tableId: newSheetTableId,
       tableName: "Brand New Sheet",
       sheetGid: newSheetGid,
       idPrefix: "bns",
-      headerRowIndex,
-      startColIndex,
       hasIdColumn: false,
       hasNameColumn: false,
     });
@@ -351,14 +344,11 @@ describe("TableConfigOperator.newTableConfigs / toFileSource", () => {
     expect(() => syncTableConfigOperator(operator)).not.toThrow();
     expect(operator.table.row(1).isBlank).toBe(true);
     expect(operator.newTableConfigs().widget).toBeUndefined();
-    const { headerRowIndex, startColIndex } = TableOrigin.expected();
     expect(operator.newTableConfigs().tableConfig).toEqual({
       tableId: tableConfigTableId,
       tableName: "tableConfig",
       sheetGid: tableConfigGid,
       idPrefix: "scf",
-      headerRowIndex,
-      startColIndex,
       hasIdColumn: false,
       hasNameColumn: false,
     });
@@ -392,14 +382,11 @@ describe("TableConfigOperator.newTableConfigs / toFileSource", () => {
     const operator = TableConfigOperator.init();
     syncTableConfigOperator(operator);
 
-    const { headerRowIndex, startColIndex } = TableOrigin.expected();
     expect(operator.newTableConfigs().widget).toEqual({
       tableId: widgetTableId,
       tableName: "Widget",
       sheetGid: widgetGid,
       idPrefix: "wdg",
-      headerRowIndex,
-      startColIndex,
       hasIdColumn: false,
       hasNameColumn: false,
     });
@@ -611,12 +598,11 @@ describe("TableConfigOperator.newTableConfigs Table identity and position", () =
     });
   }
 
-  it("keys a managed Table by its live name and records its identity and position", () => {
+  it("keys a managed Table by its live name and records its identity", () => {
     stubWidgetTable(true);
 
     const operator = TableConfigOperator.init();
     syncTableConfigOperator(operator);
-    const { headerRowIndex, startColIndex } = TableOrigin.expected();
     const tableConfigs = operator.newTableConfigs();
 
     expect(Object.keys(tableConfigs).sort()).toEqual([
@@ -628,8 +614,6 @@ describe("TableConfigOperator.newTableConfigs Table identity and position", () =
       tableName: "Widget orders",
       sheetGid: widgetGid,
       idPrefix: "wdg",
-      headerRowIndex,
-      startColIndex,
       hasIdColumn: true,
       hasNameColumn: true,
     });

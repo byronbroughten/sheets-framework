@@ -38,10 +38,11 @@ export class ConfigCoordinator extends SpreadsheetBaseOperator {
       configSyncState: SpreadsheetBaseOperator.initConfigSyncState(),
     });
   }
+  // Generation's own state, so the sync's refusals judge the live Tables in place of the configs it replaces.
   static init(): ConfigCoordinator {
-    return new ConfigCoordinator(
-      SpreadsheetBaseNamed.initSpreadsheetNamedProps(),
-    );
+    const props = SpreadsheetBaseNamed.initSpreadsheetNamedProps();
+    props.spreadsheetStateRaw.isRegeneratingConfigs = true;
+    return new ConfigCoordinator(props);
   }
   get ss(): SpreadsheetNamed {
     return new SpreadsheetNamed(this.spreadsheetNamedProps);
@@ -121,6 +122,7 @@ export class ConfigCoordinator extends SpreadsheetBaseOperator {
     this.ss.fetchAllPrepped({ skipFetchingProperties: true });
     this.tableConfigOperator.syncToSpreadsheet();
     this.tableConfigOperator.validateHeadRowsClear();
+    this.tableConfigOperator.validateHeadersInZone();
     this.columnConfigOperator.fetchAfterTableConfigSynced();
     this.columnConfigOperator.syncToSpreadsheet();
     return this.columnConfigOperator.untypedColumnsSummary();

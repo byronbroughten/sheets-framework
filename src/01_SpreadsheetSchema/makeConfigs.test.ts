@@ -8,8 +8,6 @@ describe("makeTableConfigs", () => {
     tableName: "Item",
     sheetGid: 1,
     idPrefix: "itm",
-    headerRowIndex: 3,
-    startColIndex: 0,
     hasIdColumn: true,
     hasNameColumn: false,
   };

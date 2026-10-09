@@ -161,8 +161,29 @@ export const layoutTableNames = [
   "layoutBelow",
 ] as const;
 export type LayoutTableName = (typeof layoutTableNames)[number];
+export const managedLayoutTableNames = ["layoutLeft", "layoutRight"] as const;
+// Unmanaged: the configs record no stacked Table until the header zone deepens.
+const unmanagedLayoutTable = { tableId: "layoutBelow", idPrefix: "lyb" };
+function layoutTableTraits(tableName: LayoutTableName): {
+  tableId: string;
+  idPrefix: string;
+} {
+  if (tableName === "layoutBelow") return unmanagedLayoutTable;
+  return {
+    tableId: getTableTraitByName(tableName, "tableId"),
+    idPrefix: getTableTraitByName(tableName, "idPrefix"),
+  };
+}
+export const layoutOrigins: Record<
+  LayoutTableName,
+  Required<Pick<FakeTable, "startRowIndex" | "startColumnIndex">>
+> = {
+  layoutLeft: { startRowIndex: 3, startColumnIndex: 0 },
+  layoutRight: { startRowIndex: 3, startColumnIndex: 3 },
+  layoutBelow: { startRowIndex: 11, startColumnIndex: 0 },
+};
 export function layoutTableId(tableName: LayoutTableName): string {
-  return getTableTraitByName(tableName, "tableId");
+  return layoutTableTraits(tableName).tableId;
 }
 export const layoutBodyRows: Record<LayoutTableName, [string, number][]> = {
   layoutLeft: [
@@ -180,7 +201,7 @@ export const layoutBodyRows: Record<LayoutTableName, [string, number][]> = {
   ],
 };
 
-// The dev Layout sheet: Right beside Left, Below under Left, each at its recorded origin unless overridden.
+// The dev Layout sheet: Right beside Left, and an unmanaged Below under Left, each where the fixture builds it unless overridden.
 export function layoutSheet(
   overrides: Partial<Record<LayoutTableName, Partial<FakeTable>>> = {},
 ): FakeSheetProperties {
@@ -201,16 +222,15 @@ function layoutTable(
   override: Partial<FakeTable>,
 ): FakeTable {
   const startRowIndex =
-    override.startRowIndex ?? getTableTraitByName(tableName, "headerRowIndex");
+    override.startRowIndex ?? layoutOrigins[tableName].startRowIndex;
   const startColumnIndex =
-    override.startColumnIndex ??
-    getTableTraitByName(tableName, "startColIndex");
+    override.startColumnIndex ?? layoutOrigins[tableName].startColumnIndex;
   return {
     tableId: layoutTableId(tableName),
     name: tableName,
     headRows: {
       3: ["entry", "amount"].map((columnKey) =>
-        dimensionIds.col(getTableTraitByName(tableName, "idPrefix"), columnKey),
+        dimensionIds.col(layoutTableTraits(tableName).idPrefix, columnKey),
       ),
     },
     endRowIndex: startRowIndex + 1 + layoutBodyRows[tableName].length,

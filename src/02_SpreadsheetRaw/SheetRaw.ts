@@ -10,10 +10,12 @@ import type {
   WholeSheetEditWarningDeclaration,
 } from "../00_Source/RawSource/EditProtection";
 import type { GridRangeProps } from "../00_Source/RawSource/RawSource";
-import type {
-  SheetColIndex,
-  SheetRowIndex,
+import {
+  type SheetColIndex,
+  SheetIndex,
+  type SheetRowIndex,
 } from "../00_Source/RawSource/SheetIndex";
+import { headerZone } from "../01_SpreadsheetSchema/headerZone";
 import { SpreadsheetSchema } from "../01_SpreadsheetSchema/SpreadsheetSchema";
 import { Val } from "../utils/Val";
 import {
@@ -68,6 +70,18 @@ export class SheetRaw extends SpreadsheetBaseRaw {
     return (
       fetchQueue.gatherConditionalFormats || fetchQueue.gatherEditProtections
     );
+  }
+  // Brings every Table on the sheet without counting any of them as used.
+  gatherFetchHeaderZone(): this {
+    const { fetchQueue } = this.sheetState;
+    if (fetchQueue.gatherHeaderZone) return this;
+    fetchQueue.gatherHeaderZone = true;
+    this.spreadsheetStateRaw.fetchQueue.gridRanges.push({
+      sheetId: this.sheetGid,
+      startRowIndex: SheetIndex.row(0),
+      endRowIndex: headerZone.endRowIndex,
+    });
+    return this;
   }
   get title(): string {
     const title = this.sheetState.working.title;

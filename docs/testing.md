@@ -46,7 +46,7 @@ The fake stays simpler than Google on purpose: it evaluates no formula (a pasted
 
 ## `getByDataFilter` filters Tables and nothing else
 
-`get` records its params in `getCalls`, so a test can count property fetches. `getByDataFilter` records the resource for assertions and returns only the Tables whose range overlaps one of its filters, as Sheets does ([round trips](./architecture/round-trips.md)), so a Table moved out of the placement strip comes back missing and a neighbour no fetch reached stays unknown; `get` returns every Table. A test whose subject needs a Table the filters don't reach, such as the moved-Table message, sets `isEveryTableInFilteredFetch` on the stub. Cell data still comes back for every fixture sheet in full, as `get` returns it apart from conditional formats and protections, so a test can assert *what was requested* but never *which cells a filter would have returned*.
+`get` records its params in `getCalls`, so a test can count property fetches. `getByDataFilter` records the resource for assertions and returns only the Tables whose range overlaps one of its filters, as Sheets does ([round trips](./architecture/round-trips.md)), so a Table below the header zone comes back missing and a neighbour no fetch reached stays unknown; `get` returns every Table. A test whose subject needs a Table the filters don't reach, such as the outside-the-zone message, sets `isEveryTableInFilteredFetch` on the stub. Cell data still comes back for every fixture sheet in full, as `get` returns it apart from conditional formats and protections, so a test can assert *what was requested* but never *which cells a filter would have returned*.
 
 ## Fixture Tables, head rows and absent rows
 
@@ -81,7 +81,7 @@ A framework test names a sheet or column of the dev spreadsheet's fixtures, neve
 | `log` | No ID column | |
 | `runItem` | Endpoint sheet: `selected` checkbox, `result` entry column, `startTime` and `runStatus` | The subject of the `EndpointRun`, `Api`, `Endpoints` and `AppsScriptApi` tests, and of the tier 04 tests that need a checkbox column or a conditional-format or protection fixture. |
 | `computed` | No ID column | `rowNumber` is the one formula column. |
-| `layoutLeft`, `layoutRight`, `layoutBelow` | One `Layout` sheet: Right beside Left within its rows, Below under Left within its columns; Entry and Amount columns each | The subject of the several-Tables tests, built by `layoutSheet` in `spreadsheetRawTestSupport.ts`, and of the `exerciseLayout` dev chore's live run. |
+| `layoutLeft`, `layoutRight` | One `Layout` sheet: Right beside Left within the header zone; Entry and Amount columns each | The subject of the several-Tables tests, built by `layoutSheet` in `spreadsheetRawTestSupport.ts`, and of the `exerciseLayout` dev chore's live run. `layoutSheet` adds an unmanaged `layoutBelow` under Left, so the push tests keep a stacked Table until the zone deepens. |
 | `dates` | ID column, two date columns | `requiredDate` has Empty value allowed unticked and `optionalDate` has it ticked, the only ticked column that is not text, so a ticked read's `SerialDate \| ""` type has a subject. |
 
 Add a fixture sheet only when a test needs a config shape these don't cover. A layout edge case, such as a blank row or a misplaced Table, stays row data in a fake-service fixture. The dev value configs are empty, so no framework test names a dropdown value name.

@@ -90,13 +90,14 @@ export const emptyStateRaw = {
         title: undefined,
         rowCount: undefined,
         columnCount: undefined,
+        hasFetchedHeaderZone: false,
         conditionalFormats: { rules: undefined, isStale: false },
         editProtections: { protections: undefined, isStale: false },
       },
       fetchQueue: {
         gatherConditionalFormats: false,
         gatherEditProtections: false,
-        placementStripTableIds: new Set(),
+        gatherHeaderZone: false,
       },
       writeQueue: emptyStateRaw.sheetWriteQueue(),
       tableBeforeProperties: emptyStateRaw.tableState(sheetGid),
@@ -110,7 +111,6 @@ function emptyTableWorkingState(): TableWorkingStateRaw {
     cellStateIsStale: false,
     hasFetchedColumnIds: false,
     isPrunedToSelection: false,
-    placementIsChecked: false,
     rowStates: new Map(),
     columnStates: new Map(),
   };

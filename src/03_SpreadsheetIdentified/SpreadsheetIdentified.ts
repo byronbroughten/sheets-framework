@@ -1,3 +1,4 @@
+import type { SheetEdit } from "../00_Source/PlatformEvents/sheetEdit";
 import { SpreadsheetSchema } from "../01_SpreadsheetSchema/SpreadsheetSchema";
 import type { TableSchema } from "../01_SpreadsheetSchema/TableSchema";
 import { SpreadsheetRaw } from "../02_SpreadsheetRaw/SpreadsheetRaw";
@@ -24,6 +25,24 @@ export class SpreadsheetIdentified extends SpreadsheetBaseIdentified {
       ...this.spreadsheetIdentifiedProps,
       tableId,
     });
+  }
+  // One fetch: the header zone brings every Table on the sheet with its column IDs, and only the ticked one is judged.
+  fetchTableWithActionCell(edit: SheetEdit): TableIdentified | undefined {
+    if (!this.schema.mayHoldActionCell(edit)) return undefined;
+    this.raw.sheet(edit.sheetGid).gatherFetchHeaderZone();
+    this.raw.fetchAllGathered();
+    const table = this.schema
+      .tablesOnGid(edit.sheetGid)
+      .map((tableSchema) => this.managedTable(tableSchema))
+      .find((managedTable) =>
+        managedTable.raw.holdsActionCellAt(
+          edit.rowIndexBase0,
+          edit.colIndexBase0,
+        ),
+      );
+    if (table === undefined) return undefined;
+    this.raw.integrateHeaderZoneTable(table.schema.tableName, table.raw);
+    return table;
   }
   managedTable(table: TableSchema): TableIdentified {
     return new TableIdentified({

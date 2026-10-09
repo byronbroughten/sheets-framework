@@ -178,11 +178,13 @@ export abstract class TableCommonRaw extends TableBaseRaw {
     if (!this._workingTableProperties().rowIndexesAreStale) return;
     throw new Error(rowIndexesStaleMessage(this.tableLabel));
   }
-  // Every gathered write converts its rows here; unlike the queue-time assert, it allows a Table not yet fetched.
+  // Every gathered write converts its rows here; unlike the queue-time assert, it allows a header-only Table.
   originAtGathering(): TableOrigin {
     if (this.rowIndexesAreStale) {
       throw new Error(rowIndexesStaleMessage(this.tableLabel));
     }
+    // No position is recorded, so an unfetched Table has none to aim at.
+    this._knownTableProperties();
     return this.tableOrigin();
   }
   // The table's own range, not the layout's: no table means no table columns.

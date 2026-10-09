@@ -13,7 +13,7 @@ A throwaway `Probe130` tab held two Tables: `layoutAbove` with its header on row
 - **Row delete above it**: the first row below `layoutAbove`.
 - **Cut and paste**: the API's `cutPaste` of `p130Target`'s head rows and range to H41. This stands in for an operator's cut and paste.
 
-A route reaches the Table when `p130Target` comes back in the response's `tables`. Route 0 is the placement strip as the first fetch gathers it today: column B from row 1 to the recorded header row, plus the column ID row, in one request. Every header zone starts at row 1. Costs were measured before the first move.
+A route reaches the Table when `p130Target` comes back in the response's `tables`. Route 0 is the placement strip as the first fetch gathered it before sheets-framework#129: column B from row 1 to the recorded header row, plus the column ID row, in one request. Every header zone starts at row 1. Costs were measured before the first move.
 
 A one-off Node script made the calls with the Node host's credential, so its latencies are from a laptop and not from Apps Script. Each route was timed 12 times, paced under the 60-reads-a-minute quota. The tab was deleted afterwards.
 

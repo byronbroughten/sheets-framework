@@ -61,14 +61,11 @@ export const columnConfigs = makeColumnConfigs({
   },
   "layoutLeft": {
     "entry": { "columnId": "c:lyl:entry", "header": "Entry", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null },
-    "amount": { "columnId": "c:lyl:amount", "header": "Amount", "valueName": "number", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null }
+    "amount": { "columnId": "c:lyl:amount", "header": "Amount", "valueName": "number", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null },
+    "note": { "columnId": "c:lyl:note", "header": "Note", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null }
   },
   "layoutRight": {
     "entry": { "columnId": "c:lyr:entry", "header": "Entry", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null },
     "amount": { "columnId": "c:lyr:amount", "header": "Amount", "valueName": "number", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null }
-  },
-  "layoutBelow": {
-    "entry": { "columnId": "c:lyb:entry", "header": "Entry", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null },
-    "amount": { "columnId": "c:lyb:amount", "header": "Amount", "valueName": "number", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null }
   }
 });

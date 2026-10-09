@@ -17,11 +17,7 @@ import {
 } from "./columnConfigsTypes";
 import { ColumnSchema } from "./ColumnSchema";
 import { SpreadsheetSchema } from "./SpreadsheetSchema";
-import {
-  getTableTraitByName,
-  tableKeysByGid,
-  type TableName,
-} from "./tableConfigsTypes";
+import { tableKeysByGid, type TableName } from "./tableConfigsTypes";
 import { TableSchema } from "./TableSchema";
 import type { ValueName } from "./valueSchemas";
 
@@ -36,19 +32,6 @@ describe("SpreadsheetSchema", () => {
 
   describe("table placement", () => {
     const runItem = schema.sheetByName("runItem");
-
-    it("reads a Table's start from where its configs record it", () => {
-      const { headerRowIndex, startColIndex } = runItem.recordedOrigin;
-      expect(headerRowIndex).toBe(
-        getTableTraitByName("runItem", "headerRowIndex"),
-      );
-      expect(startColIndex).toBe(
-        getTableTraitByName("runItem", "startColIndex"),
-      );
-      expect(runItem.recordedStartLabel).toBe(
-        schema.positionLabel(headerRowIndex, startColIndex),
-      );
-    });
 
     it("maps a sheet gid to its managed Tables, and an unmanaged one to none", () => {
       expect(
