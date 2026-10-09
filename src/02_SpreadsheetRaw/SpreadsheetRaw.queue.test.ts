@@ -415,7 +415,7 @@ describe("the last queued write wins between fills and cell writes", () => {
   }
   function fetchedColumn() {
     const raw = SpreadsheetRaw.init();
-    raw.table(tableId111, 111).column(1).gatherFetchFull();
+    raw.sheet(111).table(tableId111).column(1).gatherFetchFull();
     raw.fetchAllGathered();
     return raw;
   }

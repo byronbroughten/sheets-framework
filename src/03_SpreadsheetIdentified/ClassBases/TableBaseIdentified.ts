@@ -16,7 +16,7 @@ import {
 // Always the recorded ID: a Table deleted and inserted again reads as missing until the configs are regenerated.
 export interface TableAddressIdentified {
   tableId: string;
-  sheetGid?: number;
+  sheetGid: number;
 }
 
 export type TableIdentifiedProps = SpreadsheetIdentifiedProps &
@@ -30,6 +30,7 @@ export class TableBaseIdentified extends SpreadsheetBaseIdentified {
     spreadsheetStateIdentified,
     feedbackColumnIds,
     tableId,
+    sheetGid,
   }: TableIdentifiedProps) {
     super({
       spreadsheetStateRaw,
@@ -37,7 +38,7 @@ export class TableBaseIdentified extends SpreadsheetBaseIdentified {
       feedbackColumnIds,
     });
     this.tableId = tableId;
-    this.sheetGid = TableSchema.fromTableId(tableId).sheetGid;
+    this.sheetGid = sheetGid;
     if (!this.tablesStateIdentified.has(tableId)) {
       this.tablesStateIdentified.set(tableId, emptyTableStateIdentified());
     }

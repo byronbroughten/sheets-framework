@@ -130,7 +130,7 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
       this.sheetsStateRaw.entries(),
     ).flatMap(([sheetGid, sheetState]) =>
       Array.from(sheetState.tablesBeforePropertiesById.keys(), (tableId) =>
-        this.ss.table(tableId, sheetGid),
+        this.ss.sheet(sheetGid).table(tableId),
       ),
     );
     return [...knownTables, ...tablesBeforePropertiesById];

@@ -19,12 +19,12 @@ import {
   type SpreadsheetRawProps,
 } from "./SpreadsheetBaseRaw";
 
-// A GID reaches a sheet, never a Table; `sheetGid` only places a Table whose ID is not yet in state.
 export interface TableAddressRaw {
   tableId: string;
 }
+// `sheetGid` places a Table not yet in state; one in state stays on its own sheet.
 export interface TableRawProps extends SpreadsheetRawProps, TableAddressRaw {
-  sheetGid?: number;
+  sheetGid: number;
 }
 
 export class TableBaseRaw extends SpreadsheetBaseRaw {
@@ -33,11 +33,8 @@ export class TableBaseRaw extends SpreadsheetBaseRaw {
   constructor({ spreadsheetStateRaw, tableId, sheetGid }: TableRawProps) {
     super({ spreadsheetStateRaw });
     this.addressedTableId = tableId;
-    this.sheetGid = sheetGidOf({
-      tables: spreadsheetStateRaw.tables,
-      tableId,
-      sheetGid,
-    });
+    this.sheetGid =
+      spreadsheetStateRaw.tables.get(tableId)?.sheetGid ?? sheetGid;
     this._ensureSheetState();
     this._ensureTableBeforePropertiesById();
   }
@@ -139,22 +136,6 @@ export function sheetLabel(
   sheetGid: number,
 ): string {
   return `"${title ?? "(untitled)"}" (gid ${sheetGid})`;
-}
-
-// A Table in state carries its GID; one reached before its properties arrive is placed by the caller.
-function sheetGidOf({
-  tables,
-  tableId,
-  sheetGid,
-}: {
-  tables: TablesStateRaw;
-  tableId: string;
-  sheetGid: number | undefined;
-}): number {
-  return Val.assert(
-    tables.get(tableId)?.sheetGid ?? sheetGid,
-    `sheetGid for tableId ${tableId}`,
-  );
 }
 
 export function tableStateOf(

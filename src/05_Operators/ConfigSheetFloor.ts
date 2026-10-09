@@ -97,7 +97,7 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
       const floorTableId = getTableTraitByName(tableName, "tableId");
       return [
         {
-          sheet: this.ss.raw.table(floorTableId, sheetGid),
+          sheet: this.ss.raw.sheet(sheetGid).table(floorTableId),
           seed: configSheetFloorSeed[tableName],
           floorTableId,
         },

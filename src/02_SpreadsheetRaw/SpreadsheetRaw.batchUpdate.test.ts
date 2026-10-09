@@ -22,7 +22,7 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
     });
 
     const raw = SpreadsheetRaw.init();
-    raw.table(tableId111, 111).requestSortGSheet({
+    raw.sheet(111).table(tableId111).requestSortGSheet({
       colIdxToSortBy: 0,
       sortOrder: "ASCENDING",
     });

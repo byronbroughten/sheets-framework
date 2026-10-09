@@ -1,3 +1,5 @@
+import { Val } from "@byronbroughten/utils/val";
+
 import type {
   AddSheetOperation,
   BoundedGridRange,
@@ -74,13 +76,23 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
       .filter(([, tableState]) => tableState.properties !== undefined)
       .map(([tableId]) => tableId);
   }
-  // `sheetGid` places a Table whose ID is not yet in state.
-  table(tableId: string, sheetGid?: number): TableRaw {
+  // A Table whose properties have not arrived is reached first through its sheet, `sheet(gid).table(tableId)`.
+  table(tableId: string): TableRaw {
     return new TableRaw({
       spreadsheetStateRaw: this.spreadsheetStateRaw,
       tableId,
-      sheetGid,
+      sheetGid: this._sheetGidOf(tableId),
     });
+  }
+  private _sheetGidOf(tableId: string): number {
+    const liveSheetGid = this.tablesStateRaw.get(tableId)?.sheetGid;
+    if (liveSheetGid !== undefined) return liveSheetGid;
+    const [placedSheetGid] = Array.from(this.sheetsStateRaw.entries())
+      .filter(([, sheetState]) =>
+        sheetState.tablesBeforePropertiesById.has(tableId),
+      )
+      .map(([sheetGid]) => sheetGid);
+    return Val.assert(placedSheetGid, `sheetGid for tableId ${tableId}`);
   }
   sheet(sheetGid: number): SheetRaw {
     return new SheetRaw({

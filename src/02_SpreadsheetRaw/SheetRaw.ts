@@ -239,6 +239,14 @@ export class SheetRaw extends SpreadsheetBaseRaw {
   integrateEditProtections(protections: EditProtection[]): void {
     this.protections.integrateEditProtections(protections);
   }
+  // A GID reaches the sheet, and the sheet reaches a Table by its ID, before its properties arrive too.
+  table(tableId: string): TableRaw {
+    return new TableRaw({
+      ...this.spreadsheetRawProps,
+      tableId,
+      sheetGid: this.sheetGid,
+    });
+  }
   // Every Table fetched onto the sheet, managed or not.
   get tableIds(): string[] {
     return Array.from(this.tablesStateRaw.entries())
@@ -248,17 +256,14 @@ export class SheetRaw extends SpreadsheetBaseRaw {
   // Row indexes only actually shift once the deletes have been sent, and a Table below the deleted rows shifts with them.
   markRowIndexesStale(): void {
     this.tableIds.forEach((tableId) =>
-      this._table(tableId).markRowIndexesStale(),
+      this.table(tableId).markRowIndexesStale(),
     );
   }
   integrateSnapshot(sheet: SheetSnapshot): void {
     this._integrateSheetProperties(sheet);
     this.tableIds.forEach((tableId) => {
-      this._table(tableId).integrateGridBlocks(sheet.gridBlocks ?? []);
+      this.table(tableId).integrateGridBlocks(sheet.gridBlocks ?? []);
     });
-  }
-  private _table(tableId: string): TableRaw {
-    return new TableRaw({ ...this.spreadsheetRawProps, tableId });
   }
   removeTablesAbsentFrom(tables: TableSnapshot[]): void {
     const liveTableIds = tables.map(({ tableId }) => tableId);
