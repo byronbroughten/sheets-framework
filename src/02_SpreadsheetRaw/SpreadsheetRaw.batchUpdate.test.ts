@@ -22,7 +22,7 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
     });
 
     const raw = SpreadsheetRaw.init();
-    raw.tableOnSheet(111).requestSortGSheet({
+    raw.sheet(111).table(tableId111).requestSortGSheet({
       colIdxToSortBy: 0,
       sortOrder: "ASCENDING",
     });
@@ -722,14 +722,6 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
         expect(raw.table("top").rowIndexesAreStale).toBe(false);
         expect(raw.table("lower").rowIndexesAreStale).toBe(false);
         expect(raw.table("aside").rowIndexesAreStale).toBe(false);
-      });
-
-      it("still refuses a row write through the sheet, which resolves to no fetched Table, after growth pushed its Tables down", () => {
-        const { raw } = flushedGrowthOfTop();
-
-        expect(() =>
-          raw.tableOnSheet(111).row(0).cell(0).updateValue("late"),
-        ).toThrow(/sheet properties have been fetched/);
       });
 
       it("still flags the sheet's Tables stale after a flushed row delete that follows growth, naming each", () => {

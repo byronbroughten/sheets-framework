@@ -13,6 +13,6 @@ export abstract class TableCommonNamed<
     return this.schema.sheetGid;
   }
   get tableAddress(): TableAddressIdentified {
-    return { tableId: this.schema.tableId };
+    return { tableId: this.schema.tableId, sheetGid: this.sheetGid };
   }
 }

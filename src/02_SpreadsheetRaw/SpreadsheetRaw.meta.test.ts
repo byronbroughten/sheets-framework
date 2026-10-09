@@ -114,7 +114,7 @@ describe("ColumnProfileRaw sampled facts", () => {
     stubSheetWithTopDataRow([], "rowsWithNoGridData");
 
     const raw = SpreadsheetRaw.init();
-    raw.table(itemTableId).gatherFetchProperties();
+    raw.sheet(itemGid).table(itemTableId).gatherFetchProperties();
     raw.fetchAllGathered();
     raw.table(itemTableId).column(1).gatherFetchFull();
     raw.fetchAllGathered(true);
@@ -126,7 +126,7 @@ describe("ColumnProfileRaw sampled facts", () => {
     stubSheetWithTopDataRow([], "rowsWithNoGridData");
 
     const raw = SpreadsheetRaw.init();
-    raw.table(itemTableId).gatherFetchProperties();
+    raw.sheet(itemGid).table(itemTableId).gatherFetchProperties();
     raw.fetchAllGathered();
     const cell = raw.table(itemTableId).row(0).cell(0);
     cell.gatherFetchRange();
@@ -151,7 +151,7 @@ describe("ColumnProfileRaw sampled facts", () => {
     });
 
     const raw = SpreadsheetRaw.init();
-    raw.table(itemTableId).gatherFetchProperties();
+    raw.sheet(itemGid).table(itemTableId).gatherFetchProperties();
     raw.fetchAllGathered();
 
     const message = thrownMessage(

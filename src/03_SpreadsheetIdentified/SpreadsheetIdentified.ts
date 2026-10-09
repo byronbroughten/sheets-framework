@@ -1,6 +1,6 @@
 import type { SheetEdit } from "../00_Source/PlatformEvents/sheetEdit";
 import { SpreadsheetSchema } from "../01_SpreadsheetSchema/configReaders/SpreadsheetSchema";
-import type { TableSchema } from "../01_SpreadsheetSchema/configReaders/TableSchema";
+import { TableSchema } from "../01_SpreadsheetSchema/configReaders/TableSchema";
 import { SpreadsheetRaw } from "../02_SpreadsheetRaw/SpreadsheetRaw";
 import { SpreadsheetBaseIdentified } from "./ClassBases/SpreadsheetBaseIdentified";
 import { TableIdentified } from "./TableIdentified";
@@ -24,10 +24,7 @@ export class SpreadsheetIdentified extends SpreadsheetBaseIdentified {
     return this.managedTable(table);
   }
   table(tableId: string): TableIdentified {
-    return new TableIdentified({
-      ...this.spreadsheetIdentifiedProps,
-      tableId,
-    });
+    return this.managedTable(TableSchema.fromTableId(tableId));
   }
   // One fetch: the header zone brings every Table on the sheet with its column IDs, and only the ticked one is judged.
   fetchTableWithActionCell(edit: SheetEdit): TableIdentified | undefined {
@@ -51,6 +48,7 @@ export class SpreadsheetIdentified extends SpreadsheetBaseIdentified {
     return new TableIdentified({
       ...this.spreadsheetIdentifiedProps,
       tableId: table.tableId,
+      sheetGid: table.sheetGid,
     });
   }
   get activeSheets(): TableIdentified[] {

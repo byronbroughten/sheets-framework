@@ -93,7 +93,6 @@ export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
       this.spreadsheetStateRaw.sheets.keys(),
     ).flatMap((sheetGid) => this.tableValidator.tablePlacements(sheetGid));
     this.spreadsheetStateRaw.sheets.forEach((state) => {
-      state.tableBeforeProperties.fetchQueue = emptyStateRaw.tableFetchQueue();
       state.tablesBeforePropertiesById.forEach((tableState) => {
         tableState.fetchQueue = emptyStateRaw.tableFetchQueue();
       });

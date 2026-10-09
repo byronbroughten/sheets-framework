@@ -102,7 +102,7 @@ There's no standing integration-test tier against a real spreadsheet. When Claud
 
 ## Navigation assertions
 
-Each of `02`–`04` has a spreadsheet-level test pinning every navigation edge — `table`, and `tableOnSheet` and `sheet` where the tier has them, the Table's `column`, `headRow` and row accessors, each one's way back to its Table, and Raw's `profile` — with an identity-based type assertion *and* an `instanceof` check, plus an assertion that no Meta view is offered. The type assertion catches a declaration that widened; the instance check catches an accessor declared for one class but wired to another's constructor, which is structurally valid TypeScript and would otherwise surface only against the live spreadsheet.
+Each of `02`–`04` has a spreadsheet-level test pinning every navigation edge — `table`, and `sheet` (in Raw, with its `table`), plus Identified's `tableOnSheet`, where the tier has them, the Table's `column`, `headRow` and row accessors, each one's way back to its Table, and Raw's `profile` — with an identity-based type assertion *and* an `instanceof` check, plus an assertion that no Meta view is offered. The type assertion catches a declaration that widened; the instance check catches an accessor declared for one class but wired to another's constructor, which is structurally valid TypeScript and would otherwise surface only against the live spreadsheet.
 
 ## CI
 

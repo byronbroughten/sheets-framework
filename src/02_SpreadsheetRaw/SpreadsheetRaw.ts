@@ -1,3 +1,5 @@
+import { Val } from "@byronbroughten/utils/val";
+
 import type {
   AddSheetOperation,
   BoundedGridRange,
@@ -74,18 +76,24 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
       .filter(([, tableState]) => tableState.properties !== undefined)
       .map(([tableId]) => tableId);
   }
+  // A Table whose properties have not arrived is reached first through its sheet, `sheet(gid).table(tableId)`.
   table(tableId: string): TableRaw {
     return new TableRaw({
       spreadsheetStateRaw: this.spreadsheetStateRaw,
       tableId,
+      sheetGid: this._sheetGidOf(tableId),
     });
   }
-  // The sheet's one Table, reachable by GID before its tableId is fetched.
-  tableOnSheet(sheetGid: number): TableRaw {
-    return new TableRaw({
-      spreadsheetStateRaw: this.spreadsheetStateRaw,
-      sheetGid,
-    });
+  private _sheetGidOf(tableId: string): number {
+    const liveSheetGid = this.tablesStateRaw.get(tableId)?.sheetGid;
+    if (liveSheetGid !== undefined) return liveSheetGid;
+    const placedSheetGid = Array.from(this.sheetsStateRaw.keys()).find(
+      (sheetGid) =>
+        this.sheetsStateRaw
+          .get(sheetGid)
+          ?.tablesBeforePropertiesById.has(tableId),
+    );
+    return Val.assert(placedSheetGid, `sheetGid for tableId ${tableId}`);
   }
   sheet(sheetGid: number): SheetRaw {
     return new SheetRaw({
@@ -169,7 +177,6 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
     });
     this.sheetsStateRaw.forEach((state) => {
       state.writeQueue = emptyStateRaw.sheetWriteQueue();
-      state.tableBeforeProperties.writeQueue = emptyStateRaw.tableWriteQueue();
       state.tablesBeforePropertiesById.forEach((tableState) => {
         tableState.writeQueue = emptyStateRaw.tableWriteQueue();
       });

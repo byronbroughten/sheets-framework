@@ -98,9 +98,7 @@ export interface SheetStateRaw {
   working: SheetWorkingStateRaw;
   fetchQueue: SheetFetchQueueRaw;
   writeQueue: SheetWriteQueueRaw;
-  // `ss.tableOnSheet(gid)` reaches a Table through its sheet, so what is queued before that Table is known waits here.
-  tableBeforeProperties: TableStateRaw;
-  // A recorded Table reached by its ID before its properties are fetched, keyed by that ID.
+  // What is queued on a Table reached by its ID before its properties are fetched, keyed by that ID.
   tablesBeforePropertiesById: Map<string, TableStateRaw>;
 }
 

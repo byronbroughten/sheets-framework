@@ -59,7 +59,7 @@ describe("SpreadsheetRaw.fetchAllSheetProperties", () => {
     raw.fetchAllSheetProperties();
 
     expect(raw.sheet(layoutGid).tableIds).toEqual(
-      managedLayoutTableNames.map(layoutTableId),
+      layoutTableNames.map(layoutTableId),
     );
     expect(
       layoutTableNames.map(
@@ -117,9 +117,9 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     });
 
     const raw = SpreadsheetRaw.init();
-    raw.table(itemTableId).gatherFetchProperties();
+    raw.sheet(itemGid).table(itemTableId).gatherFetchProperties();
     raw.table(itemTableId).columnResolver.gatherFetchColumnIds();
-    raw.table(logTableId).gatherFetchProperties();
+    raw.sheet(logGid).table(logTableId).gatherFetchProperties();
 
     expect(() => raw.fetchAllGathered()).toThrowError(
       /"Item" \(gid \d+\) has no Table "item" with its header row on row 4 — move it back, or regenerate the configs.*"Log" \(gid \d+\) has no Table/,
@@ -132,7 +132,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     });
 
     const raw = SpreadsheetRaw.init();
-    raw.tableOnSheet(scratchGid).gatherFetchProperties();
+    raw.sheet(scratchGid).gatherFetchHeaderZone();
 
     expect(() => raw.fetchAllGathered()).not.toThrow();
   });
@@ -150,7 +150,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     });
 
     const raw = SpreadsheetRaw.init();
-    raw.tableOnSheet(111).gatherFetchProperties();
+    raw.sheet(111).gatherFetchHeaderZone();
 
     expect(() => raw.fetchAllGathered()).not.toThrow();
   });
@@ -161,7 +161,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     });
 
     const raw = SpreadsheetRaw.init();
-    raw.table(itemTableId).gatherFetchProperties();
+    raw.sheet(itemGid).table(itemTableId).gatherFetchProperties();
 
     expect(() => raw.fetchAllGathered()).not.toThrow();
   });
@@ -178,7 +178,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     });
 
     const raw = SpreadsheetRaw.init();
-    raw.table(itemTableId).gatherFetchProperties();
+    raw.sheet(itemGid).table(itemTableId).gatherFetchProperties();
 
     expect(() => raw.fetchAllGathered()).toThrowError(
       /"Item" \(gid \d+\) has Table ".*", which must have its header row on row 4 — move it back$/,
@@ -204,7 +204,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     });
 
     const raw = SpreadsheetRaw.init();
-    raw.table(itemTableId).gatherFetchProperties();
+    raw.sheet(itemGid).table(itemTableId).gatherFetchProperties();
 
     expect(() => raw.fetchAllGathered()).not.toThrow();
     expect(raw.table(itemTableId).startColumnIndex).toBe(
@@ -223,7 +223,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     });
 
     const raw = SpreadsheetRaw.init();
-    raw.table(itemTableId).gatherFetchProperties();
+    raw.sheet(itemGid).table(itemTableId).gatherFetchProperties();
 
     expect(thrownMessage(() => raw.fetchAllGathered())).toMatch(
       /^Table "Items" on "Item" \(gid \d+\) has only its header: add a row below it holding its formulas\.$/,
@@ -246,8 +246,8 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     });
 
     const raw = SpreadsheetRaw.init();
-    raw.table(itemTableId).gatherFetchProperties();
-    raw.table(logTableId).gatherFetchProperties();
+    raw.sheet(itemGid).table(itemTableId).gatherFetchProperties();
+    raw.sheet(logGid).table(logTableId).gatherFetchProperties();
 
     expect(() => raw.fetchAllGathered()).toThrowError(
       /misplaced.*"Item".*Table "Logs" on "Log" \(gid \d+\) has only its header/,
@@ -265,7 +265,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     });
 
     const raw = SpreadsheetRaw.init();
-    raw.tableOnSheet(scratchGid).gatherFetchProperties();
+    raw.sheet(scratchGid).gatherFetchHeaderZone();
 
     expect(() => raw.fetchAllGathered()).not.toThrow();
   });
@@ -282,7 +282,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     });
 
     const raw = SpreadsheetRaw.init();
-    raw.tableOnSheet(scratchGid).gatherFetchProperties();
+    raw.sheet(scratchGid).gatherFetchHeaderZone();
 
     expect(() => raw.fetchAllGathered()).not.toThrow();
   });
@@ -309,8 +309,8 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     stubItemAndLogMisplaced();
 
     const raw = SpreadsheetRaw.init();
-    raw.table(itemTableId).gatherFetchProperties();
-    raw.table(logTableId).gatherFetchProperties();
+    raw.sheet(itemGid).table(itemTableId).gatherFetchProperties();
+    raw.sheet(logGid).table(logTableId).gatherFetchProperties();
 
     expect(() => raw.fetchAllGathered()).toThrowError(/"Item".*"Log"/);
   });
@@ -319,7 +319,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     stubItemAndLogMisplaced();
 
     const raw = SpreadsheetRaw.init();
-    raw.table(itemTableId).gatherFetchProperties();
+    raw.sheet(itemGid).table(itemTableId).gatherFetchProperties();
 
     const message = thrownMessage(() => raw.fetchAllGathered());
     expect(message).toMatch(/"Item"/);
@@ -338,7 +338,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     });
 
     const raw = SpreadsheetRaw.init();
-    raw.table(itemTableId).gatherFetchProperties();
+    raw.sheet(itemGid).table(itemTableId).gatherFetchProperties();
     raw.table(itemTableId).columnResolver.gatherFetchColumnIds();
 
     expect(() => raw.fetchAllGathered()).toThrowError(
@@ -354,7 +354,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     });
 
     const raw = SpreadsheetRaw.init();
-    raw.table(itemTableId).gatherFetchProperties();
+    raw.sheet(itemGid).table(itemTableId).gatherFetchProperties();
     raw.table(itemTableId).columnResolver.gatherFetchColumnIds();
     raw.fetchAllGathered();
 
@@ -376,7 +376,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     });
 
     const raw = SpreadsheetRaw.init();
-    raw.table(itemTableId).gatherFetchProperties();
+    raw.sheet(itemGid).table(itemTableId).gatherFetchProperties();
 
     expect(() => raw.fetchAllGathered()).toThrowError(
       /"Item" \(gid \d+\) needs its own "itm" column IDs, and only those, in row 1 — move the Table back, or regenerate the configs/,
@@ -398,7 +398,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     });
 
     const raw = SpreadsheetRaw.init();
-    raw.table(itemTableId).gatherFetchProperties();
+    raw.sheet(itemGid).table(itemTableId).gatherFetchProperties();
     raw.table(itemTableId).columnResolver.gatherFetchColumnIds();
 
     expect(() => raw.fetchAllGathered()).toThrowError(
@@ -421,13 +421,13 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     });
 
     const raw = SpreadsheetRaw.init();
-    raw.table(itemTableId).gatherFetchProperties();
+    raw.sheet(itemGid).table(itemTableId).gatherFetchProperties();
     raw.table(itemTableId).columnResolver.gatherFetchColumnIds();
 
     expect(() => raw.fetchAllGathered()).not.toThrow();
   });
 
-  it("accepts a known sheet whose recorded Table sits beside an unmanaged one, and reaches the recorded one by GID", () => {
+  it("lists an unmanaged Table beside the recorded one on the sheet's Tables", () => {
     const recordedTableId = getTableTraitByName("item", "tableId");
     const { table, ...sheet } = placedTableSheet({
       sheetId: itemGid,
@@ -453,7 +453,9 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
 
-    expect(raw.tableOnSheet(itemGid).tableId).toBe(recordedTableId);
+    expect(raw.sheet(itemGid).tableIds.sort()).toEqual(
+      ["unmanaged", recordedTableId].sort(),
+    );
   });
 
   it("leaves a sheet the config does not know alone, even with two Tables", () => {
@@ -467,7 +469,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     });
 
     const raw = SpreadsheetRaw.init();
-    raw.tableOnSheet(scratchGid).gatherFetchProperties();
+    raw.sheet(scratchGid).gatherFetchHeaderZone();
 
     expect(() => raw.fetchAllGathered()).not.toThrow();
   });
@@ -479,7 +481,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     });
 
     const raw = SpreadsheetRaw.init();
-    raw.table(itemTableId).gatherFetchProperties();
+    raw.sheet(itemGid).table(itemTableId).gatherFetchProperties();
 
     expect(() => raw.fetchAllGathered()).toThrowError(
       /"Item" \(gid \d+\) has no Table "item" with its header row on row 4/,
@@ -511,7 +513,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     });
 
     const raw = SpreadsheetRaw.init();
-    raw.table(itemTableId).gatherFetchProperties();
+    raw.sheet(itemGid).table(itemTableId).gatherFetchProperties();
     raw.fetchAllGathered();
 
     expect(recordedGridRanges(getByDataFilterCalls)).toEqual([
@@ -535,7 +537,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     });
 
     const raw = SpreadsheetRaw.init();
-    raw.table(itemTableId).gatherFetchProperties();
+    raw.sheet(itemGid).table(itemTableId).gatherFetchProperties();
     expect(() => raw.fetchAllGathered()).toThrowError(/must have/);
     raw.table(itemTableId).gatherFetchProperties();
     expect(() => raw.fetchAllGathered()).toThrowError(/must have/);
@@ -555,7 +557,7 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
     });
 
     const raw = SpreadsheetRaw.init();
-    raw.table(itemTableId).columnResolver.gatherFetchColumnIds();
+    raw.sheet(itemGid).table(itemTableId).columnResolver.gatherFetchColumnIds();
     raw.fetchAllGathered();
 
     expect(recordedGridRanges(getByDataFilterCalls)).toEqual([
@@ -574,9 +576,9 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
 
     const raw = SpreadsheetRaw.init();
 
-    expect(() => raw.tableOnSheet(itemGid).originAtGathering()).toThrowError(
-      /Table is unknown for sheetGid/,
-    );
+    expect(() =>
+      raw.sheet(itemGid).table(itemTableId).originAtGathering(),
+    ).toThrowError(/Table is unknown for sheetGid/);
   });
 
   it("refuses a full-row fetch before the sheet has a Table in state", () => {
@@ -586,9 +588,9 @@ describe("SpreadsheetRaw.fetchAllGathered", () => {
 
     const raw = SpreadsheetRaw.init();
 
-    expect(() => raw.tableOnSheet(111).topRow.gatherFetchFull()).toThrowError(
-      /Table is unknown for sheetGid 111/,
-    );
+    expect(() =>
+      raw.sheet(111).table(tableId111).topRow.gatherFetchFull(),
+    ).toThrowError(/Table is unknown for sheetGid 111/);
   });
 
   it("aims a full-row fetch at the live Table's own columns after properties, not the layout constant", () => {
@@ -890,23 +892,6 @@ describe("SpreadsheetRaw fetch integration routes each cell to its Table", () =>
     );
   });
 
-  it("refuses a re-fetch down to one known Table while writes queued through the sheet wait", () => {
-    stubSideBySideTables();
-
-    const raw = SpreadsheetRaw.init();
-    raw.fetchSheetUsedGrid(scratchGid);
-    raw
-      .tableOnSheet(scratchGid)
-      .requestSortGSheet({ colIdxToSortBy: 0, sortOrder: "DESCENDING" });
-    stubSideBySideTables(["left"]);
-    raw.spreadsheetRawProps.spreadsheetStateRaw.rawSource =
-      installedRawSource();
-
-    expect(() => raw.fetchSheetUsedGrid(scratchGid)).toThrow(
-      /queued through .* while it had several Tables/,
-    );
-  });
-
   it("drops a loose cell beside, above or below the Tables", () => {
     stubSideBySideTables();
 
@@ -939,7 +924,7 @@ describe("several managed Tables on one sheet", () => {
   }
   function gatherEveryZone(raw: SpreadsheetRaw): void {
     managedLayoutTableNames.forEach((tableName) => {
-      const table = raw.table(layoutTableId(tableName));
+      const table = raw.sheet(layoutGid).table(layoutTableId(tableName));
       table.gatherFetchProperties();
       table.columnResolver.gatherFetchColumnIds();
     });
@@ -1004,7 +989,7 @@ describe("several managed Tables on one sheet", () => {
       sheets: [layoutSheet()],
     });
     const raw = SpreadsheetRaw.init();
-    raw.table(leftId).gatherFetchProperties();
+    raw.sheet(layoutGid).table(leftId).gatherFetchProperties();
     raw.fetchAllGathered();
     stubMovedRight(raw);
     raw.table(leftId).row(0).gatherFetchFull();
@@ -1105,7 +1090,7 @@ describe("several managed Tables on one sheet", () => {
     });
 
     const raw = SpreadsheetRaw.init();
-    raw.table(leftId).gatherFetchProperties();
+    raw.sheet(layoutGid).table(leftId).gatherFetchProperties();
     raw.table(leftId).columnResolver.gatherFetchColumnIds();
 
     expect(() => raw.fetchAllGathered()).not.toThrow();
@@ -1124,7 +1109,7 @@ describe("several managed Tables on one sheet", () => {
     });
 
     const raw = SpreadsheetRaw.init();
-    raw.table(leftId).gatherFetchProperties();
+    raw.sheet(layoutGid).table(leftId).gatherFetchProperties();
     raw.table(leftId).columnResolver.gatherFetchColumnIds();
 
     expect(() => raw.fetchAllGathered()).not.toThrow();
@@ -1142,7 +1127,7 @@ describe("several managed Tables on one sheet", () => {
     });
 
     const raw = SpreadsheetRaw.init();
-    raw.table(leftId).gatherFetchProperties();
+    raw.sheet(layoutGid).table(leftId).gatherFetchProperties();
     raw.table(leftId).columnResolver.gatherFetchColumnIds();
 
     expect(() => raw.fetchAllGathered()).not.toThrow();
@@ -1154,7 +1139,7 @@ describe("several managed Tables on one sheet", () => {
     function fetchedLeft(sheet: FakeSheetProperties) {
       const { batchUpdateCount } = stubSheetsService({ sheets: [sheet] });
       const raw = SpreadsheetRaw.init();
-      raw.table(leftId).gatherFetchProperties();
+      raw.sheet(layoutGid).table(leftId).gatherFetchProperties();
       raw.table(leftId).columnResolver.gatherFetchColumnIds();
       raw.fetchAllGathered();
       raw.table(leftId).row(0).gatherFetchFull();

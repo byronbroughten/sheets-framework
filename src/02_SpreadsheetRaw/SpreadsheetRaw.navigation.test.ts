@@ -29,8 +29,8 @@ describe("SpreadsheetRaw navigation", () => {
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
     const table = raw.table(tableId111);
-    const tableOnSheet = raw.tableOnSheet(111);
     const sheet = raw.sheet(111);
+    const tableOnSheet = sheet.table(tableId111);
     const column = table.column(0);
     const headRow = table.headRow("action");
     const headCell = column.headCell("header");
@@ -100,11 +100,30 @@ describe("SheetRaw", () => {
     expect(raw.table(tableId111).sheet.title).toBe("Task Generic");
   });
 
-  it("lists the managed Tables the configs place on it, and none on an unmanaged tab", () => {
-    stubSheetsService();
+  it("refuses to reach a fetched Table through a sheet it isn't on", () => {
+    stubSheetsService({
+      sheets: [
+        placedTableSheet({ sheetId: 111, title: "Task Generic" }),
+        { sheetId: 222, title: "Other" },
+      ],
+    });
     const raw = SpreadsheetRaw.init();
-    const itemGid = getTableTraitByName("item", "sheetGid");
+    raw.fetchAllSheetProperties();
 
+    expect(() => raw.sheet(222).table(tableId111)).toThrowError(
+      `Table ${tableId111} is on sheetGid 111, not sheetGid 222, which reached it.`,
+    );
+  });
+
+  it("lists the Tables fetched onto it, and none before the fetch", () => {
+    const itemGid = getTableTraitByName("item", "sheetGid");
+    stubSheetsService({
+      sheets: [placedTableSheet({ sheetId: itemGid, title: "Item" })],
+    });
+    const raw = SpreadsheetRaw.init();
+
+    expect(raw.sheet(itemGid).tableIds).toEqual([]);
+    raw.fetchAllSheetProperties();
     expect(raw.sheet(itemGid).tableIds).toEqual([
       getTableTraitByName("item", "tableId"),
     ]);

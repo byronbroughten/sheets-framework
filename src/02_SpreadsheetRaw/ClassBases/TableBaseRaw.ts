@@ -1,8 +1,6 @@
 import { Val } from "@byronbroughten/utils/val";
 
 import type { TableSnapshot } from "../../00_Source/RawSource/RawSource";
-import { SpreadsheetSchema } from "../../01_SpreadsheetSchema/configReaders/SpreadsheetSchema";
-import { tableConfigsByTableId } from "../../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin";
 import { emptyStateRaw } from "../ClassTypes/emptyStateRaw";
 import type {
@@ -21,31 +19,32 @@ import {
   type SpreadsheetRawProps,
 } from "./SpreadsheetBaseRaw";
 
-// `ss.tableOnSheet(gid)` reaches a Table through its sheet: its only one, else the one its configs record.
-export type TableAddressRaw = { sheetGid: number } | { tableId: string };
-export type TableRawProps = SpreadsheetRawProps & TableAddressRaw;
+export interface TableAddressRaw {
+  tableId: string;
+}
+// `sheetGid` places a Table not yet in state, and must match a fetched one's.
+export interface TableRawProps extends SpreadsheetRawProps, TableAddressRaw {
+  sheetGid: number;
+}
 
 export class TableBaseRaw extends SpreadsheetBaseRaw {
   readonly sheetGid: number;
-  private readonly tableAddress: TableAddressRaw;
-  constructor({ spreadsheetStateRaw, ...tableAddress }: TableRawProps) {
+  private readonly addressedTableId: string;
+  constructor({ spreadsheetStateRaw, tableId, sheetGid }: TableRawProps) {
     super({ spreadsheetStateRaw });
-    this.tableAddress = tableAddress;
-    this.sheetGid = sheetGidOf(spreadsheetStateRaw.tables, tableAddress);
+    this.addressedTableId = tableId;
+    this.sheetGid = sheetGid;
+    validateTableOnSheet(spreadsheetStateRaw.tables, tableId, sheetGid);
     this._ensureSheetState();
     this._ensureTableBeforePropertiesById();
   }
   private _ensureSheetState(): void {
     if (!this.sheetsStateRaw.has(this.sheetGid)) {
-      this.sheetsStateRaw.set(
-        this.sheetGid,
-        emptyStateRaw.sheetState(this.sheetGid),
-      );
+      this.sheetsStateRaw.set(this.sheetGid, emptyStateRaw.sheetState());
     }
   }
   private _ensureTableBeforePropertiesById(): void {
-    if (!("tableId" in this.tableAddress)) return;
-    const { tableId } = this.tableAddress;
+    const tableId = this.addressedTableId;
     const { tablesBeforePropertiesById } = this.sheetState;
     if (this.tablesStateRaw.has(tableId)) return;
     if (tablesBeforePropertiesById.has(tableId)) return;
@@ -64,19 +63,14 @@ export class TableBaseRaw extends SpreadsheetBaseRaw {
     return this._resolveTableState();
   }
   private _resolveTableState(): TableStateRaw {
-    if ("tableId" in this.tableAddress) {
-      const { tableId } = this.tableAddress;
-      return Val.assert(
-        this.tablesStateRaw.get(tableId) ??
-          this.sheetState.tablesBeforePropertiesById.get(tableId),
-        `Table state for tableId ${tableId}`,
-      );
-    }
-    const tableId = this.tableIdReachedByGid();
-    if (tableId === undefined) return this.sheetState.tableBeforeProperties;
-    return tableStateOf(this.tablesStateRaw, tableId);
+    const tableId = this.addressedTableId;
+    return Val.assert(
+      this.tablesStateRaw.get(tableId) ??
+        this.sheetState.tablesBeforePropertiesById.get(tableId),
+      `Table state for tableId ${tableId}`,
+    );
   }
-  // Absent until fetched, and for a sheet that holds no Table or several.
+  // Absent until fetched.
   protected get tableProperties(): TablePropertiesRaw | undefined {
     return this.tableState.properties;
   }
@@ -94,23 +88,19 @@ export class TableBaseRaw extends SpreadsheetBaseRaw {
   }
   get tableRawProps(): TableRawProps {
     return {
-      ...this.tableAddress,
+      tableId: this.addressedTableId,
+      sheetGid: this.sheetGid,
       ...this.spreadsheetRawProps,
     };
   }
   tableIds(): string[] {
-    return Array.from(this.tablesStateRaw.entries())
-      .filter(([, tableState]) => tableState.sheetGid === this.sheetGid)
-      .map(([tableId]) => tableId);
+    return tableIdsOnSheet(this.tablesStateRaw, this.sheetGid);
   }
   // Absent for a sheet that holds no Table or several.
   onlyTableId(): string | undefined {
     const [tableId, ...otherTableIds] = this.tableIds();
     if (otherTableIds.length > 0) return undefined;
     return tableId;
-  }
-  tableIdReachedByGid(): string | undefined {
-    return tableIdReachedAmong(this.tableIds(), this.sheetGid);
   }
   hasOneTable(): boolean {
     return this.onlyTableId() !== undefined;
@@ -146,34 +136,26 @@ export function sheetLabel(
   return `"${title ?? "(untitled)"}" (gid ${sheetGid})`;
 }
 
-// A recorded Table is reachable by its ID before its properties are fetched.
-function sheetGidOf(
+export function tableIdsOnSheet(
   tables: TablesStateRaw,
-  tableAddress: TableAddressRaw,
-): number {
-  if ("sheetGid" in tableAddress) return tableAddress.sheetGid;
-  const { tableId } = tableAddress;
-  return Val.assert(
-    tables.get(tableId) ?? tableConfigsByTableId().get(tableId),
-    `Table state for tableId ${tableId}`,
-  ).sheetGid;
+  sheetGid: number,
+): string[] {
+  return Array.from(tables.entries())
+    .filter(([, tableState]) => tableState.sheetGid === sheetGid)
+    .map(([tableId]) => tableId);
 }
 
-// The sheet's only Table, else the one its configs record.
-export function tableIdReachedAmong(
-  tableIds: string[],
+// A Table reached through a sheet it isn't on would read and write the wrong grid.
+function validateTableOnSheet(
+  tables: TablesStateRaw,
+  tableId: string,
   sheetGid: number,
-): string | undefined {
-  const [tableId, ...otherTableIds] = tableIds;
-  if (otherTableIds.length === 0) return tableId;
-  const recordedTableIds = new Set(
-    new SpreadsheetSchema().tablesOnGid(sheetGid).map((table) => table.tableId),
+): void {
+  const liveSheetGid = tables.get(tableId)?.sheetGid;
+  if (liveSheetGid === undefined || liveSheetGid === sheetGid) return;
+  throw new Error(
+    `Table ${tableId} is on sheetGid ${liveSheetGid}, not sheetGid ${sheetGid}, which reached it.`,
   );
-  const [recordedTableId, ...otherRecordedTableIds] = tableIds.filter((id) =>
-    recordedTableIds.has(id),
-  );
-  if (otherRecordedTableIds.length > 0) return undefined;
-  return recordedTableId;
 }
 
 export function tableStateOf(
