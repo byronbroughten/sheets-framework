@@ -32,6 +32,7 @@
     "test:coverage": "vitest run --coverage",
     "chore": "node scripts/sheets-framework.js chore",
     "gen:configs": "node scripts/sheets-framework.js gen-configs",
+    "configs:diff": "node scripts/sheets-framework.js configs-diff",
     "probe": "node scripts/sheets-framework.js probe",
     "build": "rollup --config && clasp push",
     "push": "clasp push",

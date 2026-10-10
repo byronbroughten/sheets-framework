@@ -6,6 +6,7 @@ import { loadSheetsConfig } from "./sheetsConfig.ts";
 
 const usage = `Usage: sheets-framework <command> [args]
   gen-configs          regenerate the package's four generated files from its config sheets
+  configs-diff         summarise how the generated files differ from HEAD; read-only
   chore [name] [--send] [--json]
                        dry-run a chore (or apply it with --send); no name lists them
   probe --fields|--filter|--path ...
@@ -20,6 +21,11 @@ switch (command) {
   case "gen-configs": {
     const { runGenConfigs } = await import("./genConfigs.ts");
     await runGenConfigs(loadSheetsConfig());
+    break;
+  }
+  case "configs-diff": {
+    const { runConfigsDiff } = await import("./configsDiff.ts");
+    runConfigsDiff(loadSheetsConfig());
     break;
   }
   case "chore": {
