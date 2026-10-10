@@ -39,7 +39,7 @@ The Node host is the second one (the framework's `src/nodeHost/`, launched by it
 
 ## The sheets-framework bin
 
-**The framework's `scripts/sheets-framework.js` is the one tooling entry**, installed as the `sheets-framework` bin: a JS shim that registers `tsx`, then imports `scripts/cli.ts`, which runs `gen-configs`, `chore`, `probe` or `setup-auth`. The first three read the nearest `sheets.config.json` above cwd, the way clasp finds `.clasp.json`, and take the spreadsheet ID from it and nowhere else: no flag, no env override (`scripts/sheetsConfig.ts`). The file is gitignored and data-only; the package commits a `sheets.config.example.json` to copy from, and the bin fails naming it when only the example exists:
+**The framework's `scripts/sheets-framework.js` is the one tooling entry**, installed as the `sheets-framework` bin: a JS shim that registers `tsx`, then imports `scripts/cli.ts`, which runs `gen-configs`, `configs-diff`, `chore`, `probe` or `setup-auth`. The first four read the nearest `sheets.config.json` above cwd, the way clasp finds `.clasp.json`, and take the spreadsheet ID from it and nowhere else: no flag, no env override (`scripts/sheetsConfig.ts`). The file is gitignored and data-only; the package commits a `sheets.config.example.json` to copy from, and the bin fails naming it when only the example exists:
 
 - `spreadsheetId` (required): the package's spreadsheet.
 - `generatedDir` (optional): where `gen-configs` writes the three config files and `appConfigs.ts`, and where the chore runner loads the three config files from. It defaults to `src/generated`.
@@ -58,6 +58,8 @@ Paths are relative to the config file, which sits at each package's root, and a 
 ## What gen-configs writes
 
 `sheets-framework gen-configs` **writes** to the live Table Config/Column Config sheets and to business sheets' header rows (adding missing column IDs) before it regenerates the three local config files from the live config sheets, then writes `appConfigs.ts`, which gathers them and augments `Register` (floor vs generated: [`generated-data.md`](./generated-data.md)). It prints the floor report — a one-line summary of what the config-sheet floor created, overwrote or left behind — beside the untyped-columns summary and the declared-cell report, which names any self-describing row whose declared cell it wrote back to the floor seed.
+
+`sheets-framework configs-diff` prints what changed in those three config files since `HEAD`: Tables, columns and values added, removed or renamed (matched by `tableId` and `columnId`), and each changed field's old and new values, or "No config changes." It is read-only, with no credential and no Sheets call, and `gen-configs` prints the same summary when it finishes, so the summary is how to review a regen without reading the large `columnConfigs.ts`.
 
 ## The chore and its dry run
 
