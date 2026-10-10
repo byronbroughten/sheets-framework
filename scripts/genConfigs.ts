@@ -5,7 +5,7 @@ import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import type { ConfigRegeneration } from "../src/05_Operators/ConfigCoordinator.ts";
-import { runConfigsDiff } from "./configsDiff.ts";
+import { readConfigsDiff } from "./configsDiff.ts";
 import {
   type ConfigFile,
   configFilePath,
@@ -53,7 +53,7 @@ class ConfigFilesGenerator {
       console.log(`Wrote ${path}`);
     });
     console.log("\ngen:configs: changes against HEAD:");
-    runConfigsDiff(this.sheetsConfig);
+    console.log(readConfigsDiff(this.sheetsConfig).join("\n"));
     if (floorReport !== "") {
       console.log(`\ngen:configs: ${floorReport}`);
     }

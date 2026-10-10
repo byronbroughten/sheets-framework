@@ -17,9 +17,9 @@ function snapshot(overrides: Partial<ConfigSnapshot> = {}): ConfigSnapshot {
 
 describe("summarizeConfigsDiff", () => {
   it("says no changes when nothing changed", () => {
-    expect(summarizeConfigsDiff(snapshot(), snapshot())).toEqual([
-      "No config changes.",
-    ]);
+    expect(
+      summarizeConfigsDiff({ before: snapshot(), after: snapshot() }),
+    ).toEqual(["No config changes."]);
   });
 
   it("lists added and removed Tables by name", () => {
@@ -28,7 +28,7 @@ describe("summarizeConfigsDiff", () => {
       tableConfigs: { log },
       columnConfigs: { log: {} },
     });
-    expect(summarizeConfigsDiff(snapshot(), after)).toEqual([
+    expect(summarizeConfigsDiff({ before: snapshot(), after })).toEqual([
       "Table item: removed",
       "  column name: removed",
       "  column qty: removed",
@@ -42,7 +42,7 @@ describe("summarizeConfigsDiff", () => {
       tableConfigs: { goods: item },
       columnConfigs: { goods: { name: itemName, qty: itemQty } },
     });
-    expect(summarizeConfigsDiff(snapshot(), after)).toEqual([
+    expect(summarizeConfigsDiff({ before: snapshot(), after })).toEqual([
       "Table item → goods: renamed",
       "1 change.",
     ]);
@@ -57,7 +57,7 @@ describe("summarizeConfigsDiff", () => {
     const after = snapshot({
       columnConfigs: { item: { title: itemName, note: itemNote } },
     });
-    expect(summarizeConfigsDiff(snapshot(), after)).toEqual([
+    expect(summarizeConfigsDiff({ before: snapshot(), after })).toEqual([
       "Table item:",
       "  column name → title: renamed",
       "  column qty: removed",
@@ -73,7 +73,7 @@ describe("summarizeConfigsDiff", () => {
         item: { name: itemName, qty: { ...itemQty, valueName: "string" } },
       },
     });
-    expect(summarizeConfigsDiff(snapshot(), after)).toEqual([
+    expect(summarizeConfigsDiff({ before: snapshot(), after })).toEqual([
       "Table item: hasIdColumn true → false",
       '  column qty: valueName "number" → "string"',
       "2 changes.",
@@ -87,7 +87,7 @@ describe("summarizeConfigsDiff", () => {
     const after = snapshot({
       valueConfigs: { status: ["Open", "Pending"], color: ["Red"] },
     });
-    expect(summarizeConfigsDiff(before, after)).toEqual([
+    expect(summarizeConfigsDiff({ before, after })).toEqual([
       'Value status: added "Pending"; removed "Closed"',
       "Value size: removed",
       "Value color: added",
@@ -96,7 +96,9 @@ describe("summarizeConfigsDiff", () => {
   });
 
   it("counts everything as added on a first generation with no HEAD version", () => {
-    expect(summarizeConfigsDiff(undefined, snapshot())).toEqual([
+    expect(
+      summarizeConfigsDiff({ before: undefined, after: snapshot() }),
+    ).toEqual([
       "Table item: added",
       "  column name: added",
       "  column qty: added",
