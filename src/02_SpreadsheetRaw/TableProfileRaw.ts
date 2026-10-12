@@ -14,10 +14,10 @@ export class TableProfileRaw extends TableBaseRaw {
       .map((colIndex) => table.columnResolver.columnIdAt(colIndex))
       .filter((columnId) => columnId !== "");
   }
-  get headers(): string[] {
+  hasHeader(header: string): boolean {
     const { table } = this;
-    return table.fullTableColIndexes.map(
-      (colIndex) => table.column(colIndex).profile.header,
+    return table.fullTableColIndexes.some(
+      (colIndex) => table.column(colIndex).profile.header === header,
     );
   }
   idPrefix(): string | undefined {

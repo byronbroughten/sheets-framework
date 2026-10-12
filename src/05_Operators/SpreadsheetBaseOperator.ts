@@ -1,3 +1,4 @@
+import type { TableColumnReference } from "../02_SpreadsheetRaw/ColumnProfileRaw";
 import {
   SpreadsheetBaseNamed,
   type SpreadsheetNamedProps,
@@ -65,4 +66,8 @@ export class SpreadsheetBaseOperator extends SpreadsheetBaseNamed {
       configSyncState: SpreadsheetBaseOperator.initConfigSyncState(),
     };
   }
+}
+
+export function sourceLabel({ tableName, header }: TableColumnReference): string {
+  return `"${tableName}[${header}]"`;
 }

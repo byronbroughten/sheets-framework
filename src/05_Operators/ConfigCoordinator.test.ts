@@ -1875,6 +1875,20 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
     });
   });
 
+  it("keeps a one-word camel-case header's casing in the value name", () => {
+    seedValueSources({
+      apiTables: [
+        listSheet([{ header: "CapEx", values: ["Roof"] }]),
+        ledgerSheet([{ header: "CapEx", validationValues: ["=List[CapEx]"] }]),
+      ],
+    });
+
+    const { valueConfigs, ledgerValueName } = generate();
+
+    expect(ledgerValueName("capEx")).toBe("listCapEx");
+    expect(valueConfigs).toEqual({ listCapEx: ["Roof"] });
+  });
+
   it("types every member by its source's declared type, numbers for number and date", () => {
     seedValueSources({
       apiTables: [
@@ -1898,6 +1912,19 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
       listDueDate: [45000, 45031],
       listUnit: ["2B", "101"],
     });
+  });
+
+  it("fails the config sync when a declared source holds a member of another primitive, naming the source", () => {
+    seedValueSources({
+      apiTables: [
+        listSheet([{ header: "Rent", values: [950, "TBD"], columnType: "DOUBLE" }]),
+        ledgerSheet([{ header: "Rent", validationValues: ["=List[Rent]"] }]),
+      ],
+    });
+
+    expect(() =>
+      ConfigCoordinator.init().generateConfigFiles("../makeConfigs"),
+    ).toThrow('Value source "List[Rent]" declares number members, but holds "TBD".');
   });
 
   it("keeps each member's own primitive on an untyped source", () => {

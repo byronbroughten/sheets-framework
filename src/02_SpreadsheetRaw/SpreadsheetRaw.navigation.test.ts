@@ -137,7 +137,7 @@ describe("Raw profile members", () => {
     assertType<
       IsExactly<
         Exclude<keyof TableProfileRaw, keyof TableBaseRaw>,
-        "columnIds" | "headers" | "idPrefix" | "columnById"
+        "columnIds" | "hasHeader" | "idPrefix" | "columnById"
       >
     >(true);
   });

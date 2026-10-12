@@ -13,13 +13,17 @@ import {
 } from "../01_SpreadsheetSchema/configReaders/makeConfigs";
 import { type ValueName } from "../01_SpreadsheetSchema/configReaders/valueSchemas";
 import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
-import type { ColumnProfileRaw } from "../02_SpreadsheetRaw/ColumnProfileRaw";
+import type {
+  ColumnProfileRaw,
+  TableColumnReference,
+} from "../02_SpreadsheetRaw/ColumnProfileRaw";
 import { columnConfigsFileSource } from "./configFileSource";
 import { GenericTableOperator } from "./GenericTableOperator";
 import {
   type ConfigSyncState,
   type OperatorProps,
   type SourceColumn,
+  sourceLabel,
   SpreadsheetBaseOperator,
   type UntypedHeadersByTableName,
   type ValueSource,
@@ -76,6 +80,38 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
       sourcesByValueName.set(source.valueName, source);
     });
     return [...sourcesByValueName.values()];
+  }
+  private _sourceLabel({ tableId, header }: SourceColumn): string {
+    return sourceLabel({ tableName: this.ss.raw.table(tableId).name, header });
+  }
+  private _valueSource(
+    describedColumn: ColumnProfileRaw,
+    tableKeysByTableId: Map<string, string>,
+  ): ValueSource | undefined {
+    const sourceColumn = this._sourceColumn(describedColumn);
+    if (sourceColumn === undefined) return undefined;
+    const { tableId, header } = sourceColumn;
+    return {
+      ...sourceColumn,
+      valueName: valueSourceName({
+        tableKey: Val.assert(tableKeysByTableId.get(tableId), "source Table key"),
+        reference: { tableName: this.ss.raw.table(tableId).name, header },
+      }),
+    };
+  }
+  private _sourceColumn(
+    describedColumn: ColumnProfileRaw,
+  ): SourceColumn | undefined {
+    const reference = describedColumn.validationColumnReference();
+    if (reference === undefined || describedColumn.isIdColumn) return undefined;
+    const tableId = [...this.tableIdsApiAccesses].find(
+      (apiTableId) => this.ss.raw.table(apiTableId).name === reference.tableName,
+    );
+    if (tableId === undefined) return undefined;
+    if (!this.ss.raw.table(tableId).profile.hasHeader(reference.header)) {
+      return undefined;
+    }
+    return { tableId, header: reference.header };
   }
   assertSyncedToSpreadsheet(): void {
     if (!this.columnConfigSync.syncedToSpreadsheet) {
@@ -275,40 +311,6 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
     });
     Logger.log(`Corrected ${updatedValues} inaccurate Column Config cell(s).`);
   }
-  // A dropdown's range is a value source only when it names a column of a Let api access Table.
-  private _sourceColumn(
-    describedColumn: ColumnProfileRaw,
-  ): SourceColumn | undefined {
-    const reference = describedColumn.validationColumnReference();
-    if (reference === undefined || describedColumn.isIdColumn) return undefined;
-    const tableId = [...this.tableIdsApiAccesses].find(
-      (apiTableId) => this.ss.raw.table(apiTableId).name === reference.tableName,
-    );
-    if (tableId === undefined) return undefined;
-    if (!this.ss.raw.table(tableId).profile.headers.includes(reference.header)) {
-      return undefined;
-    }
-    return { tableId, header: reference.header };
-  }
-  private _sourceLabel({ tableId, header }: SourceColumn): string {
-    return sourceLabel(this.ss.raw.table(tableId).name, header);
-  }
-  private _valueSource(
-    describedColumn: ColumnProfileRaw,
-    tableKeysByTableId: Map<string, string>,
-  ): ValueSource | undefined {
-    const sourceColumn = this._sourceColumn(describedColumn);
-    if (sourceColumn === undefined) return undefined;
-    const { tableId, header } = sourceColumn;
-    return {
-      ...sourceColumn,
-      valueName: valueSourceName({
-        tableKey: Val.assert(tableKeysByTableId.get(tableId), "source Table key"),
-        tableName: this.ss.raw.table(tableId).name,
-        header,
-      }),
-    };
-  }
   private _updateSelfDescribingEmptyValueAllowed({
     rowIndex,
     identity,
@@ -407,27 +409,21 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
 
 function valueSourceName({
   tableKey,
-  tableName,
-  header,
+  reference,
 }: {
   tableKey: string;
-  tableName: string;
-  header: string;
+  reference: TableColumnReference;
 }): string {
-  const valueName = Str.sentenceToCamelCase(
-    [...Str.words(tableKey), header].join(" "),
-  );
+  const headerName = Str.sentenceToCamelCase(reference.header);
+  const valueName =
+    tableKey + headerName.charAt(0).toUpperCase() + headerName.slice(1);
   if (isFrameworkValueName(valueName)) {
     throw new Error(
-      `Value source ${sourceLabel(tableName, header)} takes the value name "${valueName}", ` +
+      `Value source ${sourceLabel(reference)} takes the value name "${valueName}", ` +
         `which is already the framework value name "${valueName}". Rename the Table or the header.`,
     );
   }
   return valueName;
-}
-
-function sourceLabel(tableName: string, header: string): string {
-  return `"${tableName}[${header}]"`;
 }
 
 function isSameSourceColumn(a: SourceColumn, b: SourceColumn): boolean {

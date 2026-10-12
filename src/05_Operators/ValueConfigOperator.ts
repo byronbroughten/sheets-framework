@@ -11,6 +11,7 @@ import { ColumnConfigOperator } from "./ColumnConfigOperator";
 import {
   type ConfigSyncState,
   type SourceColumn,
+  sourceLabel,
   SpreadsheetBaseOperator,
   type ValueSource,
 } from "./SpreadsheetBaseOperator";
@@ -35,7 +36,7 @@ export class ValueConfigOperator extends SpreadsheetBaseOperator {
     this.columnConfigOperator.assertSyncedToSpreadsheet();
     this.valueConfigSync.valueSources = this.columnConfigOperator.valueSources();
     this.valueSources.forEach((source) => {
-      this._sourceColumn(source).gatherFetchFull();
+      this._rawColumn(source).gatherFetchFull();
     });
     this.ss.fetchAllPrepped({ skipFetchingProperties: true });
   }
@@ -60,18 +61,18 @@ export class ValueConfigOperator extends SpreadsheetBaseOperator {
       ``,
     ].join("\n");
   }
-  private _sourceColumn({ tableId, header }: SourceColumn): ColumnRaw {
+  private _rawColumn({ tableId, header }: SourceColumn): ColumnRaw {
     return this.ss.raw.table(tableId).columnByHeader(header);
   }
   private _fixedListMembers(source: ValueSource): FixedListMember[] {
-    const column = this._sourceColumn(source);
+    const column = this._rawColumn(source);
     const declaredValueTitle = column.profile.declaredValueTitle();
     const members = column.valueArrFilterEmpty.map((value) => {
       if (declaredValueTitle === undefined) return value;
       return typedMember({
         value,
         memberType: memberTypes[declaredValueTitle],
-        valueName: source.valueName,
+        label: sourceLabel({ tableName: column.table.name, header: source.header }),
       });
     });
     return [...new Set(members)];
@@ -92,16 +93,16 @@ const memberTypes: Record<FrameworkValueName, MemberType> = {
 function typedMember({
   value,
   memberType,
-  valueName,
+  label,
 }: {
   value: CellValue;
   memberType: MemberType;
-  valueName: string;
+  label: string;
 }): FixedListMember {
   if (memberType === "string") return String(value);
   if (typeof value !== memberType) {
     throw new Error(
-      `Value source "${valueName}" declares ${memberType} members, but holds ${JSON.stringify(value)}.`,
+      `Value source ${label} declares ${memberType} members, but holds ${JSON.stringify(value)}.`,
     );
   }
   return value;
