@@ -55,7 +55,7 @@ The fake stays simpler than Google on purpose: it evaluates no formula (a pasted
 
 ## `fakeAppsScriptGlobals.ts` and `fakeTableConfigSheet.ts`
 
-`fakeAppsScriptGlobals.ts` — `stubScriptAndSpreadsheetApp()` (a fluent trigger builder covering `AppsScript.trigger`'s usage, and an active spreadsheet whose `getId` feeds `GoogleSheetsAPI.forAppsScript()` and whose `toast` records each message with its title and timeout; `{ spreadsheetId: null }` stands in for a standalone script).
+`fakeAppsScriptGlobals.ts` — `stubScriptAndSpreadsheetApp()` (a fluent trigger builder covering `AppsScript.trigger`'s usage, and an active spreadsheet whose `getId` feeds `GoogleSheetsAPI.forAppsScript()`; `{ spreadsheetId: null }` stands in for a standalone script).
 
 `fakeTableConfigSheet.ts` — a fake "Table Config" sheet, for behaviour that reads or writes a whole row rather than one named cell (clearing, the blank test, the wipe, append reuse). Anything working from a sheet's *configured* columns resolves each of them against the live columnId row, so such a test needs a fixture listing every column the config declares — which makes Table Config the right subject, as the smallest sheet both config sets share. Its GID and column IDs come from the installed configs, so it serves either test program.
 
@@ -65,7 +65,7 @@ SpreadsheetRaw / EndpointRun tests inject a RawSource (`stubSheetsService`). `Go
 
 ## The Apps Script surface and its fakes
 
-Schema/config resolution and ID encode/decode need no mocking. The GAS-touching surface is narrow: `00_Source/GoogleSheets/AppsScript.ts`, `GoogleSheetsAPI.forAppsScript()`, and `appsScriptHost/AppsScriptApi.ts`, which decodes the trigger events with `AppsScript.sheetEdit` / `AppsScript.sheetChange` and is tested against faked events and globals. Production Raw does not read `Sheets` from global scope. A change that first reaches a new Apps Script global adds its wrapper under `00_Source/GoogleSheets/` and extends `fakeAppsScriptGlobals.ts` in the same change (the rule: [`src/00_Source/GoogleSheets/AGENTS.md`](../src/00_Source/GoogleSheets/AGENTS.md)).
+Schema/config resolution and ID encode/decode need no mocking. The GAS-touching surface is narrow: `00_Source/GoogleSheets/AppsScript.ts`, `GoogleSheetsAPI.forAppsScript()`, and `appsScriptHost/AppsScriptApi.ts`, which decodes the trigger event with `AppsScript.sheetEdit` and is tested against faked events and globals. Production Raw does not read `Sheets` from global scope. A change that first reaches a new Apps Script global adds its wrapper under `00_Source/GoogleSheets/` and extends `fakeAppsScriptGlobals.ts` in the same change (the rule: [`src/00_Source/GoogleSheets/AGENTS.md`](../src/00_Source/GoogleSheets/AGENTS.md)).
 
 ## Three test programs, three config sets
 

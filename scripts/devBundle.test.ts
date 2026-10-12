@@ -22,14 +22,10 @@ async function buildDevBundle(): Promise<string> {
 
 describe("the dev bundle", () => {
   // Rollup orders a circular import by the first file that enters it, and only a real load shows a class extended before its definition.
-  it("loads in a bare context and defines both triggers as globals", async () => {
+  it("loads in a bare context and defines the trigger as a global", async () => {
     const code = await buildDevBundle();
-    const context: { triggerOnEdit?: unknown; triggerOnChange?: unknown } = {};
-    runInNewContext(
-      `${code}\nthis.triggerOnEdit = triggerOnEdit; this.triggerOnChange = triggerOnChange;`,
-      context,
-    );
+    const context: { triggerOnEdit?: unknown } = {};
+    runInNewContext(`${code}\nthis.triggerOnEdit = triggerOnEdit;`, context);
     expect(typeof context.triggerOnEdit).toBe("function");
-    expect(typeof context.triggerOnChange).toBe("function");
   }, 60_000);
 });

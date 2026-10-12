@@ -17,23 +17,6 @@ describe("AppsScript.boundSpreadsheetId", () => {
   });
 });
 
-describe("AppsScript.sheetChange", () => {
-  it("decodes REMOVE_GRID as sheetRemoved", () => {
-    expect(AppsScript.sheetChange("REMOVE_GRID")).toBe("sheetRemoved");
-  });
-
-  it("decodes OTHER as other", () => {
-    expect(AppsScript.sheetChange("OTHER")).toBe("other");
-  });
-
-  it.each(["INSERT_ROW", "EDIT"] as const)(
-    "ignores %s by returning undefined",
-    (changeType) => {
-      expect(AppsScript.sheetChange(changeType)).toBeUndefined();
-    },
-  );
-});
-
 describe("AppsScript.sheetEdit", () => {
   it("decodes an edit event into a 0-based SheetEdit", () => {
     const event = {
@@ -63,16 +46,6 @@ describe("AppsScript.trigger", () => {
     ]);
   });
 
-  it("addOnChange schedules an onChange trigger for the given function, alongside the existing triggers", () => {
-    const { triggers } = stubScriptAndSpreadsheetApp();
-    AppsScript.trigger.addOnEdit("triggerOnEdit");
-    AppsScript.trigger.addOnChange("triggerOnChange");
-    expect(triggers).toEqual([
-      { handlerFunction: "triggerOnEdit", kind: "onEdit" },
-      { handlerFunction: "triggerOnChange", kind: "onChange" },
-    ]);
-  });
-
   it("addFirstOfMonth schedules a month-day-1 trigger", () => {
     const { triggers } = stubScriptAndSpreadsheetApp();
     AppsScript.trigger.addFirstOfMonth("monthlyJob");
@@ -97,22 +70,5 @@ describe("AppsScript.trigger", () => {
 
     AppsScript.trigger.deleteAllTriggers();
     expect(triggers).toHaveLength(0);
-  });
-});
-
-describe("AppsScript.toast", () => {
-  it("shows the message, title and timeout on the active spreadsheet", () => {
-    const { toasts } = stubScriptAndSpreadsheetApp();
-    AppsScript.toast("Press Undo now.", {
-      title: "Value Config was deleted",
-      timeoutSeconds: 15,
-    });
-    expect(toasts).toEqual([
-      {
-        message: "Press Undo now.",
-        title: "Value Config was deleted",
-        timeoutSeconds: 15,
-      },
-    ]);
   });
 });
