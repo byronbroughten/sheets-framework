@@ -22,7 +22,6 @@ import {
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
 import type { FakeGridView } from "../testSupport/fakeSheetsService/gridView";
-import { valueConfigGid } from "../testSupport/fakeTableConfigSheet";
 import { Api } from "./Api";
 import type { Endpoints } from "./Endpoints";
 
@@ -131,30 +130,6 @@ describe("Api.handleSheetEdit, the entry call", () => {
     );
     expect(installSource).toHaveBeenCalledOnce();
     expect(calls).toEqual(["button"]);
-  });
-});
-
-describe("Api.handleSheetChange", () => {
-  it("does nothing for a change the platform module doesn't name", () => {
-    const installSource = vi.fn();
-    expect(
-      Api.handleSheetChange(
-        { configs, endpoints: {} },
-        undefined,
-        installSource,
-      ),
-    ).toBeUndefined();
-    expect(installSource).not.toHaveBeenCalled();
-  });
-  it("installs the source and returns no floor notice for a renamed Value Config, which is no longer floor", () => {
-    stubSheetsService({
-      sheets: [{ sheetId: valueConfigGid, title: "Values" }],
-    });
-    const installSource = vi.fn();
-    expect(
-      Api.handleSheetChange({ configs, endpoints: {} }, "other", installSource),
-    ).toBeUndefined();
-    expect(installSource).toHaveBeenCalledOnce();
   });
 });
 

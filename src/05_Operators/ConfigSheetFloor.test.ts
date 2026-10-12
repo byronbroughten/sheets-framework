@@ -953,15 +953,6 @@ describe("ConfigSheetFloor", () => {
     expect(report).not.toContain("Value Config");
   });
 
-  it("returns no floor notice for a renamed Value Config and sends no batch update", () => {
-    const { batchUpdateCount } = floorFixture({
-      extraSheets: [valueConfigTab({ title: "Values", tableName: "values" })],
-    });
-
-    expect(ConfigSheetFloor.init().changeNotice("other")).toBeUndefined();
-    expect(batchUpdateCount()).toBe(0);
-  });
-
   it("renames a wrongly named floor Table and reports it", () => {
     const { grid } = floorFixture({
       spreadsheetConfigTableName: "wrongTable",

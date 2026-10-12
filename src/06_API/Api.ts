@@ -1,4 +1,3 @@
-import type { SheetChange } from "../00_Source/PlatformEvents/sheetChange";
 import type { SheetEdit } from "../00_Source/PlatformEvents/sheetEdit";
 import type { ColumnSchema } from "../01_SpreadsheetSchema/configReaders/ColumnSchema";
 import {
@@ -11,8 +10,6 @@ import {
   SpreadsheetBaseNamed,
   type SpreadsheetNamedProps,
 } from "../04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
-import { ConfigSheetFloor } from "../05_Operators/ConfigSheetFloor";
-import type { FloorNotice } from "../05_Operators/ConfigSheetFloor/floorChangeNotice";
 import { EndpointRun } from "./EndpointRun";
 import type { Endpoints, EndpointsAll } from "./Endpoints";
 import { installEndpoints } from "./feedbackColumnIds";
@@ -50,17 +47,6 @@ export class Api extends SpreadsheetBaseNamed {
     installEndpoints(endpoints);
     installSource();
     Api.init(endpoints).handleSheetEdit(edit);
-  }
-  static handleSheetChange(
-    { configs, endpoints }: AppSetup,
-    change: SheetChange | undefined,
-    installSource: () => void,
-  ): FloorNotice | undefined {
-    if (change === undefined) return undefined;
-    installConfigs(configs);
-    installEndpoints(endpoints);
-    installSource();
-    return ConfigSheetFloor.init().changeNotice(change);
   }
   get schema(): SpreadsheetSchema {
     return new SpreadsheetSchema();

@@ -1,4 +1,3 @@
-import type { SheetChange } from "../00_Source/PlatformEvents/sheetChange";
 import type { ColumnName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
 import {
   configSheetFloorSeed,
@@ -16,7 +15,6 @@ import {
   ConfigSheetFloorEditWarnings,
   type IdentityColIndexes,
 } from "./ConfigSheetFloor/ConfigSheetFloorEditWarnings";
-import type { FloorNotice } from "./ConfigSheetFloor/floorChangeNotice";
 import { liveColIndex } from "./ConfigSheetFloor/floorColumnLocation";
 import {
   columnNameByHeader,
@@ -34,7 +32,6 @@ export const retiredSheetConfigTitle = "Sheet Config";
  * the edit warnings. ConfigCoordinator
  * runs this at the start of every config sync; the
  * ensureConfigSheetFloor chore is the other caller.
- * changeNotice raises no floor notice, since every floor tab has an edit warning.
  * docs/generated-data/config-sheet-floor.md
  */
 export class ConfigSheetFloor extends SpreadsheetBaseNamed {
@@ -67,9 +64,6 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
       ...this._ensureColumnTypes(),
       ...this.editWarnings.ensure(identityColIndexes),
     ].join("; ");
-  }
-  changeNotice(_change: SheetChange): FloorNotice | undefined {
-    return undefined;
   }
   private _ensureTitlesAndTables(): string[] {
     this.ss.raw.ensureAllSheetPropertiesAreFetched();

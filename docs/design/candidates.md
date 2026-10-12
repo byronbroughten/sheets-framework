@@ -34,6 +34,6 @@ _Cited by:_ #55, #58.
 
 ## Google Sheets stays behind one folder before a second platform exists
 
-An Excel (Office Scripts) implementation should replace `src/00_Source/GoogleSheets/`, not chase Google types through the tiers. A platform capability reaches neutral code as a neutral type (`SheetChange`) or as a value the Apps Script host acts on (the `FloorNotice` `AppsScriptApi.handleSheetChange` shows), and a lint rule, not a convention, holds that.
+An Excel (Office Scripts) implementation should replace `src/00_Source/GoogleSheets/`, not chase Google types through the tiers. A platform capability reaches neutral code as a neutral type (`SheetEdit`), and a lint rule, not a convention, holds that.
 
 _Cited by:_ #85, #104.

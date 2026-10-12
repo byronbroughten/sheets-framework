@@ -82,10 +82,6 @@ _Avoid_: template, default config
 A Table Config or Column Config row describing a config-sheet floor Table or floor column; its declared cell is enforced from the floor seed.
 _Avoid_: config-about-config row
 
-**Floor notice**:
-A message that pops up when someone changes the config-sheet floor in a way the next config sync will reverse, saying what will happen and what they can do about it.
-_Avoid_: toast, warning (that is a run state), alert
-
 ### Endpoints
 
 **Endpoint**:

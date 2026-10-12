@@ -28,7 +28,7 @@ App code imports only from `@byronbroughten/sheets-framework`; test files may al
 
 An unaugmented `Register` is a type error, not a silent widening.
 
-**Declare the two triggers in your entry file** as one-line globals, and install them as Apps Script triggers (on edit, on change):
+**Declare the trigger in your entry file** as a one-line global, and install it as an on-edit Apps Script trigger:
 
 ```ts
 import { Api } from "@byronbroughten/sheets-framework";
@@ -38,10 +38,6 @@ const app = { configs: appConfigs, endpoints: myEndpoints };
 
 function triggerOnEdit(e: GoogleAppsScript.Events.SheetsOnEdit) {
   Api.handleSheetEdit(app, e);
-}
-
-function triggerOnChange(e: GoogleAppsScript.Events.SheetsOnChange) {
-  Api.handleSheetChange(app, e);
 }
 ```
 

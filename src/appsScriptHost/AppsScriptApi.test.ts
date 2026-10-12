@@ -12,7 +12,6 @@ import {
   buildGridRows,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
-import { valueConfigGid } from "../testSupport/fakeTableConfigSheet";
 import { AppsScriptApi } from "./AppsScriptApi";
 
 const runItemGid = getTableTraitByName("runItem", "sheetGid");
@@ -34,12 +33,6 @@ function onEditEvent(
     },
     value,
   } as unknown as GoogleAppsScript.Events.SheetsOnEdit;
-}
-
-function onChangeEvent(
-  changeType: GoogleAppsScript.Events.SheetsOnChange["changeType"],
-): GoogleAppsScript.Events.SheetsOnChange {
-  return { changeType } as GoogleAppsScript.Events.SheetsOnChange;
 }
 
 beforeEach(() => {
@@ -139,48 +132,6 @@ describe("AppsScriptApi.handleSheetEdit, with no source installed", () => {
           resultColIndex,
           "TRUE",
         ),
-      ),
-    ).toThrow("bind the Apps Script project to its spreadsheet");
-  });
-});
-
-describe("AppsScriptApi.handleSheetChange", () => {
-  it("shows no toast for a renamed Value Config, which is no longer floor", () => {
-    stubSheetsService({
-      sheets: [{ sheetId: valueConfigGid, title: "Values" }],
-    });
-    const { toasts } = stubScriptAndSpreadsheetApp();
-    AppsScriptApi.handleSheetChange(
-      { configs, endpoints: {} },
-      onChangeEvent("OTHER"),
-    );
-    expect(toasts).toEqual([]);
-  });
-  it("shows no toast for a deleted Value Config, which is no longer floor", () => {
-    stubSheetsService({ sheets: [] });
-    const { toasts } = stubScriptAndSpreadsheetApp();
-    AppsScriptApi.handleSheetChange(
-      { configs, endpoints: {} },
-      onChangeEvent("REMOVE_GRID"),
-    );
-    expect(toasts).toEqual([]);
-  });
-  it("shows no toast for a change type the platform module doesn't name", () => {
-    const { toasts } = stubScriptAndSpreadsheetApp();
-    AppsScriptApi.handleSheetChange(
-      { configs, endpoints: {} },
-      onChangeEvent("EDIT"),
-    );
-    expect(toasts).toEqual([]);
-  });
-  it("reaches for the Google Sheets source when none is installed", async () => {
-    vi.resetModules();
-    const fresh = await import("./AppsScriptApi");
-    stubScriptAndSpreadsheetApp({ spreadsheetId: null });
-    expect(() =>
-      fresh.AppsScriptApi.handleSheetChange(
-        { configs, endpoints: {} },
-        onChangeEvent("OTHER"),
       ),
     ).toThrow("bind the Apps Script project to its spreadsheet");
   });

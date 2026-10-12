@@ -1,13 +1,7 @@
 import { Val } from "@byronbroughten/utils/val";
 
-import type { SheetChange } from "../PlatformEvents/sheetChange";
 import type { SheetEdit } from "../PlatformEvents/sheetEdit";
 import { SheetIndex } from "../RawSource/SheetIndex";
-
-interface ToastOptions {
-  title: string;
-  timeoutSeconds: number;
-}
 
 export class AppsScript {
   // A standalone script has no active spreadsheet; the framework's is always bound to its own.
@@ -16,13 +10,6 @@ export class AppsScript {
       SpreadsheetApp.getActive(),
       "Active spreadsheet (bind the Apps Script project to its spreadsheet)",
     ).getId();
-  }
-  static sheetChange(
-    changeType: GoogleAppsScript.Events.SheetsOnChange["changeType"],
-  ): SheetChange | undefined {
-    if (changeType === "REMOVE_GRID") return "sheetRemoved";
-    if (changeType === "OTHER") return "other";
-    return undefined;
   }
   // Google's event rows and columns are 1-based.
   static sheetEdit(e: GoogleAppsScript.Events.SheetsOnEdit): SheetEdit {
@@ -33,13 +20,9 @@ export class AppsScript {
       value: e.value,
     };
   }
-  static toast(message: string, { title, timeoutSeconds }: ToastOptions): void {
-    SpreadsheetApp.getActive().toast(message, title, timeoutSeconds);
-  }
   static get trigger(): {
     deleteAllTriggers(): void;
     addOnEdit(fnName: string): void;
-    addOnChange(fnName: string): void;
     addFirstOfMonth: (fnName: string) => void;
     addEveryMinute: (fnName: string) => void;
   } {
@@ -53,12 +36,6 @@ export class AppsScript {
         ScriptApp.newTrigger(fnName)
           .forSpreadsheet(SpreadsheetApp.getActive())
           .onEdit()
-          .create();
-      },
-      addOnChange(fnName: string): void {
-        ScriptApp.newTrigger(fnName)
-          .forSpreadsheet(SpreadsheetApp.getActive())
-          .onChange()
           .create();
       },
       addFirstOfMonth: function (fnName: string) {
