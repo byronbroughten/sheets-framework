@@ -13,8 +13,8 @@ Each entry is one of two kinds, and the value type and value schema of every col
 - **A fixed list** is an array of members, each a string, number or boolean. The `const` parameter keeps it a literal tuple, so its value type is the union of its members, a number member staying a number literal, and its wire type is the union of their primitive kinds. Its value schema accepts only a member, and its default is its first member.
 - **A live reference** is the marker `{ "kind": "liveReference" }`, with no members, because its options are rows added after the build. Its value type is `string`, and it takes the framework `string` value schema: any string is accepted, and its default is blank, so the column's **Empty value allowed** decides whether that blank reads. It never takes the `id` value schema, whose default throws.
 
+Value Config is still on the config-sheet floor; as a Let api access Table it is one more value source, so its value names are `valueConfig<Header>`. The framework's `valueKinds/` test program installs a hand-written config set with one of each.
+
 ## Which sources are live
 
 A source is a live reference when its header is its Table's Name header or ID header, as `tableLayout` declares them, whatever the column's type menu says (#147). Those columns identify the Table's rows, so the dropdown's options are the rows themselves: a row added there is an option at once, with no config sync, where a fixed list would hold only the rows of the last sync. Its source column isn't fetched. Its value name follows the rule for any source, so `unit[Name]` gives `unitName` and `unit[ID]` gives `unitId`, never the `id` value name. Nothing checks at read time that a reference names an existing row: a name with no match is the endpoint's to report.
-
-Value Config is still on the config-sheet floor; as a Let api access Table it is one more value source, so its value names are `valueConfig<Header>`. The framework's `valueKinds/` test program installs a hand-written config set with one of each.

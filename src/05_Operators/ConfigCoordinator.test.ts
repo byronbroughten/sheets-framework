@@ -20,14 +20,14 @@ import {
   type ConfigRegeneration,
 } from "./ConfigCoordinator";
 
+type GridRange = GoogleAppsScript.Sheets.Schema.GridRange;
+
 const { columnConfigs } = installedConfigs();
 const testSheetGid = getTableTraitByName("item", "sheetGid");
 const tableConfigGid = 210603630;
 const columnConfigGid = 2034522667;
 const draftGid = 777000111;
 const draftTitle = "Add Widget Order";
-type GridRange = GoogleAppsScript.Sheets.Schema.GridRange;
-
 const headerOnlyTableEndRowIndex = expectedSheetLayout.tableHeaderRowIndex + 1;
 const tableHeaderRowIndex = expectedSheetLayout.tableHeaderRowIndex;
 const startTableColIndex = expectedSheetLayout.startTableColIndex;
@@ -1894,8 +1894,8 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
     });
   });
 
-  it("emits a dropdown from a Table's Name or ID column as a live reference, whatever its type, without fetching the source", () => {
-    const service = seedValueSources({
+  function seedNameAndIdSources(): FakeSheetsService {
+    return seedValueSources({
       apiTables: [
         listSheet([
           { header: "ID", values: ["r:lst:a1"] },
@@ -1909,6 +1909,10 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
         ]),
       ],
     });
+  }
+
+  it("emits a dropdown from a Table's Name or ID column as a live reference, whatever its type", () => {
+    seedNameAndIdSources();
 
     const { valueConfigs, ledgerValueName } = generate();
 
@@ -1920,6 +1924,13 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
       listId: { kind: "liveReference" },
       listKind: ["Flat"],
     });
+  });
+
+  it("fetches no Name or ID source column, only the fixed-list ones", () => {
+    const service = seedNameAndIdSources();
+
+    generate();
+
     expect(fullyFetchedListColumnIndexes(service)).toEqual([2]);
   });
 
