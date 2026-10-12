@@ -6,6 +6,11 @@ import { relative } from "node:path";
 import { Obj } from "@byronbroughten/utils/obj";
 import { Val } from "@byronbroughten/utils/val";
 
+import type {
+  FixedList,
+  FixedListMember,
+  ValueConfigBase,
+} from "../src/01_SpreadsheetSchema/configReaders/makeConfigs.ts";
 import {
   type ConfigFile,
   configFilePath,
@@ -20,7 +25,7 @@ type IdentifiedEntry<FN extends IdField> = ConfigEntry & Record<FN, string>;
 export interface ConfigSnapshot {
   tableConfigs: Record<string, IdentifiedEntry<"tableId">>;
   columnConfigs: Record<string, Record<string, IdentifiedEntry<"columnId">>>;
-  valueConfigs: Record<string, string[]>;
+  valueConfigs: Record<string, ValueConfigBase>;
 }
 
 interface BeforeAfter<SV> {
@@ -187,33 +192,64 @@ function renameLabel({ beforeKey, afterKey }: Matched<object>): string {
   return beforeKey === afterKey ? beforeKey : `${beforeKey} → ${afterKey}`;
 }
 
-function diffValues(values: BeforeAfter<Record<string, string[]>>): Section[] {
+function diffValues(
+  values: BeforeAfter<Record<string, ValueConfigBase>>,
+): Section[] {
   return pairEntries(values, (name) => name).flatMap((pairing) => {
     if (pairing.kind !== "matched") {
       return [valueSection(pairing.key, [pairing.kind])];
     }
-    const changes = optionChanges(pairing);
+    const changes = valueConfigChanges(pairing);
     if (changes.length === 0) return [];
     return [valueSection(pairing.beforeKey, changes)];
   });
 }
 
-function optionChanges({ before, after }: BeforeAfter<string[]>): string[] {
-  const added = after.filter((option) => !before.includes(option));
-  const removed = before.filter((option) => !after.includes(option));
+function valueConfigChanges({
+  before,
+  after,
+}: BeforeAfter<ValueConfigBase>): string[] {
+  if (isFixedList(before) && isFixedList(after)) {
+    return memberChanges({ before, after });
+  }
+  const beforeKind = valueKindLabel(before);
+  const afterKind = valueKindLabel(after);
+  return beforeKind === afterKind ? [] : [`${beforeKind} → ${afterKind}`];
+}
+
+function isFixedList(config: ValueConfigBase): config is FixedList {
+  return Array.isArray(config);
+}
+
+const valueKindLabels = {
+  fixedList: "fixed list",
+  liveReference: "live reference",
+} as const;
+
+function valueKindLabel(config: ValueConfigBase): string {
+  if (isFixedList(config)) return valueKindLabels.fixedList;
+  return valueKindLabels.liveReference;
+}
+
+function memberChanges({ before, after }: BeforeAfter<FixedList>): string[] {
+  const added = after.filter((member) => !before.includes(member));
+  const removed = before.filter((member) => !after.includes(member));
   const changes = [
-    ...optionListChange("added", added),
-    ...optionListChange("removed", removed),
+    ...memberListChange("added", added),
+    ...memberListChange("removed", removed),
   ];
-  if (changes.length === 0 && before.join("\n") !== after.join("\n")) {
+  if (
+    changes.length === 0 &&
+    JSON.stringify(before) !== JSON.stringify(after)
+  ) {
     return ["reordered"];
   }
   return changes;
 }
 
-function optionListChange(verb: string, options: string[]): string[] {
-  if (options.length === 0) return [];
-  const quoted = options.map((option) => JSON.stringify(option));
+function memberListChange(verb: string, members: FixedListMember[]): string[] {
+  if (members.length === 0) return [];
+  const quoted = members.map((member) => JSON.stringify(member));
   return [`${verb} ${quoted.join(", ")}`];
 }
 
@@ -258,7 +294,7 @@ function readSnapshot(
     ),
     valueConfigs: mapValues(
       readConfigFile(readFile, "valueConfigs"),
-      validateOptions,
+      validateValueConfig,
     ),
   };
 }
@@ -294,11 +330,23 @@ function validateEntry<FN extends IdField>(
   return entry as IdentifiedEntry<FN>;
 }
 
-function validateOptions(value: unknown): string[] {
-  if (!Array.isArray(value)) {
-    throw new Error("configs:diff: a valueConfigs entry is not an array.");
+function validateValueConfig(value: unknown): ValueConfigBase {
+  if (Array.isArray(value)) return value.map(validateMember);
+  const entry = validateRecord(value, "a valueConfigs entry");
+  if (entry.kind === "liveReference") return { kind: "liveReference" };
+  const { fixedList, liveReference } = valueKindLabels;
+  throw new Error(
+    `configs:diff: a valueConfigs entry is neither a ${fixedList} nor a ${liveReference}.`,
+  );
+}
+
+function validateMember(value: unknown): FixedListMember {
+  if (Val.is.string(value) || Val.is.number(value) || Val.is.boolean(value)) {
+    return value;
   }
-  return value.map((option) => Val.validate.string(option));
+  throw new Error(
+    "configs:diff: a fixed list member is not a string, number or boolean.",
+  );
 }
 
 function mapValues<FR, TO>(

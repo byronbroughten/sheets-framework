@@ -1,6 +1,16 @@
+import { spawnSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
-import { type ConfigSnapshot, summarizeConfigsDiff } from "./configsDiff.ts";
+import {
+  type ConfigSnapshot,
+  readConfigsDiff,
+  summarizeConfigsDiff,
+} from "./configsDiff.ts";
+import type { SheetsConfig } from "./sheetsConfig.ts";
 
 const item = { tableId: "item", tableName: "item", hasIdColumn: true };
 const itemName = { columnId: "c:itm:aaa", header: "Name", valueName: "string" };
@@ -95,6 +105,43 @@ describe("summarizeConfigsDiff", () => {
     ]);
   });
 
+  it("diffs value configs by kind: fixed list or live reference", () => {
+    const liveReference = { kind: "liveReference" } as const;
+    const before = snapshot({
+      valueConfigs: {
+        status: ["Open", "Closed"],
+        size: ["S", "M"],
+        agent: ["Ann"],
+        tenant: liveReference,
+        priority: liveReference,
+      },
+    });
+    const after = snapshot({
+      valueConfigs: {
+        status: liveReference,
+        size: ["S", 2],
+        agent: ["Ann"],
+        tenant: liveReference,
+        priority: [1, 2],
+      },
+    });
+    expect(summarizeConfigsDiff({ before, after })).toEqual([
+      "Value status: fixed list → live reference",
+      'Value size: added 2; removed "M"',
+      "Value priority: live reference → fixed list",
+      "3 changes.",
+    ]);
+  });
+
+  it("tells a number member from the same digits as a string", () => {
+    const before = snapshot({ valueConfigs: { size: ["1", 2] } });
+    const after = snapshot({ valueConfigs: { size: [1, 2] } });
+    expect(summarizeConfigsDiff({ before, after })).toEqual([
+      'Value size: added 1; removed "1"',
+      "1 change.",
+    ]);
+  });
+
   it("counts everything as added on a first generation with no HEAD version", () => {
     expect(
       summarizeConfigsDiff({ before: undefined, after: snapshot() }),
@@ -104,6 +151,61 @@ describe("summarizeConfigsDiff", () => {
       "  column qty: added",
       "Value status: added",
       "4 changes.",
+    ]);
+  });
+});
+
+describe("readConfigsDiff", () => {
+  function writeConfigFiles(
+    generatedDir: string,
+    valueConfigs: ConfigSnapshot["valueConfigs"],
+  ): void {
+    const files = [
+      ["tableConfigs", "makeTableConfigs", {}],
+      ["columnConfigs", "makeColumnConfigs", {}],
+      ["valueConfigs", "makeValueConfigs", valueConfigs],
+    ] as const;
+    files.forEach(([file, maker, configs]) => {
+      writeFileSync(
+        join(generatedDir, `${file}.ts`),
+        `export const ${file} = ${maker}(${JSON.stringify(configs, null, 2)});\n`,
+      );
+    });
+  }
+
+  function git(cwd: string, ...args: string[]): void {
+    const config = ["-c", "user.name=test", "-c", "user.email=test@test"];
+    const { status, stderr } = spawnSync("git", [...config, ...args], {
+      cwd,
+      encoding: "utf8",
+    });
+    if (status !== 0) throw new Error(stderr);
+  }
+
+  it("reads live references and number lists from the generated files", () => {
+    const dir = mkdtempSync(join(tmpdir(), "configs-diff-"));
+    const generatedDir = join(dir, "generated");
+    mkdirSync(generatedDir);
+    writeConfigFiles(generatedDir, { status: ["Open"], size: ["S"] });
+    git(dir, "init", "-q");
+    git(dir, "add", ".");
+    git(dir, "commit", "-q", "-m", "HEAD");
+    writeConfigFiles(generatedDir, {
+      status: { kind: "liveReference" },
+      size: [1, 2],
+    });
+    const sheetsConfig: SheetsConfig = {
+      path: join(dir, "sheets.config.json"),
+      dir,
+      spreadsheetId: "",
+      generatedDir,
+      choreHomes: [],
+      endpointModule: undefined,
+    };
+    expect(readConfigsDiff(sheetsConfig)).toEqual([
+      "Value status: fixed list → live reference",
+      'Value size: added 1, 2; removed "S"',
+      "2 changes.",
     ]);
   });
 });
