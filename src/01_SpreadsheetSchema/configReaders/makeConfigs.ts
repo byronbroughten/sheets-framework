@@ -43,14 +43,17 @@ function assertUniqueIdPrefixes(
   );
 }
 
-export type ValueConfigsBase = Record<string, readonly string[]>;
+export type FixedListMember = string | number | boolean;
+export type FixedList = readonly FixedListMember[];
+export interface LiveReference {
+  kind: "liveReference";
+}
+export type ValueConfigBase = FixedList | LiveReference;
+export type ValueConfigsBase = Record<string, ValueConfigBase>;
 export function makeValueConfigs<const VC extends ValueConfigsBase>(
   valueConfigs: VC,
 ): VC {
-  return makeStructuredConfig(
-    {} as Record<string, readonly string[]>,
-    valueConfigs,
-  );
+  return makeStructuredConfig({} as ValueConfigsBase, valueConfigs);
 }
 
 interface ColumnConfigLiteral {

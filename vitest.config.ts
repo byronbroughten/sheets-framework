@@ -18,6 +18,14 @@ export default defineConfig({
       },
       {
         extends: true,
+        test: {
+          name: "valueKinds",
+          include: ["valueKinds/**/*.test.ts"],
+          setupFiles: ["valueKinds/installValueKindsConfigs.ts"],
+        },
+      },
+      {
+        extends: true,
         test: { name: "scripts", include: ["scripts/**/*.test.ts"] },
       },
     ],

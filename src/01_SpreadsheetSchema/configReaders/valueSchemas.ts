@@ -16,7 +16,11 @@ import type {
   ValueSchemaKey,
 } from "../../00_Source/CellValues/valueSchema";
 import { makeSchemasFromValueConfig } from "./valueConfigSchemas";
-import type { ValueConfigName, ValueConfigValues } from "./valueConfigsTypes";
+import type {
+  ValueConfigName,
+  ValueConfigValue,
+  ValueConfigValues,
+} from "./valueConfigsTypes";
 
 type ValueNameSimple = FrameworkValueName | ValueConfigName;
 
@@ -32,6 +36,13 @@ export type ValueName<VN extends ValueNameSimple = ValueNameSimple> = VN;
 export type VnToCvn<VN extends ValueNameSimple> = VN extends CellValueName
   ? VN
   : VN extends "checkbox"
+    ? "boolean"
+    : VN extends ValueConfigName
+      ? MemberToCvn<ValueConfigValue<VN>>
+      : "string";
+type MemberToCvn<VL> = VL extends number
+  ? "number"
+  : VL extends boolean
     ? "boolean"
     : "string";
 

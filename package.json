@@ -24,7 +24,7 @@
     "!**/CLAUDE.md"
   ],
   "scripts": {
-    "tsc": "tsc -p . && tsc -p scripts",
+    "tsc": "tsc -p . && tsc -p valueKinds && tsc -p scripts",
     "lint": "eslint . && npm run -s lint:docs",
     "lint:docs": "lint-docs --published .",
     "test": "vitest run",
