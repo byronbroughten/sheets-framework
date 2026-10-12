@@ -7,6 +7,7 @@ import {
   type FloorSeedColumn,
   floorSeedColumnInSheet,
   floorSeedColumns,
+  floorSeedEmptyValueAllowed,
 } from "./configSheetFloorSeed";
 import type {
   ColumnConfigsGeneric,
@@ -85,9 +86,10 @@ function floorColumnMismatches(
       `${label} has valueName "${column.valueName}" where the floor seed's column type ${seedColumn.columnType} implies "${seedValueName}".`,
     );
   }
-  if (column.emptyValueAllowed !== seedColumn.emptyValueAllowed) {
+  const seedEmptyValueAllowed = floorSeedEmptyValueAllowed(seedColumn);
+  if (column.emptyValueAllowed !== seedEmptyValueAllowed) {
     mismatches.push(
-      `${label} has emptyValueAllowed ${column.emptyValueAllowed} where the floor seed has ${seedColumn.emptyValueAllowed}.`,
+      `${label} has emptyValueAllowed ${column.emptyValueAllowed} where the floor seed has ${seedEmptyValueAllowed}.`,
     );
   }
   return mismatches;

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { columnConfigsByName } from "./columnConfigsTypes";
+import { configSheetFloorSeed } from "./configSheetFloorSeed";
 import { assertFloorMatchesSeed } from "./floorSeedCheck";
 import type { ColumnConfigsGeneric, ColumnConfigStored } from "./makeConfigs";
 import { tableConfigsByName } from "./tableConfigsTypes";
@@ -80,6 +81,24 @@ describe("assertFloorMatchesSeed", () => {
 
     expect(() => assertFloorMatchesSeed(tableConfigs, configs)).toThrow(
       `Floor column "Table menu space" on "spreadsheetConfig" (column ID "${tableMenuSpace.columnId}") has emptyValueAllowed true where the floor seed has false.`,
+    );
+  });
+
+  it("reads a seed column that leaves emptyValueAllowed out as false", () => {
+    const configs = floorColumnConfigs();
+    const tableMenuSpace = floorColumn(
+      configs,
+      "spreadsheetConfig",
+      "tableMenuSpace",
+    );
+    const [seedColumn] = configSheetFloorSeed.spreadsheetConfig.columns;
+
+    expect(Object.hasOwn(seedColumn, "emptyValueAllowed")).toBe(false);
+    tableMenuSpace.emptyValueAllowed = false;
+    expect(() => assertFloorMatchesSeed(tableConfigs, configs)).not.toThrow();
+    tableMenuSpace.emptyValueAllowed = true;
+    expect(() => assertFloorMatchesSeed(tableConfigs, configs)).toThrow(
+      "has emptyValueAllowed true where the floor seed has false.",
     );
   });
 

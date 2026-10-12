@@ -19,7 +19,7 @@ export type FloorColumnType = Extract<
 export interface FloorSeedColumn {
   header: string;
   columnType: FloorColumnType;
-  emptyValueAllowed: boolean;
+  emptyValueAllowed?: boolean;
   dataValue?: string;
 }
 
@@ -50,7 +50,6 @@ export const configSheetFloorSeed = {
         header: "Table menu space",
         columnGroupHeading: "",
         columnType: "TEXT",
-        emptyValueAllowed: false,
         dataValue: "Not used",
       },
     ],
@@ -60,12 +59,10 @@ export const configSheetFloorSeed = {
         timeLastRan: {
           header: "Fill row IDs, time last ran",
           columnType: "TEXT",
-          emptyValueAllowed: false,
         },
         runStatus: {
           header: "Fill row IDs, run status",
           columnType: "TEXT",
-          emptyValueAllowed: false,
         },
       },
       spreadsheetConfig_syncConfigSheetRowsTimeLastRan: {
@@ -73,12 +70,10 @@ export const configSheetFloorSeed = {
         timeLastRan: {
           header: "Sync config sheet rows, time last ran",
           columnType: "TEXT",
-          emptyValueAllowed: false,
         },
         runStatus: {
           header: "Sync config sheet rows, run status",
           columnType: "TEXT",
-          emptyValueAllowed: false,
         },
       },
     },
@@ -92,25 +87,21 @@ export const configSheetFloorSeed = {
         header: "Table ID",
         columnGroupHeading: "",
         columnType: "TEXT",
-        emptyValueAllowed: false,
       },
       {
         header: "Table name",
         columnGroupHeading: "",
         columnType: "TEXT",
-        emptyValueAllowed: false,
       },
       {
         header: "Sheet title",
         columnGroupHeading: "",
         columnType: "TEXT",
-        emptyValueAllowed: false,
       },
       {
         header: "Let api access",
         columnGroupHeading: "",
         columnType: "BOOLEAN",
-        emptyValueAllowed: false,
       },
     ],
   },
@@ -123,31 +114,26 @@ export const configSheetFloorSeed = {
         header: "Table ID",
         columnGroupHeading: "",
         columnType: "TEXT",
-        emptyValueAllowed: false,
       },
       {
         header: "Column ID",
         columnGroupHeading: "",
         columnType: "TEXT",
-        emptyValueAllowed: false,
       },
       {
         header: "Table name",
         columnGroupHeading: "",
         columnType: "TEXT",
-        emptyValueAllowed: false,
       },
       {
         header: "Header",
         columnGroupHeading: "",
         columnType: "TEXT",
-        emptyValueAllowed: false,
       },
       {
         header: "Empty value allowed",
         columnGroupHeading: "",
         columnType: "BOOLEAN",
-        emptyValueAllowed: false,
       },
     ],
   },
@@ -222,6 +208,13 @@ export function floorSeedColumnInSheet(
     if (columnName === undefined) return false;
     return getColumnTraitByName(tableName, columnName, "columnId") === columnId;
   });
+}
+
+// A seed column lists emptyValueAllowed only when it's true.
+export function floorSeedEmptyValueAllowed(
+  seedColumn: FloorSeedColumn,
+): boolean {
+  return seedColumn.emptyValueAllowed ?? false;
 }
 
 export function floorColumnLabel(tableName: string, header: string): string {
