@@ -25,10 +25,7 @@ describe("the dev bundle", () => {
   it("loads in a bare context and defines the trigger as a global", async () => {
     const code = await buildDevBundle();
     const context: { triggerOnEdit?: unknown } = {};
-    runInNewContext(
-      `${code}\nthis.triggerOnEdit = triggerOnEdit;`,
-      context,
-    );
+    runInNewContext(`${code}\nthis.triggerOnEdit = triggerOnEdit;`, context);
     expect(typeof context.triggerOnEdit).toBe("function");
   }, 60_000);
 });

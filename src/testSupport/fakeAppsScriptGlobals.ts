@@ -77,7 +77,7 @@ export function stubScriptAndSpreadsheetApp({
     getActive: () => {
       if (spreadsheetId === null) return null;
       return {
-        getId: () => spreadsheetId
+        getId: () => spreadsheetId,
       };
     },
   });
