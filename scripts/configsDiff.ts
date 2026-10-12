@@ -221,8 +221,14 @@ function isFixedList(config: ValueConfigBase): config is FixedList {
   return Array.isArray(config);
 }
 
+const valueKindLabels = {
+  fixedList: "fixed list",
+  liveReference: "live reference",
+} as const;
+
 function valueKindLabel(config: ValueConfigBase): string {
-  return isFixedList(config) ? "fixed list" : "live reference";
+  if (isFixedList(config)) return valueKindLabels.fixedList;
+  return valueKindLabels.liveReference;
 }
 
 function memberChanges({ before, after }: BeforeAfter<FixedList>): string[] {
@@ -328,8 +334,9 @@ function validateValueConfig(value: unknown): ValueConfigBase {
   if (Array.isArray(value)) return value.map(validateMember);
   const entry = validateRecord(value, "a valueConfigs entry");
   if (entry.kind === "liveReference") return { kind: "liveReference" };
+  const { fixedList, liveReference } = valueKindLabels;
   throw new Error(
-    "configs:diff: a valueConfigs entry is neither a fixed list nor a live reference.",
+    `configs:diff: a valueConfigs entry is neither a ${fixedList} nor a ${liveReference}.`,
   );
 }
 

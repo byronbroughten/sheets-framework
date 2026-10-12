@@ -156,10 +156,16 @@ describe("summarizeConfigsDiff", () => {
 });
 
 describe("readConfigsDiff", () => {
-  function writeConfigFiles(generatedDir: string, valueConfigs: object): void {
-    const files = { tableConfigs: {}, columnConfigs: {}, valueConfigs };
-    Object.entries(files).forEach(([file, configs]) => {
-      const maker = `make${file[0]?.toUpperCase()}${file.slice(1)}`;
+  function writeConfigFiles(
+    generatedDir: string,
+    valueConfigs: ConfigSnapshot["valueConfigs"],
+  ): void {
+    const files = [
+      ["tableConfigs", "makeTableConfigs", {}],
+      ["columnConfigs", "makeColumnConfigs", {}],
+      ["valueConfigs", "makeValueConfigs", valueConfigs],
+    ] as const;
+    files.forEach(([file, maker, configs]) => {
       writeFileSync(
         join(generatedDir, `${file}.ts`),
         `export const ${file} = ${maker}(${JSON.stringify(configs, null, 2)});\n`,
