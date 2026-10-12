@@ -9,7 +9,6 @@ import {
   makeValueConfigs,
 } from "../src/01_SpreadsheetSchema/configReaders/makeConfigs";
 
-// The dev set plus a Widget Table whose dropdowns use one value config of each kind.
 const tableConfigs = makeTableConfigs({
   ...devTableConfigs,
   widget: {

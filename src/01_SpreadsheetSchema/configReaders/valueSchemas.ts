@@ -15,6 +15,7 @@ import type {
   ValueSchemaBase,
   ValueSchemaKey,
 } from "../../00_Source/CellValues/valueSchema";
+import type { FixedListMember } from "./makeConfigs";
 import { makeSchemasFromValueConfig } from "./valueConfigSchemas";
 import type {
   ValueConfigName,
@@ -40,7 +41,7 @@ export type VnToCvn<VN extends ValueNameSimple> = VN extends CellValueName
     : VN extends ValueConfigName
       ? MemberToCvn<ValueConfigValue<VN>>
       : "string";
-type MemberToCvn<VL> = VL extends number
+type MemberToCvn<VL extends FixedListMember> = VL extends number
   ? "number"
   : VL extends boolean
     ? "boolean"

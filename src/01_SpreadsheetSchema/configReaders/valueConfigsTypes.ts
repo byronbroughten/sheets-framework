@@ -10,8 +10,8 @@ export function valueConfigNames(): readonly ValueConfigName[] {
 }
 
 // A live reference's members are rows added after the build, so it is only ever a string.
-type ValueConfigMember<VC extends ValueConfigBase> = VC extends FixedList
-  ? VC[number]
+type ValueConfigMember<VB extends ValueConfigBase> = VB extends FixedList
+  ? VB[number]
   : string;
 export type ValueConfigValues = {
   [K in ValueConfigName]: ValueConfigMember<ValueConfigs[K]>;

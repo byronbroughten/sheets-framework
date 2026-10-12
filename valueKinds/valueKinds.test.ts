@@ -58,14 +58,18 @@ describe("a fixed-list column", () => {
     expect(topBodyRow(grid)?.[0]).toBe("Open");
   });
 
-  it("rejects a value outside its list and writes a member of any primitive", () => {
-    const { ss, widget, grid } = fetchedWidget([{ status: "Open" }]);
+  it("rejects a value outside its list", () => {
+    const { widget } = fetchedWidget([{ status: "Open" }]);
     const status = widget.row(0).cell("status");
 
     expect(() => status.setValueType("widgetStatus", "Archived")).toThrow(
       /widgetStatus/,
     );
-    status.setValueType("widgetStatus", 3);
+  });
+
+  it("writes a member that isn't a string", () => {
+    const { ss, widget, grid } = fetchedWidget([{ status: "Open" }]);
+    widget.row(0).cell("status").setValueType("widgetStatus", 3);
     ss.batchUpdateGSheets();
 
     expect(topBodyRow(grid)?.[0]).toBe(3);
@@ -85,12 +89,20 @@ describe("a fixed-list column", () => {
 });
 
 describe("a live-reference column", () => {
-  it("accepts any string and rejects a non-string", () => {
-    const { ss, widget, grid } = fetchedWidget([{ itemName: "Item A" }]);
-    const itemName = widget.row(0).cell("itemName");
+  it("rejects a value that isn't a string", () => {
+    const { widget } = fetchedWidget([{ itemName: "Item A" }]);
 
-    expect(() => itemName.setValueType("itemName", 3)).toThrow();
-    itemName.setValueType("itemName", "A row added after the build");
+    expect(() =>
+      widget.row(0).cell("itemName").setValueType("itemName", 3),
+    ).toThrow(/string/i);
+  });
+
+  it("accepts a string no list declares", () => {
+    const { ss, widget, grid } = fetchedWidget([{ itemName: "Item A" }]);
+    widget
+      .row(0)
+      .cell("itemName")
+      .setValueType("itemName", "A row added after the build");
     ss.batchUpdateGSheets();
 
     expect(topBodyRow(grid)?.[1]).toBe("A row added after the build");

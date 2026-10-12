@@ -46,7 +46,7 @@ function makeFixedListSchema(
     type: fixedList[0] as FixedListMember,
     makeDefault: () => Val.assert(fixedList[0], `'${name}' first member`),
     strictValidate: (value: unknown) => {
-      if (fixedList.includes(value as FixedListMember)) {
+      if ((fixedList as readonly unknown[]).includes(value)) {
         return value as FixedListMember;
       } else {
         throw validationError(value, `'${name}' union value element.`);
