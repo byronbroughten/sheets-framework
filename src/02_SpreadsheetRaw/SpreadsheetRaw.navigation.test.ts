@@ -137,7 +137,7 @@ describe("Raw profile members", () => {
     assertType<
       IsExactly<
         Exclude<keyof TableProfileRaw, keyof TableBaseRaw>,
-        "columnIds" | "idPrefix" | "columnById"
+        "columnIds" | "hasHeader" | "idPrefix" | "columnById"
       >
     >(true);
   });
@@ -157,7 +157,8 @@ describe("Raw profile members", () => {
         | "validationConditionType"
         | "valueTitle"
         | "declaredValueTitle"
-        | "validationValueTitle"
+        | "isIdColumn"
+        | "validationColumnReference"
       >
     >(true);
   });

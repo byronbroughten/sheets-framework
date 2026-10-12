@@ -1,9 +1,18 @@
+import type { TableColumnReference } from "../02_SpreadsheetRaw/ColumnProfileRaw";
 import {
   SpreadsheetBaseNamed,
   type SpreadsheetNamedProps,
 } from "../04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
 
 export type UntypedHeadersByTableName = Map<string, string[]>;
+
+export interface SourceColumn {
+  tableId: string;
+  header: string;
+}
+export interface ValueSource extends SourceColumn {
+  valueName: string;
+}
 
 // Lives on operator props, not each collaborator, so getter rebuilds share it.
 export interface ConfigSyncState {
@@ -17,7 +26,7 @@ export interface ConfigSyncState {
     untypedHeadersByTableName: UntypedHeadersByTableName;
     declaredCellReportLines: string[];
   };
-  valueConfigSync: { profileValueTitles: Set<string> };
+  valueConfigSync: { valueSources: ValueSource[] };
 }
 
 export interface OperatorProps extends SpreadsheetNamedProps {
@@ -48,7 +57,7 @@ export class SpreadsheetBaseOperator extends SpreadsheetBaseNamed {
         untypedHeadersByTableName: new Map(),
         declaredCellReportLines: [],
       },
-      valueConfigSync: { profileValueTitles: new Set() },
+      valueConfigSync: { valueSources: [] },
     };
   }
   static initOperatorProps(): OperatorProps {
@@ -57,4 +66,8 @@ export class SpreadsheetBaseOperator extends SpreadsheetBaseNamed {
       configSyncState: SpreadsheetBaseOperator.initConfigSyncState(),
     };
   }
+}
+
+export function sourceLabel({ tableName, header }: TableColumnReference): string {
+  return `"${tableName}[${header}]"`;
 }

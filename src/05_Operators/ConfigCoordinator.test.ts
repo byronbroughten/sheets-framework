@@ -1,3 +1,4 @@
+import { Val } from "@byronbroughten/utils/val";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister";
@@ -1750,5 +1751,330 @@ describe("ConfigCoordinator placement check", () => {
 
     const parsed = coordinator.generateConfigFiles("../makeConfigs");
     expect(parsed.tableConfigs).not.toContain('"log"');
+  });
+});
+
+describe("ConfigCoordinator.generateConfigFiles value sources", () => {
+  const listGid = 889001;
+  const ledgerGid = 889002;
+
+  interface FixtureColumn {
+    header: string;
+    values?: readonly FakeCellValue[];
+    columnType?: string;
+    validationValues?: string[];
+  }
+
+  function tableSheet(props: {
+    sheetId: number;
+    title: string;
+    columns: readonly FixtureColumn[];
+  }): FakeSheetProperties {
+    const { columns } = props;
+    const rowCount = Math.max(
+      1,
+      ...columns.map((column) => column.values?.length ?? 0),
+    );
+    const dataRows: (readonly FakeCellValue[])[] = Array.from(
+      { length: rowCount },
+      (_, rowOffset) => columns.map((column) => column.values?.[rowOffset] ?? null),
+    );
+    return {
+      sheetId: props.sheetId,
+      title: props.title,
+      rows: buildGridRows({
+        0: columns.map(() => ""),
+        3: columns.map((column) => column.header),
+        ...rowsFromFirstDataRow(dataRows),
+      }),
+      table: {
+        name: props.title,
+        endRowIndex: headerOnlyTableEndRowIndex + rowCount,
+        columnTypes: byColIndex(columns, (column) => column.columnType),
+        columnValidationValues: byColIndex(
+          columns,
+          (column) => column.validationValues,
+        ),
+      },
+    };
+  }
+
+  function byColIndex<V>(
+    columns: readonly FixtureColumn[],
+    read: (column: FixtureColumn) => V | undefined,
+  ): Record<number, V> {
+    return columns.reduce<Record<number, V>>((byIndex, column, colIndex) => {
+      const value = read(column);
+      if (value !== undefined) byIndex[colIndex] = value;
+      return byIndex;
+    }, {});
+  }
+
+  function seedValueSources(props: {
+    apiTables: readonly FakeSheetProperties[];
+    otherTables?: readonly FakeSheetProperties[];
+  }): void {
+    const { apiTables, otherTables = [] } = props;
+    seedFixture({
+      extraSheets: [...apiTables, ...otherTables],
+      extraTableConfigDataRows: apiTables.reduce<
+        Record<number, readonly (string | number | boolean | null)[]>
+      >((rows, sheet, offset) => {
+        rows[5 + offset] = [tableIdOnTab(sheet.sheetId), "", sheet.title, true];
+        return rows;
+      }, {}),
+      tableConfigTableEndRowIndex: 5 + apiTables.length,
+    });
+  }
+
+  function ledgerSheet(columns: readonly FixtureColumn[]): FakeSheetProperties {
+    return tableSheet({ sheetId: ledgerGid, title: "Ledger", columns });
+  }
+
+  function listSheet(columns: readonly FixtureColumn[]): FakeSheetProperties {
+    return tableSheet({ sheetId: listGid, title: "List", columns });
+  }
+
+  function generate() {
+    const coordinator = ConfigCoordinator.init();
+    const files = coordinator.generateConfigFiles("../makeConfigs");
+    return {
+      valueConfigs: emittedValueConfigs(files),
+      ledgerValueName: (columnName: string) =>
+        coordinator.columnConfigOperator.newColumnConfigs().ledger?.[columnName]
+          ?.valueName,
+    };
+  }
+
+  function emittedValueConfigs(files: ConfigRegeneration): unknown {
+    const match = files.valueConfigs.match(/makeValueConfigs\(([\s\S]*)\);/);
+    return JSON.parse(Val.assert(match?.[1], "emitted value configs"));
+  }
+
+  it("types a dropdown from a Let api access Table column as that column's fixed list", () => {
+    seedValueSources({
+      apiTables: [
+        listSheet([
+          { header: "Payment status", values: ["Paid", "Unpaid", "Late"] },
+        ]),
+        ledgerSheet([
+          {
+            header: "Status",
+            values: ["Paid"],
+            validationValues: ["=List[Payment status]"],
+          },
+        ]),
+      ],
+    });
+
+    const { valueConfigs, ledgerValueName } = generate();
+
+    expect(ledgerValueName("status")).toBe("listPaymentStatus");
+    expect(valueConfigs).toEqual({
+      listPaymentStatus: ["Paid", "Unpaid", "Late"],
+    });
+  });
+
+  it("keeps a one-word camel-case header's casing in the value name", () => {
+    seedValueSources({
+      apiTables: [
+        listSheet([{ header: "CapEx", values: ["Roof"] }]),
+        ledgerSheet([{ header: "CapEx", validationValues: ["=List[CapEx]"] }]),
+      ],
+    });
+
+    const { valueConfigs, ledgerValueName } = generate();
+
+    expect(ledgerValueName("capEx")).toBe("listCapEx");
+    expect(valueConfigs).toEqual({ listCapEx: ["Roof"] });
+  });
+
+  it("types every member by its source's declared type, numbers for number and date", () => {
+    seedValueSources({
+      apiTables: [
+        listSheet([
+          { header: "Rent", values: [950, 1200], columnType: "DOUBLE" },
+          { header: "Due date", values: [45000, 45031], columnType: "DATE" },
+          { header: "Unit", values: ["2B", 101], columnType: "TEXT" },
+        ]),
+        ledgerSheet([
+          { header: "Rent", validationValues: ["=List[Rent]"] },
+          { header: "Due", validationValues: ["=List[Due date]"] },
+          { header: "Unit", validationValues: ["=List[Unit]"] },
+        ]),
+      ],
+    });
+
+    const { valueConfigs } = generate();
+
+    expect(valueConfigs).toEqual({
+      listRent: [950, 1200],
+      listDueDate: [45000, 45031],
+      listUnit: ["2B", "101"],
+    });
+  });
+
+  it("fails the config sync when a declared source holds a member of another primitive, naming the source", () => {
+    seedValueSources({
+      apiTables: [
+        listSheet([{ header: "Rent", values: [950, "TBD"], columnType: "DOUBLE" }]),
+        ledgerSheet([{ header: "Rent", validationValues: ["=List[Rent]"] }]),
+      ],
+    });
+
+    expect(() =>
+      ConfigCoordinator.init().generateConfigFiles("../makeConfigs"),
+    ).toThrow('Value source "List[Rent]" declares number members, but holds "TBD".');
+  });
+
+  it("keeps each member's own primitive on an untyped source", () => {
+    seedValueSources({
+      apiTables: [
+        listSheet([{ header: "Score", values: ["N/A", 3, true] }]),
+        ledgerSheet([{ header: "Score", validationValues: ["=List[Score]"] }]),
+      ],
+    });
+
+    const { valueConfigs } = generate();
+
+    expect(valueConfigs).toEqual({ listScore: ["N/A", 3, true] });
+  });
+
+  it("drops blanks and collapses duplicates to their first position, keeping sheet order", () => {
+    seedValueSources({
+      apiTables: [
+        listSheet([
+          {
+            header: "Payment status",
+            values: ["Unpaid", null, "Paid", "Unpaid", "", "Late", "Paid"],
+          },
+        ]),
+        ledgerSheet([
+          { header: "Status", validationValues: ["=List[Payment status]"] },
+        ]),
+      ],
+    });
+
+    const { valueConfigs } = generate();
+
+    expect(valueConfigs).toEqual({
+      listPaymentStatus: ["Unpaid", "Paid", "Late"],
+    });
+  });
+
+  it("gives every dropdown on one source the one value name", () => {
+    seedValueSources({
+      apiTables: [
+        listSheet([{ header: "Payment status", values: ["Paid", "Unpaid"] }]),
+        ledgerSheet([
+          { header: "Status", validationValues: ["=List[Payment status]"] },
+          {
+            header: "Deposit status",
+            validationValues: ["=List[Payment status]"],
+          },
+        ]),
+      ],
+    });
+
+    const { valueConfigs, ledgerValueName } = generate();
+
+    expect(ledgerValueName("status")).toBe("listPaymentStatus");
+    expect(ledgerValueName("depositStatus")).toBe("listPaymentStatus");
+    expect(valueConfigs).toEqual({ listPaymentStatus: ["Paid", "Unpaid"] });
+  });
+
+  it("leaves a dropdown untyped, and in the summary, unless it names a column of a Let api access Table", () => {
+    seedValueSources({
+      apiTables: [
+        listSheet([{ header: "Payment status", values: ["Paid", "Unpaid"] }]),
+        ledgerSheet([
+          {
+            header: "Non-api",
+            values: ["Paid"],
+            validationValues: ["=Hidden[Payment status]"],
+          },
+          {
+            header: "Unknown header",
+            values: ["Paid"],
+            validationValues: ["=List[Nope]"],
+          },
+          {
+            header: "A1 range",
+            values: ["Paid"],
+            validationValues: ["=List!$A$5:$A$9"],
+          },
+          {
+            header: "Item list",
+            values: ["Paid"],
+            validationValues: ["Paid", "Unpaid"],
+          },
+        ]),
+      ],
+      otherTables: [
+        tableSheet({
+          sheetId: 889003,
+          title: "Hidden",
+          columns: [{ header: "Payment status", values: ["Paid"] }],
+        }),
+      ],
+    });
+    const logger = stubLogger();
+
+    const coordinator = ConfigCoordinator.init();
+    const files = coordinator.generateConfigFiles("../makeConfigs");
+
+    expect(emittedValueConfigs(files)).toEqual({});
+    const ledger = coordinator.columnConfigOperator.newColumnConfigs().ledger;
+    expect(
+      ["nonApi", "unknownHeader", "a1Range", "itemList"].map(
+        (columnName) => ledger?.[columnName]?.valueName,
+      ),
+    ).toEqual(["string", "string", "string", "string"]);
+    expect(files.untypedColumnsSummary).toContain("column(s) across");
+    expect(logger.log).toHaveBeenCalledWith(
+      'Untyped columns on Table "Ledger" (4): Non-api, Unknown header, A1 range, Item list',
+    );
+  });
+
+  it("fails the config sync when a source's value name is a framework value name, naming both", () => {
+    seedValueSources({
+      apiTables: [
+        tableSheet({
+          sheetId: listGid,
+          title: "Number",
+          columns: [{ header: "#", values: [1, 2] }],
+        }),
+        ledgerSheet([{ header: "Pick", validationValues: ["=Number[#]"] }]),
+      ],
+    });
+
+    expect(() =>
+      ConfigCoordinator.init().generateConfigFiles("../makeConfigs"),
+    ).toThrow(
+      'Value source "Number[#]" takes the value name "number", which is already the framework value name "number".',
+    );
+  });
+
+  it("fails the config sync when two sources take one value name, naming both", () => {
+    seedValueSources({
+      apiTables: [
+        listSheet([{ header: "Payment status", values: ["Paid"] }]),
+        tableSheet({
+          sheetId: 889004,
+          title: "List Payment",
+          columns: [{ header: "Status", values: ["Open"] }],
+        }),
+        ledgerSheet([
+          { header: "Status", validationValues: ["=List[Payment status]"] },
+          { header: "State", validationValues: ["=List Payment[Status]"] },
+        ]),
+      ],
+    });
+
+    expect(() =>
+      ConfigCoordinator.init().generateConfigFiles("../makeConfigs"),
+    ).toThrow(
+      'Value sources "List[Payment status]" and "List Payment[Status]" both take the value name "listPaymentStatus".',
+    );
   });
 });

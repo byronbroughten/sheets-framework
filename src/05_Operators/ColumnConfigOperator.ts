@@ -1,5 +1,7 @@
 import { Str } from "@byronbroughten/utils/str";
+import { Val } from "@byronbroughten/utils/val";
 
+import { isFrameworkValueName } from "../00_Source/CellValues/frameworkValueSchemas";
 import { getColumnTraitByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
 import {
   configSheetFloorSeed,
@@ -11,17 +13,22 @@ import {
 } from "../01_SpreadsheetSchema/configReaders/makeConfigs";
 import { type ValueName } from "../01_SpreadsheetSchema/configReaders/valueSchemas";
 import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
-import type { ColumnProfileRaw } from "../02_SpreadsheetRaw/ColumnProfileRaw";
+import type {
+  ColumnProfileRaw,
+  TableColumnReference,
+} from "../02_SpreadsheetRaw/ColumnProfileRaw";
 import { columnConfigsFileSource } from "./configFileSource";
 import { GenericTableOperator } from "./GenericTableOperator";
 import {
   type ConfigSyncState,
   type OperatorProps,
+  type SourceColumn,
+  sourceLabel,
   SpreadsheetBaseOperator,
   type UntypedHeadersByTableName,
+  type ValueSource,
 } from "./SpreadsheetBaseOperator";
 import { TableConfigOperator } from "./TableConfigOperator";
-import { ValueConfigOperator } from "./ValueConfigOperator";
 
 interface ColumnIdentity {
   tableId: string;
@@ -46,9 +53,6 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
   get tableConfigOperator(): TableConfigOperator {
     return new TableConfigOperator(this.operatorProps);
   }
-  get valueConfigOperator(): ValueConfigOperator {
-    return new ValueConfigOperator(this.operatorProps);
-  }
   private get untypedHeadersByTableName(): UntypedHeadersByTableName {
     return this.columnConfigSync.untypedHeadersByTableName;
   }
@@ -57,10 +61,57 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
   private get tableIdsApiAccesses(): Set<string> {
     return new Set(this.tableConfigOperator.tableIdsApiAccesses());
   }
-  profileValueTitles(): string[] {
-    return this.table.workingRowIndexesWithData.map((rowIndex) =>
-      this._describedColumn(this._columnIdentity(rowIndex)).valueTitle(),
+  valueSources(): ValueSource[] {
+    const tableKeysByTableId = this.tableConfigOperator.tableKeysByTableId();
+    const sourcesByValueName = new Map<string, ValueSource>();
+    this.table.workingRowIndexesWithData.forEach((rowIndex) => {
+      const source = this._valueSource(
+        this._describedColumn(this._columnIdentity(rowIndex)),
+        tableKeysByTableId,
+      );
+      if (source === undefined) return;
+      const claimed = sourcesByValueName.get(source.valueName);
+      if (claimed !== undefined && !isSameSourceColumn(claimed, source)) {
+        throw new Error(
+          `Value sources ${this._sourceLabel(claimed)} and ${this._sourceLabel(source)} ` +
+            `both take the value name "${source.valueName}". Rename a Table or a header.`,
+        );
+      }
+      sourcesByValueName.set(source.valueName, source);
+    });
+    return [...sourcesByValueName.values()];
+  }
+  private _sourceLabel({ tableId, header }: SourceColumn): string {
+    return sourceLabel({ tableName: this.ss.raw.table(tableId).name, header });
+  }
+  private _valueSource(
+    describedColumn: ColumnProfileRaw,
+    tableKeysByTableId: Map<string, string>,
+  ): ValueSource | undefined {
+    const sourceColumn = this._sourceColumn(describedColumn);
+    if (sourceColumn === undefined) return undefined;
+    const { tableId, header } = sourceColumn;
+    return {
+      ...sourceColumn,
+      valueName: valueSourceName({
+        tableKey: Val.assert(tableKeysByTableId.get(tableId), "source Table key"),
+        reference: { tableName: this.ss.raw.table(tableId).name, header },
+      }),
+    };
+  }
+  private _sourceColumn(
+    describedColumn: ColumnProfileRaw,
+  ): SourceColumn | undefined {
+    const reference = describedColumn.validationColumnReference();
+    if (reference === undefined || describedColumn.isIdColumn) return undefined;
+    const tableId = [...this.tableIdsApiAccesses].find(
+      (apiTableId) => this.ss.raw.table(apiTableId).name === reference.tableName,
     );
+    if (tableId === undefined) return undefined;
+    if (!this.ss.raw.table(tableId).profile.hasHeader(reference.header)) {
+      return undefined;
+    }
+    return { tableId, header: reference.header };
   }
   assertSyncedToSpreadsheet(): void {
     if (!this.columnConfigSync.syncedToSpreadsheet) {
@@ -251,7 +302,10 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
         updatedValues++;
       }
 
-      if (describedColumn.declaredValueTitle() === undefined) {
+      if (
+        this._sourceColumn(describedColumn) === undefined &&
+        describedColumn.declaredValueTitle() === undefined
+      ) {
         this._recordUntypedColumn(actualTableName, actualHeader);
       }
     });
@@ -327,12 +381,13 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
         );
       }
       const describedColumn = this._describedColumn(identity);
+      const valueName =
+        this._valueSource(describedColumn, tableKeysByTableId)?.valueName ??
+        this.schema.titleToName(describedColumn.valueTitle());
       tableColumnConfigs[columnName] = {
         columnId,
         header,
-        valueName: this.schema.titleToName(
-          describedColumn.valueTitle(),
-        ) as ValueName,
+        valueName: valueName as ValueName,
         isFormula: describedColumn.isFormula,
         emptyValueAllowed: col.emptyValueAllowed.value(rowIndex),
         customDefaultValue: null,
@@ -350,6 +405,29 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
       ``,
     ].join("\n");
   }
+}
+
+function valueSourceName({
+  tableKey,
+  reference,
+}: {
+  tableKey: string;
+  reference: TableColumnReference;
+}): string {
+  const headerName = Str.sentenceToCamelCase(reference.header);
+  const valueName =
+    tableKey + headerName.charAt(0).toUpperCase() + headerName.slice(1);
+  if (isFrameworkValueName(valueName)) {
+    throw new Error(
+      `Value source ${sourceLabel(reference)} takes the value name "${valueName}", ` +
+        `which is already the framework value name "${valueName}". Rename the Table or the header.`,
+    );
+  }
+  return valueName;
+}
+
+function isSameSourceColumn(a: SourceColumn, b: SourceColumn): boolean {
+  return a.tableId === b.tableId && a.header === b.header;
 }
 
 function columnIdentityKey({ tableId, columnId }: ColumnIdentity): string {

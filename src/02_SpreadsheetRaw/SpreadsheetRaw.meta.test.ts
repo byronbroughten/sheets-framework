@@ -792,6 +792,45 @@ describe("TableProfileRaw.columnIds", () => {
   });
 });
 
+describe("ColumnProfileRaw.validationColumnReference", () => {
+  function profileWithRule(validationValues: string[]): ColumnProfileRaw {
+    stubSheetsService({
+      sheets: [
+        {
+          sheetId: 111,
+          title: "Records",
+          table: {
+            endRowIndex: tableEndRowIndex,
+            endColumnIndex: 1,
+            columnValidationValues: { 0: validationValues },
+          },
+        },
+      ],
+    });
+    const raw = SpreadsheetRaw.init();
+    raw.fetchAllSheetProperties();
+    return raw.table(tableId111).column(0).profile;
+  }
+
+  it("reads any Table column reference as its Table name and header", () => {
+    expect(
+      profileWithRule(["=List[Payment status]"]).validationColumnReference(),
+    ).toEqual({ tableName: "List", header: "Payment status" });
+    expect(
+      profileWithRule(["=valueConfig[Notes]"]).validationColumnReference(),
+    ).toEqual({ tableName: "valueConfig", header: "Notes" });
+  });
+
+  it("reads no reference from an A1 range or a list of items", () => {
+    expect(
+      profileWithRule(["=Records!$A$5:$A$9"]).validationColumnReference(),
+    ).toBeUndefined();
+    expect(
+      profileWithRule(["open", "closed"]).validationColumnReference(),
+    ).toBeUndefined();
+  });
+});
+
 describe("ColumnRaw.updateColumnType", () => {
   function stubTypedTable(
     table: Partial<NonNullable<FakeSheetProperties["table"]>> = {},
