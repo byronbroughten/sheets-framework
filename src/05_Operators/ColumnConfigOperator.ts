@@ -6,6 +6,7 @@ import { getColumnTraitByName } from "../01_SpreadsheetSchema/configReaders/colu
 import {
   configSheetFloorSeed,
   floorSeedColumnById,
+  floorSeedEmptyValueAllowed,
 } from "../01_SpreadsheetSchema/configReaders/configSheetFloorSeed";
 import {
   type ColumnConfigsGeneric,
@@ -94,7 +95,10 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
     return {
       ...sourceColumn,
       valueName: valueSourceName({
-        tableKey: Val.assert(tableKeysByTableId.get(tableId), "source Table key"),
+        tableKey: Val.assert(
+          tableKeysByTableId.get(tableId),
+          "source Table key",
+        ),
         reference: { tableName: this.ss.raw.table(tableId).name, header },
       }),
     };
@@ -105,7 +109,8 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
     const reference = describedColumn.validationColumnReference();
     if (reference === undefined || describedColumn.isIdColumn) return undefined;
     const tableId = [...this.tableIdsApiAccesses].find(
-      (apiTableId) => this.ss.raw.table(apiTableId).name === reference.tableName,
+      (apiTableId) =>
+        this.ss.raw.table(apiTableId).name === reference.tableName,
     );
     if (tableId === undefined) return undefined;
     if (!this.ss.raw.table(tableId).profile.hasHeader(reference.header)) {
@@ -324,20 +329,19 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
   }): boolean {
     const seedColumn = floorSeedColumnById(identity.tableId, identity.columnId);
     if (seedColumn === undefined) return false;
+    const seedEmptyValueAllowed = floorSeedEmptyValueAllowed(seedColumn);
     const emptyValueAllowed = this.table.column("emptyValueAllowed");
-    if (
-      emptyValueAllowed.valueOrEmpty(rowIndex) === seedColumn.emptyValueAllowed
-    ) {
+    if (emptyValueAllowed.valueOrEmpty(rowIndex) === seedEmptyValueAllowed) {
       return false;
     }
-    emptyValueAllowed.cell(rowIndex).updateValue(seedColumn.emptyValueAllowed);
+    emptyValueAllowed.cell(rowIndex).updateValue(seedEmptyValueAllowed);
     this.columnConfigSync.declaredCellReportLines.push(
       `${configSheetFloorSeed.columnConfig.title} · ${getColumnTraitByName(
         "columnConfig",
         "emptyValueAllowed",
         "header",
       )} · ${tableName} · ${header} → ${
-        seedColumn.emptyValueAllowed ? "TRUE" : "FALSE"
+        seedEmptyValueAllowed ? "TRUE" : "FALSE"
       }`,
     );
     return true;

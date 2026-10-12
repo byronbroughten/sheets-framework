@@ -4,6 +4,7 @@ import {
   configSheetFloorSeed,
   type FloorSeedColumn,
   floorSeedColumns,
+  floorSeedEmptyValueAllowed,
 } from "./configSheetFloorSeed";
 
 function seedColumn(
@@ -90,7 +91,7 @@ describe("configSheetFloorSeed declared cells", () => {
     ];
     expect(floorColumns.length).toBeGreaterThan(0);
     floorColumns.forEach((column) => {
-      expect(column.emptyValueAllowed).toBe(false);
+      expect(floorSeedEmptyValueAllowed(column)).toBe(false);
     });
   });
 });

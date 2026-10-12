@@ -147,7 +147,7 @@ A column the operator made a checkbox: the type menu says Checkbox, or Insert > 
 _Avoid_: boolean column, tickbox column, flag column
 
 **Empty value allowed**:
-A box you tick against a column in Column Config to say that a blank in it is a real answer rather than something missing. Unticked, the app stops and names the cell whenever it reads a blank there; ticked, it hands the blank on to whatever asked for it, and that work has to say what a missing value means.
+A box you tick against a column in Column Config to say that a blank in it is a real answer rather than something missing. Unticked, the app treats a blank there as missing and stops on it, naming the cell, unless the work reading it says what a blank means; ticked, it hands the blank on to whatever asked for it, and that work has to say what a missing value means.
 _Avoid_: nullable, optional column, blank allowed
 
 **Untyped**:

@@ -104,6 +104,20 @@ export type SheetDataValues<
   [CN in CS]: ColumnValue<TN, CN>;
 };
 
+export type SheetDataValuesNotEmpty<
+  TN extends TableNameSimple,
+  CS extends ColumnName<TN> = ColumnName<TN>,
+> = {
+  [CN in CS]: NotEmpty<ColumnValue<TN, CN>>;
+};
+
+export type SheetDataValuesDeclared<
+  TN extends TableNameSimple,
+  CS extends ColumnName<TN> = ColumnName<TN>,
+> = {
+  [CN in CS]: ColumnValueDeclared<TN, CN>;
+};
+
 // Every writable column but the generated id: the bag a complete append must fill.
 export type SheetDataValuesAll<TN extends TableNameSimple> = SheetDataValues<
   TN,

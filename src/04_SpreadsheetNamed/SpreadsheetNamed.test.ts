@@ -430,6 +430,94 @@ describe("Named value accessors", () => {
     });
   });
 
+  it("throws once from RowNamed.valuesNotEmpty, naming every blank column", () => {
+    const row = fetchedDatesSheet().row(blankRowIndex);
+
+    expect(() =>
+      row.valuesNotEmpty("id", "requiredDate", "optionalDate"),
+    ).toThrowError(
+      'Columns "id", "requiredDate", "optionalDate" of sheet "dates" are empty in row 6.',
+    );
+  });
+
+  it("hands back the blank from RowNamed.values on a column whose box is ticked", () => {
+    const row = fetchedDatesSheet().row(blankRowIndex);
+
+    expect(row.values("optionalDate")).toEqual({ optionalDate: "" });
+  });
+
+  it("throws once from RowNamed.values, naming only the blank columns whose box is unticked", () => {
+    const row = fetchedDatesSheet().row(blankRowIndex);
+
+    expect(() =>
+      row.values("id", "requiredDate", "optionalDate"),
+    ).toThrowError(
+      'Columns "id", "requiredDate" of sheet "dates" are empty in row 6.',
+    );
+  });
+
+  it("counts an unticked checkbox as an answer, not a blank, in RowNamed.values", () => {
+    const row = fetchedValueTypesSheet().row(blankRowIndex);
+
+    expect(() => row.values("checkbox", "numberValue")).toThrowError(
+      'Column "numberValue" of sheet "valueTypes" is empty in row 6.',
+    );
+  });
+
+  it("reads a filled row identically through all three multi-column reads", () => {
+    const row = fetchedDatesSheet().row(filledRowIndex);
+    const expected = {
+      requiredDate: requiredDateSerial,
+      optionalDate: optionalDateSerial,
+    };
+
+    expect(row.values("requiredDate", "optionalDate")).toEqual(expected);
+    expect(row.valuesNotEmpty("requiredDate", "optionalDate")).toEqual(
+      expected,
+    );
+    expect(row.valuesOrEmpty("requiredDate", "optionalDate")).toEqual(
+      expected,
+    );
+  });
+
+  it("types each multi-column read's result by column, keeping only the named columns", () => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- read for its type
+    const row = fetchedDatesSheet().row(filledRowIndex);
+    type Named = "requiredDate" | "optionalDate";
+
+    assertType<
+      IsExactly<
+        ReturnType<typeof row.values<Named>>,
+        { requiredDate: SerialDate; optionalDate: SerialDate | "" }
+      >
+    >(true);
+    assertType<
+      IsExactly<
+        ReturnType<typeof row.valuesNotEmpty<Named>>,
+        { requiredDate: SerialDate; optionalDate: SerialDate }
+      >
+    >(true);
+    assertType<
+      IsExactly<
+        ReturnType<typeof row.valuesOrEmpty<Named>>,
+        { requiredDate: SerialDate | ""; optionalDate: SerialDate | "" }
+      >
+    >(true);
+  });
+
+  it("refuses a multi-column read with no column names", () => {
+    const row = fetchedDatesSheet().row(filledRowIndex);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- compiled for its type errors, never called
+    const readsWithNoNames = [
+      // @ts-expect-error -- a read never widens to every column
+      () => row.values(),
+      // @ts-expect-error -- a read never widens to every column
+      () => row.valuesNotEmpty(),
+      // @ts-expect-error -- a read never widens to every column
+      () => row.valuesOrEmpty(),
+    ];
+  });
+
   it("throws from valueArr when a fetched cell is blank, but not from the marked forms", () => {
     const column = fetchedDatesSheet().column("id");
 
