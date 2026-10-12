@@ -589,7 +589,7 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> _updateProgrammaticValues", 
     );
   });
 
-  it("detects a named valueConfig from the column's live data-validation formula", () => {
+  it("detects a value source from the column's live data-validation formula", () => {
     stubSheetsService({
       sheets: [
         seedTableConfigFixture(),
@@ -607,16 +607,14 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> _updateProgrammaticValues", 
           sheetId: testSheetGid,
           title: "Item",
           rows: buildGridRows({
-            0: ["c:itm:corr03"],
-            3: ["Description"],
-            4: ["Unit (base)"],
+            0: ["c:itm:corr03", "c:itm:corr05"],
+            3: ["Description", "Kind"],
+            4: ["Unit (base)", "Unit (base)"],
           }),
           table: {
             name: "Item",
             endRowIndex: 5,
-            columnValidationValues: {
-              0: ["=valueConfig[Transaction Description]"],
-            },
+            columnValidationValues: { 0: ["=Item[Kind]"] },
           },
         },
       ],
@@ -626,9 +624,8 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> _updateProgrammaticValues", 
     syncColumnConfigOperator(operator);
     const identity = operator.table.columns("tableName", "header");
 
-    expect(valueTitles(operator, 1)).toEqual(["Transaction Description"]);
     expect(operator.newColumnConfigs().item?.description?.valueName).toBe(
-      "transactionDescription",
+      "itemKind",
     );
     expect(identity.tableName.value(0)).toBe("Item");
     expect(identity.header.value(0)).toBe("Description");
@@ -954,17 +951,18 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> declared column types", () =
     expect(operator.untypedColumnsSummary()).toBeUndefined();
   });
 
-  it("keeps a Value Config rule winning over BOOLEAN validation", () => {
+  it("keeps a value source winning over BOOLEAN validation", () => {
     const operator = syncColumnsUnderTest({
-      headers: ["Description"],
-      topDataRow: ["Unit (base)"],
-      columnValidationValues: {
-        0: ["=valueConfig[Transaction Description]"],
-      },
+      headers: ["Description", "Kind"],
+      topDataRow: ["Unit (base)", "Unit (base)"],
+      columnTypes: { 1: "TEXT" },
+      columnValidationValues: { 0: ["=Item[Kind]"] },
       columnValidationConditionTypes: { 0: "BOOLEAN" },
     });
 
-    expect(valueTitles(operator, 1)).toEqual(["Transaction Description"]);
+    expect(operator.newColumnConfigs().item?.description?.valueName).toBe(
+      "itemKind",
+    );
     expect(operator.untypedColumnsSummary()).toBeUndefined();
   });
 
@@ -1014,21 +1012,21 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> declared column types", () =
     expect(operator.untypedColumnsSummary()).toBeUndefined();
   });
 
-  it("keeps a Value Config validation rule winning over a declared dropdown type", () => {
+  it("keeps a value source winning over a declared dropdown type", () => {
     const operator = syncColumnsUnderTest({
-      headers: ["Description"],
-      topDataRow: ["Unit (base)"],
-      columnTypes: { 0: "DROPDOWN" },
-      columnValidationValues: {
-        0: ["=valueConfig[Transaction Description]"],
-      },
+      headers: ["Description", "Kind"],
+      topDataRow: ["Unit (base)", "Unit (base)"],
+      columnTypes: { 0: "DROPDOWN", 1: "TEXT" },
+      columnValidationValues: { 0: ["=Item[Kind]"] },
     });
 
-    expect(valueTitles(operator, 1)).toEqual(["Transaction Description"]);
+    expect(operator.newColumnConfigs().item?.description?.valueName).toBe(
+      "itemKind",
+    );
     expect(operator.untypedColumnsSummary()).toBeUndefined();
   });
 
-  it("falls back to the sample for a dropdown with no Value Config rule", () => {
+  it("falls back to the sample for a dropdown with no value source", () => {
     const operator = syncColumnsUnderTest({
       headers: ["Widget Ref"],
       topDataRow: ["wdg:abc123"],

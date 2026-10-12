@@ -8,6 +8,11 @@ import type { ColumnStateRaw, SampledFactsRaw } from "./ClassTypes/StateRaw";
 import { ColumnRaw } from "./ColumnRaw";
 import { TableRaw } from "./TableRaw";
 
+export interface TableColumnReference {
+  tableName: string;
+  header: string;
+}
+
 export class ColumnProfileRaw extends ColumnBaseRaw {
   private get table(): TableRaw {
     return new TableRaw(this.tableRawProps);
@@ -45,22 +50,27 @@ export class ColumnProfileRaw extends ColumnBaseRaw {
   valueTitle(): string {
     return this.declaredValueTitle() ?? this._actualPrimitiveValueName();
   }
-  declaredValueTitle(): string | undefined {
-    if (this.header === this.schema.idHeader) {
+  get isIdColumn(): boolean {
+    return this.header === this.schema.idHeader;
+  }
+  declaredValueTitle(): FrameworkValueName | undefined {
+    if (this.isIdColumn) {
       return "id";
     }
     return (
-      this.validationValueTitle() ??
       this._columnTypeValueName() ??
       this._booleanValidationValueName() ??
       this._compatibleNumberFormatValueName()
     );
   }
-  validationValueTitle(): string | undefined {
+  validationColumnReference(): TableColumnReference | undefined {
     for (const rawValue of this.valueValidationStrings) {
-      const match = rawValue.match(/^=valueConfig\[(.+)\]$/);
+      const match = rawValue.match(/^=([^[\]!]+)\[([^[\]]+)\]$/);
       if (!match) continue;
-      return Val.assert(match[1], "value title match");
+      return {
+        tableName: Val.assert(match[1], "referenced Table name"),
+        header: Val.assert(match[2], "referenced header"),
+      };
     }
     return undefined;
   }

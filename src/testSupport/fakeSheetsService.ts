@@ -86,11 +86,11 @@ export interface FakeTable {
    */
   name?: string;
   /**
-   * A column's live data-validation condition values (e.g.
-   * `["=valueConfig[Transaction Description]"]`), keyed by absolute
-   * column index — read by `ColumnConfigOperator`'s valueName detection
-   * (`ColumnProfileRaw.valueValidationStrings`). Omit for a table with no
-   * validated columns.
+   * A column's live data-validation condition values (e.g. a value source
+   * `["=List[Payment status]"]` or a list of items `["open", "closed"]`),
+   * keyed by absolute column index — read by `ColumnConfigOperator`'s
+   * valueName detection (`ColumnProfileRaw.valueValidationStrings`). Omit
+   * for a table with no validated columns.
    */
   columnValidationValues?: Record<number, string[]>;
   /**
