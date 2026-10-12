@@ -481,9 +481,14 @@ describe("Named value accessors", () => {
   });
 
   it("types each multi-column read's result by column, keeping only the named columns", () => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- read for its type
     const row = fetchedDatesSheet().row(filledRowIndex);
     type Named = "requiredDate" | "optionalDate";
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- compiled for its inferred type, never called
+    const readOne = () => row.values("requiredDate");
+
+    assertType<
+      IsExactly<ReturnType<typeof readOne>, { requiredDate: SerialDate }>
+    >(true);
 
     assertType<
       IsExactly<

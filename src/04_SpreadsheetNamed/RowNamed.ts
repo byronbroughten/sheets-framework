@@ -13,7 +13,7 @@ import type { TableName } from "../01_SpreadsheetSchema/configReaders/tableConfi
 import type { Value, ValueName } from "../01_SpreadsheetSchema/configReaders/valueSchemas";
 import { RowRaw } from "../02_SpreadsheetRaw/RowRaw";
 import { RowIdentified } from "../03_SpreadsheetIdentified/RowIdentified";
-import type { CellNamed } from "./CellNamed";
+import { blankColumnsMessage, type CellNamed } from "./CellNamed";
 import { RowBaseNamed } from "./ClassBases/RowBaseNamed";
 import { TableNamed } from "./TableNamed";
 
@@ -79,34 +79,6 @@ export class RowNamed<TN extends TableName> extends RowBaseNamed<TN> {
       (name) => !this.cell(name).schema.emptyValueAllowed,
     ) as SheetDataValuesDeclared<TN, CN>;
   }
-  // One throw naming every refused blank, so the operator fixes the row in one pass.
-  private _valuesRefusingBlanks<CN extends ColumnName<TN>>(
-    columnNames: CN[],
-    refusesBlank: (columnName: CN) => boolean,
-  ): SheetDataValues<TN, CN> {
-    const values = {} as SheetDataValues<TN, CN>;
-    const refused: CN[] = [];
-    columnNames.forEach((columnName) => {
-      const value = this.valueOrEmpty(columnName);
-      if (value === "" && refusesBlank(columnName)) {
-        refused.push(columnName);
-      }
-      values[columnName] = value as SheetDataValues<TN, CN>[CN];
-    });
-    if (refused.length > 0) {
-      throw new Error(this._blankColumnsMessage(refused));
-    }
-    return values;
-  }
-  private _blankColumnsMessage(columnNames: ColumnName<TN>[]): string {
-    const quoted = columnNames
-      .map((columnName) => `"${columnName}"`)
-      .join(", ");
-    const subject =
-      columnNames.length === 1 ? `Column ${quoted}` : `Columns ${quoted}`;
-    const verb = columnNames.length === 1 ? "is" : "are";
-    return `${subject} of sheet "${this.tableName}" ${verb} empty in ${this.raw.rowLabel(this.rowIndex)}.`;
-  }
   get workingCellNames(): ColumnName<TN>[] {
     return this.identified.workingColumnIds.map((columnId) =>
       this.schema.colNameByColumnId(columnId),
@@ -163,5 +135,30 @@ export class RowNamed<TN extends TableName> extends RowBaseNamed<TN> {
   prepFetchFull(): this {
     this.identified.prepFetchFull();
     return this;
+  }
+  // One throw naming every refused blank, so the operator fixes the row in one pass.
+  private _valuesRefusingBlanks<CN extends ColumnName<TN>>(
+    columnNames: CN[],
+    refusesBlank: (columnName: CN) => boolean,
+  ): SheetDataValues<TN, CN> {
+    const values = {} as SheetDataValues<TN, CN>;
+    const refused: CN[] = [];
+    columnNames.forEach((columnName) => {
+      const value = this.valueOrEmpty(columnName);
+      if (value === "" && refusesBlank(columnName)) {
+        refused.push(columnName);
+      }
+      values[columnName] = value as SheetDataValues<TN, CN>[CN];
+    });
+    if (refused.length > 0) {
+      throw new Error(
+        blankColumnsMessage({
+          columnNames: refused,
+          tableName: this.tableName,
+          rowLabel: this.raw.rowLabel(this.rowIndex),
+        }),
+      );
+    }
+    return values;
   }
 }

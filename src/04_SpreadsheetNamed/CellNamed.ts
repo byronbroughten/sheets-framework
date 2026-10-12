@@ -51,7 +51,11 @@ export class CellNamed<
     const value = this.valueOrEmpty();
     if (value === "") {
       throw new Error(
-        `Column "${this.columnName}" of sheet "${this.tableName}" is empty in ${this.identified.raw.rowLabel(this.rowIndex)}.`,
+        blankColumnsMessage({
+          columnNames: [this.columnName],
+          tableName: this.tableName,
+          rowLabel: this.identified.raw.rowLabel(this.rowIndex),
+        }),
       );
     } else {
       return value as NotEmpty<ColumnValue<TN, CN>>;
@@ -124,4 +128,22 @@ export class CellNamed<
     const colIndex = this.column.table.column(columnName).identified.colIndex;
     return this.identified.anchoredA1(colIndex);
   }
+}
+
+interface BlankColumns {
+  columnNames: readonly string[];
+  tableName: string;
+  rowLabel: string;
+}
+
+export function blankColumnsMessage({
+  columnNames,
+  tableName,
+  rowLabel,
+}: BlankColumns): string {
+  const quoted = columnNames.map((columnName) => `"${columnName}"`).join(", ");
+  if (columnNames.length === 1) {
+    return `Column ${quoted} of sheet "${tableName}" is empty in ${rowLabel}.`;
+  }
+  return `Columns ${quoted} of sheet "${tableName}" are empty in ${rowLabel}.`;
 }
