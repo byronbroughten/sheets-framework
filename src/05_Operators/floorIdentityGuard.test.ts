@@ -68,6 +68,47 @@ describe("assertFloorIdentityUnchanged", () => {
     );
   });
 
+  it("throws naming the floor tab and its previous and new GID", () => {
+    expect(() =>
+      assertFloorIdentityUnchanged({
+        previous: source({}),
+        next: source({
+          tableConfigs: { tableConfig: { ...tableConfigEntry, sheetGid: 2 } },
+        }),
+      }),
+    ).toThrow('Floor tab "tableConfig" GID was 1 and is now 2.');
+  });
+
+  it("ignores a changed Value Config, which is no longer floor", () => {
+    const valueConfigEntry: TableConfigStored = {
+      ...tableConfigEntry,
+      tableId: "tbl-value0001",
+      tableName: "valueConfig",
+      idPrefix: "vcf",
+    };
+    expect(() =>
+      assertFloorIdentityUnchanged({
+        previous: source({
+          tableConfigs: {
+            tableConfig: tableConfigEntry,
+            valueConfig: valueConfigEntry,
+          },
+        }),
+        next: source({
+          tableConfigs: {
+            tableConfig: tableConfigEntry,
+            valueConfig: {
+              ...valueConfigEntry,
+              tableId: "tbl-value0002",
+              sheetGid: 2,
+              idPrefix: "zzz",
+            },
+          },
+        }),
+      }),
+    ).not.toThrow();
+  });
+
   it("passes when the floor identities match", () => {
     expect(() =>
       assertFloorIdentityUnchanged({

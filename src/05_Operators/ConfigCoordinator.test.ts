@@ -14,7 +14,10 @@ import {
   type FakeSheetsService,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
-import { tableIdOnTab } from "../testSupport/fakeTableConfigSheet";
+import {
+  tableIdOnTab,
+  valueConfigGid,
+} from "../testSupport/fakeTableConfigSheet";
 import {
   ConfigCoordinator,
   type ConfigRegeneration,
@@ -106,15 +109,24 @@ beforeEach(() => {
   stubLogger();
 });
 
-function spreadsheetConfigSheet(
-  options: {
-    tableEndRowIndex?: number;
-    fillRowIdsRunStatusColumnId?: string;
-    hasLegacyLayoutColumns?: boolean;
-    extraRows?: Record<number, readonly (string | number | boolean | null)[]>;
-    protectedRanges?: GoogleAppsScript.Sheets.Schema.ProtectedRange[];
-  } = {},
-) {
+interface SpreadsheetConfigSheetOptions {
+  sheetId?: number;
+  title?: string;
+  tableId?: string;
+  idPrefix?: string;
+  tableEndRowIndex?: number;
+  fillRowIdsRunStatusColumnId?: string;
+  hasLegacyLayoutColumns?: boolean;
+  extraRows?: Record<number, readonly (string | number | boolean | null)[]>;
+  protectedRanges?: GoogleAppsScript.Sheets.Schema.ProtectedRange[];
+}
+
+type SpreadsheetConfigIdentity = Pick<
+  SpreadsheetConfigSheetOptions,
+  "sheetId" | "title" | "tableId" | "idPrefix"
+>;
+
+function spreadsheetConfigSheet(options: SpreadsheetConfigSheetOptions = {}) {
   const legacyColumns = options.hasLegacyLayoutColumns
     ? legacyLayoutColumns
     : [];
@@ -131,17 +143,22 @@ function spreadsheetConfigSheet(
     ),
     ...legacyColumns.map((column) => column.value),
   ];
+  const withPrefix = (columnId: string) =>
+    options.idPrefix === undefined
+      ? columnId
+      : columnId.replace(":sscf:", `:${options.idPrefix}:`);
   return {
-    sheetId: spreadsheetConfigGid,
-    title: "Spreadsheet Config",
+    sheetId: options.sheetId ?? spreadsheetConfigGid,
+    title: options.title ?? "Spreadsheet Config",
     rows: buildGridRows({
       0: [
         ...sscColumns.map((columnName) =>
           columnName === "fillRowIdsRunStatus"
-            ? (options.fillRowIdsRunStatusColumnId ?? ssc[columnName].columnId)
-            : ssc[columnName].columnId,
+            ? (options.fillRowIdsRunStatusColumnId ??
+              withPrefix(ssc[columnName].columnId))
+            : withPrefix(ssc[columnName].columnId),
         ),
-        ...legacyColumns.map((column) => column.columnId),
+        ...legacyColumns.map((column) => withPrefix(column.columnId)),
       ],
       1: groupHeadings,
       3: headers,
@@ -149,7 +166,7 @@ function spreadsheetConfigSheet(
       ...options.extraRows,
     }),
     table: {
-      tableId: tableIdOnTab(spreadsheetConfigGid),
+      tableId: options.tableId ?? tableIdOnTab(spreadsheetConfigGid),
       name: configSheetFloorSeed.spreadsheetConfig.liveTableName,
       startRowIndex: tableHeaderRowIndex,
       startColumnIndex: startTableColIndex,
@@ -205,7 +222,6 @@ function seedFixture(
       number,
       readonly (string | number | boolean | null)[]
     >;
-    valueConfigSheet?: FakeSheetProperties;
     extraSheets?: FakeSheetProperties[];
     extraTableConfigDataRows?: Record<
       number,
@@ -215,6 +231,7 @@ function seedFixture(
     hasLegacyLayoutColumns?: boolean;
     columnConfigDataRows?: readonly (readonly FakeCellValue[])[];
     spreadsheetConfigProtections?: GoogleAppsScript.Sheets.Schema.ProtectedRange[];
+    spreadsheetConfigIdentity?: SpreadsheetConfigIdentity;
     isDryRun?: boolean;
   } = {},
 ) {
@@ -229,6 +246,7 @@ function seedFixture(
         hasLegacyLayoutColumns: options.hasLegacyLayoutColumns,
         extraRows: options.spreadsheetConfigExtraRows,
         protectedRanges: options.spreadsheetConfigProtections,
+        ...options.spreadsheetConfigIdentity,
       }),
       {
         sheetId: tableConfigGid,
@@ -328,53 +346,32 @@ function seedFixture(
           endRowIndex: itemHeaderRowIndex + 2,
         },
       },
-      options.valueConfigSheet ?? floorValueConfigTab(),
       ...(options.extraSheets ?? []),
     ],
     isDryRun: options.isDryRun,
   });
 }
 
-const valueConfigFloorGid = getTableTraitByName("valueConfig", "sheetGid");
-
-function floorValueConfigTab(
-  tableId = tableIdOnTab(valueConfigFloorGid),
+function valueConfigTab(
+  options: { sheetId?: number; columnId?: string } = {},
 ): FakeSheetProperties {
+  const sheetId = options.sheetId ?? valueConfigGid;
   return {
-    ...valueConfigTab({
-      sheetId: valueConfigFloorGid,
-      title: "Value Config",
-      columnId: "c:vcf:abc1234",
+    sheetId,
+    title: "Value Config",
+    rows: buildGridRows({
+      0: [options.columnId ?? "c:vcf:abc1234"],
+      3: ["Value title"],
+      4: [],
     }),
     table: {
-      tableId,
-      name: configSheetFloorSeed.valueConfig.liveTableName,
+      tableId: tableIdOnTab(sheetId),
+      name: "valueConfig",
       startRowIndex: tableHeaderRowIndex,
       startColumnIndex: startTableColIndex,
       endRowIndex: 5,
       endColumnIndex: startTableColIndex + 1,
       columnTypes: { 0: "TEXT" },
-    },
-  };
-}
-
-function valueConfigTab(options: {
-  sheetId: number;
-  title: string;
-  columnId?: string;
-}): FakeSheetProperties {
-  return {
-    sheetId: options.sheetId,
-    title: options.title,
-    rows: buildGridRows({
-      0: [options.columnId ?? ""],
-      3: ["Value title"],
-      4: [],
-    }),
-    table: {
-      tableId: tableIdOnTab(options.sheetId),
-      name: configSheetFloorSeed.valueConfig.liveTableName,
-      endRowIndex: 5,
     },
   };
 }
@@ -703,7 +700,6 @@ describe("ConfigCoordinator.generateConfigFiles", () => {
             endRowIndex: 6,
           },
         },
-        floorValueConfigTab(),
       ],
     });
 
@@ -712,64 +708,94 @@ describe("ConfigCoordinator.generateConfigFiles", () => {
     ).not.toThrow();
   });
 
-  // Dry runs, since once the floor and sync writes land the guard never sees the change (#15).
-  describe("floor identity", () => {
-    const movedValueConfigGid = 999000111;
-
-    function seedValueConfigTab(tab: FakeSheetProperties) {
+  describe("Value Config, an ordinary Table since it left the floor (#148)", () => {
+    function seedValueConfig(
+      tab: FakeSheetProperties,
+      options: { isDryRun?: boolean } = {},
+    ) {
       seedFixture({
-        valueConfigSheet: tab,
+        extraSheets: [tab],
         extraTableConfigDataRows: {
           5: [tableIdOnTab(tab.sheetId), "", tab.title, true, ""],
         },
         tableConfigTableEndRowIndex: 6,
-        isDryRun: true,
+        isDryRun: options.isDryRun,
       });
     }
 
-    it("throws naming the floor tab, its previous GID and its new one, and returns no file source", () => {
-      seedValueConfigTab(
-        valueConfigTab({ sheetId: movedValueConfigGid, title: "Value config" }),
+    it("does not create a missing Value Config", () => {
+      const { grid } = seedFixture();
+
+      const parsed =
+        ConfigCoordinator.init().generateConfigFiles("../makeConfigs");
+      expect(grid.sheetTitles()).not.toContain("Value Config");
+      expect(parsed.tableConfigs).not.toContain('"valueConfig"');
+    });
+
+    it("syncs an existing Value Config as an ordinary Table, with its own sampled ID prefix", () => {
+      seedValueConfig(valueConfigTab());
+
+      const parsed =
+        ConfigCoordinator.init().generateConfigFiles("../makeConfigs");
+      expect(parsed.tableConfigs).toContain(
+        `"valueConfig": { "tableId": "${tableIdOnTab(valueConfigGid)}", "tableName": "valueConfig", "sheetGid": ${valueConfigGid}, "idPrefix": "vcf"`,
       );
+      expect(parsed.columnConfigs).toContain("c:vcf:abc1234");
+    });
+
+    it("only reports a Value Config's changed ID prefix, since the floor identity checks no longer name it", () => {
+      seedValueConfig(valueConfigTab({ columnId: "c:zzz:abc1234" }), {
+        isDryRun: true,
+      });
+
+      const parsed =
+        ConfigCoordinator.init().generateConfigFiles("../makeConfigs");
+      expect(parsed.idPrefixReport).toContain(
+        'Table "valueConfig" sampled ID prefix "zzz" differs from last generated "vcf".',
+      );
+    });
+  });
+
+  // Dry runs, since once the floor and sync writes land the guard never sees the change (#15).
+  describe("floor identity", () => {
+    const movedSpreadsheetConfigGid = 999000111;
+
+    function seedDryRun(spreadsheetConfigIdentity: SpreadsheetConfigIdentity) {
+      seedFixture({ spreadsheetConfigIdentity, isDryRun: true });
+    }
+
+    // Reached by its generated GID, a moved floor Table stops before the guard can.
+    it("stops at a floor tab whose Table moved to another GID, returning no file source", () => {
+      seedDryRun({
+        sheetId: movedSpreadsheetConfigGid,
+        title: "Spreadsheet config",
+      });
 
       expect(() =>
         ConfigCoordinator.init().generateConfigFiles("../makeConfigs"),
       ).toThrow(
-        `Floor tab "valueConfig" GID was ${valueConfigFloorGid} and is now ${movedValueConfigGid}.`,
+        `Table spreadsheetConfig is on sheetGid ${movedSpreadsheetConfigGid}, not sheetGid ${spreadsheetConfigGid}`,
       );
     });
 
     it("throws when a floor tab's ID prefix changed", () => {
-      seedValueConfigTab(
-        valueConfigTab({
-          sheetId: valueConfigFloorGid,
-          title: "Value Config",
-          columnId: "c:zzz:abc1234",
-        }),
-      );
+      seedDryRun({ idPrefix: "zzz" });
 
       expect(() =>
         ConfigCoordinator.init().generateConfigFiles("../makeConfigs"),
       ).toThrow(
-        'Floor tab "valueConfig" ID prefix was "vcf" and is now "zzz".',
+        'Floor tab "spreadsheetConfig" ID prefix was "sscf" and is now "zzz".',
       );
     });
 
     it("stops at the floor when a floor tab's Table ID changed", () => {
       const replacedTableId = "tbl-replaced01";
-      seedFixture({
-        valueConfigSheet: floorValueConfigTab(replacedTableId),
-        extraTableConfigDataRows: {
-          5: [replacedTableId, "", "Value Config", true, ""],
-        },
-        tableConfigTableEndRowIndex: 6,
-        isDryRun: true,
-      });
+      seedDryRun({ tableId: replacedTableId });
 
       expect(() =>
         ConfigCoordinator.init().generateConfigFiles("../makeConfigs"),
       ).toThrow(
-        `Floor tab "Value Config" has Table "valueConfig", not its floor Table (Table ID "${tableIdOnTab(valueConfigFloorGid)}")`,
+        `Floor tab "Spreadsheet Config" has Table "spreadsheetConfig", not its floor Table (Table ID "${tableIdOnTab(spreadsheetConfigGid)}")`,
       );
     });
 
@@ -1019,13 +1045,8 @@ describe("ConfigCoordinator.syncConfigSheetRows Let api access", () => {
     );
   });
 
-  it("ticks all four floor Tables' unticked Let api access rows again in one sync", () => {
-    const floorGids = [
-      spreadsheetConfigGid,
-      tableConfigGid,
-      columnConfigGid,
-      valueConfigFloorGid,
-    ];
+  it("ticks all three floor Tables' unticked Let api access rows again in one sync", () => {
+    const floorGids = [spreadsheetConfigGid, tableConfigGid, columnConfigGid];
     seedFixture({
       extraTableConfigDataRows: Object.fromEntries(
         floorGids.map((sheetGid, index) => [
@@ -1043,7 +1064,7 @@ describe("ConfigCoordinator.syncConfigSheetRows Let api access", () => {
       floorGids.map((sheetGid) =>
         tableConfigLetApiAccess(orchestrator, sheetGid),
       ),
-    ).toEqual([true, true, true, true]);
+    ).toEqual([true, true, true]);
   });
 
   it("appends a missing floor-tab row with Let api access TRUE", () => {
@@ -1780,7 +1801,8 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
     );
     const dataRows: (readonly FakeCellValue[])[] = Array.from(
       { length: rowCount },
-      (_, rowOffset) => columns.map((column) => column.values?.[rowOffset] ?? null),
+      (_, rowOffset) =>
+        columns.map((column) => column.values?.[rowOffset] ?? null),
     );
     return {
       sheetId: props.sheetId,
@@ -1852,7 +1874,10 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
   // A source fetch reads one whole column; row samples span the Table.
   function fullyFetchedListColumnIndexes(service: FakeSheetsService): number[] {
     const indexes = service.getByDataFilterCalls.flatMap((resource) =>
-      ((resource as { dataFilters?: { gridRange?: GridRange }[] }).dataFilters ?? [])
+      (
+        (resource as { dataFilters?: { gridRange?: GridRange }[] })
+          .dataFilters ?? []
+      )
         .map(({ gridRange }) => gridRange)
         .filter(
           (range): range is GridRange =>
@@ -1917,7 +1942,9 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
     const { valueConfigs, ledgerValueName } = generate();
 
     expect(
-      ["unit", "unitRow", "kind"].map((columnName) => ledgerValueName(columnName)),
+      ["unit", "unitRow", "kind"].map((columnName) =>
+        ledgerValueName(columnName),
+      ),
     ).toEqual(["listName", "listId", "listKind"]);
     expect(valueConfigs).toEqual({
       listName: { kind: "liveReference" },
@@ -1976,14 +2003,18 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
   it("fails the config sync when a declared source holds a member of another primitive, naming the source", () => {
     seedValueSources({
       apiTables: [
-        listSheet([{ header: "Rent", values: [950, "TBD"], columnType: "DOUBLE" }]),
+        listSheet([
+          { header: "Rent", values: [950, "TBD"], columnType: "DOUBLE" },
+        ]),
         ledgerSheet([{ header: "Rent", validationValues: ["=List[Rent]"] }]),
       ],
     });
 
     expect(() =>
       ConfigCoordinator.init().generateConfigFiles("../makeConfigs"),
-    ).toThrow('Value source "List[Rent]" declares number members, but holds "TBD".');
+    ).toThrow(
+      'Value source "List[Rent]" declares number members, but holds "TBD".',
+    );
   });
 
   it("keeps each member's own primitive on an untyped source", () => {

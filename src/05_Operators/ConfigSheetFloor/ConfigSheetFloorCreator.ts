@@ -1,27 +1,17 @@
 import {
   configSheetFloorSeed,
-  type FloorSeedColumn,
   floorSeedColumns,
   type FloorTabName,
 } from "../../01_SpreadsheetSchema/configReaders/configSheetFloorSeed";
 import { getTableTraitByName } from "../../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
-import { dimensionIds } from "../../01_SpreadsheetSchema/dimensionIds";
 import { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin";
 import { SpreadsheetBaseNamed } from "../../04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
 import { SpreadsheetNamed } from "../../04_SpreadsheetNamed/SpreadsheetNamed";
-import { type FloorSheetName, floorSheetNames } from "./floorSeedLookups";
+import { floorTabNames } from "./floorSeedLookups";
 import { FloorTabColumnCreator } from "./FloorTabColumnCreator";
 
-const creatableFloorTabNames = [
-  "spreadsheetConfig",
-  "tableConfig",
-  "columnConfig",
-  "valueConfig",
-] as const satisfies readonly FloorTabName[];
-
-const exampleColumn = configSheetFloorSeed.valueConfig.exampleColumn;
-
-type CreatedTableColumn = Pick<FloorSeedColumn, "header" | "columnType">;
+// A created floor Table holds one empty data row.
+const createdDataRowCount = 1;
 
 /**
  * Creates a missing floor tab at its generated GID, with its seeded Table at
@@ -43,7 +33,7 @@ export class ConfigSheetFloorCreator extends SpreadsheetBaseNamed {
     if (createdTabs.length > 0) {
       report.push(`Created tabs: ${createdTabs.join("; ")}`);
     }
-    const tabs = floorSheetNames()
+    const tabs = floorTabNames()
       .map((tableName) => this._floorTab(tableName))
       .filter((tab) => tab.hasFloorTable());
     tabs.forEach((tab) => tab.assertMissingAreRecreatable());
@@ -55,12 +45,12 @@ export class ConfigSheetFloorCreator extends SpreadsheetBaseNamed {
   }
   private _createMissingTabs(): string[] {
     const origin = TableOrigin.expected();
-    return creatableFloorTabNames.flatMap((tableName) => {
+    return floorTabNames().flatMap((tableName) => {
       const sheetGid = getTableTraitByName(tableName, "sheetGid");
       if (this.ss.raw.gidIsActive(sheetGid)) return [];
       const seed = configSheetFloorSeed[tableName];
-      const columns = createdTableColumns(tableName);
-      const endRowIdx = origin.sheetRowIndex(createdDataRowCount(tableName));
+      const columns = floorSeedColumns(tableName);
+      const endRowIdx = origin.sheetRowIndex(createdDataRowCount);
       const endColIdx = origin.sheetColIndex(columns.length);
       this.ss.raw
         .gatherAddSheetOperation({
@@ -85,49 +75,15 @@ export class ConfigSheetFloorCreator extends SpreadsheetBaseNamed {
             columnType: column.columnType,
           })),
         });
-      if (tableName === "valueConfig") {
-        this._seedExampleColumn(sheetGid, origin);
-      }
       return [seed.title];
     });
   }
-  // The add-Table's columnName writes the header, so no header cell is written.
-  private _seedExampleColumn(sheetGid: number, origin: TableOrigin): void {
-    const colIndex = origin.sheetColIndex(0);
-    const idPrefix = getTableTraitByName("valueConfig", "idPrefix");
-    this.ss.raw.gatherAddedSheetFillCellOperation({
-      sheetId: sheetGid,
-      rowIndex: origin.headSheetRowIndex("columnId"),
-      colIndex,
-      value: dimensionIds.col(idPrefix),
-    });
-    exampleColumn.seededValues.forEach((value, memberIndex) => {
-      this.ss.raw.gatherAddedSheetFillCellOperation({
-        sheetId: sheetGid,
-        rowIndex: origin.sheetRowIndex(memberIndex),
-        colIndex,
-        value,
-      });
-    });
-  }
   private _floorTab(
-    tableName: FloorSheetName,
-  ): FloorTabColumnCreator<FloorSheetName> {
+    tableName: FloorTabName,
+  ): FloorTabColumnCreator<FloorTabName> {
     return new FloorTabColumnCreator({
       ...this.spreadsheetNamedProps,
       tableName: tableName,
     });
   }
-}
-
-function createdTableColumns(
-  tableName: FloorTabName,
-): readonly CreatedTableColumn[] {
-  if (tableName === "valueConfig") return [exampleColumn];
-  return floorSeedColumns(tableName);
-}
-
-function createdDataRowCount(tableName: FloorTabName): number {
-  if (tableName === "valueConfig") return exampleColumn.seededValues.length;
-  return 1;
 }

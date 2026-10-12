@@ -22,6 +22,7 @@ import {
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
 import type { FakeGridView } from "../testSupport/fakeSheetsService/gridView";
+import { valueConfigGid } from "../testSupport/fakeTableConfigSheet";
 import { Api } from "./Api";
 import type { Endpoints } from "./Endpoints";
 
@@ -145,38 +146,15 @@ describe("Api.handleSheetChange", () => {
     ).toBeUndefined();
     expect(installSource).not.toHaveBeenCalled();
   });
-  it("installs the source and returns the floor notice for a renamed Value Config", () => {
+  it("installs the source and returns no floor notice for a renamed Value Config, which is no longer floor", () => {
     stubSheetsService({
-      sheets: [
-        {
-          sheetId: getTableTraitByName("valueConfig", "sheetGid"),
-          title: "Values",
-        },
-      ],
+      sheets: [{ sheetId: valueConfigGid, title: "Values" }],
     });
     const installSource = vi.fn();
     expect(
       Api.handleSheetChange({ configs, endpoints: {} }, "other", installSource),
-    ).toEqual({
-      title: "Value Config is managed",
-      message:
-        'This tab keeps the name "Value Config". Your rename will switch back the next time configs sync.',
-      untilClosed: false,
-    });
-    expect(installSource).toHaveBeenCalledOnce();
-  });
-  it("returns no floor notice when the floor tabs are intact", () => {
-    stubSheetsService({
-      sheets: [
-        {
-          sheetId: getTableTraitByName("valueConfig", "sheetGid"),
-          title: "Value Config",
-        },
-      ],
-    });
-    expect(
-      Api.handleSheetChange({ configs, endpoints: {} }, "other", vi.fn()),
     ).toBeUndefined();
+    expect(installSource).toHaveBeenCalledOnce();
   });
 });
 

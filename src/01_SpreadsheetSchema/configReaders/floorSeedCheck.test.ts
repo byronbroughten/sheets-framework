@@ -31,11 +31,12 @@ describe("assertFloorMatchesSeed", () => {
   });
 
   it("throws naming a floor tab with no entry", () => {
-    const { valueConfig: _valueConfig, ...withoutValueConfig } = tableConfigs;
+    const { columnConfig: _columnConfig, ...withoutColumnConfig } =
+      tableConfigs;
 
     expect(() =>
-      assertFloorMatchesSeed(withoutValueConfig, floorColumnConfigs()),
-    ).toThrow('Floor tab "valueConfig" has no floor entry');
+      assertFloorMatchesSeed(withoutColumnConfig, floorColumnConfigs()),
+    ).toThrow('Floor tab "columnConfig" has no floor entry');
   });
 
   it("throws naming the sheet, the column and both headers when a floor column's header differs from the seed's", () => {

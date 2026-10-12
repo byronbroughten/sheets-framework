@@ -16,9 +16,12 @@ import {
   type FakeTable,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
-import { tableIdOnTab } from "../testSupport/fakeTableConfigSheet";
+import {
+  tableIdOnTab,
+  valueConfigGid,
+} from "../testSupport/fakeTableConfigSheet";
 import { ConfigSheetFloor } from "./ConfigSheetFloor";
-import { floorSheetNames } from "./ConfigSheetFloor/floorSeedLookups";
+import { floorTabNames } from "./ConfigSheetFloor/floorSeedLookups";
 import { floorRecreatableColumns } from "./ConfigSheetFloor/FloorTabColumnCreator";
 import { selfDescribingRowColumns } from "./ConfigSheetFloor/FloorTabEditWarning";
 
@@ -30,7 +33,6 @@ const spreadsheetConfigGid = getTableTraitByName(
 );
 const tableConfigGid = getTableTraitByName("tableConfig", "sheetGid");
 const columnConfigGid = getTableTraitByName("columnConfig", "sheetGid");
-const valueConfigGid = getTableTraitByName("valueConfig", "sheetGid");
 const actionRowIndex = expectedSheetLayout.actionRowIndex;
 const topDataRowIndex = expectedSheetLayout.tableHeaderRowIndex + 1;
 const floorWarningPrefix = "Config-sheet floor";
@@ -244,7 +246,6 @@ const defaultTableConfigGids = [
   spreadsheetConfigGid,
   tableConfigGid,
   columnConfigGid,
-  valueConfigGid,
 ];
 const businessTableId = tableIdOnTab(businessSheetGid);
 const defaultColumnConfigRows = [
@@ -294,10 +295,6 @@ function floorFixture(
     columnConfigRows?: readonly { tableId: string; columnId: string }[];
     spreadsheetConfigTitle?: string;
     spreadsheetConfigTableName?: string;
-    valueConfig?: {
-      title?: string;
-      tableName?: string;
-    };
     extraSheets?: FakeSheetProperties[];
     omitSheetGids?: readonly number[];
     isDryRun?: boolean;
@@ -485,22 +482,28 @@ function floorFixture(
         },
         protectedRanges: options.columnConfigProtections,
       },
-      {
-        sheetId: valueConfigGid,
-        title:
-          options.valueConfig?.title ?? configSheetFloorSeed.valueConfig.title,
-        table: {
-          tableId: tableIdOnTab(valueConfigGid),
-          name:
-            options.valueConfig?.tableName ??
-            configSheetFloorSeed.valueConfig.liveTableName,
-          endRowIndex: 5,
-        },
-      },
       ...(options.extraSheets ?? []),
     ].filter((sheet) => !options.omitSheetGids?.includes(sheet.sheetId)),
     isDryRun: options.isDryRun,
   });
+}
+
+function valueConfigTab({
+  title,
+  tableName,
+}: {
+  title: string;
+  tableName: string;
+}): FakeSheetProperties {
+  return {
+    sheetId: valueConfigGid,
+    title,
+    table: {
+      tableId: tableIdOnTab(valueConfigGid),
+      name: tableName,
+      endRowIndex: 5,
+    },
+  };
 }
 
 function applyFloor() {
@@ -584,7 +587,7 @@ const columnConfigEditableRanges = [
 
 describe("ConfigSheetFloor", () => {
   it("puts one whole-sheet warning on each of Spreadsheet Config, Table Config and Column Config, with editable ranges where an edit sticks, and locks none", () => {
-    const { grid } = floorFixture();
+    floorFixture();
     const { floor } = applyFloor();
 
     const spreadsheet = protectionsOf(floor, "spreadsheetConfig");
@@ -617,7 +620,6 @@ describe("ConfigSheetFloor", () => {
     expect(columnConfig[0]?.unprotectedRanges).toEqual(
       columnConfigEditableRanges,
     );
-    expect(grid.sheet(valueConfigGid).protectedRanges).toEqual([]);
   });
 
   it("sends no batch update on a second run", () => {
@@ -635,7 +637,7 @@ describe("ConfigSheetFloor", () => {
     expect(getByDataFilterCalls).toHaveLength(2);
   });
 
-  it("carves the four floor rows out of Table Config's Let api access column, leaving a bounded range above and an open-ended one below", () => {
+  it("carves the three floor rows out of Table Config's Let api access column, leaving a bounded range above and an open-ended one below", () => {
     floorFixture();
     const { floor } = applyFloor();
 
@@ -940,29 +942,23 @@ describe("ConfigSheetFloor", () => {
     expect(report).not.toContain("Old Spreadsheet Config ·");
   });
 
-  it("renames Value Config's tab back and reports it", () => {
+  it("leaves a renamed Value Config and its renamed Table as they are, since it is an ordinary Table", () => {
     const { grid } = floorFixture({
-      valueConfig: { title: "Values" },
+      extraSheets: [valueConfigTab({ title: "Values", tableName: "values" })],
     });
+    const before = sheetSnapshot(grid, valueConfigGid);
     const { report } = applyFloor();
 
-    expect(report).toContain('Restored tab titles: "Values" → Value Config');
-    expect(grid.sheet(valueConfigGid).title).toBe("Value Config");
+    expect(sheetSnapshot(grid, valueConfigGid)).toEqual(before);
+    expect(report).not.toContain("Value Config");
   });
 
-  it("returns the floor notice for a renamed Value Config off freshly fetched sheet properties and sends no batch update", () => {
-    const { batchUpdateCount, getCalls } = floorFixture({
-      valueConfig: { title: "Values" },
+  it("returns no floor notice for a renamed Value Config and sends no batch update", () => {
+    const { batchUpdateCount } = floorFixture({
+      extraSheets: [valueConfigTab({ title: "Values", tableName: "values" })],
     });
-    const notice = ConfigSheetFloor.init().changeNotice("other");
 
-    expect(notice).toEqual({
-      title: "Value Config is managed",
-      message:
-        'This tab keeps the name "Value Config". Your rename will switch back the next time configs sync.',
-      untilClosed: false,
-    });
-    expect(getCalls).toHaveLength(1);
+    expect(ConfigSheetFloor.init().changeNotice("other")).toBeUndefined();
     expect(batchUpdateCount()).toBe(0);
   });
 
@@ -978,18 +974,6 @@ describe("ConfigSheetFloor", () => {
     expect(grid.sheet(spreadsheetConfigGid).tables[0]?.name).toBe(
       "spreadsheetConfig",
     );
-  });
-
-  it("renames Value Config's Table back to valueConfig", () => {
-    const { grid } = floorFixture({
-      valueConfig: { tableName: "values" },
-    });
-    const { report } = applyFloor();
-
-    expect(report).toContain(
-      `Restored Table names: Value Config's Table "values" → valueConfig`,
-    );
-    expect(grid.sheet(valueConfigGid).tables[0]?.name).toBe("valueConfig");
   });
 
   it("throws naming the tab when a floor title sits on the wrong GID, and sends no batch update", () => {
@@ -1606,71 +1590,24 @@ describe("ConfigSheetFloor", () => {
     ).toEqual([]);
   });
 
-  it("creates a missing Value Config at its GID with a Table of one example column and two data rows, and reports it", () => {
+  it("creates Spreadsheet Config, Table Config and Column Config, and no Value Config, on a spreadsheet with no floor", () => {
     const { grid } = floorFixture({
-      omitSheetGids: [valueConfigGid],
+      omitSheetGids: [spreadsheetConfigGid, tableConfigGid, columnConfigGid],
     });
     const { report } = applyFloor();
-    const seed = configSheetFloorSeed.valueConfig;
 
-    expect(grid.sheet(valueConfigGid).title).toBe(seed.title);
-    const tables = grid.sheet(valueConfigGid).tables;
-    expect(tables.map((table) => table.name)).toEqual(["valueConfig"]);
-    expect(tableColumns(grid, valueConfigGid)).toEqual([
-      { columnName: "Example value", columnType: "TEXT" },
+    expect(grid.sheetTitles()).toEqual([
+      "Spreadsheet Config",
+      "Table Config",
+      "Column Config",
     ]);
-    const headerRowIndex = expectedSheetLayout.tableHeaderRowIndex;
-    const startColIndex = expectedSheetLayout.startTableColIndex;
-    expect(tables[0]?.range).toEqual({
-      startRowIndex: headerRowIndex,
-      endRowIndex: headerRowIndex + 3,
-      startColumnIndex: startColIndex,
-      endColumnIndex: startColIndex + 1,
-    });
-    expect(report).toContain(`Created tabs: ${seed.title}`);
-  });
-
-  it("fills a created Value Config's example column with a vcf column ID and its sample members, under the header its Table was created with", () => {
-    const { grid } = floorFixture({
-      omitSheetGids: [valueConfigGid],
-    });
-    applyFloor();
-
-    const { seededValues } = configSheetFloorSeed.valueConfig.exampleColumn;
-    const startColIndex = expectedSheetLayout.startTableColIndex;
-    expect(
-      grid.sheet(valueConfigGid).values({
-        startColumnIndex: startColIndex,
-        endColumnIndex: startColIndex + 1,
-      }),
-    ).toEqual([
-      [expect.stringMatching(/^c:vcf:/)],
-      [null],
-      [null],
-      ["Example value"],
-      ...seededValues.map((value) => [value]),
-    ]);
-  });
-
-  it("gives an existing Value Config whose example column was deleted no example column back", () => {
-    const { grid } = floorFixture();
-    const before = sheetSnapshot(grid, valueConfigGid);
-    applyFloor();
-
-    expect(sheetSnapshot(grid, valueConfigGid)).toEqual(before);
-  });
-
-  it("gives a created Value Config no edit protection", () => {
-    const { grid } = floorFixture({
-      omitSheetGids: [valueConfigGid],
-    });
-    applyFloor();
-
-    expect(grid.sheet(valueConfigGid).protectedRanges).toEqual([]);
+    expect(report).toContain(
+      "Created tabs: Spreadsheet Config; Table Config; Column Config",
+    );
   });
 
   it("names exactly Spreadsheet Config, Table Config and Column Config as the warned floor tabs", () => {
-    expect(floorSheetNames()).toEqual([
+    expect(floorTabNames()).toEqual([
       "spreadsheetConfig",
       "tableConfig",
       "columnConfig",
@@ -1691,7 +1628,7 @@ describe("ConfigSheetFloor", () => {
   });
 
   it("never lets a recreatable column be one of a self-describing row's identity or declared columns", () => {
-    floorSheetNames().forEach((tableName) => {
+    floorTabNames().forEach((tableName) => {
       const selfDescribing: readonly string[] =
         selfDescribingRowColumns(tableName);
       expect(

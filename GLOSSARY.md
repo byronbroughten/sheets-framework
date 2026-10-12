@@ -75,16 +75,12 @@ Everything on the three config sheets that the app guarantees and restores on ea
 _Avoid_: minimum floor, minimum headers, floor sheet
 
 **Floor seed**:
-The app's own declaration of what the config-sheet floor looks like: its structure, plus Table menu space's data value. A floor tab or column keeps the identity it was created with. A tab it creates also gets its **seeded values**.
+The app's own declaration of what the config-sheet floor looks like: its structure, plus Table menu space's data value. A floor tab or column keeps the identity it was created with.
 _Avoid_: template, default config
 
 **Self-describing row**:
 A Table Config or Column Config row describing a config-sheet floor Table or floor column; its declared cell is enforced from the floor seed.
 _Avoid_: config-about-config row
-
-**Seeded value**:
-A cell or column the floor seed fills once, when it creates the tab or Table, and never restores — such as Value Config's example column.
-_Avoid_: initial value (too close to Custom default value)
 
 **Floor notice**:
 A message that pops up when someone changes the config-sheet floor in a way the next config sync will reverse, saying what will happen and what they can do about it.
