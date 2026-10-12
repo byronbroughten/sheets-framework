@@ -16,7 +16,10 @@ import {
   type FakeTable,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
-import { tableIdOnTab } from "../testSupport/fakeTableConfigSheet";
+import {
+  tableIdOnTab,
+  valueConfigGid,
+} from "../testSupport/fakeTableConfigSheet";
 import { ConfigSheetFloor } from "./ConfigSheetFloor";
 import { floorTabNames } from "./ConfigSheetFloor/floorSeedLookups";
 import { floorRecreatableColumns } from "./ConfigSheetFloor/FloorTabColumnCreator";
@@ -32,7 +35,6 @@ const tableConfigGid = getTableTraitByName("tableConfig", "sheetGid");
 const columnConfigGid = getTableTraitByName("columnConfig", "sheetGid");
 const actionRowIndex = expectedSheetLayout.actionRowIndex;
 const topDataRowIndex = expectedSheetLayout.tableHeaderRowIndex + 1;
-const valueConfigGid = 2119236084;
 const floorWarningPrefix = "Config-sheet floor";
 const ssc = columnConfigs.spreadsheetConfig;
 const tc = columnConfigs.tableConfig;

@@ -137,7 +137,7 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
     });
     return this;
   }
-  // A seeded value on a tab this flush adds; an existing tab writes through CellRaw.
+  // A cell value on a tab this flush adds; an existing tab writes through CellRaw.
   gatherAddedSheetFillCellOperation(props: AddedSheetCell): this {
     this._validateAddSheetQueued(props.sheetId, "cell write");
     if ("formula" in props) validateFormulaString(props.formula);

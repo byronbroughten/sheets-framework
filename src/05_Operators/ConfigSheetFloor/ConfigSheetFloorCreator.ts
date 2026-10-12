@@ -10,6 +10,9 @@ import { SpreadsheetNamed } from "../../04_SpreadsheetNamed/SpreadsheetNamed";
 import { floorTabNames } from "./floorSeedLookups";
 import { FloorTabColumnCreator } from "./FloorTabColumnCreator";
 
+// A created floor Table holds one empty data row.
+const createdDataRowCount = 1;
+
 /**
  * Creates a missing floor tab at its generated GID, with its seeded Table at
  * its generated tableId and placed by the sheet layout, and recreates missing
@@ -47,7 +50,7 @@ export class ConfigSheetFloorCreator extends SpreadsheetBaseNamed {
       if (this.ss.raw.gidIsActive(sheetGid)) return [];
       const seed = configSheetFloorSeed[tableName];
       const columns = floorSeedColumns(tableName);
-      const endRowIdx = origin.sheetRowIndex(1);
+      const endRowIdx = origin.sheetRowIndex(createdDataRowCount);
       const endColIdx = origin.sheetColIndex(columns.length);
       this.ss.raw
         .gatherAddSheetOperation({

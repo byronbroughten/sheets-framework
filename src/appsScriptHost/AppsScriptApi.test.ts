@@ -12,6 +12,7 @@ import {
   buildGridRows,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
+import { valueConfigGid } from "../testSupport/fakeTableConfigSheet";
 import { AppsScriptApi } from "./AppsScriptApi";
 
 const runItemGid = getTableTraitByName("runItem", "sheetGid");
@@ -144,14 +145,20 @@ describe("AppsScriptApi.handleSheetEdit, with no source installed", () => {
 });
 
 describe("AppsScriptApi.handleSheetChange", () => {
-  it("shows no toast for a renamed or deleted Value Config, which is no longer floor", () => {
-    stubSheetsService({ sheets: [{ sheetId: 2119236084, title: "Values" }] });
+  it("shows no toast for a renamed Value Config, which is no longer floor", () => {
+    stubSheetsService({
+      sheets: [{ sheetId: valueConfigGid, title: "Values" }],
+    });
     const { toasts } = stubScriptAndSpreadsheetApp();
     AppsScriptApi.handleSheetChange(
       { configs, endpoints: {} },
       onChangeEvent("OTHER"),
     );
+    expect(toasts).toEqual([]);
+  });
+  it("shows no toast for a deleted Value Config, which is no longer floor", () => {
     stubSheetsService({ sheets: [] });
+    const { toasts } = stubScriptAndSpreadsheetApp();
     AppsScriptApi.handleSheetChange(
       { configs, endpoints: {} },
       onChangeEvent("REMOVE_GRID"),

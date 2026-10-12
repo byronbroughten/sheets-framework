@@ -14,7 +14,10 @@ import {
   type FakeSheetsService,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
-import { tableIdOnTab } from "../testSupport/fakeTableConfigSheet";
+import {
+  tableIdOnTab,
+  valueConfigGid,
+} from "../testSupport/fakeTableConfigSheet";
 import {
   ConfigCoordinator,
   type ConfigRegeneration,
@@ -348,9 +351,6 @@ function seedFixture(
     isDryRun: options.isDryRun,
   });
 }
-
-// A literal GID, since a regen may drop Value Config from the generated configs.
-const valueConfigGid = 2119236084;
 
 function valueConfigTab(
   options: { sheetId?: number; columnId?: string } = {},

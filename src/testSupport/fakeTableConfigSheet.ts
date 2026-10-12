@@ -32,6 +32,9 @@ export const sheetTitleColIndex = tableConfigColumnIdRow.indexOf(
   getColumnTraitByName("tableConfig", "sheetTitle", "columnId"),
 );
 
+/** Value Config's dev GID as a literal, since a regen may drop it from the generated configs. */
+export const valueConfigGid = 2119236084;
+
 /** The tableId a tab's one Table carries: a floor tab's generated one, else the fake's default. */
 export function tableIdOnTab(sheetGid: number): string {
   if (floorTabSeedByGid(sheetGid) === undefined) {

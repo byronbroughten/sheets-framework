@@ -22,6 +22,7 @@ import {
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
 import type { FakeGridView } from "../testSupport/fakeSheetsService/gridView";
+import { valueConfigGid } from "../testSupport/fakeTableConfigSheet";
 import { Api } from "./Api";
 import type { Endpoints } from "./Endpoints";
 
@@ -146,7 +147,9 @@ describe("Api.handleSheetChange", () => {
     expect(installSource).not.toHaveBeenCalled();
   });
   it("installs the source and returns no floor notice for a renamed Value Config, which is no longer floor", () => {
-    stubSheetsService({ sheets: [{ sheetId: 2119236084, title: "Values" }] });
+    stubSheetsService({
+      sheets: [{ sheetId: valueConfigGid, title: "Values" }],
+    });
     const installSource = vi.fn();
     expect(
       Api.handleSheetChange({ configs, endpoints: {} }, "other", installSource),

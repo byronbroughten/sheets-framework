@@ -36,7 +36,7 @@ One line per term. The elaboration is one file away. Open a reasoning file only 
 
 - **Config is the data describing the spreadsheet's own structure, generated from the live sheet**, in each package's `generatedDir`.
 - **`xConfigs` is the whole map, `XConfig` is one entry's record, and a trait is one property of one record.** "Trait" never means a collection.
-- **The config-sheet floor is guaranteed, not data to fix**: the four config sheets' own entries always come out the same on regeneration.
+- **The config-sheet floor is guaranteed, not data to fix**: the three config sheets' own entries always come out the same on regeneration.
 
 ## Writes
 
