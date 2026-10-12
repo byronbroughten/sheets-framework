@@ -11,6 +11,7 @@ import {
   buildGridRows,
   type FakeCellValue,
   type FakeSheetProperties,
+  type FakeSheetsService,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
 import { tableIdOnTab } from "../testSupport/fakeTableConfigSheet";
@@ -18,6 +19,8 @@ import {
   ConfigCoordinator,
   type ConfigRegeneration,
 } from "./ConfigCoordinator";
+
+type GridRange = GoogleAppsScript.Sheets.Schema.GridRange;
 
 const { columnConfigs } = installedConfigs();
 const testSheetGid = getTableTraitByName("item", "sheetGid");
@@ -1813,9 +1816,9 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
   function seedValueSources(props: {
     apiTables: readonly FakeSheetProperties[];
     otherTables?: readonly FakeSheetProperties[];
-  }): void {
+  }): FakeSheetsService {
     const { apiTables, otherTables = [] } = props;
-    seedFixture({
+    return seedFixture({
       extraSheets: [...apiTables, ...otherTables],
       extraTableConfigDataRows: apiTables.reduce<
         Record<number, readonly (string | number | boolean | null)[]>
@@ -1846,6 +1849,22 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
     };
   }
 
+  // A source fetch reads one whole column; row samples span the Table.
+  function fullyFetchedListColumnIndexes(service: FakeSheetsService): number[] {
+    const indexes = service.getByDataFilterCalls.flatMap((resource) =>
+      ((resource as { dataFilters?: { gridRange?: GridRange }[] }).dataFilters ?? [])
+        .map(({ gridRange }) => gridRange)
+        .filter(
+          (range): range is GridRange =>
+            range?.sheetId === listGid &&
+            range.startRowIndex === 0 &&
+            (range.endColumnIndex ?? 0) - (range.startColumnIndex ?? 0) === 1,
+        )
+        .map((range) => Val.assert(range.startColumnIndex, "start column")),
+    );
+    return [...new Set(indexes)].sort();
+  }
+
   function emittedValueConfigs(files: ConfigRegeneration): unknown {
     const match = files.valueConfigs.match(/makeValueConfigs\(([\s\S]*)\);/);
     return JSON.parse(Val.assert(match?.[1], "emitted value configs"));
@@ -1873,6 +1892,46 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
     expect(valueConfigs).toEqual({
       listPaymentStatus: ["Paid", "Unpaid", "Late"],
     });
+  });
+
+  function seedNameAndIdSources(): FakeSheetsService {
+    return seedValueSources({
+      apiTables: [
+        listSheet([
+          { header: "ID", values: ["r:lst:a1"] },
+          { header: "Name", values: ["Unit 2B"], columnType: "DOUBLE" },
+          { header: "Kind", values: ["Flat"] },
+        ]),
+        ledgerSheet([
+          { header: "Unit", validationValues: ["=List[Name]"] },
+          { header: "Unit row", validationValues: ["=List[ID]"] },
+          { header: "Kind", validationValues: ["=List[Kind]"] },
+        ]),
+      ],
+    });
+  }
+
+  it("emits a dropdown from a Table's Name or ID column as a live reference, whatever its type", () => {
+    seedNameAndIdSources();
+
+    const { valueConfigs, ledgerValueName } = generate();
+
+    expect(
+      ["unit", "unitRow", "kind"].map((columnName) => ledgerValueName(columnName)),
+    ).toEqual(["listName", "listId", "listKind"]);
+    expect(valueConfigs).toEqual({
+      listName: { kind: "liveReference" },
+      listId: { kind: "liveReference" },
+      listKind: ["Flat"],
+    });
+  });
+
+  it("fetches no Name or ID source column, only the fixed-list ones", () => {
+    const service = seedNameAndIdSources();
+
+    generate();
+
+    expect(fullyFetchedListColumnIndexes(service)).toEqual([2]);
   });
 
   it("keeps a one-word camel-case header's casing in the value name", () => {

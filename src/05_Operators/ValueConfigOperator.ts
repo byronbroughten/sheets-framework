@@ -3,8 +3,10 @@ import type { FrameworkValueName } from "../00_Source/CellValues/frameworkValueS
 import {
   type FixedListMember,
   makeImportLine,
+  type ValueConfigBase,
   type ValueConfigsBase,
 } from "../01_SpreadsheetSchema/configReaders/makeConfigs";
+import { tableLayout } from "../01_SpreadsheetSchema/tableLayout";
 import type { ColumnRaw } from "../02_SpreadsheetRaw/ColumnRaw";
 import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
 import { ColumnConfigOperator } from "./ColumnConfigOperator";
@@ -35,15 +37,19 @@ export class ValueConfigOperator extends SpreadsheetBaseOperator {
   fetchAfterColumnConfigSynced(): void {
     this.columnConfigOperator.assertSyncedToSpreadsheet();
     this.valueConfigSync.valueSources = this.columnConfigOperator.valueSources();
-    this.valueSources.forEach((source) => {
-      this._rawColumn(source).gatherFetchFull();
-    });
+    this.valueSources
+      .filter((source) => !isLiveReference(source))
+      .forEach((source) => {
+        this._rawColumn(source).gatherFetchFull();
+      });
     this.ss.fetchAllPrepped({ skipFetchingProperties: true });
   }
   newValueConfigs(): ValueConfigsBase {
-    return this.valueSources.reduce<Record<string, FixedListMember[]>>(
+    return this.valueSources.reduce<Record<string, ValueConfigBase>>(
       (acc, source) => {
-        acc[source.valueName] = this._fixedListMembers(source);
+        acc[source.valueName] = isLiveReference(source)
+          ? { kind: "liveReference" }
+          : this._fixedListMembers(source);
         return acc;
       },
       {},
@@ -77,6 +83,11 @@ export class ValueConfigOperator extends SpreadsheetBaseOperator {
     });
     return [...new Set(members)];
   }
+}
+
+// A row added to the source Table is an option at once, so its rows aren't listed.
+function isLiveReference({ header }: SourceColumn): boolean {
+  return header === tableLayout.nameHeader || header === tableLayout.idHeader;
 }
 
 type MemberType = "string" | "number" | "boolean";
