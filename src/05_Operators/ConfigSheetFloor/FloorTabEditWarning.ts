@@ -11,6 +11,7 @@ import {
 import {
   configSheetFloorSeed,
   floorSeedColumnById,
+  type FloorTabName,
   floorTabSeedByTableId,
 } from "../../01_SpreadsheetSchema/configReaders/configSheetFloorSeed";
 import { getTableTraitByName } from "../../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
@@ -21,7 +22,6 @@ import type { TableNamed } from "../../04_SpreadsheetNamed/TableNamed";
 import { liveColIndex } from "./floorColumnLocation";
 import {
   columnNameByHeader,
-  type FloorSheetName,
   spreadsheetConfigFeedbackColumnNames,
 } from "./floorSeedLookups";
 
@@ -33,20 +33,20 @@ export interface FloorDeclaration {
   unprotectedRanges: ProtectionGridRange[];
 }
 
-interface SelfDescribingRowRule<TN extends FloorSheetName> {
+interface SelfDescribingRowRule<TN extends FloorTabName> {
   declaredColumn: ColumnName<TN>;
   identityColumns: readonly ColumnName<TN>[];
   isFloorIdentity: (identityValues: readonly CellValue[]) => boolean;
 }
 
-interface FloorTabRules<TN extends FloorSheetName> {
+interface FloorTabRules<TN extends FloorTabName> {
   excludedDataColumns: readonly ColumnName<TN>[];
   actionRowEditableColumns: readonly ColumnName<TN>[];
   selfDescribingRow: SelfDescribingRowRule<TN> | undefined;
 }
 
 export class FloorTabEditWarning<
-  TN extends FloorSheetName,
+  TN extends FloorTabName,
 > extends TableBaseNamed<TN> {
   get ss(): SpreadsheetNamed {
     return new SpreadsheetNamed(this.spreadsheetNamedProps);
@@ -177,7 +177,7 @@ export class FloorTabEditWarning<
   }
 }
 
-export function selfDescribingRowColumns<TN extends FloorSheetName>(
+export function selfDescribingRowColumns<TN extends FloorTabName>(
   tableName: TN,
 ): readonly ColumnName<TN>[] {
   const rule = floorTabRules()[tableName].selfDescribingRow;
@@ -185,7 +185,7 @@ export function selfDescribingRowColumns<TN extends FloorSheetName>(
   return [...rule.identityColumns, rule.declaredColumn];
 }
 
-function floorTabRules(): { [TN in FloorSheetName]: FloorTabRules<TN> } {
+function floorTabRules(): { [TN in FloorTabName]: FloorTabRules<TN> } {
   return {
     spreadsheetConfig: {
       excludedDataColumns: [
@@ -227,11 +227,11 @@ function spreadsheetConfigTimeLastRanColumnNames(): ColumnName<"spreadsheetConfi
   );
 }
 
-function floorWarningDescription(tableName: FloorSheetName): string {
+function floorWarningDescription(tableName: FloorTabName): string {
   return `${floorWarningPrefix} · ${configSheetFloorSeed[tableName].title} · warning`;
 }
 
-function liveColIndexesOf<TN extends FloorSheetName>(
+function liveColIndexesOf<TN extends FloorTabName>(
   liveIndexes: ReadonlyMap<ColumnName<TN>, number>,
   columnNames: readonly ColumnName<TN>[],
 ): number[] {

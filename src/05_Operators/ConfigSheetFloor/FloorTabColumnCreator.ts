@@ -2,6 +2,7 @@ import {
   type ColumnName,
   getColumnTraitByName,
 } from "../../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
+import type { FloorTabName } from "../../01_SpreadsheetSchema/configReaders/configSheetFloorSeed";
 import { getTableTraitByName } from "../../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { TableBaseNamed } from "../../04_SpreadsheetNamed/ClassBases/TableBaseNamed";
 import { SpreadsheetNamed } from "../../04_SpreadsheetNamed/SpreadsheetNamed";
@@ -11,14 +12,13 @@ import {
   columnNameByHeader,
   type FloorColumnRestore,
   floorColumnsToRestore,
-  type FloorSheetName,
   spreadsheetConfigFeedbackColumnNames,
 } from "./floorSeedLookups";
 
 export const retiredSheetGidHeader = "Sheet GID";
 
 export class FloorTabColumnCreator<
-  TN extends FloorSheetName,
+  TN extends FloorTabName,
 > extends TableBaseNamed<TN> {
   get ss(): SpreadsheetNamed {
     return new SpreadsheetNamed(this.spreadsheetNamedProps);
@@ -96,7 +96,7 @@ export class FloorTabColumnCreator<
   }
 }
 
-export function floorRecreatableColumns<TN extends FloorSheetName>(
+export function floorRecreatableColumns<TN extends FloorTabName>(
   tableName: TN,
 ): readonly ColumnName<TN>[] {
   return recreatableColumns()[tableName];
@@ -104,7 +104,7 @@ export function floorRecreatableColumns<TN extends FloorSheetName>(
 
 // Only columns the sync or an endpoint refills by itself; recreating any other empty loses what it declared.
 function recreatableColumns(): {
-  [TN in FloorSheetName]: readonly ColumnName<TN>[];
+  [TN in FloorTabName]: readonly ColumnName<TN>[];
 } {
   return {
     spreadsheetConfig: spreadsheetConfigFeedbackColumnNames(),

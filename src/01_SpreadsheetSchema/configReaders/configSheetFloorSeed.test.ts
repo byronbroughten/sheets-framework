@@ -79,7 +79,6 @@ describe("configSheetFloorSeed declared cells", () => {
     expect(configSheetFloorSeed.spreadsheetConfig.letApiAccess).toBe(true);
     expect(configSheetFloorSeed.tableConfig.letApiAccess).toBe(true);
     expect(configSheetFloorSeed.columnConfig.letApiAccess).toBe(true);
-    expect(configSheetFloorSeed.valueConfig.letApiAccess).toBe(true);
 
     const floorColumns = [
       ...configSheetFloorSeed.spreadsheetConfig.columns,

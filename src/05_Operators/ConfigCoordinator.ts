@@ -25,7 +25,7 @@ export interface ConfigRegeneration {
 }
 
 /**
- * Coordinates Spreadsheet/Table/Column/Value Config: the config-sheet floor
+ * Coordinates Spreadsheet/Table/Column Config: the config-sheet floor
  * first (one extra flush), sync the live config sheets, one more flush, then
  * emit all three generated files or none. Config maintenance is this Operator
  * family, not Raw or Named. npm run gen:configs is the only regeneration path.

@@ -145,38 +145,13 @@ describe("Api.handleSheetChange", () => {
     ).toBeUndefined();
     expect(installSource).not.toHaveBeenCalled();
   });
-  it("installs the source and returns the floor notice for a renamed Value Config", () => {
-    stubSheetsService({
-      sheets: [
-        {
-          sheetId: getTableTraitByName("valueConfig", "sheetGid"),
-          title: "Values",
-        },
-      ],
-    });
+  it("installs the source and returns no floor notice for a renamed Value Config, which is no longer floor", () => {
+    stubSheetsService({ sheets: [{ sheetId: 2119236084, title: "Values" }] });
     const installSource = vi.fn();
     expect(
       Api.handleSheetChange({ configs, endpoints: {} }, "other", installSource),
-    ).toEqual({
-      title: "Value Config is managed",
-      message:
-        'This tab keeps the name "Value Config". Your rename will switch back the next time configs sync.',
-      untilClosed: false,
-    });
-    expect(installSource).toHaveBeenCalledOnce();
-  });
-  it("returns no floor notice when the floor tabs are intact", () => {
-    stubSheetsService({
-      sheets: [
-        {
-          sheetId: getTableTraitByName("valueConfig", "sheetGid"),
-          title: "Value Config",
-        },
-      ],
-    });
-    expect(
-      Api.handleSheetChange({ configs, endpoints: {} }, "other", vi.fn()),
     ).toBeUndefined();
+    expect(installSource).toHaveBeenCalledOnce();
   });
 });
 

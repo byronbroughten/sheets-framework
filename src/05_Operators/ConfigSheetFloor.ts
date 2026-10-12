@@ -1,5 +1,3 @@
-import { Obj } from "@byronbroughten/utils/obj";
-
 import type { SheetChange } from "../00_Source/PlatformEvents/sheetChange";
 import type { ColumnName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
 import {
@@ -7,7 +5,6 @@ import {
   type FloorSeedColumn,
   floorSeedColumns,
   type FloorTabName,
-  floorTabSeedByGid,
 } from "../01_SpreadsheetSchema/configReaders/configSheetFloorSeed";
 import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import type { TableRaw } from "../02_SpreadsheetRaw/TableRaw";
@@ -19,17 +16,13 @@ import {
   ConfigSheetFloorEditWarnings,
   type IdentityColIndexes,
 } from "./ConfigSheetFloor/ConfigSheetFloorEditWarnings";
-import {
-  floorChangeNotice,
-  type FloorNotice,
-} from "./ConfigSheetFloor/floorChangeNotice";
+import type { FloorNotice } from "./ConfigSheetFloor/floorChangeNotice";
 import { liveColIndex } from "./ConfigSheetFloor/floorColumnLocation";
 import {
   columnNameByHeader,
   floorColumnRestore,
   floorColumnsToRestore,
-  type FloorSheetName,
-  floorSheetNames,
+  floorTabNames,
 } from "./ConfigSheetFloor/floorSeedLookups";
 
 export const retiredSheetConfigTitle = "Sheet Config";
@@ -41,8 +34,7 @@ export const retiredSheetConfigTitle = "Sheet Config";
  * the edit warnings. ConfigCoordinator
  * runs this at the start of every config sync; the
  * ensureConfigSheetFloor chore is the other caller.
- * changeNotice has floorChangeNotice decide the floor notice for an On change
- * event that renamed or deleted Value Config, the one floor tab with no edit warning.
+ * changeNotice raises no floor notice, since every floor tab has an edit warning.
  * docs/generated-data/config-sheet-floor.md
  */
 export class ConfigSheetFloor extends SpreadsheetBaseNamed {
@@ -76,16 +68,8 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
       ...this.editWarnings.ensure(identityColIndexes),
     ].join("; ");
   }
-  changeNotice(change: SheetChange): FloorNotice | undefined {
-    this.ss.raw.fetchAllSheetProperties();
-    const liveTitlesByGid = new Map(
-      this.ss.raw.activeSheetGids.flatMap((sheetGid) =>
-        floorTabSeedByGid(sheetGid) === undefined
-          ? []
-          : [[sheetGid, this.ss.raw.sheet(sheetGid).title] as const],
-      ),
-    );
-    return floorChangeNotice(change, liveTitlesByGid);
+  changeNotice(_change: SheetChange): FloorNotice | undefined {
+    return undefined;
   }
   private _ensureTitlesAndTables(): string[] {
     this.ss.raw.ensureAllSheetPropertiesAreFetched();
@@ -155,7 +139,7 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
   }
   private _fetchFloorSheets(): IdentityColIndexes {
     const identityColIndexes = this.editWarnings.gatherIdentityColumns();
-    floorSheetNames().forEach((tableName) => {
+    floorTabNames().forEach((tableName) => {
       const sheetGid = getTableTraitByName(tableName, "sheetGid");
       if (!this.ss.raw.gidIsActive(sheetGid)) return;
       const sheet = this.ss.table(tableName);
@@ -174,7 +158,7 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
     const headerLines: string[] = [];
     const columnIdLines: string[] = [];
     const groupHeadingLines: string[] = [];
-    floorSheetNames().forEach((tableName) => {
+    floorTabNames().forEach((tableName) => {
       const sheetGid = getTableTraitByName(tableName, "sheetGid");
       if (!this.ss.raw.gidIsActive(sheetGid)) return;
       const sheet = this.ss.table(tableName);
@@ -222,11 +206,11 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
     ];
   }
   private _ensureDataValues(): string[] {
-    return floorSheetNames().flatMap((tableName) =>
+    return floorTabNames().flatMap((tableName) =>
       this._ensureSheetDataValues(tableName),
     );
   }
-  private _ensureSheetDataValues<TN extends FloorSheetName>(
+  private _ensureSheetDataValues<TN extends FloorTabName>(
     tableName: TN,
   ): string[] {
     const sheetGid = getTableTraitByName(tableName, "sheetGid");
@@ -254,12 +238,12 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
     return restoredLines;
   }
   private _ensureColumnTypes(): string[] {
-    const typeChangeLines = floorSheetNames().flatMap((tableName) =>
+    const typeChangeLines = floorTabNames().flatMap((tableName) =>
       this._ensureSheetColumnTypes(tableName, floorSeedColumns(tableName)),
     );
     return reportLines("Set column types", typeChangeLines);
   }
-  private _ensureSheetColumnTypes<TN extends FloorSheetName>(
+  private _ensureSheetColumnTypes<TN extends FloorTabName>(
     tableName: TN,
     columns: readonly FloorSeedColumn[],
   ): string[] {
@@ -287,14 +271,10 @@ export class ConfigSheetFloor extends SpreadsheetBaseNamed {
   }
 }
 
-function floorTabNames(): FloorTabName[] {
-  return Obj.keys(configSheetFloorSeed);
-}
-
 type FloorDataValueColumn = FloorSeedColumn & { dataValue: string };
 
 function floorDataValueColumns(
-  tableName: FloorSheetName,
+  tableName: FloorTabName,
 ): FloorDataValueColumn[] {
   return floorSeedColumns(tableName).filter(
     (seedColumn): seedColumn is FloorDataValueColumn =>
@@ -339,7 +319,7 @@ function reportLines(label: string, lines: string[]): string[] {
 }
 
 function floorColumnIdentity<
-  TN extends FloorSheetName,
+  TN extends FloorTabName,
   CN extends ColumnName<TN>,
 >(column: ColumnNamed<TN, CN>): string {
   const header = String(column.headCell("header").valueOrEmpty());

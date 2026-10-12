@@ -10,15 +10,13 @@ import {
   type FloorTabName,
 } from "../../01_SpreadsheetSchema/configReaders/configSheetFloorSeed";
 
-export type FloorSheetName = Exclude<FloorTabName, "valueConfig">;
-
 export interface FloorColumnRestore {
   header: string;
   columnId: string;
   groupHeading: string;
 }
 
-export function columnNameByHeader<TN extends FloorSheetName>(
+export function columnNameByHeader<TN extends FloorTabName>(
   tableName: TN,
   header: string,
 ): ColumnName<TN> {
@@ -33,10 +31,8 @@ export function columnNameByHeader<TN extends FloorSheetName>(
   return columnName;
 }
 
-export function floorSheetNames(): FloorSheetName[] {
-  return Obj.keys(configSheetFloorSeed).filter(
-    (tableName): tableName is FloorSheetName => tableName !== "valueConfig",
-  );
+export function floorTabNames(): FloorTabName[] {
+  return Obj.keys(configSheetFloorSeed);
 }
 
 export function spreadsheetConfigFeedbackColumnNames(): ColumnName<"spreadsheetConfig">[] {
@@ -48,7 +44,7 @@ export function spreadsheetConfigFeedbackColumnNames(): ColumnName<"spreadsheetC
   );
 }
 
-export function floorColumnsToRestore<TN extends FloorSheetName>(
+export function floorColumnsToRestore<TN extends FloorTabName>(
   tableName: TN,
 ): FloorColumnRestore[] {
   const seedColumns = configSheetFloorSeed[tableName].columns.map((column) =>
@@ -71,7 +67,7 @@ export function floorColumnsToRestore<TN extends FloorSheetName>(
   return [...seedColumns, ...endpointColumns];
 }
 
-export function floorColumnRestore<TN extends FloorSheetName>(
+export function floorColumnRestore<TN extends FloorTabName>(
   tableName: TN,
   { header, groupHeading }: Pick<FloorColumnRestore, "header" | "groupHeading">,
 ): FloorColumnRestore {

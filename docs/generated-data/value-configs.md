@@ -13,7 +13,7 @@ Each entry is one of two kinds, and the value type and value schema of every col
 - **A fixed list** is an array of members, each a string, number or boolean. The `const` parameter keeps it a literal tuple, so its value type is the union of its members, a number member staying a number literal, and its wire type is the union of their primitive kinds. Its value schema accepts only a member, and its default is its first member.
 - **A live reference** is the marker `{ "kind": "liveReference" }`, with no members, because its options are rows added after the build. Its value type is `string`, and it takes the framework `string` value schema: any string is accepted, and its default is blank, so the column's **Empty value allowed** decides whether that blank reads. It never takes the `id` value schema, whose default throws.
 
-Value Config is still on the config-sheet floor; as a Let api access Table it is one more value source, so its value names are `valueConfig<Header>`. The framework's `valueKinds/` test program installs a hand-written config set with one of each.
+Value Config is an ordinary Table, off the config-sheet floor; as a Let api access Table it is one more value source, so its value names are `valueConfig<Header>`. The framework's `valueKinds/` test program installs a hand-written config set with one of each.
 
 ## Which sources are live
 

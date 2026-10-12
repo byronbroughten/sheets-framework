@@ -3,10 +3,11 @@ import {
   protectionRangeEqual,
   protectionRangesEqual,
 } from "../../00_Source/RawSource/EditProtection";
+import type { FloorTabName } from "../../01_SpreadsheetSchema/configReaders/configSheetFloorSeed";
 import { getTableTraitByName } from "../../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { SpreadsheetBaseNamed } from "../../04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
 import { SpreadsheetNamed } from "../../04_SpreadsheetNamed/SpreadsheetNamed";
-import { type FloorSheetName, floorSheetNames } from "./floorSeedLookups";
+import { floorTabNames } from "./floorSeedLookups";
 import {
   type FloorDeclaration,
   FloorTabEditWarning,
@@ -14,10 +15,10 @@ import {
 } from "./FloorTabEditWarning";
 
 // Sheet indexes of the columns that say whose row it is, gathered with the floor's fetch.
-export type IdentityColIndexes = Map<FloorSheetName, number[]>;
+export type IdentityColIndexes = Map<FloorTabName, number[]>;
 
 interface FloorTabDeclaration {
-  tab: FloorTabEditWarning<FloorSheetName>;
+  tab: FloorTabEditWarning<FloorTabName>;
   declaration: FloorDeclaration;
 }
 
@@ -36,7 +37,7 @@ export class ConfigSheetFloorEditWarnings extends SpreadsheetBaseNamed {
   }
   gatherIdentityColumns(): IdentityColIndexes {
     const identityColIndexes: IdentityColIndexes = new Map();
-    floorSheetNames().forEach((tableName) => {
+    floorTabNames().forEach((tableName) => {
       const colIndexes = this._floorTab(tableName).gatherIdentityColumns();
       if (colIndexes !== undefined) {
         identityColIndexes.set(tableName, colIndexes);
@@ -46,7 +47,7 @@ export class ConfigSheetFloorEditWarnings extends SpreadsheetBaseNamed {
   }
   ensure(identityColIndexes: IdentityColIndexes): string[] {
     const report: string[] = [];
-    const tabs = this._activeFloorSheetNames().map((tableName) =>
+    const tabs = this._activeFloorTabNames().map((tableName) =>
       this._floorTab(tableName),
     );
     tabs.forEach((tab) => {
@@ -63,8 +64,8 @@ export class ConfigSheetFloorEditWarnings extends SpreadsheetBaseNamed {
     return report;
   }
   private _floorTab(
-    tableName: FloorSheetName,
-  ): FloorTabEditWarning<FloorSheetName> {
+    tableName: FloorTabName,
+  ): FloorTabEditWarning<FloorTabName> {
     return new FloorTabEditWarning({
       ...this.spreadsheetNamedProps,
       tableName: tableName,
@@ -110,13 +111,13 @@ export class ConfigSheetFloorEditWarnings extends SpreadsheetBaseNamed {
     }
   }
   // A floor tab created this run is still absent after the refetch under a fake or dry run.
-  private _activeFloorSheetNames(): FloorSheetName[] {
-    return floorSheetNames().filter((tableName) =>
+  private _activeFloorTabNames(): FloorTabName[] {
+    return floorTabNames().filter((tableName) =>
       this.ss.raw.gidIsActive(getTableTraitByName(tableName, "sheetGid")),
     );
   }
   private _floorProtections(): ModelableEditProtection[] {
-    return this._activeFloorSheetNames().flatMap((tableName) =>
+    return this._activeFloorTabNames().flatMap((tableName) =>
       this.ss
         .table(tableName)
         .sheet.editProtections()
@@ -130,7 +131,7 @@ export class ConfigSheetFloorEditWarnings extends SpreadsheetBaseNamed {
     );
   }
   private _removeProtection(protection: ModelableEditProtection): void {
-    floorSheetNames().forEach((tableName) => {
+    floorTabNames().forEach((tableName) => {
       const sheet = this.ss.table(tableName);
       if (sheet.schema.sheetGid !== protection.range.sheetId) return;
       sheet.sheet.removeEditProtectionById(protection.id);
