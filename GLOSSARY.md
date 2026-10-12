@@ -71,7 +71,7 @@ A cell only the editors it names can change; a lock that names none stops nobody
 _Avoid_: protection, lock
 
 **Config-sheet floor**:
-Everything on the four config sheets that the app guarantees and restores on each config sync: tab titles, Table names, headers, column IDs, group headings, column types, Spreadsheet Config's Table menu space data cell, and the framework endpoints' columns. Edits to it are overwritten and reported ([`docs/generated-data/config-sheet-floor.md`](./docs/generated-data/config-sheet-floor.md)).
+Everything on the three config sheets that the app guarantees and restores on each config sync: tab titles, Table names, headers, column IDs, group headings, column types, Spreadsheet Config's Table menu space data cell, and the framework endpoints' columns. Edits to it are overwritten and reported ([`docs/generated-data/config-sheet-floor.md`](./docs/generated-data/config-sheet-floor.md)).
 _Avoid_: minimum floor, minimum headers, floor sheet
 
 **Floor seed**:
@@ -159,8 +159,12 @@ A box you tick against a column in Column Config to say that a blank in it is a 
 _Avoid_: nullable, optional column, blank allowed
 
 **Untyped**:
-Said of a column whose type menu, checkbox validation, and first-data-row number format all tell the app nothing about what it holds — left on Automatic with no format the app maps and no Insert > Checkbox, or a dropdown that no Value Config rule backs. The app guesses its type from the column's top value.
+Said of a column whose type menu, checkbox validation, and first-data-row number format all tell the app nothing about what it holds — left on Automatic with no format the app maps and no Insert > Checkbox, or a dropdown whose range is no value source. The app guesses its type from the column's top value.
 _Avoid_: unset, automatic, missing type
+
+**Value source**:
+A column of a Table with **Let api access** that a dropdown on such a Table offers as its options, by naming that Table column as the dropdown's range. A Table's **Name column** or ID column as a value source makes the dropdown refer to that Table's rows, so a row added there is an option at once; any other value source is a fixed list, and a value added to it counts only after the next config sync. A dropdown typed from a list of items, or from a range that isn't a Table column, has no value source.
+_Avoid_: Value Config (now just one app's Table), lookup column, options column
 
 **Name column**:
 A column of names people type to refer to a row, such as a customer's or a project's name, in any Table whose header row holds a **Name** header. An endpoint finds a row by what's in it; a name that matches no row, or several, is the endpoint's to report, and the app enforces nothing else about it.

@@ -1,0 +1,5 @@
+{
+  // The value-kinds program: framework source typed to a config set holding both kinds of value config (#145).
+  "extends": "../tsconfig.base.json",
+  "include": ["./**/*.ts"]
+}
