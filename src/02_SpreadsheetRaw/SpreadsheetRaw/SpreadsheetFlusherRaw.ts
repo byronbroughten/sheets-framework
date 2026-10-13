@@ -81,7 +81,7 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
     tables.forEach((table) => {
       table.gatherQueuedTableWrites();
       for (const [rowIndex, writes] of table.rowWrites) {
-        this._gatherRowWrites(table, { rowIndex, writes });
+        gatherRowWrites(table, { rowIndex, writes });
       }
     });
     this._shiftTablesBelowRowDeletes(this.writeOperations.deleteTableRows);
@@ -134,19 +134,6 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
       ),
     );
     return [...knownTables, ...tablesBeforePropertiesById];
-  }
-  private _gatherRowWrites(
-    table: TableRaw,
-    { rowIndex, writes }: QueuedRowWrites,
-  ): void {
-    const row = table.rowCommon(rowIndex);
-    if (writes.deleteRow) {
-      row.gatherDeleteTableRowsOperation();
-    } else {
-      for (const [colIndex, cellFill] of writes.fillCells) {
-        row.cell(colIndex).gatherFillCellOperation(cellFill);
-      }
-    }
   }
   private _sheetGidsWithRowDeletes(): Set<number> {
     return new Set(
@@ -309,6 +296,20 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
     this.tablesStateRaw.forEach((_, tableId) =>
       this.ss.table(tableId).invalidateCellState(),
     );
+  }
+}
+
+function gatherRowWrites(
+  table: TableRaw,
+  { rowIndex, writes }: QueuedRowWrites,
+): void {
+  const row = table.rowCommon(rowIndex);
+  if (writes.deleteRow) {
+    row.gatherDeleteTableRowsOperation();
+  } else {
+    for (const [colIndex, cellFill] of writes.fillCells) {
+      row.cell(colIndex).gatherFillCellOperation(cellFill);
+    }
   }
 }
 
