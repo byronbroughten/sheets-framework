@@ -36,6 +36,7 @@
     "probe": "node scripts/sheets-framework.js probe",
     "build": "rollup --config && clasp push",
     "push": "clasp push",
+    "deploy": "clasp deploy",
     "run": "clasp run"
   },
   "dependencies": {
