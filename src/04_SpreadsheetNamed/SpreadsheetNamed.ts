@@ -200,7 +200,7 @@ export class SpreadsheetNamed extends SpreadsheetBaseNamed {
       if (hasIdCol) {
         if (!idPrefix) {
           throw new Error(
-            `Cannot fill missing row IDs in sheet "${sheet}" because it does not have an "ID prefix" defined in the schema.`,
+            `Cannot fill missing row IDs in sheet "${sheet.tableName}" because it does not have an "ID prefix" defined in the schema.`,
           );
         }
         return true;
