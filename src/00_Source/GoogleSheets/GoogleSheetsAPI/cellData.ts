@@ -21,6 +21,15 @@ interface CellDataChange {
   backgroundColor?: RgbColor;
 }
 
+type GoogleGridRange = GoogleAppsScript.Sheets.Schema.GridRange;
+
+interface CellRun {
+  sheetId: number;
+  rowIndex: number;
+  columnIndex: number;
+  rowCount: number;
+}
+
 export const cellDataRequests = {
   fillColumn(operation: FillColumnOperation): ModeledRequest[] {
     return formulaAndCellDataRequests(
@@ -31,19 +40,7 @@ export const cellDataRequests = {
         columnIndex: operation.colIndex,
         rowCount: operation.endRowIndex - operation.startRowIndex,
       },
-      (cell, fields) => ({
-        repeatCell: {
-          range: {
-            sheetId: operation.sheetId,
-            startRowIndex: operation.startRowIndex,
-            endRowIndex: operation.endRowIndex,
-            startColumnIndex: operation.colIndex,
-            endColumnIndex: operation.colIndex + 1,
-          },
-          cell,
-          fields,
-        },
-      }),
+      (range, cell, fields) => ({ repeatCell: { range, cell, fields } }),
     );
   },
   fillCell(operation: FillCellOperation): ModeledRequest[] {
@@ -55,18 +52,8 @@ export const cellDataRequests = {
         columnIndex: operation.colIndex,
         rowCount: 1,
       },
-      (cell, fields) => ({
-        updateCells: {
-          range: {
-            sheetId: operation.sheetId,
-            startRowIndex: operation.rowIndex,
-            endRowIndex: operation.rowIndex + 1,
-            startColumnIndex: operation.colIndex,
-            endColumnIndex: operation.colIndex + 1,
-          },
-          rows: [{ values: [cell] }],
-          fields,
-        },
+      (range, cell, fields) => ({
+        updateCells: { range, rows: [{ values: [cell] }], fields },
       }),
     );
   },
@@ -74,43 +61,48 @@ export const cellDataRequests = {
 
 function formulaAndCellDataRequests(
   change: CellDataChange & { formula?: string },
-  pasteProps: {
-    sheetId: number;
-    rowIndex: number;
-    columnIndex: number;
-    rowCount: number;
-  },
-  cellRequest: (cell: GoogleCellData, fields: string) => ModeledRequest,
+  run: CellRun,
+  cellRequest: (
+    range: GoogleGridRange,
+    cell: GoogleCellData,
+    fields: string,
+  ) => ModeledRequest,
 ): ModeledRequest[] {
   const requests: ModeledRequest[] = [];
   if (change.formula !== undefined) {
-    requests.push(
-      formulaPasteDataRequest({ ...pasteProps, formula: change.formula }),
-    );
+    requests.push(formulaPasteDataRequest(run, change.formula));
   }
   if (!cellChange.hasCellData(change)) return requests;
   requests.push(
-    cellRequest(cellChange.toCellData(change), cellChange.fieldMask(change)),
+    cellRequest(
+      cellRunGridRange(run),
+      cellChange.toCellData(change),
+      cellChange.fieldMask(change),
+    ),
   );
   return requests;
 }
 
-function formulaPasteDataRequest(props: {
-  sheetId: number;
-  rowIndex: number;
-  columnIndex: number;
-  formula: string;
-  rowCount: number;
-}): ModeledRequest {
-  const field = `"${props.formula.replaceAll('"', '""')}"`;
+function cellRunGridRange(run: CellRun): GoogleGridRange {
+  return {
+    sheetId: run.sheetId,
+    startRowIndex: run.rowIndex,
+    endRowIndex: run.rowIndex + run.rowCount,
+    startColumnIndex: run.columnIndex,
+    endColumnIndex: run.columnIndex + 1,
+  };
+}
+
+function formulaPasteDataRequest(run: CellRun, formula: string): ModeledRequest {
+  const field = `"${formula.replaceAll('"', '""')}"`;
   return {
     pasteData: {
       coordinate: {
-        sheetId: props.sheetId,
-        rowIndex: props.rowIndex,
-        columnIndex: props.columnIndex,
+        sheetId: run.sheetId,
+        rowIndex: run.rowIndex,
+        columnIndex: run.columnIndex,
       },
-      data: Array.from({ length: props.rowCount }, () => field).join("\n"),
+      data: Array.from({ length: run.rowCount }, () => field).join("\n"),
       delimiter: "\t",
       type: "PASTE_FORMULA",
     },

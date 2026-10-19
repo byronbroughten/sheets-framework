@@ -2,18 +2,18 @@ import { idPrefixes } from "../idPrefixes";
 import type { Value, ValueName } from "./valueSchemas";
 
 export function makeImportLine(
-  configMagerName:
+  configMakerName:
     "makeTableConfigs" | "makeColumnConfigs" | "makeValueConfigs",
   makeConfigsImport: string,
 ): string {
-  return `import { ${configMagerName} } from ${JSON.stringify(makeConfigsImport)};`;
+  return `import { ${configMakerName} } from ${JSON.stringify(makeConfigsImport)};`;
 }
 
 function makeStructuredConfig<ST, const CF extends ST>(
   _structure: ST,
-  t: CF,
+  config: CF,
 ): CF {
-  return t;
+  return config;
 }
 
 export interface TableConfigStored {

@@ -6,7 +6,6 @@ import {
   isModelledConditionType,
   type ModelableConditionalFormatRule,
   type ModelledConditionType,
-  quantizeConditionalFormat,
 } from "../../RawSource/ConditionalFormat";
 import type { GridRangeProps } from "../../RawSource/RawSource";
 import { googleColor } from "./googleColor";
@@ -139,9 +138,7 @@ function toModelableRule(
     kind: "boolean",
     ranges,
     condition,
-    format: quantizeConditionalFormat(
-      googleCellFormat.toConditionalFormat(booleanRule.format),
-    ),
+    format: googleCellFormat.toConditionalFormat(booleanRule.format),
   };
 }
 

@@ -44,13 +44,11 @@ export const googleProtectedRange = {
   },
   toEditProtection(protection: GoogleProtectedRange): EditProtection {
     const id = Val.assert(protection.protectedRangeId, "protectedRangeId");
-    if (protection.namedRangeId !== undefined) {
-      return { kind: "unmodelable", id };
-    }
-    if (protection.range === undefined) {
-      return { kind: "unmodelable", id };
-    }
-    if (protection.editors?.domainUsersCanEdit === true) {
+    if (
+      protection.namedRangeId !== undefined ||
+      protection.range === undefined ||
+      protection.editors?.domainUsersCanEdit === true
+    ) {
       return { kind: "unmodelable", id };
     }
     const isWarning = protection.warningOnly === true;

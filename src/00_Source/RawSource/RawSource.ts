@@ -17,11 +17,25 @@ export interface GridRangeProps {
 
 export type BoundedGridRange = Required<GridRangeProps>;
 
-export interface UsedGridRange {
+export interface WholeSheetGridRange {
   sheetId: number;
 }
 
-export type GridFetchRange = GridRangeProps | UsedGridRange;
+export type GridFetchRange = GridRangeProps | WholeSheetGridRange;
+
+export function rangeEqual(
+  left: GridRangeProps,
+  right: GridRangeProps | undefined,
+): boolean {
+  if (right === undefined) return false;
+  return (
+    left.sheetId === right.sheetId &&
+    left.startRowIndex === right.startRowIndex &&
+    left.endRowIndex === right.endRowIndex &&
+    left.startColumnIndex === right.startColumnIndex &&
+    left.endColumnIndex === right.endColumnIndex
+  );
+}
 
 export type SortOrder = "ASCENDING" | "DESCENDING";
 

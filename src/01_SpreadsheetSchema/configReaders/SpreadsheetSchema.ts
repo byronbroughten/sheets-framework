@@ -5,6 +5,7 @@ import { headerZone } from "../headerZone";
 import { SpreadsheetBaseSchema } from "../SpreadsheetBaseSchema";
 import {
   configTableNames,
+  loneTableKeyOnGid,
   tableKeysByGid,
   type TableName,
 } from "./tableConfigsTypes";
@@ -30,8 +31,9 @@ export class SpreadsheetSchema extends SpreadsheetBaseSchema {
   }
   // Absent when the configs record no Table or several on that sheet.
   loneTableOnGid(sheetGid: number): TableSchema | undefined {
-    const [table, ...otherTables] = this.tablesOnGid(sheetGid);
-    return otherTables.length === 0 ? table : undefined;
+    const tableKey = loneTableKeyOnGid(sheetGid);
+    if (tableKey === undefined) return undefined;
+    return TableSchema.fromSheetName(tableKey);
   }
   // Without a fetch, so the edit trigger's pre-check is free; the dispatch confirms it on the live Table.
   mayHoldActionCell({ sheetGid, rowIndexBase0 }: SheetEdit): boolean {

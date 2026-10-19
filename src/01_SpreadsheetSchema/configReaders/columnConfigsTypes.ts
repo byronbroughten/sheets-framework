@@ -26,32 +26,30 @@ export type ColumnName<TN extends TableNameSimple = TableNameSimple> =
   TN extends TableNameSimple ? keyof ColumnConfigs[TN] : never;
 
 // Distributes over TN; indexing a union of sheets by a union of column names collapses to never.
+type ColumnConfigField<
+  TN extends TableNameSimple,
+  CN extends ColumnName<TN>,
+  FK extends keyof ColumnConfigStored,
+> = TN extends TableNameSimple
+  ? CN extends keyof ColumnConfigs[TN]
+    ? ColumnConfigs[TN][CN][FK & keyof ColumnConfigs[TN][CN]]
+    : never
+  : never;
+
 export type ColumnValueName<
   TN extends TableNameSimple,
   CN extends ColumnName<TN>,
-> = TN extends TableNameSimple
-  ? CN extends keyof ColumnConfigs[TN]
-    ? ColumnConfigs[TN][CN]["valueName" & keyof ColumnConfigs[TN][CN]]
-    : never
-  : never;
+> = ColumnConfigField<TN, CN, "valueName">;
 
 export type ColumnIsFormula<
   TN extends TableNameSimple,
   CN extends ColumnName<TN>,
-> = TN extends TableNameSimple
-  ? CN extends keyof ColumnConfigs[TN]
-    ? ColumnConfigs[TN][CN]["isFormula" & keyof ColumnConfigs[TN][CN]]
-    : never
-  : never;
+> = ColumnConfigField<TN, CN, "isFormula">;
 
 export type ColumnEmptyValueAllowed<
   TN extends TableNameSimple,
   CN extends ColumnName<TN>,
-> = TN extends TableNameSimple
-  ? CN extends keyof ColumnConfigs[TN]
-    ? ColumnConfigs[TN][CN]["emptyValueAllowed" & keyof ColumnConfigs[TN][CN]]
-    : never
-  : never;
+> = ColumnConfigField<TN, CN, "emptyValueAllowed">;
 
 export type ColumnNameFiltered<
   TN extends TableNameSimple,

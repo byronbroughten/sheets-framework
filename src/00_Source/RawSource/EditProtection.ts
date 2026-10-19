@@ -1,9 +1,8 @@
-import { rangeEqual } from "./ConditionalFormat";
-import type { GridRangeProps } from "./RawSource";
-
-export interface WholeSheetGridRange {
-  sheetId: number;
-}
+import {
+  type GridRangeProps,
+  rangeEqual,
+  type WholeSheetGridRange,
+} from "./RawSource";
 
 export type ProtectionGridRange = GridRangeProps | WholeSheetGridRange;
 
@@ -92,12 +91,9 @@ export function editProtectionContentsEqual(
   right: EditProtectionContent,
 ): boolean {
   return (
-    left.kind === right.kind &&
-    protectionRangeEqual(left.range, right.range) &&
-    left.description === right.description &&
+    contentsEqualBesidesEditors(left, right) &&
     stringListsEqual(left.users, right.users) &&
-    stringListsEqual(left.groups, right.groups) &&
-    protectionRangesEqual(left.unprotectedRanges, right.unprotectedRanges)
+    stringListsEqual(left.groups, right.groups)
   );
 }
 
@@ -107,12 +103,9 @@ export function editProtectionContentSatisfies(
   declared: EditProtectionContent,
 ): boolean {
   return (
-    present.kind === declared.kind &&
-    protectionRangeEqual(present.range, declared.range) &&
-    present.description === declared.description &&
+    contentsEqualBesidesEditors(present, declared) &&
     stringListIncludesAll(present.users, declared.users) &&
-    stringListIncludesAll(present.groups, declared.groups) &&
-    protectionRangesEqual(present.unprotectedRanges, declared.unprotectedRanges)
+    stringListIncludesAll(present.groups, declared.groups)
   );
 }
 
@@ -131,6 +124,18 @@ export function protectionRangesEqual(
   if (left.length !== right.length) return false;
   return left.every((range, index) =>
     protectionRangeEqual(range, right[index]),
+  );
+}
+
+function contentsEqualBesidesEditors(
+  left: EditProtectionContent,
+  right: EditProtectionContent,
+): boolean {
+  return (
+    left.kind === right.kind &&
+    protectionRangeEqual(left.range, right.range) &&
+    left.description === right.description &&
+    protectionRangesEqual(left.unprotectedRanges, right.unprotectedRanges)
   );
 }
 

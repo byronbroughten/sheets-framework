@@ -1,10 +1,6 @@
 import type { CellValue } from "../CellValues/cellValues";
-import type { GridRangeProps } from "./RawSource";
-import {
-  quantizeRgbChannels,
-  type RgbChannels,
-  rgbChannelsEqual,
-} from "./RgbColor";
+import { type GridRangeProps, rangeEqual } from "./RawSource";
+import { type RgbChannels, rgbChannelsEqual } from "./RgbColor";
 
 export const modelledConditionTypes = [
   "NUMBER_EQ",
@@ -69,36 +65,9 @@ export function conditionalFormatRulesEqual(
   );
 }
 
-export function quantizeConditionalFormat(
-  format: ConditionalFormat,
-): ConditionalFormat {
-  return {
-    ...(format.backgroundColor !== undefined
-      ? { backgroundColor: quantizeRgbChannels(format.backgroundColor) }
-      : {}),
-    ...(format.foregroundColor !== undefined
-      ? { foregroundColor: quantizeRgbChannels(format.foregroundColor) }
-      : {}),
-  };
-}
-
 function rangesEqual(left: GridRangeProps[], right: GridRangeProps[]): boolean {
   if (left.length !== right.length) return false;
   return left.every((range, index) => rangeEqual(range, right[index]));
-}
-
-export function rangeEqual(
-  left: GridRangeProps,
-  right: GridRangeProps | undefined,
-): boolean {
-  if (right === undefined) return false;
-  return (
-    left.sheetId === right.sheetId &&
-    left.startRowIndex === right.startRowIndex &&
-    left.endRowIndex === right.endRowIndex &&
-    left.startColumnIndex === right.startColumnIndex &&
-    left.endColumnIndex === right.endColumnIndex
-  );
 }
 
 function conditionsEqual(
