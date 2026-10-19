@@ -846,9 +846,9 @@ export class TableRaw extends TableCommonRaw {
     return this.tableIds().map((tableId) => this.ss.table(tableId));
   }
   get neighbourTables(): TableRaw[] {
-    return this.tablesOnSheet.filter(
-      (table) => table.tableId !== this.tableId,
-    );
+    return this.tableIds()
+      .filter((tableId) => tableId !== this.tableId)
+      .map((tableId) => this.ss.table(tableId));
   }
   private _queuedSheetConditionalFormatRules(): ModelableConditionalFormatRule[] {
     const origin = this.tableOrigin();

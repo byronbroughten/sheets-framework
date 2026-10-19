@@ -97,7 +97,12 @@ export class TableBaseRaw extends SheetBaseRaw {
     return `row ${this.tableOrigin().rowNumber(rowIndex)}`;
   }
   protected _boundedSheetGridRange(
-    { startRowIndex, endRowIndex, startColIndex, endColIndex }: BoundedTableGridRange,
+    {
+      startRowIndex,
+      endRowIndex,
+      startColIndex,
+      endColIndex,
+    }: BoundedTableGridRange,
     origin: TableOrigin,
   ): BoundedGridRange {
     return {
@@ -122,8 +127,14 @@ export function sheetLabel(
   return `"${title ?? untitledSheetTitle}" (gid ${sheetGid})`;
 }
 
-export function tableOnSheetLabel(name: string, sheetLabel: string): string {
-  return `Table "${name}" on ${sheetLabel}`;
+export function tableOnSheetLabel({
+  name,
+  onSheet,
+}: {
+  name: string;
+  onSheet: string;
+}): string {
+  return `Table "${name}" on ${onSheet}`;
 }
 
 export function tableIdsOnSheet(

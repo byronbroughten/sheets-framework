@@ -271,7 +271,6 @@ export class ColumnRaw<
       this.cell(rowIndex).ensureInWorking();
     });
   }
-  // No start row, so it runs from the sheet's top.
   private _queueFillColumn(
     { startIndex, endIndex }: IndexRange,
     fill: CellFill<VN>,
@@ -285,6 +284,7 @@ export class ColumnRaw<
     });
     return this;
   }
+  // No start row, so it runs from the sheet's top.
   private get _wholeColumnTableGridRange(): TableGridRange {
     return { startColIndex: this.colIndex, endColIndex: this.colIndex + 1 };
   }

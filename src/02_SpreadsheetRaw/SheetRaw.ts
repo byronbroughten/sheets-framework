@@ -127,7 +127,12 @@ export class SheetRaw extends SheetBaseRaw {
     );
     if (stale?.properties === undefined) return;
     throw new Error(
-      rowIndexesStaleMessage(tableOnSheetLabel(stale.properties.name, this.label)),
+      rowIndexesStaleMessage(
+        tableOnSheetLabel({
+          name: stale.properties.name,
+          onSheet: this.label,
+        }),
+      ),
     );
   }
   private get tableStates(): TableStateRaw[] {

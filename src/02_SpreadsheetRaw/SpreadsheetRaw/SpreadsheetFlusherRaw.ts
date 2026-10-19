@@ -65,7 +65,9 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
     );
     if (hasFindReplace) this._invalidateFetchedCellState();
   }
-  private _tableIdsWhere(isPicked: (state: TableStateRaw) => boolean): string[] {
+  private _tableIdsWhere(
+    isPicked: (state: TableStateRaw) => boolean,
+  ): string[] {
     return Array.from(this.tablesStateRaw.entries())
       .filter(([, state]) => isPicked(state))
       .map(([tableId]) => tableId);
@@ -303,24 +305,6 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
   }
 }
 
-interface SheetPlace {
-  sheetId: number;
-  position: number;
-}
-
-function bySheetThenPositionDescending<OP>(
-  placeOf: (operation: OP) => SheetPlace,
-): (a: OP, b: OP) => number {
-  return (a, b) => {
-    const placeA = placeOf(a);
-    const placeB = placeOf(b);
-    if (placeA.sheetId !== placeB.sheetId) {
-      return placeA.sheetId - placeB.sheetId;
-    }
-    return placeB.position - placeA.position;
-  };
-}
-
 function gatherRowWrites(
   table: TableRaw,
   { rowIndex, writes }: QueuedRowWrites,
@@ -397,4 +381,22 @@ function gridAppends(
       addedCount: writeQueue.appendedColumnCount,
     },
   ];
+}
+
+interface SheetPlace {
+  sheetId: number;
+  position: number;
+}
+
+function bySheetThenPositionDescending<OP extends object>(
+  placeOf: (operation: OP) => SheetPlace,
+): (a: OP, b: OP) => number {
+  return (a, b) => {
+    const placeA = placeOf(a);
+    const placeB = placeOf(b);
+    if (placeA.sheetId !== placeB.sheetId) {
+      return placeA.sheetId - placeB.sheetId;
+    }
+    return placeB.position - placeA.position;
+  };
 }

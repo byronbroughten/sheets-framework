@@ -52,7 +52,7 @@ export abstract class TableCommonRaw extends TableBaseRaw {
     return endRowIndex <= startRowIndex + 1;
   }
   get tableLabel(): string {
-    return tableOnSheetLabel(this.name, this.sheetLabel);
+    return tableOnSheetLabel({ name: this.name, onSheet: this.sheetLabel });
   }
   get headerOnlyFix(): string {
     return `${this.tableLabel} has only its header: add a row below it holding its formulas.`;
@@ -98,7 +98,7 @@ export abstract class TableCommonRaw extends TableBaseRaw {
     );
   }
   rowShiftFrom(growths: AppendTableRows[]): number {
-    const tableRange = this._tableRange();
+    const tableRange = this._tableRange;
     if (tableRange === undefined) return 0;
     return rowShiftFrom(growths, tableRange);
   }
@@ -110,17 +110,12 @@ export abstract class TableCommonRaw extends TableBaseRaw {
     properties.endRowIndex = SheetIndex.row(properties.endRowIndex + rowCount);
   }
   rowPullFrom(deletes: DeleteTableRowsOperation[]): number {
-    const tableRange = this._tableRange();
+    const tableRange = this._tableRange;
     if (tableRange === undefined) return 0;
     return rowCountAbove(
       deletes.map(({ range }) => range),
       tableRange,
     );
-  }
-  private _tableRange(): BoundedGridRange | undefined {
-    const properties = this.tableProperties;
-    if (properties === undefined) return undefined;
-    return { ...properties, sheetId: this.sheetGid };
   }
   shiftRowsUp(rowCount: number): void {
     this.shiftRowsDown(-rowCount);
@@ -293,6 +288,11 @@ export abstract class TableCommonRaw extends TableBaseRaw {
   _clearWriteQueue(): void {
     this.tableState.writeQueue.table = emptyStateRaw.tableWrites();
     this.tableState.writeQueue.rows = new Map();
+  }
+  private get _tableRange(): BoundedGridRange | undefined {
+    const properties = this.tableProperties;
+    if (properties === undefined) return undefined;
+    return { ...properties, sheetId: this.sheetGid };
   }
   private _knownTableProperties(): TablePropertiesRaw {
     const properties = this.tableProperties;
