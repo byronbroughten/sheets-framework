@@ -3,9 +3,9 @@ import { Val } from "@byronbroughten/utils/val";
 import {
   type EditProtection,
   type EditProtectionContent,
-  isWholeSheetGridRange,
   type ProtectionGridRange,
 } from "../../RawSource/EditProtection";
+import { isWholeSheetGridRange } from "../../RawSource/RawSource";
 import type { GoogleRequest } from "../GoogleSheetsAPI";
 import { googleGrid } from "./gridSnapshots";
 

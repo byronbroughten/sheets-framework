@@ -23,6 +23,12 @@ export interface WholeSheetGridRange {
 
 export type GridFetchRange = GridRangeProps | WholeSheetGridRange;
 
+export function isWholeSheetGridRange(
+  range: GridRangeProps | WholeSheetGridRange,
+): range is WholeSheetGridRange {
+  return !("startRowIndex" in range);
+}
+
 export function rangeEqual(
   left: GridRangeProps,
   right: GridRangeProps | undefined,

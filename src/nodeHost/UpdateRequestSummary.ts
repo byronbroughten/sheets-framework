@@ -4,7 +4,7 @@ import type {
   GoogleRequest,
   ModeledRequestVerb,
 } from "../00_Source/GoogleSheets/GoogleSheetsAPI";
-import { tableConfigAloneOnGid } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
+import { loneTableConfigOnGid } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 
 type GoogleUpdateRequest = GoogleRequest;
 type GoogleGridRange = GoogleAppsScript.Sheets.Schema.GridRange;
@@ -432,7 +432,7 @@ const label = {
   },
   sheet(sheetGid: number | undefined): string {
     if (sheetGid === undefined) return "(no sheet)";
-    return tableConfigAloneOnGid(sheetGid)?.tableKey ?? `gid ${sheetGid}`;
+    return loneTableConfigOnGid(sheetGid)?.tableKey ?? `gid ${sheetGid}`;
   },
   dimensionSpan(
     dimension: string,

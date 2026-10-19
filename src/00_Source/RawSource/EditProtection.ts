@@ -1,5 +1,6 @@
 import {
   type GridRangeProps,
+  isWholeSheetGridRange,
   rangeEqual,
   type WholeSheetGridRange,
 } from "./RawSource";
@@ -47,12 +48,6 @@ export type EditProtectionContent = Omit<
   ModelableEditProtection,
   "id" | "requestingUserCanEdit"
 >;
-
-export function isWholeSheetGridRange(
-  range: ProtectionGridRange,
-): range is WholeSheetGridRange {
-  return !("startRowIndex" in range);
-}
 
 export function isWholeColumnGridRange(
   range: ProtectionGridRange,

@@ -23,6 +23,12 @@ interface CellDataChange {
 
 type GoogleGridRange = GoogleAppsScript.Sheets.Schema.GridRange;
 
+interface CellRequestParts {
+  range: GoogleGridRange;
+  cell: GoogleCellData;
+  fields: string;
+}
+
 interface CellRun {
   sheetId: number;
   rowIndex: number;
@@ -40,7 +46,7 @@ export const cellDataRequests = {
         columnIndex: operation.colIndex,
         rowCount: operation.endRowIndex - operation.startRowIndex,
       },
-      (range, cell, fields) => ({ repeatCell: { range, cell, fields } }),
+      (parts) => ({ repeatCell: parts }),
     );
   },
   fillCell(operation: FillCellOperation): ModeledRequest[] {
@@ -52,7 +58,7 @@ export const cellDataRequests = {
         columnIndex: operation.colIndex,
         rowCount: 1,
       },
-      (range, cell, fields) => ({
+      ({ range, cell, fields }) => ({
         updateCells: { range, rows: [{ values: [cell] }], fields },
       }),
     );
@@ -62,11 +68,7 @@ export const cellDataRequests = {
 function formulaAndCellDataRequests(
   change: CellDataChange & { formula?: string },
   run: CellRun,
-  cellRequest: (
-    range: GoogleGridRange,
-    cell: GoogleCellData,
-    fields: string,
-  ) => ModeledRequest,
+  cellRequest: (parts: CellRequestParts) => ModeledRequest,
 ): ModeledRequest[] {
   const requests: ModeledRequest[] = [];
   if (change.formula !== undefined) {
@@ -74,11 +76,11 @@ function formulaAndCellDataRequests(
   }
   if (!cellChange.hasCellData(change)) return requests;
   requests.push(
-    cellRequest(
-      cellRunGridRange(run),
-      cellChange.toCellData(change),
-      cellChange.fieldMask(change),
-    ),
+    cellRequest({
+      range: cellRunGridRange(run),
+      cell: cellChange.toCellData(change),
+      fields: cellChange.fieldMask(change),
+    }),
   );
   return requests;
 }
