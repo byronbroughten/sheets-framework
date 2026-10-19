@@ -84,7 +84,7 @@ export class RowNamed<TN extends TableName> extends RowBaseNamed<TN> {
       return !cell.schema.emptyValueAllowed && cell.valueOrEmpty() === "";
     });
   }
-  updateToDefault(...columnNames: ColumnName<TN>[]): RowNamed<TN> {
+  updateCellsToDefault(...columnNames: ColumnName<TN>[]): RowNamed<TN> {
     columnNames.forEach((columnName) =>
       this.cell(columnName).updateToDefault(),
     );

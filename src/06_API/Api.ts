@@ -48,6 +48,9 @@ export class Api extends SpreadsheetBaseNamed {
     installSource();
     Api.init(endpoints).handleSheetEdit(edit);
   }
+  get schema(): SpreadsheetSchema {
+    return new SpreadsheetSchema();
+  }
   get identified(): SpreadsheetIdentified {
     return new SpreadsheetIdentified(this.spreadsheetIdentifiedProps);
   }

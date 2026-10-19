@@ -119,6 +119,14 @@ export class TableNamed<
     Obj.values(columns).forEach(prep);
     return columns;
   }
+  prepFetchColumnsWorking<CS extends readonly ColumnName<TN>[]>(
+    ...columnNames: CS
+  ): { [K in CS[number]]: ColumnNamed<TN, K> } {
+    return this.prepFetchColumnsSpecific(
+      this.workingRowIndexes,
+      ...columnNames,
+    );
+  }
   sortRowsByColumnName(
     rows: RowNamed<TN>[],
     columnName: ColumnName<TN>,

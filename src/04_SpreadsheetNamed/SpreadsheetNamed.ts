@@ -74,6 +74,12 @@ export class SpreadsheetNamed extends SpreadsheetBaseNamed {
     }
     return undefined;
   }
+  get activeSheetNames(): TableName[] {
+    return this.identified.activeSheets.map((sheet) => sheet.tableName);
+  }
+  get activeSheets(): TableNamed<TableName>[] {
+    return this.activeSheetNames.map((tableName) => this.table(tableName));
+  }
   fetchAllPrepped(props: GatherDataPrerequisitesProps = {}): SpreadsheetNamed {
     this.identified.fetchAllPrepped(props);
     return this;

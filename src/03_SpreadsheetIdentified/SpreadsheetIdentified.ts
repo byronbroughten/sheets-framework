@@ -67,6 +67,11 @@ export class SpreadsheetIdentified extends SpreadsheetBaseIdentified {
       sheetGid: table.sheetGid,
     });
   }
+  get activeSheets(): TableIdentified[] {
+    return this.raw.activeSheetGids.map((sheetGid) =>
+      this.tableOnSheet(sheetGid),
+    );
+  }
   get tablesPreppedForFetch(): TableIdentified[] {
     return this._knownTables().filter((table) => table.isPreppedToFetch);
   }
