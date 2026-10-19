@@ -22,7 +22,7 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
     });
 
     const raw = SpreadsheetRaw.init();
-    raw.sheet(111).table(tableId111).requestSortGSheet({
+    raw.sheet(111).table(tableId111).queueSort({
       colIdxToSortBy: 0,
       sortOrder: "ASCENDING",
     });
@@ -577,14 +577,14 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
         raw.table("top").row(0).delete();
         const lower = raw.table("lower");
         lower.row(0).cell(1).updateValue("w");
-        lower.requestSortGSheet({ colIdxToSortBy: 1, sortOrder: "DESCENDING" });
+        lower.queueSort({ colIdxToSortBy: 1, sortOrder: "DESCENDING" });
         lower.column(0).addConditionalFormatRule({
           condition: { type: "NUMBER_EQ", value: true },
           format: { backgroundColor: lightGreen },
         });
         raw
           .table("aside")
-          .requestSortGSheet({ colIdxToSortBy: 1, sortOrder: "DESCENDING" });
+          .queueSort({ colIdxToSortBy: 1, sortOrder: "DESCENDING" });
         raw.batchUpdateGSheets();
 
         expect(tableRows(grid)).toEqual({
@@ -637,7 +637,7 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
         const lower = raw.table("lower");
         lower.row(0).delete();
         lower.row(1).cell(1).updateValue("z");
-        lower.requestSortGSheet({ colIdxToSortBy: 1, sortOrder: "ASCENDING" });
+        lower.queueSort({ colIdxToSortBy: 1, sortOrder: "ASCENDING" });
         raw.batchUpdateGSheets();
 
         expect(tableRows(grid)).toMatchObject({
@@ -901,7 +901,7 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
 
     raw
       .table(tableId111)
-      .requestSortGSheet({ colIdxToSortBy: 0, sortOrder: "ASCENDING" });
+      .queueSort({ colIdxToSortBy: 0, sortOrder: "ASCENDING" });
 
     expect(() => raw.batchUpdateGSheets()).toThrow(staleRowIndexes);
   });

@@ -3,10 +3,10 @@ import type {
   EditLockDeclaration,
   EditWarningDeclaration,
 } from "../00_Source/RawSource/EditProtection";
+import type { FindReplaceTerms } from "../00_Source/RawSource/RawSource";
 import type { Value } from "../01_SpreadsheetSchema/configReaders/valueSchemas";
 import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
 import { type HeadRole, headRows } from "../01_SpreadsheetSchema/headRows";
-import type { FindReplaceTerms } from "../02_SpreadsheetRaw/ClassTypes/StateRaw";
 import { TableRaw } from "../02_SpreadsheetRaw/TableRaw";
 import { TableCommonIdentified } from "./ClassBases/TableCommonIdentified";
 import { ColumnIdentified } from "./ColumnIdentified";

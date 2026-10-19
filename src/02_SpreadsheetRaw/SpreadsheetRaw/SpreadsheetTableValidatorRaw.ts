@@ -19,10 +19,7 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
   validateHeadRowsClear(managedTableIds: string[]): void {
     const sentences = managedTableIds.flatMap((tableId) => {
       const table = this.ss.table(tableId);
-      return table
-        .tableIds()
-        .filter((otherId) => otherId !== tableId)
-        .map((otherId) => this.ss.table(otherId))
+      return table.neighbourTables
         .filter((other) => table.headRowsSitOn(other))
         .map((other) => table.headRowsOverlapFix(other));
     });

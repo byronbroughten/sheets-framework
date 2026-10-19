@@ -1,6 +1,8 @@
-import { installedRawSource } from "../../00_Source/RawSource/RawSource";
+import {
+  type GridRangeProps,
+  installedRawSource,
+} from "../../00_Source/RawSource/RawSource";
 import { SpreadsheetBaseSchema } from "../../01_SpreadsheetSchema/SpreadsheetBaseSchema";
-import type { GridRangeProps } from "../ClassTypes/AccessorsRaw";
 import { emptyStateRaw } from "../ClassTypes/emptyStateRaw";
 import type {
   SheetsStateRaw,
@@ -37,6 +39,10 @@ export class SpreadsheetBaseRaw {
     return {
       spreadsheetStateRaw: this.spreadsheetStateRaw,
     };
+  }
+  protected _updateWorkingTableName(tableId: string, name: string): void {
+    const properties = this.tablesStateRaw.get(tableId)?.properties;
+    if (properties !== undefined) properties.name = name;
   }
   static initSpreadsheetRawProps(): SpreadsheetRawProps {
     return {

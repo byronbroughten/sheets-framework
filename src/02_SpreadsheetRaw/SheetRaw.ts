@@ -22,53 +22,32 @@ import {
   type SheetRowIndex,
 } from "../00_Source/RawSource/SheetIndex";
 import { headerZone } from "../01_SpreadsheetSchema/headerZone";
-import {
-  SpreadsheetBaseRaw,
-  type SpreadsheetRawProps,
-} from "./ClassBases/SpreadsheetBaseRaw";
+import { SheetBaseRaw, type SheetRawProps } from "./ClassBases/SheetBaseRaw";
 import {
   hasQueuedWrites,
   integrateColumnProperties,
   sheetLabel,
   tableIdsOnSheet,
+  tableOnSheetLabel,
   tableStateOf,
 } from "./ClassBases/TableBaseRaw";
 import { rowIndexesStaleMessage } from "./ClassBases/TableCommonRaw";
 import { emptyStateRaw } from "./ClassTypes/emptyStateRaw";
-import type { SheetStateRaw, TableStateRaw } from "./ClassTypes/StateRaw";
+import type { TableStateRaw } from "./ClassTypes/StateRaw";
 import { SheetConditionalFormatsRaw } from "./SheetRaw/SheetConditionalFormatsRaw";
 import { SheetEditProtectionsRaw } from "./SheetRaw/SheetEditProtectionsRaw";
 import { TableRaw } from "./TableRaw";
 
-export interface SheetRawProps extends SpreadsheetRawProps {
-  sheetGid: number;
-}
-
-export class SheetRaw extends SpreadsheetBaseRaw {
-  readonly sheetGid: number;
-  constructor({ sheetGid, ...props }: SheetRawProps) {
+export class SheetRaw extends SheetBaseRaw {
+  constructor(props: SheetRawProps) {
     super(props);
-    this.sheetGid = sheetGid;
     this._ensureSheetState();
-  }
-  private _ensureSheetState(): void {
-    if (this.sheetsStateRaw.has(this.sheetGid)) return;
-    this.sheetsStateRaw.set(this.sheetGid, emptyStateRaw.sheetState());
   }
   private get conditionalFormats(): SheetConditionalFormatsRaw {
     return new SheetConditionalFormatsRaw(this.sheetRawProps);
   }
   private get protections(): SheetEditProtectionsRaw {
     return new SheetEditProtectionsRaw(this.sheetRawProps);
-  }
-  get sheetRawProps(): SheetRawProps {
-    return { ...this.spreadsheetRawProps, sheetGid: this.sheetGid };
-  }
-  get sheetState(): SheetStateRaw {
-    return Val.assert(
-      this.sheetsStateRaw.get(this.sheetGid),
-      `sheetState for sheetGid ${this.sheetGid}`,
-    );
   }
   get hasGatheredFetch(): boolean {
     const { fetchQueue } = this.sheetState;
@@ -149,13 +128,16 @@ export class SheetRaw extends SpreadsheetBaseRaw {
     if (stale?.properties === undefined) return;
     throw new Error(
       rowIndexesStaleMessage(
-        `Table "${stale.properties.name}" on ${this.label}`,
+        tableOnSheetLabel({
+          name: stale.properties.name,
+          onSheet: this.label,
+        }),
       ),
     );
   }
   private get tableStates(): TableStateRaw[] {
-    const onSheet = Array.from(this.tablesStateRaw.values()).filter(
-      (tableState) => tableState.sheetGid === this.sheetGid,
+    const onSheet = this.tableIds.map((tableId) =>
+      tableStateOf(this.tablesStateRaw, tableId),
     );
     return [...onSheet, ...this.sheetState.tablesBeforePropertiesById.values()];
   }
@@ -330,9 +312,8 @@ export class SheetRaw extends SpreadsheetBaseRaw {
     this.writeOperations.renameSheet.forEach(({ sheetId, title }) => {
       if (sheetId === this.sheetGid) this.sheetState.working.title = title;
     });
-    this.writeOperations.renameTable.forEach(({ tableId, name }) => {
-      const properties = this.tablesStateRaw.get(tableId)?.properties;
-      if (properties !== undefined) properties.name = name;
-    });
+    this.writeOperations.renameTable.forEach(({ tableId, name }) =>
+      this._updateWorkingTableName(tableId, name),
+    );
   }
 }

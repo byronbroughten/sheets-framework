@@ -22,7 +22,7 @@ export class RowBaseRaw extends TableBaseRaw {
     return this.getRowState(this.rowIndex);
   }
   rowInWorking(): boolean {
-    return this.tableState.working.rowStates.has(this.rowIndex);
+    return this.rowStates.has(this.rowIndex);
   }
   get isReserved(): boolean {
     return this.tableState.writeQueue.reservedRowIndexes.has(this.rowIndex);
@@ -57,11 +57,5 @@ export class RowBaseRaw extends TableBaseRaw {
     throw new Error(
       `Value ${value} not found in ${this.rowLabel(this.rowIndex)}. Cannot find column index.`,
     );
-  }
-  get rowRawProps(): RowRawProps {
-    return {
-      ...this.tableRawProps,
-      rowIndex: this.rowIndex,
-    };
   }
 }

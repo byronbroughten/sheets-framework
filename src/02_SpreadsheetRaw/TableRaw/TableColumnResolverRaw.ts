@@ -1,14 +1,10 @@
 import { Val } from "@byronbroughten/utils/val";
 
 import { dimensionIds } from "../../01_SpreadsheetSchema/dimensionIds";
-import { TableCommonRaw } from "../ClassBases/TableCommonRaw";
-import { SpreadsheetRaw } from "../SpreadsheetRaw";
+import { TableBaseRaw } from "../ClassBases/TableBaseRaw";
 import { TableRaw } from "../TableRaw";
 
-export class TableColumnResolverRaw extends TableCommonRaw {
-  get ss(): SpreadsheetRaw {
-    return new SpreadsheetRaw(this.spreadsheetRawProps);
-  }
+export class TableColumnResolverRaw extends TableBaseRaw {
   get table(): TableRaw {
     return new TableRaw(this.tableRawProps);
   }
@@ -22,14 +18,14 @@ export class TableColumnResolverRaw extends TableCommonRaw {
     return this.columnIdAt(this.colIndexOfHeader(header));
   }
   columnIdAt(colIndex: number): string {
-    if (this.isTableColIndex(colIndex)) {
+    if (this.table.isTableColIndex(colIndex)) {
       return this._columnIdInTable(colIndex);
     }
     const value = this.table.headRow("columnId").valueOrEmpty(colIndex);
     return typeof value === "string" ? value : "";
   }
   get colIndexesWithoutColumnId(): number[] {
-    return this.fullTableColIndexes.filter(
+    return this.table.fullTableColIndexes.filter(
       (colIndex) => this._columnIdInTable(colIndex) === "",
     );
   }
@@ -37,7 +33,7 @@ export class TableColumnResolverRaw extends TableCommonRaw {
     return this._tableColumnIds().includes(columnId);
   }
   colIndexOf(columnId: string): number {
-    const tableColIndexes = this.fullTableColIndexes;
+    const tableColIndexes = this.table.fullTableColIndexes;
     const colIndex = this._tableColumnIds().findIndex((id) => id === columnId);
     if (colIndex === -1) {
       throw new Error(
@@ -48,7 +44,7 @@ export class TableColumnResolverRaw extends TableCommonRaw {
   }
   // Fetched cells only.
   holdsOnlyColumnIdsOf(idPrefix: string): boolean {
-    const columnIds = this.fullTableColIndexes
+    const columnIds = this.table.fullTableColIndexes
       .map((colIndex) => this.table.headRow("columnId").cell(colIndex))
       .filter((cell) => cell.inWorking)
       .map((cell) => cell.valueOrEmpty())
@@ -65,10 +61,11 @@ export class TableColumnResolverRaw extends TableCommonRaw {
   gatherFetchColumnIds(): this {
     const colIdRowIndex = this.schema.colIdRowIndex;
     // Before the Table is known, its column ID row rides the header zone.
-    if (this.table.hasFetchedProperties) {
-      this.gatherFetchRange(this.fullRowFetchRange(colIdRowIndex));
+    const { table } = this;
+    if (table.hasFetchedProperties) {
+      table.gatherFetchRange(table.fullRowFetchRange(colIdRowIndex));
     } else {
-      this.table.gatherFetchProperties();
+      table.gatherFetchProperties();
     }
     this.tableState.fetchQueue.toFinalize.rows.add(colIdRowIndex);
     return this;
@@ -83,7 +80,7 @@ export class TableColumnResolverRaw extends TableCommonRaw {
     return value;
   }
   private _tableColumnIds(): string[] {
-    return this.fullTableColIndexes.map((colIndex) =>
+    return this.table.fullTableColIndexes.map((colIndex) =>
       this._columnIdInTable(colIndex),
     );
   }

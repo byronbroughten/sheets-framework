@@ -1,47 +1,38 @@
 import { Val } from "@byronbroughten/utils/val";
 
-import type { TableSnapshot } from "../../00_Source/RawSource/RawSource";
+import type {
+  BoundedGridRange,
+  TableSnapshot,
+} from "../../00_Source/RawSource/RawSource";
 import { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin";
 import { emptyStateRaw } from "../ClassTypes/emptyStateRaw";
 import type {
+  BoundedTableGridRange,
   ColumnStateRaw,
   ColumnStatesRaw,
   RowStateRaw,
   RowStatesRaw,
-  SheetStateRaw,
   TablePropertiesRaw,
   TablesStateRaw,
   TableStateRaw,
   TableWriteQueueRaw,
 } from "../ClassTypes/StateRaw";
-import {
-  SpreadsheetBaseRaw,
-  type SpreadsheetRawProps,
-} from "./SpreadsheetBaseRaw";
+import { SheetBaseRaw, type SheetRawProps } from "./SheetBaseRaw";
 
 export interface TableAddressRaw {
   tableId: string;
 }
 // `sheetGid` places a Table not yet in state, and must match a fetched one's.
-export interface TableRawProps extends SpreadsheetRawProps, TableAddressRaw {
-  sheetGid: number;
-}
+export interface TableRawProps extends SheetRawProps, TableAddressRaw {}
 
-export class TableBaseRaw extends SpreadsheetBaseRaw {
-  readonly sheetGid: number;
+export class TableBaseRaw extends SheetBaseRaw {
   private readonly addressedTableId: string;
-  constructor({ spreadsheetStateRaw, tableId, sheetGid }: TableRawProps) {
-    super({ spreadsheetStateRaw });
+  constructor({ tableId, ...props }: TableRawProps) {
+    super(props);
     this.addressedTableId = tableId;
-    this.sheetGid = sheetGid;
-    validateTableOnSheet(spreadsheetStateRaw.tables, tableId, sheetGid);
+    validateTableOnSheet(this.tablesStateRaw, tableId, this.sheetGid);
     this._ensureSheetState();
     this._ensureTableBeforePropertiesById();
-  }
-  private _ensureSheetState(): void {
-    if (!this.sheetsStateRaw.has(this.sheetGid)) {
-      this.sheetsStateRaw.set(this.sheetGid, emptyStateRaw.sheetState());
-    }
   }
   private _ensureTableBeforePropertiesById(): void {
     const tableId = this.addressedTableId;
@@ -53,16 +44,7 @@ export class TableBaseRaw extends SpreadsheetBaseRaw {
       emptyStateRaw.tableState(this.sheetGid),
     );
   }
-  protected get sheetState(): SheetStateRaw {
-    return Val.assert(
-      this.sheetsStateRaw.get(this.sheetGid),
-      `sheetState for sheetGid ${this.sheetGid}`,
-    );
-  }
   protected get tableState(): TableStateRaw {
-    return this._resolveTableState();
-  }
-  private _resolveTableState(): TableStateRaw {
     const tableId = this.addressedTableId;
     return Val.assert(
       this.tablesStateRaw.get(tableId) ??
@@ -81,7 +63,7 @@ export class TableBaseRaw extends SpreadsheetBaseRaw {
     return this.tableState.working.rowStates;
   }
   get sheetTitle(): string {
-    return this.sheetState.working.title ?? "(untitled)";
+    return this.sheetState.working.title ?? untitledSheetTitle;
   }
   get sheetLabel(): string {
     return sheetLabel(this.sheetState.working.title, this.sheetGid);
@@ -96,14 +78,8 @@ export class TableBaseRaw extends SpreadsheetBaseRaw {
   tableIds(): string[] {
     return tableIdsOnSheet(this.tablesStateRaw, this.sheetGid);
   }
-  // Absent for a sheet that holds no Table or several.
-  onlyTableId(): string | undefined {
-    const [tableId, ...otherTableIds] = this.tableIds();
-    if (otherTableIds.length > 0) return undefined;
-    return tableId;
-  }
   hasOneTable(): boolean {
-    return this.onlyTableId() !== undefined;
+    return this.tableIds().length === 1;
   }
   getRowState(rowIndex: number): RowStateRaw {
     return Val.assert(
@@ -120,20 +96,45 @@ export class TableBaseRaw extends SpreadsheetBaseRaw {
   rowLabel(rowIndex: number): string {
     return `row ${this.tableOrigin().rowNumber(rowIndex)}`;
   }
-  protected _updateWorkingTableName(tableId: string, name: string): void {
-    const properties = this.tablesStateRaw.get(tableId)?.properties;
-    if (properties !== undefined) properties.name = name;
+  protected _boundedSheetGridRange(
+    {
+      startRowIndex,
+      endRowIndex,
+      startColIndex,
+      endColIndex,
+    }: BoundedTableGridRange,
+    origin: TableOrigin,
+  ): BoundedGridRange {
+    return {
+      sheetId: this.sheetGid,
+      startRowIndex: origin.sheetRowIndex(startRowIndex),
+      endRowIndex: origin.sheetRowIndex(endRowIndex),
+      startColumnIndex: origin.sheetColIndex(startColIndex),
+      endColumnIndex: origin.sheetColIndex(endColIndex),
+    };
   }
   protected _ensureColumnState(colIndex: number): ColumnStateRaw {
     return ensureColumnState(this.tableState, colIndex);
   }
 }
 
+const untitledSheetTitle = "(untitled)";
+
 export function sheetLabel(
   title: string | undefined,
   sheetGid: number,
 ): string {
-  return `"${title ?? "(untitled)"}" (gid ${sheetGid})`;
+  return `"${title ?? untitledSheetTitle}" (gid ${sheetGid})`;
+}
+
+export function tableOnSheetLabel({
+  name,
+  onSheet,
+}: {
+  name: string;
+  onSheet: string;
+}): string {
+  return `Table "${name}" on ${onSheet}`;
 }
 
 export function tableIdsOnSheet(

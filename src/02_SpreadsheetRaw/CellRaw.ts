@@ -18,7 +18,7 @@ import type {
 import type { RgbColor } from "../00_Source/RawSource/RgbColor";
 import { CellBaseRaw } from "./ClassBases/CellBaseRaw";
 import type { RowCommonRaw } from "./ClassBases/RowCommonRaw";
-import type { CellFill, TableGridRange } from "./ClassTypes/StateRaw";
+import type { BoundedTableGridRange, CellFill } from "./ClassTypes/StateRaw";
 import { TableRaw } from "./TableRaw";
 
 export class CellRaw<
@@ -31,16 +31,9 @@ export class CellRaw<
     return this.table.rowCommon(this.rowIndex);
   }
   gridRange(): BoundedGridRange {
-    const origin = this.tableOrigin();
-    return {
-      sheetId: this.sheetGid,
-      startRowIndex: origin.sheetRowIndex(this.rowIndex),
-      endRowIndex: origin.sheetRowIndex(this.rowIndex + 1),
-      startColumnIndex: origin.sheetColIndex(this.colIndex),
-      endColumnIndex: origin.sheetColIndex(this.colIndex + 1),
-    };
+    return this._boundedSheetGridRange(this.tableGridRange, this.tableOrigin());
   }
-  get tableGridRange(): TableGridRange {
+  get tableGridRange(): BoundedTableGridRange {
     return {
       startRowIndex: this.rowIndex,
       endRowIndex: this.rowIndex + 1,

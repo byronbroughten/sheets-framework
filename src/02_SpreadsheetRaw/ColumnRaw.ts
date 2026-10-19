@@ -1,4 +1,4 @@
-import { Arr } from "@byronbroughten/utils/arr";
+import { Arr, type IndexRange } from "@byronbroughten/utils/arr";
 
 import type {
   CellValue,
@@ -14,6 +14,7 @@ import type {
   EditWarningDeclaration,
 } from "../00_Source/RawSource/EditProtection";
 import type {
+  FindReplaceTerms,
   GridRangeProps,
   TableColumnType,
 } from "../00_Source/RawSource/RawSource";
@@ -26,7 +27,6 @@ import { CellRaw, validateFormulaString } from "./CellRaw";
 import { ColumnBaseRaw } from "./ClassBases/ColumnBaseRaw";
 import type {
   CellFill,
-  FindReplaceTerms,
   TableEndColumnHeadCells,
   TableGridRange,
 } from "./ClassTypes/StateRaw";
@@ -126,14 +126,10 @@ export class ColumnRaw<
         this.cell(rowIndex).setValueState(value);
       }
     });
-    this.table.queueTableWrite({
-      action: "fillColumn",
-      colIndex: this.colIndex,
-      startRowIndex: 0,
-      endRowIndex: dataRowCount,
-      ...change,
-    });
-    return this;
+    return this._queueFillColumn(
+      { startIndex: 0, endIndex: dataRowCount },
+      change,
+    );
   }
   updateAllFormulas(formula: string): this {
     this.table.assertRowIndexesNotStale();
@@ -143,14 +139,10 @@ export class ColumnRaw<
     this.table.rowIndexesFull.forEach((rowIndex) => {
       this.table.row(rowIndex).validateIsWritable();
     });
-    this.table.queueTableWrite({
-      action: "fillColumn",
-      colIndex: this.colIndex,
-      startRowIndex: 0,
-      endRowIndex: dataRowCount,
-      formula,
-    });
-    return this;
+    return this._queueFillColumn(
+      { startIndex: 0, endIndex: dataRowCount },
+      { formula },
+    );
   }
   updateWorkingCells(change: Omit<CellFill<VN>, "formula">): this {
     this.table.assertRowIndexesNotStale();
@@ -161,31 +153,17 @@ export class ColumnRaw<
         this.cell(rowIndex).setValueState(value);
       });
     }
-    Arr.contiguousRanges(rowIndexes).forEach(({ startIndex, endIndex }) => {
-      this.table.queueTableWrite({
-        action: "fillColumn",
-        colIndex: this.colIndex,
-        startRowIndex: startIndex,
-        endRowIndex: endIndex,
-        ...change,
-      });
+    Arr.contiguousRanges(rowIndexes).forEach((rows) => {
+      this._queueFillColumn(rows, change);
     });
     return this;
   }
   updateWorkingFormulas(formula: string): this {
     this.table.assertRowIndexesNotStale();
     validateFormulaString(formula);
-    Arr.contiguousRanges(this.workingCellIndexes).forEach(
-      ({ startIndex, endIndex }) => {
-        this.table.queueTableWrite({
-          action: "fillColumn",
-          colIndex: this.colIndex,
-          startRowIndex: startIndex,
-          endRowIndex: endIndex,
-          formula,
-        });
-      },
-    );
+    Arr.contiguousRanges(this.workingCellIndexes).forEach((rows) => {
+      this._queueFillColumn(rows, { formula });
+    });
     return this;
   }
   // Reaches every data row like a whole-column fill, so it takes the same guards.
@@ -292,6 +270,19 @@ export class ColumnRaw<
       this.table.row(rowIndex).ensureStateExists();
       this.cell(rowIndex).ensureInWorking();
     });
+  }
+  private _queueFillColumn(
+    { startIndex, endIndex }: IndexRange,
+    fill: CellFill<VN>,
+  ): this {
+    this.table.queueTableWrite({
+      action: "fillColumn",
+      colIndex: this.colIndex,
+      startRowIndex: startIndex,
+      endRowIndex: endIndex,
+      ...fill,
+    });
+    return this;
   }
   // No start row, so it runs from the sheet's top.
   private get _wholeColumnTableGridRange(): TableGridRange {

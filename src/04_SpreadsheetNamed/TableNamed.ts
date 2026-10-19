@@ -7,6 +7,7 @@ import type {
   EditLockDeclaration,
   EditWarningDeclaration,
 } from "../00_Source/RawSource/EditProtection";
+import type { FindReplaceTerms } from "../00_Source/RawSource/RawSource";
 import type {
   ColumnName,
   ColumnValue,
@@ -15,7 +16,6 @@ import type {
 } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
 import type { TableName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import type { HeadRole } from "../01_SpreadsheetSchema/headRows";
-import type { FindReplaceTerms } from "../02_SpreadsheetRaw/ClassTypes/StateRaw";
 import type { TableRaw } from "../02_SpreadsheetRaw/TableRaw";
 import { ColumnIdentified } from "../03_SpreadsheetIdentified/ColumnIdentified";
 import type { HeadRowIdentified } from "../03_SpreadsheetIdentified/HeadRowIdentified";

@@ -10,24 +10,12 @@ import {
   type WholeSheetEditLockDeclaration,
   type WholeSheetEditWarningDeclaration,
 } from "../../00_Source/RawSource/EditProtection";
-import { SpreadsheetBaseRaw } from "../ClassBases/SpreadsheetBaseRaw";
-import type { SheetStateRaw } from "../ClassTypes/StateRaw";
-import { SheetRaw, type SheetRawProps } from "../SheetRaw";
+import { SheetBaseRaw } from "../ClassBases/SheetBaseRaw";
+import { SheetRaw } from "../SheetRaw";
 
-export class SheetEditProtectionsRaw extends SpreadsheetBaseRaw {
-  readonly sheetGid: number;
-  constructor({ sheetGid, ...props }: SheetRawProps) {
-    super(props);
-    this.sheetGid = sheetGid;
-  }
+export class SheetEditProtectionsRaw extends SheetBaseRaw {
   get sheet(): SheetRaw {
-    return new SheetRaw({
-      ...this.spreadsheetRawProps,
-      sheetGid: this.sheetGid,
-    });
-  }
-  private get sheetState(): SheetStateRaw {
-    return this.sheet.sheetState;
+    return new SheetRaw(this.sheetRawProps);
   }
   gatherFetchEditProtections(): void {
     this.sheetState.fetchQueue.gatherEditProtections = true;
