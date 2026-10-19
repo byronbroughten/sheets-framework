@@ -11,5 +11,6 @@
 - **Before adding a file, ask "would this make sense in a TypeScript project with no Sheets at all?"** Yes: `@byronbroughten/utils`, never started in this package. Then "in a different Sheets-backed app?" Yes: this package, generically named. No: `packages/real-estate`.
 - **`src/` is host-neutral, `nodeHost/` included: no Node or DOM APIs.** It is platform-neutral outside `00_Source/GoogleSheets/`, `appsScriptHost/` and the entry points. Lint holds both.
 - **Regenerate, never hand-edit, a package's generated data** (`dev/generated/` here). Read by block: grep `columnConfigs.ts` for the sheet key (`"occupancy":`) and read that one object; open a long test file's one `describe`.
+- **A framework member's callers live in `src/`, `scripts/`, `valueKinds/` and the app's `src/`**; search all four before calling it unused.
 - **A guard ships in the same commit as the write it guards, or earlier**: a standing-permission `gen:configs` run can land between any two commits.
 - **Read the general style doc (`docs/code-style.md` in `@byronbroughten/config`), then the framework's [docs/code-style.md](../docs/code-style.md), before editing TypeScript here.** Words: [docs/vocabulary.md](../docs/vocabulary.md). Mechanics: the [`docs/architecture.md`](../docs/architecture.md) index.
