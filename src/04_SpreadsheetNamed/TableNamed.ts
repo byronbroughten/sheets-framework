@@ -99,18 +99,24 @@ export class TableNamed<
   prepFetchColumnsFull<CS extends readonly ColumnName<TN>[]>(
     ...columnNames: CS
   ): { [K in CS[number]]: ColumnNamed<TN, K> } {
-    const columns = this.columns(...columnNames);
-    Obj.values(columns).forEach((column) => column.prepFetchFull());
-    return columns;
+    return this._columnsPrepped(columnNames, (column) =>
+      column.prepFetchFull(),
+    );
   }
   prepFetchColumnsSpecific<CS extends readonly ColumnName<TN>[]>(
     rowIndexes: number[],
     ...columnNames: CS
   ): { [K in CS[number]]: ColumnNamed<TN, K> } {
-    const columns = this.columns(...columnNames);
-    Obj.values(columns).forEach((column) =>
+    return this._columnsPrepped(columnNames, (column) =>
       column.prepFetchSpecific(rowIndexes),
     );
+  }
+  private _columnsPrepped<CS extends readonly ColumnName<TN>[]>(
+    columnNames: CS,
+    prep: (column: ColumnNamed<TN, CS[number]>) => void,
+  ): { [K in CS[number]]: ColumnNamed<TN, K> } {
+    const columns = this.columns(...columnNames);
+    Obj.values(columns).forEach(prep);
     return columns;
   }
   sortRowsByColumnName(

@@ -116,20 +116,14 @@ export class EndpointRun<
       this.ss.batchUpdateGSheets();
     }
   }
-  private _checkboxColumn(
-    columnName: CheckboxColumnName<TN>,
-  ): CheckboxColumnOperator<TN, CheckboxColumnName<TN>> {
-    return new CheckboxColumnOperator({
-      ...this.sheetNamedProps,
-      columnName,
-    });
-  }
   private _selectorColumn():
-    | CheckboxColumnOperator<TN, CheckboxColumnName<TN>>
-    | undefined {
+    CheckboxColumnOperator<TN, CheckboxColumnName<TN>> | undefined {
     const { selector } = this.endpoint;
     if (!selector) return undefined;
-    return this._checkboxColumn(selector.column);
+    return new CheckboxColumnOperator({
+      ...this.sheetNamedProps,
+      columnName: selector.column,
+    });
   }
   // Prepped rather than fetched, so the selection rides the cycle already running.
   private _prepSelectorFetch(): void {
@@ -190,9 +184,24 @@ export class EndpointRun<
     stateName: RunStateName,
     props: RunStateProps = {},
   ): void {
-    this._feedbackChanges(stateName, props).forEach(({ columnName, change }) => {
-      this._fillFeedbackColumn(columnName, change);
-    });
+    this._feedbackChanges(stateName, props).forEach(
+      ({ columnName, change }) => {
+        this._fillFeedbackColumn(columnName, change);
+      },
+    );
+  }
+  private _fillFeedbackColumn(
+    columnName: FeedbackColumnName<TN> | undefined,
+    change: CellChange<"string">,
+  ): void {
+    if (!columnName) return;
+    // Re-deriving the value type here would compose two mapped filters, at ~43k instantiations.
+    const column = this.table.columnIdentified(columnName);
+    if (this.endpoint.selector) {
+      column.updateWorkingCells(change);
+    } else {
+      column.updateAllCells(change);
+    }
   }
   // The timestamp is written once at setup; a state change only recolours it.
   private _feedbackChanges(
@@ -214,19 +223,6 @@ export class EndpointRun<
         },
       },
     ];
-  }
-  private _fillFeedbackColumn(
-    columnName: FeedbackColumnName<TN> | undefined,
-    change: CellChange<"string">,
-  ): void {
-    if (!columnName) return;
-    // Re-deriving the value type here would compose two mapped filters, at ~43k instantiations.
-    const column = this.table.columnIdentified(columnName);
-    if (this.endpoint.selector) {
-      column.updateWorkingCells(change);
-    } else {
-      column.updateAllCells(change);
-    }
   }
   // Per-cell and queued after the run-level fill, so it lands on top of it.
   private _applyRowReport(rowIndex: number, report: RunReport): void {
