@@ -652,7 +652,7 @@ describe("Named value accessors", () => {
   it("sorts rows by a column that some of them leave blank", () => {
     const sheet = fetchedDatesSheet();
 
-    const sorted = sheet.sortRowsbyColumnName(sheet.rows, "id");
+    const sorted = sheet.sortRowsByColumnName(sheet.rows, "id");
 
     expect(sorted.map((row) => row.rowIndex)).toEqual([
       blankRowIndex,

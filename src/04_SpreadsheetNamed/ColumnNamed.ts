@@ -178,7 +178,7 @@ export class ColumnNamed<
     return this;
   }
   anchoredA1(columnName: ColumnName<TN> = this.columnName): string {
-    return this.table.column(columnName).identified.anchoredA1();
+    return this.table.columnIdentified(columnName).anchoredA1();
   }
   prepFetchSpecific(rowIndexes: number[]): this {
     this.identified.prepFetchSpecific(rowIndexes);

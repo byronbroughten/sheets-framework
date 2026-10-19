@@ -116,11 +116,7 @@ export class CellIdentified<
     return this;
   }
   anchoredA1(colIndex = this.column.colIndex): string {
-    const origin = this.raw.tableOrigin();
-    return this.schema.anchoredA1(
-      origin.sheetColIndex(colIndex),
-      origin.sheetRowIndex(this.rowIndex),
-    );
+    return this.column.table.anchoredA1(colIndex, this.rowIndex);
   }
   updateToDefault(): this {
     if (!this.schema.isFormula) {

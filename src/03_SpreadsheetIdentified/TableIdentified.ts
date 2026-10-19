@@ -123,11 +123,11 @@ export class TableIdentified extends TableCommonIdentified {
     this.raw.removeEditProtections();
     return this;
   }
-  anchoredA1(colIndex: number): string {
+  anchoredA1(colIndex: number, rowIndex = 0): string {
     const origin = this.raw.tableOrigin();
     return this.schema.anchoredA1(
       origin.sheetColIndex(colIndex),
-      origin.sheetRowIndex(0),
+      origin.sheetRowIndex(rowIndex),
     );
   }
   row(rowIndex: number): RowIdentified {
