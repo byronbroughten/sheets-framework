@@ -7,24 +7,12 @@ import {
   type GridRangeProps,
   rangeEqual,
 } from "../../00_Source/RawSource/RawSource";
-import { SpreadsheetBaseRaw } from "../ClassBases/SpreadsheetBaseRaw";
-import type { SheetStateRaw } from "../ClassTypes/StateRaw";
-import { SheetRaw, type SheetRawProps } from "../SheetRaw";
+import { SheetBaseRaw } from "../ClassBases/SheetBaseRaw";
+import { SheetRaw } from "../SheetRaw";
 
-export class SheetConditionalFormatsRaw extends SpreadsheetBaseRaw {
-  readonly sheetGid: number;
-  constructor({ sheetGid, ...props }: SheetRawProps) {
-    super(props);
-    this.sheetGid = sheetGid;
-  }
+export class SheetConditionalFormatsRaw extends SheetBaseRaw {
   get sheet(): SheetRaw {
-    return new SheetRaw({
-      ...this.spreadsheetRawProps,
-      sheetGid: this.sheetGid,
-    });
-  }
-  private get sheetState(): SheetStateRaw {
-    return this.sheet.sheetState;
+    return new SheetRaw(this.sheetRawProps);
   }
   gatherFetchConditionalFormatRules(): void {
     this.sheetState.fetchQueue.gatherConditionalFormats = true;

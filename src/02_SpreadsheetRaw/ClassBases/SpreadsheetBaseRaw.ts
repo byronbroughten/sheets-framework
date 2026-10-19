@@ -38,6 +38,10 @@ export class SpreadsheetBaseRaw {
       spreadsheetStateRaw: this.spreadsheetStateRaw,
     };
   }
+  protected _updateWorkingTableName(tableId: string, name: string): void {
+    const properties = this.tablesStateRaw.get(tableId)?.properties;
+    if (properties !== undefined) properties.name = name;
+  }
   static initSpreadsheetRawProps(): SpreadsheetRawProps {
     return {
       spreadsheetStateRaw: {

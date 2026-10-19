@@ -26,7 +26,7 @@ No queued operation deletes whole sheet rows. `RowRaw.delete` sets a delete flag
 
 ## Sorts are bounded to the Table body
 
-`TableRaw.requestSortGSheet` queues one sort per Table, gathered into a `sortTable` whose range is the body rows the same flush's deletes leave, across the Table's columns at its live bounds, and sent as a `sortRange` after those deletes (sheets-framework#95). A Table pulled up by deletes above it sorts at its rows after them. The head rows, a side-by-side Table and the rows below stay put, and the flush marks the sorted Table's row indexes stale.
+`TableRaw.queueSort` queues one sort per Table, gathered into a `sortTable` whose range is the body rows the same flush's deletes leave, across the Table's columns at its live bounds, and sent as a `sortRange` after those deletes (sheets-framework#95). A Table pulled up by deletes above it sorts at its rows after them. The head rows, a side-by-side Table and the rows below stay put, and the flush marks the sorted Table's row indexes stale.
 
 ## Column inserts are bounded to the Table
 

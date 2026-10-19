@@ -91,15 +91,15 @@ export class TableRaw extends TableCommonRaw {
   }
   // The live Table's columns only, so a range built on it never reaches a neighbour.
   dataRowGridRange(rowIndex: number): BoundedGridRange {
-    const origin = this.originAtGathering();
-    const { columnCount } = this;
-    return {
-      sheetId: this.sheetGid,
-      startRowIndex: origin.sheetRowIndex(rowIndex),
-      endRowIndex: origin.sheetRowIndex(rowIndex + 1),
-      startColumnIndex: origin.sheetColIndex(0),
-      endColumnIndex: origin.sheetColIndex(columnCount),
-    };
+    return this._boundedSheetGridRange(
+      {
+        startRowIndex: rowIndex,
+        endRowIndex: rowIndex + 1,
+        startColIndex: 0,
+        endColIndex: this.columnCount,
+      },
+      this.originAtGathering(),
+    );
   }
   updateTableName(name: string): this {
     const tableId = this.tableId;
@@ -394,7 +394,7 @@ export class TableRaw extends TableCommonRaw {
       { range, ...declaration },
       this.tableOrigin(),
     );
-    const queued = this._tablesOnSheet().flatMap((table) =>
+    const queued = this.tablesOnSheet.flatMap((table) =>
       table._queuedSheetConditionalFormatRules(),
     );
     if (this.sheet.hasPendingConditionalFormatRule(rule, queued)) return this;
@@ -461,7 +461,7 @@ export class TableRaw extends TableCommonRaw {
       );
     }
   }
-  requestSortGSheet({ colIdxToSortBy, sortOrder }: SortParameters): void {
+  queueSort({ colIdxToSortBy, sortOrder }: SortParameters): void {
     this.queueTableWrite({
       action: "sort",
       colIdxToSortBy,
@@ -515,16 +515,18 @@ export class TableRaw extends TableCommonRaw {
     });
   }
   gatherCheckboxValidationOperation({ rowIndex, colIndex }: TableCell): void {
-    const origin = this.originAtGathering();
+    const range = this._boundedSheetGridRange(
+      {
+        startRowIndex: rowIndex,
+        endRowIndex: rowIndex + 1,
+        startColIndex: colIndex,
+        endColIndex: colIndex + 1,
+      },
+      this.originAtGathering(),
+    );
     this.writeOperations.addCheckboxValidation.push({
       kind: "addCheckboxValidation",
-      range: {
-        sheetId: this.sheetGid,
-        startRowIndex: origin.sheetRowIndex(rowIndex),
-        endRowIndex: origin.sheetRowIndex(rowIndex + 1),
-        startColumnIndex: origin.sheetColIndex(colIndex),
-        endColumnIndex: origin.sheetColIndex(colIndex + 1),
-      },
+      range,
     });
   }
   gatherConditionalFormatRuleOperation(rule: TableConditionalFormatRule): void {
@@ -598,10 +600,9 @@ export class TableRaw extends TableCommonRaw {
     this.growColumnCount(insertCount);
   }
   private _validateNoNeighbourSplitBy(band: BoundedGridRange): void {
-    const split = this.tableIds()
-      .filter((tableId) => tableId !== this.tableId)
-      .map((tableId) => this.ss.table(tableId))
-      .find((neighbour) => neighbour.isSplitBy(band));
+    const split = this.neighbourTables.find((neighbour) =>
+      neighbour.isSplitBy(band),
+    );
     if (split === undefined) return;
     throw new Error(
       `${this.columnInsertSplitting(split.name)} with its head rows. Move "${split.name}" so that it and its head rows sit entirely within rows ${band.startRowIndex + 1}–${band.endRowIndex}, or entirely outside them.`,
@@ -702,7 +703,7 @@ export class TableRaw extends TableCommonRaw {
     });
   }
   private _assertColumnTypesUpdateAllowed(columnTypes: ColumnTypes): void {
-    const tableLabel = this._tableLabel(this.tableId);
+    const tableLabel = this._tableLabel();
     const fetched = this.columnProperties;
     if (fetched.length === 0) {
       throw new Error(
@@ -744,7 +745,7 @@ export class TableRaw extends TableCommonRaw {
       const { columnIndex } = column;
       if (column.columnName === undefined) {
         throw new Error(
-          `${this._tableLabel(this.tableId)} ${tableColumnLabel(columnIndex)} has no columnName; refusing to replace column properties.`,
+          `${this._tableLabel()} ${tableColumnLabel(columnIndex)} has no columnName; refusing to replace column properties.`,
         );
       }
       const columnType = columnTypes.get(columnIndex) ?? column.columnType;
@@ -755,8 +756,8 @@ export class TableRaw extends TableCommonRaw {
       };
     });
   }
-  private _tableLabel(tableId: string): string {
-    return `Table ${tableId} on "${this.sheet.title}"`;
+  private _tableLabel(): string {
+    return `Table ${this.tableId} on "${this.sheet.title}"`;
   }
   // Sent after the row deletes, so it spans only the body rows they leave.
   gatherSortTableOperation(): void {
@@ -772,14 +773,15 @@ export class TableRaw extends TableCommonRaw {
     });
   }
   private _bodyGridRangeAtGathering(dataRowCount: number): BoundedGridRange {
-    const origin = this.originAtGathering();
-    return {
-      sheetId: this.sheetGid,
-      startRowIndex: origin.sheetRowIndex(0),
-      endRowIndex: origin.sheetRowIndex(dataRowCount),
-      startColumnIndex: origin.sheetColIndex(0),
-      endColumnIndex: origin.sheetColIndex(this.columnCount),
-    };
+    return this._boundedSheetGridRange(
+      {
+        startRowIndex: 0,
+        endRowIndex: dataRowCount,
+        startColIndex: 0,
+        endColIndex: this.columnCount,
+      },
+      this.originAtGathering(),
+    );
   }
   private _sheetConditionalFormatRule(
     { range, condition, format }: TableConditionalFormatRule,
@@ -826,7 +828,7 @@ export class TableRaw extends TableCommonRaw {
     this.assertTableIsKnown();
     if (hasTableRows(protection.range)) this.sheet.assertRowIndexesNotStale();
     this.sheet.assertEditProtectionsNotStale();
-    const queued = this._tablesOnSheet().flatMap((table) =>
+    const queued = this.tablesOnSheet.flatMap((table) =>
       table._queuedSheetEditProtections(),
     );
     if (
@@ -840,8 +842,13 @@ export class TableRaw extends TableCommonRaw {
     return this.queueTableWrite({ action: "addEditProtection", ...protection });
   }
   // A head row's range spans every Table on the sheet.
-  private _tablesOnSheet(): TableRaw[] {
+  get tablesOnSheet(): TableRaw[] {
     return this.tableIds().map((tableId) => this.ss.table(tableId));
+  }
+  get neighbourTables(): TableRaw[] {
+    return this.tablesOnSheet.filter(
+      (table) => table.tableId !== this.tableId,
+    );
   }
   private _queuedSheetConditionalFormatRules(): ModelableConditionalFormatRule[] {
     const origin = this.tableOrigin();

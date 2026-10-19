@@ -540,7 +540,7 @@ describe("SpreadsheetRaw.discardQueuedChanges", () => {
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
     raw.table(tableId111).row(1).delete();
-    raw.table(tableId111).requestSortGSheet({
+    raw.table(tableId111).queueSort({
       colIdxToSortBy: 0,
       sortOrder: "ASCENDING",
     });

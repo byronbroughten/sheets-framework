@@ -11,7 +11,7 @@ import {
   topDataRowIndex,
 } from "./spreadsheetRawTestSupport";
 
-describe("TableRaw.requestSortGSheet", () => {
+describe("TableRaw.queueSort", () => {
   const besideStart = startTableColIndex + 3;
   const belowRowIndex = topDataRowIndex + 3;
   function stubTableWithNeighbours() {
@@ -52,7 +52,7 @@ describe("TableRaw.requestSortGSheet", () => {
     raw.fetchAllSheetProperties();
     raw
       .table("ranked")
-      .requestSortGSheet({ colIdxToSortBy: 1, sortOrder: "ASCENDING" });
+      .queueSort({ colIdxToSortBy: 1, sortOrder: "ASCENDING" });
     return raw;
   }
 
@@ -114,7 +114,7 @@ describe("TableRaw.requestSortGSheet", () => {
     raw.batchUpdateGSheets();
     raw
       .table("ranked")
-      .requestSortGSheet({ colIdxToSortBy: 1, sortOrder: "ASCENDING" });
+      .queueSort({ colIdxToSortBy: 1, sortOrder: "ASCENDING" });
 
     expect(() => raw.batchUpdateGSheets()).toThrow(
       /Row indexes are stale for Table "Ranked"/,

@@ -251,6 +251,7 @@ export interface TableGridRange {
   startColIndex?: ColIndex;
   endColIndex?: ColIndex;
 }
+export type BoundedTableGridRange = Required<TableGridRange>;
 export interface TableCell {
   rowIndex: RowIndex;
   colIndex: ColIndex;

@@ -26,7 +26,7 @@ import type {
   TableWrites,
 } from "../ClassTypes/StateRaw";
 import type { SpreadsheetRaw } from "../SpreadsheetRaw";
-import { originOf, TableBaseRaw } from "./TableBaseRaw";
+import { originOf, TableBaseRaw, tableOnSheetLabel } from "./TableBaseRaw";
 
 // Not on TableBaseRaw: the row and column base classes hang off that.
 export abstract class TableCommonRaw extends TableBaseRaw {
@@ -52,7 +52,7 @@ export abstract class TableCommonRaw extends TableBaseRaw {
     return endRowIndex <= startRowIndex + 1;
   }
   get tableLabel(): string {
-    return `Table "${this.name}" on ${this.sheetLabel}`;
+    return tableOnSheetLabel(this.name, this.sheetLabel);
   }
   get headerOnlyFix(): string {
     return `${this.tableLabel} has only its header: add a row below it holding its formulas.`;
@@ -98,9 +98,9 @@ export abstract class TableCommonRaw extends TableBaseRaw {
     );
   }
   rowShiftFrom(growths: AppendTableRows[]): number {
-    const properties = this.tableProperties;
-    if (properties === undefined) return 0;
-    return rowShiftFrom(growths, { ...properties, sheetId: this.sheetGid });
+    const tableRange = this._tableRange();
+    if (tableRange === undefined) return 0;
+    return rowShiftFrom(growths, tableRange);
   }
   shiftRowsDown(rowCount: number): void {
     const properties = this._knownTableProperties();
@@ -110,12 +110,17 @@ export abstract class TableCommonRaw extends TableBaseRaw {
     properties.endRowIndex = SheetIndex.row(properties.endRowIndex + rowCount);
   }
   rowPullFrom(deletes: DeleteTableRowsOperation[]): number {
-    const properties = this.tableProperties;
-    if (properties === undefined) return 0;
+    const tableRange = this._tableRange();
+    if (tableRange === undefined) return 0;
     return rowCountAbove(
       deletes.map(({ range }) => range),
-      { ...properties, sheetId: this.sheetGid },
+      tableRange,
     );
+  }
+  private _tableRange(): BoundedGridRange | undefined {
+    const properties = this.tableProperties;
+    if (properties === undefined) return undefined;
+    return { ...properties, sheetId: this.sheetGid };
   }
   shiftRowsUp(rowCount: number): void {
     this.shiftRowsDown(-rowCount);
