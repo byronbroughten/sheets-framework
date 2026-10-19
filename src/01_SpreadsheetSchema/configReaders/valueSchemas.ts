@@ -62,8 +62,8 @@ export type ValueTrait<
 export function getValTrait<
   VN extends ValueNameSimple,
   VK extends ValueSchemaKey,
->(valueName: VN, key: VK): ValueSchema<VN>[VK] {
-  return valueSchemas()[valueName][key] as ValueSchema<VN>[VK];
+>(valueName: VN, key: VK): ValueTrait<VN, VK> {
+  return valueSchemas()[valueName][key] as ValueTrait<VN, VK>;
 }
 
 export type Value<VN extends ValueName = ValueName> = ValueTrait<VN, "type">;

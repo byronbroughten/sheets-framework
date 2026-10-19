@@ -7,10 +7,10 @@ export type SheetColIndex = number & { readonly [sheetColIndex]: true };
 
 export const SheetIndex = {
   isRow(value: number): value is SheetRowIndex {
-    return Number.isInteger(value) && value >= 0;
+    return isSheetIndex(value);
   },
   isCol(value: number): value is SheetColIndex {
-    return Number.isInteger(value) && value >= 0;
+    return isSheetIndex(value);
   },
   row(value: number): SheetRowIndex {
     if (SheetIndex.isRow(value)) return value;
@@ -21,6 +21,10 @@ export const SheetIndex = {
     throw new Error(notAnIndexMessage(value, "column"));
   },
 };
+
+function isSheetIndex(value: number): boolean {
+  return Number.isInteger(value) && value >= 0;
+}
 
 function notAnIndexMessage(value: number, dimension: "row" | "column"): string {
   return `${value} is not a sheet ${dimension} index: it must be a whole number of 0 or more.`;

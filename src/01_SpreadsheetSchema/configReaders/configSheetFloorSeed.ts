@@ -6,8 +6,8 @@ import {
   getSheetColumnNames,
 } from "./columnConfigsTypes";
 import {
+  loneTableConfigOnGid,
   type TableConfig,
-  tableConfigAloneOnGid,
   tableConfigsByTableId,
 } from "./tableConfigsTypes";
 
@@ -147,7 +147,7 @@ export function isFloorTabName(name: string): name is FloorTabName {
 }
 
 export function floorTabSeedByGid(sheetGid: number): FloorTabSeed | undefined {
-  return floorTabSeedOf(tableConfigAloneOnGid(sheetGid));
+  return floorTabSeedOf(loneTableConfigOnGid(sheetGid));
 }
 
 export function floorTabSeedByTableId(

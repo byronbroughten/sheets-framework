@@ -31,10 +31,6 @@ export const googleColor = {
     };
   },
   toRgbChannels(color: GoogleColor): RgbChannels {
-    return quantizeRgbChannels({
-      ...(color.red !== undefined ? { red: color.red } : {}),
-      ...(color.green !== undefined ? { green: color.green } : {}),
-      ...(color.blue !== undefined ? { blue: color.blue } : {}),
-    });
+    return quantizeRgbChannels(color);
   },
 };

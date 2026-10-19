@@ -39,12 +39,19 @@ export const tableKeysByGid = lazy(() =>
   }, new Map<number, TableNameSimple[]>()),
 );
 
+export function loneTableKeyOnGid(
+  sheetGid: number,
+): TableNameSimple | undefined {
+  const [tableKey, ...otherKeys] = tableKeysByGid().get(sheetGid) ?? [];
+  return otherKeys.length === 0 ? tableKey : undefined;
+}
+
 // A sheet may hold several Tables, so a GID names a config only when its sheet records one.
-export function tableConfigAloneOnGid(
+export function loneTableConfigOnGid(
   sheetGid: number,
 ): TableConfig | undefined {
-  const [tableKey, ...otherKeys] = tableKeysByGid().get(sheetGid) ?? [];
-  if (tableKey === undefined || otherKeys.length > 0) return undefined;
+  const tableKey = loneTableKeyOnGid(sheetGid);
+  if (tableKey === undefined) return undefined;
   return tableConfigsByTableId().get(getTableTraitByName(tableKey, "tableId"));
 }
 
@@ -53,7 +60,7 @@ export function getTableTraitByGid<TK extends keyof TableConfig>(
   key: TK,
 ): TableConfig[TK] {
   return Val.assert(
-    tableConfigAloneOnGid(sheetGid),
+    loneTableConfigOnGid(sheetGid),
     `The one Table config for sheet gid ${sheetGid}`,
   )[key];
 }

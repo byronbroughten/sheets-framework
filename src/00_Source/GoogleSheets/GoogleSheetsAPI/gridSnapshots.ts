@@ -51,17 +51,19 @@ function toSheetSnapshot(sheet: GoogleSheet): SheetSnapshot {
     rowCount: properties.gridProperties?.rowCount,
     columnCount: properties.gridProperties?.columnCount,
     tables: sheet.tables?.map(toTableSnapshot),
-    gridBlocks: sheet.data?.map((block) => ({
-      startColumn: SheetIndex.col(block.startColumn ?? 0),
-      startRow: SheetIndex.row(block.startRow ?? 0),
-      columnCount: (block.columnMetadata || []).length,
-      rows: (block.rowData || []).map((row) => ({
-        cells: Array.from(
-          { length: (block.columnMetadata || []).length },
-          (_, colOffset) => toGridCell(row.values?.[colOffset]),
-        ),
-      })),
-    })),
+    gridBlocks: sheet.data?.map((block) => {
+      const columnCount = (block.columnMetadata || []).length;
+      return {
+        startColumn: SheetIndex.col(block.startColumn ?? 0),
+        startRow: SheetIndex.row(block.startRow ?? 0),
+        columnCount,
+        rows: (block.rowData || []).map((row) => ({
+          cells: Array.from({ length: columnCount }, (_, colOffset) =>
+            toGridCell(row.values?.[colOffset]),
+          ),
+        })),
+      };
+    }),
   };
 }
 

@@ -2,9 +2,11 @@ import {
   type ConditionalFormatRule,
   conditionalFormatRulesEqual,
   type ModelableConditionalFormatRule,
-  rangeEqual,
 } from "../../00_Source/RawSource/ConditionalFormat";
-import type { GridRangeProps } from "../../00_Source/RawSource/RawSource";
+import {
+  type GridRangeProps,
+  rangeEqual,
+} from "../../00_Source/RawSource/RawSource";
 import { SpreadsheetBaseRaw } from "../ClassBases/SpreadsheetBaseRaw";
 import type { SheetStateRaw } from "../ClassTypes/StateRaw";
 import { SheetRaw, type SheetRawProps } from "../SheetRaw";

@@ -13,14 +13,11 @@ import { tableLayout } from "./tableLayout";
 
 
 export class SpreadsheetBaseSchema {
-  get codebaseNameDelimiter(): CodebaseNameDelimiter {
-    return codebaseNameDelimiter;
-  }
   combineNames<SA extends string, SB extends string>(
     name1: SA,
     name2: SB,
   ): `${SA}${CodebaseNameDelimiter}${SB}` {
-    return `${name1}${this.codebaseNameDelimiter}${name2}`;
+    return `${name1}${codebaseNameDelimiter}${name2}`;
   }
   get idHeader(): string {
     return tableLayout.idHeader;

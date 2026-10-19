@@ -10,6 +10,8 @@ import type {
   SheetConditionalFormatSnapshot,
   SheetEditProtectionSnapshot,
   SpreadsheetSnapshot,
+  TableColumnPropertiesAdd,
+  TableColumnPropertiesUpdate,
 } from "../RawSource/RawSource";
 import { AppsScript } from "./AppsScript";
 import { cellDataRequests } from "./GoogleSheetsAPI/cellData";
@@ -56,6 +58,7 @@ export type ModeledRequest = {
 }[ModeledRequestVerb];
 
 type GoogleSpreadsheet = GoogleAppsScript.Sheets.Schema.Spreadsheet;
+type GoogleSheet = GoogleAppsScript.Sheets.Schema.Sheet;
 type BatchUpdateRequest =
   GoogleAppsScript.Sheets.Schema.BatchUpdateSpreadsheetRequest;
 type BatchUpdateResponse =
@@ -198,32 +201,22 @@ export class GoogleSheetsAPI implements RawSource {
   }
   // getByDataFilter never returns conditionalFormats, so rules take a plain get.
   fetchConditionalFormatRules(): SheetConditionalFormatSnapshot[] {
-    const spreadsheet = this.sheets.Spreadsheets.get(this.spreadsheetId, {
-      fields: fieldMasks.conditionalFormats,
-    });
-    return Val.assert(spreadsheet.sheets, "spreadsheet.sheets").map(
-      (sheet) => ({
-        sheetGid: Val.assert(sheet.properties?.sheetId, "sheetId"),
-        // Google omits an empty list.
-        rules: (sheet.conditionalFormats ?? []).map((rule, index) =>
-          googleConditionalFormatRule.toConditionalFormatRule(rule, index),
-        ),
-      }),
-    );
+    return this._fetchSheets(fieldMasks.conditionalFormats).map((sheet) => ({
+      sheetGid: sheetGidOf(sheet),
+      // Google omits an empty list.
+      rules: (sheet.conditionalFormats ?? []).map((rule, index) =>
+        googleConditionalFormatRule.toConditionalFormatRule(rule, index),
+      ),
+    }));
   }
   // Assumed to drop protectedRanges the same way until the probe says otherwise.
   fetchEditProtections(): SheetEditProtectionSnapshot[] {
-    const spreadsheet = this.sheets.Spreadsheets.get(this.spreadsheetId, {
-      fields: fieldMasks.protectedRanges,
-    });
-    return Val.assert(spreadsheet.sheets, "spreadsheet.sheets").map(
-      (sheet) => ({
-        sheetGid: Val.assert(sheet.properties?.sheetId, "sheetId"),
-        protections: (sheet.protectedRanges ?? []).map(
-          googleProtectedRange.toEditProtection,
-        ),
-      }),
-    );
+    return this._fetchSheets(fieldMasks.protectedRanges).map((sheet) => ({
+      sheetGid: sheetGidOf(sheet),
+      protections: (sheet.protectedRanges ?? []).map(
+        googleProtectedRange.toEditProtection,
+      ),
+    }));
   }
   flush(operations: LocalWriteOperation[]): void {
     const sentRequests = operations.flatMap((operation) =>
@@ -245,6 +238,16 @@ export class GoogleSheetsAPI implements RawSource {
       throw partialTableRefusal(error, requestOperations) ?? error;
     }
   }
+  private _fetchSheets(fields: string): GoogleSheet[] {
+    const spreadsheet = this.sheets.Spreadsheets.get(this.spreadsheetId, {
+      fields,
+    });
+    return Val.assert(spreadsheet.sheets, "spreadsheet.sheets");
+  }
+}
+
+function sheetGidOf(sheet: GoogleSheet): number {
+  return Val.assert(sheet.properties?.sheetId, "sheetId");
 }
 
 // Google prefixes its refusal with the request: "Invalid requests[3].insertRange: …".
@@ -459,15 +462,7 @@ function modeledOperationToGoogleRequests(
             },
           },
         },
-        {
-          updateTable: {
-            table: {
-              tableId: operation.tableId,
-              columnProperties: operation.columnProperties,
-            },
-            fields: "columnProperties",
-          },
-        },
+        columnPropertiesRequest(operation.tableId, operation.columnProperties),
       ];
     case "renameSheet":
       return [
@@ -495,15 +490,7 @@ function modeledOperationToGoogleRequests(
       ];
     case "setTableColumnProperties":
       return [
-        {
-          updateTable: {
-            table: {
-              tableId: operation.tableId,
-              columnProperties: operation.columnProperties,
-            },
-            fields: "columnProperties",
-          },
-        },
+        columnPropertiesRequest(operation.tableId, operation.columnProperties),
       ];
     case "addCheckboxValidation":
       return [
@@ -521,4 +508,16 @@ function modeledOperationToGoogleRequests(
       );
     }
   }
+}
+
+function columnPropertiesRequest(
+  tableId: string,
+  columnProperties: TableColumnPropertiesAdd[] | TableColumnPropertiesUpdate[],
+): ModeledRequest {
+  return {
+    updateTable: {
+      table: { tableId, columnProperties },
+      fields: "columnProperties",
+    },
+  };
 }
