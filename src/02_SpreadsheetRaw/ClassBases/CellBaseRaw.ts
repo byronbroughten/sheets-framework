@@ -20,10 +20,4 @@ export class CellBaseRaw extends ColumnBaseRaw {
       `cellState for ${this.rowLabel(this.rowIndex)}, column index ${this.colIndex} on sheetGid ${this.sheetGid}`,
     );
   }
-  get cellRawProps(): CellRawProps {
-    return {
-      rowIndex: this.rowIndex,
-      ...this.columnRawProps,
-    };
-  }
 }

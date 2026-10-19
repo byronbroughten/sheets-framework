@@ -17,7 +17,7 @@ export class TableColumnResolverIdentified extends TableCommonIdentified {
     return this.raw.columnIdAt(colIndex);
   }
   isTableColIndex(colIndex: number): boolean {
-    return this.raw.isTableColIndex(colIndex);
+    return this.raw.table.isTableColIndex(colIndex);
   }
   // The columnId row sits above the table, so its filter alone returns no table metadata.
   gatherDataPrerequisites({

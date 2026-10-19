@@ -11,7 +11,7 @@ export class ColumnBaseRaw extends TableBaseRaw {
   }
   // Absent until a fetch records a fact about this column.
   get columnState(): ColumnStateRaw | undefined {
-    return this.tableState.working.columnStates.get(this.colIndex);
+    return this.columnStates.get(this.colIndex);
   }
   get columnRawProps(): ColumnRawProps {
     return {

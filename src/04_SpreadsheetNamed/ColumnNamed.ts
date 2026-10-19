@@ -9,6 +9,7 @@ import type {
   EditWarningDeclaration,
 } from "../00_Source/RawSource/EditProtection";
 import type {
+  FindReplaceTerms,
   GridRangeProps,
   TableColumnType,
 } from "../00_Source/RawSource/RawSource";
@@ -25,7 +26,6 @@ import type {
   HeadRole,
   HeadRowValueName,
 } from "../01_SpreadsheetSchema/headRows";
-import type { FindReplaceTerms } from "../02_SpreadsheetRaw/ClassTypes/StateRaw";
 import type { ColumnRaw } from "../02_SpreadsheetRaw/ColumnRaw";
 import type { CellIdentified } from "../03_SpreadsheetIdentified/CellIdentified";
 import type { CellChange } from "../03_SpreadsheetIdentified/ClassTypes/StateIdentified";

@@ -15,8 +15,9 @@ import type {
   BoundedGridRange,
   CopyPasteOperation,
   FillCellOperation,
-  FindReplaceScope as BaseFindReplaceScope,
-  FindReplaceTerms as BaseFindReplaceTerms,
+  FindReplaceScope,
+  FindReplaceTerms,
+  GridRangeProps,
   InsertRangeOperation,
   LocalWriteOperation,
   RawSource,
@@ -29,7 +30,6 @@ import type {
   SheetColIndex,
   SheetRowIndex,
 } from "../../00_Source/RawSource/SheetIndex";
-import type { GridRangeProps } from "./AccessorsRaw";
 
 export interface StateRaw {
   allSheetPropertiesAreFetched: boolean;
@@ -283,8 +283,6 @@ export interface TableWriteSortProps extends SortParameters {
   action: "sort";
 }
 
-export type FindReplaceScope = BaseFindReplaceScope;
-export type FindReplaceTerms = BaseFindReplaceTerms;
 export interface FindReplaceProps extends FindReplaceTerms {
   scope: FindReplaceScope;
 }
@@ -324,7 +322,3 @@ export type RowWriteFillCellProps = {
 );
 export type RowWriteProps =
   { action: "appendRow" | "deleteRow" } | RowWriteFillCellProps;
-
-export type ColumnSpecifierRaw = ColIndex[] | "allColumns";
-export type ColumnCount = number | "allFromStart";
-export type RowCountRaw = number | "allFromStart";

@@ -17,6 +17,7 @@ import type {
 import type {
   BoundedGridRange,
   CopyPasteOperation,
+  FindReplaceTerms,
   GridBlockSnapshot,
   GridCellSnapshot,
   GridRangeProps,
@@ -36,7 +37,6 @@ import { originOf } from "./ClassBases/TableBaseRaw";
 import { TableCommonRaw } from "./ClassBases/TableCommonRaw";
 import {
   type ColumnFill,
-  type FindReplaceTerms,
   type SortParameters,
   type TableCell,
   type TableConditionalFormatRule,

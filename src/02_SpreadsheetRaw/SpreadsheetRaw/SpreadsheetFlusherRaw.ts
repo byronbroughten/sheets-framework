@@ -18,6 +18,7 @@ import type {
   SheetWriteQueueRaw,
   TableColumnInsertOperation,
   TableGrowthOperation,
+  TableStateRaw,
 } from "../ClassTypes/StateRaw";
 import { SpreadsheetRaw } from "../SpreadsheetRaw";
 import type { TableRaw } from "../TableRaw";
@@ -33,8 +34,12 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
   }
   flush(): void {
     // Before the gather, which empties the Table queues it reads.
-    const tableIdsWithColumnTypeUpdates = this._tableIdsWithColumnTypeUpdates();
-    const tableIdsWithSorts = this._tableIdsWithSorts();
+    const tableIdsWithColumnTypeUpdates = this._tableIdsWhere(
+      ({ writeQueue }) => writeQueue.table.columnTypes.size > 0,
+    );
+    const tableIdsWithSorts = this._tableIdsWhere(
+      ({ writeQueue }) => writeQueue.table.sort !== undefined,
+    );
     this._gatherWriteOperations();
     const sheetGidsWithRowDeletes = this._sheetGidsWithRowDeletes();
     const sheetGidsWithConditionalFormatMutations =
@@ -60,14 +65,9 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
     );
     if (hasFindReplace) this._invalidateFetchedCellState();
   }
-  private _tableIdsWithColumnTypeUpdates(): string[] {
+  private _tableIdsWhere(isPicked: (state: TableStateRaw) => boolean): string[] {
     return Array.from(this.tablesStateRaw.entries())
-      .filter(([, state]) => state.writeQueue.table.columnTypes.size > 0)
-      .map(([tableId]) => tableId);
-  }
-  private _tableIdsWithSorts(): string[] {
-    return Array.from(this.tablesStateRaw.entries())
-      .filter(([, state]) => state.writeQueue.table.sort !== undefined)
+      .filter(([, state]) => isPicked(state))
       .map(([tableId]) => tableId);
   }
   private _gatherWriteOperations(): void {
@@ -260,19 +260,23 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
   // Bottom Table first within a sheet, so no insert shifts a Table whose growth is still to come.
   private _appendTableRowsOperationsBottomUp(): TableGrowthOperation[] {
     return [...this.writeOperations.appendTableRows]
-      .sort(({ newRows: a }, { newRows: b }) => {
-        if (a.sheetId !== b.sheetId) return a.sheetId - b.sheetId;
-        return b.startRowIndex - a.startRowIndex;
-      })
+      .sort(
+        bySheetThenPositionDescending(({ newRows }) => ({
+          sheetId: newRows.sheetId,
+          position: newRows.startRowIndex,
+        })),
+      )
       .flatMap(({ operations }) => operations);
   }
   // Rightmost Table first within a sheet, so no insert shifts a Table whose insert is still to come.
   private _insertTableEndColumnsOperationsRightToLeft(): TableColumnInsertOperation[] {
     return [...this.writeOperations.insertTableEndColumns]
-      .sort(({ newColumns: a }, { newColumns: b }) => {
-        if (a.sheetId !== b.sheetId) return a.sheetId - b.sheetId;
-        return b.startColumnIndex - a.startColumnIndex;
-      })
+      .sort(
+        bySheetThenPositionDescending(({ newColumns }) => ({
+          sheetId: newColumns.sheetId,
+          position: newColumns.startColumnIndex,
+        })),
+      )
       .flatMap(({ operations }) => operations);
   }
   // Deletes within one batchUpdate apply sequentially and each shifts the
@@ -285,10 +289,10 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
   }
   private _deleteConditionalFormatOperationsDescending(): DeleteConditionalFormatRuleOperation[] {
     return [...this.writeOperations.deleteConditionalFormatRule].sort(
-      (a, b) => {
-        if (a.sheetId !== b.sheetId) return a.sheetId - b.sheetId;
-        return b.index - a.index;
-      },
+      bySheetThenPositionDescending(({ sheetId, index }) => ({
+        sheetId,
+        position: index,
+      })),
     );
   }
   // Scope can be allSheets, so one rule: every Table's fetched cells go stale.
@@ -297,6 +301,24 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
       this.ss.table(tableId).invalidateCellState(),
     );
   }
+}
+
+interface SheetPlace {
+  sheetId: number;
+  position: number;
+}
+
+function bySheetThenPositionDescending<OP>(
+  placeOf: (operation: OP) => SheetPlace,
+): (a: OP, b: OP) => number {
+  return (a, b) => {
+    const placeA = placeOf(a);
+    const placeB = placeOf(b);
+    if (placeA.sheetId !== placeB.sheetId) {
+      return placeA.sheetId - placeB.sheetId;
+    }
+    return placeB.position - placeA.position;
+  };
 }
 
 function gatherRowWrites(

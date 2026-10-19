@@ -41,7 +41,7 @@ export class RowRaw extends RowCommonRaw {
         `Cannot append ${this.rowLabel(this.rowIndex)} because it is already in the working view.`,
       );
     }
-    this.tableState.working.rowStates.set(this.rowIndex, new Map());
+    this.rowStates.set(this.rowIndex, new Map());
     this.queueRowWrite({ action: "appendRow" });
     this.table.growDataRowCount();
     return this;

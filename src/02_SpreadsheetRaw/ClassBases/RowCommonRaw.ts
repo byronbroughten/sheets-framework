@@ -52,9 +52,6 @@ export abstract class RowCommonRaw extends RowBaseRaw {
   hasValue(value: unknown): boolean {
     return this.workingValueArr.includes(value as CellValue);
   }
-  returnMissingValues<CV extends CellValue>(...values: CV[]): CV[] {
-    return values.filter((value) => !this.workingValueArr.includes(value));
-  }
   remove(): void {
     this.rowStates.delete(this.rowIndex);
   }
