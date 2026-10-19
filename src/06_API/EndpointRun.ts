@@ -54,6 +54,11 @@ interface RunStateProps {
   message?: string;
 }
 
+interface FeedbackChange<TN extends TableNameSimple> {
+  columnName: FeedbackColumnName<TN> | undefined;
+  change: CellChange<"string">;
+}
+
 export interface EndpointRunProps<
   TN extends TableNameSimple,
 > extends TableNamedProps<TN> {
@@ -119,17 +124,22 @@ export class EndpointRun<
       columnName,
     });
   }
+  private _selectorColumn():
+    | CheckboxColumnOperator<TN, CheckboxColumnName<TN>>
+    | undefined {
+    const { selector } = this.endpoint;
+    if (!selector) return undefined;
+    return this._checkboxColumn(selector.column);
+  }
   // Prepped rather than fetched, so the selection rides the cycle already running.
   private _prepSelectorFetch(): void {
-    const { selector } = this.endpoint;
-    if (!selector) return;
-    this._checkboxColumn(selector.column).column.prepFetchFull();
+    this._selectorColumn()?.column.prepFetchFull();
   }
   // No selector means every data row that holds data; a blank row is no record.
   private _selectedRowIndexes(): number[] {
-    const { selector } = this.endpoint;
-    if (!selector) return this.table.rowIndexesFullWithData;
-    return this._checkboxColumn(selector.column).rowIndexesChecked;
+    const selectorColumn = this._selectorColumn();
+    if (!selectorColumn) return this.table.rowIndexesFullWithData;
+    return selectorColumn.rowIndexesChecked;
   }
   // The entry cell is a button unless the endpoint also runs on unticking.
   private _resetEntryCheckbox(): void {
@@ -160,9 +170,8 @@ export class EndpointRun<
   }
   // Inside the run's `try`, so an action that throws has its clearing discarded too.
   private _clearSelection(): void {
-    const { selector } = this.endpoint;
-    if (!selector || selector.retainSelection) return;
-    this._checkboxColumn(selector.column).uncheckWorkingCells();
+    if (this.endpoint.selector?.retainSelection) return;
+    this._selectorColumn()?.uncheckWorkingCells();
   }
   // A string is a success with that message, and nothing at all is a bare success.
   private _applyActionReport(report: ActionReturn): void {
@@ -177,21 +186,34 @@ export class EndpointRun<
       this._applyRowReport(rowIndex, rowReport);
     });
   }
-  // The timestamp is written once at setup; a state change only recolours it.
   private _applyRunState(
     stateName: RunStateName,
-    { startTime, message }: RunStateProps = {},
+    props: RunStateProps = {},
   ): void {
+    this._feedbackChanges(stateName, props).forEach(({ columnName, change }) => {
+      this._fillFeedbackColumn(columnName, change);
+    });
+  }
+  // The timestamp is written once at setup; a state change only recolours it.
+  private _feedbackChanges(
+    stateName: RunStateName,
+    { startTime, message }: RunStateProps,
+  ): FeedbackChange<TN>[] {
     const state = runStates[stateName];
     const { timeLastRan, runStatus } = this.endpoint;
-    this._fillFeedbackColumn(timeLastRan, {
-      value: startTime,
-      backgroundColor: state.backgroundColor,
-    });
-    this._fillFeedbackColumn(runStatus, {
-      value: message ?? state.message,
-      backgroundColor: state.backgroundColor,
-    });
+    return [
+      {
+        columnName: timeLastRan,
+        change: { value: startTime, backgroundColor: state.backgroundColor },
+      },
+      {
+        columnName: runStatus,
+        change: {
+          value: message ?? state.message,
+          backgroundColor: state.backgroundColor,
+        },
+      },
+    ];
   }
   private _fillFeedbackColumn(
     columnName: FeedbackColumnName<TN> | undefined,
@@ -209,14 +231,10 @@ export class EndpointRun<
   // Per-cell and queued after the run-level fill, so it lands on top of it.
   private _applyRowReport(rowIndex: number, report: RunReport): void {
     this._validateIsDataRow(rowIndex);
-    const state = runStates[report.runState ?? "success"];
-    const { timeLastRan, runStatus } = this.endpoint;
-    this._updateFeedbackCell(timeLastRan, rowIndex, {
-      backgroundColor: state.backgroundColor,
-    });
-    this._updateFeedbackCell(runStatus, rowIndex, {
-      value: report.message ?? state.message,
-      backgroundColor: state.backgroundColor,
+    this._feedbackChanges(report.runState ?? "success", {
+      message: report.message,
+    }).forEach(({ columnName, change }) => {
+      this._updateFeedbackCell(columnName, rowIndex, change);
     });
   }
   // A key outside the data rows is a reporting bug, and would write somewhere surprising.

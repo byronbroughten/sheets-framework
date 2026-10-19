@@ -1,7 +1,6 @@
 import { Val } from "@byronbroughten/utils/val";
 
 import { TableSchema } from "../../01_SpreadsheetSchema/configReaders/TableSchema";
-import { TableBaseRaw } from "../../02_SpreadsheetRaw/ClassBases/TableBaseRaw";
 import { SheetRaw } from "../../02_SpreadsheetRaw/SheetRaw";
 import {
   emptyTableStateIdentified,
@@ -49,13 +48,6 @@ export class TableBaseIdentified extends SpreadsheetBaseIdentified {
       tableId: this.tableId,
       sheetGid: this.sheetGid,
     };
-  }
-  private get rawTable(): TableBaseRaw {
-    return new TableBaseRaw({
-      ...this.spreadsheetRawProps,
-      tableId: this.tableId,
-      sheetGid: this.sheetGid,
-    });
   }
   private get rawSheet(): SheetRaw {
     return new SheetRaw({

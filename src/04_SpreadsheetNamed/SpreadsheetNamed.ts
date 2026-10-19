@@ -74,12 +74,6 @@ export class SpreadsheetNamed extends SpreadsheetBaseNamed {
     }
     return undefined;
   }
-  get activeSheetNames(): TableName[] {
-    return this.identified.activeSheets.map((sheet) => sheet.tableName);
-  }
-  get activeSheets(): TableNamed<TableName>[] {
-    return this.activeSheetNames.map((tableName) => this.table(tableName));
-  }
   fetchAllPrepped(props: GatherDataPrerequisitesProps = {}): SpreadsheetNamed {
     this.identified.fetchAllPrepped(props);
     return this;
@@ -88,7 +82,7 @@ export class SpreadsheetNamed extends SpreadsheetBaseNamed {
     ...props: FetchPropsNamed<TN>[]
   ): NamedSheets<TN> {
     const standardizedProps = this._standardizeProps(props);
-    this._prepFetchStandardizedProps(standardizedProps);
+    standardizedProps.forEach((props) => this._prepFetchStandardProps(props));
     this.fetchAllPrepped();
     const sheetNames = sheetNamesFromReqProps(standardizedProps);
     return this.tables(...sheetNames);
@@ -98,11 +92,8 @@ export class SpreadsheetNamed extends SpreadsheetBaseNamed {
   ): FetchPropsStandardNamed<TN>[] {
     return propsArr.map((props) => {
       const { rowSpecifier } = props;
-      const columnSpecifiers = this._standardizeColumnSpecifiers(props);
-      return {
-        rowSpecifier,
-        sheetColumnNames: columnSpecifiers,
-      };
+      const sheetColumnNames = this._standardizeColumnSpecifiers(props);
+      return { rowSpecifier, sheetColumnNames };
     });
   }
 
@@ -147,11 +138,6 @@ export class SpreadsheetNamed extends SpreadsheetBaseNamed {
       return acc;
     }, {} as SheetColumnNamesStandard<TN>);
   }
-  private _prepFetchStandardizedProps(
-    propsArr: FetchPropsStandardNamed<TableName>[],
-  ): void {
-    propsArr.forEach((props) => this._prepFetchStandardProps(props));
-  }
   private _prepFetchStandardProps({
     rowSpecifier,
     sheetColumnNames,
@@ -163,12 +149,12 @@ export class SpreadsheetNamed extends SpreadsheetBaseNamed {
         sheetColumnNames[tableName],
         `sheetColumnNames[${tableName}]`,
       );
-      const namedSheet = this.table(tableName);
-      const identifiedSheet = namedSheet.identified;
+      const table = this.table(tableName);
+      const identifiedTable = table.identified;
       columnNames.forEach((columnName) => {
-        const columnId = namedSheet.schema.columnByName(columnName).columnId;
+        const columnId = table.schema.columnByName(columnName).columnId;
         specifiers.forEach((specifier) => {
-          prepFetchRowSpecifier(identifiedSheet, specifier, columnId);
+          prepFetchRowSpecifier(identifiedTable, specifier, columnId);
         });
       });
     });
@@ -231,14 +217,13 @@ function sheetNamesFromReqProps<TN extends TableName>(
 }
 
 function prepFetchRowSpecifier(
-  sheet: TableIdentified,
+  table: TableIdentified,
   rowSpecifier: RowSpecifierName,
   columnId: string,
 ): void {
-  const schema = sheet.schema;
-  const column = sheet.column(columnId);
+  const schema = table.schema;
+  const column = table.column(columnId);
   switch (rowSpecifier) {
-    case "workingRows":
     case "data":
       column.prepFetchFull();
       break;
@@ -256,7 +241,7 @@ function prepFetchRowSpecifier(
       break;
     case "all":
       (["headers", "actions", "columnIds", "data"] as const).forEach(
-        (specifier) => prepFetchRowSpecifier(sheet, specifier, columnId),
+        (specifier) => prepFetchRowSpecifier(table, specifier, columnId),
       );
       break;
     default:

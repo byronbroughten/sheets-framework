@@ -50,11 +50,9 @@ export interface FetchPropsStandardNamed<TN extends TableName = TableName> {
 }
 
 type RowSpecifier = RowSpecifierName | RowSpecifierName[];
-export type RowSpecifierBySchemaName = Exclude<RowSpecifierName, "workingRows">;
 
 export const rowSpecifierNames = [
   "all",
-  "workingRows",
   "data",
   "topDatum",
   "actions",
@@ -62,12 +60,6 @@ export const rowSpecifierNames = [
   "headers",
 ] as const;
 export type RowSpecifierName = (typeof rowSpecifierNames)[number];
-export function isRowName(value: unknown): value is RowSpecifierName {
-  return (
-    typeof value === "string" &&
-    rowSpecifierNames.includes(value as RowSpecifierName)
-  );
-}
 
 export type ColumnSpecifierNamed<TN extends TableName> =
   ColumnName<TN> | ColumnName<TN>[] | "allColumns";

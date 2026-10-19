@@ -10,8 +10,7 @@ import type {
   SheetDataValuesNotEmpty,
 } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
 import type { TableName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
-import type { Value, ValueName } from "../01_SpreadsheetSchema/configReaders/valueSchemas";
-import { RowRaw } from "../02_SpreadsheetRaw/RowRaw";
+import type { RowRaw } from "../02_SpreadsheetRaw/RowRaw";
 import { RowIdentified } from "../03_SpreadsheetIdentified/RowIdentified";
 import { blankColumnsMessage, type CellNamed } from "./CellNamed";
 import { RowBaseNamed } from "./ClassBases/RowBaseNamed";
@@ -28,16 +27,10 @@ export class RowNamed<TN extends TableName> extends RowBaseNamed<TN> {
     });
   }
   get raw(): RowRaw {
-    return new RowRaw({
-      ...this.table.raw.tableRawProps,
-      rowIndex: this.rowIndex,
-    });
+    return this.identified.raw;
   }
   cell<CN extends ColumnName<TN>>(columnName: CN): CellNamed<TN, CN> {
     return this.table.column(columnName).cell(this.rowIndex);
-  }
-  cellInWorking<CN extends ColumnName<TN>>(columnName: CN): boolean {
-    return this.cell(columnName).inWorking;
   }
   valueOrEmpty<CN extends ColumnName<TN>>(columnName: CN): ColumnValue<TN, CN> {
     return this.cell(columnName).valueOrEmpty();
@@ -97,10 +90,6 @@ export class RowNamed<TN extends TableName> extends RowBaseNamed<TN> {
     );
     return this;
   }
-  updateCellToDefault(columnName: ColumnName<TN>): RowNamed<TN> {
-    this.cell(columnName).updateToDefault();
-    return this;
-  }
   updateValue<CN extends ColumnName<TN>>(
     columnName: CN,
     value: ColumnValue<TN, CN>,
@@ -118,16 +107,8 @@ export class RowNamed<TN extends TableName> extends RowBaseNamed<TN> {
   delete(): void {
     this.identified.delete();
   }
-  setValueType<CN extends ColumnName<TN>>(
-    columnName: CN,
-    valueName: ValueName,
-    value: Value,
-  ): RowNamed<TN> {
-    this.cell(columnName).setValueType(valueName, value);
-    return this;
-  }
-  updateValues(sectionValues: Partial<SheetDataValues<TN>>): RowNamed<TN> {
-    Obj.entries(sectionValues).forEach(([columnName, value]) => {
+  updateValues(values: Partial<SheetDataValues<TN>>): RowNamed<TN> {
+    Obj.entries(values).forEach(([columnName, value]) => {
       this.updateValue(columnName, value as ColumnValue<TN, typeof columnName>);
     });
     return this;

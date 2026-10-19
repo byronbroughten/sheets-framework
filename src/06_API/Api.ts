@@ -48,10 +48,7 @@ export class Api extends SpreadsheetBaseNamed {
     installSource();
     Api.init(endpoints).handleSheetEdit(edit);
   }
-  get schema(): SpreadsheetSchema {
-    return new SpreadsheetSchema();
-  }
-  get ssi(): SpreadsheetIdentified {
+  get identified(): SpreadsheetIdentified {
     return new SpreadsheetIdentified(this.spreadsheetIdentifiedProps);
   }
   static isSuspectedApiCall(edit: SheetEdit): boolean {
@@ -61,7 +58,7 @@ export class Api extends SpreadsheetBaseNamed {
     );
   }
   handleSheetEdit(edit: SheetEdit): void {
-    const table = this.ssi.fetchTableWithActionCell(edit);
+    const table = this.identified.fetchTableWithActionCell(edit);
     if (table === undefined) {
       return;
     }

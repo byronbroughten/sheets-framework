@@ -52,12 +52,6 @@ export class ColumnIdentified<
   get workingCellIndexes(): number[] {
     return this.raw.workingCellIndexes;
   }
-  get cellIndexesFull(): number[] {
-    return this.raw.cellIndexesFull;
-  }
-  get cellsFull(): CellIdentified<VN>[] {
-    return this.cellIndexesFull.map((rowIndex) => this.cell(rowIndex));
-  }
   headCell<HR extends HeadRole>(
     headRole: HR,
   ): CellIdentified<HeadRowValueName<HR>> {
@@ -119,11 +113,6 @@ export class ColumnIdentified<
   }
   workingCellsToDefault(): void {
     this.workingCells.forEach((cell) => {
-      cell.updateToDefault();
-    });
-  }
-  allCellsToDefault(): void {
-    this.cellsFull.forEach((cell) => {
       cell.updateToDefault();
     });
   }

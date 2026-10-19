@@ -99,32 +99,21 @@ export class TableNamed<
   prepFetchColumnsFull<CS extends readonly ColumnName<TN>[]>(
     ...columnNames: CS
   ): { [K in CS[number]]: ColumnNamed<TN, K> } {
-    const columns = {} as { [K in CS[number]]: ColumnNamed<TN, K> };
-    columnNames.forEach((columnName) => {
-      columns[columnName] = this.column(columnName).prepFetchFull();
-    });
+    const columns = this.columns(...columnNames);
+    Obj.values(columns).forEach((column) => column.prepFetchFull());
     return columns;
   }
   prepFetchColumnsSpecific<CS extends readonly ColumnName<TN>[]>(
     rowIndexes: number[],
     ...columnNames: CS
   ): { [K in CS[number]]: ColumnNamed<TN, K> } {
-    const columns = {} as { [K in CS[number]]: ColumnNamed<TN, K> };
-    columnNames.forEach((columnName) => {
-      columns[columnName] =
-        this.column(columnName).prepFetchSpecific(rowIndexes);
-    });
+    const columns = this.columns(...columnNames);
+    Obj.values(columns).forEach((column) =>
+      column.prepFetchSpecific(rowIndexes),
+    );
     return columns;
   }
-  prepFetchColumnsWorking<CS extends readonly ColumnName<TN>[]>(
-    ...columnNames: CS
-  ): { [K in CS[number]]: ColumnNamed<TN, K> } {
-    return this.prepFetchColumnsSpecific(
-      this.workingRowIndexes,
-      ...columnNames,
-    );
-  }
-  sortRowsbyColumnName(
+  sortRowsByColumnName(
     rows: RowNamed<TN>[],
     columnName: ColumnName<TN>,
   ): RowNamed<TN>[] {
@@ -162,9 +151,6 @@ export class TableNamed<
     this.identified.removeEditProtections();
     return this;
   }
-  anchoredA1(columnName: ColumnName<TN>): string {
-    return this.column(columnName).anchoredA1();
-  }
   rowsFiltered(values: Partial<SheetDataValues<TN>>): RowNamed<TN>[] {
     return this.rows.filter((row) =>
       Obj.keys(values).every(
@@ -176,9 +162,9 @@ export class TableNamed<
     columnName: CN,
     value: ColumnValue<TN, CN>,
   ): RowNamed<TN> {
-    const rows = this.rows.filter(
-      (row) => row.valueOrEmpty(columnName) === value,
-    );
+    const values: Partial<SheetDataValues<TN>> = {};
+    values[columnName] = value;
+    const rows = this.rowsFiltered(values);
     if (rows.length !== 1) {
       throw new Error(
         `Expected 1 row of "${this.tableName}" to have a "${columnName}" of "${value}", but ${rows.length} did.`,
