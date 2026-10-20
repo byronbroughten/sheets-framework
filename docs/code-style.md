@@ -71,6 +71,10 @@ One line per rule. The reasoning and worked examples are one file away. Open a r
 
 - **`for…in` appears only in `@byronbroughten/utils`**, where the structural utilities live.
 
+## Smells
+
+- **The caller-less public member exception applies from `03_SpreadsheetIdentified` up, and in `chores/`**: in `00_Source`, `01_SpreadsheetSchema` and `02_SpreadsheetRaw` a public member with no callers is flagged as usual.
+
 ## Tests
 
 - **A test imports only from its own tier and below.**
