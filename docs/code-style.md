@@ -21,7 +21,7 @@ One line per rule. The reasoning and worked examples are one file away. Open a r
 - **Coordinating other stateful objects means a coordinator class extending the tier's Base class.** Callers build one with `init`; it builds its collaborators with `new` from props on `this`, as lazy getters. Endpoints are exempt until a body turns unwieldy.
 - **An Operator extends its subject's `*BaseNamed` and reaches the subject through a getter**, never by extending the concrete class or taking one as a constructor argument.
 - **What an Operator holds as props is its identity; a per-run value is an argument to the method that needs it.**
-- **Split a coordinator into collaborators when its private helpers fall into groups that share nothing with each other**, not when it passes a method count. The coordinator keeps its public methods as one-line delegations, and the collaborators go in a subfolder named after it.
+- **A coordinator splits into collaborators by the general style doc's rule.**
   - **Collaborators get no tests of their own** and reach the coordinator's shared surface through a getter. A base class stays in `ClassBases/`.
 - **A composition of collaborator calls that answers one domain question belongs on the collaborator**, under its own name. A parameter that its only caller already holds as its own state means the query belongs on the instance.
 - **A member that samples the top data row for a column-wide fact belongs on the column profile.** `topCell`/`topRow` stay on the column and Table.
