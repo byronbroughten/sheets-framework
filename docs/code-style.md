@@ -22,7 +22,7 @@ One line per rule. The reasoning and worked examples are one file away. Open a r
 - **An Operator extends its subject's `*BaseNamed` and reaches the subject through a getter**, never by extending the concrete class or taking one as a constructor argument.
 - **What an Operator holds as props is its identity; a per-run value is an argument to the method that needs it.**
 - **A coordinator splits into collaborators by the general style doc's rule.**
-  - **Collaborators get no tests of their own** and reach the coordinator's shared surface through a getter. A base class stays in `ClassBases/`.
+  - **Collaborators get no tests of their own.** Shared state held on the coordinator, not on a Base, is reached through a getter named for it, the one upward reference the general layering rule allows. A base class stays in `ClassBases/`.
 - **A composition of collaborator calls that answers one domain question belongs on the collaborator**, under its own name. A parameter that its only caller already holds as its own state means the query belongs on the instance.
 - **A member that samples the top data row for a column-wide fact belongs on the column profile.** `topCell`/`topRow` stay on the column and Table.
 
@@ -33,7 +33,7 @@ One line per rule. The reasoning and worked examples are one file away. Open a r
 - **A sheet takes the unmarked name and a row is marked with a spelled-out `Row` suffix.**
 - **Google's API names stay at the wire; framework names follow the glossary.**
 - **A method that deletes more than one row takes a `SHOUTING_SNAKE_CASE` name**, and keeps it once a guard makes the operation safe.
-- **A collaborator is named `<Subject><Role><Tier>`, the role the agent noun of a verb on the list below.** A job with no verb on the list gets a plain descriptive noun, never "Handler" or "Manager".
+- **A collaborator is named by the general style doc's `<Subject><Role>` clause, with the tier word last: `<Subject><Role><Tier>`**, the role the agent noun of a verb on the list below. A job with no verb on the list gets a plain descriptive noun, never "Handler" or "Manager".
 - **Method names draw from one controlled verb vocabulary** — don't invent a new verb for a meaning already on this list:
   - `fetch` — actually hits the live Sheets API
   - `integrate` — merges a fetched snapshot into local state; no API call
