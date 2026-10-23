@@ -19,8 +19,6 @@ One line per principle. Each principle's argument and instances are one file awa
 | A gap that looks like an oversight | [`docs/design/deliberate-absence.md`](./design/deliberate-absence.md) |
 | Adding a column to a config sheet | [`docs/design/config-sheet-columns.md`](./design/config-sheet-columns.md) |
 | Declaring a shape in code or reading it from the sheet | [`docs/design/structure-vs-identity.md`](./design/structure-vs-identity.md) |
-| A decision a principle could cite | [`docs/adr/`](./adr/) |
-
 ## Principles
 
 - **Make disagreement structurally impossible rather than validating against it.** When two pieces of state can contradict each other, choose a shape where the contradiction is unrepresentable, not a check that catches it after the fact.
