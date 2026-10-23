@@ -14,6 +14,10 @@ One line per term. The elaboration is one file away. Open a reasoning file only 
 | Profile, sampled facts, which class a member belongs to, Working, head rows | [`docs/vocabulary/profile.md`](./vocabulary/profile.md) |
 | Schema, blank cells, `value` / `valueOrEmpty` / `valueNotEmpty`, checkbox, `SerialDate`, `emptyValueAllowed` | [`docs/vocabulary/values.md`](./vocabulary/values.md) |
 
+## Packages
+
+- **A library package is one whose public interface is meant for code it doesn't know about**: the framework and `@byronbroughten/utils`.
+
 ## Tiers
 
 - **Source** is the tier below everything that knows this spreadsheet: the `RawSource` port, the platform module (`GoogleSheets/`), and the cell values that cross the port.
