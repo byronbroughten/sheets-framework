@@ -8,7 +8,7 @@ Intuition about cost and intuition about types are both unreliable here, and bot
 
 ## Instances: performance
 
-`SpreadsheetApp` "should" be cheaper inside a trigger that already has the sheet open. Measured, it is slower — each call is its own round trip (`docs/architecture/round-trips.md`). Grouping every value name up front "should" beat re-deriving per use; measured, eager cost ~390k instantiations against ~48k per lazy use (`docs/architecture/type-check-cost.md`).
+`SpreadsheetApp` "should" be cheaper inside a trigger that already has the sheet open. Measured, it is slower — each call is its own round trip (`docs/architecture/round-trips.md`). Grouping every value name up front "should" beat re-deriving per use; measured, eager cost ~390k instantiations against ~48k per lazy use (`docs/architecture/type-check-cost.md`). [ADR 0007](../adr/0007-key-an-endpoint-by-the-column-that-fires-it-and-tie-its-columns-to-that-sheet.md) measured its per-key sheet correlation before choosing it, and records the number.
 
 ## Instances: types
 
