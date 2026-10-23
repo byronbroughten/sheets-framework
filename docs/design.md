@@ -39,9 +39,9 @@ One line per principle. Each principle's argument and instances are one file awa
 
 Decisions are ADRs in [`docs/adr/`](./adr/); the issue and commit citations in the reasoning files predate them and await migration.
 
-- **Every principle cites at least two ADRs from this repo.** A principle with fewer is a platitude.
+- **Every principle cites at least two ADRs from this repo**, or from real-estate under the last rule. A principle with fewer is a platitude.
 - **A new ADR that makes a principle's argument goes in that principle's reasoning file**, as a link plus one clause on how it makes the argument.
 - **A new principle is proposed to the developer and added only once approved**, as one line here plus one reasoning file in `docs/design/`.
 - **A superseded ADR stops counting.** A principle it leaves with fewer than two goes to the developer.
 - **Each bullet under the deliberate-absence principle names the gap and its reason.**
-- **A real-estate ADR may be cited, as an absolute GitHub URL because these docs are published**, and counts only when its argument is framework-general.
+- **A real-estate ADR may be cited, as an absolute GitHub URL because these docs are published**, and counts toward the two only when its argument is framework-general.
