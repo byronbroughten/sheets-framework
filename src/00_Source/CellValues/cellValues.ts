@@ -18,4 +18,3 @@ export type NotEmpty<VL> = Exclude<VL, "">;
 
 export const codebaseNameDelimiter = "_";
 export type CodebaseNameDelimiter = typeof codebaseNameDelimiter;
-

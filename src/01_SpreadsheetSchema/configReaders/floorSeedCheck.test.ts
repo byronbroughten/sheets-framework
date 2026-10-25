@@ -115,8 +115,7 @@ describe("assertFloorMatchesSeed", () => {
     const configs = floorColumnConfigs();
     floorColumn(configs, "tableConfig", "sheetTitle").customDefaultValue =
       "Untitled";
-    floorColumn(configs, "columnConfig", "tableName").customDefaultValue =
-      null;
+    floorColumn(configs, "columnConfig", "tableName").customDefaultValue = null;
 
     expect(() => assertFloorMatchesSeed(tableConfigs, configs)).not.toThrow();
   });

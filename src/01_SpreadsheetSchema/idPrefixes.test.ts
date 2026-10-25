@@ -14,11 +14,14 @@ describe("idPrefixes.fromTitle", () => {
   });
 
   it("gives one prefix for sentence, title, snake and camel spellings", () => {
-    ["add occ charge", "Add Occ Charge", "add_occ_charge", "addOccCharge"].forEach(
-      (spelling) => {
-        expect(idPrefixes.fromTitle(spelling, new Set())).toBe("aoc");
-      },
-    );
+    [
+      "add occ charge",
+      "Add Occ Charge",
+      "add_occ_charge",
+      "addOccCharge",
+    ].forEach((spelling) => {
+      expect(idPrefixes.fromTitle(spelling, new Set())).toBe("aoc");
+    });
   });
 
   it("keeps a title shorter than 3 consonants", () => {

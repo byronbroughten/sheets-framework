@@ -95,7 +95,10 @@ function cellRunGridRange(run: CellRun): GoogleGridRange {
   };
 }
 
-function formulaPasteDataRequest(run: CellRun, formula: string): ModeledRequest {
+function formulaPasteDataRequest(
+  run: CellRun,
+  formula: string,
+): ModeledRequest {
   const field = `"${formula.replaceAll('"', '""')}"`;
   return {
     pasteData: {

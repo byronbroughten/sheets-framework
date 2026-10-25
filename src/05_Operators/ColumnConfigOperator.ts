@@ -95,7 +95,10 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
     return {
       ...sourceColumn,
       valueName: valueSourceName({
-        tableKey: Val.assert(tableKeysByTableId.get(tableId), "source Table key"),
+        tableKey: Val.assert(
+          tableKeysByTableId.get(tableId),
+          "source Table key",
+        ),
         reference: { tableName: this.ss.raw.table(tableId).name, header },
       }),
     };
@@ -106,7 +109,8 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
     const reference = describedColumn.validationColumnReference();
     if (reference === undefined || describedColumn.isIdColumn) return undefined;
     const tableId = [...this.tableIdsApiAccesses].find(
-      (apiTableId) => this.ss.raw.table(apiTableId).name === reference.tableName,
+      (apiTableId) =>
+        this.ss.raw.table(apiTableId).name === reference.tableName,
     );
     if (tableId === undefined) return undefined;
     if (!this.ss.raw.table(tableId).profile.hasHeader(reference.header)) {

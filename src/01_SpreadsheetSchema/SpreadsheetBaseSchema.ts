@@ -11,7 +11,6 @@ import type {
 import { headRows } from "./headRows";
 import { tableLayout } from "./tableLayout";
 
-
 export class SpreadsheetBaseSchema {
   combineNames<SA extends string, SB extends string>(
     name1: SA,

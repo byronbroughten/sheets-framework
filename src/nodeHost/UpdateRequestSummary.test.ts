@@ -149,12 +149,10 @@ describe("UpdateRequestSummary.lines", () => {
       endColumnIndex: 3,
     };
 
-    expect(
-      [
-        onlyLine({ insertRange: { range, shiftDimension: "ROWS" } }),
-        onlyLine({ deleteRange: { range, shiftDimension: "COLUMNS" } }),
-      ],
-    ).toEqual([
+    expect([
+      onlyLine({ insertRange: { range, shiftDimension: "ROWS" } }),
+      onlyLine({ deleteRange: { range, shiftDimension: "COLUMNS" } }),
+    ]).toEqual([
       "insertRange item!A7:C8 insert 2 rows",
       "deleteRange item!A7:C8 delete 3 columns",
     ]);
