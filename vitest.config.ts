@@ -1,4 +1,7 @@
-import { defineConfig, type TestProjectInlineConfiguration } from "vitest/config";
+import {
+  defineConfig,
+  type TestProjectInlineConfiguration,
+} from "vitest/config";
 
 // Exported so a workspace root can run them in its own vitest run; vitest never expands a nested project's projects.
 export const frameworkProjects: TestProjectInlineConfiguration[] = [

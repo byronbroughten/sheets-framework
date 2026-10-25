@@ -1,5 +1,9 @@
 import { lazy } from "@byronbroughten/utils/lazy";
-import { type FlattenTwoLevels, type KeyedMap, Obj } from "@byronbroughten/utils/obj";
+import {
+  type FlattenTwoLevels,
+  type KeyedMap,
+  Obj,
+} from "@byronbroughten/utils/obj";
 import { Val } from "@byronbroughten/utils/val";
 
 import type {

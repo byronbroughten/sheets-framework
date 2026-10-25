@@ -1,8 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { assertNotType, type IsExactly } from "../../testSupport/typeAssertions";
+import {
+  assertNotType,
+  type IsExactly,
+} from "../../testSupport/typeAssertions";
 import type { FillCellOperation, GridRangeProps } from "./RawSource";
-import { type SheetColIndex, SheetIndex, type SheetRowIndex } from "./SheetIndex";
+import {
+  type SheetColIndex,
+  SheetIndex,
+  type SheetRowIndex,
+} from "./SheetIndex";
 
 describe("SheetIndex", () => {
   it("brands a sheet row and column apart from a plain, Table-relative number", () => {
@@ -35,6 +42,8 @@ describe("SheetIndex", () => {
 
   it("refuses a negative or fractional index", () => {
     expect(() => SheetIndex.row(-1)).toThrow("-1 is not a sheet row index");
-    expect(() => SheetIndex.col(1.5)).toThrow("1.5 is not a sheet column index");
+    expect(() => SheetIndex.col(1.5)).toThrow(
+      "1.5 is not a sheet column index",
+    );
   });
 });

@@ -68,6 +68,9 @@ export class SpreadsheetBaseOperator extends SpreadsheetBaseNamed {
   }
 }
 
-export function sourceLabel({ tableName, header }: TableColumnReference): string {
+export function sourceLabel({
+  tableName,
+  header,
+}: TableColumnReference): string {
   return `"${tableName}[${header}]"`;
 }

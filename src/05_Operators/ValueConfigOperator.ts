@@ -36,7 +36,8 @@ export class ValueConfigOperator extends SpreadsheetBaseOperator {
   }
   fetchAfterColumnConfigSynced(): void {
     this.columnConfigOperator.assertSyncedToSpreadsheet();
-    this.valueConfigSync.valueSources = this.columnConfigOperator.valueSources();
+    this.valueConfigSync.valueSources =
+      this.columnConfigOperator.valueSources();
     this.valueSources
       .filter((source) => !isLiveReference(source))
       .forEach((source) => {
@@ -78,7 +79,10 @@ export class ValueConfigOperator extends SpreadsheetBaseOperator {
       return typedMember({
         value,
         memberType: memberTypes[declaredValueTitle],
-        label: sourceLabel({ tableName: column.table.name, header: source.header }),
+        label: sourceLabel({
+          tableName: column.table.name,
+          header: source.header,
+        }),
       });
     });
     return [...new Set(members)];

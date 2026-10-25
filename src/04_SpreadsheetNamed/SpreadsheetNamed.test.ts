@@ -449,9 +449,7 @@ describe("Named value accessors", () => {
   it("throws once from RowNamed.values, naming only the blank columns whose box is unticked", () => {
     const row = fetchedDatesSheet().row(blankRowIndex);
 
-    expect(() =>
-      row.values("id", "requiredDate", "optionalDate"),
-    ).toThrowError(
+    expect(() => row.values("id", "requiredDate", "optionalDate")).toThrowError(
       'Columns "id", "requiredDate" of sheet "dates" are empty in row 6.',
     );
   });
@@ -475,9 +473,7 @@ describe("Named value accessors", () => {
     expect(row.valuesNotEmpty("requiredDate", "optionalDate")).toEqual(
       expected,
     );
-    expect(row.valuesOrEmpty("requiredDate", "optionalDate")).toEqual(
-      expected,
-    );
+    expect(row.valuesOrEmpty("requiredDate", "optionalDate")).toEqual(expected);
   });
 
   it("types each multi-column read's result by column, keeping only the named columns", () => {
