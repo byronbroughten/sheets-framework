@@ -3,7 +3,7 @@
 Map fragment. Sibling headings live in this folder.
 
 
-A **chore** is a unit of work run from the terminal against the live spreadsheet — the permanent home for the jobs that used to be improvised one route at a time. Every one-off against the live sheet is a chore: not a scratch function in `src/index.ts`, not an ad-hoc Sheets client in `scripts/`, not a deploy-to-run. Raw Sheets JSON comes from `sheets-framework probe`. The chore runner and its dry run are documented in [`how-it-runs.md`](../how-it-runs.md); this is where one goes.
+A **chore** is a unit of work run from the terminal against the live spreadsheet, as against an endpoint, which an operator runs from the sheet by ticking a checkbox — the permanent home for the jobs that used to be improvised one route at a time. Every one-off against the live sheet is a chore: not a scratch function in `src/index.ts`, not an ad-hoc Sheets client in `scripts/`, not a deploy-to-run. Raw Sheets JSON comes from `sheets-framework probe`. The chore runner and its dry run are documented in [`how-it-runs.md`](../how-it-runs.md); this is where one goes.
 
 **One typed exported const per file, named after its file**, mirroring how an endpoint entry is written: a short `description` the runner prints, and an `action` that receives the spreadsheet and the run (`ChoreRun`: the spreadsheet ID the runner bound it to). The description is what makes a durable chore legible a year later. `Chore.ts` holds the type.
 

@@ -2,7 +2,7 @@
 
 Read the heading the task needs.
 
-**The framework runs in two hosts, and only one of them is production**: Apps Script, pushed with `clasp`, and the Node host behind the chore runner and `gen-configs`, which reaches Sheets and nothing else. Every tooling command runs through the `sheets-framework` bin against the spreadsheet in its package's `sheets.config.json` ("The sheets-framework bin").
+**The framework runs in two hosts, and only one of them is production**: Apps Script, pushed with `clasp`, and the Node host behind the chore runner, `gen-configs` and `probe`. Every tooling command runs through the `sheets-framework` bin against the spreadsheet in its package's `sheets.config.json` ("The sheets-framework bin").
 
 ## Apps Script is the production host
 
@@ -27,11 +27,11 @@ Read the heading the task needs.
 
 ## The Node host
 
-The Node host is the second one (the framework's `src/nodeHost/`, launched by its `scripts/nodeHost.ts`). Spreadsheet I/O is six `RawSource` methods — fetch sheet properties, fetch the time zone, fetch grid ranges, fetch conditional format rules, fetch edit protections, apply the queued write list — none of which names a spreadsheet: the adapter is bound to one when it is constructed. `GoogleSheetsAPI` maps those onto the three Advanced Service verbs and, in Node, an HTTP transport. `NodeHost.ensureGlobals()` installs a `Logger` onto the global scope, installs configs and endpoints as the Apps Script entry call does, and injects `GoogleSheetsAPI`, bound to the configured spreadsheet ID, as the `RawSource`. The chore runner imports the package's configs and endpoint module before the host starts and the chore after, so only a chore module may read those globals as it loads. There is no `PropertiesService` stub. It does **not** install a `Sheets` global, so a chore that reaches for `Sheets` or `SpreadsheetApp` still fails by name. Two commands use it: `sheets-framework chore <name>` and `sheets-framework gen-configs`. A chore gets the three config files in its package's `generatedDir`, passed to the same `installConfigs` the entry call uses, so a chore run from the framework package runs on its `dev/generated/`. `gen-configs` installs the package's own configs too, or the framework's dev ones (`dev/generated/appConfigs.ts`) when the package has none yet, since it reads only the config floor, which every package shares.
+The Node host is the second one (the framework's `src/nodeHost/`, launched by its `scripts/nodeHost.ts`). Spreadsheet I/O is six `RawSource` methods — fetch sheet properties, fetch the time zone, fetch grid ranges, fetch conditional format rules, fetch edit protections, apply the queued write list — none of which names a spreadsheet: the adapter is bound to one when it is constructed. `GoogleSheetsAPI` maps those onto the three Advanced Service verbs and, in Node, an HTTP transport. `NodeHost.ensureGlobals()` installs a `Logger` onto the global scope, installs configs and endpoints as the Apps Script entry call does, and injects `GoogleSheetsAPI`, bound to the configured spreadsheet ID, as the `RawSource`. The chore runner imports the package's configs and endpoint module before the host starts and the chore after, so only a chore module may read those globals as it loads. There is no `PropertiesService` stub, and no `Sheets` global, so a chore that reaches for `Sheets` fails by name. Three commands use it: `sheets-framework chore <name>`, `sheets-framework gen-configs`, and `sheets-framework probe`, which sends through its transport alone ("Seeing the raw Sheets JSON"). A chore gets the three config files in its package's `generatedDir`, passed to the same `installConfigs` the entry call uses, so a chore run from the framework package runs on its `dev/generated/`. `gen-configs` installs the package's own configs too, or the framework's dev ones (`dev/generated/appConfigs.ts`) when the package has none yet, since it reads only the config floor, which every package shares.
 
-## The Node host reaches Sheets and nothing else
+## What the Node host leaves unproven
 
-**The Node host reaches Sheets and nothing else.** Triggers, Gmail and Docs run in Apps Script and stay there — a deliberate boundary, not a gap waiting to be filled. `ScriptApp` and `SpreadsheetApp` are deliberately left uninstalled, so a chore that reaches for one fails by name rather than half-working. And the adapter's fidelity to the real Advanced Sheets Service is an assumption rather than a fact: it is exercised against a recorded payload, not against Google. Moving `gen:configs` off `clasp run` also removed the last routine exercise of the deployed bundle, leaving the live trigger as the only thing that runs it — an accepted cost, taken because one regeneration path beats two, but worth remembering if a deployment-only failure ever appears.
+Why triggers, Gmail and Docs stay in Apps Script, and `ScriptApp` and `SpreadsheetApp` stay uninstalled, is a [deliberate absence](./design/deliberate-absence.md#instances). The adapter's fidelity to the real Advanced Sheets Service is an assumption rather than a fact: it is exercised against a recorded payload, not against Google. Moving `gen:configs` off `clasp run` also removed the last routine exercise of the deployed bundle, leaving the live trigger as the only thing that runs it — an accepted cost, taken because one regeneration path beats two, but worth remembering if a deployment-only failure ever appears.
 
 ## Node-host transport: one HTTPS call per request
 
@@ -63,7 +63,7 @@ Paths are relative to the config file, which sits at each package's root, and a 
 
 ## The chore and its dry run
 
-A **chore** is a unit of work run from the terminal against the live spreadsheet, as against an endpoint, which an operator runs from the sheet by ticking a checkbox. One typed exported const per file, named after its file, in a generic or package chore home — see [Chores](./architecture/chores.md) for the homes.
+What a chore is, how one is written and where it lives: [Chores](./architecture/chores.md).
 
 ```
 sheets-framework chore                   # list the chores
@@ -72,7 +72,7 @@ sheets-framework chore <name> --json     # the same, as raw request JSON
 sheets-framework chore <name> --send     # apply it
 ```
 
-**Dry-run mode is enforced at the adapter, not at the runner and not at the chore's handle.** The adapter is the single door to Google in the Node host, so a dry run that records the requests and returns an empty response makes a *writing* dry run unrepresentable rather than discouraged — whoever calls the flush, the config orchestrator's internal one included. Reads are not gated: a dry run fetches from the live sheet normally, and only sends are suppressed. That is why narrowing a chore's spreadsheet handle to remove the flush would buy nothing and is not done.
+**Dry-run mode is enforced at the adapter, not at the runner and not at the chore's handle**: a dry run records each request and returns an empty response, whoever calls the flush. Why there: [one chokepoint](./design/one-chokepoint.md#instances). Reads are not gated: a dry run fetches from the live sheet normally, and only sends are suppressed.
 
 The preview is a rendered summary, one line per request, naming the sheet, the range and what changes (`UpdateRequestSummary`). Each capability the framework grows owes the renderer a line format — an accepted recurring cost, because a preview nobody reads converts a decision into a formality. The compiler collects it: `ModeledRequestVerb` in `GoogleSheetsAPI.ts` lists the request kinds the builders may produce, and `UpdateRequestSummary` must format each one or `tsc` fails. `--json` is the escape hatch for when a line looks wrong. Because a dry run withholds every flush, a config regeneration that runs the floor then refetches still sees the live column types, so a generated-file preview can show the value-name churn that `--send` would prevent.
 

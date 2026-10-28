@@ -2,6 +2,14 @@
 
 Disclosed from [`docs/code-style.md`](../code-style.md), "Tests". How tests run, and the fakes: [`docs/testing.md`](../testing.md). The general test reasoning is in `@byronbroughten/config`'s `docs/code-style/tests.md`.
 
+## Tier imports
+
+The rule in `docs/code-style.md` holds a test to the downward-only tier-import rule production code follows, since a test co-located with its subject sits in that subject's tier. A test that imported from a higher tier would tie a lower tier's behaviour to code built on top of it.
+
+## Endpoints through EndpointRun
+
+The rule in `docs/code-style.md` tests an endpoint through `EndpointRun`, never by calling its action. Going through the run is what buys the selector pruning, the setup flush and the interplay between a wipe and the appends that follow it, all of which a rebuild-from-scratch endpoint depends on; the cost is a larger fixture, which is the right trade. For the same reason no test reaches for a private helper, a comparator or an intermediate list of lines. The seam and its fixtures: [`docs/testing.md`](../testing.md#testing-an-endpoint-through-endpointrun).
+
 ## Grid state over requests
 
 The settled rule in `docs/code-style.md` asks a test of a write to assert the cells, rows, tabs and Tables it leaves, not the `batchUpdate` requests that carry them. It is the framework's case of the general rule on outcomes over calls. The same grid can come from different requests: one `updateCells` or three, an append or a reused blank row. A request assertion pins the route, so a refactor that merges or reorders requests fails tests while the sheet comes out the same.
