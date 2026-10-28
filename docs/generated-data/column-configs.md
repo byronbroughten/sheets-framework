@@ -8,7 +8,7 @@ Part of [generated data](../generated-data.md). `emptyValueAllowed` is declared,
 
 **Column Config is `Table ID | Column ID | Table name | Header | Empty value allowed`, one row per column of a ticked Table, keyed by (Table ID, Column ID).** The sync appends a row for each live column ID it doesn't find, and drops a row whose Table is gone or unticked, or whose column ID is gone from its Table. The correction pass rewrites Table name from the live Table and Header from the live column. Emit resolves each row's Table ID to its Table key through this run's `tableConfigs`, and a row whose Table ID has no ticked Table Config row fails the run.
 
-No longer stores a column's index (`colIndex`) — `03_SpreadsheetIdentified` resolves that live from `columnId` instead, since a stored index would go stale as columns are added/removed/reordered. Per column, `columnId`/`valueName`/`header`/`isFormula`/`emptyValueAllowed` are generated; `customDefaultValue` is always emitted at its default for now.
+Per column, `columnId`/`valueName`/`header`/`isFormula`/`emptyValueAllowed` are generated; for `customDefaultValue`, see [the rules](../../src/01_SpreadsheetSchema/AGENTS.md). A column's index is not stored: `03_SpreadsheetIdentified` resolves it live from `columnId`, since a stored index would go stale as columns are added/removed/reordered.
 
 ## `emptyValueAllowed` is declared
 
@@ -21,10 +21,6 @@ No longer stores a column's index (`colIndex`) — `03_SpreadsheetIdentified` re
 ## A boolean trait keeps its literal type
 
 A boolean trait in the generated data does keep its literal type per column, because `boolean` is a union of literal types and contextual typing doesn't widen it — that's what lets `ColumnIsFormula` resolve to `true` or `false` rather than `boolean`, and it holds for any boolean trait the config gains later.
-
-## `customDefaultValue` is reserved, not implemented
-
-`customDefaultValue` is meant to override what a column writes when something fills it with a default, the way `updateToDefault` and the default-append path do, but it isn't implemented and may be dropped if no use case turns up — don't repurpose it for something else in the meantime (a read-time coercion, say, belongs on the value schema rather than on a per-column trait; #12).
 
 ## How `valueName` is resolved
 
