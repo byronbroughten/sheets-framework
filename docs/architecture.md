@@ -10,7 +10,7 @@ Map fragments, one file per heading. Open the file the task needs.
 | Edit protections (edit warnings, edit locks, identity, stale refetch) | [edit-protections.md](./architecture/edit-protections.md) |
 | Queuing and gathering a write, the shared queue, discarding it | [queued-writes.md](./architecture/queued-writes.md) |
 | The flush's send order, add-sheet and add-Table leading it | [flush-order.md](./architecture/flush-order.md) |
-| Stale row indexes after a flush, the assert a new write ships | [stale-row-indexes.md](./architecture/stale-row-indexes.md) |
+| Stale flags after a flush (row indexes, `conditionalFormats.isStale`, `editProtections.isStale`), the assert a new write ships | [stale-row-indexes.md](./architecture/stale-row-indexes.md) |
 | Row deletes and sorts bounded to the Table | [row-deletes-and-sorts.md](./architecture/row-deletes-and-sorts.md) |
 | Growth: `appendTableRows`, its model row, growing from a blank row | [table-growth.md](./architecture/table-growth.md) |
 | Column inserts, `updateColumnType` limits | [table-columns.md](./architecture/table-columns.md) |

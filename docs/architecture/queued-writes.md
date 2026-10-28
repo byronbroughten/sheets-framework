@@ -8,9 +8,9 @@ A write mutates local state and queues an operation; one `batchUpdate` per flush
 
 `update`/`append`/`delete` don't hit the API — they mutate the working view and register the write on that sheet's `writeQueue`. Nothing reaches the spreadsheet until `batchUpdateGSheets()` turns each sheet's queued writes into write operations and `RawSource.flush` sends them. `GoogleSheetsAPI` maps each local operation onto Google request kinds (`updateCells`, `pasteData`, `repeatCell`, `insertRange`, `updateTable`, …) and one `batchUpdate`.
 
-## A new write is queued and gathered on the sheet
+## A new write is queued and gathered on the Table, row or cell
 
-A new write is queued and gathered on the Table, and the flusher only sends the batch. The sheet, row or cell builds the operation, either when the write is queued (`SheetRaw.updateTitle`) or from the write queue at flush time (`TableRaw.gatherFillColumnOperation`). A new operation kind therefore settles four things: its queue key, the state that holds it, the gather method that builds it (none for a spreadsheet-level op like `addSheet`, since a tab that doesn't exist yet has no sheet state to gather from), and its slot in the [flush order](./flush-order.md).
+A new write is queued and gathered on the Table, row or cell, and the flusher only sends the batch. The Table, sheet, row or cell builds the operation, either when the write is queued (`SheetRaw.updateTitle`) or from the write queue at flush time (`TableRaw.gatherFillColumnOperation`). A new operation kind therefore settles four things: its queue key, the state that holds it, the gather method that builds it (none for a spreadsheet-level op like `addSheet`, since a tab that doesn't exist yet has no sheet state to gather from), and its slot in the [flush order](./flush-order.md).
 
 ## One queue shared by reference, and discarding it
 
