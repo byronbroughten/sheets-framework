@@ -24,7 +24,7 @@ Identity is content: range, kind, editors, unprotected ranges and description. A
 
 ## Queueing writes and stale indexes
 
-The write queue emits delete-protection then add-protection after the conditional-format adds and before the row deletes, which carry them up ([flush order](./queued-writes.md#flush-order)). Deletes are by id. Which protection writes refuse on stale row indexes, and the stale flag a protection-mutating flush sets: [queued writes](./queued-writes.md#stale-row-indexes-after-a-flush). A whole-column range (start row 0, column bounds, no end row) is exempt because its start row is a constant. No column index goes stale, since a column insert lands only at the Table end. The add reply carries the new id; the framework does not integrate it, because the refetch is required.
+The write queue emits delete-protection then add-protection after the conditional-format adds and before the row deletes, which carry them up ([flush order](./queued-writes.md#flush-order)). Deletes are by id. Which protection writes refuse on stale row indexes, and the stale flag a protection-mutating flush sets: [queued writes](./queued-writes.md#stale-row-indexes-after-a-flush). No column index goes stale, since a column insert lands only at the Table end. The add reply carries the new id; the framework does not integrate it, because the refetch is required.
 
 ## Named ranges a protection can cover
 
