@@ -19,9 +19,13 @@ One line per rule. The reasoning and worked examples are one file away. Open a r
 ## Class shape
 
 - **Code that coordinates other stateful objects is a coordinator class extending the tier's Base class**, which callers build with `init`; endpoints are exempt until a body turns unwieldy.
+  - **A coordinator builds its collaborators with `new` from props on `this`, as lazy getters.**
 - **An Operator extends its subject's `*BaseNamed` and reaches the subject through a getter**, never by extending the concrete class or taking one as a constructor argument.
 - **What an Operator holds as props is its identity; a per-run value is an argument to the method that needs it.**
-- **A coordinator splits by the general style doc's rule**; its collaborators get no tests of their own and reach back through `ss` or `sheet`, and its base class stays in `ClassBases/`.
+- **A coordinator splits by the general style doc's rule.**
+  - **Collaborators get no tests of their own.**
+  - **A collaborator reaches back to the coordinator's shared state through a getter named for it, `ss` or `sheet`.**
+  - **A base class stays in `ClassBases/`**, never in one coordinator's subfolder.
 - **A query taking a parameter its only caller already holds as its own state belongs on that caller's instance.**
 - **A member that samples the top data row for a column-wide fact belongs on the column profile**; `topCell`/`topRow` stay on the column and Table.
 

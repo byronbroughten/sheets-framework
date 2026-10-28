@@ -12,4 +12,4 @@ Store and expose a fact at the level it's *about*, not the level it happens to a
 
 ## Corollaries
 
-The member-placement corollary lives in [`docs/code-style/class-shape.md`](../code-style/class-shape.md#a-query-whose-parameter-its-caller-already-holds-belongs-on-the-instance).
+A container method taking an id its only caller already holds as its own state belongs on the instance: [`docs/code-style/class-shape.md`](../code-style/class-shape.md#a-query-whose-parameter-its-caller-already-holds-belongs-on-the-instance).

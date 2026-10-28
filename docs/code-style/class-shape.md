@@ -65,9 +65,9 @@ What an Operator holds as props is what it *is*; a value that only one run cares
 
 Holding the row index as an optional field assigned at the start of a build was considered and rejected (#22). It gives the operator two lifetimes with nothing in the type separating them: before a build the field is unset and every step reading it fails, and after one returns the field still names the previous occupancy, so anything reading the operator then gets a confident answer about the wrong tenancy. That is [design.md](../design.md)'s "Make disagreement structurally impossible" applied to an operator's own state.
 
-## A query whose parameter its caller already holds belongs on the instance
+## A domain query composed of collaborator calls belongs on the collaborator
 
-This is the framework's case of `@byronbroughten/config`'s rule that a helper on one collaborator's state belongs on that collaborator (`docs/code-style/class-shape.md`, "A helper that never reads `this` is a module function"). `ColumnConfigOperator` used to reach through `sheet.headRow("columnId").workingValueArr` and `.hasValue(columnId)` directly; that logic moved onto the Table profile as `get columnIds()` (`TableProfileRaw`) and onto the Table's column resolver as `hasColumnId(columnId)`, and `ColumnConfigOperator`'s own private helper now just delegates:
+This is the framework's worked example of `@byronbroughten/config`'s rule that a helper on one collaborator's state belongs on that collaborator (`docs/code-style/class-shape.md`, "A helper that never reads `this` is a module function"), so the composition isn't re-inlined at every call site. `ColumnConfigOperator` used to reach through `sheet.headRow("columnId").workingValueArr` and `.hasValue(columnId)` directly; that logic moved onto the Table profile as `get columnIds()` (`TableProfileRaw`) and onto the Table's column resolver as `hasColumnId(columnId)`, and `ColumnConfigOperator`'s own private helper now just delegates:
 
 ```ts
 private _hasColumnId(tableId: string, columnId: string): boolean {
@@ -76,6 +76,8 @@ private _hasColumnId(tableId: string, columnId: string): boolean {
 ```
 
 Destructure a collaborator's getter directly when only one property is needed: `const { columnIds } = this.ss.raw.table(tableId).profile;`.
+
+## A query whose parameter its caller already holds belongs on the instance
 
 A container method that takes an index/id as a parameter, but is only ever called by code that already has that exact value as its own instance state, belongs on the instance instead — drop the parameter along with the method. `SheetBaseRaw.columnValidationValues(colIndex: number)` was deleted; its one caller always already had its own `colIndex`, so the query moved onto the column as `get valueValidationStrings()`, now on its profile (`ColumnProfileRaw.ts`). The parameter disappearing is what turns it into a getter (see the getter rule in `@byronbroughten/config`'s `docs/code-style/naming.md`).
 
