@@ -33,7 +33,7 @@ One line per term. The elaboration is one file away. Open a reasoning file only 
 - **Every tier class name ends in its tier word**: state types, bases and Common classes alike. A tier root is `<Scope>Base<Tier>`, with no exceptions.
 - **State members are named by scope**, plus the tier word where one instance holds more than one tier's state at that scope.
 - **Base means a class root (`<Scope>Base<Tier>`) or an index origin (`Base0`/`Base1`), and nothing else.** What the framework supplies whatever the spreadsheet adds is **Framework**.
-- **An Operator extends a Named base and adds methods suited to one data structure**, reaching its subject through a getter. Business Operators live in `src/businessEndpoints/BusinessOperators/`.
+- **An Operator extends a Named base and adds methods suited to one data structure**, reaching its subject through a getter.
 - **A Collaborator is a class a coordinator builds from its own props and reaches through a lazy getter**, named `<Subject><Role><Tier>`, in a subfolder named after its coordinator. Callers use the coordinator.
 
 ## Config
