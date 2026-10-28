@@ -38,13 +38,7 @@ What a flush sends when it grows a Table from its lone blank row: [queued writes
 
 Two conditions block reuse and both are deliberate. A row queued for deletion is not the row that will survive the flush — indexes don't shift until then — so the append goes to the bottom as before. And a one-row Table whose row was never fetched **throws**, naming the Table and the prefetch the caller owes: silently appending would recreate the stranded-blank-row outcome the reuse exists to prevent. Clearing a row the run had already fetched costs nothing to read back, because the write mirrors into state; clearing a row nothing fetched writes to the sheet but leaves no local state, so a later append in that same run still throws.
 
-## `appendRowWithVals` vs `appendRowWithAllVals`
-
-**Two appends sit on top of that path, and they differ only in what the type demands.** `TableNamed.appendRowWithVals` takes a partial bag: every column the caller leaves out keeps the default the append already wrote, the id included, which is what config-sheet maintenance wants. `TableNamed.appendRowWithAllVals` takes `SheetDataValuesAll<TN>` — the Table's data-value map restricted to non-formula columns, then with `id` excluded — so every writable column is a **required key** and an unfinished bag is a compile error rather than an empty cell (#14). Naming `id` or a formula column in that literal is a compile error too: the id is minted by the defaulted append rather than supplied, and the cell layer would have thrown on the formula anyway. Both methods run the same path, `TableIdentified.appendRowDefault` then an overlay, so blank-row reuse, reservation and id generation stay in one place; there is no complete-row append on Identified or Raw. A generated row id is a seven-character random suffix behind the sheet's id prefix, with no check against the ids already on the sheet, so an append never needs the target sheet's id column fetched. Existing `appendRowWithVals` call sites are not being migrated, because a call that is *meant* to fill only some columns shouldn't have to lie about the rest.
-
-## What the required bag doesn't filter
-
-**Two filters the required bag deliberately doesn't apply.** Action-control columns — a selector's checkbox, `timeLastRan`, `runStatus` — are required like any other writable column, since guessing which columns the system owns is worse than asking for them. And **Empty value allowed** neither makes a key optional nor narrows its value type: completeness is key presence, a blank stays a legal value wherever the column's value type already admits one, and any write-side meaning for the trait is left to #13, which moved the read path only.
+The Named appends built on this path: [row appends](./row-appends.md).
 
 ## Consumers that know about the blank row
 
@@ -52,4 +46,4 @@ Two conditions block reuse and both are deliberate. A row queued for deletion is
 
 ## An unfetched row is never blank
 
-A row nothing has fetched is never called blank. "Working" means present in the working view (see [the working view](./working-view.md#working-means-present-in-the-working-view)), so on the `triggerOnEdit` path — where no data row is fetched — every row counts as holding data and the selection is unchanged. That is the only honest answer available without paying for a read.
+A row nothing has fetched is never called blank, so where the run fetched no data row ([the working view](./working-view.md#working-means-present-in-the-working-view)), every row counts as holding data and the selection is unchanged. That is the only honest answer available without paying for a read.

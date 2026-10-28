@@ -12,7 +12,8 @@ Map fragments, one file per heading. Open the file the task needs.
 | Working vs fetched, the working view, writes without a fetch, reads that need one | [working-view.md](./architecture/working-view.md) |
 | A missing Table, or one outside the header zone | [table-placement.md](./architecture/table-placement.md) |
 | Routes for finding a moved Table, probed live: named ranges, developer metadata, whole-sheet `tables`, zone depth, and what each costs | [finding-tables.md](./architecture/finding-tables.md) |
-| Last data row, blank-row reuse | [blank-row.md](./architecture/blank-row.md) |
+| Last data row, a header-only Table, blank-row reuse | [blank-row.md](./architecture/blank-row.md) |
+| `appendRowWithVals` vs `appendRowWithAllVals`, what the required bag doesn't filter | [row-appends.md](./architecture/row-appends.md) |
 | Endpoint entry, `EndpointRun`, run report, selector behavior | [endpoint-dispatch.md](./architecture/endpoint-dispatch.md) |
 | Sheets round trips | [round-trips.md](./architecture/round-trips.md) |
 | Instantiation budget, the template-literal cliff | [type-check-cost.md](./architecture/type-check-cost.md) |
