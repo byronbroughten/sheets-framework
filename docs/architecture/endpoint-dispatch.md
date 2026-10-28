@@ -4,7 +4,7 @@ Map fragment. Sibling headings live in this folder.
 
 **What an endpoint, a runner, a two-way endpoint, a selector, a run status, a run state and a run report *are* is defined in [`GLOSSARY.md`](../../GLOSSARY.md)** — read that first; this file is only how the dispatch is built.
 
-An endpoint is one entry keyed by the column whose action-row checkbox triggers it, and `EndpointRun` owns its run: selection, running state, action, outcome, feedback. The rules for writing one: [`src/06_API/AGENTS.md`](../../src/06_API/AGENTS.md), plus the app's own endpoint-folder rules. A worked example of the framework in use: the real-estate app's [`src/businessEndpoints/AGENTS.md`](https://github.com/byronbroughten/sheets-real-estate/blob/master/src/businessEndpoints/AGENTS.md).
+An endpoint is one entry keyed by the column whose action-row checkbox triggers it, and `EndpointRun` owns its run: selection, running state, action, outcome, feedback. The rules for writing one: [`src/06_API/AGENTS.md`](../../src/06_API/AGENTS.md), plus the app's own endpoint-folder rules, which [the real-estate app's](https://github.com/byronbroughten/sheets-real-estate/blob/master/src/businessEndpoints/AGENTS.md) are a worked example of.
 
 ## The endpoint entry
 
