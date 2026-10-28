@@ -4,7 +4,7 @@ Map fragment. Sibling headings live in this folder.
 
 **What an endpoint, a runner, a two-way endpoint, a selector, a run status, a run state and a run report *are* is defined in [`GLOSSARY.md`](../../GLOSSARY.md)** — read that first; this file is only how the dispatch is built.
 
-An endpoint is one entry keyed by the column whose action-row checkbox triggers it, and `EndpointRun` owns its run: selection, running state, action, outcome, feedback. The rules for writing one: [`src/06_API/AGENTS.md`](../../src/06_API/AGENTS.md), plus the app's own endpoint-folder rules.
+An endpoint is one entry keyed by the column whose action-row checkbox triggers it, and `EndpointRun` owns its run: selection, running state, action, outcome, feedback. The rules for writing one: [`src/06_API/AGENTS.md`](../../src/06_API/AGENTS.md), plus the app's own endpoint-folder rules, which [the real-estate app's](https://github.com/byronbroughten/sheets-real-estate/blob/master/src/businessEndpoints/AGENTS.md) are a worked example of.
 
 ## The endpoint entry
 
@@ -41,18 +41,6 @@ export type Endpoints = {
 ## Flags are directives to the framework
 
 **Every flag reads as a directive to the framework** — `retainSelection`, `requireOneRow`, `runOnUncheck` — rather than as a description of the entry it sits on (#18). One mood for the whole entry means a reader never has to work out which flags command and which describe.
-
-## One endpoint, one file
-
-**One endpoint, one file.** `businessEndpoints.ts` stays a registry: each entry's body lives in `businessEndpoints/<name>.ts` as a single exported `Endpoint<"thatSheet">` the registry imports and assigns to its key, so an endpoint's size never crowds its neighbours and the plain `: Endpoints` annotation still catches a key naming a column that doesn't exist. `businessEndpoints/buildLedger.ts` is the reference; `businessEndpoints/updateTerms.ts` was moved out to its own file once the pattern had been proven on a new endpoint, its body carried over whole. `businessEndpoints/addPropertyExpense.ts` was the last inline entry — an empty action with nothing to move — and arrived as a file of its own with the work behind it (#24), so no entry is inline any more.
-
-## Two shapes for an endpoint body
-
-**An endpoint body takes one of two shapes.** The default is module-private helpers around the entry, which `businessEndpoints/updateTerms.ts` is the reference for. Once a body turns unwieldy the logic moves onto a business operator under `businessEndpoints/BusinessOperators/`, and the entry keeps a one-line action delegating to it — `businessEndpoints/buildLedger.ts` is the reference for that shape, and its operator is `OccupancyLedgerOperator` (#22); `businessEndpoints/addPropertyExpense.ts` is the second, behind `PropertyExpenseOperator` (#24). The threshold that decides between them lives in the house style's "Coordinator classes", which was mined from the framework tiers and otherwise doesn't govern endpoints.
-
-## No operator scoped to the occupancy row
-
-**An operator scoped to the occupancy row is deliberately absent.** Building a ledger reads exactly three cells off that row — its id, its name, and its ledger start date — and three plain reads are not a domain query — such a class would be created empty and do nothing a getter does not. The trigger for building one is #21: the update-terms body reads twenty-odd next-terms columns, validates a start date against the latest terms, closes the open term and appends a new one, which would give the class real behaviour and a second caller on the same day.
 
 ## Each key is correlated with its own sheet
 
@@ -120,7 +108,7 @@ Feedback is written with the two column fills from [column fills](./queued-write
 
 ## Clearing the rows you report into keeps the outcome
 
-**An action that clears the rows it reports into still shows the run's outcome on them.** `clearValues` writes `""` into every non-formula column, the run-status column included, but the outcome fill is queued after the action, so it wins: a run that empties its sheet ends with `Succeeded` on the row it leaves behind. That row still counts as blank, since the blank test ignores feedback columns ([blank row](./blank-row.md)), so the next append reuses it. Deleted rows are gone either way, so such an endpoint can only report per row on the rows it leaves behind. The add-property-expense endpoint is built on exactly that: it deletes every row it converts, so a partial batch leaves only the refused rows, each carrying its own message (#24). A failure is unaffected: the error path discards the clearing along with everything else the action queued.
+**An action that clears the rows it reports into still shows the run's outcome on them.** `clearValues` writes `""` into every non-formula column, the run-status column included, but the outcome fill is queued after the action, so it wins: a run that empties its sheet ends with `Succeeded` on the row it leaves behind. That row still counts as blank, since the blank test ignores feedback columns ([blank row](./blank-row.md)), so the next append reuses it. Deleted rows are gone either way, so such an endpoint can only report per row on the rows it leaves behind. A failure is unaffected: the error path discards the clearing along with everything else the action queued.
 
 ## `EndpointRun` is built from `Api`'s props
 
