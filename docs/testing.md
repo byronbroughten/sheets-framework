@@ -8,13 +8,13 @@ Vitest, as plain Node against fakes, so `npm test` is always safe. The test-writ
 
 Tests run on [Vitest](https://vitest.dev): `npm test` (single run), `npm run test:watch`, or `npm run test:coverage`, from the framework's own `vitest.config.ts`. None of it touches the live spreadsheet or Apps Script — it's plain Node against fakes — so it's always safe to run freely, same as `npm run tsc`.
 
-## Co-located tests and tier imports
+## Co-located tests
 
-A test is co-located with what it tests — `Foo.ts` → `Foo.test.ts` in the same folder. This obeys the same downward-only tier-import rule as production code: a test only imports from its own tier and below.
+A test is co-located with what it tests — `Foo.ts` → `Foo.test.ts` in the same folder. What it may import: the house style's Tests section.
 
 ## Faking spreadsheet I/O with `stubSheetsService`
 
-This is not a Node app at runtime (see [`docs/how-it-runs.md`](./how-it-runs.md)). Tests that construct `SpreadsheetRaw` inject a `RawSource` via `stubSheetsService()`, which builds a `GoogleSheetsAPI` on a fixture-backed Advanced Service lookalike — they do not install `globalThis.Sheets`. `src/testSupport/` holds shared fakes, sitting outside the numbered tiers so any tier's tests can import it:
+No test reaches Google, through either host ([`docs/how-it-runs.md`](./how-it-runs.md)). Tests that construct `SpreadsheetRaw` inject a `RawSource` via `stubSheetsService()`, which builds a `GoogleSheetsAPI` on a fixture-backed Advanced Service lookalike — they do not install `globalThis.Sheets`. `src/testSupport/` holds shared fakes, sitting outside the numbered tiers so any tier's tests can import it:
 
 ## `fakeSheetsService.ts`: the fixture-backed Sheets service
 
@@ -93,7 +93,7 @@ An exemplar's value name has to stay put. `sampledBoolean` must not be formatted
 
 ## Testing an endpoint through `EndpointRun`
 
-An endpoint is tested through `EndpointRun`, never by calling its action (the rule: the house style's Tests section): the seam is the run's entry point, driven by the fake Sheets service, and the assertion is the grid the run leaves: which cells hold what values. Going through the run is what buys the selector pruning, the setup flush and the interplay between a wipe and the appends that follow it, all of which a rebuild-from-scratch endpoint depends on; the cost is a larger fixture, which is the right trade. `businessEndpoints/buildLedger.test.ts` stubs six sheets at once. No test reaches for a private helper, a comparator or an intermediate list of lines. The framework half of an endpoint's behaviour is tested separately in `06_API/EndpointRun.test.ts`, against synthetic endpoints on the `runItem` fixture.
+The rule and its why: the house style's Tests section and [its reasoning](./code-style/tests.md#endpoints-through-endpointrun). The seam is the run's entry point, driven by the fake Sheets service, and the assertion is the grid the run leaves: which cells hold what values. `businessEndpoints/buildLedger.test.ts` stubs six sheets at once. The framework half of an endpoint's behaviour is tested separately in `06_API/EndpointRun.test.ts`, against synthetic endpoints on the `runItem` fixture.
 
 ## The fake answers what the adapter asked; Google doesn't
 
@@ -110,7 +110,3 @@ Each of `02`–`04` has a spreadsheet-level test pinning every navigation edge �
 ## CI
 
 The package's own workflow is [`.github/workflows/ci.yml`](../.github/workflows/ci.yml). Coverage is reported, not gated — no failure threshold yet.
-
-## Type verification is `npm run tsc`
-
-`npm run tsc` remains the whole *type*-verification story — run it (and the tests) before considering any change complete, and treat any new type error as something you introduced unless you've confirmed otherwise (check whether the same error exists on a clean checkout, or ask).
