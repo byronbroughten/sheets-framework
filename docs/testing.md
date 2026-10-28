@@ -97,7 +97,7 @@ The rule and its why: the house style's Tests section and [its reasoning](./code
 
 ## The fake answers what the adapter asked; Google doesn't
 
-Live JSON omits empty lists and zero-valued fields (a gid-0 sheet, column A, row 1), echoes each colour as a `*ColorStyle`, and `getByDataFilter` drops sheet-level fields such as `conditionalFormats`. A new read isn't done until a chore dry run has read it from the live sheet (the rule: [`src/00_Source/GoogleSheets/AGENTS.md`](../src/00_Source/GoogleSheets/AGENTS.md)).
+Live JSON omits empty lists and zero-valued fields ([the working view](./architecture/working-view.md#presence-in-a-range-is-not-presence-in-a-payload)), echoes each colour as a `*ColorStyle`, and `getByDataFilter` drops sheet-level fields such as `conditionalFormats`. A new read isn't done until a chore dry run has read it from the live sheet (the rule: [`src/00_Source/GoogleSheets/AGENTS.md`](../src/00_Source/GoogleSheets/AGENTS.md)).
 
 ## Live-sheet verification
 
