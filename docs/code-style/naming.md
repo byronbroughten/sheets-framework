@@ -28,9 +28,13 @@ One heading per naming rule, in docs/code-style.md's order: grep `^## ` for the 
 
 **A method that deletes more than one row takes a `SHOUTING_SNAKE_CASE` name** (`TableIdentified.DELETE_ALL_DATA_ROWS` and the `TableNamed` method that delegates to it). Nothing else in the codebase is spelled that way, so the shout is the warning: a caller can't reach one by reflex. It stays shouty even once a guard makes the operation safe — the point is that the reader stops, not that the operation is unguarded.
 
-## The controlled verb vocabulary
+## Collaborator names: `<Subject><Role><Tier>`
 
-**Method names draw from one controlled verb vocabulary**, each with a distinct meaning — don't invent a new verb for a meaning already on this list:
+**A collaborator's role is the agent noun of a verb from the list below, and its tier word comes last, like every other tier class's** (#67); the subject and the descriptive-noun fallback are `@byronbroughten/config`'s `docs/code-style/naming.md`, "A collaborator is `<Subject><Role>`". `SpreadsheetFlusherRaw` is named for `flush`, not `update`, because `update` means a local change and the flusher sends the batch; `SpreadsheetTableValidatorRaw` is named for `validate` because it throws on failure. "Handler" and "Manager" are never allowed: they fit any class, so they tell the reader nothing about which job this one does.
+
+## The controlled verb list
+
+This is the list's one home. **A framework method takes its verb from it**, each verb with a distinct meaning — don't invent a new verb for a meaning already on it:
 - `fetch` — actually hits the live Sheets API
 - `integrate` — merges a fetched snapshot into local state; no API call, so it is never `fetch`
 - `prep`/`gather` — queue state locally before a fetch (`prepFetchX` queues only; `gatherFetchX` queues *and* fetches)
@@ -43,8 +47,4 @@ One heading per naming rule, in docs/code-style.md's order: grep `^## ` for the 
 - `sync`/`flush` — coordinate multiple operators / send a batched write
 - `discard` — drop queued changes without sending them; the counterpart to `flush`
 - **The list governs framework methods.** A business operator's public method takes its verb from the app's `packages/real-estate/GLOSSARY.md` instead, so the code and the operator-facing vocabulary agree: the glossary says a ledger is _built_, so the method is `build`.
-
-## Collaborator names: `<Subject><Role><Tier>`
-
-**A collaborator is named `<Subject><Role><Tier>`, with the role the agent noun of a verb from the list above** (#67): the general style doc's `<Subject><Role>` clause, with the tier word added. The subject says what it works on, the role says which verb it performs, and the tier word comes last like every other tier class. `SpreadsheetFlusherRaw` is named for `flush`, not `update`, because `update` means a local change and the flusher sends the batch; `SpreadsheetTableValidatorRaw` is named for `validate` because it throws on failure. A job with no verb on the list gets a plain descriptive noun. "Handler" and "Manager" are never allowed: they fit any class, so they tell the reader nothing about which job this one does.
 

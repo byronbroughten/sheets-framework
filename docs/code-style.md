@@ -18,13 +18,12 @@ One line per rule. The reasoning and worked examples are one file away. Open a r
 
 ## Class shape
 
-- **Coordinating other stateful objects means a coordinator class extending the tier's Base class.** Callers build one with `init`; it builds its collaborators with `new` from props on `this`, as lazy getters. Endpoints are exempt until a body turns unwieldy.
+- **Code that coordinates other stateful objects is a coordinator class extending the tier's Base class**, which callers build with `init`; endpoints are exempt until a body turns unwieldy.
 - **An Operator extends its subject's `*BaseNamed` and reaches the subject through a getter**, never by extending the concrete class or taking one as a constructor argument.
 - **What an Operator holds as props is its identity; a per-run value is an argument to the method that needs it.**
-- **A coordinator splits into collaborators by the general style doc's rule.**
-  - **Collaborators get no tests of their own.** Shared state held on the coordinator, not on a Base, is reached through a getter named for it, the one upward reference the general layering rule allows. A base class stays in `ClassBases/`.
-- **A composition of collaborator calls that answers one domain question belongs on the collaborator**, under its own name. A parameter that its only caller already holds as its own state means the query belongs on the instance.
-- **A member that samples the top data row for a column-wide fact belongs on the column profile.** `topCell`/`topRow` stay on the column and Table.
+- **A coordinator splits by the general style doc's rule**; its collaborators get no tests of their own and reach back through `ss` or `sheet`, and its base class stays in `ClassBases/`.
+- **A query taking a parameter its only caller already holds as its own state belongs on that caller's instance.**
+- **A member that samples the top data row for a column-wide fact belongs on the column profile**; `topCell`/`topRow` stay on the column and Table.
 
 ## Naming
 
@@ -33,20 +32,8 @@ One line per rule. The reasoning and worked examples are one file away. Open a r
 - **A sheet takes the unmarked name and a row is marked with a spelled-out `Row` suffix.**
 - **Google's API names stay at the wire; framework names follow the glossary.**
 - **A method that deletes more than one row takes a `SHOUTING_SNAKE_CASE` name**, and keeps it once a guard makes the operation safe.
-- **A collaborator is named by the general style doc's `<Subject><Role>` clause, with the tier word last: `<Subject><Role><Tier>`**, the role the agent noun of a verb on the list below. A job with no verb on the list gets a plain descriptive noun, never "Handler" or "Manager".
-- **Method names draw from one controlled verb vocabulary** — don't invent a new verb for a meaning already on this list:
-  - `fetch` — actually hits the live Sheets API
-  - `integrate` — merges a fetched snapshot into local state; no API call
-  - `prep`/`gather` — queue state locally before a fetch (`prepFetchX` queues only; `gatherFetchX` queues _and_ fetches)
-  - `update` — writes a local/queued change, not yet flushed
-  - `queue` — stages a write on a sheet's or row's write queue; the flusher gathers it into an operation
-  - `append` — adds a new row
-  - `ensure` — idempotent guard: make this true, no-op if it already is
-  - `validate` — asserts an invariant, throws on failure
-  - `init` — factory setup
-  - `sync`/`flush` — coordinate multiple operators / send a batched write
-  - `discard` — drop queued changes without sending them; the counterpart to `flush`
-  - **The list governs framework methods.** A business operator's public method takes its verb from the app's `packages/real-estate/GLOSSARY.md` instead.
+- **A collaborator's role is the agent noun of a verb on the controlled verb list, and its name ends on the tier word**, never "Handler" or "Manager".
+- **A framework method takes its verb from the controlled verb list in the reasoning file**, never a new verb for a meaning already on it; a business operator's public method takes its verb from the app's `packages/real-estate/GLOSSARY.md`.
 
 ## Comments
 
@@ -67,11 +54,11 @@ One line per rule. The reasoning and worked examples are one file away. Open a r
 - **A registry keyed by a finite name union takes a plain `: Type` annotation, not `makeStructuredConfig`**, which stays for the generated config files.
 - **A custom generic utility type goes in `@byronbroughten/utils`**, whose `AGENTS.md` places it, unless it transforms a framework concept, as `NotEmpty` does.
 
-## Functional vs. imperative idioms
+## Where `for…in` appears
 
 - **`for…in` appears only in `@byronbroughten/utils`**, where the structural utilities live.
 
-## Smells
+## Caller-less public members
 
 - **The caller-less public member exception applies from `03_SpreadsheetIdentified` up, and in `chores/`**: in `00_Source`, `01_SpreadsheetSchema` and `02_SpreadsheetRaw` a public member with no callers is flagged as usual.
 
@@ -89,4 +76,4 @@ One line per rule. The reasoning and worked examples are one file away. Open a r
 ## Imports & file organization
 
 - **The framework's two public entries, `src/framework.ts` and `src/frameworkTesting.ts`, are its only barrels**; `src/index.ts` is the Apps Script entry point, not a barrel.
-- **Tier subfolders**: `ClassBases/` for base and Common classes + their prop interfaces; `Types/`/`ClassTypes/` for supporting state/shape types consumed by that tier's classes.
+- **A tier keeps its base and Common classes, with their prop interfaces, in `ClassBases/`**, and the state and shape types its classes consume in `Types/` or `ClassTypes/`.
