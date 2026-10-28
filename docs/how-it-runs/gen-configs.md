@@ -1,6 +1,6 @@
 # gen-configs and configs-diff
 
-**`gen-configs` writes to the live spreadsheet before it regenerates the config files; `configs-diff` reads only the working tree.**
+**`gen-configs` writes to the live spreadsheet before it regenerates the config files; `configs-diff` compares those files with `HEAD`, with no credential and no Sheets call.**
 
 ## What gen-configs writes
 
