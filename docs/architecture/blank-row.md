@@ -32,7 +32,7 @@ The tiers split the rule between enforcing it and upholding it:
 
 **The append path reuses the blank row, or it would be clutter.** When a Table holds exactly one data row and that row is reusable — blank, and not already handed out by an earlier append this run — `TableIdentified.appendRowDefault` updates that row instead of adding another, and either way reserves the row it returns. The reservation is what makes reuse safe on a Table whose non-formula defaults are all empty: a second append can't collapse into the first one's row. Clearing releases it, so a run that wipes a Table and then rebuilds it reuses the row it just cleared.
 
-What a flush sends when it grows a Table from its lone blank row: [queued writes](./queued-writes.md#growth-is-one-appendtablerows-per-table).
+What a flush sends when it grows a Table from its lone blank row: [table growth](./table-growth.md#growing-from-a-lone-blank-row).
 
 ## When reuse is blocked
 
