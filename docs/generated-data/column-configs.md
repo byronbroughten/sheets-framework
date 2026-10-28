@@ -8,7 +8,7 @@ Part of [generated data](../generated-data.md). `emptyValueAllowed` is declared,
 
 **Column Config is `Table ID | Column ID | Table name | Header | Empty value allowed`, one row per column of a ticked Table, keyed by (Table ID, Column ID).** The sync appends a row for each live column ID it doesn't find, and drops a row whose Table is gone or unticked, or whose column ID is gone from its Table. The correction pass rewrites Table name from the live Table and Header from the live column. Emit resolves each row's Table ID to its Table key through this run's `tableConfigs`, and a row whose Table ID has no ticked Table Config row fails the run.
 
-Per column, `columnId`/`valueName`/`header`/`isFormula`/`emptyValueAllowed` are generated, and `customDefaultValue` is emitted at its default ([the rule](../../src/01_SpreadsheetSchema/AGENTS.md)). A column's index is not stored: `03_SpreadsheetIdentified` resolves it live from `columnId`, since a stored index would go stale as columns are added/removed/reordered.
+Per column, `columnId`/`valueName`/`header`/`isFormula`/`emptyValueAllowed` are generated; for `customDefaultValue`, see [the rules](../../src/01_SpreadsheetSchema/AGENTS.md). A column's index is not stored: `03_SpreadsheetIdentified` resolves it live from `columnId`, since a stored index would go stale as columns are added/removed/reordered.
 
 ## `emptyValueAllowed` is declared
 
