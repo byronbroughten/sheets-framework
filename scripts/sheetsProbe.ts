@@ -1,4 +1,4 @@
-// `sheets-framework probe`: one read-only Sheets request, summarized; the full JSON goes to the package's .probe/last.json. See docs/how-it-runs.md, "Seeing the raw Sheets JSON".
+// `sheets-framework probe`: one read-only Sheets request, summarized; the full JSON goes to the package's .probe/last.json. See docs/how-it-runs/probe.md.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 

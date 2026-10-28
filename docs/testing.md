@@ -89,7 +89,7 @@ A framework test names a sheet or column of the dev spreadsheet's fixtures, neve
 
 Add a fixture sheet only when a test needs a config shape these don't cover. A layout edge case, such as a blank row or a misplaced Table, stays row data in a fake-service fixture. A placement case is tested at the `SpreadsheetIdentified` seam, since the check runs in Identified after the fetch with no finalize hold; Raw's fetch tests see a misplaced Table fetched unjudged. The dev value configs are empty, so no framework test outside `valueKinds/` names a dropdown value name.
 
-An exemplar's value name has to stay put. `sampledBoolean` must not be formatted as a checkbox in Sheets: that would regenerate it as `checkbox` and break `SpreadsheetSchema.test.ts`. The same holds for the Empty value allowed ticks: untick `optionalNote` and a test of the ticked case quietly proves the unticked one instead of failing. To change a fixture, edit the recipe, delete the tab and rebuild it ([The dev project](./how-it-runs.md#the-dev-project)).
+An exemplar's value name has to stay put. `sampledBoolean` must not be formatted as a checkbox in Sheets: that would regenerate it as `checkbox` and break `SpreadsheetSchema.test.ts`. The same holds for the Empty value allowed ticks: untick `optionalNote` and a test of the ticked case quietly proves the unticked one instead of failing. To change a fixture, edit the recipe, delete the tab and rebuild it ([The dev project](./how-it-runs/dev-project.md)).
 
 ## Testing an endpoint through `EndpointRun`
 
@@ -101,7 +101,7 @@ Live JSON omits empty lists and zero-valued fields (a gid-0 sheet, column A, row
 
 ## Live-sheet verification
 
-There's no standing integration-test tier against a real spreadsheet. When Claude is asked to extend this test infrastructure, it may use the `gworkspace` MCP ad hoc (within the repo's Sheets write rules; what the MCP can see is [`docs/how-it-runs.md`](./how-it-runs.md#the-gworkspace-mcp-tools)'s) to sanity-check that a fake's behavior actually matches the real API — that stays a manual verification step, never part of `npm test`/CI.
+There's no standing integration-test tier against a real spreadsheet. When Claude is asked to extend this test infrastructure, it may use the `gworkspace` MCP ad hoc (within the repo's Sheets write rules; what the MCP can see is [`docs/how-it-runs/gworkspace-mcp.md`](./how-it-runs/gworkspace-mcp.md)'s) to sanity-check that a fake's behavior actually matches the real API — that stays a manual verification step, never part of `npm test`/CI.
 
 ## Navigation assertions
 
