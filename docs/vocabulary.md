@@ -2,7 +2,7 @@
 
 The layering words, used precisely and never loosely; the operator-facing words (endpoint, selector, run state) are [GLOSSARY.md](../GLOSSARY.md)'s.
 
-**Renaming or relocating something and unsure which word fits: ask rather than guess**, since folder placement depends on these distinctions.
+**Renaming or relocating something and unsure which word fits: ask rather than guess.**
 
 One line per term. The elaboration is one file away. Open a reasoning file only when you're changing the rule, or the rule's line doesn't decide your case.
 
