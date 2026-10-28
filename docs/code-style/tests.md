@@ -16,4 +16,4 @@ A draft rule, proposed like the general ones. Use real, already-committed schema
 
 ## Exemplar columns for type-level tests
 
-The settled rule in `docs/code-style.md` asks a type-level test for an exemplar column whose value name can't churn under `gen:configs`. A config sheet's column qualifies, and so does a column of the live `test` sheet.
+The settled rule in `docs/code-style.md` asks a type-level test for an exemplar column whose value name can't churn under `gen:configs`. A config sheet's column qualifies, and so does a column of a dev fixture Table, such as `valueTypes` or `item` ([testing](../testing.md#the-dev-fixtures-and-their-exemplar-columns)).

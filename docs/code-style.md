@@ -61,7 +61,7 @@ One line per rule. The reasoning and worked examples are one file away. Open a r
 
 ## Type modeling
 
-- **Generic params use the framework's abbreviations** (`TN`, `VN`, `CN`, `UN`, `HR`, `IF`).
+- **Generic params use the framework's abbreviations** (`TN`, `VN`, `CN`, `HR`, `IF`).
 - **Verify a type-level claim with `IsExactly` / `assertType` / `assertNotType` from `src/testSupport/typeAssertions.ts`, never an assignment.** Measure a mapped type over the config unions before adopting it.
 - **`as` casts narrow data that's already runtime-safe; they never substitute for validation.** External values go through `Val.validate.*`/`Val.is.*`. The two accepted cast idioms are in the reasoning file.
 - **A registry keyed by a finite name union takes a plain `: Type` annotation, not `makeStructuredConfig`**, which stays for the generated config files.

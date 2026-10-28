@@ -10,8 +10,8 @@ This is the most-repeated argument in the codebase, and it's what most often dis
 
 ## Instances
 
-- A sampled generated trait that also occupies a config-sheet cell is a third copy that can disagree with the live column — Column Config and Sheet Config keep only identity and operator-facing columns, and emit samples `isFormula` / `valueName` / `hasIdColumn` / `hasNameColumn` / `idPrefix` at regen (#33, #87).
-- The "ID prefix is unique or empty" helper validated a Sheet Config cell that the new design removes, so uniqueness is the generated constructor's check of sampled prefixes rather than a formula watching a second copy (#87).
+- A sampled generated trait that also occupies a config-sheet cell is a third copy that can disagree with the live column — Column Config and Table Config keep only identity and operator-facing columns, and emit samples `isFormula` / `valueName` / `hasIdColumn` / `hasNameColumn` / `idPrefix` at regen (#33, #87, sheets-framework#80).
+- The "ID prefix is unique or empty" helper validated a cell of Sheet Config, the tab Table Config replaced, and that cell was removed, so uniqueness is the generated constructor's check of sampled prefixes rather than a formula watching a second copy (#87).
 - [ADR 0007](../adr/0007-key-an-endpoint-by-the-column-that-fires-it-and-tie-its-columns-to-that-sheet.md): the entry's key carries its own sheet, so a cross-sheet or wrongly-typed column is unrepresentable rather than checked for.
 - [ADR 0009](../adr/0009-carry-a-selectors-options-inside-one-selector-object.md): the selector's options live inside the selector, so an endpoint with no selector has nowhere to write one and a silent no-op is unrepresentable rather than ignored.
 - An endpoint's **run state** pairs its message and its colour in one record, so no path can show one state's colour beside another's message (#4, `ac7a795`).
