@@ -1,0 +1,5 @@
+# When the Node host fails to authenticate
+
+`gen-configs` and the chore runner both refresh the named credential `desktop-clasp-run` out of `~/.clasprc.json`. If one fails with an auth error, the token needs re-minting — run `npx sheets-framework setup-auth` from any package (it runs the framework's `scripts/setup-clasp-run-auth.sh`), which walks through it. The consent screen of the GCP project behind that credential should be published to production; left in "Testing" it would issue refresh tokens that expire every 7 days. Publishing alone doesn't fix an existing token, since one minted under "Testing" keeps its expiry — the re-authorization is the part that matters.
+
+Google no longer lets you view or download a client secret after creating it, but you don't need to: clasp stores `client_id` and `client_secret` in `~/.clasprc.json`, and `--creds` reads only those two plus a localhost `redirect_uris` entry, so the file is always rebuildable. The script does that for you. Keep `~/.clasprc.json` at `chmod 600` — the refresh token in it no longer self-expires.
