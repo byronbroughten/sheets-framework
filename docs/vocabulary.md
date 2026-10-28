@@ -2,6 +2,8 @@
 
 The layering words, used precisely and never loosely; the operator-facing words (endpoint, selector, run state) are [GLOSSARY.md](../GLOSSARY.md)'s.
 
+**Renaming or relocating something and unsure which word fits: ask rather than guess.**
+
 One line per term. The elaboration is one file away. Open a reasoning file only when you're changing the rule, or the rule's line doesn't decide your case.
 
 ## Reasoning files
@@ -14,7 +16,7 @@ One line per term. The elaboration is one file away. Open a reasoning file only 
 | Profile, sampled facts, which class a member belongs to, Working, head rows | [`docs/vocabulary/profile.md`](./vocabulary/profile.md) |
 | Schema, blank cells, `value` / `valueOrEmpty` / `valueNotEmpty`, checkbox, `SerialDate`, `emptyValueAllowed` | [`docs/vocabulary/values.md`](./vocabulary/values.md) |
 
-## Packages
+## Library package
 
 - **A library package is one whose public interface is meant for code it doesn't know about**: the framework and `@byronbroughten/utils`.
 
@@ -42,17 +44,17 @@ One line per term. The elaboration is one file away. Open a reasoning file only 
 - **`xConfigs` is the whole map, `XConfig` is one entry's record, and a trait is one property of one record.** "Trait" never means a collection.
 - **The config-sheet floor is guaranteed, not data to fix**: the three config sheets' own entries always come out the same on regeneration.
 
-## Writes
+## The write queue
 
 - **The queue layer says *write*, paired with *fetch*** (`fetchQueue` / `writeQueue`); *update* names no operation, key or field, because every queued operation is an update.
-- **A queue key equals its operation's `kind`, and a `kind` equals its type name without "Operation"**, in lower camel case; `WriteOperations` is a mapped type over the kinds, so the compiler holds it. The one exception is `raw`, the escape hatch's `RawWriteOperation`.
+- **A queue key equals its operation's `kind`, and a `kind` equals its type name without "Operation", in lower camel case**, except `raw` (`RawWriteOperation`).
 - **A per-kind gather method is `gather<Key>Operation`, the key it pushes to**, and the per-row and per-sheet queue entries are `RowWrites` and `TableWrites`.
 - **A field about one row or one column is singular (`appendRow`, `deleteRow`); a queue entry's field holding many is plural (`fillCells`, `fillColumns`); a `WriteOperations` key stays its kind.** A queue's flag is a directive to the flusher, like a config literal's, so it reads as a verb.
 - **`FillCellOperation` and `FillColumnOperation` stay separate** so the send order, column fills then cell writes, lives in the structure; a multi-column fill would be `FillRangeOperation`.
 
 ## Profile, working and head rows
 
-- **A Table's or column's profile is its descriptive facts as the working state holds them** (column type, validation, head-row contents, and the facts sampled from the top data row), which config regeneration derives configs from. It is Raw-only (`table.profile`, `column.profile`). Identity and geometry (`tableId`, name, bounds) and everything you do to a Table or column are on the Table or column itself.
+- **A Table's or column's profile is the descriptive facts config regeneration derives configs from, as the working state holds them**; it is Raw-only (`table.profile`, `column.profile`).
 - **Sampled facts are the column-wide facts read from a column's top data row** (formula, number format, top value), held in `ColumnStateRaw.sampledFacts`.
 - **Working means present in the working view, by fetch or queued write, with row indexes at their pre-flush positions** (`workingRows`, `cell.inWorking`). "Active" is retired.
 - **A head row is a row of the Table's head, the header row or one fixed above it, reached by its head role; two roles may share a row.**
@@ -61,5 +63,5 @@ One line per term. The elaboration is one file away. Open a reasoning file only 
 
 - **Nearly every cell is tri-state: `Value<VN>` includes `""`.** Code that branches on a value says what empty means. `checkbox` is exactly `boolean`; don't restore the blank to it.
 - **`valueNotEmpty` throws on a blank, `valueOrEmpty` keeps `""`, and `value` is whichever the column's Empty value allowed box declares.** The plurals follow suit; only Named offers `value`/`valueArr`.
-- **An in-app date is a `SerialDate`, never a JS `Date`.** Build one with `SerialDate.fromYmd` (from `@byronbroughten/utils/serial-date`) or `SpreadsheetNamed.today()`, and move it with `SerialDate.addDays`/`addMonths`, not `+ 1`.
+- **An in-app date is a `SerialDate`, never a JS `Date`, and moves by `SerialDate.addDays`/`addMonths`, never `+ 1`.**
 - **`emptyValueAllowed` shapes the accessor, not the value type**, and is enforced at access, never at fetch or write.
