@@ -65,4 +65,4 @@ A grid fetch returns a sheet's `tables` only for the ranges it overlaps, so a Ta
 
 ## Why the app never repairs a Table
 
-It never moves, rebuilds or picks a Table, because a Table that moved out of the zone or multiplied usually means you restructured the sheet on purpose. No type can reach a range a person edits by hand, so this runtime check in `SpreadsheetRaw`'s post-fetch step is the only instrument there ([`docs/design/unrepresentable-disagreement.md`](../design/unrepresentable-disagreement.md), #9).
+It never moves, rebuilds or picks a Table, because a Table that moved out of the zone or multiplied usually means you restructured the sheet on purpose. No type can reach a range a person edits by hand, so this runtime check in `SpreadsheetIdentified`'s post-fetch step is the only instrument there ([`docs/design/unrepresentable-disagreement.md`](../design/unrepresentable-disagreement.md), #9).
