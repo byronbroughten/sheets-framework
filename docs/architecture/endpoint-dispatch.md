@@ -24,13 +24,13 @@ export interface Endpoint<TN extends TableNameSimple> {
 }
 
 export type EndpointsAll = {
-  [FN in ColumnFullName]?: Endpoint<SheetNameOf<FN>>;
+  [FN in ColumnFullName]?: Endpoint<TableNameOf<FN>>;
 };
 
 export type Endpoints = {
-  [FN in ColumnFullName as SheetNameOf<FN> extends FloorTabName
+  [FN in ColumnFullName as TableNameOf<FN> extends FloorTabName
     ? never
-    : FN]?: Endpoint<SheetNameOf<FN>>;
+    : FN]?: Endpoint<TableNameOf<FN>>;
 };
 ```
 
@@ -42,9 +42,9 @@ export type Endpoints = {
 
 **Every flag reads as a directive to the framework** — `retainSelection`, `requireOneRow`, `runOnUncheck` — rather than as a description of the entry it sits on (#18). One mood for the whole entry means a reader never has to work out which flags command and which describe.
 
-## Each key is correlated with its own sheet
+## Each key is correlated with its own Table
 
-**Each key is correlated with its own sheet**, so `SheetNameOf<FN>` narrows every column the entry names to that sheet's columns, and each is filtered to the value type it needs. A column from another sheet, a boolean column in `runStatus`, a string column in the selector's `column`, and a key that is not a column are each a compile error rather than a runtime no-op. It works because recovering a sheet name *from* a column full name is a plain indexed lookup on the flat column map — the cheap direction (see [Two ways to address a column](./column-addressing.md)); the expensive direction is never used. Measured: the map itself costs ~200 instantiations and no measurable check time.
+**Each key is correlated with its own Table**, so `TableNameOf<FN>` narrows every column the entry names to that Table's columns, and each is filtered to the value type it needs. A column from another Table, a boolean column in `runStatus`, a string column in the selector's `column`, and a key that is not a column are each a compile error rather than a runtime no-op. It works because recovering a Table name *from* a column full name is a plain indexed lookup on the flat column map — the cheap direction (see [Two ways to address a column](./column-addressing.md)); the expensive direction is never used. Measured: the map itself costs ~200 instantiations and no measurable check time.
 
 ## The steps of a run
 
@@ -53,7 +53,7 @@ export type Endpoints = {
 1. preps the selector column's fetch, if one is declared, into the cycle `fetchAllPrepped` is already running — so a selection costs no round trip of its own, and an endpoint without one costs no read at all here;
 2. collects the checked row indexes, or — with no selector — every table data row index from the table bounds;
 3. resets the entry column's action cell, unless `runOnUncheck` makes the checkbox an input rather than a button;
-4. **prunes**, when a selector is declared: every unselected data row is removed from local state, so every later read of working rows means the selection without a call site being rewritten. `TableRaw.removeRowsExcept` keeps the head rows (dropping the columnId row would break column resolution), and marks the sheet, so a whole-column fill on it throws;
+4. **prunes**, when a selector is declared: every unselected data row is removed from local state, so every later read of working rows means the selection without a call site being rewritten. `TableRaw.removeRowsExcept` keeps the head rows (dropping the columnId row would break column resolution), and marks the Table, so a whole-column fill on it throws;
 5. stamps the running state and flushes — that first flush is what puts "Running…" and yellow on the sheet *before* the work starts, which is the whole basis for a killed run staying distinguishable from one that never began;
 6. **refuses a selection of more than one row**, when the selector declares `requireOneRow` — as the *first statement inside the `try`*, so the operator sees the ordinary failed run state carrying the count, by the placement rule in step 9;
 7. runs the action inside `try`/`catch`/`finally`;
@@ -88,7 +88,7 @@ A **warning**'s orange sits between the success green and the failure red, so th
 
 ## Per-row report keys are grid row indexes
 
-**The map is keyed by the base-zero grid row index the action was handed as its selection**, and a key that is not one of the sheet's data rows throws — a reporting bug is loud rather than writing somewhere surprising. It throws from inside the run's `try`, so the operator reads it as an ordinary failed run. A key naming a row the same action deleted is legal and costs no check: the delete wins within the batch either way.
+**The map is keyed by the base-zero grid row index the action was handed as its selection**, and a key that is not one of the Table's data rows throws — a reporting bug is loud rather than writing somewhere surprising. It throws from inside the run's `try`, so the operator reads it as an ordinary failed run. A key naming a row the same action deleted is legal and costs no check: the delete wins within the batch either way.
 
 ## A returned failure is not a thrown one
 
@@ -100,7 +100,7 @@ An endpoint with a selector but nothing ticked prunes every data row, leaving no
 
 ## How feedback is written
 
-Feedback is written with the two column fills from [column fills](./cell-writes.md#column-fills), **both feedback columns taking the run state's colour**: `updateWorkingCells` when there's a selector (the selected rows are in the working view by construction), `updateAllCells` when there isn't — that branch reaches rows nothing ever fetched, which is why whole-sheet feedback costs no read. The selection clearing uses the working-cells fill for the same reason, through `CheckboxColumnOperator.uncheckWorkingCells` — the operator's only uncheck, since a whole-column one refuses to run on a pruned sheet by design and would throw in exactly the situation that wants it. Contiguous selected rows collapse into one request each, and the fill rides the flush the `finally` was already going to perform, so the clearing adds no round trip.
+Feedback is written with the two column fills from [column fills](./cell-writes.md#column-fills), **both feedback columns taking the run state's colour**: `updateWorkingCells` when there's a selector (the selected rows are in the working view by construction), `updateAllCells` when there isn't — that branch reaches rows nothing ever fetched, which is why whole-Table feedback costs no read. The selection clearing uses the working-cells fill for the same reason, through `CheckboxColumnOperator.uncheckWorkingCells` — the operator's only uncheck, since a whole-column one refuses to run on a pruned Table by design and would throw in exactly the situation that wants it. Contiguous selected rows collapse into one request each, and the fill rides the flush the `finally` was already going to perform, so the clearing adds no round trip.
 
 ## A per-row report is a per-cell write
 
@@ -108,7 +108,7 @@ Feedback is written with the two column fills from [column fills](./cell-writes.
 
 ## Clearing the rows you report into keeps the outcome
 
-**An action that clears the rows it reports into still shows the run's outcome on them.** `clearValues` writes `""` into every non-formula column, the run-status column included, but the outcome fill is queued after the action, so it wins: a run that empties its sheet ends with `Succeeded` on the row it leaves behind. That row still counts as blank, since the blank test ignores feedback columns ([blank row](./blank-row.md)), so the next append reuses it. Deleted rows are gone either way, so such an endpoint can only report per row on the rows it leaves behind. A failure is unaffected: the error path discards the clearing along with everything else the action queued.
+**An action that clears the rows it reports into still shows the run's outcome on them.** `clearValues` writes `""` into every non-formula column, the run-status column included, but the outcome fill is queued after the action, so it wins: a run that empties its Table ends with `Succeeded` on the row it leaves behind. That row still counts as blank, since the blank test ignores feedback columns ([blank row](./blank-row.md)), so the next append reuses it. Deleted rows are gone either way, so such an endpoint can only report per row on the rows it leaves behind. A failure is unaffected: the error path discards the clearing along with everything else the action queued.
 
 ## `EndpointRun` is built from `Api`'s props
 
@@ -116,10 +116,10 @@ Feedback is written with the two column fills from [column fills](./cell-writes.
 
 ## The dispatch boundary widens the generic
 
-**The dispatch boundary is where the generic widens.** `Api` holds a column full name known only at runtime, so `SheetNameOf` of it is the union of every sheet name ([Two ways to address a column](./column-addressing.md)), and `Api` instantiates `EndpointRun` at the widened sheet name, where a column parameter is the union across sheets rather than one sheet's. Why that doesn't collapse to `never`: [the widened instantiation](./class-chains.md#the-widened-instantiation-never-collapses-to-never).
+**The dispatch boundary is where the generic widens.** `Api` holds a column full name known only at runtime, so `TableNameOf` of it is the union of every Table name ([Two ways to address a column](./column-addressing.md)), and `Api` instantiates `EndpointRun` at the widened Table name, where a column parameter is the union across Tables rather than one Table's. Why that doesn't collapse to `never`: [the widened instantiation](./class-chains.md#the-widened-instantiation-never-collapses-to-never).
 
-That widening is what forces the selector's shape to be spelled inline, and the run to take `EndpointDispatched` (the rule: [`src/06_API/AGENTS.md`](../../src/06_API/AGENTS.md)). Two generic references to the *same* named type are compared by that type's measured variance rather than property by property, and the column filter leaves the variance unmeasurable, so the comparison falls back to demanding identical sheet names. Nesting the selector inside a named `EndpointSelector<TN>` — interface or alias — therefore breaks `Api`'s assignment outright, and so does `Endpoint<TableNameSimple>` as the run's prop type; an anonymous nested object plus a structural copy (`{ [K in keyof Endpoint<TN>]: Endpoint<TN>[K] }`) keeps both comparisons structural. Tidying either into a named type fails `npm run tsc` at `Api.ts`, not at the file you edited.
+That widening is what forces the selector's shape to be spelled inline, and the run to take `EndpointDispatched` (the rule: [`src/06_API/AGENTS.md`](../../src/06_API/AGENTS.md)). Two generic references to the *same* named type are compared by that type's measured variance rather than property by property, and the column filter leaves the variance unmeasurable, so the comparison falls back to demanding identical Table names. Nesting the selector inside a named `EndpointSelector<TN>` — interface or alias — therefore breaks `Api`'s assignment outright, and so does `Endpoint<TableNameSimple>` as the run's prop type; an anonymous nested object plus a structural copy (`{ [K in keyof Endpoint<TN>]: Endpoint<TN>[K] }`) keeps both comparisons structural. Tidying either into a named type fails `npm run tsc` at `Api.ts`, not at the file you edited.
 
-## An endpoint that appends into its own sheet
+## An endpoint that appends into its own Table
 
-An endpoint whose action appends into its **own** sheet is a design smell. With no selector the run stamps its feedback across that sheet's data rows, so the run reports into rows it is still creating. Initiate and report such a run from a sheet other than the one it writes into.
+An endpoint whose action appends into its **own** Table is a design smell. With no selector the run stamps its feedback across that Table's data rows, so the run reports into rows it is still creating. Initiate and report such a run from a Table other than the one it writes into.

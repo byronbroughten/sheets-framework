@@ -213,10 +213,10 @@ export type ColumnFullName<
     : never;
 }[ColumnFullNameAll];
 
-export type SheetNameOf<FN extends ColumnFullName> =
+export type TableNameOf<FN extends ColumnFullName> =
   ColumnConfigsFlat[FN]["tableName"];
 export type ColumnNameOf<FN extends ColumnFullName> =
-  ColumnConfigsFlat[FN]["columnName"] & ColumnName<SheetNameOf<FN>>;
+  ColumnConfigsFlat[FN]["columnName"] & ColumnName<TableNameOf<FN>>;
 export type ValueNameOf<FN extends ColumnFullName> =
   ColumnConfigsFlat[FN]["valueName"];
 export type ValueOf<FN extends ColumnFullName> = Value<ValueNameOf<FN>>;
