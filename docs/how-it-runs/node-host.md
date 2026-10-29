@@ -1,0 +1,15 @@
+# The Node host
+
+**The Node host is the framework's second host**, Sheets only, behind `sheets-framework chore <name>`, `sheets-framework gen-configs` and `sheets-framework probe`.
+
+## What the Node host installs
+
+The Node host is the framework's `src/nodeHost/`, launched by its `scripts/nodeHost.ts`. Spreadsheet I/O is six `RawSource` methods — fetch sheet properties, fetch the time zone, fetch grid ranges, fetch conditional format rules, fetch edit protections, apply the queued write list — none of which names a spreadsheet: the adapter is bound to one when it is constructed. `GoogleSheetsAPI` maps those onto the three Advanced Service verbs and, in Node, an HTTP transport. `NodeHost.ensureGlobals()` installs a `Logger` onto the global scope, installs configs and endpoints as the Apps Script entry call does, and injects `GoogleSheetsAPI`, bound to the configured spreadsheet ID, as the `RawSource`. The chore runner imports the package's configs and endpoint module before the host starts and the chore after, so only a chore module may read those globals as it loads. There is no `PropertiesService` stub, and no `Sheets` global, so a chore that reaches for `Sheets` fails by name. `probe` sends through the host's transport alone ([the probe](./probe.md)). A chore gets the three config files in its package's `generatedDir`, passed to the same `installConfigs` the entry call uses, so a chore run from the framework package runs on its `dev/generated/`. `gen-configs` installs the package's own configs too, or the framework's dev ones (`dev/generated/appConfigs.ts`) when the package has none yet, since it reads only the config floor, which every package shares.
+
+## What the Node host leaves unproven
+
+Why triggers, Gmail and Docs stay in Apps Script, and `ScriptApp` and `SpreadsheetApp` stay uninstalled, is a [deliberate absence](../design/deliberate-absence.md#instances). The adapter's fidelity to the real Advanced Sheets Service is an assumption rather than a fact: it is exercised against a recorded payload, not against Google. Moving `gen:configs` off `clasp run` also removed the last routine exercise of the deployed bundle, leaving the live trigger as the only thing that runs it — an accepted cost, taken because one regeneration path beats two, but worth remembering if a deployment-only failure ever appears.
+
+## Node-host transport: one HTTPS call per request
+
+**Each Node-host request is one HTTPS call to the Sheets REST API**, authenticated with the `desktop-clasp-run` credential clasp already stores. The framework's Sheets calls are synchronous and use their return values immediately, so the transport has to block: the framework's `scripts/nodeHost.ts` `spawnSync`s `scripts/fetchSync.js`, a one-request-per-process script, plain JS so each request skips `tsx`, that reads the request from stdin and writes the response to stdout. TypeScript is run by `tsx`, because the repo's relative imports are extensionless under `bundler` module resolution and Node's own type stripping cannot resolve them.

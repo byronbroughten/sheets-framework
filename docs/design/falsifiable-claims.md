@@ -12,7 +12,7 @@ Intuition about cost and intuition about types are both unreliable here, and bot
 
 ## Instances: types
 
-An assignment proves nothing about a mapped or conditional type — it passes against `any` and against `never` alike. Identity-based `IsExactly`/`assertType` is the only probe that means anything, and a probe that needed an `any` to compile has proved nothing at all: intersecting to satisfy an indexer resolves to `any` and makes every downstream assertion vacuously true (the framework's docs/code-style.md, "Type modeling").
+For a type, the cheap check is an identity assertion rather than an assignment, and a probe that needed an `any` to compile has proved nothing; both, with the indexer case that taught the second, live in [`docs/code-style/type-modeling.md`](../code-style/type-modeling.md#identity-checks-never-assignment).
 
 ## Instances: live behaviour
 

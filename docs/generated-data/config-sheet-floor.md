@@ -20,8 +20,4 @@ A floor tab's GID, Table ID and ID prefix and a floor column's column ID are its
 
 ## A regeneration refuses a floor entry that differs from the seed
 
-After that identity check, emit refuses a floor entry that differs from the floor seed (`assertFloorMatchesSeed`, which runs at regen rather than inside the generating constructors, since it resolves column IDs through the previous generated files): it names a floor tab with no entry (its Let api access unticked), and names the sheet, the column and both values for a seeded floor column that is missing, or whose header, `valueName` (the one its column type implies) or `emptyValueAllowed` differs. The comparison runs one way, so live columns the seed doesn't declare and Custom default value are left alone. The ID delimiter lives in the `tableLayout` constant, not on a sheet; changing it there would leave every column ID already minted, the floor's included, unparseable.
-
-## Never hand-edit a floor entry
-
-The floor entries in the generated files must still not be hand-edited: fix the live tab, or the seed, and let the floor and the regen carry it.
+After that identity check, emit refuses a floor entry that differs from the floor seed (`assertFloorMatchesSeed`, which runs at regen rather than inside the generating constructors, since it resolves column IDs through the previous generated files): it names a floor tab with no entry (its Let api access unticked), and names the sheet, the column and both values for a seeded floor column that is missing, or whose header, `valueName` (the one its column type implies) or `emptyValueAllowed` differs. The comparison runs one way, so live columns the seed doesn't declare are left alone. The ID delimiter lives in the `tableLayout` constant, not on a sheet ([the rule](../../src/01_SpreadsheetSchema/AGENTS.md)).

@@ -26,7 +26,7 @@ Test files are separately mid-migration off `as` via the `migrate-to-shoehorn` s
 
 ## Registries take a plain annotation
 
-`makeStructuredConfig` infers the literal into a type parameter. That inference accepts an unknown key without error whenever at least one _valid_ key sits beside it in the same literal. A bogus key on its own does error, which is exactly what makes the hole easy to miss. That's how `occupancy_buildLedgerRunTimeLastRan` (no such column) reached the endpoint map and still passed `npm run tsc`. `export const businessEndpoints: Endpoints = { ... }` restores excess-property checking and reports the typo with a "did you mean". Keep `makeStructuredConfig` for the generated config files, where the generator supplies the keys instead of a hand-typed literal.
+`makeStructuredConfig` infers the literal into a type parameter. That inference accepts an unknown key without error whenever at least one _valid_ key sits beside it in the same literal. A bogus key on its own does error, which is exactly what makes the hole easy to miss. That's how `occupancy_buildLedgerRunTimeLastRan` (no such column) reached the real-estate app's endpoint map and still passed `npm run tsc`. `export const businessEndpoints: Endpoints = { ... }` restores excess-property checking and reports the typo with a "did you mean". Keep `makeStructuredConfig` for the generated config files, where the generator supplies the keys instead of a hand-typed literal.
 
 ## Where utility types live
 

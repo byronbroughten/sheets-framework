@@ -1,4 +1,4 @@
-// `sheets-framework chore`: runs one chore against the package's spreadsheet. See docs/how-it-runs.md, "The chore and its dry run".
+// `sheets-framework chore`: runs one chore against the package's spreadsheet. See docs/how-it-runs/chore-dry-run.md.
 import { fileURLToPath } from "node:url";
 
 import type { Chore } from "../src/chores/Chore.ts";

@@ -1,7 +1,7 @@
 import type {
   ColumnFullName,
   ColumnNameFiltered,
-  SheetNameOf,
+  TableNameOf,
 } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
 import type { FloorTabName } from "../01_SpreadsheetSchema/configReaders/configSheetFloorSeed";
 import type { TableNameSimple } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
@@ -59,12 +59,12 @@ export type EndpointDispatched<TN extends TableNameSimple> = {
 
 // Each key carries its own sheet, so a column from another sheet is unnameable.
 export type EndpointsAll = {
-  [FN in ColumnFullName]?: Endpoint<SheetNameOf<FN>>;
+  [FN in ColumnFullName]?: Endpoint<TableNameOf<FN>>;
 };
 
 // The framework owns the config sheets' entries, so the app's map can't name one.
 export type Endpoints = {
   [
-    FN in ColumnFullName as SheetNameOf<FN> extends FloorTabName ? never : FN
-  ]?: Endpoint<SheetNameOf<FN>>;
+    FN in ColumnFullName as TableNameOf<FN> extends FloorTabName ? never : FN
+  ]?: Endpoint<TableNameOf<FN>>;
 };

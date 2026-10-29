@@ -11,7 +11,7 @@ import {
   type ColumnValueName,
   getColumnTraitByName,
   type MakeColumnFullName,
-  type SheetNameOf,
+  type TableNameOf,
   type ValueNameOf,
   type ValueOf,
 } from "./columnConfigsTypes";
@@ -185,7 +185,7 @@ describe("ColumnFullName, absolute column addressing", () => {
 
   it("resolves a full name's sheet, column, value name and value type exactly", () => {
     type FN = "valueTypes_checkbox";
-    assertType<IsExactly<SheetNameOf<FN>, "valueTypes">>(true);
+    assertType<IsExactly<TableNameOf<FN>, "valueTypes">>(true);
     assertType<IsExactly<ColumnNameOf<FN>, "checkbox">>(true);
     assertType<IsExactly<ValueNameOf<FN>, "checkbox">>(true);
     assertType<IsExactly<ValueOf<FN>, boolean>>(true);

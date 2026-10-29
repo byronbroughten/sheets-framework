@@ -10,12 +10,12 @@ This is the most-repeated argument in the codebase, and it's what most often dis
 
 ## Instances
 
-- [ADR 0011](../adr/0011-keep-only-identity-and-operator-facing-columns-on-the-config-sheets.md): sampled traits get no config-sheet cell, so there is no third copy left to disagree with the live column they're sampled from.
+- [ADR 0011](../adr/0011-keep-only-identity-and-operator-facing-columns-on-the-config-sheets.md): sampled traits get no config-sheet cell, so there is no third copy left to disagree with the live column they're sampled from; Table Config, which replaced Sheet Config, kept the rule (sheets-framework#80).
 - [ADR 0012](../adr/0012-assign-each-sheets-id-prefix-once-and-sample-it-from-its-column-ids.md): the ID prefix is sampled from the column IDs that carry it, so the "unique or empty" helper that validated a typed second copy went with the cell, and uniqueness is the generated constructor's check of sampled prefixes.
 - [ADR 0007](../adr/0007-key-an-endpoint-by-the-column-that-fires-it-and-tie-its-columns-to-that-sheet.md): the entry's key carries its own sheet, so a cross-sheet or wrongly-typed column is unrepresentable rather than checked for.
 - [ADR 0009](../adr/0009-carry-a-selectors-options-inside-one-selector-object.md): the selector's options live inside the selector, so an endpoint with no selector has nowhere to write one and a silent no-op is unrepresentable rather than ignored.
 - An endpoint's **run state** pairs its message and its colour in one record, so no path can show one state's colour beside another's message (#4, `ac7a795`).
-- The endpoint map takes a plain `: Endpoints` annotation rather than `makeStructuredConfig`, which infers the literal and silently accepts an unknown key whenever a valid key sits beside it — that hole is how a nonexistent column reached the endpoint map and still type-checked (the framework's docs/code-style.md, "Type modeling").
+- The endpoint map takes a plain `: Endpoints` annotation rather than `makeStructuredConfig`, so an unknown key is a compile error ([`docs/code-style/type-modeling.md`](../code-style/type-modeling.md#registries-take-a-plain-annotation) has the hole it closes).
 - Every class exposes its schema under the single name `schema`, so two accessors can't disagree about which schema a class has (`ab75c09`).
 - [ADR 0010](../adr/0010-type-a-fixed-list-dropdown-column-as-its-literal-union.md): a fixed-list dropdown column's type is the union its list declares, so a member the code doesn't route is a compile error at the switch rather than a line that renders wrong.
 - [ADR 0014](../adr/0014-type-a-dropdown-from-any-let-api-access-table-column-and-take-value-config-off-the-floor.md): a Name or ID column value source is deliberately left out of the literal union, since its members are rows that grow without a regen, so it is a reference typed `string` and a name with no matching row is the endpoint's to report.

@@ -1,8 +1,6 @@
 # Tier words: Source, Platform, Raw, Identified, Named
 
-The elaboration behind [docs/vocabulary.md](../vocabulary.md), whose one-line entries are the rules. These are the **architecture** words; the operator-facing ones live in [GLOSSARY.md](../../GLOSSARY.md).
-
-If you're renaming or relocating something and aren't sure which word fits, ask rather than guess: these distinctions were deliberately hashed out, and folder placement depends on them.
+The elaboration behind [docs/vocabulary.md](../vocabulary.md), whose one-line entries are the rules.
 
 - **Source** — the tier below everything that knows this spreadsheet: the `RawSource` port, the platform module (`GoogleSheets/`: the Google adapter and the Apps Script wrappers), and the cell values that cross the port.
 - **Platform** — the spreadsheet product: Google Sheets now, Excel via Office Scripts later. It is a different axis from **host** (Apps Script or Node), so "platform-neutral" is not "host-neutral": platform-neutral code imports nothing from the platform module (`src/00_Source/GoogleSheets/`) and names no `GoogleAppsScript.*` type, and a lint rule holds that boundary.

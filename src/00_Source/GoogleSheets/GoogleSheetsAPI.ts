@@ -141,7 +141,7 @@ export interface SheetsAdvancedTransport {
  * RawSource. HTTP transport lives here so Node does not install a Sheets global.
  * Translation by subject: GoogleSheetsAPI/ cellData, conditionalFormats,
  * protectedRanges, gridSnapshots, googleColor.
- * docs/architecture/round-trips.md, queued-writes.md, how-it-runs.md
+ * docs/architecture/round-trips.md, queued-writes.md, how-it-runs/node-host.md
  */
 export class GoogleSheetsAPI implements RawSource {
   private sheets: SheetsAdvancedTransport;

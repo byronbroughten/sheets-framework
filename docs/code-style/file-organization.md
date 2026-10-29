@@ -4,4 +4,4 @@ Disclosed from [`docs/code-style.md`](../code-style.md), "Imports & file organiz
 
 ## The framework's public entries
 
-`src/index.ts` is the Apps Script entry point, not a re-export barrel. The framework's two public entries are the only barrels: `src/framework.ts` (`@byronbroughten/sheets-framework`) and `src/frameworkTesting.ts` (`@byronbroughten/sheets-framework/testing`). An export joins them only when app code uses it. Every other file is imported directly by its path.
+`src/framework.ts` is published as `@byronbroughten/sheets-framework` and `src/frameworkTesting.ts` as `@byronbroughten/sheets-framework/testing`. An export joins them only when app code uses it; every other file is imported directly by its path.

@@ -12,4 +12,4 @@ Store and expose a fact at the level it's *about*, not the level it happens to a
 
 ## Corollaries
 
-When a container method takes an index or id that every caller already holds as its own state, the query belongs on the instance. The parameter disappearing is what turns it into a getter.
+A container method taking an id its only caller already holds as its own state belongs on the instance: [`docs/code-style/class-shape.md`](../code-style/class-shape.md#a-query-whose-parameter-its-caller-already-holds-belongs-on-the-instance).

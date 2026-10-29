@@ -24,7 +24,7 @@ interface FixtureColumnSeed {
   rowCount: number;
 }
 
-// A tab that exists is left alone; rebuild one by deleting it and rerunning (docs/how-it-runs.md).
+// A tab that exists is left alone; rebuild one by deleting it and rerunning (docs/how-it-runs/dev-project.md).
 export class DevFixtureBuilder extends SpreadsheetBaseNamed {
   static init(): DevFixtureBuilder {
     return new DevFixtureBuilder(DevFixtureBuilder.initSpreadsheetNamedProps());

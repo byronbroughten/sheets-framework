@@ -13,6 +13,6 @@ Removal is by exact range or by exact content. Overlap is not a match. The frame
 
 Every rule the payload holds is mapped, one for one, in order. A condition or format outside the modelled slice becomes an explicit unmodelable value that still occupies its index, so deletes by index cannot silently target a neighbour. Content equality against an unmodelable rule is always false; a range-scoped removal of one is allowed because the caller named the range.
 
-Rule writes embed row and column coordinates, so they refuse to queue when the row indexes of any Table on that sheet are stale. A flush that added or deleted a rule sets a third stale axis — conditional-format indexes — and a second rule-mutating flush against that sheet is refused until a refetch of its rules clears the flag.
+Rule writes embed row and column coordinates. Their refusal on stale row indexes, and the stale flag a rule-mutating flush sets: [stale row indexes](./stale-row-indexes.md).
 
-Rules are read with a plain spreadsheet get, never `getByDataFilter`, which drops `conditionalFormats` from its reply. Google also omits an empty rule list, so a sheet missing from that read's rules has none, not "unfetched"; it omits zero-valued range fields the same way, which read back as 0.
+Rules are read with a plain spreadsheet get, never `getByDataFilter`, which drops `conditionalFormats` from its reply. What Google leaves out of that reply: [the working view](./working-view.md#presence-in-a-range-is-not-presence-in-a-payload).

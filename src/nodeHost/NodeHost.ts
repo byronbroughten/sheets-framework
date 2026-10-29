@@ -22,7 +22,7 @@ export interface NodeHostProps {
   log: (message: string) => void;
 }
 
-// The framework's second host — Sheets only, in Node. See docs/how-it-runs.md.
+// The framework's second host — Sheets only, in Node. See docs/how-it-runs/node-host.md.
 export class NodeHost {
   readonly configs: Configs;
   private endpoints: Endpoints;

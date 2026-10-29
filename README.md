@@ -15,8 +15,8 @@ It ships TypeScript source, not a build, and your app bundles it. Add the option
 Your package needs:
 
 - **`tsconfig.json`** extending `@byronbroughten/sheets-framework/tsconfig.base.json`.
-- **`rollup.config.mjs`** built from the preset: `export default rollupPreset({ input: "src/index.ts", rootDir: ".." })`, with `rollupPreset` from `@byronbroughten/sheets-framework/rollup`. `rootDir` must cover the framework's source. With tree-shaking on, only the entry file's functions are callable from Apps Script; `treeshake: false` opts out ([the rollup preset](./docs/how-it-runs.md#the-rollup-preset)).
-- **`eslint.config.mjs`** spreading `@byronbroughten/config`'s `eslintPreset` and then `appEslintPreset({ testSetupFiles: ["src/installAppConfigs.ts"] })` from `@byronbroughten/sheets-framework/eslint`, which adds the platform, public-entry and generated-files import rules for your `src/`; `testSetupFiles` are the files besides tests that may import `./testing` ([the ESLint preset](./docs/how-it-runs.md#the-eslint-preset)).
+- **`rollup.config.mjs`** built from the preset: `export default rollupPreset({ input: "src/index.ts", rootDir: ".." })`, with `rollupPreset` from `@byronbroughten/sheets-framework/rollup`. `rootDir` must cover the framework's source. With tree-shaking on, only the entry file's functions are callable from Apps Script; `treeshake: false` opts out ([the rollup preset](./docs/how-it-runs/apps-script-host.md#the-rollup-preset)).
+- **`eslint.config.mjs`** spreading `@byronbroughten/config`'s `eslintPreset` and then `appEslintPreset({ testSetupFiles: ["src/installAppConfigs.ts"] })` from `@byronbroughten/sheets-framework/eslint`, which adds the platform, public-entry and generated-files import rules for your `src/`; `testSetupFiles` are the files besides tests that may import `./testing` ([the ESLint preset](./docs/how-it-runs/apps-script-host.md#the-eslint-preset)).
 - **`sheets.config.json`** at the package root, naming your spreadsheet ([the bin](#the-bin)). Copy `sheets.config.example.json`; the real file is gitignored.
 - **`.clasp.json`** and `appsscript.json` for an Apps Script project bound to your spreadsheet (created from its Extensions menu), with the Sheets advanced service enabled. Copy `.clasp.example.json`; the real file is gitignored. The script reads its spreadsheet from that binding; `sheets.config.json` names it for the Node commands.
 
@@ -55,11 +55,11 @@ The entry also exports the Named-tier classes (`SpreadsheetNamed`, `TableNamed`,
 }
 ```
 
-Generated configs go in `src/generated` and chores are found in `src/chores` and `src/chores/oneOff`; `generatedDir` and `choreHomes` override those folders ([how it runs](./docs/how-it-runs.md#the-sheets-framework-bin)).
+Generated configs go in `src/generated` and chores are found in `src/chores` and `src/chores/oneOff`; `generatedDir` and `choreHomes` override those folders ([the bin](./docs/how-it-runs/bin.md)).
 
 | Command | Does |
 | --- | --- |
-| `sheets-framework gen-configs` | Ensures the config-sheet floor, then regenerates the four config files and `appConfigs.ts` from the config sheets. **It writes to the live spreadsheet.** |
+| `sheets-framework gen-configs` | Ensures the config-sheet floor, then regenerates the three config files and `appConfigs.ts` from the config sheets. **It writes to the live spreadsheet.** |
 | `sheets-framework chore [name] [--send] [--json]` | Lists the chores, dry-runs one (reads live, writes nothing, prints the requests), or applies it with `--send`. |
 | `sheets-framework probe --fields\|--filter\|--path …` | One read-only Sheets request; the full JSON goes to `.probe/last.json`. |
 | `sheets-framework setup-auth` | Mints the credential the Node host uses, from clasp's login. |

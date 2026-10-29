@@ -31,7 +31,7 @@ A name over a group of a Table's columns, at one of two levels. Level 1 has its 
 _Avoid_: column-group heading, group row, section header
 
 **Action row**:
-The row above the Table header row where an endpoint is triggered. Most of its cells are empty, and a cell without a checkbox may hold a level-2 **group heading**. Only the cells wired to an endpoint hold a checkbox, and ticking one of those is what asks the spreadsheet to do something, one endpoint per column.
+The row above the Table header row where an endpoint is triggered. Most of its cells are empty or hold a level-2 **group heading**. Only the cells wired to an endpoint hold a checkbox, and ticking one of those is what asks the spreadsheet to do something, one endpoint per column.
 _Avoid_: control row, button row, trigger row
 
 **Table header row**:

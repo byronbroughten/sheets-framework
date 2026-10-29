@@ -1,6 +1,6 @@
-# Generated data — do not hand-edit
+# Generated data
 
-Each package's `generatedDir` (the app's `src/generated/`, the framework's `dev/generated/`) holds three config files generated from the live spreadsheet, plus `appConfigs.ts`, which gathers them into one `appConfigs` const and augments `Register`. Regenerate all three together with `sheets-framework gen-configs`, never hand-edit them, and read `columnConfigs.ts` by block. The rules are [`src/01_SpreadsheetSchema/AGENTS.md`](../src/01_SpreadsheetSchema/AGENTS.md)'s; what the command writes is [`how-it-runs.md`](./how-it-runs.md#what-gen-configs-writes)'s.
+Each package's `generatedDir` (the app's `src/generated/`, the framework's `dev/generated/`) holds three config files generated from the live spreadsheet, plus `appConfigs.ts`, which gathers them into one `appConfigs` const and augments `Register`. The rules for regenerating and editing them are [`src/01_SpreadsheetSchema/AGENTS.md`](../src/01_SpreadsheetSchema/AGENTS.md)'s; what the command writes is [`how-it-runs/gen-configs.md`](./how-it-runs/gen-configs.md#what-gen-configs-writes)'s.
 
 ## One file per generated constant, the sync and the floor
 
@@ -20,32 +20,16 @@ Each package's `generatedDir` (the app's `src/generated/`, the framework's `dev/
 
 A `generatedDir` holds the three generated data files, `tableConfigs.ts`, `columnConfigs.ts` and `valueConfigs.ts`, plus the generated `appConfigs.ts`, and nothing else. Each is one literal passed through its validating constructor (`makeTableConfigs`, `makeColumnConfigs`, `makeValueConfigs`), imported from `../makeConfigs`. The hand-written half sits in the Schema tier's `configReaders/` folder: the generator helpers in `makeConfigs.ts`, the floor seed in `configSheetFloorSeed.ts`, and a sibling types file per constant (`tableConfigsTypes`, `columnConfigsTypes`, `valueConfigsTypes`) holding the derived types and accessor functions built on the data. A generated file imports `makeConfigs` from the framework by the relative path `gen:configs` computes, the one framework deep import the app's lint exempts.
 
-All three are (or are meant to be) mechanically generated from the real spreadsheet, not hand-authored.
+## Why the three files depend on each other
 
-## Regenerate all three together, never a subset
-
-The rules on regenerating and on tab spelling: [`src/01_SpreadsheetSchema/AGENTS.md`](../src/01_SpreadsheetSchema/AGENTS.md).
-
-**`tableConfigs`, `columnConfigs`, and `valueConfigs` must always be regenerated together, in the same run — never a subset of them.** Table keys live as keys in `tableConfigs.ts`, and `columnConfigs.ts` is keyed by those same Table keys; `valueConfigs.ts` in turn depends on `columnConfigs` already being current to know which columns' headers to read. Regenerating a subset after a sheet/column was renamed/added/removed leaves the others referencing stale names, which breaks `npm run tsc` in places that look unrelated (the generated files themselves, plus any hand-written code that names a Table key by string literal).
+Table keys live as keys in `tableConfigs.ts`, and `columnConfigs.ts` is keyed by those same Table keys; `valueConfigs.ts` in turn depends on `columnConfigs` already being current to know which columns' headers to read. Regenerating a subset after a sheet/column was renamed/added/removed leaves the others referencing stale names, which breaks `npm run tsc` in places that look unrelated (the generated files themselves, plus any hand-written code that names a Table key by string literal).
 
 ## What a regeneration runs, on the Node host
 
-Regenerate all three with `sheets-framework gen-configs` (see [`docs/how-it-runs.md`](./how-it-runs.md#what-gen-configs-writes)), which runs `ConfigCoordinator` (`05_Operators`) **on the Node host**: it syncs the live Table Config sheet, then the live Column Config sheet (including adding any missing column IDs to business sheets), flushes all of that in one write, then reads the live Value Config sheet, and only then emits source for all three files. **Live Table sampling on that run — Table header row, column-ID row, first data row — is for this run's Let api access Tables**, after Table Config is loaded, not for every Table. Everyday Table-placement checks still use last-generate sheet GIDs, one regen behind the live box. The command writes all four files or none, and runs `npm run tsc` itself afterward so a stale hand-written reference surfaces immediately.
-
-## The `clasp run` path is gone
-
-**There is exactly one way to regenerate, and the `clasp run` path is gone.** The command used to ask Google to execute `generateConfigFiles` inside the Apps Script project, which holds whatever was last pushed — so editing a config operator locally left `gen:configs` silently running the previously pushed generator, and a generator failure came back as a JSON error blob rather than a stack trace. It now runs the generator in your working tree. Keeping both paths would create two regenerations that can disagree about what the config sheets say, which is the hazard the never-run-a-partial-regeneration rule exists to prevent.
-
-## A tab title becomes the sheet's key
-
-**A Table's key in `tableConfigs`/`columnConfigs` is derived from its Table name**, so a misspelled Table becomes a misspelled identifier in the generated files and in every string literal naming it. Fix the spelling before code references it; afterwards it costs a Table rename, a regeneration and every call site.
+Regenerate all three with `sheets-framework gen-configs` (see [`docs/how-it-runs/gen-configs.md`](./how-it-runs/gen-configs.md#what-gen-configs-writes)), which runs `ConfigCoordinator` (`05_Operators`) **on the Node host**, in your working tree; it is the only way to regenerate. It syncs the live Table Config sheet, then the live Column Config sheet (including adding any missing column IDs to business sheets), flushes all of that in one write, then reads the live Value Config sheet, and only then emits source for all three files. **Live Table sampling on that run — Table header row, column-ID row, first data row — is for this run's Let api access Tables**, after Table Config is loaded, not for every Table. Everyday Table-placement checks still use last-generate sheet GIDs, one regen behind the live box. The command writes all four files or none, and runs `npm run tsc` itself afterward so a stale hand-written reference surfaces immediately.
 
 ## One word splitter derives keys, names and prefixes
 
-**One word splitter, `Str.words`, derives sheet keys, column names, value names and new ID prefixes.** A title with whitespace is a sentence, split only on non-letters and non-digits with each word lowercased whole, so `CapEx budget` gives `capexBudget`. A title with no whitespace, like a Table name, is also split on camelCase and acronym boundaries, so `add occ charge`, `Add Occ Charge`, `add_occ_charge` and `addOccCharge` all give `addOccCharge` (prefix `aoc`), and the tab `CapEx` would give `capEx`. A trailing lone `s` stays on its acronym (`unitIDs` gives `unitIds`). `SentenceToCamelCase` mirrors the runtime rule at the type level.
+**One word splitter, `Str.words`, derives Table keys, column names, value names and new ID prefixes.** A title with whitespace is a sentence, split only on non-letters and non-digits with each word lowercased whole, so `CapEx budget` gives `capexBudget`. A title with no whitespace, like a Table name, is also split on camelCase and acronym boundaries, so `add occ charge`, `Add Occ Charge`, `add_occ_charge` and `addOccCharge` all give `addOccCharge` (prefix `aoc`), and the tab `CapEx` would give `capEx`. A trailing lone `s` stays on its acronym (`unitIDs` gives `unitIds`). `SentenceToCamelCase` mirrors the runtime rule at the type level.
 
-A prefix generated for a new tab now splits on punctuation too, so `Item-2B` gives `ib` where it once gave `itm`. A tab whose column ID row already holds IDs keeps the prefix read from it.
-
-## Never hand-edit the data; fix the sheet and regenerate
-
-Do not hand-edit (or AI-edit) the literal data inside `tableConfigs`/`columnConfigs`/`valueConfigs` once they have real generators — always regenerate from the spreadsheet instead. Structural/type changes around them (not the data itself) are fine. A sheet-shape bug is fixed on the sheet, then regenerated; after any sheet change, read the regenerated entry before building on it.
+A prefix generated for a new tab splits on punctuation too, so `Item-2B` gives `ib`. A tab whose column ID row already holds IDs keeps the prefix read from it.
