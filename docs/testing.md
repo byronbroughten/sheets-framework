@@ -93,7 +93,7 @@ An exemplar's value name has to stay put. `sampledBoolean` must not be formatted
 
 ## Testing an endpoint through `EndpointRun`
 
-The rule and its why: the house style's Tests section and [its reasoning](./code-style/tests.md#endpoints-through-endpointrun). The seam is the run's entry point, driven by the fake Sheets service, and the assertion is the grid the run leaves: which cells hold what values. `businessEndpoints/buildLedger.test.ts` stubs six sheets at once. The framework half of an endpoint's behaviour is tested separately in `06_API/EndpointRun.test.ts`, against synthetic endpoints on the `runItem` fixture.
+The rule and its why: the house style's Tests section and [its reasoning](./code-style/tests.md#endpoints-through-endpointrun). The seam is the run's entry point, driven by the fake Sheets service, and the assertion is the grid the run leaves: which cells hold what values. The real-estate app's `businessEndpoints/buildLedger.test.ts` stubs six sheets at once. The framework half of an endpoint's behaviour is tested separately in `06_API/EndpointRun.test.ts`, against synthetic endpoints on the `runItem` fixture.
 
 ## The fake answers what the adapter asked; Google doesn't
 
