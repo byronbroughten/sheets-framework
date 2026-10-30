@@ -1,0 +1,5 @@
+# Leave to Google every Table arrangement it refuses, and check only head rows
+
+The framework runs no up-front check of the whole layout: under insert plus widen, Google refuses every request that would cover part of another Table's range, such as a growth that would split a wider Table below or a column insert beside a taller one, so the framework catches the refusal and rewords it to name both Tables, where append would have silently padded a neighbour's body and needed an arrangement check on every run. Google can't see head rows, so those alone are checked: a column insert refuses, at gathering, a neighbour it would split from its head rows, and a config sync refuses a managed Table whose head rows sit on another Table. Loose cells split by a growth, and an unmanaged Table added on a managed Table's head rows without a regen, are accepted gaps.
+
+Source: byronbroughten/sheets-framework#57, byronbroughten/sheets-framework#64, byronbroughten/sheets-framework#123, byronbroughten/sheets-framework#124
