@@ -22,5 +22,5 @@ Measured against the live spreadsheet (Sept 2026): a round trip costs **~250–4
 
 ## Rejected: `SpreadsheetApp`
 
-**`SpreadsheetApp` is not a cheaper alternative, despite the intuition that a trigger already has the sheet open.** Measured the same day: `getLastRow()` + `getLastColumn()` + `getRange().getValues()` cost ~494ms against ~350ms for the single `getByDataFilter` they would have replaced. Each `SpreadsheetApp` call is its own round trip. This was tested and rejected — don't re-propose it without new measurements.
+**`SpreadsheetApp` is not a cheaper alternative, despite the intuition that a trigger already has the sheet open.** Measured the same day: `getLastRow()` + `getLastColumn()` + `getRange().getValues()` cost ~494ms against ~350ms for the single `getByDataFilter` they would have replaced. Each `SpreadsheetApp` call is its own round trip. The decision is [ADR 0025](../adr/0025-read-the-sheet-through-the-sheets-api-not-spreadsheetapp-even-in-a-trigger.md).
 
