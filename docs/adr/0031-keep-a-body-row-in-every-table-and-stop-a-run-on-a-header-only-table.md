@@ -1,0 +1,5 @@
+# Keep a body row in every Table, and stop a run on a header-only Table
+
+A Table never ends a run with zero body rows, even though insert plus widen can grow a Table with only its header, because the surviving blank row is the model growth copies formulas and formats from and the row `gen:configs` reads `isFormula` from; storing formula text in the configs instead was rejected as a new config field that still loses formats and colours. A Table met with only its header stops the run, naming it with a one-line fix to add a row holding its formulas, rather than being grown with no model row. Growth writes into an existing row only when it is the Table's lone body row, blank and unreserved: writing into every blank row at the bottom was rejected as a read of those rows that could fill one the operator left empty on purpose, always inserting as stranding the blank row above the new data, and a lone row nothing fetched throws, naming the fetch owed, rather than widen every run's opening read for a case only a wiped Table meets.
+
+Source: byronbroughten/sheets-framework#58
