@@ -10,7 +10,7 @@ This is the most-repeated argument in the codebase, and it's what most often dis
 
 ## Instances
 
-- [ADR 0011](../adr/0011-keep-only-identity-and-operator-facing-columns-on-the-config-sheets.md): sampled traits get no config-sheet cell, so there is no third copy left to disagree with the live column they're sampled from; Table Config, which replaced Sheet Config, kept the rule (sheets-framework#80).
+- [ADR 0011](../adr/0011-keep-only-identity-and-operator-facing-columns-on-the-config-sheets.md): sampled traits get no config-sheet cell, so there is no third copy left to disagree with the live column they're sampled from; Table Config, which replaced Sheet Config, kept the rule ([ADR 0033](../adr/0033-give-table-config-one-row-per-table-and-let-a-per-table-tick-decide-what-the-framework-touches.md) gives it no sampled cell).
 - [ADR 0012](../adr/0012-assign-each-sheets-id-prefix-once-and-sample-it-from-its-column-ids.md): the ID prefix is sampled from the column IDs that carry it, so the "unique or empty" helper that validated a typed second copy went with the cell, and uniqueness is the generated constructor's check of sampled prefixes.
 - [ADR 0007](../adr/0007-key-an-endpoint-by-the-column-that-fires-it-and-tie-its-columns-to-that-sheet.md): the entry's key carries its own sheet, so a cross-sheet or wrongly-typed column is unrepresentable rather than checked for.
 - [ADR 0009](../adr/0009-carry-a-selectors-options-inside-one-selector-object.md): the selector's options live inside the selector, so an endpoint with no selector has nowhere to write one and a silent no-op is unrepresentable rather than ignored.
