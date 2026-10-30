@@ -1,0 +1,5 @@
+# Give each Table its own head rows at fixed offsets above its header
+
+Each Table owns its column ID row, column-group heading and action row, directly above its own header and spanning only its columns, because sheet ownership would leave the lower Table of a stacked pair with no action row and all three rows describe Table columns. The rows sit at fixed offsets above the header, declared in code, rather than at absolute sheet positions, so a Table can sit anywhere its head fits. Google keeps nothing outside a Table attached to it, so the column ID row is the check: at header −3, across the Table's columns, it must hold only blanks or the Table's own prefixed IDs, and at least one ID, which catches a row inserted or deleted inside the band from a read the run already makes. The edit trigger takes positions from the installed configs, with no fetch; filtering on TRUE or FALSE alone was rejected because every data-checkbox edit would then cost a round trip. Moving Meta onto the Table, also decided here, went when Meta was retired (sheets-framework#85).
+
+Source: byronbroughten/sheets-framework#50
