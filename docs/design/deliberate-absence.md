@@ -1,10 +1,6 @@
 # Record a deliberate absence as deliberate
 
-Design reasoning. The one-line principle lives in [`docs/design.md`](../design.md); this file holds the argument and its instances.
-
-## The argument
-
-The riskiest gap in an AI-assisted codebase is the one that looks like an oversight. An unexplained absence reads as a to-do and gets helpfully filled in; a *documented* absence carries its reason and survives.
+Design reasoning. The one-line principle lives in [`docs/design.md`](../design.md); this file holds its instances.
 
 ## Instances
 

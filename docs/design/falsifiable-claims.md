@@ -1,10 +1,6 @@
 # Make the claim falsifiable before believing it
 
-Design reasoning. The one-line principle lives in [`docs/design.md`](../design.md); this file holds the argument and its instances.
-
-## The argument
-
-Intuition about cost and intuition about types are both unreliable here, and both have a cheap check available. Run the check, then record the number or the assertion so the next person doesn't re-litigate it.
+Design reasoning. The one-line principle lives in [`docs/design.md`](../design.md); this file holds its instances.
 
 ## Instances: performance
 
