@@ -1,5 +1,5 @@
 # Give Table Config one row per Table, and let a per-Table tick decide what the framework touches
 
-Table Config replaced Sheet Config with one row per Google Table in the spreadsheet, `Table ID | Table name | Sheet title | Let api access`: Table ID is the row's identity, Table name and Sheet title are readable identity the correction pass rewrites, and Let api access is the only declared column. The sync appends a new Table unticked and gives a tab with no Table no row, and `gen:configs` samples only ticked Tables, so an unticked Table gets no Column Config rows and no `tableConfigs` entry. Access moved from the sheet to the Table so that an operator's own Tables on a managed sheet stay theirs, left alone by runs and by config generation.
+Table Config replaced Sheet Config with one row per Google Table, identified by its Table ID, and Let api access moved from the sheet to the Table as that row's only declared column; runs and `gen:configs` touch only ticked Tables ([the sheet and its sync](../generated-data/table-configs.md)). Access moved to the Table so that an operator's own Tables on a managed sheet stay theirs, left alone by runs and by config generation.
 
 Source: byronbroughten/sheets-framework#108
