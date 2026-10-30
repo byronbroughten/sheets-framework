@@ -1,10 +1,6 @@
 # Funnel the expensive thing through one place
 
-Design reasoning. The one-line principle lives in [`docs/design.md`](../design.md); this file holds the argument and its instances.
-
-## The argument
-
-Design so the costly operation has exactly one chokepoint. Then instrumenting it measures everything, optimizing it optimizes everything, and a new call site can't quietly add cost behind your back.
+Design reasoning. The one-line principle lives in [`docs/design.md`](../design.md); this file holds its instances.
 
 ## Instances
 

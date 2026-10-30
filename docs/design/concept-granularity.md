@@ -1,10 +1,6 @@
 # Model state at the granularity the concept actually has
 
-Design reasoning. The one-line principle lives in [`docs/design.md`](../design.md); this file holds the argument and its instances.
-
-## The argument
-
-Store and expose a fact at the level it's *about*, not the level it happens to arrive at. The wire format's granularity is not the domain's granularity, and neither is the storage medium's.
+Design reasoning. The one-line principle lives in [`docs/design.md`](../design.md); this file holds its instances.
 
 ## Instances
 

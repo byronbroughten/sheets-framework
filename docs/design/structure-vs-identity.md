@@ -1,10 +1,6 @@
 # Structure is declared in code; identity is recorded from the sheet
 
-Design reasoning. The one-line principle lives in [`docs/design.md`](../design.md); this file holds the argument and its instances.
-
-## The argument
-
-What a thing looks like — headers, floor columns, head rows, ID shape — is declared in code. Which instance it is — GID, `tableId`, column ID, prefix — is read from the sheet.
+Design reasoning. The one-line principle lives in [`docs/design.md`](../design.md); this file holds its instances.
 
 ## Instances
 

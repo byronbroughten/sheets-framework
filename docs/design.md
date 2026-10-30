@@ -2,7 +2,7 @@
 
 Why this codebase is shaped the way it is, in the reasoning that generalizes past the decision that produced it; the agent tooling's arguments live with the repo's agent docs, not here.
 
-One line per principle. Each principle's argument and instances are one file away. Open a reasoning file only when you're changing the rule, or the rule's line doesn't decide your case.
+One line per principle. A principle's argument and instances, where it has them, are one file away. Open a reasoning file only when you're changing the rule, or the rule's line doesn't decide your case.
 
 ## Reasoning files
 
@@ -29,17 +29,18 @@ One line per principle. Each principle's argument and instances are one file awa
 - **Funnel the expensive thing through one place.** Give the costly operation one chokepoint, so instrumenting or optimizing it covers everything and no new call site adds cost unseen.
 - **Make the claim falsifiable before believing it.** Run the cheap check on a claim about cost, types or live Sheets behaviour, then record the number or the assertion beside the conclusion.
 - **Give the common case the unmarked name.** The reflexive name is the one wanted most of the time, decided by counting call sites; the rare case costs exactly one word.
-- **Record a deliberate absence as deliberate.** An unexplained gap reads as a to-do and gets filled in; a documented one carries its reason and survives.
+- **Record a deliberate absence as deliberate.** In an AI-assisted codebase the riskiest gap is one that looks like an oversight: an unexplained gap reads as a to-do and gets filled in; a documented one carries its reason and survives.
 - **A live config-sheet column must identify a row or serve a human on that sheet.** Sampled generated traits do not earn a cell.
 - **Structure is declared in code; identity is recorded from the sheet.** Headers, floor columns, head rows and ID shape are declared; GID, `tableId`, column ID and prefix are read.
 
 ## Adding a principle
 
-Decisions are ADRs in [`docs/adr/`](./adr/); the issue and commit citations in the reasoning files predate them and await migration.
+Decisions are ADRs in [`docs/adr/`](./adr/); the issue, commit, probe and code-site citations left in the reasoning files are evidence their migration kept. The rule is byro-repo's [ADR 0020](https://github.com/byronbroughten/byro-repo/blob/master/docs/adr/0020-a-principle-may-rest-on-one-adr-and-a-reasoning-file-holds-only-what-no-adr-holds.md).
 
-- **Every principle cites at least two ADRs from this repo**, or from real-estate under the last rule. A principle with fewer is a platitude.
+- **A principle may rest on one ADR from this repo, or from real-estate under the last rule, and earns its line only by deciding cases its ADRs don't name.**
+- **A principle gets a reasoning file only for what no single ADR holds**: the argument across several ADRs, or a citable case beyond its one ADR. Otherwise its line links its ADR directly.
 - **A new ADR that makes a principle's argument goes in that principle's reasoning file**, as a link plus one clause on how it makes the argument.
-- **A new principle is proposed to the developer and added only once approved**, as one line here plus one reasoning file in `docs/design/`.
-- **A superseded ADR stops counting.** A principle it leaves with fewer than two goes to the developer.
+- **A new principle is proposed to the developer and added only once approved**, as one line here, plus a reasoning file in `docs/design/` when it has one.
+- **A superseded ADR stops counting.** A principle it leaves with no ADR goes to the developer.
 - **Each bullet under the deliberate-absence principle names the gap and its reason.**
-- **A real-estate ADR may be cited, as an absolute GitHub URL because these docs are published**, and counts toward the two only when its argument is framework-general.
+- **A real-estate ADR may be cited, as an absolute GitHub URL because these docs are published**, and counts toward a principle only when its argument is framework-general.
