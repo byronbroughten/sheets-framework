@@ -92,7 +92,7 @@ export function editProtectionContentsEqual(
   );
 }
 
-// Google adds its own editors to a lock, so a present lock need only include the declared ones.
+// A present lock need only include the declared editors: the code assumes Google may add its own; observed: docs/sheets-behaviour.md#lock-editors.
 export function editProtectionContentSatisfies(
   present: EditProtectionContent,
   declared: EditProtectionContent,

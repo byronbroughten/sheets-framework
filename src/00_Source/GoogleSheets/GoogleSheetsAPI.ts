@@ -209,7 +209,7 @@ export class GoogleSheetsAPI implements RawSource {
       ),
     }));
   }
-  // Assumed to drop protectedRanges the same way until the probe says otherwise.
+  // The code assumes Google drops an empty protectedRanges list the same way; observed: docs/sheets-behaviour.md#reading-protections-back.
   fetchEditProtections(): SheetEditProtectionSnapshot[] {
     return this._fetchSheets(fieldMasks.protectedRanges).map((sheet) => ({
       sheetGid: sheetGidOf(sheet),

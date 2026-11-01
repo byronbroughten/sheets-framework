@@ -1,5 +1,7 @@
 # Seeing the raw Sheets JSON
 
+Before probing how Google behaves, look it up in [the Sheets index](../sheets-behaviour.md); whoever settles or overturns an observation adds or updates its line there in the same change as the finding.
+
 `GoogleSheetsAPI` maps the payload before anything can log it, and the `gworkspace` MCP returns cell values only. To see what Google actually sent, use the committed probe:
 
 ```
