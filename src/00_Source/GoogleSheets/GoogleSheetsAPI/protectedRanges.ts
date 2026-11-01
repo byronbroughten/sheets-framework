@@ -52,7 +52,7 @@ export const googleProtectedRange = {
       return { kind: "unmodelable", id };
     }
     const isWarning = protection.warningOnly === true;
-    // Google lists editors on a warning too, but a warning never uses them.
+    // Google lists editors on a warning too, but its reference says a warning ignores them (docs/sheets-behaviour.md#reading-protections-back).
     const editors = isWarning ? undefined : protection.editors;
     return {
       kind: isWarning ? "warning" : "lock",
