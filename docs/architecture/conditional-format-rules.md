@@ -5,7 +5,7 @@ Map fragment. Sibling headings live in this folder.
 
 A sheet's rules are an ordered list and the first match wins per format property. Adds prepend at index 0; there is no caller-supplied insertion index in this version. Identity is content — ranges, condition and format — not position. A newly added rule that is already present identically over the same range queues nothing.
 
-Ranges are the live Table data range of the structure named (sheet, column, or cell), bounded rather than open-ended. Sheets grows a rule's range when rows are inserted inside it, and a table-aware append is such an insert.
+Ranges are the live Table data range of the structure named (sheet, column, or cell), bounded rather than open-ended. Growth's `PASTE_FORMAT` copy grows a rule's range ending at the Table's last row over the new rows, which its insert alone leaves out ([observed](../sheets-behaviour.md#copying-format-and-validation-onto-new-rows), [insert alone](../sheets-behaviour.md#growing-a-table-with-an-insert-and-a-widen)).
 
 Custom formulas are stored as written for the range's top-left cell and re-evaluated relative per cell. Callers compose formula text; `anchoredA1` resolves a column name to that top-left A1 so no call site hardcodes a letter.
 

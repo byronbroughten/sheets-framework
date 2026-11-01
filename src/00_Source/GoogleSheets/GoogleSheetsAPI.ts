@@ -250,7 +250,7 @@ function sheetGidOf(sheet: GoogleSheet): number {
   return Val.assert(sheet.properties?.sheetId, "sheetId");
 }
 
-// Google prefixes its refusal with the request: "Invalid requests[3].insertRange: …".
+// Google prefixes its refusal with the request, "Invalid requests[3].insertRange: …"; observed: docs/sheets-behaviour.md#inserting-and-deleting-cells-beside-and-inside-a-table.
 function partialTableRefusal(
   error: unknown,
   requestOperations: LocalWriteOperation[],
@@ -450,7 +450,7 @@ function modeledOperationToGoogleRequests(
           },
         },
       ];
-    // Google writes addTable's own column names three columns right of the Table (measured 2026-09-23).
+    // Google writes addTable's own column names three columns right of the Table; observed: docs/sheets-behaviour.md#creating-and-updating-tables.
     case "addTable":
       return [
         {
