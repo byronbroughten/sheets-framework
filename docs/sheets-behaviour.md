@@ -21,6 +21,8 @@ Write-ups sourced from Google's docs live on `research/*` branches, listed by `g
 - Observed: An open-ended warning added through REST API v4 (start row and column bounds, no `endRowIndex`) read back with no `endRowIndex`, as `G5:G`; Table data column on `test`; 2026-09-17; [recorded in a03c0a6a](https://github.com/byronbroughten/byro-repo/commit/a03c0a6af3e6ba86a5eafcbc229d4a90333d06af).
 - Observed: A warning added through REST API v4 with no editors read back with an `editors` list; `test`; 2026-09-17; [recorded in a31f1523](https://github.com/byronbroughten/byro-repo/commit/a31f1523b33625f3fe9ca136ac995703f232aa71).
 - Observed: After the probe's four protections were deleted, a REST API v4 get with a `protectedRanges` fields mask returned `test` with no `protectedRanges` field; 2026-09-17; [recorded in a03c0a6a](https://github.com/byronbroughten/byro-repo/commit/a03c0a6af3e6ba86a5eafcbc229d4a90333d06af).
+- Documented: REST API v4's `ProtectedRange.range` reference says a fully unbounded range is considered a protected sheet, and its `GridRange` reference says a missing index leaves the range unbounded on that side; read 2026-10-31; [quoted on #195](https://github.com/byronbroughten/sheets-framework/issues/195#issuecomment-6553553665).
+- Documented: REST API v4's `ProtectedRange` reference says that on a write with `warningOnly` true the `editors` are ignored, and that editors are not supported with `warningOnly` protection; read 2026-10-31; [quoted on #195](https://github.com/byronbroughten/sheets-framework/issues/195#issuecomment-6553553665).
 
 ### Rows added below a protection
 
@@ -35,6 +37,7 @@ Write-ups sourced from Google's docs live on `research/*` branches, listed by `g
 - Observed: A cell carrying both a lock that permitted the editing user and a warning prompted on an edit in the Sheets UI; `test`; 2026-09-17; [recorded in 28fbbd79](https://github.com/byronbroughten/byro-repo/commit/28fbbd792bea56805b6edc54646280ef60fe50de).
 - Observed: A warning's `description` showed in the Sheets UI's Protected sheets and ranges sidebar and not in its prompt, which carried no custom message; `test`; 2026-09-17; [recorded in 28fbbd79](https://github.com/byronbroughten/byro-repo/commit/28fbbd792bea56805b6edc54646280ef60fe50de).
 - Observed: With the probe's warnings and locks on its data columns, the Sheets UI refused a column drag for every column; `test`; 2026-09-17; [recorded in a03c0a6a](https://github.com/byronbroughten/byro-repo/commit/a03c0a6af3e6ba86a5eafcbc229d4a90333d06af).
+- Documented: REST API v4's `ProtectedRange.warningOnly` reference says every user edits data in a warning-based protected range, with a warning asking the user to confirm the edit; read 2026-10-31; [quoted on #195](https://github.com/byronbroughten/sheets-framework/issues/195#issuecomment-6553553665).
 
 ### Whole-sheet warnings and unprotected ranges
 
@@ -47,6 +50,10 @@ Write-ups sourced from Google's docs live on `research/*` branches, listed by `g
 
 - Observed: A protection's unprotected range of `B6:D9` read back as `B5:D8` after a row above it was deleted; live spreadsheet, with the sheet, the delete's surface and whether a Table held the range not recorded; 2026-09-19; [recorded in c3dedd7a](https://github.com/byronbroughten/byro-repo/commit/c3dedd7ab940dae089feb7ab688fc482b55d850f).
 - Observed: REST API v4 row and column inserts and deletes moved the sheet's protected ranges with the rows and columns; scratch tab on the dev spreadsheet; 2026-09-26; [recorded in db5ba74d](https://github.com/byronbroughten/sheets-framework/commit/db5ba74d35cb24b9cf97975a1d86a589b88c7a76).
+
+### Adding protections
+
+- Documented: REST API v4's `AddProtectedRangeResponse` reference gives the reply one field, `protectedRange`, "the newly added protected range", a `ProtectedRange`, whose read-only `protectedRangeId` is the range's id; read 2026-10-31; [quoted on #195](https://github.com/byronbroughten/sheets-framework/issues/195#issuecomment-6553553665).
 
 ### Deleting protections
 

@@ -6,7 +6,7 @@ What an edit warning and an edit lock are, how the framework reads, matches and 
 
 ## Warnings, locks and unmodelable protections
 
-An **edit protection** (`EditProtection`) is an **edit warning**, an **edit lock**, or an unmodelable protection the framework leaves alone. The Google API type stays `ProtectedRange` at the adapter boundary, the way `ConditionalFormat` does. A warning prompts on an edit, the owner's included ([observed](../sheets-behaviour.md#warning-prompts)), and still lets the edit through. A lock takes optional `users` and `groups`. Unprotected ranges are representable only on a whole-sheet declaration.
+An **edit protection** (`EditProtection`) is an **edit warning**, an **edit lock**, or an unmodelable protection the framework leaves alone. The Google API type stays `ProtectedRange` at the adapter boundary, the way `ConditionalFormat` does. A warning prompts on an edit, the owner's included ([observed](../sheets-behaviour.md#warning-prompts)), and still lets the edit through ([documented](../sheets-behaviour.md#warning-prompts)). A lock takes optional `users` and `groups`. Unprotected ranges are representable only on a whole-sheet declaration.
 
 ## Lock editors and the owner lockout
 
@@ -14,7 +14,7 @@ A lock that names no editors inherits the spreadsheet's editors and does not sto
 
 ## Reading protections
 
-Reads use a plain spreadsheet get with a `protectedRanges` fields mask. `getByDataFilter` returned the same payload when probed ([observed](../sheets-behaviour.md#reading-protections-back)), unlike conditional formats; the adapter still uses the plain get so one request covers every sheet. What Google leaves out of that reply: [the working view](./working-view.md#presence-in-a-range-is-not-presence-in-a-payload). A range with no row or column bounds at all is a whole sheet. An open-ended column protection (start row and column bounds, no `endRowIndex`) reads back open-ended, and Google lists `editors` on a warning too ([observed](../sheets-behaviour.md#reading-protections-back)); a warning reads back with no users or groups, since it never uses them.
+Reads use a plain spreadsheet get with a `protectedRanges` fields mask. `getByDataFilter` returned the same payload when probed ([observed](../sheets-behaviour.md#reading-protections-back)), unlike conditional formats; the adapter still uses the plain get so one request covers every sheet. What Google leaves out of that reply: [the working view](./working-view.md#presence-in-a-range-is-not-presence-in-a-payload). A range with no row or column bounds at all is a whole sheet ([documented](../sheets-behaviour.md#reading-protections-back)). An open-ended column protection (start row and column bounds, no `endRowIndex`) reads back open-ended, and Google lists `editors` on a warning too ([observed](../sheets-behaviour.md#reading-protections-back)); a warning reads back with no users or groups, since Google's reference says a warning ignores them ([documented](../sheets-behaviour.md#reading-protections-back)).
 
 Every protection the payload holds is mapped, one for one, in order. A protection backed by a named range or a Table, or that sets `domainUsersCanEdit`, becomes an explicit unmodelable value that still carries its id and can still be removed by id. Google's `ProtectedRange` has no Table id; a Table-backed protection is unmodelable when it carries `namedRangeId`, which is the only Table signal on that resource.
 
@@ -24,7 +24,7 @@ Identity is content: range, kind, editors, unprotected ranges and description. A
 
 ## Queueing writes and stale indexes
 
-The write queue emits delete-protection then add-protection after the conditional-format adds and before the row deletes, which carry them up ([observed](../sheets-behaviour.md#row-and-column-shifts); [flush order](./flush-order.md#the-fixed-send-order-slot-by-slot)). Deletes are by id. Which protection writes refuse on stale row indexes, and the stale flag a protection-mutating flush sets: [stale row indexes](./stale-row-indexes.md). No column index goes stale, since a column insert lands only at the Table end. The add reply carries the new id; the framework does not integrate it, because the refetch is required.
+The write queue emits delete-protection then add-protection after the conditional-format adds and before the row deletes, which carry them up ([observed](../sheets-behaviour.md#row-and-column-shifts); [flush order](./flush-order.md#the-fixed-send-order-slot-by-slot)). Deletes are by id. Which protection writes refuse on stale row indexes, and the stale flag a protection-mutating flush sets: [stale row indexes](./stale-row-indexes.md). No column index goes stale, since a column insert lands only at the Table end. The add reply carries the new id ([documented](../sheets-behaviour.md#adding-protections)); the framework does not integrate it, because the refetch is required.
 
 ## Named ranges a protection can cover
 
