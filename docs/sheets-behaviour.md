@@ -185,10 +185,9 @@ Write-ups sourced from Google's docs live on `research/*` branches, listed by `g
 
 ## Apps Script services
 
-### The advanced Sheets service and SpreadsheetApp
+### The advanced Sheets service
 
 - Documented: Apps Script's advanced Sheets service page says the service "uses the same objects, methods, and parameters as the public API"; read 2026-10-01; [write-up on research/google-sheets-tables](https://github.com/byronbroughten/sheets-framework/blob/research/google-sheets-tables/research/google-sheets-tables.md#6-apps-script-visibility).
-- Documented: Apps Script's Spreadsheet service reference index lists no Table class, its table-named classes being `DataSourceTable`, `DataSourceTableColumn`, `PivotTable` and `EmbeddedTableChartBuilder`, and its `Sheet` class lists no method with "Table" in its name; read 2026-09-30 and 2026-10-01; [write-up on research/sheets-scoped-object-models](https://github.com/byronbroughten/sheets-framework/blob/research/sheets-scoped-object-models/research/sheets-scoped-object-models.md#apps-script-spreadsheetapp), [write-up on research/google-sheets-tables](https://github.com/byronbroughten/sheets-framework/blob/research/google-sheets-tables/research/google-sheets-tables.md#6-apps-script-visibility).
 
 ## Triggers
 
@@ -198,7 +197,7 @@ Write-ups sourced from Google's docs live on `research/*` branches, listed by `g
 
 ### Edit event ranges
 
-- Documented: `SpreadsheetApp`'s `Range.getColumn()` reference says it "Returns the starting column position for this range", with an example on `B2:D4` commented `// Logs "2.0"`; its `Range.getRow()` reference says it "Returns the row position for this range", with an example on `B2` that gives no logged value; read 2026-11-02; [quoted on #199](https://github.com/byronbroughten/sheets-framework/issues/199#issuecomment-6590878536).
+- Documented: `SpreadsheetApp`'s `Range.getColumn()` reference says it "Returns the starting column position for this range", with an example on `B2:D4` commented `// Logs "2.0"`; read 2026-11-02; [quoted on #199](https://github.com/byronbroughten/sheets-framework/issues/199#issuecomment-6590878536).
 
 ## Auth
 

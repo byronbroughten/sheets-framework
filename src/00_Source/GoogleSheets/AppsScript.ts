@@ -11,7 +11,7 @@ export class AppsScript {
       "Active spreadsheet (bind the Apps Script project to its spreadsheet)",
     ).getId();
   }
-  // The code assumes the event range's rows and columns are 1-based; documented for columns: docs/sheets-behaviour.md#edit-event-ranges.
+  // Assumes 1-based event rows and columns; columns documented: docs/sheets-behaviour.md#edit-event-ranges.
   static sheetEdit(e: GoogleAppsScript.Events.SheetsOnEdit): SheetEdit {
     return {
       sheetGid: e.range.getSheet().getSheetId(),
