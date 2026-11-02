@@ -29,9 +29,9 @@ Before a Table's properties arrive, the few reads that need a position, such as 
 
 ## The zone costs no round trip
 
-`TableRaw.gatherFetchProperties` gathers the zone once per sheet: rows 0 to the zone's depth, every column. Sheets returns every Table a grid range overlaps ([confirmed live](./finding-tables.md#the-premise-under-the-header-zone-holds)), so every Table whose header sits in the zone arrives with it, with its head rows. It rides the run's first fetch, so the check needs no fetch of its own. A Table the zone brings isn't used by arriving: `SheetRaw.gatherFetchHeaderZone` gathers the range without marking any Table.
+`TableRaw.gatherFetchProperties` gathers the zone once per sheet: rows 0 to the zone's depth, every column. The code assumes Sheets returns every Table a grid range overlaps ([observed](../sheets-behaviour.md#which-tables-a-grid-fetch-returns) for the ranges probed), so every Table whose header sits in the zone arrives with it, with its head rows. It rides the run's first fetch, so the check needs no fetch of its own. A Table the zone brings isn't used by arriving: `SheetRaw.gatherFetchHeaderZone` gathers the range without marking any Table.
 
-The zone costs the used cells it covers, not its depth ([finding Tables](./finding-tables.md#what-each-route-costs)). On the dev Layout tab it came back smaller than the strips it replaced: 1,686 bytes for both Tables against 1,882 for two placement strips and their column ID rows.
+The zone costs the used cells it covers, not its depth ([finding Tables](./finding-tables.md#what-each-route-costs)). On the dev Layout tab it came back smaller than the strips it replaced ([measured](../sheets-behaviour.md#reads-that-find-a-table)).
 
 ## Generation refuses a ticked Table outside the zone
 
@@ -57,7 +57,7 @@ Several managed Tables may share a sheet side by side, each with its header in t
 
 **Stacked managed Tables wait for a deepenable zone.** A Table below another has its header below the zone, so generation refuses it. Growth, row deletes and the column insert still push and pull the Tables below, and the fake covers it with an unmanaged Table under the managed ones. When stacked Tables return, deepen the zone to just below the lowest stacked header in the layout, not a blanket large number ([finding Tables](./finding-tables.md#keep-the-header-zone-and-deepen-it-for-stacked-tables)).
 
-A grid fetch returns a sheet's `tables` only for the ranges it overlaps, so a Table it leaves out keeps its state. Only a fetch covering a whole sheet, the sheet-properties fetch or `fetchSheetUsedGrid`, removes a Table absent from it.
+A grid fetch returns a sheet's `tables` only for the ranges it overlaps ([observed](../sheets-behaviour.md#which-tables-a-grid-fetch-returns)), so a Table it leaves out keeps its state. Only a fetch covering a whole sheet, the sheet-properties fetch or `fetchSheetUsedGrid`, removes a Table absent from it.
 
 ## The edit trigger reads the live Table
 
