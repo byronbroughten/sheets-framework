@@ -199,11 +199,11 @@ export class GoogleSheetsAPI implements RawSource {
       ),
     );
   }
-  // getByDataFilter never returns conditionalFormats, so rules take a plain get.
+  // getByDataFilter returned no conditionalFormats, so rules take a plain get; observed: docs/sheets-behaviour.md#reading-conditional-formats.
   fetchConditionalFormatRules(): SheetConditionalFormatSnapshot[] {
     return this._fetchSheets(fieldMasks.conditionalFormats).map((sheet) => ({
       sheetGid: sheetGidOf(sheet),
-      // Google omits an empty list.
+      // Google omits an empty list; observed: docs/sheets-behaviour.md#empty-lists-and-zero-valued-fields.
       rules: (sheet.conditionalFormats ?? []).map((rule, index) =>
         googleConditionalFormatRule.toConditionalFormatRule(rule, index),
       ),

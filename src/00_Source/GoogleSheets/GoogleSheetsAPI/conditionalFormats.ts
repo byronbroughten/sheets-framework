@@ -179,7 +179,7 @@ function objectHasDefinedKeysBesides(
   );
 }
 
-// Google echoes each colour as a style; only an rgb copy of the plain colour is modelled.
+// Google echoes each colour as a style; only an rgb copy of the plain colour is modelled; observed: docs/sheets-behaviour.md#reading-conditional-formats.
 function colorStyleMirrors(
   style: GoogleAppsScript.Sheets.Schema.ColorStyle | undefined,
   color: GoogleColor | undefined,
