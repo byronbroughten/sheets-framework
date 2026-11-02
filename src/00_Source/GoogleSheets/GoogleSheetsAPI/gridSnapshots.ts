@@ -28,7 +28,7 @@ export const googleGrid = {
   toGridRangeProps(
     range: GoogleAppsScript.Sheets.Schema.GridRange,
   ): GridRangeProps {
-    // Google omits zero-valued fields, so a gid-0 sheet or column A arrives absent.
+    // Google omits zero-valued fields, so a gid-0 sheet or column A arrives absent; observed: docs/sheets-behaviour.md#empty-lists-and-zero-valued-fields.
     return {
       sheetId: range.sheetId ?? 0,
       startRowIndex: SheetIndex.row(range.startRowIndex ?? 0),
@@ -97,7 +97,7 @@ function toTableColumnSnapshot(
     .map((conditionValue) => conditionValue.userEnteredValue)
     .filter((value): value is string => value !== undefined);
   return {
-    // The API omits columnIndex when it's zero.
+    // The code assumes Google omits a zero columnIndex too; observed: docs/sheets-behaviour.md#empty-lists-and-zero-valued-fields.
     columnIndex: colProps.columnIndex ?? 0,
     ...(colProps.columnName !== undefined
       ? { columnName: colProps.columnName }

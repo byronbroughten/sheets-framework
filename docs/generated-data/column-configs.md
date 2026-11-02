@@ -34,7 +34,7 @@ The sync resolves it in six steps, first match winning: the ID column is always 
 
 ## A compatible number format is a declaration
 
-**A compatible number format is a declaration, not a guess** (#42), including a blank first data row that inherited Currency — the type menu is never rewritten. Measured on Occupancy, 10 September 2026: "Next terms notes" was blank, undeclared and `CURRENCY`-formatted, and generated as a number; that column is now declared number and leaves the untyped list. A notes column that already contains text stays guessed string and untyped.
+**A compatible number format is a declaration, not a guess** (#42), including a blank first data row formatted as Currency — the type menu is never rewritten. Occupancy's "Next terms notes" read blank, undeclared and `CURRENCY`-formatted ([observed](../sheets-behaviour.md#number-formats-on-blank-cells)), and generated as a number; that column is now declared number and leaves the untyped list. A notes column that already contains text stays guessed string and untyped.
 
 ## Only a whole-day column is a `date`
 

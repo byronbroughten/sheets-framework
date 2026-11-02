@@ -15,4 +15,4 @@ Every rule the payload holds is mapped, one for one, in order. A condition or fo
 
 Rule writes embed row and column coordinates. Their refusal on stale row indexes, and the stale flag a rule-mutating flush sets: [stale row indexes](./stale-row-indexes.md).
 
-Rules are read with a plain spreadsheet get, never `getByDataFilter`, which drops `conditionalFormats` from its reply. What Google leaves out of that reply: [the working view](./working-view.md#presence-in-a-range-is-not-presence-in-a-payload).
+Rules are read with a plain spreadsheet get, never `getByDataFilter`, which drops `conditionalFormats` from its reply ([observed](../sheets-behaviour.md#reading-conditional-formats)). What Google leaves out of that reply: [the working view](./working-view.md#presence-in-a-range-is-not-presence-in-a-payload).

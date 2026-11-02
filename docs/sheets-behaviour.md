@@ -99,6 +99,37 @@ Write-ups sourced from Google's docs live on `research/*` branches, listed by `g
 
 - Observed: A REST API v4 `batchUpdate` adding rows to a 20-column Table (17 value columns, 3 `SINGLE(Table[c0])` formula columns) over 500 rows, median of 3 runs each in alternating order, `appendCells` against `insertRange` plus `updateTable` plus `updateCells` plus `pasteData` formula fills: 100 rows 492ms against 533ms (76 KB against 87 KB of body), 1,500 rows 1,533ms against 1,656ms (1,174 KB against 1,337 KB), 5,000 rows 3,892ms against 4,609ms (3,956 KB against 4,499 KB), about 8% more at 1,500 rows and 18% at 5,000; an empty `GET` in the same session took 274ms; both left every new row in the Table with its formula columns filled; a fresh scratch tab per run on the dev spreadsheet, from a dev chore; 2026-10-02; [addendum on #59](https://github.com/byronbroughten/sheets-framework/issues/59#issuecomment-5963582090).
 
+## Payload shape and reads
+
+### Rows a grid read leaves out
+
+- Observed: A REST API v4 `getByDataFilter` grid read of `Add Property Expenses`, whose one body row was blank and inside the Table's range (rows 3–4), returned for that row a block with 23 `columnMetadata` entries and no `rowData`, and for the column ID row a block with 23 entries and one row of 12 values, the Table being 12 columns wide; live spreadsheet, with the config sync's data filters and field mask; 2026-09-10; [measured in byro-repo#17](https://github.com/byronbroughten/byro-repo/issues/17), [recorded in bb7df180](https://github.com/byronbroughten/byro-repo/commit/bb7df18085c2737c00fca654d710ec527eff008d).
+
+### Empty lists and zero-valued fields
+
+- Observed: REST API v4 reads left out a sheet's `conditionalFormats` list when it held no rules, and left out zero-valued fields: a gid-0 `sheetId`, a column-A column index and a row-1 row index; live spreadsheet, the sheets and fields masks not recorded; 2026-09-16; [recorded in 62abd855](https://github.com/byronbroughten/byro-repo/commit/62abd85537ae0110cd80e3311e00c2aa298f9eb0), [recorded in 613de032](https://github.com/byronbroughten/byro-repo/commit/613de032e7a8310dd19277de344f51caca4e4ce2).
+
+### Reading conditional formats
+
+- Observed: A REST API v4 `getByDataFilter` returned no `conditionalFormats` for sheets holding rules, and a plain `spreadsheets.get` with the fields mask `sheets(properties(sheetId),conditionalFormats)` returned them; live spreadsheet, the sheets not recorded; 2026-09-16; [recorded in 62abd855](https://github.com/byronbroughten/byro-repo/commit/62abd85537ae0110cd80e3311e00c2aa298f9eb0), [recorded in 613de032](https://github.com/byronbroughten/byro-repo/commit/613de032e7a8310dd19277de344f51caca4e4ce2).
+- Observed: A REST API v4 read of conditional-format rules returned each colour as a `*ColorStyle` (`backgroundColorStyle`, `foregroundColorStyle`) beside the plain colour field; live spreadsheet, the sheets not recorded; 2026-09-16; [recorded in 62abd855](https://github.com/byronbroughten/byro-repo/commit/62abd85537ae0110cd80e3311e00c2aa298f9eb0), [recorded in 613de032](https://github.com/byronbroughten/byro-repo/commit/613de032e7a8310dd19277de344f51caca4e4ce2).
+
+## Formats and formulas
+
+### Writing a formula with a Table reference
+
+- Observed: A REST API v4 `batchUpdate` `updateCells` writing `=SUM(ProbeA[Number])` as `userEnteredValue.formulaValue` stored the text as written and it evaluated to `#ERROR!` ("Formula parse error"), in the same batch as the `addTable` and in a later one, and for `ProbeA[[Number]]`, `ProbeA[#DATA]`, `'ProbeA'[Number]` and lowercase; the same text through `values:batchUpdate` with `valueInputOption: USER_ENTERED` parsed and computed; `Table Probe` sheet on the dev spreadsheet, a Table; 2026-10-01; [resolution on #53](https://github.com/byronbroughten/sheets-framework/issues/53#issuecomment-5933531939).
+- Observed: A REST API v4 read of `userEnteredValue.formulaValue` returned `=SINGLE(ProbeA[Number])*2` as written, and that text written back through `updateCells` gave a parse error; `Table Probe` sheet on the dev spreadsheet, a Table; 2026-10-01; [resolution on #53](https://github.com/byronbroughten/sheets-framework/issues/53#issuecomment-5933531939).
+- Observed: A REST API v4 `repeatCell` writing a Table-reference formula as `formulaValue` left the `Formula test` cell `#ERROR!`, and a `pasteData` with `PASTE_FORMULA` of it parsed; live spreadsheet; 2026-09-14; [recorded in 3bc4a854](https://github.com/byronbroughten/byro-repo/commit/3bc4a854f6c983eefe5359d0652eb586d05dc8b4).
+
+### Number formats on blank cells
+
+- Observed: A REST API v4 grid read returned Occupancy's `Next terms notes` first body cell blank, with no declared column type and a `CURRENCY` number format; live spreadsheet, a Table; 2026-09-10; [recorded in 35858b5b](https://github.com/byronbroughten/byro-repo/commit/35858b5b081de15c2b415a0dc89d9d67fd7126a1).
+
+### Checkbox cells
+
+- Observed: `Add Property Expense`'s one body row held an explicit `FALSE` in a just-added checkbox column and nothing anywhere else; live spreadsheet, a Table, how the column was added and the read's surface not recorded; 2026-09-11; [recorded in 4e93f46f](https://github.com/byronbroughten/byro-repo/commit/4e93f46f392780ef5fc25ecd87364776269f4ef2).
+
 ## Protections
 
 ### Lock editors
