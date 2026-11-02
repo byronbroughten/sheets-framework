@@ -62,6 +62,43 @@ Write-ups sourced from Google's docs live on `research/*` branches, listed by `g
 
 - Observed: A REST API v4 `sortRange` ascending put numbers, then text, then booleans (`FALSE` before `TRUE`), descending put them in the exact reverse, and blanks sorted last in both; scratch tab on the dev spreadsheet, whether a Table held the range not recorded; 2026-09-26; [recorded in db5ba74](https://github.com/byronbroughten/sheets-framework/commit/db5ba74d35cb24b9cf97975a1d86a589b88c7a76).
 
+## Finding Tables
+
+### Naming a Table in a data filter
+
+- Observed: A REST API v4 `getByDataFilter` with `p130Target`, `p130Target[ID]` or `Probe130!p130Target` as its `a1Range` returned 400 "Unable to parse range", before and after each of four moves of the Table; `Probe130` tab on the dev spreadsheet, a Table; 2026-10-08; [recorded in 313ac9ba](https://github.com/byronbroughten/sheets-framework/commit/313ac9ba8a95ab532a391cb18f6f7e9509eb3255).
+- Observed: A REST API v4 `getByDataFilter` with two filters, one a valid range and one an unknown name as its `a1Range`, returned 400; `Probe130` tab on the dev spreadsheet; 2026-10-08; [recorded in 313ac9ba](https://github.com/byronbroughten/sheets-framework/commit/313ac9ba8a95ab532a391cb18f6f7e9509eb3255).
+
+### Which Tables a grid fetch returns
+
+- Observed: A REST API v4 `getByDataFilter` grid fetch returned in `tables` only the Tables its range overlapped: a range over `layoutAbove`'s header cell alone returned `layoutAbove` only, a range over no Table returned none, a range over `p130Target`'s three head rows ending just above its header returned none, and the whole sheet as one range returned every Table on it; `Probe130` tab on the dev spreadsheet, two stacked Tables; 2026-10-08; [recorded in 313ac9ba](https://github.com/byronbroughten/sheets-framework/commit/313ac9ba8a95ab532a391cb18f6f7e9509eb3255).
+- Observed: A REST API v4 `getByDataFilter` over the sheet's top rows, every column, did not return `p130Target`, its header on row 13, at 4 rows deep; at 20 rows it returned it before any move and after a row insert inside the Table above, a column insert at column A and a row delete above it, and not after a `cutPaste` of its head rows and range to H41; at 100 rows it returned it after every move; a range of column B from row 1 to the header row plus its column ID row returned it before any move and after none; `Probe130` tab on the dev spreadsheet, the moves run in turn; 2026-10-08; [recorded in 313ac9ba](https://github.com/byronbroughten/sheets-framework/commit/313ac9ba8a95ab532a391cb18f6f7e9509eb3255).
+- Observed: A REST API v4 `spreadsheets.get` of the whole spreadsheet's `sheets.tables` returned `p130Target` before and after each of the four moves; dev spreadsheet; 2026-10-08; [recorded in 313ac9ba](https://github.com/byronbroughten/sheets-framework/commit/313ac9ba8a95ab532a391cb18f6f7e9509eb3255).
+
+### Developer metadata and named ranges under moves
+
+- Observed: REST API v4 developer metadata on `p130Target`'s header row and on its first column, looked up by `getByDataFilter`, returned the Table after a row insert inside the Table above, a column insert at column A and a row delete above it, and not after a `cutPaste` of its head rows and range to H41; the header-row lookup returned the whole sheet row, and the column lookup the whole used column with the Table above; `Probe130` tab on the dev spreadsheet; 2026-10-08; [recorded in 313ac9ba](https://github.com/byronbroughten/sheets-framework/commit/313ac9ba8a95ab532a391cb18f6f7e9509eb3255).
+- Observed: A REST API v4 named range over `p130Target`'s head rows and header (B10:D13), as a `getByDataFilter` `a1Range`, returned the Table after each of the same four moves, the `cutPaste` covering the whole named range; `Probe130` tab on the dev spreadsheet; 2026-10-08; [recorded in 313ac9ba](https://github.com/byronbroughten/sheets-framework/commit/313ac9ba8a95ab532a391cb18f6f7e9509eb3255).
+
+## Round trips and cost
+
+### A round trip's cost
+
+- Observed: A REST API v4 round trip cost ~250–450ms, against ~20–60ms of the framework's own CPU for a whole trigger; live spreadsheet, whether a Table held the range not recorded; 2026-09-01; [recorded in 933351eb](https://github.com/byronbroughten/byro-repo/commit/933351eb4f6cc87f6b8c82869b397f918e913cbd).
+- Observed: `SpreadsheetApp`'s `getLastRow()`, `getLastColumn()` and `getRange().getValues()` together cost ~494ms, against ~350ms for the one REST API v4 `getByDataFilter` they would replace; live spreadsheet, whether a Table held the range not recorded; 2026-09-01; [recorded in 933351eb](https://github.com/byronbroughten/byro-repo/commit/933351eb4f6cc87f6b8c82869b397f918e913cbd).
+- Documented: REST API v4's Usage limits page gives read requests a quota of 60 per minute per user per project, and 300 per minute per project; read 2026-11-01; [quoted on #197](https://github.com/byronbroughten/sheets-framework/issues/197#issuecomment-6566015808).
+
+### Reads that find a Table
+
+- Observed: REST API v4 reads from a Node script on a laptop, each timed 12 times paced under 60 reads a minute, median ms (min–max) and response bytes: column B from row 1 to the header row plus the column ID row 201 (191–228), 5,257; a named range 210 (194–241), 2,742; developer metadata on the header row 250 (225–940), 2,741, and on the first column 254 (238–1,864), 3,953; the whole spreadsheet's `sheets.tables` 188 (156–233), 13,392 over 13 sheets; the sheet's top 4 rows 202 (186–231), 2,567, top 20 rows 202 (187–230), 6,672, and top 100 rows 214 (188–250), 6,672; `Probe130` tab on the dev spreadsheet, before any move; 2026-10-08; [recorded in 313ac9ba](https://github.com/byronbroughten/sheets-framework/commit/313ac9ba8a95ab532a391cb18f6f7e9509eb3255).
+- Observed: A REST API v4 `getByDataFilter` of the sheet's top 100 rows returned 8,270 bytes once a `cutPaste` had put rows 41–47 in range, against 6,672 before; `Probe130` tab on the dev spreadsheet; 2026-10-08; [recorded in 313ac9ba](https://github.com/byronbroughten/sheets-framework/commit/313ac9ba8a95ab532a391cb18f6f7e9509eb3255).
+- Observed: A REST API v4 `getByDataFilter` with the whole Layout sheet as its `a1Range` and no `data` in the fields mask returned the sheet's three Tables in under 2 KB; Layout tab on the dev spreadsheet; 2026-10-08; [recorded in 313ac9ba](https://github.com/byronbroughten/sheets-framework/commit/313ac9ba8a95ab532a391cb18f6f7e9509eb3255).
+- Observed: A REST API v4 grid fetch of the sheet's top 4 rows, every column, returned 1,686 bytes for both of the Layout tab's Tables, against 1,882 for two column-B strips from row 1 to each header row and their column ID rows; Layout tab on the dev spreadsheet; 2026-10-08; [recorded in cfd93d20](https://github.com/byronbroughten/sheets-framework/commit/cfd93d20e7b51e87a0687bceaa2e13fa8bb26def).
+
+### Growing a Table in bulk
+
+- Observed: A REST API v4 `batchUpdate` adding rows to a 20-column Table (17 value columns, 3 `SINGLE(Table[c0])` formula columns) over 500 rows, median of 3 runs each in alternating order, `appendCells` against `insertRange` plus `updateTable` plus `updateCells` plus `pasteData` formula fills: 100 rows 492ms against 533ms (76 KB against 87 KB of body), 1,500 rows 1,533ms against 1,656ms (1,174 KB against 1,337 KB), 5,000 rows 3,892ms against 4,609ms (3,956 KB against 4,499 KB), about 8% more at 1,500 rows and 18% at 5,000; an empty `GET` in the same session took 274ms; both left every new row in the Table with its formula columns filled; a fresh scratch tab per run on the dev spreadsheet, from a dev chore; 2026-10-02; [addendum on #59](https://github.com/byronbroughten/sheets-framework/issues/59#issuecomment-5963582090).
+
 ## Protections
 
 ### Lock editors
