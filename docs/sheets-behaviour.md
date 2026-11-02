@@ -182,3 +182,26 @@ Write-ups sourced from Google's docs live on `research/*` branches, listed by `g
 ### Deleting protections
 
 - Observed: A REST API v4 `deleteProtectedRange` with an id no sheet held was rejected with `No protected range with id`; scratch tab on the dev spreadsheet; 2026-09-26; [recorded in 19cc66e2](https://github.com/byronbroughten/sheets-framework/commit/19cc66e2e3f7de98a3c0edb2a66a6e855e9d0f8c).
+
+## Apps Script services
+
+### The advanced Sheets service and SpreadsheetApp
+
+- Documented: Apps Script's advanced Sheets service page says the service "uses the same objects, methods, and parameters as the public API"; read 2026-10-01; [write-up on research/google-sheets-tables](https://github.com/byronbroughten/sheets-framework/blob/research/google-sheets-tables/research/google-sheets-tables.md#6-apps-script-visibility).
+- Documented: Apps Script's Spreadsheet service reference index lists no Table class, its table-named classes being `DataSourceTable`, `DataSourceTableColumn`, `PivotTable` and `EmbeddedTableChartBuilder`, and its `Sheet` class lists no method with "Table" in its name; read 2026-09-30 and 2026-10-01; [write-up on research/sheets-scoped-object-models](https://github.com/byronbroughten/sheets-framework/blob/research/sheets-scoped-object-models/research/sheets-scoped-object-models.md#apps-script-spreadsheetapp), [write-up on research/google-sheets-tables](https://github.com/byronbroughten/sheets-framework/blob/research/google-sheets-tables/research/google-sheets-tables.md#6-apps-script-visibility).
+
+## Triggers
+
+### Simple triggers and authorization
+
+- Documented: Apps Script's Simple Triggers guide says, under its restrictions, that simple triggers "can't access services that require authorization"; read 2026-11-02; [quoted on #199](https://github.com/byronbroughten/sheets-framework/issues/199#issuecomment-6590878536).
+
+### Edit event ranges
+
+- Documented: `SpreadsheetApp`'s `Range.getColumn()` reference says it "Returns the starting column position for this range", with an example on `B2:D4` commented `// Logs "2.0"`; its `Range.getRow()` reference says it "Returns the row position for this range", with an example on `B2` that gives no logged value; read 2026-11-02; [quoted on #199](https://github.com/byronbroughten/sheets-framework/issues/199#issuecomment-6590878536).
+
+## Auth
+
+### Refresh tokens under a Testing consent screen
+
+- Documented: Google Identity's Using OAuth 2.0 page says a Google Cloud project whose OAuth consent screen is set to the external user type with a publishing status of "Testing" "is issued a refresh token expiring in 7 days", unless the only scopes requested are name, email address and user profile; read 2026-09-27, again 2026-11-02; [write-up on research/harness-auth](https://github.com/byronbroughten/sheets-framework/blob/research/harness-auth/research/harness-auth.md#scopes-and-verification), [quoted on #199](https://github.com/byronbroughten/sheets-framework/issues/199#issuecomment-6590878536).
