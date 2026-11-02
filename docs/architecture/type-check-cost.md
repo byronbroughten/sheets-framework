@@ -12,7 +12,7 @@ The generated config describes ~574 columns across ~28 sheets, and a lot of this
 
 ## Baseline and the lazy mapped filter
 
-Baseline (Sept 2026): **~286k instantiations, ~1.2s check time.** A mapped filter over the flat column map (`{ [K in ColumnFullName]: … }`) costs **~48k instantiations per distinct instantiation** — cheap, and cheaper *lazily* than precomputed: eagerly grouping every value name up front cost ~390k, while filtering per use costs ~48k each and only for the value names actually used.
+The baseline, and what one mapped filter over the flat column map (`{ [K in ColumnFullName]: … }`) costs per distinct instantiation, are [measured in the Estimates](https://github.com/byronbroughten/byro-repo/blob/master/docs/agents/codebase-priorities/estimates.md#type-check). The filter is cheap, and cheaper *lazily* than precomputed: eagerly grouping every value name up front cost ~390k, while filtering per use pays one filter's cost for each value name actually used.
 
 ## The known cliff: a widened template literal over both names
 
@@ -26,7 +26,7 @@ After the endpoint entry landed (#5, Sept 2026): **~620k instantiations, ~1.54s 
 
 ### Absolute addressing family
 
-After the absolute addressing family landed (Sept 2026): **~597k instantiations, ~1.6s check time**, against **286k, ~1.5s** re-measured on the same machine in the same session — so instantiations roughly doubled while check time barely moved. (Compare check times only within one measurement run: the 1.2s recorded above and the 1.5s here are the same baseline commit on different machines.) Most of the increase is the handful of distinct `ColumnFullName<VN, IF>` and `ColumnNameFiltered<TN, VN, IF>` instantiations the endpoint unions and the checkbox operator ask for.
+After the absolute addressing family landed (Sept 2026): **~597k instantiations, ~1.6s check time**, against **286k, ~1.5s** re-measured on the same machine in the same session — so instantiations roughly doubled while check time barely moved. (Compare check times only within one measurement run: the Estimates' 1.2s baseline and the 1.5s here are the same baseline commit on different machines.) Most of the increase is the handful of distinct `ColumnFullName<VN, IF>` and `ColumnNameFiltered<TN, VN, IF>` instantiations the endpoint unions and the checkbox operator ask for.
 
 ### #11 selector object
 
