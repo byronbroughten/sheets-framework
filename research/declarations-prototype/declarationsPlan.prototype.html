@@ -1,0 +1,1562 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>
+      PROTOTYPE: declarations, three-way plan (sheets-framework #183)
+    </title>
+    <style>
+      :root {
+        --accent: #2457d6;
+        --ink: #1d2330;
+        --muted: #6b7280;
+        --line: #e3e6ec;
+        --bg: #fafbfc;
+        --red: #b42318;
+        --amber: #a15c07;
+        --green: #1f7a4d;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font:
+          14px/1.5 -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+        color: var(--ink);
+        background: var(--bg);
+      }
+      main {
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 28px 28px 80px;
+      }
+      h1 {
+        font-size: 22px;
+        margin: 0 0 4px;
+      }
+      h2 {
+        font-size: 15px;
+        margin: 0 0 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--muted);
+      }
+      h3 {
+        font-size: 14px;
+        margin: 14px 0 6px;
+      }
+      p {
+        margin: 6px 0;
+      }
+      .banner {
+        background: #fff4e5;
+        border: 1px solid #f3d19c;
+        padding: 8px 12px;
+        border-radius: 6px;
+        margin: 10px 0 18px;
+        font-size: 13px;
+      }
+      .card {
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 16px;
+      }
+      .grid2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+      }
+      button {
+        font: inherit;
+        font-size: 13px;
+        border: 1px solid var(--line);
+        background: #fff;
+        padding: 6px 10px;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+      button:hover {
+        border-color: var(--accent);
+      }
+      button.primary {
+        background: var(--accent);
+        color: #fff;
+        border-color: var(--accent);
+      }
+      button.done {
+        opacity: 0.45;
+      }
+      button.next {
+        outline: 2px solid var(--accent);
+        outline-offset: 1px;
+      }
+      .group-label {
+        font-size: 12px;
+        color: var(--muted);
+        width: 100%;
+        margin-top: 8px;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 12.5px;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 4px 6px;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+      }
+      th {
+        color: var(--muted);
+        font-weight: 600;
+      }
+      td.chg,
+      span.chg {
+        background: #e6eeff;
+      }
+      code,
+      pre {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 12px;
+      }
+      pre {
+        background: #f5f6f8;
+        border-radius: 6px;
+        padding: 10px;
+        margin: 0;
+        white-space: pre-wrap;
+      }
+      .tag {
+        display: inline-block;
+        font-size: 11px;
+        padding: 1px 6px;
+        border-radius: 10px;
+        border: 1px solid currentColor;
+        white-space: nowrap;
+      }
+      .k-apply {
+        color: var(--accent);
+      }
+      .k-conflict,
+      .k-error {
+        color: var(--red);
+      }
+      .k-unknown {
+        color: var(--amber);
+      }
+      .k-inSync,
+      .k-noop {
+        color: var(--muted);
+      }
+      .k-regen,
+      .k-create {
+        color: var(--green);
+      }
+      .verdict {
+        font-weight: 600;
+        padding: 8px 10px;
+        border-radius: 6px;
+        margin: 8px 0;
+      }
+      .v-stop {
+        background: #fdecea;
+        color: var(--red);
+      }
+      .v-asks {
+        background: #fff4e5;
+        color: var(--amber);
+      }
+      .v-free {
+        background: #e8f5ee;
+        color: var(--green);
+      }
+      .v-none {
+        background: #f1f2f4;
+        color: var(--muted);
+      }
+      .risk {
+        color: var(--red);
+      }
+      .note {
+        color: var(--muted);
+      }
+      .muted {
+        color: var(--muted);
+      }
+      .tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        border-bottom: 1px solid var(--line);
+        margin-bottom: 10px;
+      }
+      .tabs button {
+        border: none;
+        border-bottom: 2px solid transparent;
+        border-radius: 0;
+        background: none;
+      }
+      .tabs button.active {
+        border-bottom-color: var(--accent);
+        color: var(--accent);
+      }
+      .log li {
+        margin: 3px 0;
+      }
+      .log {
+        padding-left: 18px;
+        margin: 0;
+        max-height: 260px;
+        overflow: auto;
+      }
+      .notToday {
+        font-size: 10px;
+        color: var(--amber);
+      }
+      .settings label {
+        margin-right: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Declarations and the three-way plan: one Table, by hand</h1>
+      <p class="muted">
+        PROTOTYPE, throwaway. sheets-framework #183, part of the map #178.
+      </p>
+
+      <div class="card">
+        <h2>The question</h2>
+        <p>
+          An agent edits a sparse <b>declarations</b> file saying what the
+          spreadsheet will be, only for the properties it names.
+          <code>gen:configs</code> compares three things for each declared
+          property: the <b>declarations</b>, the
+          <b>last generated configs</b> (what the sheet looked like last time)
+          and the <b>live sheet</b>. Unchanged declarations with a changed
+          sheet: a person's change, so stop. Changed declarations with an
+          unchanged sheet: an agent's change, so apply. Anything the
+          declarations leave out belongs to the sheet.
+        </p>
+        <p>
+          Does that rule hold up on the <b>occPayment</b> Table? Watch two traps
+          from the research: a column type change resends the Table's
+          <i>whole</i> column list (every dropdown on the Table rides along),
+          and the last generated configs record what the sheet
+          <i>looked like</i>, not what was last applied, so a regen at the wrong
+          moment can make a person's edit look like an agent's.
+        </p>
+        <div class="banner">
+          Column IDs, headers and the ID prefix <code>opy</code> are real (from
+          <code>real-estate/src/generated/</code>). Column types, formula text,
+          typed-cell counts and dropdown styles are illustrative. Nothing here
+          talks to Sheets. Deletion isn't modelled: #184 decides its marker.
+        </div>
+      </div>
+
+      <div class="card settings">
+        <h2>What the comparison uses as "last time"</h2>
+        <div class="row" id="baseModes"></div>
+        <p class="note" id="baseNote"></p>
+      </div>
+
+      <div class="card">
+        <h2>Guided walkthroughs</h2>
+        <div class="tabs" id="tabs"></div>
+        <div id="scenario"></div>
+      </div>
+
+      <div class="card">
+        <h2>Free play</h2>
+        <div class="row" id="actions"></div>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <h2>What gen:configs would do now</h2>
+          <div id="plan"></div>
+        </div>
+        <div class="card">
+          <h2>Declarations file (what the agent edits)</h2>
+          <pre id="decl"></pre>
+          <h3>Run log</h3>
+          <ol class="log" id="log"></ol>
+          <h3>What the agent reads (gen:configs output)</h3>
+          <pre id="agentReport" style="max-height: 340px; overflow: auto"></pre>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Live sheet: occPayment</h2>
+        <div id="live"></div>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <h2>Last generated configs</h2>
+          <p class="note">
+            <span class="notToday">not in today's file</span> marks a field
+            today's <code>columnConfigs.ts</code> doesn't hold. Without it there
+            is no "last time" to compare a declared column type, dropdown or
+            formula against.
+          </p>
+          <div id="gen"></div>
+        </div>
+        <div class="card">
+          <h2>Record of last applied values</h2>
+          <p class="note">
+            Only read when "last time" is set to this record. One entry per
+            declared property, written when a run leaves the sheet matching it.
+          </p>
+          <div id="applied"></div>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      // ============================================================================
+      // Pure module: the three-way plan. No DOM in here; the page calls into it.
+      // ============================================================================
+      const Declarations = (() => {
+        const ENFORCED_COL = ["header", "columnType", "dropdown", "formula"];
+        const REGEN_ONLY_COL = ["emptyValueAllowed"];
+        const COLUMN_LIST_PROPS = new Set(["columnType", "dropdown"]); // travel in updateTable columnProperties
+        const NOT_IN_TODAYS_FILE = new Set([
+          "columnType",
+          "dropdown",
+          "formula",
+        ]);
+        const REFERENCING = [
+          "occPayAllocation › Payment ID (c:opa:lypy6OR)",
+          "occPayDesignation › Payment ID (c:opi:ozecESY)",
+        ];
+
+        const clone = (x) => JSON.parse(JSON.stringify(x));
+        const eq = (a, b) =>
+          JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+        const propKey = (colId, prop) => `${colId}.${prop}`;
+
+        function initialState() {
+          const F = {
+            nameBase: '=TEXT(SINGLE(occPayment[Date]),"yyyy-mm-dd")&" "&SINGLE(occPayment[Amount])',
+            payerDescription: '=IF(SINGLE(occPayment[Payer category])="Household",SINGLE(occPayment[Designated occupancy name]),"Other")',
+            processed: "=SINGLE(occPayment[Amount allocated])>=SINGLE(occPayment[Amount])",
+            name: '=SINGLE(occPayment[Name base])&" "&SINGLE(occPayment[Payer description])',
+            designatedOccupancyName: "=XLOOKUP(…)",
+            amountDesignated: "=SUMIFS(…)",
+            amountAllocated: "=SUMIFS(…)",
+          };
+          const col = (name, suffix, header, columnType, extra = {}) => ({
+            name,
+            columnId: `c:opy:${suffix}`,
+            header,
+            columnType,
+            dropdown: null,
+            dropdownStyle: null,
+            formula: F[name] ?? null,
+            typedCells: F[name] ? 0 : 212,
+            ...extra,
+          });
+          const live = {
+            table: {
+              tableId: "1111156219",
+              tableName: "occPayment",
+              idPrefix: "opy",
+              rows: 212,
+            },
+            columns: [
+              col("id", "NV1sUR-", "ID", "TEXT"),
+              col("nameBase", "5mteAe6", "Name base", "TEXT"),
+              col("date", "ML3AsZf", "Date", "DATE"),
+              col("amount", "6UAbLy9", "Amount", "AUTOMATIC"),
+              col("payerCategory", "XrhVhn3", "Payer category", "DROPDOWN", {
+                dropdown: "=list[Payer category]",
+                dropdownStyle: "chips, coloured",
+              }),
+              col("payerDescription", "EXyFtvV", "Payer description", "TEXT"),
+              col(
+                "nonOccupantPayerId",
+                "qtts0sn",
+                "Non-occupant payer ID",
+                "DROPDOWN",
+                {
+                  dropdown: "=nonOccupantPayer[ID]",
+                  dropdownStyle: "chips",
+                  typedCells: 37,
+                },
+              ),
+              col("processed", "xzjkI0l", "Processed", "BOOLEAN"),
+              col("notes", "tI8xB-J", "Notes", "TEXT", { typedCells: 41 }),
+              col("name", "PJ85xuu", "Name", "TEXT"),
+              col(
+                "designatedOccupancyName",
+                "lpJk5ql",
+                "Designated occupancy name",
+                "TEXT",
+              ),
+              col("formOfPayment", "n0LdBz1", "Form of payment", "DROPDOWN", {
+                dropdown: "=list[Form of payment]",
+                dropdownStyle: "chips, coloured",
+              }),
+              col("paymentStatus", "eCUzdxd", "Payment status", "DROPDOWN", {
+                dropdown: "=list[Payment status]",
+                dropdownStyle: "chips, coloured",
+              }),
+              col(
+                "amountDesignated",
+                "zLB-PcA",
+                "Amount designated",
+                "CURRENCY",
+              ),
+              col("amountAllocated", "5cGOWSr", "Amount allocated", "CURRENCY"),
+            ],
+          };
+          const id = (n) => live.columns.find((c) => c.name === n).columnId;
+          const declared = {
+            table: { letApiAccess: true },
+            columns: {
+              [id("paymentStatus")]: {
+                columnType: "DROPDOWN",
+                dropdown: "=list[Payment status]",
+              },
+              [id("payerDescription")]: { formula: F.payerDescription },
+              [id("processed")]: { columnType: "BOOLEAN" },
+            },
+          };
+          const state = {
+            live,
+            declared,
+            lastGen: null,
+            lastApplied: {},
+            forced: [],
+            settings: { base: "snapshot" },
+            log: [],
+            mintCounter: 0,
+            lastRun: null,
+          };
+          state.lastGen = snapshot(state, null, new Set());
+          for (const [colId, decl] of Object.entries(declared.columns))
+            for (const p of ENFORCED_COL)
+              if (p in decl) state.lastApplied[propKey(colId, p)] = decl[p];
+          return state;
+        }
+
+        // ---- reading the three sides ------------------------------------------------
+        const liveCol = (s, colId) =>
+          s.live.columns.find((c) => c.columnId === colId);
+        const colLabel = (s, key) => {
+          if (key.startsWith("new:")) return `${key.slice(4)} (new)`;
+          const lc = liveCol(s, key);
+          const gc = s.lastGen?.columns[key];
+          return lc?.header ?? gc?.header ?? key;
+        };
+        function genValue(s, colId, prop) {
+          const gc = s.lastGen?.columns[colId];
+          return gc && prop in gc ? { has: true, v: gc[prop] } : { has: false };
+        }
+        function baseFor(s, key, fromGen) {
+          // Record first; a property declared for the first time has no record,
+          // so it falls back to what the sheet looked like at the last regen.
+          if (s.settings.base === "lastApplied" && key in s.lastApplied)
+            return { has: true, v: s.lastApplied[key], from: "record of last applied" };
+          return fromGen.has ? { ...fromGen, from: "last generated configs" } : fromGen;
+        }
+
+        function classify(D, B, L, forced) {
+          if (eq(D, L))
+            return {
+              kind: "inSync",
+              why: "The sheet already matches. The declaration stays as a pin.",
+            };
+          if (forced)
+            return {
+              kind: "apply",
+              forced: true,
+              why: "Forced by the agent: overwrites what is on the sheet.",
+            };
+          if (!B.has)
+            return {
+              kind: "unknown",
+              why: "No record of last time, so it can't tell an agent's change from a person's.",
+            };
+          if (eq(L, B.v))
+            return {
+              kind: "apply",
+              why: "The declarations changed and the sheet didn't: an agent's change.",
+            };
+          if (eq(D, B.v))
+            return {
+              kind: "conflict",
+              why: "The sheet changed and the declarations still hold the old value: a person's change.",
+            };
+          return {
+            kind: "conflict",
+            why: "Both changed, to different values.",
+          };
+        }
+
+        // ---- the plan -----------------------------------------------------------------
+        function plan(s) {
+          const items = [];
+          const t = s.declared.table;
+          if ("letApiAccess" in t) {
+            const B = s.lastGen ? s.lastGen.table.letApiAccess : undefined;
+            items.push({
+              key: "table.letApiAccess",
+              where: "Table",
+              prop: "letApiAccess",
+              D: t.letApiAccess,
+              B: { has: !!s.lastGen, v: B },
+              L: "—",
+              kind: eq(t.letApiAccess, B) ? "noop" : "regen",
+              why: "Only affects regen: nothing is sent to the sheet.",
+            });
+          }
+          if ("idPrefix" in t) {
+            const L = s.live.table.idPrefix;
+            const B = baseFor(
+              s,
+              "table.idPrefix",
+              s.lastGen
+                ? { has: true, v: s.lastGen.table.idPrefix }
+                : { has: false },
+            );
+            items.push({
+              key: "table.idPrefix",
+              where: "Table",
+              prop: "idPrefix",
+              D: t.idPrefix,
+              B,
+              L,
+              ...classify(
+                t.idPrefix,
+                B,
+                L,
+                s.forced.includes("table.idPrefix"),
+              ),
+            });
+          }
+          for (const [key, decl] of Object.entries(s.declared.columns)) {
+            if (key.startsWith("new:")) {
+              const clash = s.live.columns.find(
+                (c) => c.header === decl.header,
+              );
+              if (clash)
+                items.push({
+                  key,
+                  where: colLabel(s, key),
+                  prop: "(new column)",
+                  D: decl.header,
+                  B: { has: false },
+                  L: clash.columnId,
+                  kind: "error",
+                  why: `A column headed "${decl.header}" is already on the sheet as ${clash.columnId}. Key the declaration by that ID.`,
+                });
+              else
+                items.push({
+                  key,
+                  where: colLabel(s, key),
+                  prop: "(new column)",
+                  D: decl,
+                  B: { has: false },
+                  L: null,
+                  kind: "create",
+                  why: "Declared, not on the sheet yet, keyed by its header until it has a column ID.",
+                });
+              continue;
+            }
+            const lc = liveCol(s, key);
+            if (!lc) {
+              items.push({
+                key,
+                where: key,
+                prop: "(column)",
+                D: decl,
+                B: { has: false },
+                L: null,
+                kind: "error",
+                why: "Declared column isn't on the sheet: a person deleted it, or its column ID changed.",
+              });
+              continue;
+            }
+            for (const prop of Object.keys(decl)) {
+              const k = propKey(key, prop);
+              if (REGEN_ONLY_COL.includes(prop)) {
+                const B = genValue(s, key, prop);
+                items.push({
+                  key: k,
+                  colId: key,
+                  where: lc.header,
+                  prop,
+                  D: decl[prop],
+                  B,
+                  L: "—",
+                  kind: eq(decl[prop], B.v) ? "noop" : "regen",
+                  why: "Only affects regen: nothing is sent to the sheet.",
+                });
+                continue;
+              }
+              const B = baseFor(s, k, genValue(s, key, prop));
+              items.push({
+                key: k,
+                colId: key,
+                where: lc.header,
+                prop,
+                D: decl[prop],
+                B,
+                L: lc[prop],
+                ...classify(decl[prop], B, lc[prop], s.forced.includes(k)),
+              });
+            }
+          }
+
+          // ---- requests built from the applies --------------------------------------
+          const applies = items.filter((i) => i.kind === "apply");
+          const creates = items.filter((i) => i.kind === "create");
+          const requests = [];
+          const listApplies = applies.filter((i) =>
+            COLUMN_LIST_PROPS.has(i.prop),
+          );
+          const listCreates = creates.filter(
+            (i) => i.D.columnType || i.D.dropdown,
+          );
+          if (listApplies.length || listCreates.length) {
+            const changed = new Set(listApplies.map((i) => i.colId));
+            const carried = s.live.columns.filter(
+              (c) => !changed.has(c.columnId),
+            );
+            const risks = carried
+              .filter((c) => c.columnType === "DROPDOWN")
+              .map(
+                (c) =>
+                  `${c.header}: dropdown chip style and colours may reset (unmeasured; the column-list task, #189)`,
+              );
+            for (const i of listApplies)
+              if (
+                i.prop === "dropdown" &&
+                i.D &&
+                (s.declared.columns[i.colId].columnType ??
+                  liveCol(s, i.colId).columnType) !== "DROPDOWN"
+              )
+                risks.push(
+                  `${i.where}: declares a dropdown rule on a column whose type isn't Dropdown (coupled properties)`,
+                );
+            requests.push({
+              name: "updateTable  fields: columnProperties",
+              what:
+                `Sends all ${s.live.columns.length + listCreates.length} columns of occPayment to change ${listApplies.length + listCreates.length}: ` +
+                [
+                  ...listApplies.map((i) => `${i.where} ${i.prop}`),
+                  ...listCreates.map((i) => `${i.D.header} type`),
+                ].join(", ") +
+                ".",
+              notes: [
+                `Carries ${carried.length} unchanged columns, rebuilt from the live read. A column left out loses its type and dropdown rule (measured).`,
+              ],
+              risks,
+              destructive: false,
+            });
+          }
+          for (const i of applies.filter((i) => i.prop === "header"))
+            requests.push({
+              name: "updateCells  (header cell)",
+              what: `Renames the Table column "${i.L}" to "${i.D}".`,
+              notes: [
+                "Unverified: whether formulas naming the old header follow the rename.",
+              ],
+              risks: [],
+              destructive: false,
+            });
+          for (const i of applies.filter((i) => i.prop === "formula")) {
+            const lc = liveCol(s, i.colId);
+            requests.push({
+              name: "pasteData  PASTE_FORMULA",
+              what: `Writes the formula into all ${s.live.table.rows} data rows of ${i.where}.`,
+              notes: [
+                "Same text in every row (SINGLE reads this row). Rows appended later copy it from the rows already there.",
+              ],
+              risks: lc.typedCells
+                ? [`Overwrites ${lc.typedCells} typed cells in ${i.where}`]
+                : [],
+              destructive: lc.typedCells > 0,
+            });
+          }
+          for (const i of creates)
+            requests.push({
+              name: "insertRange + updateCells",
+              what: `Inserts "${i.D.header}" at the Table's right end (moves only this Table's cells), writes its header and mints its column ID.`,
+              notes: [
+                `The declaration is keyed "${i.key}" until then; afterwards it must be keyed by the minted ID.`,
+              ],
+              risks: [],
+              destructive: false,
+            });
+          for (const i of applies.filter((i) => i.prop === "idPrefix"))
+            requests.push({
+              name: `findReplace  ":${i.L}:" → ":${i.D}:"  (one scope: all sheets)`,
+              what: `Rewrites every row ID (r:${i.L}:…), every column ID in the column-ID row (c:${i.L}:…), and the references in ${REFERENCING.join(" and ")}.`,
+              notes: [
+                "How many cells it changed comes back only after a real send, so the preview can't count them.",
+                "ID-column writes are the gate's named exception, but this one reaches into two other Tables.",
+                `Every declaration key c:${i.L}:… goes stale: either gen:configs rewrites the declarations file, or columns are keyed some other way.`,
+              ],
+              risks: [],
+              destructive: false,
+            });
+
+          const stops = items.filter((i) =>
+            ["conflict", "unknown", "error"].includes(i.kind),
+          );
+          const destructive = requests.filter((r) => r.destructive);
+          const verdict = stops.length
+            ? "stop"
+            : destructive.length
+              ? "asks"
+              : requests.length
+                ? "free"
+                : "none";
+          return { items, requests, stops, verdict };
+        }
+
+        // ---- regen: reread the live sheet and write the generated configs -------------
+        function snapshot(s, prev, skipKeys) {
+          const decl = s.declared;
+          const gen = {
+            table: {
+              idPrefix: s.live.table.idPrefix,
+              letApiAccess:
+                decl.table.letApiAccess ?? prev?.table.letApiAccess ?? false,
+            },
+            columns: {},
+          };
+          if (prev && skipKeys.has("table.idPrefix"))
+            gen.table.idPrefix = prev.table.idPrefix;
+          for (const lc of s.live.columns) {
+            const pc = prev?.columns[lc.columnId];
+            const g = {
+              header: lc.header,
+              columnType: lc.columnType,
+              dropdown: lc.dropdown,
+              formula: lc.formula,
+              emptyValueAllowed:
+                decl.columns[lc.columnId]?.emptyValueAllowed ??
+                pc?.emptyValueAllowed ??
+                false,
+            };
+            for (const p of ENFORCED_COL)
+              if (pc && skipKeys.has(propKey(lc.columnId, p))) g[p] = pc[p];
+            gen.columns[lc.columnId] = g;
+          }
+          return gen;
+        }
+
+        function rekeyColumns(s, from, to) {
+          const swap = (k) => k.replace(`:${from}:`, `:${to}:`);
+          s.declared.columns = Object.fromEntries(
+            Object.entries(s.declared.columns).map(([k, v]) => [swap(k), v]),
+          );
+          s.lastApplied = Object.fromEntries(
+            Object.entries(s.lastApplied).map(([k, v]) => [swap(k), v]),
+          );
+          if (s.lastGen)
+            s.lastGen.columns = Object.fromEntries(
+              Object.entries(s.lastGen.columns).map(([k, v]) => [swap(k), v]),
+            );
+          s.forced = s.forced.map(swap);
+        }
+
+        // ---- gen:configs ---------------------------------------------------------------
+        function runGenConfigs(s, developerSaidYes) {
+          const p = plan(s);
+          if (p.verdict === "stop") {
+            s.log.push(
+              `gen:configs stopped before sending anything. ${p.stops
+                .map(
+                  (i) =>
+                    `${i.where} ${i.prop}: declared ${fmt(i.D)}, sheet ${fmt(i.L)}${i.B.has ? `, last time ${fmt(i.B.v)}` : ""}`,
+                )
+                .join("; ")}.${s.settings.base === "snapshotSkip" ? "" : " Nothing regenerated."}`,
+            );
+            // Your design: every run refreshes the generated configs, holding back
+            // only the properties in conflict at their last agreed value.
+            if (s.settings.base === "snapshotSkip") {
+              const held = new Set(p.items.filter((i) => i.kind === "conflict").map((i) => i.key));
+              s.lastGen = snapshot(s, s.lastGen, held);
+              s.log.push(`Regenerated everything except the ${held.size} property in conflict, which keeps its last agreed value.`);
+            }
+            return;
+          }
+          if (p.verdict === "asks" && !developerSaidYes) {
+            s.log.push(
+              `gen:configs asks the developer for a yes: ${p.requests.flatMap((r) => r.risks.filter(() => r.destructive)).join("; ")}. Nothing sent.`,
+            );
+            return;
+          }
+          const sent = [];
+          const listColsTouched = new Set();
+          let sentColumnList = false;
+          for (const i of p.items.filter((i) => i.kind === "create")) {
+            const id = `c:${s.live.table.idPrefix}:Nw${String(++s.mintCounter).padStart(5, "0")}`;
+            s.live.columns.push({
+              name: i.D.header,
+              columnId: id,
+              header: i.D.header,
+              columnType: i.D.columnType ?? "AUTOMATIC",
+              dropdown: i.D.dropdown ?? null,
+              dropdownStyle: null,
+              formula: i.D.formula ?? null,
+              typedCells: 0,
+            });
+            const decl = s.declared.columns[i.key];
+            delete s.declared.columns[i.key];
+            s.declared.columns[id] = decl;
+            sent.push(`inserted "${i.D.header}" as ${id}`);
+            s.log.push(
+              `gen:configs rewrote a key in the declarations file: "${i.key}" → "${id}".`,
+            );
+            if (i.D.columnType || i.D.dropdown) sentColumnList = true;
+          }
+          for (const i of p.items.filter(
+            (i) => i.kind === "apply" && i.colId,
+          )) {
+            const lc = liveCol(s, i.colId);
+            lc[i.prop] = i.D;
+            if (i.prop === "formula") lc.typedCells = 0;
+            if (COLUMN_LIST_PROPS.has(i.prop)) {
+              sentColumnList = true;
+              listColsTouched.add(i.colId);
+            }
+            sent.push(
+              `${i.where} ${i.prop} → ${fmt(i.D)}${i.forced ? " (forced)" : ""}`,
+            );
+          }
+          if (sentColumnList)
+            for (const lc of s.live.columns)
+              if (lc.columnType === "DROPDOWN" && lc.dropdownStyle)
+                lc.dropdownStyle = "reset? (unmeasured)";
+          const prefix = p.items.find(
+            (i) => i.kind === "apply" && i.prop === "idPrefix",
+          );
+          if (prefix) {
+            const from = prefix.L,
+              to = prefix.D;
+            s.live.table.idPrefix = to;
+            for (const lc of s.live.columns)
+              lc.columnId = lc.columnId.replace(`:${from}:`, `:${to}:`);
+            rekeyColumns(s, from, to);
+            sent.push(
+              `ID prefix ${from} → ${to} (row IDs, column IDs, two other Tables' Payment ID)`,
+            );
+            s.log.push(
+              `gen:configs rewrote every column key in the declarations file: c:${from}:… → c:${to}:…`,
+            );
+          }
+          // refetch + regenerate from the live read, never from the declarations
+          s.lastGen = snapshot(s, s.lastGen, new Set());
+          // record what now matches the declarations
+          for (const [colId, decl] of Object.entries(s.declared.columns)) {
+            const lc = liveCol(s, colId);
+            for (const pr of ENFORCED_COL)
+              if (pr in decl && lc && eq(lc[pr], decl[pr]))
+                s.lastApplied[propKey(colId, pr)] = decl[pr];
+          }
+          if (
+            "idPrefix" in s.declared.table &&
+            eq(s.live.table.idPrefix, s.declared.table.idPrefix)
+          )
+            s.lastApplied["table.idPrefix"] = s.declared.table.idPrefix;
+          s.forced = [];
+          s.log.push(
+            sent.length
+              ? `gen:configs sent: ${sent.join("; ")}. Reread the sheet and regenerated.`
+              : "gen:configs: nothing to send. Reread the sheet and regenerated.",
+          );
+        }
+
+        function regenOnly(s) {
+          const p = plan(s);
+          const skip =
+            s.settings.base === "snapshotSkip"
+              ? new Set(
+                  p.items
+                    .filter((i) => i.kind === "conflict")
+                    .map((i) => i.key),
+                )
+              : new Set();
+          s.lastGen = snapshot(s, s.lastGen, skip);
+          s.log.push(
+            `A regen ran without applying anything (a regen on another branch, or a merge of generated configs).${skip.size ? ` It skipped ${skip.size} property in conflict.` : ""}`,
+          );
+        }
+
+        // ---- the agent-facing report: what gen:configs prints for an agent ----------
+        // Every stop carries its ways out as concrete edits, so no prompt is needed.
+        function agentReport(s) {
+          const p = plan(s);
+          const tid = s.live.table.tableId;
+          const path = (i) =>
+            i.key.startsWith("table.")
+              ? `declarations["${tid}"].${i.prop}`
+              : i.colId
+                ? `declarations["${tid}"].columns["${i.colId}"].${i.prop}`
+                : `declarations["${tid}"].columns["${i.key}"]`;
+          const cause = {
+            conflict: (i) =>
+              eq(i.D, i.B.v)
+                ? "Someone changed the sheet: it no longer matches last time, and the declarations still hold last time's value."
+                : "Both the declarations and the sheet changed since last time, to different values.",
+            unknown: () =>
+              "No record of last time, so it can't tell whether the declarations or the sheet changed.",
+            error: (i) => i.why,
+          };
+          return {
+            verdict: p.verdict,
+            table: { tableId: tid, tableName: s.live.table.tableName },
+            stops: p.stops.map((i) => ({
+              where: i.where,
+              property: i.prop,
+              path: path(i),
+              declared: i.D,
+              lastTime: i.B.has ? { value: i.B.v, from: i.B.from } : null,
+              sheet: i.L,
+              cause: cause[i.kind](i),
+              waysOut:
+                i.kind === "error"
+                  ? [
+                      {
+                        way: "fix the declaration",
+                        edit: `Correct or delete ${path(i)}`,
+                      },
+                    ]
+                  : [
+                      {
+                        way: "adopt",
+                        edit: `Set ${path(i)} to ${JSON.stringify(i.L)}`,
+                        effect: "Keeps the sheet's value. Sends nothing.",
+                      },
+                      {
+                        way: "drop",
+                        edit: `Delete ${path(i)}`,
+                        effect:
+                          "The sheet owns this property from now on. Sends nothing.",
+                      },
+                      {
+                        way: "force",
+                        edit: `Rerun with --force '${path(i)}'`,
+                        effect: `Sends ${JSON.stringify(i.D)}, overwriting the sheet's ${JSON.stringify(i.L)}.`,
+                      },
+                    ],
+            })),
+            sends: p.requests.map((r) => ({
+              request: r.name.replace(/\s+/g, " "),
+              what: r.what,
+              notes: r.notes,
+              risks: r.risks,
+              overwritesData: r.destructive,
+            })),
+            regenOnly: p.items
+              .filter((i) => i.kind === "regen")
+              .map((i) => `${i.where} ${i.prop} → ${JSON.stringify(i.D)}`),
+            gate:
+              p.verdict === "asks"
+                ? "Needs the developer's yes: rerun with --yes once they give it."
+                : p.verdict === "free"
+                  ? "No non-formula data cell is overwritten: runs without a yes."
+                  : p.verdict === "stop"
+                    ? "Stopped before sending anything. Nothing was regenerated."
+                    : "Nothing to send.",
+          };
+        }
+
+        function fmt(v) {
+          if (v === null || v === undefined) return "none";
+          if (typeof v === "object")
+            return v.header ? `"${v.header}"` : JSON.stringify(v);
+          return JSON.stringify(v);
+        }
+
+        // ---- the reducer ---------------------------------------------------------------
+        const byName = (s, n) =>
+          s.live.columns.find((c) => c.name === n).columnId;
+        const declare = (s, n, patch) => {
+          const id = byName(s, n);
+          s.declared.columns[id] = {
+            ...(s.declared.columns[id] ?? {}),
+            ...patch,
+          };
+        };
+
+        const ACTIONS = {
+          agentAmountCurrency: {
+            group: "agent",
+            label: "Agent: make Amount a Currency column",
+            run: (s) => declare(s, "amount", { columnType: "CURRENCY" }),
+          },
+          agentAllowBlanks: {
+            group: "agent",
+            label: "Agent: allow blanks in Non-occupant payer ID",
+            run: (s) =>
+              declare(s, "nonOccupantPayerId", { emptyValueAllowed: true }),
+          },
+          agentPayerDescFormula: {
+            group: "agent",
+            label: "Agent: change Payer description's formula",
+            run: (s) =>
+              declare(s, "payerDescription", {
+                formula: '=IF(SINGLE(occPayment[Payer category])="Household",SINGLE(occPayment[Designated occupancy name]),XLOOKUP(SINGLE(occPayment[Non-occupant payer ID]),…))',
+              }),
+          },
+          agentNotesFormula: {
+            group: "agent",
+            label: "Agent: give Notes a formula",
+            run: (s) =>
+              declare(s, "notes", { formula: '=IF(SINGLE(occPayment[Processed]),"Processed","")' }),
+          },
+          agentAddReceipt: {
+            group: "agent",
+            label: "Agent: add a Receipt link column",
+            run: (s) => {
+              s.declared.columns["new:Receipt link"] = {
+                header: "Receipt link",
+                columnType: "TEXT",
+                emptyValueAllowed: true,
+              };
+            },
+          },
+          agentRenamePrefix: {
+            group: "agent",
+            label: "Agent: rename the ID prefix opy → pay",
+            run: (s) => {
+              s.declared.table.idPrefix = "pay";
+            },
+          },
+
+          personPaymentStatusList: {
+            group: "person",
+            label: "Person: switch Payment status to a typed list with Pending",
+            run: (s) => {
+              liveCol(s, byName(s, "paymentStatus")).dropdown =
+                "Verified, Guaranteed, Pending";
+            },
+          },
+          personAmountNumber: {
+            group: "person",
+            label: "Person: set Amount's type to Number",
+            run: (s) => {
+              liveCol(s, byName(s, "amount")).columnType = "DOUBLE";
+            },
+          },
+          personRenameNotes: {
+            group: "person",
+            label: "Person: rename the Notes header to Comments",
+            run: (s) => {
+              liveCol(s, byName(s, "notes")).header = "Comments";
+            },
+          },
+
+          adoptLive: {
+            group: "resolve",
+            label: "Agent: adopt the sheet's value for each stop",
+            run: (s) => {
+              for (const i of plan(s).stops) {
+                if (i.kind === "error") continue;
+                if (i.key === "table.idPrefix") s.declared.table.idPrefix = i.L;
+                else s.declared.columns[i.colId][i.prop] = i.L;
+              }
+              s.log.push(
+                "The agent edited the declarations to match the sheet.",
+              );
+            },
+          },
+          dropClaim: {
+            group: "resolve",
+            label: "Agent: drop the claim on each stop",
+            run: (s) => {
+              for (const i of plan(s).stops) {
+                if (i.kind === "error") {
+                  delete s.declared.columns[i.key];
+                  continue;
+                }
+                if (i.key === "table.idPrefix")
+                  delete s.declared.table.idPrefix;
+                else {
+                  delete s.declared.columns[i.colId][i.prop];
+                  if (!Object.keys(s.declared.columns[i.colId]).length)
+                    delete s.declared.columns[i.colId];
+                }
+                delete s.lastApplied[i.key];
+              }
+              s.log.push(
+                "The agent removed the conflicting properties from the declarations: the sheet owns them now.",
+              );
+            },
+          },
+          force: {
+            group: "resolve",
+            label: "Agent: force the declared value",
+            run: (s) => {
+              for (const i of plan(s).stops)
+                if (i.kind !== "error") s.forced.push(i.key);
+              s.log.push(
+                "The agent marked the stops as forced for the next run.",
+              );
+            },
+          },
+
+          runGen: {
+            group: "run",
+            label: "Run gen:configs",
+            primary: true,
+            run: (s) => runGenConfigs(s, false),
+          },
+          developerYes: {
+            group: "run",
+            label: "Developer says yes, run it",
+            run: (s) => runGenConfigs(s, true),
+          },
+          regenOnly: {
+            group: "run",
+            label: "A regen happens elsewhere (another branch, a merge)",
+            run: (s) => regenOnly(s),
+          },
+          forgetGen: {
+            group: "run",
+            label: "Forget last time (first run)",
+            run: (s) => {
+              s.lastGen = null;
+              s.lastApplied = {};
+              s.log.push(
+                "No last generated configs and no record: this is a first run.",
+              );
+            },
+          },
+
+          base_snapshot: {
+            group: "base",
+            label: "Last generated configs (as today)",
+            run: (s) => {
+              s.settings.base = "snapshot";
+            },
+          },
+          base_snapshotSkip: {
+            group: "base",
+            label: "Last generated configs, refreshed every run, conflicts held back",
+            run: (s) => {
+              s.settings.base = "snapshotSkip";
+            },
+          },
+          base_lastApplied: {
+            group: "base",
+            label: "Record of last applied value (else last generated)",
+            run: (s) => {
+              s.settings.base = "lastApplied";
+            },
+          },
+        };
+
+        function reduce(state, actionName) {
+          const s = clone(state);
+          ACTIONS[actionName].run(s);
+          return s;
+        }
+
+        return {
+          initialState,
+          plan,
+          agentReport,
+          reduce,
+          ACTIONS,
+          NOT_IN_TODAYS_FILE,
+          fmt,
+        };
+      })();
+
+      // ============================================================================
+      // The page: a thin shell over the module.
+      // ============================================================================
+      const SCENARIOS = [
+        {
+          title: "An agent's change",
+          steps: ["agentAmountCurrency", "agentAllowBlanks", "runGen"],
+          text: "The agent makes Amount a Currency column and lets Non-occupant payer ID be blank. Watch the plan: Empty value allowed sends nothing, it only changes regen. The type change sends the whole column list, all 15 columns, and the four dropdowns ride along with a style warning nobody has measured yet.",
+        },
+        {
+          title: "A person's change stops the run",
+          steps: ["personPaymentStatusList", "runGen", "adoptLive", "runGen"],
+          text: "Someone on the sheet switches Payment status to a typed list and adds Pending. The declarations still pin the old rule, so the run stops and names both values. The agent adopts the sheet's value, and the next run has nothing to send.",
+        },
+        {
+          title: "The snapshot trap",
+          steps: [
+            "base_snapshot",
+            "personPaymentStatusList",
+            "runGen",
+            "regenOnly",
+            "runGen",
+          ],
+          text: "Same person's edit, but before the agent answers, a regen happens elsewhere: a run on another branch, or a merge of generated configs. Now \"last time\" holds the person's value, so the old value in the declarations looks like an agent's change. Watch the last run: it puts the old rule back, and Pending is gone without a stop.",
+        },
+        {
+          title: "Refresh first, then edit",
+          steps: [
+            "base_snapshotSkip",
+            "personAmountNumber",
+            "personPaymentStatusList",
+            "runGen",
+            "adoptLive",
+            "agentAmountCurrency",
+            "runGen",
+          ],
+          text: "Your design: generated configs only, refreshed on every run, holding back a property in conflict. Two people's edits are waiting: Amount set to Number (undeclared) and Payment status's dropdown (declared). The agent's first run, before editing, stops on Payment status but still refreshes everything else, so Amount now shows Number. The agent adopts the dropdown, declares Currency knowing Amount is Number, and the last run applies it with no stop and no force.",
+        },
+        {
+          title: "Trap, regen skips conflicts",
+          steps: [
+            "base_snapshotSkip",
+            "personPaymentStatusList",
+            "runGen",
+            "regenOnly",
+            "runGen",
+          ],
+          text: 'First fix from the research: a regen won\'t write a property that is in conflict. The stray regen keeps the old value as "last time", so the last run still stops. Note this only works if every regen path, a merge included, checks for conflicts.',
+        },
+        {
+          title: "Trap, record of last applied",
+          steps: [
+            "base_lastApplied",
+            "personPaymentStatusList",
+            "runGen",
+            "regenOnly",
+            "runGen",
+          ],
+          text: "Second fix: compare against a record of the value each declaration last applied, not against what the sheet last looked like. A stray regen doesn't touch that record, so the last run still stops.",
+        },
+        {
+          title: "Formula over typed notes",
+          steps: ["agentNotesFormula", "runGen", "developerYes"],
+          text: "The agent gives Notes a formula. Notes holds 41 typed cells, so the run would overwrite data: the gate asks the developer for a yes instead of sending.",
+        },
+        {
+          title: "New column and prefix rename",
+          steps: ["agentAddReceipt", "agentRenamePrefix", "runGen"],
+          text: "The agent declares a Receipt link column (keyed by its header, since it has no ID yet) and renames the ID prefix. Column IDs carry the prefix (c:opy:…), so after the run every key in the declarations is stale. Watch the run log: gen:configs has to rewrite the declarations file itself.",
+        },
+        {
+          title: "Undeclared edit flows through",
+          steps: ["personRenameNotes", "runGen"],
+          text: "Someone renames the Notes header. Nothing declares it, so there's no stop: the sheet owns it, and regen records the new header.",
+        },
+        {
+          title: "Both changed",
+          steps: [
+            "agentAmountCurrency",
+            "personAmountNumber",
+            "runGen",
+            "force",
+            "runGen",
+          ],
+          text: "The agent wants Currency, a person picked Number. Both moved away from last time, to different values, so the run stops. The agent forces the declared value.",
+        },
+        {
+          title: "First run",
+          steps: [
+            "forgetGen",
+            "agentAmountCurrency",
+            "runGen",
+            "force",
+            "runGen",
+          ],
+          text: "There are no last generated configs and no record yet. Pins that already match pass, but any declaration that differs from the sheet can't be told apart from a person's edit, so the run stops on it.",
+        },
+      ];
+
+      let state = Declarations.initialState();
+      let prev = state;
+      let activeTab = 0;
+      let stepIndex = 0;
+
+      function dispatch(name) {
+        prev = state;
+        state = Declarations.reduce(state, name);
+        render();
+      }
+      function startScenario(i) {
+        activeTab = i;
+        stepIndex = 0;
+        state = Declarations.initialState();
+        prev = state;
+        state.log.push(
+          `Walkthrough: ${SCENARIOS[i].title}. Reset to the starting sheet.`,
+        );
+        render();
+      }
+      function scenarioStep(i) {
+        if (i !== stepIndex) return;
+        dispatch(SCENARIOS[activeTab].steps[i]);
+        stepIndex++;
+        render();
+      }
+
+      const esc = (x) =>
+        String(x).replace(
+          /[&<>"]/g,
+          (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c],
+        );
+      const TYPE_NAMES = {
+        AUTOMATIC: "Automatic",
+        DOUBLE: "Number",
+        CURRENCY: "Currency",
+        TEXT: "Text",
+        DATE: "Date",
+        BOOLEAN: "Checkbox",
+        DROPDOWN: "Dropdown",
+      };
+      const show = (prop, v) =>
+        v === null || v === undefined
+          ? '<span class="muted">none</span>'
+          : prop === "columnType"
+            ? esc(TYPE_NAMES[v] ?? v)
+            : esc(typeof v === "object" ? JSON.stringify(v) : v);
+      const KIND = {
+        apply: "apply",
+        conflict: "stop: conflict",
+        unknown: "stop: unknown",
+        error: "stop: error",
+        inSync: "in sync",
+        noop: "no change",
+        regen: "regen only",
+        create: "create",
+      };
+
+      function render() {
+        const A = Declarations.ACTIONS;
+        // base modes
+        document.getElementById("baseModes").innerHTML = [
+          "snapshot",
+          "snapshotSkip",
+          "lastApplied",
+        ]
+          .map(
+            (m) =>
+              `<label><input type="radio" name="base" ${state.settings.base === m ? "checked" : ""} onclick="dispatch('base_${m}')"> ${A["base_" + m].label}</label>`,
+          )
+          .join("");
+        document.getElementById("baseNote").textContent = {
+          snapshot:
+            'As the map has it today: the last generated configs are "last time", whatever the sheet looked like when they were generated.',
+          snapshotSkip:
+            "The last generated configs, refreshed on every run, even one that stops; a property in conflict keeps its last agreed value until the conflict is resolved.",
+          lastApplied:
+            "A separate record of the value each declaration last applied; regen never touches it. A property declared for the first time has no record yet, so it falls back to the last generated configs.",
+        }[state.settings.base];
+
+        // tabs
+        document.getElementById("tabs").innerHTML = SCENARIOS.map(
+          (sc, i) =>
+            `<button class="${i === activeTab ? "active" : ""}" onclick="startScenario(${i})">${esc(sc.title)}</button>`,
+        ).join("");
+        const sc = SCENARIOS[activeTab];
+        document.getElementById("scenario").innerHTML =
+          `<p>${esc(sc.text)}</p><div class="row">` +
+          sc.steps
+            .map(
+              (st, i) =>
+                `<button class="${i < stepIndex ? "done" : i === stepIndex ? "next" : ""}" onclick="scenarioStep(${i})">${i + 1}. ${esc(A[st].label)}</button>`,
+            )
+            .join("") +
+          `<button onclick="startScenario(${activeTab})" class="muted">Restart</button></div>` +
+          (stepIndex === 0
+            ? '<p class="note">Click a tab to reset the sheet and start; then press the steps in order.</p>'
+            : "");
+
+        // free play
+        const groups = {
+          agent: "The agent edits the declarations",
+          person: "A person edits the sheet",
+          resolve: "The agent answers a stop",
+          run: "Runs",
+        };
+        document.getElementById("actions").innerHTML =
+          Object.entries(groups)
+            .map(
+              ([g, label]) =>
+                `<div class="group-label">${label}</div>` +
+                Object.entries(A)
+                  .filter(([, a]) => a.group === g)
+                  .map(
+                    ([n, a]) =>
+                      `<button class="${a.primary ? "primary" : ""}" onclick="dispatch('${n}')">${esc(a.label)}</button>`,
+                  )
+                  .join(""),
+            )
+            .join("") +
+          `<div class="group-label"></div><button onclick="state=Declarations.initialState();prev=state;stepIndex=0;render()">Reset everything</button>`;
+
+        // plan
+        const p = Declarations.plan(state);
+        const vText = {
+          stop: "Stops before sending anything.",
+          asks: "Asks the developer for a yes: it would overwrite data.",
+          free: "Runs without a yes: no data cell lost.",
+          none: "Nothing to send.",
+        }[p.verdict];
+        document.getElementById("plan").innerHTML =
+          `<div class="verdict v-${p.verdict}">${vText}</div>` +
+          `<table><tr><th>Where</th><th>Property</th><th>Declared</th><th>Last time</th><th>Sheet</th><th>Outcome</th></tr>` +
+          p.items
+            .map(
+              (i) =>
+                `<tr><td>${esc(i.where)}</td><td>${esc(i.prop)}</td><td>${i.kind === "create" ? esc(JSON.stringify(i.D)) : show(i.prop, i.D)}</td>` +
+                `<td>${i.B.has ? show(i.prop, i.B.v) : '<span class="muted">no record</span>'}</td><td>${i.L === "—" ? "—" : show(i.prop, i.L)}</td>` +
+                `<td><span class="tag k-${i.kind}">${KIND[i.kind]}${i.forced ? ", forced" : ""}</span><div class="note">${esc(i.why)}</div></td></tr>`,
+            )
+            .join("") +
+          `</table><h3>Requests it would send</h3>` +
+          (p.requests.length
+            ? p.requests
+                .map(
+                  (r) =>
+                    `<div style="margin-bottom:10px"><code><b>${esc(r.name)}</b></code><div>${esc(r.what)}</div>` +
+                    r.notes
+                      .map((n) => `<div class="note">• ${esc(n)}</div>`)
+                      .join("") +
+                    r.risks
+                      .map((n) => `<div class="risk">⚠ ${esc(n)}</div>`)
+                      .join("") +
+                    `</div>`,
+                )
+                .join("")
+            : '<p class="muted">None.</p>') +
+          (p.stops.length
+            ? '<p class="note">Before sending, the agent can adopt the sheet\'s value, drop the claim, or force: see free play.</p>'
+            : "");
+
+        // declarations file
+        const d = state.declared;
+        const tableLines = Object.entries(d.table).map(
+          ([k, v]) => `    ${k}: ${JSON.stringify(v)},`,
+        );
+        const colLines = Object.entries(d.columns).map(([k, v]) => {
+          const lc = state.live.columns.find((c) => c.columnId === k);
+          const comment = k.startsWith("new:")
+            ? "not on the sheet yet"
+            : lc
+              ? lc.header
+              : "not on the sheet";
+          return (
+            `      "${k}" /* ${comment} */: {\n` +
+            Object.entries(v)
+              .map(([pk, pv]) => `        ${pk}: ${JSON.stringify(pv)},`)
+              .join("\n") +
+            `\n      },`
+          );
+        });
+        const declText = `// PROTOTYPE shape only: #186 decides format, layout and keys.\nexport const declarations = {\n  "${state.live.table.tableId}" /* occPayment */: {\n${tableLines.join("\n")}\n    columns: {\n${colLines.join("\n")}\n    },\n  },\n};`;
+        const prevDecl = document.getElementById("decl").dataset.text;
+        document.getElementById("decl").innerHTML =
+          prevDecl && prevDecl !== declText
+            ? `<span class="chg">${esc(declText)}</span>`
+            : esc(declText);
+        document.getElementById("decl").dataset.text = declText;
+
+        document.getElementById("agentReport").textContent = JSON.stringify(
+          Declarations.agentReport(state),
+          null,
+          2,
+        );
+
+        // log
+        document.getElementById("log").innerHTML = state.log
+          .map(
+            (l, i) =>
+              `<li${i >= prev.log.length ? ' class="chg"' : ""}>${esc(l)}</li>`,
+          )
+          .join("");
+
+        // live sheet
+        const prevLive = Object.fromEntries(
+          prev.live.columns.map((c) => [c.name, c]),
+        );
+        const lc = (c, f, html) =>
+          `<td class="${prevLive[c.name] && prevLive[c.name][f] !== c[f] ? "chg" : !prevLive[c.name] ? "chg" : ""}">${html}</td>`;
+        document.getElementById("live").innerHTML =
+          `<p>ID prefix <b class="${prev.live.table.idPrefix !== state.live.table.idPrefix ? "chg" : ""}">${esc(state.live.table.idPrefix)}</b>, ${state.live.table.rows} data rows. Blue cells changed on the last click.</p>` +
+          `<table><tr><th>Column ID</th><th>Header</th><th>Column type</th><th>Dropdown rule</th><th>Dropdown style</th><th>Formula</th><th>Typed cells</th></tr>` +
+          state.live.columns
+            .map(
+              (c) =>
+                `<tr>${lc(c, "columnId", `<code>${esc(c.columnId)}</code>`)}${lc(c, "header", esc(c.header))}${lc(c, "columnType", show("columnType", c.columnType))}` +
+                `${lc(c, "dropdown", show("dropdown", c.dropdown))}${lc(c, "dropdownStyle", c.dropdownStyle ? (c.dropdownStyle.startsWith("reset") ? `<span class="risk">${esc(c.dropdownStyle)}</span>` : esc(c.dropdownStyle)) : '<span class="muted">—</span>')}` +
+                `${lc(c, "formula", c.formula ? `<code>${esc(c.formula)}</code>` : '<span class="muted">none</span>')}${lc(c, "typedCells", c.typedCells)}</tr>`,
+            )
+            .join("") +
+          `</table>`;
+
+        // last generated
+        const g = state.lastGen;
+        const pg = prev.lastGen;
+        const nt = (f) =>
+          Declarations.NOT_IN_TODAYS_FILE.has(f)
+            ? ' <span class="notToday">not in today\'s file</span>'
+            : "";
+        document.getElementById("gen").innerHTML = !g
+          ? '<p class="muted">None: first run.</p>'
+          : `<p>idPrefix <b>${esc(g.table.idPrefix)}</b>, letApiAccess <b>${g.table.letApiAccess}</b></p>` +
+            `<table><tr><th>Header</th><th>Type${nt("columnType")}</th><th>Dropdown${nt("dropdown")}</th><th>Formula${nt("formula")}</th><th>Empty allowed</th></tr>` +
+            Object.entries(g.columns)
+              .map(([k, c]) => {
+                const pc = pg?.columns[k];
+                const cell = (f, html) =>
+                  `<td class="${!pc || JSON.stringify(pc[f]) !== JSON.stringify(c[f]) ? (pg ? "chg" : "") : ""}">${html}</td>`;
+                return (
+                  `<tr>${cell("header", esc(c.header))}${cell("columnType", show("columnType", c.columnType))}${cell("dropdown", show("dropdown", c.dropdown))}` +
+                  `${cell("formula", c.formula ? "formula" : '<span class="muted">none</span>')}${cell("emptyValueAllowed", c.emptyValueAllowed)}</tr>`
+                );
+              })
+              .join("") +
+            `</table>`;
+
+        // last applied
+        const la = Object.entries(state.lastApplied);
+        document.getElementById("applied").innerHTML =
+          (state.settings.base === "lastApplied"
+            ? ""
+            : '<p class="note"><b>Not in use</b> with the current setting; still kept, so you can switch.</p>') +
+          (la.length
+            ? `<table><tr><th>Property</th><th>Last applied</th></tr>` +
+              la
+                .map(([k, v]) => {
+                  const [colId, prop] = k.includes(".")
+                    ? [
+                        k.slice(0, k.lastIndexOf(".")),
+                        k.slice(k.lastIndexOf(".") + 1),
+                      ]
+                    : [k, ""];
+                  const col = state.live.columns.find(
+                    (c) => c.columnId === colId,
+                  );
+                  return `<tr class=""><td class="${!(k in prev.lastApplied) || JSON.stringify(prev.lastApplied[k]) !== JSON.stringify(v) ? "chg" : ""}">${esc(col ? col.header : colId)} ${esc(prop)}</td><td>${show(prop, v)}</td></tr>`;
+                })
+                .join("") +
+              `</table>`
+            : '<p class="muted">Empty.</p>');
+      }
+
+      render();
+    </script>
+  </body>
+</html>

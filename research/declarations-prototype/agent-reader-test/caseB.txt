@@ -1,0 +1,43 @@
+## The declarations file after your edit
+
+```ts
+export const declarations = {
+  "1111156219" /* occPayment */: {
+    letApiAccess: true,
+    columns: {
+      "c:opy:eCUzdxd" /* Payment status */: { columnType: "DROPDOWN", dropdown: "=list[Payment status]" },
+      "c:opy:EXyFtvV" /* Payer description */: { formula: "=IF(E4=\"Household\",K4,\"Other\")" },
+      "c:opy:xzjkI0l" /* Processed */: { columnType: "BOOLEAN" },
+      "c:opy:tI8xB-J" /* Notes */: { formula: "=IF(H4,\"Processed\",\"\")" },
+    },
+  },
+};
+```
+
+## Output of `npm run app:gen:configs`
+
+```json
+{
+  "verdict": "asks",
+  "table": {
+    "tableId": "1111156219",
+    "tableName": "occPayment"
+  },
+  "stops": [],
+  "sends": [
+    {
+      "request": "pasteData PASTE_FORMULA",
+      "what": "Writes the formula into all 212 data rows of Notes.",
+      "notes": [
+        "No Table-level formula exists, so a declared formula must be re-filled each time the Table grows."
+      ],
+      "risks": [
+        "Overwrites 41 typed cells in Notes"
+      ],
+      "overwritesData": true
+    }
+  ],
+  "regenOnly": [],
+  "gate": "Needs the developer's yes: rerun with --yes once they give it."
+}
+```

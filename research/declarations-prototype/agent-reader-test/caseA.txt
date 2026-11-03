@@ -1,0 +1,76 @@
+## The declarations file after your edit
+
+```ts
+export const declarations = {
+  "1111156219" /* occPayment */: {
+    letApiAccess: true,
+    columns: {
+      "c:opy:eCUzdxd" /* Payment status */: { columnType: "DROPDOWN", dropdown: "=list[Payment status]" },
+      "c:opy:EXyFtvV" /* Payer description */: { formula: "=IF(E4=\"Household\",K4,\"Other\")" },
+      "c:opy:xzjkI0l" /* Processed */: { columnType: "BOOLEAN" },
+      "c:opy:6UAbLy9" /* Amount */: { columnType: "CURRENCY" },
+    },
+  },
+};
+```
+
+## Output of `npm run app:gen:configs`
+
+```json
+{
+  "verdict": "stop",
+  "table": {
+    "tableId": "1111156219",
+    "tableName": "occPayment"
+  },
+  "stops": [
+    {
+      "where": "Payment status",
+      "property": "dropdown",
+      "path": "declarations[\"1111156219\"].columns[\"c:opy:eCUzdxd\"].dropdown",
+      "declared": "=list[Payment status]",
+      "lastTime": {
+        "value": "=list[Payment status]",
+        "from": "record of last applied"
+      },
+      "sheet": "Verified, Guaranteed, Pending",
+      "cause": "Someone changed the sheet: it no longer matches last time, and the declarations still hold last time's value.",
+      "waysOut": [
+        {
+          "way": "adopt",
+          "edit": "Set declarations[\"1111156219\"].columns[\"c:opy:eCUzdxd\"].dropdown to \"Verified, Guaranteed, Pending\"",
+          "effect": "Keeps the sheet's value. Sends nothing."
+        },
+        {
+          "way": "drop",
+          "edit": "Delete declarations[\"1111156219\"].columns[\"c:opy:eCUzdxd\"].dropdown",
+          "effect": "The sheet owns this property from now on. Sends nothing."
+        },
+        {
+          "way": "force",
+          "edit": "Rerun with --force 'declarations[\"1111156219\"].columns[\"c:opy:eCUzdxd\"].dropdown'",
+          "effect": "Sends \"=list[Payment status]\", overwriting the sheet's \"Verified, Guaranteed, Pending\"."
+        }
+      ]
+    }
+  ],
+  "sends": [
+    {
+      "request": "updateTable fields: columnProperties",
+      "what": "Sends all 15 columns of occPayment to change 1: Amount columnType.",
+      "notes": [
+        "Carries 14 unchanged columns, rebuilt from the live read. A column left out loses its type and dropdown rule (measured)."
+      ],
+      "risks": [
+        "Payer category: dropdown chip style and colours may reset (unmeasured; the column-list task, #189)",
+        "Non-occupant payer ID: dropdown chip style and colours may reset (unmeasured; the column-list task, #189)",
+        "Form of payment: dropdown chip style and colours may reset (unmeasured; the column-list task, #189)",
+        "Payment status: dropdown chip style and colours may reset (unmeasured; the column-list task, #189)"
+      ],
+      "overwritesData": false
+    }
+  ],
+  "regenOnly": [],
+  "gate": "Stopped before sending anything. Nothing was regenerated."
+}
+```

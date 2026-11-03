@@ -1,0 +1,61 @@
+## The declarations file after your edit
+
+```ts
+export const declarations = {
+  "1111156219" /* occPayment */: {
+    letApiAccess: true,
+    columns: {
+      "c:opy:eCUzdxd" /* Payment status */: { columnType: "DROPDOWN", dropdown: "=list[Payment status]" },
+      "c:opy:EXyFtvV" /* Payer description */: { formula: "=IF(E4=\"Household\",K4,\"Other\")" },
+      "c:opy:xzjkI0l" /* Processed */: { columnType: "BOOLEAN" },
+      "c:opy:6UAbLy9" /* Amount */: { columnType: "CURRENCY" },
+    },
+  },
+};
+```
+
+## Output of `npm run app:gen:configs`
+
+```json
+{
+  "verdict": "stop",
+  "table": {
+    "tableId": "1111156219",
+    "tableName": "occPayment"
+  },
+  "stops": [
+    {
+      "where": "Amount",
+      "property": "columnType",
+      "path": "declarations[\"1111156219\"].columns[\"c:opy:6UAbLy9\"].columnType",
+      "declared": "CURRENCY",
+      "lastTime": {
+        "value": "AUTOMATIC",
+        "from": "last generated configs"
+      },
+      "sheet": "DOUBLE",
+      "cause": "Both the declarations and the sheet changed since last time, to different values.",
+      "waysOut": [
+        {
+          "way": "adopt",
+          "edit": "Set declarations[\"1111156219\"].columns[\"c:opy:6UAbLy9\"].columnType to \"DOUBLE\"",
+          "effect": "Keeps the sheet's value. Sends nothing."
+        },
+        {
+          "way": "drop",
+          "edit": "Delete declarations[\"1111156219\"].columns[\"c:opy:6UAbLy9\"].columnType",
+          "effect": "The sheet owns this property from now on. Sends nothing."
+        },
+        {
+          "way": "force",
+          "edit": "Rerun with --force 'declarations[\"1111156219\"].columns[\"c:opy:6UAbLy9\"].columnType'",
+          "effect": "Sends \"CURRENCY\", overwriting the sheet's \"DOUBLE\"."
+        }
+      ]
+    }
+  ],
+  "sends": [],
+  "regenOnly": [],
+  "gate": "Stopped before sending anything. Nothing was regenerated."
+}
+```
