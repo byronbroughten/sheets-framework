@@ -2,6 +2,8 @@
 
 The elaboration behind [docs/vocabulary.md](../vocabulary.md), whose one-line entries are the rules.
 
+## Config tiers
+
 - **Config** — the data describing the spreadsheet's own structure, generated from the real spreadsheet rather than freely made up. Lives in each package's `generatedDir`. Naming has three tiers, from a full collection down to a single fact:
   - **`xConfigs`** (plural, e.g. `tableConfigs`) — the whole map, one entry per Table/column/value-name.
   - **`XConfig`** (singular, e.g. `TableConfig`, `ColumnConfig`) — one entry's full record.
