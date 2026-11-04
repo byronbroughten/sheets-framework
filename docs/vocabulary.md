@@ -12,7 +12,7 @@ One line per term. The elaboration is one file away. Open a reasoning file only 
 | --- | --- |
 | Source, Platform, Raw, Identified, Named, `rowIndex` | [`docs/vocabulary/tiers.md`](./vocabulary/tiers.md) |
 | Tier word, State, Base, Operator, Collaborator | [`docs/vocabulary/class-names.md`](./vocabulary/class-names.md) |
-| `xConfigs` / `XConfig` / trait, the config-sheet floor | [`docs/vocabulary/config.md`](./vocabulary/config.md) |
+| `xConfigs` / `XConfig` / trait, the config-sheet floor; intended state, claim, alteration, ID-name map | [`docs/vocabulary/config.md`](./vocabulary/config.md) |
 | Profile, sampled facts, which class a member belongs to, Working, head rows | [`docs/vocabulary/profile.md`](./vocabulary/profile.md) |
 | Schema, blank cells, `value` / `valueOrEmpty` / `valueNotEmpty`, checkbox, `SerialDate`, `emptyValueAllowed` | [`docs/vocabulary/values.md`](./vocabulary/values.md) |
 
@@ -43,6 +43,9 @@ One line per term. The elaboration is one file away. Open a reasoning file only 
 - **Config is the data describing the spreadsheet's own structure, generated from the live sheet**, in each package's `generatedDir`.
 - **`xConfigs` is the whole map, `XConfig` is one entry's record, and a trait is one property of one record.** "Trait" never means a collection.
 - **The config-sheet floor is guaranteed, not data to fix**: the three config sheets' own entries always come out the same on regeneration.
+- **Intended state is what the repo says the sheet's structure will be, for the traits it names: its claims and pending alterations**; planned, not yet in code.
+- **A claim is a trait an endpoint or chore holds in `claimedTraits`, compared every run; an alteration is one `gen:configs` applies once, then removes.** Either's value is an intended value.
+- **The ID-name map (`idNameMap.ts`) is the generated, type-only file pairing each Table and column ID with its name.**
 
 ## The write queue
 
