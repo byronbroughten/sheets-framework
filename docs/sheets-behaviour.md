@@ -61,6 +61,10 @@ Write-ups sourced from Google's docs live on `research/*` branches, listed by `g
 - Observed: A REST API v4 `updateTable` `columnProperties` list giving a `DROPDOWN` column its type and no `dataValidationRule` was rejected with a 400, `Invalid requests[0].updateTable: No conditionType specified.`; scratch tab on the dev spreadsheet; 2026-11-04; [resolution on #189](https://github.com/byronbroughten/sheets-framework/issues/189#issuecomment-6624006221).
 - Documented: REST API v4's `AddSheetRequest` reference says, under `properties`, "(It is an error to specify the ID of a sheet that already exists.)"; read 2026-11-01; [quoted on #196](https://github.com/byronbroughten/sheets-framework/issues/196#issuecomment-6565168668).
 
+### The Table name chip
+
+- Observed: In the Sheets UI, a Table's name chip sat over the cell one row above the Table's first column the whole time, and a checkbox put in that cell did not show and took no tick; a checkbox one row above the second column showed and took a tick; a Table named `aVeryLongTableNameForChipTest` showed its name truncated, over no more cells than a Table named `t`; scratch tab on the dev spreadsheet, two Tables with their header on row 4, checked by eye; 2026-11-04; [resolution on #190](https://github.com/byronbroughten/sheets-framework/issues/190#issuecomment-6633187154).
+
 ### Sorting
 
 - Observed: A REST API v4 `sortRange` ascending put numbers, then text, then booleans (`FALSE` before `TRUE`), descending put them in the exact reverse, and blanks sorted last in both; scratch tab on the dev spreadsheet, whether a Table held the range not recorded; 2026-09-26; [recorded in db5ba74](https://github.com/byronbroughten/sheets-framework/commit/db5ba74d35cb24b9cf97975a1d86a589b88c7a76).
@@ -199,6 +203,10 @@ Write-ups sourced from Google's docs live on `research/*` branches, listed by `g
 ### Simple triggers and authorization
 
 - Documented: Apps Script's Simple Triggers guide says, under its restrictions, that simple triggers "can't access services that require authorization"; read 2026-11-02; [quoted on #199](https://github.com/byronbroughten/sheets-framework/issues/199#issuecomment-6590878536).
+
+### Toasts from an installed edit trigger
+
+- Observed: `SpreadsheetApp.getActive().toast(...)`, called from an installable on-edit trigger that account A installed, showed to A when A ticked a checkbox, and to account B, another editor, when B ticked; A, with the spreadsheet open in another browser profile, saw no toast for B's tick; scratch tab on the dev spreadsheet; 2026-11-04; [resolution on #190](https://github.com/byronbroughten/sheets-framework/issues/190#issuecomment-6633187154).
 
 ### Edit event ranges
 
