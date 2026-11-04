@@ -8,7 +8,7 @@ An endpoint is one entry keyed by the column whose action-row checkbox triggers 
 
 ## The endpoint entry
 
-An endpoint is **one entry keyed by the column whose action-row checkbox triggers it**. Any column may be that key — there is no suffix requirement and no second endpoint kind. The entry's value names an action plus, optionally, the columns the framework manages on the endpoint's behalf — two feedback columns, and a selector declared as an object so the opt-out from clearing sits inside the thing it modifies:
+An endpoint is **one entry keyed by the column whose action-row checkbox triggers it**. Any column may be that key — there is no suffix requirement and no second endpoint kind — but nobody can tick one keyed on a Table's first column, since Sheets' Table name chip sits over that action-row cell ([observed](../sheets-behaviour.md#the-table-name-chip)), and nothing checks for it. The entry's value names an action plus, optionally, the columns the framework manages on the endpoint's behalf — two feedback columns, and a selector declared as an object so the opt-out from clearing sits inside the thing it modifies:
 
 ```ts
 export interface Endpoint<TN extends TableNameSimple> {
