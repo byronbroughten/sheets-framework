@@ -12,7 +12,7 @@ One line per term. The elaboration is one file away. Open a reasoning file only 
 | --- | --- |
 | Source, Platform, Raw, Identified, Named, `rowIndex` | [`docs/vocabulary/tiers.md`](./vocabulary/tiers.md) |
 | Tier word, State, Base, Operator, Collaborator | [`docs/vocabulary/class-names.md`](./vocabulary/class-names.md) |
-| `xConfigs` / `XConfig` / trait, the config-sheet floor; intended state, claim, alteration, ID-name map | [`docs/vocabulary/config.md`](./vocabulary/config.md) |
+| `xConfigs` / `XConfig` / trait, the config-sheet floor; intended state, claim, alteration, ID-name map; entered data, held | [`docs/vocabulary/config.md`](./vocabulary/config.md) |
 | Profile, sampled facts, which class a member belongs to, Working, head rows | [`docs/vocabulary/profile.md`](./vocabulary/profile.md) |
 | Schema, blank cells, `value` / `valueOrEmpty` / `valueNotEmpty`, checkbox, `SerialDate`, `emptyValueAllowed` | [`docs/vocabulary/values.md`](./vocabulary/values.md) |
 
@@ -46,6 +46,7 @@ One line per term. The elaboration is one file away. Open a reasoning file only 
 - **Intended state is what the repo says the sheet's structure will be, for the traits it names: its claims and pending alterations**; planned, not yet in code.
 - **A claim is a trait an endpoint or chore holds, named in `claimedTraits` or implied by its declaration, compared every run; an alteration is one `gen:configs` applies once, then removes.** An endpoint's key claims a checkbox in its column's action-row cell. Either's value is an intended value.
 - **The ID-name map (`idNameMap.ts`) is the generated, type-only file pairing each Table and column ID with its name.**
+- **Entered data is a value in a Table data-row cell that isn't a formula; a held item is one a send holds back until `--confirm` covers it, and a send with none is free**; planned, not yet in code.
 
 ## The write queue
 
