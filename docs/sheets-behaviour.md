@@ -122,6 +122,11 @@ Write-ups sourced from Google's docs live on `research/*` branches, listed by `g
 
 - Observed: REST API v4 reads left out a sheet's `conditionalFormats` list when it held no rules, and left out zero-valued fields: a gid-0 `sheetId`, a column-A column index and a row-1 row index; live spreadsheet, the sheets and fields masks not recorded; 2026-09-16; [recorded in 62abd855](https://github.com/byronbroughten/byro-repo/commit/62abd85537ae0110cd80e3311e00c2aa298f9eb0), [recorded in 613de032](https://github.com/byronbroughten/byro-repo/commit/613de032e7a8310dd19277de344f51caca4e4ce2).
 
+### Reading formula text beside effective values
+
+- Observed: A REST API v4 `getByDataFilter` grid read with the fields mask `rowData(values(effectiveValue,userEnteredValue(formulaValue)))` was accepted, and returned `userEnteredValue` as `{"formulaValue": …}` for 2,554 formula cells, as an empty object `{}` for 5,942 cells holding a non-formula value, and left it out for 1,732 blank cells; Property Expense on the live spreadsheet, one `gridRange` of 641 rows × 17 columns, head rows included; 2026-11-06; [resolution on #206](https://github.com/byronbroughten/sheets-framework/issues/206#issuecomment-6690184473).
+- Observed: That read returned 1,643,338 bytes as compact JSON, against 432,613 for `values(effectiveValue)` and 1,791,978 for `values(effectiveValue,userEnteredValue)`; timed from the probe's npm start to its saved response, three runs per mask in alternating order, the three masks averaged 2.04 s, 2.04 s and 2.06 s, each run between 0.95 and 3.17 s; same Table, range and day, through `app:probe` from a laptop; 2026-11-06; [resolution on #206](https://github.com/byronbroughten/sheets-framework/issues/206#issuecomment-6690184473).
+
 ### Reading conditional formats
 
 - Observed: A REST API v4 `getByDataFilter` returned no `conditionalFormats` for sheets holding rules, and a plain `spreadsheets.get` with the fields mask `sheets(properties(sheetId),conditionalFormats)` returned them; live spreadsheet, the sheets not recorded; 2026-09-16; [recorded in 62abd855](https://github.com/byronbroughten/byro-repo/commit/62abd85537ae0110cd80e3311e00c2aa298f9eb0), [recorded in 613de032](https://github.com/byronbroughten/byro-repo/commit/613de032e7a8310dd19277de344f51caca4e4ce2).
