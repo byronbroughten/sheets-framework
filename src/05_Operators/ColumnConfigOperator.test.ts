@@ -190,6 +190,13 @@ function syncColumnConfigOperator(operator: ColumnConfigOperator): void {
 }
 
 describe("ColumnConfigOperator.newColumnConfigs / toFileSource", () => {
+  const emptyBaseline = {
+    formula: null,
+    columnType: { type: null, rule: null },
+    actionRowCell: null,
+    groupHeading1: null,
+  };
+
   it("groups columns by Table key", () => {
     stubGroupedColumnConfigSheets();
 
@@ -203,6 +210,7 @@ describe("ColumnConfigOperator.newColumnConfigs / toFileSource", () => {
         isFormula: false,
         emptyValueAllowed: false,
         customDefaultValue: null,
+        ...emptyBaseline,
       },
       notes: {
         columnId: "c:wdg:bbb",
@@ -211,6 +219,7 @@ describe("ColumnConfigOperator.newColumnConfigs / toFileSource", () => {
         isFormula: false,
         emptyValueAllowed: false,
         customDefaultValue: null,
+        ...emptyBaseline,
       },
     });
     expect(entries.brandNewSheet).toEqual({
@@ -221,6 +230,7 @@ describe("ColumnConfigOperator.newColumnConfigs / toFileSource", () => {
         isFormula: false,
         emptyValueAllowed: false,
         customDefaultValue: null,
+        ...emptyBaseline,
       },
     });
   });
@@ -233,7 +243,7 @@ describe("ColumnConfigOperator.newColumnConfigs / toFileSource", () => {
       .split("\n");
 
     expect(sourceLines).toContain(
-      '    "unitPrice": { "columnId": "c:wdg:aaa", "header": "Unit Price", "valueName": "number", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null },',
+      '    "unitPrice": { "columnId": "c:wdg:aaa", "header": "Unit Price", "valueName": "number", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null, "formula": null, "columnType": {"type":null,"rule":null}, "actionRowCell": null, "groupHeading1": null },',
     );
     expect(
       sourceLines.find((line) => line.includes('"widget":')),

@@ -3,6 +3,7 @@ import { type PrimitiveValueName, Val } from "@byronbroughten/utils/val";
 import type { CellValue } from "../00_Source/CellValues/cellValues";
 import type { FrameworkValueName } from "../00_Source/CellValues/frameworkValueSchemas";
 import type { TableColumnType } from "../00_Source/RawSource/RawSource";
+import type { HeadRowValue } from "../01_SpreadsheetSchema/headRows";
 import { ColumnBaseRaw } from "./ClassBases/ColumnBaseRaw";
 import type { ColumnStateRaw, SampledFactsRaw } from "./ClassTypes/StateRaw";
 import { ColumnRaw } from "./ColumnRaw";
@@ -22,6 +23,14 @@ export class ColumnProfileRaw extends ColumnBaseRaw {
   }
   get header(): string {
     return this.column.headCell("header").valueOrEmpty();
+  }
+  // A checkbox reads as its boolean, a level-2 group heading as its text.
+  get actionRowValue(): HeadRowValue<"action"> | "" {
+    return this.column.headCell("action").valueOrEmpty();
+  }
+  // A spanning heading's text sits on its first cell; the cells it covers read empty.
+  get groupHeading1(): string {
+    return this.column.headCell("groupHeading1").valueOrEmpty();
   }
   get isFormula(): boolean {
     return this._sampledFacts.isFormula;

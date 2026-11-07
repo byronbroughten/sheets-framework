@@ -56,7 +56,27 @@ export function makeValueConfigs<const VC extends ValueConfigsBase>(
   return makeStructuredConfig({} as ValueConfigsBase, valueConfigs);
 }
 
-interface ColumnConfigLiteral {
+// The Table column's data-validation rule, as Google's columnProperties carry it.
+export interface ColumnValidationRule {
+  condition: string;
+  values: string[];
+}
+export interface ColumnTypeBaseline {
+  // null: the column is left on Automatic.
+  type: string | null;
+  rule: ColumnValidationRule | null;
+}
+export type ActionRowCellBaseline =
+  { kind: "checkbox" } | { kind: "groupHeading2"; text: string };
+
+// Each baseline trait is optional so an older configs file still loads; absent means unrecorded, null means recorded empty.
+interface ColumnBaselineLiteral {
+  formula?: string | null;
+  columnType?: ColumnTypeBaseline;
+  actionRowCell?: ActionRowCellBaseline | null;
+  groupHeading1?: string | null;
+}
+interface ColumnConfigLiteral extends ColumnBaselineLiteral {
   columnId: string;
   header: string;
   isFormula: boolean;

@@ -9,6 +9,7 @@ import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {
   buildGridRows,
+  type FakeCell,
   type FakeCellValue,
   type FakeSheetProperties,
   type FakeSheetsService,
@@ -377,9 +378,9 @@ function valueConfigTab(
 }
 
 function rowsFromFirstDataRow(
-  rows: readonly (readonly FakeCellValue[])[],
-): Record<number, readonly FakeCellValue[]> {
-  return rows.reduce<Record<number, readonly FakeCellValue[]>>(
+  rows: readonly (readonly FakeCell[])[],
+): Record<number, readonly FakeCell[]> {
+  return rows.reduce<Record<number, readonly FakeCell[]>>(
     (byIndex, row, offset) => {
       byIndex[expectedSheetLayout.tableHeaderRowIndex + 1 + offset] = row;
       return byIndex;
@@ -1784,9 +1785,12 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
 
   interface FixtureColumn {
     header: string;
-    values?: readonly FakeCellValue[];
+    values?: readonly FakeCell[];
     columnType?: string;
     validationValues?: string[];
+    validationConditionType?: string;
+    actionRowCell?: FakeCellValue;
+    groupHeading1?: string;
   }
 
   function tableSheet(props: {
@@ -1799,7 +1803,7 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
       1,
       ...columns.map((column) => column.values?.length ?? 0),
     );
-    const dataRows: (readonly FakeCellValue[])[] = Array.from(
+    const dataRows: (readonly FakeCell[])[] = Array.from(
       { length: rowCount },
       (_, rowOffset) =>
         columns.map((column) => column.values?.[rowOffset] ?? null),
@@ -1809,6 +1813,8 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
       title: props.title,
       rows: buildGridRows({
         0: columns.map(() => ""),
+        1: columns.map((column) => column.groupHeading1 ?? null),
+        2: columns.map((column) => column.actionRowCell ?? null),
         3: columns.map((column) => column.header),
         ...rowsFromFirstDataRow(dataRows),
       }),
@@ -1819,6 +1825,10 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
         columnValidationValues: byColIndex(
           columns,
           (column) => column.validationValues,
+        ),
+        columnValidationConditionTypes: byColIndex(
+          columns,
+          (column) => column.validationConditionType,
         ),
       },
     };
@@ -2166,5 +2176,127 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
     ).toThrow(
       'Value sources "List[Payment status]" and "List Payment[Status]" both take the value name "listPaymentStatus".',
     );
+  });
+
+  describe("the baseline each column records", () => {
+    function generateLedgerColumns() {
+      const coordinator = ConfigCoordinator.init();
+      const files = coordinator.generateConfigFiles("../makeConfigs");
+      return {
+        files,
+        ledger: Val.assert(
+          coordinator.columnConfigOperator.newColumnConfigs().ledger,
+          "Ledger column configs",
+        ),
+      };
+    }
+
+    it("records formula text in brace form, naming its own Table's columns bare and another Table's in full", () => {
+      seedValueSources({
+        apiTables: [
+          listSheet([{ header: "Payment status", values: ["Paid"] }]),
+          ledgerSheet([
+            { header: "Amount", values: [10] },
+            {
+              header: "Double",
+              values: [
+                {
+                  value: 20,
+                  isFormula: true,
+                  formula: "=SINGLE(Ledger[Amount])*2",
+                },
+              ],
+            },
+            {
+              header: "Statuses",
+              values: [
+                {
+                  value: 1,
+                  isFormula: true,
+                  formula: '=COUNTA(List[Payment status])&"Ledger[Amount]"',
+                },
+              ],
+            },
+          ]),
+        ],
+      });
+
+      const { files, ledger } = generateLedgerColumns();
+
+      expect(ledger.amount?.formula).toBeNull();
+      expect(ledger.double?.formula).toBe("=${amount}*2");
+      expect(ledger.statuses?.formula).toBe(
+        '=COUNTA(${list[paymentStatus]})&"Ledger[Amount]"',
+      );
+      expect(files.columnConfigs).toContain('"formula": "=${amount}*2"');
+    });
+
+    it("records the column type, with the rule a dropdown carries", () => {
+      seedValueSources({
+        apiTables: [
+          listSheet([{ header: "Payment status", values: ["Paid"] }]),
+          ledgerSheet([
+            { header: "Amount", values: [10], columnType: "CURRENCY" },
+            {
+              header: "Status",
+              values: ["Paid"],
+              columnType: "DROPDOWN",
+              validationConditionType: "ONE_OF_RANGE",
+              validationValues: ["=List[Payment status]"],
+            },
+            { header: "Note", values: ["x"] },
+          ]),
+        ],
+      });
+
+      const { ledger } = generateLedgerColumns();
+
+      expect(ledger.amount?.columnType).toEqual({
+        type: "CURRENCY",
+        rule: null,
+      });
+      expect(ledger.status?.columnType).toEqual({
+        type: "DROPDOWN",
+        rule: { condition: "ONE_OF_RANGE", values: ["=List[Payment status]"] },
+      });
+      expect(ledger.note?.columnType).toEqual({ type: null, rule: null });
+    });
+
+    it("records each action-row cell as empty, a checkbox or a level-2 group heading", () => {
+      seedValueSources({
+        apiTables: [
+          ledgerSheet([
+            { header: "Amount", values: [10] },
+            { header: "Run", values: [false], actionRowCell: false },
+            { header: "Due", values: [1], actionRowCell: "Dates" },
+          ]),
+        ],
+      });
+
+      const { ledger } = generateLedgerColumns();
+
+      expect(ledger.amount?.actionRowCell).toBeNull();
+      expect(ledger.run?.actionRowCell).toEqual({ kind: "checkbox" });
+      expect(ledger.due?.actionRowCell).toEqual({
+        kind: "groupHeading2",
+        text: "Dates",
+      });
+    });
+
+    it("records a spanning level-1 group heading on its first cell only", () => {
+      seedValueSources({
+        apiTables: [
+          ledgerSheet([
+            { header: "Amount", values: [10], groupHeading1: "Money" },
+            { header: "Fee", values: [1] },
+          ]),
+        ],
+      });
+
+      const { ledger } = generateLedgerColumns();
+
+      expect(ledger.amount?.groupHeading1).toBe("Money");
+      expect(ledger.fee?.groupHeading1).toBeNull();
+    });
   });
 });

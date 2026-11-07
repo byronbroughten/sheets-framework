@@ -14,7 +14,7 @@ Each package's `generatedDir` (the app's `src/generated/`, the framework's `dev/
 
 ## Reading the generated files by block
 
-**Never read `columnConfigs.ts` whole.** `tableConfigs.ts` is the Table list, one labeled record per line. Grep `columnConfigs.ts` for the Table key (`"occupancy":`) and read that object only: the key opens a multi-line block, and each column config is one labeled line inside it (`columnId`, `header`, `valueName`, `isFormula`, `emptyValueAllowed`, `customDefaultValue`). Same for a single column: grep its `columnId` or name. `valueConfigs.ts` stays a pretty-printed map of member arrays.
+**Never read `columnConfigs.ts` whole.** `tableConfigs.ts` is the Table list, one labeled record per line. Grep `columnConfigs.ts` for the Table key (`"occupancy":`) and read that object only: the key opens a multi-line block, and each column config is one labeled line inside it (`columnId`, `header`, `valueName`, `isFormula`, `emptyValueAllowed`, `customDefaultValue`, then the baseline traits `formula`, `columnType`, `actionRowCell`, `groupHeading1`). Same for a single column: grep its `columnId` or name. `valueConfigs.ts` stays a pretty-printed map of member arrays.
 
 ## The generated half and the hand-written half
 

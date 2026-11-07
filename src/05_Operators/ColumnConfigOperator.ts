@@ -2,6 +2,7 @@ import { Str } from "@byronbroughten/utils/str";
 import { Val } from "@byronbroughten/utils/val";
 
 import { isFrameworkValueName } from "../00_Source/CellValues/frameworkValueSchemas";
+import { BraceFormula } from "../01_SpreadsheetSchema/configReaders/BraceFormula";
 import { getColumnTraitByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
 import {
   configSheetFloorSeed,
@@ -9,7 +10,9 @@ import {
   floorSeedEmptyValueAllowed,
 } from "../01_SpreadsheetSchema/configReaders/configSheetFloorSeed";
 import {
+  type ActionRowCellBaseline,
   type ColumnConfigsGeneric,
+  type ColumnTypeBaseline,
   makeImportLine,
 } from "../01_SpreadsheetSchema/configReaders/makeConfigs";
 import { type ValueName } from "../01_SpreadsheetSchema/configReaders/valueSchemas";
@@ -142,6 +145,8 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
       // hasIdColumn samples this row after Let api access is known.
       table.headRow("header").gatherFetchFull();
       table.headRow("columnId").gatherFetchFull();
+      table.headRow("action").gatherFetchFull();
+      table.headRow("groupHeading1").gatherFetchFull();
       table.topRow.gatherFetchFull();
     });
     this.ss.identified.fetchAllGathered(true);
@@ -395,7 +400,32 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
         isFormula: describedColumn.isFormula,
         emptyValueAllowed: col.emptyValueAllowed.value(rowIndex),
         customDefaultValue: null,
+        formula: describedColumn.topFormula ?? null,
+        columnType: columnTypeBaseline(describedColumn),
+        actionRowCell: actionRowCellBaseline(describedColumn.actionRowValue),
+        groupHeading1: describedColumn.groupHeading1 || null,
       };
+    });
+    return this._withFormulasInBraceForm(columnConfigs);
+  }
+  // A second pass, because a brace names a column by the name this run gives it.
+  private _withFormulasInBraceForm(
+    columnConfigs: ColumnConfigsGeneric,
+  ): ColumnConfigsGeneric {
+    const configs = {
+      tableConfigs: this.tableConfigOperator.newTableConfigs(),
+      columnConfigs,
+    };
+    Object.entries(columnConfigs).forEach(([tableKey, tableColumnConfigs]) => {
+      Object.values(tableColumnConfigs).forEach((columnConfig) => {
+        const { formula } = columnConfig;
+        if (formula === undefined || formula === null) return;
+        columnConfig.formula = BraceFormula.decompile({
+          configs,
+          tableKey,
+          formula,
+        });
+      });
     });
     return columnConfigs;
   }
@@ -409,6 +439,27 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
       ``,
     ].join("\n");
   }
+}
+
+function columnTypeBaseline(
+  describedColumn: ColumnProfileRaw,
+): ColumnTypeBaseline {
+  const condition = describedColumn.validationConditionType;
+  return {
+    type: describedColumn.columnType ?? null,
+    rule:
+      condition === undefined
+        ? null
+        : { condition, values: describedColumn.valueValidationStrings },
+  };
+}
+
+function actionRowCellBaseline(
+  value: ColumnProfileRaw["actionRowValue"],
+): ActionRowCellBaseline | null {
+  if (typeof value === "boolean") return { kind: "checkbox" };
+  if (value === "") return null;
+  return { kind: "groupHeading2", text: value };
 }
 
 function valueSourceName({

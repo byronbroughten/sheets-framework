@@ -52,6 +52,8 @@ export type FakeCellValue = string | number | boolean | null;
 export interface FakeRichCellValue {
   value: FakeCellValue;
   isFormula?: boolean;
+  // A formula cell's text, where its value is what the formula computes.
+  formula?: string;
   numberFormatType?: string;
   dataValidationConditionType?: string;
   backgroundColor?: GoogleAppsScript.Sheets.Schema.Color;
@@ -212,7 +214,9 @@ function fakeCellToGoogleCellData(cell: FakeCell): GoogleCellData {
     effectiveValue: fakeValueToExtendedValue(rich.value),
   };
   if (rich.isFormula) {
-    data.userEnteredValue = { formulaValue: formulaText(rich.value) };
+    data.userEnteredValue = {
+      formulaValue: rich.formula ?? formulaText(rich.value),
+    };
   }
   if (rich.numberFormatType) {
     data.effectiveFormat = {

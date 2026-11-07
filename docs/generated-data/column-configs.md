@@ -1,6 +1,6 @@
 # `columnConfigs`: one record per column
 
-Part of [generated data](../generated-data.md). `emptyValueAllowed` is declared, `isFormula` is sampled, and `valueName` is declared first and sampled only as a fallback, with a summary of the columns it had to guess.
+Part of [generated data](../generated-data.md). `emptyValueAllowed` is declared, `isFormula` is sampled, and `valueName` is declared first and sampled only as a fallback, with a summary of the columns it had to guess. Four baseline traits record each column's formula, type and head cells for `sync`.
 
 ## What is generated per column
 
@@ -8,7 +8,20 @@ Part of [generated data](../generated-data.md). `emptyValueAllowed` is declared,
 
 **Column Config is `Table ID | Column ID | Table name | Header | Empty value allowed`, one row per column of a ticked Table, keyed by (Table ID, Column ID).** The sync appends a row for each live column ID it doesn't find, and drops a row whose Table is gone or unticked, or whose column ID is gone from its Table. The correction pass rewrites Table name from the live Table and Header from the live column. Emit resolves each row's Table ID to its Table key through this run's `tableConfigs`, and a row whose Table ID has no ticked Table Config row fails the run.
 
-Per column, `columnId`/`valueName`/`header`/`isFormula`/`emptyValueAllowed` are generated; for `customDefaultValue`, see [the rules](../../src/01_SpreadsheetSchema/AGENTS.md). A column's index is not stored: `03_SpreadsheetIdentified` resolves it live from `columnId`, since a stored index would go stale as columns are added/removed/reordered.
+Per column, `columnId`/`valueName`/`header`/`isFormula`/`emptyValueAllowed` are generated, and so is the [baseline](#the-baseline-each-column-records) `sync` compares against; for `customDefaultValue`, see [the rules](../../src/01_SpreadsheetSchema/AGENTS.md). A column's index is not stored: `03_SpreadsheetIdentified` resolves it live from `columnId`, since a stored index would go stale as columns are added/removed/reordered.
+
+## The baseline each column records
+
+**Four traits record what the column looked like at the last regen**, so `sync`'s three-way comparison can tell an agent's change from a person's ([#219](https://github.com/byronbroughten/sheets-framework/issues/219)). No code compares them yet.
+
+- **`formula`**: the top data-row cell's formula text, decompiled to brace form by `BraceFormula.decompile` against this run's configs, so `Ledger[Amount]` reads `${amount}` on Ledger and `${ledger[amount]}` elsewhere. A reference to a Table without Let api access stays as Sheets wrote it. `null` when the top cell holds no formula.
+- **`columnType`**: `{ type, rule }`, the Table column's declared type (`null` for Automatic) and its data-validation `rule` as `columnProperties` carries it, `{ condition, values }`, or `null`. A dropdown's rule values stay as Sheets wrote them, braces not applied.
+- **`actionRowCell`**: `null` for an empty cell, `{ kind: "checkbox" }` for any boolean, checked or not, and `{ kind: "groupHeading2", text }` for a level-2 group heading.
+- **`groupHeading1`**: the level-1 group heading's text, or `null`. A heading spanning several columns is recorded on its first cell only, the one that holds the text.
+
+**Every value comes from the run's one fetch of each Table**: `formula` from the top-row sample that sets `isFormula`, `columnType` from the `columnProperties` `valueName` already reads, and the two head cells from the action row and level-1 heading row, gathered next to the header and column ID rows.
+
+**Each trait is optional in `makeColumnConfigs`, so a configs file written before the baseline still loads.** An absent trait is unrecorded and `null` is recorded empty; the planner treats an unrecorded trait as taking its live value as the baseline.
 
 ## `emptyValueAllowed` is declared
 
