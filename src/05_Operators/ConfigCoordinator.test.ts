@@ -18,6 +18,7 @@ import {
   tableIdOnTab,
   valueConfigGid,
 } from "../testSupport/fakeTableConfigSheet";
+import { parseIdNameMapFileSource } from "../testSupport/parseIdNameMapFileSource";
 import {
   ConfigCoordinator,
   type ConfigRegeneration,
@@ -530,6 +531,52 @@ describe("ConfigCoordinator.generateConfigFiles", () => {
     expect(typeof parsed.valueConfigs).toBe("string");
     // Gathered into Column Config by the sync, then headed by _updateProgrammaticValues.
     expect(parsed.columnConfigs).toContain("c:itm:xyz123");
+  });
+
+  it("emits the ID-name map as a type-only file", () => {
+    seedFixture();
+
+    const { idNameMap } =
+      ConfigCoordinator.init().generateConfigFiles("../makeConfigs");
+    expect(idNameMap).toContain("export interface IdNameMap {");
+    expect(idNameMap).not.toMatch(/\b(const|let|function|import)\b/);
+  });
+
+  it("maps every Table's ID to its name and tab, with columns only for a Table with API access", () => {
+    const notesGid = 999001;
+    seedFixture({
+      extraSheets: [
+        {
+          sheetId: notesGid,
+          title: "Notes",
+          rows: buildGridRows({ 3: ["Note"], 4: [] }),
+          table: { tableId: "notes", name: "Desk Notes", endRowIndex: 5 },
+        },
+      ],
+    });
+
+    const { tables } = parseIdNameMapFileSource(
+      ConfigCoordinator.init().generateConfigFiles("../makeConfigs").idNameMap,
+    );
+    expect(tables.item).toEqual({
+      name: "item",
+      sheetGid: testSheetGid,
+      columns: { someHeader: "c:itm:xyz123" },
+    });
+    expect(tables.notes).toEqual({ name: "deskNotes", sheetGid: notesGid });
+  });
+
+  it("lists every tab by GID with its title and Tables", () => {
+    seedFixture();
+
+    const { tabs } = parseIdNameMapFileSource(
+      ConfigCoordinator.init().generateConfigFiles("../makeConfigs").idNameMap,
+    );
+    expect(tabs[String(testSheetGid)]).toEqual({
+      title: "Item",
+      tableIds: ["item"],
+    });
+    expect(tabs[String(tableConfigGid)]?.title).toBe("Table Config");
   });
 
   it("emits no Spreadsheet Config file", () => {
