@@ -52,7 +52,6 @@ export type FakeCellValue = string | number | boolean | null;
 export interface FakeRichCellValue {
   value: FakeCellValue;
   isFormula?: boolean;
-  // A formula cell's text, where its value is what the formula computes.
   formula?: string;
   numberFormatType?: string;
   dataValidationConditionType?: string;

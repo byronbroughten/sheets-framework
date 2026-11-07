@@ -3,7 +3,10 @@ import { type PrimitiveValueName, Val } from "@byronbroughten/utils/val";
 import type { CellValue } from "../00_Source/CellValues/cellValues";
 import type { FrameworkValueName } from "../00_Source/CellValues/frameworkValueSchemas";
 import type { TableColumnType } from "../00_Source/RawSource/RawSource";
-import type { HeadRowValue } from "../01_SpreadsheetSchema/headRows";
+import type {
+  ActionRowCellBaseline,
+  ColumnValidationRule,
+} from "../01_SpreadsheetSchema/columnBaseline";
 import { ColumnBaseRaw } from "./ClassBases/ColumnBaseRaw";
 import type { ColumnStateRaw, SampledFactsRaw } from "./ClassTypes/StateRaw";
 import { ColumnRaw } from "./ColumnRaw";
@@ -24,9 +27,12 @@ export class ColumnProfileRaw extends ColumnBaseRaw {
   get header(): string {
     return this.column.headCell("header").valueOrEmpty();
   }
-  // A checkbox reads as its boolean, a level-2 group heading as its text.
-  get actionRowValue(): HeadRowValue<"action"> | "" {
-    return this.column.headCell("action").valueOrEmpty();
+  // Any boolean is a checkbox, since an action-row cell's validation isn't read.
+  get actionRowCell(): ActionRowCellBaseline | undefined {
+    const value = this.column.headCell("action").valueOrEmpty();
+    if (typeof value === "boolean") return { kind: "checkbox" };
+    if (value === "") return undefined;
+    return { kind: "groupHeading2", text: value };
   }
   // A spanning heading's text sits on its first cell; the cells it covers read empty.
   get groupHeading1(): string {
@@ -55,6 +61,11 @@ export class ColumnProfileRaw extends ColumnBaseRaw {
   }
   get columnType(): string | undefined {
     return this._tableColumnState()?.columnType;
+  }
+  get validationRule(): ColumnValidationRule | undefined {
+    const condition = this.validationConditionType;
+    if (condition === undefined) return undefined;
+    return { condition, values: this.valueValidationStrings };
   }
   valueTitle(): string {
     return this.declaredValueTitle() ?? this._actualPrimitiveValueName();

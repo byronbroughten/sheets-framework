@@ -21,7 +21,7 @@ Per column, `columnId`/`valueName`/`header`/`isFormula`/`emptyValueAllowed` are 
 
 **Every value comes from the run's one fetch of each Table**: `formula` from the top-row sample that sets `isFormula`, `columnType` from the `columnProperties` `valueName` already reads, and the two head cells from the action row and level-1 heading row, gathered next to the header and column ID rows.
 
-**Each trait is optional in `makeColumnConfigs`, so a configs file written before the baseline still loads.** An absent trait is unrecorded and `null` is recorded empty; the planner treats an unrecorded trait as taking its live value as the baseline.
+**Each trait is optional in `makeColumnConfigs`, so a configs file written before the baseline still loads.** An absent trait is unrecorded and `null` is recorded empty, so the planner #219 specifies can take an unrecorded trait's live value as its baseline.
 
 ## `emptyValueAllowed` is declared
 
