@@ -1,10 +1,13 @@
 import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 
 import { appConfigs } from "../dev/generated/appConfigs.ts";
-import { parseIdNameMapFileSource } from "../src/05_Operators/configFileSource.ts";
+import {
+  type IdNameMapGeneric,
+  parseIdNameMapFileSource,
+} from "../src/05_Operators/configFileSource.ts";
 import { appConfigsText, idNameMapPath } from "./genConfigs.ts";
 
 const devIdNameMapPath = idNameMapPath(
@@ -16,9 +19,12 @@ describe.skipIf(!existsSync(devIdNameMapPath))(
   "the dev package's generated files",
   () => {
     const { tableConfigs, columnConfigs } = appConfigs;
-    const idNameMap = parseIdNameMapFileSource(
-      readFileSync(devIdNameMapPath, "utf8"),
-    );
+    let idNameMap: IdNameMapGeneric;
+    beforeAll(() => {
+      idNameMap = parseIdNameMapFileSource(
+        readFileSync(devIdNameMapPath, "utf8"),
+      );
+    });
 
     it("give each configured Table the same name, tab and column IDs in the ID-name map", () => {
       Object.entries(tableConfigs).forEach(([tableKey, tableConfig]) => {
