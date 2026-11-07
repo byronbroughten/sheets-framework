@@ -57,7 +57,7 @@ describe("makePendingAlterations", () => {
               {
                 columns: ["amount"],
                 condition: { type: "CUSTOM_FORMULA", values: ["=${amount}<0"] },
-                format: { textColor: "#cc0000", bold: true },
+                format: { foregroundColor: "#cc0000", bold: true },
               },
             ],
             remove: ["log-amount-1"],
@@ -105,7 +105,6 @@ describe("PendingAlterations' keys", () => {
     assertType<IsExactly<NonNullable<ItemNameEntry["before"]>, ItemColumnName>>(
       true,
     );
-    assertType<"tableConfig" extends keyof TableEntries ? true : false>(true);
   });
 
   it("reject a name the ID-name map doesn't hold", () => {
@@ -119,17 +118,17 @@ describe("PendingAlterations' keys", () => {
   });
 
   it("name a Table by its codebase name, never its ID", () => {
-    const byName: TableEntries = { tableConfig: {} };
+    assertType<"tableConfig" extends keyof TableEntries ? true : false>(true);
     // @ts-expect-error sheetConfig is the Table Config Table's ID
     const byId: TableEntries = { sheetConfig: {} };
-    expect([byName, byId]).toHaveLength(2);
+    expect(byId).toBeDefined();
   });
 
   it("name a tab by its tab name, never its title", () => {
-    const byName: TabEntries = { valueTypes: {} };
+    assertType<"valueTypes" extends keyof TabEntries ? true : false>(true);
     // @ts-expect-error "Value Types" is the tab's title, display text
     const byTitle: TabEntries = { "Value Types": {} };
-    expect([byName, byTitle]).toHaveLength(2);
+    expect(byTitle).toBeDefined();
   });
 
   it("place a column only before another column of its own Table", () => {
@@ -157,10 +156,9 @@ describe("PendingAlterations' keys", () => {
 
 describe("deleted: true", () => {
   it("stands alone in a Table, column or tab entry", () => {
-    const table: ItemEntry = { deleted: true };
-    const column: ItemNameEntry = { deleted: true };
-    const tab: ItemTabEntry = { deleted: true };
-    expect([table, column, tab]).toHaveLength(3);
+    assertType<{ deleted: true } extends ItemEntry ? true : false>(true);
+    assertType<{ deleted: true } extends ItemNameEntry ? true : false>(true);
+    assertType<{ deleted: true } extends ItemTabEntry ? true : false>(true);
   });
 
   it("beside any other trait is a type error", () => {
@@ -189,10 +187,13 @@ describe("deleted: true", () => {
 
 describe("ClaimedTraits", () => {
   it("claims a column's formula text, keyed by codebase name", () => {
-    const claim: ClaimedTraits = {
-      item: { columns: { requiredCount: { formula: "=${log[amount]}" } } },
-    };
-    expect(claim).toBeDefined();
+    assertType<
+      {
+        item: { columns: { requiredCount: { formula: string } } };
+      } extends ClaimedTraits
+        ? true
+        : false
+    >(true);
   });
 
   it("omits newColumns and deleted", () => {

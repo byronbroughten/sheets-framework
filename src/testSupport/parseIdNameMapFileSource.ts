@@ -4,7 +4,7 @@ import type {
   IdNameMapGeneric,
   IdNameMapTab,
   IdNameMapTable,
-} from "../01_SpreadsheetSchema/configReaders/configRegister";
+} from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
 import { idNameMapOpening } from "../05_Operators/configFileSource";
 
 // Reads a generated ID-name map back, for the tests that check what gen:configs emitted.

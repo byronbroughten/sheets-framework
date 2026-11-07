@@ -1,4 +1,4 @@
-import type { IdNameMapGeneric } from "../01_SpreadsheetSchema/configReaders/configRegister";
+import type { IdNameMapGeneric } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
 import type { ColumnConfigsGeneric } from "../01_SpreadsheetSchema/configReaders/makeConfigs";
 
 function oneLineJsonObject(record: object): string {

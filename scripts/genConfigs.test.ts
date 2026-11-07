@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { beforeAll, describe, expect, it } from "vitest";
 
 import { appConfigs } from "../dev/generated/appConfigs.ts";
-import type { IdNameMapGeneric } from "../src/01_SpreadsheetSchema/configReaders/configRegister.ts";
+import type { IdNameMapGeneric } from "../src/01_SpreadsheetSchema/configReaders/idNameMapTypes.ts";
 import { columnIdsByName } from "../src/05_Operators/configFileSource.ts";
 import { parseIdNameMapFileSource } from "../src/testSupport/parseIdNameMapFileSource.ts";
 import {

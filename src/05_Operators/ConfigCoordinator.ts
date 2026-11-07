@@ -1,8 +1,8 @@
 import { Val } from "@byronbroughten/utils/val";
 
 import { columnConfigsByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
-import type { IdNameMapGeneric } from "../01_SpreadsheetSchema/configReaders/configRegister";
 import { assertFloorMatchesSeed } from "../01_SpreadsheetSchema/configReaders/floorSeedCheck";
+import type { IdNameMapGeneric } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
 import { tableConfigsByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import {
   SpreadsheetBaseNamed,

@@ -27,7 +27,7 @@ type MappedTabName = {
 }[keyof MapTabs];
 
 // Deleting an entry says everything about it, so a trait beside the deletion can't be meant.
-type Deletable<TR> =
+type Deletable<TR extends object> =
   | (TR & { deleted?: never })
   | ({ deleted: true } & { [K in keyof TR]?: never });
 
@@ -53,31 +53,32 @@ interface NewTableColumn extends ColumnTraits {
   header: string;
 }
 
-interface RuleFormat {
+// Colours as hex text an agent writes, where the Source's `ConditionalFormat` holds RGB channels.
+interface ConditionalFormatIntended {
   backgroundColor?: string;
-  textColor?: string;
+  foregroundColor?: string;
   bold?: boolean;
   italic?: boolean;
   strikethrough?: boolean;
 }
 
 // Spans the body rows of the columns named, so a rule never needs a column letter.
-interface ConditionalFormatRule<CN extends string> {
+interface ConditionalFormatRuleIntended<CN extends string> {
   columns: CN[] | "all";
   // Each value in brace form, as a formula column's is.
   condition: { type: string; values?: string[] };
-  format: RuleFormat;
+  format: ConditionalFormatIntended;
 }
 
 type RuleHandle = string;
 
 interface ConditionalFormatAlterations<CN extends string> {
-  add?: ConditionalFormatRule<CN>[];
+  add?: ConditionalFormatRuleIntended<CN>[];
   remove?: RuleHandle[];
-  replace?: Record<RuleHandle, ConditionalFormatRule<CN>>;
+  replace?: Record<RuleHandle, ConditionalFormatRuleIntended<CN>>;
 }
 
-interface TableTraits<CN extends string, CE> {
+interface TableTraits<CN extends string, CE extends object> {
   // A Sheets Table's name is its codebase name, so a rename renames both.
   name?: string;
   letApiAccess?: boolean;
