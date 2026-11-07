@@ -48,3 +48,7 @@ Each agent got there, but several did it by cross-reading sections. The changes,
 **Name keys** ([#218](https://github.com/byronbroughten/sheets-framework/issues/218)): no agent stumbled on keying by codebase name. E caught the swap from the "names that moved" and rewrite lines, then asked for the key-as-written line above.
 
 **Limits:** one model, one agent per case, no tools beyond the Read, and the right calls are mine.
+
+## The developer's verdict
+
+Reviewed with the developer on 2026-11-07. Every change above was accepted, and the full held list is kept as a file. Name kinds were settled more widely than the docs fix: intended state uses codebase names everywhere, display text only in a value that sets it (`header`, a new column's `header`, a tab's `title`). Formula text in alterations, claims and the configs names columns in braces, `${amount}` for the formula's own Table and `${occCharge[amount]}` for another, in the shape of Sheets' `Table[Header]`. The resolution is on [#216](https://github.com/byronbroughten/sheets-framework/issues/216).
