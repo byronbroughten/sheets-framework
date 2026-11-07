@@ -58,10 +58,18 @@ export type SyncSubject = SyncTableSubject | SyncTabSubject;
 export interface SyncTableSubject {
   table: string;
   column?: string;
-  // Set when sync rewrote the entry's key: the name the entry was written with, and the column it still names.
-  rewrittenFrom?: { wrote: string; columnId: string };
+  rewrittenFrom?: SyncRewrittenFrom;
   path?: string;
 }
+
+// Set when sync rewrote an entry's key: the name the entry was written with, and the column it still names.
+export interface SyncRewrittenFrom {
+  wrote: string;
+  columnId: string;
+}
+
+// "blank": a deleted Table's outside references read blank cells; "ref": a deleted tab's show #REF!.
+export type SyncOutsideReferenceEffect = "blank" | "ref";
 
 export interface SyncTabSubject {
   tab: string;
@@ -95,15 +103,12 @@ export type SyncCheck =
   | {
       kind: "outsideReferences";
       subject: SyncSubject;
-      // "blank": a deleted Table's references read blank cells; "ref": a deleted tab's show #REF!.
-      effect: "blank" | "ref";
+      effect: SyncOutsideReferenceEffect;
       references: SyncOutsideReference[];
     }
   | {
       kind: "followedSwap";
-      subject: SyncTableSubject & {
-        rewrittenFrom: { wrote: string; columnId: string };
-      };
+      subject: SyncTableSubject & { rewrittenFrom: SyncRewrittenFrom };
       header: string;
     }
   | {
@@ -179,7 +184,11 @@ export type SyncPlanEffect =
   | { kind: "ruleRespanned"; handle: string; fromRow: number; toRow: number }
   | { kind: "rulesRemoved"; handles: string[] }
   | { kind: "rulePartlyOver"; tab: string; range: string; formula: string }
-  | { kind: "outsideReferences"; count: number; effect: "blank" | "ref" }
+  | {
+      kind: "outsideReferences";
+      count: number;
+      effect: SyncOutsideReferenceEffect;
+    }
   | { kind: "overwrites"; cells: number; blank: number };
 
 export type SyncNotice =

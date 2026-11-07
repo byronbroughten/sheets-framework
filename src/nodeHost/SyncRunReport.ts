@@ -2,17 +2,19 @@ import type {
   SyncCheck,
   SyncConfigs,
   SyncConflict,
-  SyncDryRunResult,
+  SyncDryRunOutcome,
   SyncHeld,
   SyncHeldGroup,
   SyncLandedItem,
   SyncNotice,
+  SyncOutsideReferenceEffect,
   SyncPlanEffect,
   SyncPlanItem,
   SyncRefusal,
   SyncRunResult,
   SyncSendLine,
-  SyncSendResult,
+  SyncSendOutcome,
+  SyncSentOutcome,
   SyncStop,
   SyncStoppedPartwayOutcome,
   SyncSubject,
@@ -23,6 +25,24 @@ const layout = {
   wayOutWidth: 6,
   cellWidth: 16,
 } as const;
+
+const sectionNames = {
+  check: "Check before sending",
+  held: "Held",
+} as const;
+
+const planTitles = {
+  stopped: "Plan: what --send would send once nothing stops it",
+  dryRun: "Plan: what --send sends, in order",
+  send: "Plan: also sent, in order",
+} as const;
+
+// The lines that follow from how the run ended, so one dispatch over the outcome supplies them all.
+interface OutcomeText {
+  resultLine: string;
+  planTitle: string;
+  next: string;
+}
 
 export interface SyncRunReportProps {
   result: SyncRunResult;
@@ -42,26 +62,167 @@ export class SyncRunReport {
   }
   get lines(): string[] {
     const { result } = this;
+    const outcomeText = this._outcomeText;
     return [
       `sync · ${result.target} · ${result.mode}`,
-      resultLine(result),
-      ...section(checkTitle, result.checks.flatMap(checkLines)),
+      outcomeText.resultLine,
+      ...section(
+        `${sectionNames.check}: harm the gate doesn't hold`,
+        result.checks.flatMap(checkLines),
+      ),
       ...section("Refused", refusalBlocks(result.refusals)),
       ...section("Stops", stopBlocks(result.stops)),
-      ...sendSections(result),
-      ...heldSection(result),
-      ...section(planTitle(result), planLines(result.plan)),
+      ...this._sendSections,
+      ...this._heldSection,
+      ...section(outcomeText.planTitle, planLines(result.plan)),
       ...section(
         "Notices: nothing to do unless your task needs it",
         result.notices.map(noticeLine),
       ),
-      ...section("Configs", configsLines(result)),
-      ...section("Next", nextLines(result)),
+      ...section("Configs", this._configsLines),
+      ...section("Next", [outcomeText.next]),
     ];
   }
+  private get _outcomeText(): OutcomeText {
+    const { result } = this;
+    if (result.mode === "dry run") {
+      return this._dryRunText(result.outcome, result.held);
+    }
+    return this._sendText(result.outcome);
+  }
+  private _dryRunText(
+    outcome: SyncDryRunOutcome,
+    held: SyncHeld | undefined,
+  ): OutcomeText {
+    if (outcome.kind === "stopped") return this._stoppedText;
+    if (outcome.kind === "refused") return this._refusedText;
+    return this._readyText(held);
+  }
+  private _sendText(outcome: SyncSendOutcome): OutcomeText {
+    if (outcome.kind === "stopped") return this._stoppedText;
+    if (outcome.kind === "refused") return this._refusedText;
+    if (outcome.kind === "sent") return this._sentText(outcome);
+    return this._stoppedPartwayText(outcome);
+  }
+  private get _stoppedText(): OutcomeText {
+    const { stops, command } = this.result;
+    const conflicts = stops.filter(({ kind }) => kind === "conflict").length;
+    const headRowStops = stops.length - conflicts;
+    const why = [
+      ...(conflicts > 0 ? [counted(conflicts, "conflict", "conflicts")] : []),
+      ...(headRowStops > 0
+        ? [`${counted(headRowStops, "Table", "Tables")} can't take head rows`]
+        : []),
+    ].join(" and ");
+    const until = stops.length === 1 ? "it is resolved" : "they are resolved";
+    return {
+      resultLine: `STOPPED: ${why}${this._checkClause}. Nothing was sent, and nothing will be until ${until}.`,
+      planTitle: planTitles.stopped,
+      next: resolveLine(stops, command),
+    };
+  }
+  private get _refusedText(): OutcomeText {
+    const { refusals, command } = this.result;
+    const entries = counted(refusals.length, "entry", "entries");
+    return {
+      resultLine: `REFUSED BEFORE READING: ${entries} can't be planned. Nothing was read or sent; alterations.ts is unchanged.`,
+      planTitle: planTitles.dryRun,
+      next: `Fix each refused entry, then rerun ${command}.`,
+    };
+  }
+  private _readyText(held: SyncHeld | undefined): OutcomeText {
+    const { checks, command } = this.result;
+    const dryRun = "This was a dry run: nothing was sent.";
+    const planTitle = planTitles.dryRun;
+    if (held !== undefined) {
+      const count = heldCount(held);
+      const items = count === 1 ? "item" : "items";
+      return {
+        resultLine: `READY, ${formatCount(count)} HELD: --send sends only with --confirm (see ${sectionNames.held})${this._checkClause}. ${dryRun}`,
+        planTitle,
+        next: `--send refuses this plan without --confirm ${held.token}, because of the held ${items}.`,
+      };
+    }
+    const resultLine = `READY: nothing held${this._checkClause}. ${dryRun}`;
+    const send = `${command} -- --send sends this plan.`;
+    if (checks.length > 0) {
+      return {
+        resultLine,
+        planTitle,
+        next: `Nothing held, but read ${sectionNames.check} first: ${send}`,
+      };
+    }
+    return { resultLine, planTitle, next: `Nothing held: ${send}` };
+  }
+  private _sentText({ summary }: SyncSentOutcome): OutcomeText {
+    const { generatedDir, alterationsPath } = this.result;
+    return {
+      resultLine: `SENT: ${summary}${this._checkClause}.`,
+      planTitle: planTitles.send,
+      next: `sync wrote ${generatedDir} and ${alterationsPath}. Run npm run check, then commit them with your change.`,
+    };
+  }
+  private _stoppedPartwayText(outcome: SyncStoppedPartwayOutcome): OutcomeText {
+    const { landedFlushes, flushCount, heldBy } = outcome;
+    const refused = landedFlushes + 1;
+    const landed = flushSpan(landedFlushes, flushCount);
+    return {
+      resultLine: `STOPPED PARTWAY: ${landed}; flush ${refused} was refused, because ${heldByReason[heldBy]}. Nothing after it was sent.`,
+      planTitle: planTitles.send,
+      next: `Rerun the dry run: ${this.result.command}`,
+    };
+  }
+  private get _checkClause(): string {
+    const { checks } = this.result;
+    if (checks.length === 0) return "";
+    return `; ${counted(checks.length, "thing", "things")} to check (see ${sectionNames.check})`;
+  }
+  private get _sendSections(): string[] {
+    const { result } = this;
+    if (result.mode === "dry run") return [];
+    const { landed, notSent, didntLand } = result;
+    const landedLines = landed.map(landedLine);
+    const isAlterationsEmpty =
+      landedLines.length > 0 && notSent.length === 0 && didntLand.length === 0;
+    if (isAlterationsEmpty) landedLines.push("alterations.ts is now empty.");
+    return [
+      ...section("Landed: removed from alterations.ts", landedLines),
+      ...section("Not sent: still in alterations.ts", notSent.map(sendLine)),
+      ...section(
+        "Didn't land: still in alterations.ts",
+        didntLand.map(sendLine),
+      ),
+    ];
+  }
+  private get _heldSection(): string[] {
+    const { result } = this;
+    if (result.mode === "send" || result.held === undefined) return [];
+    const { held } = result;
+    return section(heldTitle(held), [
+      ...held.groups.flatMap(heldGroupLines),
+      `Full list, every cell with its value: ${held.fullListPath}`,
+      `Token ${held.token}: binds this target and exactly this list.`,
+      `Rerun with --send --confirm ${held.token} to send these.`,
+    ]);
+  }
+  // A refusal reads nothing, so there is nothing to refresh the configs from.
+  private get _configsLines(): string[] {
+    const { outcome, configs, generatedDir } = this.result;
+    if (outcome.kind === "refused") return [];
+    const changes = [
+      ...heldBackLines(configs),
+      ...renamedLines(configs),
+      ...namesMovedLines(configs, generatedDir),
+      ...rewriteLines(configs),
+      ...typedTraitLines(configs),
+      ...configs.notes,
+    ];
+    if (changes.length === 0) {
+      return ["Refreshed from the live sheet. No changes."];
+    }
+    return ["Refreshed from the live sheet.", ...changes];
+  }
 }
-
-const checkTitle = "Check before sending: harm the gate doesn't hold";
 
 function section(title: string, lines: string[]): string[] {
   if (lines.length === 0) return [];
@@ -72,9 +233,39 @@ function indent(depth: number, lines: string[]): string[] {
   return lines.map((line) => `${" ".repeat(depth)}${line}`);
 }
 
-function counted(count: number, one: string, many: string): string {
-  return `${count.toLocaleString("en-US")} ${count === 1 ? one : many}`;
+function formatCount(count: number): string {
+  return count.toLocaleString("en-US");
 }
+
+function counted(count: number, one: string, many: string): string {
+  return `${formatCount(count)} ${count === 1 ? one : many}`;
+}
+
+function ruleCount(count: number): string {
+  return counted(count, "conditional-format rule", "conditional-format rules");
+}
+
+function readsVerb(count: number): string {
+  return count === 1 ? "reads" : "read";
+}
+
+const outsideReferenceWords: Record<
+  SyncOutsideReferenceEffect,
+  { where: string; afterOne: string; afterMany: string; inPlan: string }
+> = {
+  blank: {
+    where: "outside this Table",
+    afterOne: "it reads blank cells, with no error",
+    afterMany: "they read blank cells, with no error",
+    inPlan: "read blank cells",
+  },
+  ref: {
+    where: "on another tab",
+    afterOne: "it shows #REF!",
+    afterMany: "they show #REF!",
+    inPlan: "show #REF!",
+  },
+};
 
 function subjectLabel(subject: SyncSubject): string {
   if ("tab" in subject) {
@@ -82,74 +273,18 @@ function subjectLabel(subject: SyncSubject): string {
     return `tab ${subject.tab}${gid}`;
   }
   const { table, column, rewrittenFrom, path } = subject;
-  const columnLabel =
-    column !== undefined && rewrittenFrom !== undefined
-      ? `${column} (you wrote ${rewrittenFrom.wrote}; ${rewrittenFrom.columnId})`
-      : column;
+  let columnLabel = column;
+  if (column !== undefined && rewrittenFrom !== undefined) {
+    const { wrote, columnId } = rewrittenFrom;
+    columnLabel = `${column} (you wrote ${wrote}; ${columnId})`;
+  }
   return [table, columnLabel, path]
     .filter((part) => part !== undefined)
     .join(" › ");
 }
 
-function heldCount(held: SyncHeld | undefined): number {
-  return (held?.groups ?? []).reduce(
-    (count, group) => count + (group.cells ?? 1),
-    0,
-  );
-}
-
-function resultLine(result: SyncRunResult): string {
-  if (result.outcome.kind === "stopped") return stoppedLine(result);
-  if (result.outcome.kind === "refused") return refusedLine(result);
-  if (result.mode === "dry run") return readyLine(result);
-  const { outcome } = result;
-  if (outcome.kind === "sent") {
-    return `SENT: ${outcome.summary}${checkClause(result)}.`;
-  }
-  return stoppedPartwayLine(outcome);
-}
-
-function checkClause({ checks }: SyncRunResult): string {
-  if (checks.length === 0) return "";
-  return `; ${counted(checks.length, "thing", "things")} to check (see Check before sending)`;
-}
-
-function stoppedLine(result: SyncRunResult): string {
-  const { stops } = result;
-  const conflicts = stops.filter(({ kind }) => kind === "conflict").length;
-  const headRows = stops.length - conflicts;
-  const why = [
-    ...(conflicts > 0 ? [counted(conflicts, "conflict", "conflicts")] : []),
-    ...(headRows > 0
-      ? [`${counted(headRows, "Table", "Tables")} can't take head rows`]
-      : []),
-  ].join(" and ");
-  const until = stops.length === 1 ? "it is resolved" : "they are resolved";
-  return `STOPPED: ${why}${checkClause(result)}. Nothing was sent, and nothing will be until ${until}.`;
-}
-
-function refusedLine({ refusals }: SyncRunResult): string {
-  const entries = counted(refusals.length, "entry", "entries");
-  return `REFUSED BEFORE READING: ${entries} can't be planned. Nothing was read or sent; alterations.ts is unchanged.`;
-}
-
-function readyLine(result: SyncDryRunResult): string {
-  const dryRun = "This was a dry run: nothing was sent.";
-  if (result.held === undefined) {
-    return `READY: nothing held${checkClause(result)}. ${dryRun}`;
-  }
-  const held = heldCount(result.held).toLocaleString("en-US");
-  return `READY, ${held} HELD: --send sends only with --confirm (see Held)${checkClause(result)}. ${dryRun}`;
-}
-
-function stoppedPartwayLine({
-  landedFlushes,
-  flushCount,
-  heldBy,
-}: SyncStoppedPartwayOutcome): string {
-  const refused = landedFlushes + 1;
-  const landed = flushSpan(landedFlushes, flushCount);
-  return `STOPPED PARTWAY: ${landed}; flush ${refused} was refused, because ${heldByReason[heldBy]}. Nothing after it was sent.`;
+function heldCount(held: SyncHeld): number {
+  return held.groups.reduce((count, group) => count + (group.cells ?? 1), 0);
 }
 
 function flushSpan(landedFlushes: number, flushCount: number): string {
@@ -164,18 +299,23 @@ const heldByReason: Record<SyncStoppedPartwayOutcome["heldBy"], string> = {
     "the sheet or the plan changed after the dry run, so --confirm doesn't cover its held items",
 };
 
+function resolveLine(stops: SyncStop[], command: string): string {
+  const [stop] = stops;
+  if (stops.length !== 1 || stop === undefined) {
+    return `Resolve each stop above, then rerun ${command}.`;
+  }
+  const name = stop.kind === "conflict" ? "conflict" : "stop";
+  return `Resolve ${name} 1, then rerun ${command}.`;
+}
+
 function checkLines(check: SyncCheck): string[] {
   if (check.kind === "outsideReferences") {
     const { subject, effect, references } = check;
     const count = references.length;
-    const reads = count === 1 ? "reads" : "read";
-    const where = effect === "blank" ? "outside this Table" : "on another tab";
-    const after =
-      effect === "blank"
-        ? `${count === 1 ? "it reads" : "they read"} blank cells, with no error`
-        : `${count === 1 ? "it shows" : "they show"} #REF!`;
+    const words = outsideReferenceWords[effect];
+    const after = count === 1 ? words.afterOne : words.afterMany;
     return [
-      `${subjectLabel(subject)}: ${counted(count, "formula", "formulas")} ${where} ${reads} it. After the deletion ${after}:`,
+      `${subjectLabel(subject)}: ${counted(count, "formula", "formulas")} ${words.where} ${readsVerb(count)} it. After the deletion ${after}:`,
       ...indent(
         2,
         references.map(
@@ -302,29 +442,6 @@ function waysOut({ yours, live, claimedBy }: SyncConflict): [string, string][] {
   ];
 }
 
-function sendSections(result: SyncRunResult): string[] {
-  if (result.mode === "dry run") return [];
-  return [
-    ...section("Landed: removed from alterations.ts", landedLines(result)),
-    ...section(
-      "Not sent: still in alterations.ts",
-      result.notSent.map(sendLine),
-    ),
-    ...section(
-      "Didn't land: still in alterations.ts",
-      result.didntLand.map(sendLine),
-    ),
-  ];
-}
-
-function landedLines({ landed, notSent, didntLand }: SyncSendResult): string[] {
-  const lines = landed.map(landedLine);
-  const isAlterationsEmpty =
-    lines.length > 0 && notSent.length === 0 && didntLand.length === 0;
-  if (isAlterationsEmpty) return [...lines, "alterations.ts is now empty."];
-  return lines;
-}
-
 function landedLine(item: SyncLandedItem): string {
   if (item.kind === "send") return sendLine(item);
   const { table, header, column, columnId, columnType, position } = item;
@@ -335,17 +452,6 @@ function sendLine({ subject, what }: SyncSendLine): string {
   return `${subjectLabel(subject)}: ${what}`;
 }
 
-function heldSection(result: SyncRunResult): string[] {
-  if (result.mode === "send" || result.held === undefined) return [];
-  const { held } = result;
-  return section(heldTitle(held), [
-    ...held.groups.flatMap(heldGroupLines),
-    `Full list, every cell with its value: ${held.fullListPath}`,
-    `Token ${held.token}: binds this target and exactly this list.`,
-    `Rerun with --send --confirm ${held.token} to send these.`,
-  ]);
-}
-
 function heldTitle(held: SyncHeld): string {
   const confirm = "sent only with --confirm";
   const cellCounts = held.groups.flatMap(({ cells }) =>
@@ -353,25 +459,17 @@ function heldTitle(held: SyncHeld): string {
   );
   const count = heldCount(held);
   if (cellCounts.length < held.groups.length) {
-    return `Held: ${counted(count, "item", "items")}, ${confirm}`;
+    return `${sectionNames.held}: ${counted(count, "item", "items")}, ${confirm}`;
   }
-  const sum =
-    cellCounts.length > 1
-      ? `: ${cellCounts.map((cells) => cells.toLocaleString("en-US")).join(" + ")}`
-      : "";
-  return `Held: ${counted(count, "cell", "cells")}${sum}, ${confirm}`;
+  let sum = "";
+  if (cellCounts.length > 1) {
+    sum = `: ${cellCounts.map(formatCount).join(" + ")}`;
+  }
+  return `${sectionNames.held}: ${counted(count, "cell", "cells")}${sum}, ${confirm}`;
 }
 
 function heldGroupLines({ subject, what, lines }: SyncHeldGroup): string[] {
   return [`${subjectLabel(subject)}  ${what}`, ...indent(2, lines)];
-}
-
-function planTitle(result: SyncRunResult): string {
-  if (result.mode === "send") return "Plan: also sent, in order";
-  if (result.outcome.kind === "stopped") {
-    return "Plan: what --send would send once nothing stops it";
-  }
-  return "Plan: what --send sends, in order";
 }
 
 function planLines(plan: SyncPlanItem[]): string[] {
@@ -399,58 +497,31 @@ function effectLine(effect: SyncPlanEffect): string {
     return `Added first; it outranks ${counted(outranks.length, "rule", "rules")} on these cells: ${outranks.join(", ")}.`;
   }
   if (effect.kind === "rulesRewritten") {
-    const rules = counted(
-      effect.count,
-      "conditional-format rule",
-      "conditional-format rules",
-    );
-    return `Rewrites ${rules} over ${effect.table} after the ${effect.after}, since Sheets leaves them wrong.`;
+    return `Rewrites ${ruleCount(effect.count)} over ${effect.table} after the ${effect.after}, since Sheets leaves them wrong.`;
   }
   if (effect.kind === "ruleRespanned") {
     return `Re-spans 1 rule that ended at row ${effect.fromRow} to the Table's last body row, ${effect.toRow}: ${effect.handle}.`;
   }
   if (effect.kind === "rulesRemoved") {
-    const rules = counted(
-      effect.handles.length,
-      "conditional-format rule",
-      "conditional-format rules",
-    );
-    return `Removes ${rules} wholly over it: ${effect.handles.join(", ")}.`;
+    const { handles } = effect;
+    return `Removes ${ruleCount(handles.length)} wholly over it: ${handles.join(", ")}.`;
   }
   if (effect.kind === "rulePartlyOver") {
     return `Leaves 1 rule partly over it, on ${effect.tab} ${effect.range} (${effect.formula}); Sheets keeps it over the blank cells.`;
   }
   if (effect.kind === "outsideReferences") {
-    const formulas = counted(effect.count, "formula", "formulas");
-    const after = effect.effect === "blank" ? "read blank cells" : "show #REF!";
-    const reads = effect.count === 1 ? "reads" : "read";
-    return `${formulas} elsewhere ${reads} it and will ${after} after the deletion (see Check before sending).`;
+    const { count } = effect;
+    const formulas = counted(count, "formula", "formulas");
+    const after = outsideReferenceWords[effect.effect].inPlan;
+    return `${formulas} elsewhere ${readsVerb(count)} it and will ${after} after the deletion (see ${sectionNames.check}).`;
   }
-  return `Overwrites ${counted(effect.cells, "cell", "cells")} of entered data (held, above); the other ${effect.blank.toLocaleString("en-US")} are blank.`;
+  return `Overwrites ${counted(effect.cells, "cell", "cells")} of entered data (held, above); the other ${formatCount(effect.blank)} are blank.`;
 }
 
 function noticeLine(notice: SyncNotice): string {
   if (notice.kind === "text") return notice.text;
   const { table } = notice;
   return `${table}: ID is the first column. Sheets' Table name chip covers the cell above it, so ${table}'s Fill Row IDs checkbox can't be clicked. Moving ID out of first place fixes it.`;
-}
-
-// A refusal reads nothing, so there is nothing to refresh the configs from.
-function configsLines(result: SyncRunResult): string[] {
-  if (result.outcome.kind === "refused") return [];
-  const { configs, generatedDir } = result;
-  const changes = [
-    ...heldBackLines(configs),
-    ...renamedLines(configs),
-    ...namesMovedLines(configs, generatedDir),
-    ...rewriteLines(configs),
-    ...typedTraitLines(configs),
-    ...configs.notes,
-  ];
-  if (changes.length === 0) {
-    return ["Refreshed from the live sheet. No changes."];
-  }
-  return ["Refreshed from the live sheet.", ...changes];
 }
 
 function heldBackLines({ heldBack }: SyncConfigs): string[] {
@@ -524,40 +595,4 @@ function typedTraitLines({ typedTraitChanges }: SyncConfigs): string[] {
       ),
     ),
   ];
-}
-
-function nextLines(result: SyncRunResult): string[] {
-  const { outcome, command } = result;
-  if (outcome.kind === "refused") {
-    return [`Fix each refused entry, then rerun ${command}.`];
-  }
-  if (outcome.kind === "stopped") return [resolveLine(result.stops, command)];
-  if (result.mode === "dry run") return [readyNextLine(result)];
-  if (outcome.kind === "stoppedPartway") {
-    return [`Rerun the dry run: ${command}`];
-  }
-  return [
-    `sync wrote ${result.generatedDir} and ${result.alterationsPath}. Run npm run check, then commit them with your change.`,
-  ];
-}
-
-function resolveLine(stops: SyncStop[], command: string): string {
-  const [stop] = stops;
-  if (stops.length !== 1 || stop === undefined) {
-    return `Resolve each stop above, then rerun ${command}.`;
-  }
-  const name = stop.kind === "conflict" ? "conflict" : "stop";
-  return `Resolve ${name} 1, then rerun ${command}.`;
-}
-
-function readyNextLine(result: SyncDryRunResult): string {
-  const { held, checks, command } = result;
-  if (held !== undefined) {
-    const items = heldCount(held) === 1 ? "item" : "items";
-    return `--send refuses this plan without --confirm ${held.token}, because of the held ${items}.`;
-  }
-  if (checks.length > 0) {
-    return `Nothing held, but read Check before sending first: ${command} -- --send sends this plan.`;
-  }
-  return `Nothing held: ${command} -- --send sends this plan.`;
 }
