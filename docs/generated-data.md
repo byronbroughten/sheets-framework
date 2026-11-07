@@ -22,7 +22,7 @@ A `generatedDir` holds the three generated data files, `tableConfigs.ts`, `colum
 
 ## The ID-name map
 
-`idNameMap.ts` exports one type, `IdNameMap`, and no runtime value, so no tier's type check pays for it. It lists every live Table by Table ID with its codebase name (its Table key when it has API access, else its title through the word splitter) and its tab's GID, every tab by GID with its title and Table IDs, and, for each Table with API access, its columns as column name to column ID. A suite in `scripts/genConfigs.test.ts` asserts the dev package's map and configs agree. It skips itself until the dev map is first generated, so until then a hand edit or a partial regen does not fail CI.
+`idNameMap.ts` exports one type, `IdNameMap`, and no runtime value, so no tier's type check pays for it. It lists every live Table by Table ID with its codebase name (its Table key when it has API access, else its title through the word splitter) and its tab's GID, every tab by GID with its title and Table IDs, and, for each Table with API access, its columns as column name to column ID. A suite in `scripts/genConfigs.test.ts` asserts the dev package's map and configs agree, so a hand edit or a partial regen fails CI.
 
 ## Why the three files depend on each other
 
