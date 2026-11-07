@@ -20,6 +20,7 @@ This is the most-repeated argument in the codebase, and it's what most often dis
 - Every class exposes its schema under the single name `schema`, so two accessors can't disagree about which schema a class has (`ab75c09`).
 - [ADR 0010](../adr/0010-type-a-fixed-list-dropdown-column-as-its-literal-union.md): a fixed-list dropdown column's type is the union its list declares, so a member the code doesn't route is a compile error at the switch rather than a line that renders wrong.
 - [ADR 0014](../adr/0014-type-a-dropdown-from-any-let-api-access-table-column-and-take-value-config-off-the-floor.md): a Name or ID column value source is deliberately left out of the literal union, since its members are rows that grow without a regen, so it is a reference typed `string` and a name with no matching row is the endpoint's to report.
+- [ADR 0035](../adr/0035-key-alterations-by-codebase-name-and-have-sync-rewrite-pending-names-on-a-rename.md): an alteration is keyed by name alone, with no ID beside a `name` field, so an entry whose ID and name point at different columns is unrepresentable rather than a `tsc` failure.
 - The request builders return only the kinds `ModeledRequestVerb` names, and the dry-run summary's formatter table is keyed by that union, so a request kind the framework builds but can't preview is a compile error rather than a raw-JSON line (`bd03c23`).
 
 ## Corollaries
