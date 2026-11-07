@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { makeTableConfigs } from "./makeConfigs";
+import {
+  type ColumnConfigStored,
+  makeColumnConfigs,
+  makeTableConfigs,
+} from "./makeConfigs";
 
 describe("makeTableConfigs", () => {
   const tableConfig = {
@@ -25,5 +29,30 @@ describe("makeTableConfigs", () => {
     expect(() =>
       makeTableConfigs({ notes: { ...tableConfig, idPrefix: "" } }),
     ).toThrow(/notes.*no ID prefix/);
+  });
+});
+
+describe("makeColumnConfigs", () => {
+  it("loads an older configs file that records no baseline, leaving each baseline trait unrecorded", () => {
+    const columnConfigs = makeColumnConfigs({
+      item: {
+        amount: {
+          columnId: "c1",
+          header: "Amount",
+          valueName: "number",
+          isFormula: false,
+          emptyValueAllowed: false,
+          customDefaultValue: null,
+        },
+      },
+    });
+
+    const amount: ColumnConfigStored = columnConfigs.item.amount;
+    expect([
+      amount.formula,
+      amount.columnType,
+      amount.actionRowCell,
+      amount.groupHeading1,
+    ]).toEqual([undefined, undefined, undefined, undefined]);
   });
 });

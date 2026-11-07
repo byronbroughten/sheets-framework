@@ -1,3 +1,7 @@
+import type {
+  ActionRowCellBaseline,
+  ColumnTypeBaseline,
+} from "../columnBaseline";
 import { idPrefixes } from "../idPrefixes";
 import type { Value, ValueName } from "./valueSchemas";
 
@@ -56,7 +60,14 @@ export function makeValueConfigs<const VC extends ValueConfigsBase>(
   return makeStructuredConfig({} as ValueConfigsBase, valueConfigs);
 }
 
-interface ColumnConfigLiteral {
+// Each baseline trait is optional so an older configs file still loads; absent means unrecorded, null means recorded empty.
+interface ColumnBaselineLiteral {
+  formula?: string | null;
+  columnType?: ColumnTypeBaseline;
+  actionRowCell?: ActionRowCellBaseline | null;
+  groupHeading1?: string | null;
+}
+interface ColumnConfigLiteral extends ColumnBaselineLiteral {
   columnId: string;
   header: string;
   isFormula: boolean;

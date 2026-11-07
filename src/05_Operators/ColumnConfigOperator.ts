@@ -2,6 +2,10 @@ import { Str } from "@byronbroughten/utils/str";
 import { Val } from "@byronbroughten/utils/val";
 
 import { isFrameworkValueName } from "../00_Source/CellValues/frameworkValueSchemas";
+import {
+  type BraceConfigs,
+  BraceFormula,
+} from "../01_SpreadsheetSchema/configReaders/BraceFormula";
 import { getColumnTraitByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
 import {
   configSheetFloorSeed,
@@ -10,6 +14,7 @@ import {
 } from "../01_SpreadsheetSchema/configReaders/configSheetFloorSeed";
 import {
   type ColumnConfigsGeneric,
+  type ColumnConfigStored,
   makeImportLine,
 } from "../01_SpreadsheetSchema/configReaders/makeConfigs";
 import { type ValueName } from "../01_SpreadsheetSchema/configReaders/valueSchemas";
@@ -142,6 +147,8 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
       // hasIdColumn samples this row after Let api access is known.
       table.headRow("header").gatherFetchFull();
       table.headRow("columnId").gatherFetchFull();
+      table.headRow("action").gatherFetchFull();
+      table.headRow("groupHeading1").gatherFetchFull();
       table.topRow.gatherFetchFull();
     });
     this.ss.identified.fetchAllGathered(true);
@@ -395,9 +402,44 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
         isFormula: describedColumn.isFormula,
         emptyValueAllowed: col.emptyValueAllowed.value(rowIndex),
         customDefaultValue: null,
+        formula: describedColumn.topFormula ?? null,
+        columnType: {
+          type: describedColumn.columnType ?? null,
+          rule: describedColumn.validationRule ?? null,
+        },
+        actionRowCell: describedColumn.actionRowCell ?? null,
+        groupHeading1: describedColumn.groupHeading1 || null,
       };
     });
-    return columnConfigs;
+    return this._withFormulasInBraceForm(columnConfigs);
+  }
+  // A second pass, because a brace names a column by the name this run gives it.
+  private _withFormulasInBraceForm(
+    columnConfigs: ColumnConfigsGeneric,
+  ): ColumnConfigsGeneric {
+    const configs = {
+      tableConfigs: this.tableConfigOperator.newTableConfigs(),
+      columnConfigs,
+    };
+    return Object.entries(columnConfigs).reduce<ColumnConfigsGeneric>(
+      (braced, [tableKey, tableColumnConfigs]) => {
+        braced[tableKey] = Object.entries(tableColumnConfigs).reduce<
+          ColumnConfigsGeneric[string]
+        >((bracedTable, [columnName, columnConfig]) => {
+          bracedTable[columnName] = {
+            ...columnConfig,
+            formula: bracedFormula({
+              configs,
+              tableKey,
+              formula: columnConfig.formula,
+            }),
+          };
+          return bracedTable;
+        }, {});
+        return braced;
+      },
+      {},
+    );
   }
   toFileSource(makeConfigsImport: string): string {
     return [
@@ -409,6 +451,19 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
       ``,
     ].join("\n");
   }
+}
+
+function bracedFormula({
+  configs,
+  tableKey,
+  formula,
+}: {
+  configs: BraceConfigs;
+  tableKey: string;
+  formula: ColumnConfigStored["formula"];
+}): ColumnConfigStored["formula"] {
+  if (formula === undefined || formula === null) return formula;
+  return BraceFormula.decompile({ configs, tableKey, formula });
 }
 
 function valueSourceName({
