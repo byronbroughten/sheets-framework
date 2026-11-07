@@ -26,6 +26,35 @@ export type ConfigsOf<RG> = RG extends {
 
 export type Configs = ConfigsOf<Register>;
 
+export interface IdNameMapTable {
+  name: string;
+  sheetGid: number;
+  columns?: Record<string, string>;
+}
+export interface IdNameMapTab {
+  title: string;
+  tableIds: string[];
+}
+// Tables are keyed by Table ID and tabs by GID, the two keys a live spreadsheet keeps unique.
+export interface IdNameMapGeneric {
+  tables: Record<string, IdNameMapTable>;
+  tabs: Record<string, IdNameMapTab>;
+}
+
+// Names nothing, so an app that hasn't generated its map yet still type-checks an empty `alterations.ts`.
+interface IdNameMapEmpty {
+  tables: Record<never, IdNameMapTable>;
+  tabs: Record<never, IdNameMapTab>;
+}
+
+export type IdNameMapOf<RG> = RG extends {
+  idNameMap: infer IM extends IdNameMapGeneric;
+}
+  ? IM
+  : IdNameMapEmpty;
+
+export type IdNameMapRegistered = IdNameMapOf<Register>;
+
 let installed: Configs | undefined;
 
 // The lazy derivations cache the first set, so a second would be silently ignored.

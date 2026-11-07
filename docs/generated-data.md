@@ -1,6 +1,6 @@
 # Generated data
 
-Each package's `generatedDir` (the app's `src/generated/`, the framework's `dev/generated/`) holds three config files generated from the live spreadsheet, plus `appConfigs.ts`, which gathers them into one `appConfigs` const and augments `Register`, and the type-only ID-name map, `idNameMap.ts`. The rules for regenerating and editing them are [`src/01_SpreadsheetSchema/AGENTS.md`](../src/01_SpreadsheetSchema/AGENTS.md)'s; what the command writes is [`how-it-runs/gen-configs.md`](./how-it-runs/gen-configs.md#what-gen-configs-writes)'s.
+Each package's `generatedDir` (the app's `src/generated/`, the framework's `dev/generated/`) holds three config files generated from the live spreadsheet, plus `appConfigs.ts`, which gathers them into one `appConfigs` const and registers it and the type-only ID-name map, `idNameMap.ts`, on `Register`. The hand-written `alterations.ts` beside the `generatedDir` is not generated; the regen only creates it empty when missing. The rules for regenerating and editing them are [`src/01_SpreadsheetSchema/AGENTS.md`](../src/01_SpreadsheetSchema/AGENTS.md)'s; what the command writes is [`how-it-runs/gen-configs.md`](./how-it-runs/gen-configs.md#what-gen-configs-writes)'s.
 
 ## One file per generated constant, the sync and the floor
 
@@ -22,7 +22,7 @@ A `generatedDir` holds the three generated data files, `tableConfigs.ts`, `colum
 
 ## The ID-name map
 
-`idNameMap.ts` exports one type, `IdNameMap`, and no runtime value, so no tier's type check pays for it. It lists every live Table by Table ID with its codebase name (its Table key when it has API access, else its title through the word splitter) and its tab's GID, every tab by GID with its title and Table IDs, and, for each Table with API access, its columns as column name to column ID. A suite in `scripts/genConfigs.test.ts` asserts the dev package's map and configs agree, so a hand edit or a partial regen fails CI.
+`idNameMap.ts` exports one type, `IdNameMap`, and no runtime value. `appConfigs.ts` registers it on `Register`, and the intended-state types in `configReaders/intendedState.ts` read it from there to key `alterations.ts` and each `claimedTraits` by name; until a package has generated its map, they name nothing. It lists every live Table by Table ID with its codebase name (its Table key when it has API access, else its title through the word splitter) and its tab's GID, every tab by GID with its title and Table IDs, and, for each Table with API access, its columns as column name to column ID. A suite in `scripts/genConfigs.test.ts` asserts the dev package's map and configs agree, so a hand edit or a partial regen fails CI.
 
 ## Why the three files depend on each other
 

@@ -4,6 +4,7 @@ import type {
   TableNameOf,
 } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
 import type { FloorTabName } from "../01_SpreadsheetSchema/configReaders/configSheetFloorSeed";
+import type { ClaimedTraits } from "../01_SpreadsheetSchema/configReaders/intendedState";
 import type { TableNameSimple } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import type { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
 import type { CheckboxColumnName } from "../05_Operators/CheckboxColumnOperator";
@@ -50,6 +51,7 @@ export interface Endpoint<TN extends TableNameSimple> {
     requireOneRow?: boolean;
   };
   runOnUncheck?: boolean;
+  claimedTraits?: ClaimedTraits;
 }
 
 // The entry as the dispatch hands it over — a structural copy, for the same reason.

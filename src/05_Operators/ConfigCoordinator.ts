@@ -1,6 +1,7 @@
 import { Val } from "@byronbroughten/utils/val";
 
 import { columnConfigsByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
+import type { IdNameMapGeneric } from "../01_SpreadsheetSchema/configReaders/configRegister";
 import { assertFloorMatchesSeed } from "../01_SpreadsheetSchema/configReaders/floorSeedCheck";
 import { tableConfigsByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import {
@@ -9,11 +10,7 @@ import {
 } from "../04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
 import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
 import { ColumnConfigOperator } from "./ColumnConfigOperator";
-import {
-  columnIdsByName,
-  idNameMapFileSource,
-  type IdNameMapGeneric,
-} from "./configFileSource";
+import { columnIdsByName, idNameMapFileSource } from "./configFileSource";
 import { ConfigSheetFloor } from "./ConfigSheetFloor";
 import { assertFloorIdentityUnchanged } from "./floorIdentityGuard";
 import { SpreadsheetBaseOperator } from "./SpreadsheetBaseOperator";

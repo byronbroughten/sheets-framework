@@ -1,11 +1,11 @@
 import { Val } from "@byronbroughten/utils/val";
 
-import {
-  type IdNameMapGeneric,
-  idNameMapOpening,
-  type IdNameMapTab,
-  type IdNameMapTable,
-} from "../05_Operators/configFileSource";
+import type {
+  IdNameMapGeneric,
+  IdNameMapTab,
+  IdNameMapTable,
+} from "../01_SpreadsheetSchema/configReaders/configRegister";
+import { idNameMapOpening } from "../05_Operators/configFileSource";
 
 // Reads a generated ID-name map back, for the tests that check what gen:configs emitted.
 export function parseIdNameMapFileSource(source: string): IdNameMapGeneric {

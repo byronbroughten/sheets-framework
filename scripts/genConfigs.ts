@@ -1,7 +1,7 @@
 // `sheets-framework gen-configs`: regenerates the package's five generated files from its live config sheets, on the Node host.
 import { spawnSync } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
-import { join, relative } from "node:path";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import type { ConfigRegeneration } from "../src/05_Operators/ConfigCoordinator.ts";
@@ -55,6 +55,7 @@ class ConfigFilesGenerator {
     Object.values(this.path).forEach((path) => {
       console.log(`Wrote ${path}`);
     });
+    this._createAlterationsIfMissing();
     console.log("\ngen:configs: changes against HEAD:");
     console.log(readConfigsDiff(this.sheetsConfig).join("\n"));
     if (floorReport !== "") {
@@ -78,6 +79,15 @@ class ConfigFilesGenerator {
       process.exit(1);
     }
     console.log("gen:configs: tsc passed.");
+  }
+
+  _createAlterationsIfMissing(): void {
+    const path = alterationsPath(this.sheetsConfig.generatedDir);
+    if (existsSync(path)) {
+      return;
+    }
+    writeFileSync(path, alterationsText());
+    console.log(`Created ${path}`);
   }
 
   async _generate(): Promise<ConfigRegeneration> {
@@ -130,11 +140,24 @@ export function idNameMapPath(generatedDir: string): string {
   return join(generatedDir, "idNameMap.ts");
 }
 
+// A fixed path from the generated directory, so finding it needs no setting of its own.
+export function alterationsPath(generatedDir: string): string {
+  return join(dirname(generatedDir), "alterations.ts");
+}
+
+export function alterationsText(): string {
+  return `import { makePendingAlterations } from "@byronbroughten/sheets-framework";
+
+export const pendingAlterations = makePendingAlterations({});
+`;
+}
+
 export function appConfigsText(): string {
   return `// Without it, a program that reaches this file only by dynamic import rejects the augmentation (TS2664).
 import type {} from "@byronbroughten/sheets-framework";
 
 import { columnConfigs } from "./columnConfigs";
+import type { IdNameMap } from "./idNameMap";
 import { tableConfigs } from "./tableConfigs";
 import { valueConfigs } from "./valueConfigs";
 
@@ -147,6 +170,7 @@ export const appConfigs = {
 declare module "@byronbroughten/sheets-framework" {
   interface Register {
     configs: typeof appConfigs;
+    idNameMap: IdNameMap;
   }
 }
 `;

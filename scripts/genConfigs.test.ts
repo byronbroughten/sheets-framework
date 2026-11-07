@@ -1,19 +1,25 @@
 import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { beforeAll, describe, expect, it } from "vitest";
 
 import { appConfigs } from "../dev/generated/appConfigs.ts";
-import {
-  columnIdsByName,
-  type IdNameMapGeneric,
-} from "../src/05_Operators/configFileSource.ts";
+import type { IdNameMapGeneric } from "../src/01_SpreadsheetSchema/configReaders/configRegister.ts";
+import { columnIdsByName } from "../src/05_Operators/configFileSource.ts";
 import { parseIdNameMapFileSource } from "../src/testSupport/parseIdNameMapFileSource.ts";
-import { appConfigsText, idNameMapPath } from "./genConfigs.ts";
+import {
+  alterationsPath,
+  alterationsText,
+  appConfigsText,
+  idNameMapPath,
+} from "./genConfigs.ts";
 
-const devIdNameMapPath = idNameMapPath(
-  fileURLToPath(new URL("../dev/generated", import.meta.url)),
+const devGeneratedDir = fileURLToPath(
+  new URL("../dev/generated", import.meta.url),
 );
+const devIdNameMapPath = idNameMapPath(devGeneratedDir);
+const devAlterationsPath = alterationsPath(devGeneratedDir);
 
 describe("the dev package's generated files", () => {
   const { tableConfigs, columnConfigs } = appConfigs;
@@ -76,7 +82,35 @@ describe("appConfigsText", () => {
 
   it("augments the package's Register with the appConfigs type", () => {
     expect(text).toMatch(
-      /declare module "@byronbroughten\/sheets-framework" \{\s*interface Register \{\s*configs: typeof appConfigs;\s*\}\s*\}/,
+      /declare module "@byronbroughten\/sheets-framework" \{\s*interface Register \{\s*configs: typeof appConfigs;\s*idNameMap: IdNameMap;\s*\}\s*\}/,
     );
+  });
+
+  it("registers the sibling ID-name map's type", () => {
+    expect(text).toContain('import type { IdNameMap } from "./idNameMap";');
+  });
+});
+
+describe("alterationsPath", () => {
+  it("puts alterations.ts beside the generated directory", () => {
+    expect(alterationsPath(join("app", "src", "generated"))).toBe(
+      join("app", "src", "alterations.ts"),
+    );
+  });
+});
+
+describe("alterationsText", () => {
+  it("holds an empty makePendingAlterations call from the framework's entry", () => {
+    const text = alterationsText();
+    expect(text).toContain(
+      'import { makePendingAlterations } from "@byronbroughten/sheets-framework";',
+    );
+    expect(text).toContain(
+      "export const pendingAlterations = makePendingAlterations({});",
+    );
+  });
+
+  it("matches the dev package's own alterations.ts", () => {
+    expect(readFileSync(devAlterationsPath, "utf8")).toBe(alterationsText());
   });
 });

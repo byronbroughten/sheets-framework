@@ -2,6 +2,7 @@
 import type {} from "@byronbroughten/sheets-framework";
 
 import { columnConfigs } from "./columnConfigs";
+import type { IdNameMap } from "./idNameMap";
 import { tableConfigs } from "./tableConfigs";
 import { valueConfigs } from "./valueConfigs";
 
@@ -14,5 +15,6 @@ export const appConfigs = {
 declare module "@byronbroughten/sheets-framework" {
   interface Register {
     configs: typeof appConfigs;
+    idNameMap: IdNameMap;
   }
 }
