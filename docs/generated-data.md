@@ -6,7 +6,7 @@ Each package's `generatedDir` (the app's `src/generated/`, the framework's `dev/
 
 | When | File |
 | --- | --- |
-| The Table Config sheet, `tableConfigs`, `hasIdColumn`, `hasNameColumn`, `idPrefix` | [`generated-data/table-configs.md`](./generated-data/table-configs.md) |
+| The Table Config sheet, `tableConfigs`, `hasIdColumn`, `hasNameColumn`, `idPrefix`, the `tabConfigs` tab list, `retiredIdPrefixes` | [`generated-data/table-configs.md`](./generated-data/table-configs.md) |
 | `columnConfigs`, `emptyValueAllowed`, `isFormula`, `valueName` resolution, the untyped-columns summary | [`generated-data/column-configs.md`](./generated-data/column-configs.md) |
 | `valueConfigs` and its `const` type parameter | [`generated-data/value-configs.md`](./generated-data/value-configs.md) |
 | Which config-sheet columns exist, the correction pass, `syncConfigSheetRows` | [`generated-data/config-sync.md`](./generated-data/config-sync.md) |
@@ -14,11 +14,11 @@ Each package's `generatedDir` (the app's `src/generated/`, the framework's `dev/
 
 ## Reading the generated files by block
 
-**Never read `columnConfigs.ts` whole.** `tableConfigs.ts` is the Table list, one labeled record per line. Grep `columnConfigs.ts` for the Table key (`"occupancy":`) and read that object only: the key opens a multi-line block, and each column config is one labeled line inside it (`columnId`, `header`, `valueName`, `isFormula`, `emptyValueAllowed`, `customDefaultValue`, then the baseline traits `formula`, `columnType`, `actionRowCell`, `groupHeading1`). Same for a single column: grep its `columnId` or name. `valueConfigs.ts` stays a pretty-printed map of member arrays. `idNameMap.ts` is one labeled line per Table and per tab, so grep it for a Table ID, a name or a GID.
+**Never read `columnConfigs.ts` whole.** `tableConfigs.ts` is the Table list, then the tab list, one labeled record per line, then the retired ID prefixes on one line. Grep `columnConfigs.ts` for the Table key (`"occupancy":`) and read that object only: the key opens a multi-line block, and each column config is one labeled line inside it (`columnId`, `header`, `valueName`, `isFormula`, `emptyValueAllowed`, `customDefaultValue`, then the baseline traits `formula`, `columnType`, `actionRowCell`, `groupHeading1`). Same for a single column: grep its `columnId` or name. `valueConfigs.ts` stays a pretty-printed map of member arrays. `idNameMap.ts` is one labeled line per Table and per tab, so grep it for a Table ID, a name or a GID.
 
 ## The generated half and the hand-written half
 
-A `generatedDir` holds the three generated data files, `tableConfigs.ts`, `columnConfigs.ts` and `valueConfigs.ts`, plus the generated `appConfigs.ts` and `idNameMap.ts`, and nothing else. Each data file is one literal passed through its validating constructor (`makeTableConfigs`, `makeColumnConfigs`, `makeValueConfigs`), imported from `../makeConfigs`. The hand-written half sits in the Schema tier's `configReaders/` folder: the generator helpers in `makeConfigs.ts`, the floor seed in `configSheetFloorSeed.ts`, and a sibling types file per constant (`tableConfigsTypes`, `columnConfigsTypes`, `valueConfigsTypes`) holding the derived types and accessor functions built on the data. A generated file imports `makeConfigs` from the framework by the relative path `gen:configs` computes, the one framework deep import the app's lint exempts.
+A `generatedDir` holds the three generated data files, `tableConfigs.ts`, `columnConfigs.ts` and `valueConfigs.ts`, plus the generated `appConfigs.ts` and `idNameMap.ts`, and nothing else. Each data file is a literal passed through its validating constructor (`makeTableConfigs`, `makeColumnConfigs`, `makeValueConfigs`), imported from `../makeConfigs`; `tableConfigs.ts` adds two more, `makeTabConfigs` and `makeRetiredIdPrefixes`. The hand-written half sits in the Schema tier's `configReaders/` folder: the generator helpers in `makeConfigs.ts`, the floor seed in `configSheetFloorSeed.ts`, and a sibling types file per constant (`tableConfigsTypes`, `columnConfigsTypes`, `valueConfigsTypes`) holding the derived types and accessor functions built on the data. A generated file imports `makeConfigs` from the framework by the relative path `gen:configs` computes, the one framework deep import the app's lint exempts.
 
 ## The ID-name map
 
@@ -36,4 +36,4 @@ Regenerate them all with `sheets-framework gen-configs` (see [`docs/how-it-runs/
 
 **One word splitter, `Str.words`, derives Table keys, column names, value names and new ID prefixes.** A title with whitespace is a sentence, split only on non-letters and non-digits with each word lowercased whole, so `CapEx budget` gives `capexBudget`. A title with no whitespace, like a Table name, is also split on camelCase and acronym boundaries, so `add occ charge`, `Add Occ Charge`, `add_occ_charge` and `addOccCharge` all give `addOccCharge` (prefix `aoc`), and the tab `CapEx` would give `capEx`. A trailing lone `s` stays on its acronym (`unitIDs` gives `unitIds`). `SentenceToCamelCase` mirrors the runtime rule at the type level.
 
-A prefix generated for a new tab splits on punctuation too, so `Item-2B` gives `ib`. A tab whose column ID row already holds IDs keeps the prefix read from it.
+A prefix generated for a new tab splits on punctuation too, so `Item-2B` gives `ib`. A tab whose column ID row already holds IDs keeps the prefix read from it, and a generated prefix skips every retired one ([`retiredIdPrefixes`](./generated-data/table-configs.md#retiredidprefixes-prefixes-no-new-table-may-take)).

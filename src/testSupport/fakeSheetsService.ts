@@ -116,6 +116,10 @@ export interface FakeTable {
 export interface FakeSheetProperties {
   sheetId: number;
   title: string;
+  hidden?: boolean;
+  tabColorStyle?: GoogleAppsScript.Sheets.Schema.ColorStyle;
+  frozenRowCount?: number;
+  frozenColumnCount?: number;
   /**
    * Row-major grid data, starting at row/column 0 — row indexes here are
    * literal sheet row indexes, so they must line up with
@@ -345,7 +349,9 @@ export function stubSheetsService(
       (fields === undefined || fields.includes("timeZone"));
     const includeGridSize =
       fields === undefined ||
-      fields.includes("gridProperties(rowCount,columnCount)");
+      fields.includes("gridProperties(rowCount,columnCount");
+    const includeTabProperties =
+      fields === undefined || fields.includes("hidden,tabColorStyle");
     return {
       ...(includeTimeZone ? { properties: { timeZone } } : {}),
       sheets: spreadsheet.sheets.map(
@@ -353,11 +359,22 @@ export function stubSheetsService(
           properties: {
             sheetId: s.sheetId,
             title: s.title,
+            // Like Google: a false hidden and a zero frozen count are omitted.
+            ...(includeTabProperties && s.hidden ? { hidden: true } : {}),
+            ...(includeTabProperties && s.tabColorStyle !== undefined
+              ? { tabColorStyle: s.tabColorStyle }
+              : {}),
             ...(includeGridSize
               ? {
                   gridProperties: {
                     rowCount: s.rowCount,
                     columnCount: s.columnCount,
+                    ...(s.frozenRowCount
+                      ? { frozenRowCount: s.frozenRowCount }
+                      : {}),
+                    ...(s.frozenColumnCount
+                      ? { frozenColumnCount: s.frozenColumnCount }
+                      : {}),
                   },
                 }
               : {}),

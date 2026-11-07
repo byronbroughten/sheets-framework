@@ -73,8 +73,17 @@ export interface SheetSnapshot {
   title: string | null;
   rowCount: number | undefined;
   columnCount: number | undefined;
+  tabProperties: SheetTabProperties;
   tables: TableSnapshot[] | undefined;
   gridBlocks: GridBlockSnapshot[] | undefined;
+}
+
+// A tab colour is "#rrggbb", or a theme colour's name such as "ACCENT1".
+export interface SheetTabProperties {
+  tabColor: string | undefined;
+  hidden: boolean;
+  frozenRowCount: number;
+  frozenColumnCount: number;
 }
 
 export interface SheetConditionalFormatSnapshot {

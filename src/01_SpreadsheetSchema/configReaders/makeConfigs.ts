@@ -5,12 +5,22 @@ import type {
 import { idPrefixes } from "../idPrefixes";
 import type { Value, ValueName } from "./valueSchemas";
 
+type ConfigMakerName =
+  | "makeTableConfigs"
+  | "makeTabConfigs"
+  | "makeRetiredIdPrefixes"
+  | "makeColumnConfigs"
+  | "makeValueConfigs";
+
 export function makeImportLine(
-  configMakerName:
-    "makeTableConfigs" | "makeColumnConfigs" | "makeValueConfigs",
+  configMakerNames: ConfigMakerName | readonly ConfigMakerName[],
   makeConfigsImport: string,
 ): string {
-  return `import { ${configMakerName} } from ${JSON.stringify(makeConfigsImport)};`;
+  const names =
+    typeof configMakerNames === "string"
+      ? configMakerNames
+      : configMakerNames.join(", ");
+  return `import { ${names} } from ${JSON.stringify(makeConfigsImport)};`;
 }
 
 function makeStructuredConfig<ST, const CF extends ST>(
@@ -23,6 +33,7 @@ function makeStructuredConfig<ST, const CF extends ST>(
 export interface TableConfigStored {
   tableId: string;
   tableName: string;
+  // A trait, never a stop: a Table moved to another tab is found again by its tableId.
   sheetGid: number;
   idPrefix: string;
   hasIdColumn: boolean;
@@ -45,6 +56,26 @@ function assertUniqueIdPrefixes(
       idPrefix: config.idPrefix,
     })),
   );
+}
+
+// Order is left out: a tab's place in the tab bar is never part of the baseline.
+export interface TabConfigStored {
+  sheetGid: number;
+  title: string;
+  color: string | null;
+  frozenRows: number;
+  frozenColumns: number;
+  hidden: boolean;
+}
+export type TabConfigsBase = Record<string, TabConfigStored>;
+export function makeTabConfigs<TC extends TabConfigsBase>(tabConfigs: TC): TC {
+  return tabConfigs;
+}
+
+export function makeRetiredIdPrefixes(
+  retiredIdPrefixes: readonly string[],
+): readonly string[] {
+  return retiredIdPrefixes;
 }
 
 export type FixedListMember = string | number | boolean;

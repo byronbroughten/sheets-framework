@@ -135,11 +135,13 @@ export function appConfigsText(): string {
 import type {} from "@byronbroughten/sheets-framework";
 
 import { columnConfigs } from "./columnConfigs";
-import { tableConfigs } from "./tableConfigs";
+import { retiredIdPrefixes, tabConfigs, tableConfigs } from "./tableConfigs";
 import { valueConfigs } from "./valueConfigs";
 
 export const appConfigs = {
   tableConfigs,
+  tabConfigs,
+  retiredIdPrefixes,
   columnConfigs,
   valueConfigs,
 };

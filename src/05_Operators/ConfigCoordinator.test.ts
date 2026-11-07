@@ -442,6 +442,14 @@ function tableConfigsEntry({
   return `"${tableKey}": { "tableId": "${tableIdOnTab(sheetGid)}", "tableName": "${tableName}", "sheetGid": ${sheetGid}, "idPrefix": "${idPrefix}", "hasIdColumn": ${hasIdColumn}, "hasNameColumn": true }`;
 }
 
+// The file also lists every tab and retired prefix, so a Table's absence is read from its own export.
+function tableConfigsExport(tableConfigsSource: string): string {
+  return Val.assert(
+    tableConfigsSource.split("export const tabConfigs")[0],
+    "tableConfigs export",
+  );
+}
+
 function driftedFloorWarningProtection(): GoogleAppsScript.Sheets.Schema.ProtectedRange {
   return {
     protectedRangeId: 41,
@@ -777,7 +785,9 @@ describe("ConfigCoordinator.generateConfigFiles", () => {
       const parsed =
         ConfigCoordinator.init().generateConfigFiles("../makeConfigs");
       expect(grid.sheetTitles()).not.toContain("Value Config");
-      expect(parsed.tableConfigs).not.toContain('"valueConfig"');
+      expect(tableConfigsExport(parsed.tableConfigs)).not.toContain(
+        '"valueConfig"',
+      );
     });
 
     it("syncs an existing Value Config as an ordinary Table, with its own sampled ID prefix", () => {
@@ -1006,7 +1016,9 @@ describe("ConfigCoordinator.syncConfigSheetRows Let api access", () => {
         .column("tableId")
         .hasValue(tableIdOnTab(draftGid)),
     ).toBe(true);
-    expect(parsed.tableConfigs).not.toContain("addWidgetOrder");
+    expect(tableConfigsExport(parsed.tableConfigs)).not.toContain(
+      "addWidgetOrder",
+    );
   });
 
   it("omits a draft that has data rows until Let api access is ticked", () => {
@@ -1021,7 +1033,9 @@ describe("ConfigCoordinator.syncConfigSheetRows Let api access", () => {
     const parsed =
       ConfigCoordinator.init().generateConfigFiles("../makeConfigs");
     expect(parsed.tableConfigs).toContain('"item"');
-    expect(parsed.tableConfigs).not.toContain("addWidgetOrder");
+    expect(tableConfigsExport(parsed.tableConfigs)).not.toContain(
+      "addWidgetOrder",
+    );
     expect(parsed.columnConfigs).toContain("c:itm:xyz123");
     expect(parsed.columnConfigs).not.toMatch(/c:awo:/);
   });
@@ -1052,7 +1066,9 @@ describe("ConfigCoordinator.syncConfigSheetRows Let api access", () => {
     const parsed =
       ConfigCoordinator.init().generateConfigFiles("../makeConfigs");
     expect(parsed.tableConfigs).toContain('"item"');
-    expect(parsed.tableConfigs).not.toContain("addWidgetOrder");
+    expect(tableConfigsExport(parsed.tableConfigs)).not.toContain(
+      "addWidgetOrder",
+    );
     expect(parsed.columnConfigs).toContain("c:itm:xyz123");
   });
 
@@ -1419,7 +1435,7 @@ describe("ConfigCoordinator.generateConfigFiles ID prefix", () => {
 
     const parsed =
       ConfigCoordinator.init().generateConfigFiles("../makeConfigs");
-    expect(parsed.tableConfigs).not.toContain("widget");
+    expect(tableConfigsExport(parsed.tableConfigs)).not.toContain("widget");
     expect(parsed.columnConfigs).not.toMatch(/c:wdg:/);
   });
 
@@ -1719,7 +1735,7 @@ describe("ConfigCoordinator.generateConfigFiles head-row overlap", () => {
 
     const parsed =
       ConfigCoordinator.init().generateConfigFiles("../makeConfigs");
-    expect(parsed.tableConfigs).not.toContain('"item"');
+    expect(tableConfigsExport(parsed.tableConfigs)).not.toContain('"item"');
   });
 
   it("leaves an unticked Table below the header zone to the operator", () => {
@@ -1738,7 +1754,7 @@ describe("ConfigCoordinator.generateConfigFiles head-row overlap", () => {
     const parsed =
       ConfigCoordinator.init().generateConfigFiles("../makeConfigs");
     expect(parsed.tableConfigs).toContain('"leases"');
-    expect(parsed.tableConfigs).not.toContain('"tenants"');
+    expect(tableConfigsExport(parsed.tableConfigs)).not.toContain('"tenants"');
   });
 
   it("allows two Tables side by side, touching", () => {
@@ -1822,7 +1838,7 @@ describe("ConfigCoordinator placement check", () => {
     coordinator.ss.raw.sheet(logGid).table("log").gatherFetchProperties();
 
     const parsed = coordinator.generateConfigFiles("../makeConfigs");
-    expect(parsed.tableConfigs).not.toContain('"log"');
+    expect(tableConfigsExport(parsed.tableConfigs)).not.toContain('"log"');
   });
 });
 

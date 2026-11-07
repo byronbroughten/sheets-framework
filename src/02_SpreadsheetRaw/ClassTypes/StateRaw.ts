@@ -21,6 +21,7 @@ import type {
   InsertRangeOperation,
   LocalWriteOperation,
   RawSource,
+  SheetTabProperties,
   TableColumnSnapshot,
   TableColumnType,
   UpdateTableRangeOperation,
@@ -106,6 +107,7 @@ export interface SheetWorkingStateRaw {
   title: string | undefined;
   rowCount: number | undefined;
   columnCount: number | undefined;
+  tabProperties: SheetTabProperties | undefined;
   // So a column insert gathered later can judge the sheet's Tables from the zone already fetched.
   hasFetchedHeaderZone: boolean;
   conditionalFormats: ConditionalFormatsStateRaw;

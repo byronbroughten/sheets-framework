@@ -41,6 +41,13 @@ describe("idPrefixes.fromTitle", () => {
     ).toBe("prd3");
   });
 
+  it("treats a retired prefix as taken, so an old row ID never points at a new Table", () => {
+    expect(idPrefixes.fromTitle("Item", new Set(), ["itm"])).toBe("itm2");
+    expect(idPrefixes.fromTitle("Product", new Set(["prd"]), ["prdc"])).toBe(
+      "prdct",
+    );
+  });
+
   it("uses s plus a number suffix when the title has no letters", () => {
     expect(idPrefixes.fromTitle("2024", new Set())).toBe("s");
     expect(idPrefixes.fromTitle("2024", new Set(["s"]))).toBe("s2");
@@ -62,5 +69,30 @@ describe("idPrefixes.fromTitle", () => {
     prefixes.forEach((prefix) => {
       expect(prefix).toMatch(/^[a-z0-9]+$/);
     });
+  });
+});
+
+describe("idPrefixes.retiredAfter", () => {
+  it("carries the retired list forward and adds the prefix of each Table gone since the last run", () => {
+    expect(
+      idPrefixes.retiredAfter({
+        previouslyRetired: ["old"],
+        previousByTableId: new Map([
+          ["tbl-a", "aaa"],
+          ["tbl-b", "bbb"],
+        ]),
+        currentByTableId: new Map([["tbl-a", "aaa"]]),
+      }),
+    ).toEqual(["bbb", "old"]);
+  });
+
+  it("leaves out a prefix a current Table holds, so a Table given back API access keeps its own", () => {
+    expect(
+      idPrefixes.retiredAfter({
+        previouslyRetired: ["aaa"],
+        previousByTableId: new Map(),
+        currentByTableId: new Map([["tbl-a", "aaa"]]),
+      }),
+    ).toEqual([]);
   });
 });

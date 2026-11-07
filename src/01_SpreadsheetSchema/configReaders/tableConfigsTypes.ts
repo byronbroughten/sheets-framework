@@ -2,7 +2,11 @@ import { lazy } from "@byronbroughten/utils/lazy";
 import { Obj } from "@byronbroughten/utils/obj";
 import { Val } from "@byronbroughten/utils/val";
 
-import { type Configs, installedConfigs } from "./configRegister";
+import {
+  type Configs,
+  type ConfigSetBase,
+  installedConfigs,
+} from "./configRegister";
 import type { TableConfigsBase, TableConfigStored } from "./makeConfigs";
 
 export type TableConfigs = Configs["tableConfigs"];
@@ -68,6 +72,11 @@ export function getTableTraitByGid<TK extends keyof TableConfig>(
 // The generated literal read by an arbitrary name, where an entry may be absent.
 export function tableConfigsByName(): TableConfigsBase {
   return tableConfigs();
+}
+
+export function configRetiredIdPrefixes(): readonly string[] {
+  const configs: ConfigSetBase = installedConfigs();
+  return configs.retiredIdPrefixes ?? [];
 }
 
 function tableConfigs(): TableConfigs {

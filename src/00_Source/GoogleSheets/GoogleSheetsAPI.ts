@@ -77,7 +77,7 @@ const partOfTableRefusalText =
 
 const timeZoneMask = "properties(timeZone)";
 const sheetPropertiesMask =
-  "properties(sheetId,title,gridProperties(rowCount,columnCount))";
+  "properties(sheetId,title,hidden,tabColorStyle,gridProperties(rowCount,columnCount,frozenRowCount,frozenColumnCount))";
 
 // The time zone, grid size and column types ride every standing fetch, so none costs its own get.
 const fieldMasks = {

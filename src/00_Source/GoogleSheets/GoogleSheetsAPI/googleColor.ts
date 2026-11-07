@@ -5,6 +5,7 @@ import {
 } from "../../RawSource/RgbColor";
 
 type GoogleColor = GoogleAppsScript.Sheets.Schema.Color;
+type GoogleColorStyle = GoogleAppsScript.Sheets.Schema.ColorStyle;
 
 export const googleColor = {
   fromRgb(color: RgbColor): GoogleColor {
@@ -33,4 +34,17 @@ export const googleColor = {
   toRgbChannels(color: GoogleColor): RgbChannels {
     return quantizeRgbChannels(color);
   },
+  toTabColor(style: GoogleColorStyle | undefined): string | undefined {
+    if (style?.themeColor !== undefined) return style.themeColor;
+    if (style?.rgbColor === undefined) return undefined;
+    const { red, green, blue } = style.rgbColor;
+    return `#${[red, green, blue].map(hexChannel).join("")}`;
+  },
 };
+
+// Google omits a zero channel, so an absent one is 0.
+function hexChannel(value: number | undefined): string {
+  return Math.round((value ?? 0) * 255)
+    .toString(16)
+    .padStart(2, "0");
+}

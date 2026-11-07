@@ -14,6 +14,7 @@ import type {
 import type {
   GridRangeProps,
   SheetSnapshot,
+  SheetTabProperties,
   TableSnapshot,
 } from "../00_Source/RawSource/RawSource";
 import {
@@ -102,6 +103,12 @@ export class SheetRaw extends SheetBaseRaw {
     return Val.assert(
       this.sheetState.working.columnCount,
       `${this.label}'s column count`,
+    );
+  }
+  get tabProperties(): SheetTabProperties {
+    return Val.assert(
+      this.sheetState.working.tabProperties,
+      `${this.label}'s tab properties`,
     );
   }
   queueGridRowsThrough(endRowIndex: SheetRowIndex): void {
@@ -272,6 +279,7 @@ export class SheetRaw extends SheetBaseRaw {
     if (sheet.columnCount !== undefined) {
       this.sheetState.working.columnCount = sheet.columnCount;
     }
+    this.sheetState.working.tabProperties = sheet.tabProperties;
     if (sheet.tables !== undefined) {
       this._integrateTables(sheet.tables);
     }
