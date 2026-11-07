@@ -744,7 +744,7 @@ describe("TableConfigOperator Table keys and prefixes", () => {
   });
 });
 
-describe("TableConfigOperator.newTabConfigs", () => {
+describe("TabConfigOperator.newTabConfigs", () => {
   function stubTabs(widgetTab: Partial<FakeSheetProperties>): void {
     stubSheetsService({
       sheets: [
@@ -771,7 +771,7 @@ describe("TableConfigOperator.newTabConfigs", () => {
       hidden: true,
     });
 
-    const tabConfigs = syncedOperator().newTabConfigs();
+    const tabConfigs = syncedOperator().tabConfigOperator.newTabConfigs();
     expect(tabConfigs.widgetOrders).toEqual({
       sheetGid: widgetGid,
       title: "Widget orders",
@@ -791,9 +791,9 @@ describe("TableConfigOperator.newTabConfigs", () => {
   it("records a theme colour by its name", () => {
     stubTabs({ tabColorStyle: { themeColor: "ACCENT1" } });
 
-    expect(syncedOperator().newTabConfigs().widgetOrders?.color).toBe(
-      "ACCENT1",
-    );
+    expect(
+      syncedOperator().tabConfigOperator.newTabConfigs().widgetOrders?.color,
+    ).toBe("ACCENT1");
   });
 
   it("fails when two tab titles give the same tab name, naming both", () => {
@@ -814,7 +814,7 @@ describe("TableConfigOperator.newTabConfigs", () => {
       ],
     });
 
-    expect(() => syncedOperator().newTabConfigs()).toThrow(
+    expect(() => syncedOperator().tabConfigOperator.newTabConfigs()).toThrow(
       'Tabs "Widget orders" and "Widget Orders" both give the tab name "widgetOrders".',
     );
   });

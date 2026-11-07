@@ -5,6 +5,18 @@ export interface IdPrefixLabel {
   idPrefix: string;
 }
 
+export interface IdPrefixFromTitleProps {
+  title: string;
+  prefixesInUse: ReadonlySet<string>;
+  retiredPrefixes?: Iterable<string>;
+}
+
+export interface RetiredOrGoneProps {
+  previouslyRetired: readonly string[];
+  previousByTableId: ReadonlyMap<string, string>;
+  liveTableIds: ReadonlySet<string>;
+}
+
 export interface RetiredIdPrefixesProps {
   previouslyRetired: readonly string[];
   previousByTableId: ReadonlyMap<string, string>;
@@ -15,11 +27,11 @@ const vowels = new Set(["a", "e", "i", "o", "u"]);
 
 export const idPrefixes = {
   // A retired prefix is taken for good: rows elsewhere may still carry IDs minted under it.
-  fromTitle(
-    title: string,
-    prefixesInUse: ReadonlySet<string>,
-    retiredPrefixes: readonly string[] = [],
-  ): string {
+  fromTitle({
+    title,
+    prefixesInUse,
+    retiredPrefixes = [],
+  }: IdPrefixFromTitleProps): string {
     const taken = new Set([...prefixesInUse, ...retiredPrefixes]);
     const { base, remainingConsonants } = idPrefixBaseAndRemaining(title);
     if (!taken.has(base)) return base;
@@ -39,11 +51,24 @@ export const idPrefixes = {
     currentByTableId,
   }: RetiredIdPrefixesProps): string[] {
     const current = new Set(currentByTableId.values());
-    const retired = new Set(previouslyRetired);
-    previousByTableId.forEach((idPrefix, tableId) => {
-      if (!currentByTableId.has(tableId)) retired.add(idPrefix);
+    const retired = idPrefixes.retiredOrGone({
+      previouslyRetired,
+      previousByTableId,
+      liveTableIds: new Set(currentByTableId.keys()),
     });
     return [...retired].filter((idPrefix) => !current.has(idPrefix)).sort();
+  },
+  // The previous retired list plus the prefix of each previous Table not live now.
+  retiredOrGone({
+    previouslyRetired,
+    previousByTableId,
+    liveTableIds,
+  }: RetiredOrGoneProps): Set<string> {
+    const retired = new Set(previouslyRetired);
+    previousByTableId.forEach((idPrefix, tableId) => {
+      if (!liveTableIds.has(tableId)) retired.add(idPrefix);
+    });
+    return retired;
   },
   assertUnique(idPrefixLabels: ReadonlyArray<IdPrefixLabel>): void {
     const labelByPrefix = new Map<string, string>();

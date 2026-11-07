@@ -1,3 +1,4 @@
+import type { TabColor } from "../../00_Source/RawSource/RawSource";
 import type {
   ActionRowCellBaseline,
   ColumnTypeBaseline,
@@ -13,14 +14,10 @@ type ConfigMakerName =
   | "makeValueConfigs";
 
 export function makeImportLine(
-  configMakerNames: ConfigMakerName | readonly ConfigMakerName[],
+  configMakerNames: readonly ConfigMakerName[],
   makeConfigsImport: string,
 ): string {
-  const names =
-    typeof configMakerNames === "string"
-      ? configMakerNames
-      : configMakerNames.join(", ");
-  return `import { ${names} } from ${JSON.stringify(makeConfigsImport)};`;
+  return `import { ${configMakerNames.join(", ")} } from ${JSON.stringify(makeConfigsImport)};`;
 }
 
 function makeStructuredConfig<ST, const CF extends ST>(
@@ -33,7 +30,6 @@ function makeStructuredConfig<ST, const CF extends ST>(
 export interface TableConfigStored {
   tableId: string;
   tableName: string;
-  // A trait, never a stop: a Table moved to another tab is found again by its tableId.
   sheetGid: number;
   idPrefix: string;
   hasIdColumn: boolean;
@@ -62,7 +58,7 @@ function assertUniqueIdPrefixes(
 export interface TabConfigStored {
   sheetGid: number;
   title: string;
-  color: string | null;
+  color: TabColor | null;
   frozenRows: number;
   frozenColumns: number;
   hidden: boolean;

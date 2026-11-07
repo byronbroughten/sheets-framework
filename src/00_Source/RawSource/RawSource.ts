@@ -78,12 +78,25 @@ export interface SheetSnapshot {
   gridBlocks: GridBlockSnapshot[] | undefined;
 }
 
-// A tab colour is "#rrggbb", or a theme colour's name such as "ACCENT1".
+export const themeColorNames = [
+  "TEXT",
+  "BACKGROUND",
+  "ACCENT1",
+  "ACCENT2",
+  "ACCENT3",
+  "ACCENT4",
+  "ACCENT5",
+  "ACCENT6",
+  "LINK",
+] as const;
+export type ThemeColorName = (typeof themeColorNames)[number];
+export type TabColor = `#${string}` | ThemeColorName;
+
 export interface SheetTabProperties {
-  tabColor: string | undefined;
+  color: TabColor | undefined;
   hidden: boolean;
-  frozenRowCount: number;
-  frozenColumnCount: number;
+  frozenRows: number;
+  frozenColumns: number;
 }
 
 export interface SheetConditionalFormatSnapshot {

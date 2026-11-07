@@ -7,7 +7,6 @@ import {
 } from "../01_SpreadsheetSchema/configReaders/configSheetFloorSeed";
 import {
   makeImportLine,
-  type TabConfigsBase,
   type TableConfigsBase,
 } from "../01_SpreadsheetSchema/configReaders/makeConfigs";
 import {
@@ -26,6 +25,7 @@ import {
   type OperatorProps,
   SpreadsheetBaseOperator,
 } from "./SpreadsheetBaseOperator";
+import { TabConfigOperator } from "./TabConfigOperator";
 
 export interface ColumnReference {
   tableId: string;
@@ -41,6 +41,9 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
   }
   static init(): TableConfigOperator {
     return new TableConfigOperator(SpreadsheetBaseOperator.initOperatorProps());
+  }
+  get tabConfigOperator(): TabConfigOperator {
+    return new TabConfigOperator(this.operatorProps);
   }
   get tableConfigSync(): ConfigSyncState["tableConfigSync"] {
     return this.configSyncState.tableConfigSync;
@@ -154,26 +157,23 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
       prefixesInUse.add(sampled);
       assigned.set(table.tableId, sampled);
     });
-    const retired = this._retiredBeforeMinting();
+    // A Table gone since the last run retires its prefix before this run mints any.
+    const retiredPrefixes = idPrefixes.retiredOrGone({
+      previouslyRetired: configRetiredIdPrefixes(),
+      previousByTableId: previousIdPrefixesByTableId(),
+      liveTableIds: new Set(this.tableIdsApiAccesses()),
+    });
     this._apiAccessTables().forEach((table) => {
       if (assigned.has(table.tableId)) return;
-      const generated = idPrefixes.fromTitle(
-        table.name,
+      const generated = idPrefixes.fromTitle({
+        title: table.name,
         prefixesInUse,
-        retired,
-      );
+        retiredPrefixes,
+      });
       prefixesInUse.add(generated);
       assigned.set(table.tableId, generated);
     });
     return assigned;
-  }
-  // A Table gone since the last run retires its prefix before this run mints any.
-  private _retiredBeforeMinting(): string[] {
-    const managedTableIds = new Set(this.tableIdsApiAccesses());
-    const gone = [...previousIdPrefixesByTableId()].flatMap(
-      ([tableId, idPrefix]) => (managedTableIds.has(tableId) ? [] : [idPrefix]),
-    );
-    return [...configRetiredIdPrefixes(), ...gone];
   }
   retiredIdPrefixes(): string[] {
     return idPrefixes.retiredAfter({
@@ -181,33 +181,6 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
       previousByTableId: previousIdPrefixesByTableId(),
       currentByTableId: this._idPrefixesByTableId(),
     });
-  }
-  newTabConfigs(): TabConfigsBase {
-    const { raw } = this.ss;
-    return raw.activeSheetGids.reduce<TabConfigsBase>(
-      (tabConfigs, sheetGid) => {
-        const sheet = raw.sheet(sheetGid);
-        const tabName = this.schema.titleToName(sheet.title);
-        const existing = tabConfigs[tabName];
-        if (existing !== undefined) {
-          throw new Error(
-            `Tabs "${existing.title}" and "${sheet.title}" both give the tab name "${tabName}".`,
-          );
-        }
-        const { tabColor, hidden, frozenRowCount, frozenColumnCount } =
-          sheet.tabProperties;
-        tabConfigs[tabName] = {
-          sheetGid,
-          title: sheet.title,
-          color: tabColor ?? null,
-          frozenRows: frozenRowCount,
-          frozenColumns: frozenColumnCount,
-          hidden,
-        };
-        return tabConfigs;
-      },
-      {},
-    );
   }
   idPrefixChangeReport(): string | undefined {
     const changes: string[] = [];
@@ -307,7 +280,7 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
       )});`,
       ``,
       `export const tabConfigs = makeTabConfigs(${oneLinePerEntryFileSource(
-        this.newTabConfigs(),
+        this.tabConfigOperator.newTabConfigs(),
       )});`,
       ``,
       `export const retiredIdPrefixes = makeRetiredIdPrefixes(${JSON.stringify(

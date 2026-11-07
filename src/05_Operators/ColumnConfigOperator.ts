@@ -443,7 +443,7 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
   }
   toFileSource(makeConfigsImport: string): string {
     return [
-      `${makeImportLine("makeColumnConfigs", makeConfigsImport)}`,
+      `${makeImportLine(["makeColumnConfigs"], makeConfigsImport)}`,
       ``,
       `export const columnConfigs = makeColumnConfigs(${columnConfigsFileSource(
         this.newColumnConfigs(),

@@ -763,10 +763,10 @@ describe("GoogleSheetsAPI payload mapping", () => {
           sheetGid: 111,
           title: "Records",
           tabProperties: {
-            tabColor: undefined,
+            color: undefined,
             hidden: false,
-            frozenRowCount: 0,
-            frozenColumnCount: 0,
+            frozenRows: 0,
+            frozenColumns: 0,
           },
           tables: [
             {
@@ -855,22 +855,22 @@ describe("GoogleSheetsAPI payload mapping", () => {
       api.fetchSheetProperties().sheets.map((sheet) => sheet.tabProperties),
     ).toEqual([
       {
-        tabColor: "#ff0080",
+        color: "#ff0080",
         hidden: true,
-        frozenRowCount: 4,
-        frozenColumnCount: 1,
+        frozenRows: 4,
+        frozenColumns: 1,
       },
       {
-        tabColor: "ACCENT1",
+        color: "ACCENT1",
         hidden: false,
-        frozenRowCount: 0,
-        frozenColumnCount: 0,
+        frozenRows: 0,
+        frozenColumns: 0,
       },
       {
-        tabColor: undefined,
+        color: undefined,
         hidden: false,
-        frozenRowCount: 0,
-        frozenColumnCount: 0,
+        frozenRows: 0,
+        frozenColumns: 0,
       },
     ]);
   });

@@ -58,7 +58,7 @@ export class ValueConfigOperator extends SpreadsheetBaseOperator {
   }
   toFileSource(makeConfigsImport: string): string {
     return [
-      `${makeImportLine("makeValueConfigs", makeConfigsImport)}`,
+      `${makeImportLine(["makeValueConfigs"], makeConfigsImport)}`,
       ``,
       `export const valueConfigs = makeValueConfigs(${JSON.stringify(
         this.newValueConfigs(),
