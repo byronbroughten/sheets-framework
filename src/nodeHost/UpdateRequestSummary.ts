@@ -5,14 +5,11 @@ import type {
   ModeledRequestVerb,
 } from "../00_Source/GoogleSheets/GoogleSheetsAPI";
 import { loneTableConfigOnGid } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
+import { colLetters } from "./colLetters";
+import { extendedValue } from "./extendedValue";
 
 type GoogleUpdateRequest = GoogleRequest;
 type GoogleGridRange = GoogleAppsScript.Sheets.Schema.GridRange;
-type UserEnteredValue = NonNullable<
-  NonNullable<
-    GoogleAppsScript.Sheets.Schema.UpdateCellsRequest["rows"]
-  >[number]["values"]
->[number]["userEnteredValue"];
 type RowData = GoogleAppsScript.Sheets.Schema.RowData;
 type DimensionRange = GoogleAppsScript.Sheets.Schema.DimensionRange;
 
@@ -421,7 +418,9 @@ const label = {
   },
   values(rows: RowData[] | undefined): string {
     const values = (rows ?? []).flatMap((row) =>
-      (row.values ?? []).map((cell) => valueLabel(cell.userEnteredValue)),
+      (row.values ?? []).map((cell) =>
+        extendedValue.label(cell.userEnteredValue),
+      ),
     );
     if (values.length === 0) return "(no values)";
     const shown = values.slice(0, layoutLimits.maxSampleValues).join(", ");
@@ -483,17 +482,6 @@ function rangeCellCount(range: GoogleGridRange | undefined): number {
   return (endRowIndex - startRowIndex) * (endColumnIndex - startColumnIndex);
 }
 
-function colLetters(colIndex: number): string {
-  let remaining = colIndex + 1;
-  let letters = "";
-  while (remaining > 0) {
-    const rest = (remaining - 1) % 26;
-    letters = String.fromCharCode(65 + rest) + letters;
-    remaining = Math.floor((remaining - 1) / 26);
-  }
-  return letters;
-}
-
 function rfc4180RecordCount(data: string): number {
   if (data === "") return 0;
   let count = 0;
@@ -543,15 +531,4 @@ function firstRfc4180Field(data: string): string {
 function sheetIdOf(inner: object | undefined): number | undefined {
   const sheetId = (inner as { sheetId?: unknown } | undefined)?.sheetId;
   return typeof sheetId === "number" ? sheetId : undefined;
-}
-
-function valueLabel(userEnteredValue: UserEnteredValue): string {
-  if (!userEnteredValue) return "(no value)";
-  const { stringValue, numberValue, boolValue, formulaValue } =
-    userEnteredValue;
-  if (stringValue !== undefined) return `"${stringValue}"`;
-  if (numberValue !== undefined) return String(numberValue);
-  if (boolValue !== undefined) return String(boolValue);
-  if (formulaValue !== undefined) return formulaValue;
-  return "(no value)";
 }
