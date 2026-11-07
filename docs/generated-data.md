@@ -1,6 +1,6 @@
 # Generated data
 
-Each package's `generatedDir` (the app's `src/generated/`, the framework's `dev/generated/`) holds three config files generated from the live spreadsheet, plus `appConfigs.ts`, which gathers them into one `appConfigs` const and augments `Register`. The rules for regenerating and editing them are [`src/01_SpreadsheetSchema/AGENTS.md`](../src/01_SpreadsheetSchema/AGENTS.md)'s; what the command writes is [`how-it-runs/gen-configs.md`](./how-it-runs/gen-configs.md#what-gen-configs-writes)'s.
+Each package's `generatedDir` (the app's `src/generated/`, the framework's `dev/generated/`) holds three config files generated from the live spreadsheet, plus `appConfigs.ts`, which gathers them into one `appConfigs` const and augments `Register`, and the type-only ID-name map, `idNameMap.ts`. The rules for regenerating and editing them are [`src/01_SpreadsheetSchema/AGENTS.md`](../src/01_SpreadsheetSchema/AGENTS.md)'s; what the command writes is [`how-it-runs/gen-configs.md`](./how-it-runs/gen-configs.md#what-gen-configs-writes)'s.
 
 ## One file per generated constant, the sync and the floor
 
@@ -14,11 +14,15 @@ Each package's `generatedDir` (the app's `src/generated/`, the framework's `dev/
 
 ## Reading the generated files by block
 
-**Never read `columnConfigs.ts` whole.** `tableConfigs.ts` is the Table list, one labeled record per line. Grep `columnConfigs.ts` for the Table key (`"occupancy":`) and read that object only: the key opens a multi-line block, and each column config is one labeled line inside it (`columnId`, `header`, `valueName`, `isFormula`, `emptyValueAllowed`, `customDefaultValue`, then the baseline traits `formula`, `columnType`, `actionRowCell`, `groupHeading1`). Same for a single column: grep its `columnId` or name. `valueConfigs.ts` stays a pretty-printed map of member arrays.
+**Never read `columnConfigs.ts` whole.** `tableConfigs.ts` is the Table list, one labeled record per line. Grep `columnConfigs.ts` for the Table key (`"occupancy":`) and read that object only: the key opens a multi-line block, and each column config is one labeled line inside it (`columnId`, `header`, `valueName`, `isFormula`, `emptyValueAllowed`, `customDefaultValue`, then the baseline traits `formula`, `columnType`, `actionRowCell`, `groupHeading1`). Same for a single column: grep its `columnId` or name. `valueConfigs.ts` stays a pretty-printed map of member arrays. `idNameMap.ts` is one labeled line per Table and per tab, so grep it for a Table ID, a name or a GID.
 
 ## The generated half and the hand-written half
 
-A `generatedDir` holds the three generated data files, `tableConfigs.ts`, `columnConfigs.ts` and `valueConfigs.ts`, plus the generated `appConfigs.ts`, and nothing else. Each is one literal passed through its validating constructor (`makeTableConfigs`, `makeColumnConfigs`, `makeValueConfigs`), imported from `../makeConfigs`. The hand-written half sits in the Schema tier's `configReaders/` folder: the generator helpers in `makeConfigs.ts`, the floor seed in `configSheetFloorSeed.ts`, and a sibling types file per constant (`tableConfigsTypes`, `columnConfigsTypes`, `valueConfigsTypes`) holding the derived types and accessor functions built on the data. A generated file imports `makeConfigs` from the framework by the relative path `gen:configs` computes, the one framework deep import the app's lint exempts.
+A `generatedDir` holds the three generated data files, `tableConfigs.ts`, `columnConfigs.ts` and `valueConfigs.ts`, plus the generated `appConfigs.ts` and `idNameMap.ts`, and nothing else. Each data file is one literal passed through its validating constructor (`makeTableConfigs`, `makeColumnConfigs`, `makeValueConfigs`), imported from `../makeConfigs`. The hand-written half sits in the Schema tier's `configReaders/` folder: the generator helpers in `makeConfigs.ts`, the floor seed in `configSheetFloorSeed.ts`, and a sibling types file per constant (`tableConfigsTypes`, `columnConfigsTypes`, `valueConfigsTypes`) holding the derived types and accessor functions built on the data. A generated file imports `makeConfigs` from the framework by the relative path `gen:configs` computes, the one framework deep import the app's lint exempts.
+
+## The ID-name map
+
+`idNameMap.ts` exports one type, `IdNameMap`, and no runtime value, so no tier's type check pays for it. It lists every live Table by Table ID with its codebase name (its Table key when it has API access, else its title through the word splitter) and its tab's GID, every tab by GID with its title and Table IDs, and, for each Table with API access, its columns as column name to column ID. A suite in `scripts/genConfigs.test.ts` asserts the dev package's map and configs agree, so a hand edit or a partial regen fails CI.
 
 ## Why the three files depend on each other
 
@@ -26,7 +30,7 @@ Table keys live as keys in `tableConfigs.ts`, and `columnConfigs.ts` is keyed by
 
 ## What a regeneration runs, on the Node host
 
-Regenerate all three with `sheets-framework gen-configs` (see [`docs/how-it-runs/gen-configs.md`](./how-it-runs/gen-configs.md#what-gen-configs-writes)), which runs `ConfigCoordinator` (`05_Operators`) **on the Node host**, in your working tree; it is the only way to regenerate. It syncs the live Table Config sheet, then the live Column Config sheet (including adding any missing column IDs to business sheets), flushes all of that in one write, then reads the live Value Config sheet, and only then emits source for all three files. **Live Table sampling on that run — Table header row, column-ID row, first data row — is for this run's Let api access Tables**, after Table Config is loaded, not for every Table. Everyday Table-placement checks still use last-generate sheet GIDs, one regen behind the live box. The command writes all four files or none, and runs `npm run tsc` itself afterward so a stale hand-written reference surfaces immediately.
+Regenerate them all with `sheets-framework gen-configs` (see [`docs/how-it-runs/gen-configs.md`](./how-it-runs/gen-configs.md#what-gen-configs-writes)), which runs `ConfigCoordinator` (`05_Operators`) **on the Node host**, in your working tree; it is the only way to regenerate. It syncs the live Table Config sheet, then the live Column Config sheet (including adding any missing column IDs to business sheets), flushes all of that in one write, then reads the live Value Config sheet, and only then emits source for all three files and the ID-name map. **Live Table sampling on that run — Table header row, column-ID row, first data row — is for this run's Let api access Tables**, after Table Config is loaded, not for every Table. Everyday Table-placement checks still use last-generate sheet GIDs, one regen behind the live box. The command writes all five files or none, and runs `npm run tsc` itself afterward so a stale hand-written reference surfaces immediately.
 
 ## One word splitter derives keys, names and prefixes
 

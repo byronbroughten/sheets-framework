@@ -1,4 +1,4 @@
-// `sheets-framework gen-configs`: regenerates the package's four generated files from its live config sheets, on the Node host.
+// `sheets-framework gen-configs`: regenerates the package's five generated files from its live config sheets, on the Node host.
 import { spawnSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
@@ -18,7 +18,7 @@ import type { SheetsConfig } from "./sheetsConfig.ts";
 
 class ConfigFilesGenerator {
   readonly sheetsConfig: SheetsConfig;
-  readonly path: Record<ConfigFile | "appConfigs", string>;
+  readonly path: Record<ConfigFile | "appConfigs" | "idNameMap", string>;
   constructor({ sheetsConfig }: { sheetsConfig: SheetsConfig }) {
     this.sheetsConfig = sheetsConfig;
     const { generatedDir } = sheetsConfig;
@@ -27,6 +27,7 @@ class ConfigFilesGenerator {
       columnConfigs: configFilePath(generatedDir, "columnConfigs"),
       valueConfigs: configFilePath(generatedDir, "valueConfigs"),
       appConfigs: join(generatedDir, "appConfigs.ts"),
+      idNameMap: idNameMapPath(generatedDir),
     };
   }
   static init(sheetsConfig: SheetsConfig): ConfigFilesGenerator {
@@ -37,18 +38,20 @@ class ConfigFilesGenerator {
       tableConfigs,
       columnConfigs,
       valueConfigs,
+      idNameMap,
       untypedColumnsSummary,
       floorReport,
       idPrefixReport,
       declaredCellReport,
     } = await this._generate();
 
-    // Write nothing until all three configs are confirmed good; a subset would go stale.
+    // Write nothing until all three configs and the ID-name map are confirmed good; a subset would go stale.
     mkdirSync(this.sheetsConfig.generatedDir, { recursive: true });
     writeFileSync(this.path.tableConfigs, tableConfigs);
     writeFileSync(this.path.columnConfigs, columnConfigs);
     writeFileSync(this.path.valueConfigs, valueConfigs);
     writeFileSync(this.path.appConfigs, appConfigsText());
+    writeFileSync(this.path.idNameMap, idNameMap);
     Object.values(this.path).forEach((path) => {
       console.log(`Wrote ${path}`);
     });
@@ -115,12 +118,16 @@ class ConfigFilesGenerator {
 
 function reportTscFailure(): void {
   console.error(
-    "\ngen:configs: regeneration succeeded and all four files were written, " +
+    "\ngen:configs: regeneration succeeded and all five files were written, " +
       "but this package's `npm run tsc` failed above. This usually means " +
       "hand-written references in this package still name a sheet or column " +
       "that no longer exists after this regeneration. Fix those references " +
       "and re-run `npm run tsc` — do not hand-edit the generated files.",
   );
+}
+
+export function idNameMapPath(generatedDir: string): string {
+  return join(generatedDir, "idNameMap.ts");
 }
 
 export function appConfigsText(): string {

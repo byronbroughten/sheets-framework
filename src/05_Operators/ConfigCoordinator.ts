@@ -1,3 +1,5 @@
+import { Val } from "@byronbroughten/utils/val";
+
 import { columnConfigsByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
 import { assertFloorMatchesSeed } from "../01_SpreadsheetSchema/configReaders/floorSeedCheck";
 import { tableConfigsByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
@@ -7,6 +9,11 @@ import {
 } from "../04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
 import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
 import { ColumnConfigOperator } from "./ColumnConfigOperator";
+import {
+  columnIdsByName,
+  idNameMapFileSource,
+  type IdNameMapGeneric,
+} from "./configFileSource";
 import { ConfigSheetFloor } from "./ConfigSheetFloor";
 import { assertFloorIdentityUnchanged } from "./floorIdentityGuard";
 import { SpreadsheetBaseOperator } from "./SpreadsheetBaseOperator";
@@ -18,6 +25,7 @@ export interface ConfigRegeneration {
   tableConfigs: string;
   columnConfigs: string;
   valueConfigs: string;
+  idNameMap: string;
   untypedColumnsSummary: string | undefined;
   floorReport: string;
   idPrefixReport: string | undefined;
@@ -27,7 +35,7 @@ export interface ConfigRegeneration {
 /**
  * Coordinates Spreadsheet/Table/Column Config: the config-sheet floor
  * first (one extra flush), sync the live config sheets, one more flush, then
- * emit all three generated files or none. Config maintenance is this Operator
+ * emit all three generated config files and the ID-name map, or none. Config maintenance is this Operator
  * family, not Raw or Named. npm run gen:configs is the only regeneration path.
  * docs/generated-data.md
  */
@@ -85,6 +93,7 @@ export class ConfigCoordinator extends SpreadsheetBaseOperator {
       tableConfigs: this.tableConfigOperator.toFileSource(makeConfigsImport),
       columnConfigs: this.columnConfigOperator.toFileSource(makeConfigsImport),
       valueConfigs: this.valueConfigOperator.toFileSource(makeConfigsImport),
+      idNameMap: idNameMapFileSource(this._idNameMap()),
       untypedColumnsSummary,
       floorReport,
       idPrefixReport: this.tableConfigOperator.idPrefixChangeReport(),
@@ -112,6 +121,53 @@ export class ConfigCoordinator extends SpreadsheetBaseOperator {
     assertFloorMatchesSeed(
       this.tableConfigOperator.newTableConfigs(),
       this.columnConfigOperator.newColumnConfigs(),
+    );
+  }
+  private _idNameMap(): IdNameMapGeneric {
+    return { tables: this._idNameMapTables(), tabs: this._idNameMapTabs() };
+  }
+  private _idNameMapTables(): IdNameMapGeneric["tables"] {
+    const { raw } = this.ss;
+    const columnConfigs = this.columnConfigOperator.newColumnConfigs();
+    const tableKeysByTableId = this.tableConfigOperator.tableKeysByTableId();
+    return raw.activeTableIds.reduce<IdNameMapGeneric["tables"]>(
+      (tables, tableId) => {
+        const { name, sheetGid } = raw.table(tableId);
+        const tableKey = tableKeysByTableId.get(tableId);
+        if (tableKey === undefined) {
+          tables[tableId] = {
+            name: this.ss.schema.titleToName(name),
+            sheetGid,
+          };
+          return tables;
+        }
+        tables[tableId] = {
+          name: tableKey,
+          sheetGid,
+          columns: columnIdsByName(
+            Val.assert(
+              columnConfigs[tableKey],
+              `column configs of ${tableKey}`,
+            ),
+          ),
+        };
+        return tables;
+      },
+      {},
+    );
+  }
+  private _idNameMapTabs(): IdNameMapGeneric["tabs"] {
+    const { raw } = this.ss;
+    return raw.activeSheetGids.reduce<IdNameMapGeneric["tabs"]>(
+      (tabs, sheetGid) => {
+        const sheet = raw.sheet(sheetGid);
+        tabs[String(sheetGid)] = {
+          title: sheet.title,
+          tableIds: sheet.tableIds,
+        };
+        return tabs;
+      },
+      {},
     );
   }
   private _syncConfigSheetRows(): string | undefined {

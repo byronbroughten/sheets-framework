@@ -1,6 +1,60 @@
-import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
-import { appConfigsText } from "./genConfigs.ts";
+import { beforeAll, describe, expect, it } from "vitest";
+
+import { appConfigs } from "../dev/generated/appConfigs.ts";
+import {
+  columnIdsByName,
+  type IdNameMapGeneric,
+} from "../src/05_Operators/configFileSource.ts";
+import { parseIdNameMapFileSource } from "../src/testSupport/parseIdNameMapFileSource.ts";
+import { appConfigsText, idNameMapPath } from "./genConfigs.ts";
+
+const devIdNameMapPath = idNameMapPath(
+  fileURLToPath(new URL("../dev/generated", import.meta.url)),
+);
+
+describe("the dev package's generated files", () => {
+  const { tableConfigs, columnConfigs } = appConfigs;
+  let idNameMap: IdNameMapGeneric;
+  beforeAll(() => {
+    idNameMap = parseIdNameMapFileSource(
+      readFileSync(devIdNameMapPath, "utf8"),
+    );
+  });
+
+  it("give each configured Table the same name, tab and column IDs in the ID-name map", () => {
+    Object.entries(tableConfigs).forEach(([tableKey, tableConfig]) => {
+      expect(idNameMap.tables[tableConfig.tableId]).toEqual({
+        name: tableKey,
+        sheetGid: tableConfig.sheetGid,
+        columns: columnIdsByName(
+          columnConfigs[tableKey as keyof typeof columnConfigs],
+        ),
+      });
+    });
+  });
+
+  it("give columns in the ID-name map only to configured Tables", () => {
+    const tableIdsWithColumns = Object.entries(idNameMap.tables).flatMap(
+      ([tableId, table]) => (table.columns === undefined ? [] : [tableId]),
+    );
+    expect(tableIdsWithColumns.sort()).toEqual(
+      Object.values(tableConfigs)
+        .map((tableConfig) => tableConfig.tableId)
+        .sort(),
+    );
+  });
+
+  it("place each Table in the ID-name map on a tab that lists it", () => {
+    Object.entries(idNameMap.tables).forEach(([tableId, table]) => {
+      expect(idNameMap.tabs[String(table.sheetGid)]?.tableIds).toContain(
+        tableId,
+      );
+    });
+  });
+});
 
 describe("appConfigsText", () => {
   const text = appConfigsText();

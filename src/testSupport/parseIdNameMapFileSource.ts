@@ -1,0 +1,81 @@
+import { Val } from "@byronbroughten/utils/val";
+
+import {
+  type IdNameMapGeneric,
+  idNameMapOpening,
+  type IdNameMapTab,
+  type IdNameMapTable,
+} from "../05_Operators/configFileSource";
+
+// Reads a generated ID-name map back, for the tests that check what gen:configs emitted.
+export function parseIdNameMapFileSource(source: string): IdNameMapGeneric {
+  const openingIndex = source.indexOf(idNameMapOpening);
+  if (openingIndex === -1) {
+    throw new Error("The ID-name map source has no IdNameMap interface.");
+  }
+  const parsed: unknown = JSON.parse(
+    source.slice(openingIndex + idNameMapOpening.length),
+  );
+  const idNameMap = validateRecord(parsed, "ID-name map");
+  return {
+    tables: mapRecord(
+      validateRecord(idNameMap.tables, "ID-name map tables"),
+      validateTable,
+    ),
+    tabs: mapRecord(
+      validateRecord(idNameMap.tabs, "ID-name map tabs"),
+      validateTab,
+    ),
+  };
+}
+
+function validateTable(value: unknown): IdNameMapTable {
+  const table = validateRecord(value, "ID-name map Table");
+  const name = Val.validate.string(table.name);
+  const sheetGid = Val.validate.number(table.sheetGid);
+  if (table.columns === undefined) return { name, sheetGid };
+  return {
+    name,
+    sheetGid,
+    columns: mapRecord(
+      validateRecord(table.columns, "ID-name map columns"),
+      Val.validate.string,
+    ),
+  };
+}
+
+function validateTab(value: unknown): IdNameMapTab {
+  const tab = validateRecord(value, "ID-name map tab");
+  if (!Array.isArray(tab.tableIds)) {
+    throw new Error("An ID-name map tab's tableIds is not an array.");
+  }
+  return {
+    title: Val.validate.string(tab.title),
+    tableIds: tab.tableIds.map((tableId: unknown) =>
+      Val.validate.string(tableId),
+    ),
+  };
+}
+
+function validateRecord(
+  value: unknown,
+  label: string,
+): Record<string, unknown> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new Error(`The ${label} is not an object.`);
+  }
+  return Object.fromEntries(Object.entries(value));
+}
+
+function mapRecord<VL>(
+  record: Record<string, unknown>,
+  validate: (value: unknown) => VL,
+): Record<string, VL> {
+  return Object.entries(record).reduce<Record<string, VL>>(
+    (mapped, [key, value]) => {
+      mapped[key] = validate(value);
+      return mapped;
+    },
+    {},
+  );
+}
