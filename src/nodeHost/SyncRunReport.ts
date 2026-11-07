@@ -99,10 +99,10 @@ function heldCount(held: SyncHeld | undefined): number {
 }
 
 function resultLine(result: SyncRunResult): string {
-  const { outcome } = result;
-  if (outcome.kind === "stopped") return stoppedLine(result);
-  if (outcome.kind === "refused") return refusedLine(result);
+  if (result.outcome.kind === "stopped") return stoppedLine(result);
+  if (result.outcome.kind === "refused") return refusedLine(result);
   if (result.mode === "dry run") return readyLine(result);
+  const { outcome } = result;
   if (outcome.kind === "sent") {
     return `SENT: ${outcome.summary}${checkClause(result)}.`;
   }
