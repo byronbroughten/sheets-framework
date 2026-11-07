@@ -2,7 +2,6 @@ import { Val } from "@byronbroughten/utils/val";
 
 import { columnConfigsByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
 import { assertFloorMatchesSeed } from "../01_SpreadsheetSchema/configReaders/floorSeedCheck";
-import type { ColumnConfigsGeneric } from "../01_SpreadsheetSchema/configReaders/makeConfigs";
 import { tableConfigsByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import {
   SpreadsheetBaseNamed,
@@ -10,7 +9,11 @@ import {
 } from "../04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
 import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
 import { ColumnConfigOperator } from "./ColumnConfigOperator";
-import { idNameMapFileSource, type IdNameMapGeneric } from "./configFileSource";
+import {
+  columnIdsByName,
+  idNameMapFileSource,
+  type IdNameMapGeneric,
+} from "./configFileSource";
 import { ConfigSheetFloor } from "./ConfigSheetFloor";
 import { assertFloorIdentityUnchanged } from "./floorIdentityGuard";
 import { SpreadsheetBaseOperator } from "./SpreadsheetBaseOperator";
@@ -121,31 +124,51 @@ export class ConfigCoordinator extends SpreadsheetBaseOperator {
     );
   }
   private _idNameMap(): IdNameMapGeneric {
+    return { tables: this._idNameMapTables(), tabs: this._idNameMapTabs() };
+  }
+  private _idNameMapTables(): IdNameMapGeneric["tables"] {
     const { raw } = this.ss;
     const columnConfigs = this.columnConfigOperator.newColumnConfigs();
     const tableKeysByTableId = this.tableConfigOperator.tableKeysByTableId();
-    const tables: IdNameMapGeneric["tables"] = {};
-    raw.activeTableIds.forEach((tableId) => {
-      const { name, sheetGid } = raw.table(tableId);
-      const tableKey = tableKeysByTableId.get(tableId);
-      if (tableKey === undefined) {
-        tables[tableId] = { name: this.ss.schema.titleToName(name), sheetGid };
-        return;
-      }
-      tables[tableId] = {
-        name: tableKey,
-        sheetGid,
-        columns: columnIdsByName(
-          Val.assert(columnConfigs[tableKey], `column configs of ${tableKey}`),
-        ),
-      };
-    });
-    const tabs: IdNameMapGeneric["tabs"] = {};
-    raw.activeSheetGids.forEach((sheetGid) => {
-      const sheet = raw.sheet(sheetGid);
-      tabs[String(sheetGid)] = { title: sheet.title, tableIds: sheet.tableIds };
-    });
-    return { tables, tabs };
+    return raw.activeTableIds.reduce<IdNameMapGeneric["tables"]>(
+      (tables, tableId) => {
+        const { name, sheetGid } = raw.table(tableId);
+        const tableKey = tableKeysByTableId.get(tableId);
+        if (tableKey === undefined) {
+          tables[tableId] = {
+            name: this.ss.schema.titleToName(name),
+            sheetGid,
+          };
+          return tables;
+        }
+        tables[tableId] = {
+          name: tableKey,
+          sheetGid,
+          columns: columnIdsByName(
+            Val.assert(
+              columnConfigs[tableKey],
+              `column configs of ${tableKey}`,
+            ),
+          ),
+        };
+        return tables;
+      },
+      {},
+    );
+  }
+  private _idNameMapTabs(): IdNameMapGeneric["tabs"] {
+    const { raw } = this.ss;
+    return raw.activeSheetGids.reduce<IdNameMapGeneric["tabs"]>(
+      (tabs, sheetGid) => {
+        const sheet = raw.sheet(sheetGid);
+        tabs[String(sheetGid)] = {
+          title: sheet.title,
+          tableIds: sheet.tableIds,
+        };
+        return tabs;
+      },
+      {},
+    );
   }
   private _syncConfigSheetRows(): string | undefined {
     this.ss.fetchAllSheetProperties();
@@ -174,18 +197,6 @@ export class ConfigCoordinator extends SpreadsheetBaseOperator {
       this.columnConfigOperator.declaredCellReport(),
     );
   }
-}
-
-function columnIdsByName(
-  tableColumnConfigs: ColumnConfigsGeneric[string],
-): Record<string, string> {
-  return Object.entries(tableColumnConfigs).reduce<Record<string, string>>(
-    (byName, [columnName, columnConfig]) => {
-      byName[columnName] = columnConfig.columnId;
-      return byName;
-    },
-    {},
-  );
 }
 
 function combineConfigSyncReports(

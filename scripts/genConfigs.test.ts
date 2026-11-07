@@ -5,9 +5,10 @@ import { beforeAll, describe, expect, it } from "vitest";
 
 import { appConfigs } from "../dev/generated/appConfigs.ts";
 import {
+  columnIdsByName,
   type IdNameMapGeneric,
-  parseIdNameMapFileSource,
 } from "../src/05_Operators/configFileSource.ts";
+import { parseIdNameMapFileSource } from "../src/testSupport/parseIdNameMapFileSource.ts";
 import { appConfigsText, idNameMapPath } from "./genConfigs.ts";
 
 const devIdNameMapPath = idNameMapPath(
@@ -28,16 +29,12 @@ describe.skipIf(!existsSync(devIdNameMapPath))(
 
     it("give each configured Table the same name, tab and column IDs in the ID-name map", () => {
       Object.entries(tableConfigs).forEach(([tableKey, tableConfig]) => {
-        const columns: Record<string, string> = {};
-        Object.entries(
-          columnConfigs[tableKey as keyof typeof columnConfigs],
-        ).forEach(([columnName, columnConfig]) => {
-          columns[columnName] = columnConfig.columnId;
-        });
         expect(idNameMap.tables[tableConfig.tableId]).toEqual({
           name: tableKey,
           sheetGid: tableConfig.sheetGid,
-          columns,
+          columns: columnIdsByName(
+            columnConfigs[tableKey as keyof typeof columnConfigs],
+          ),
         });
       });
     });

@@ -39,7 +39,19 @@ export interface IdNameMapGeneric {
   tabs: Record<string, IdNameMapTab>;
 }
 
-const idNameMapOpening = "export interface IdNameMap ";
+export const idNameMapOpening = "export interface IdNameMap ";
+
+export function columnIdsByName(
+  tableColumnConfigs: ColumnConfigsGeneric[string],
+): Record<string, string> {
+  return Object.entries(tableColumnConfigs).reduce<Record<string, string>>(
+    (byName, [columnName, columnConfig]) => {
+      byName[columnName] = columnConfig.columnId;
+      return byName;
+    },
+    {},
+  );
+}
 
 // The body is JSON, which is also a TypeScript type literal, so the file holds a type and no runtime value.
 export function idNameMapFileSource(idNameMap: IdNameMapGeneric): string {
@@ -54,16 +66,6 @@ export function idNameMapFileSource(idNameMap: IdNameMapGeneric): string {
     `${idNameMapOpening}${body}`,
     ``,
   ].join("\n");
-}
-
-export function parseIdNameMapFileSource(source: string): IdNameMapGeneric {
-  const openingIndex = source.indexOf(idNameMapOpening);
-  if (openingIndex === -1) {
-    throw new Error("The ID-name map source has no IdNameMap interface.");
-  }
-  return JSON.parse(
-    source.slice(openingIndex + idNameMapOpening.length),
-  ) as IdNameMapGeneric;
 }
 
 function indentFollowingLines(text: string): string {

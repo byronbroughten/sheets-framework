@@ -18,11 +18,11 @@ import {
   tableIdOnTab,
   valueConfigGid,
 } from "../testSupport/fakeTableConfigSheet";
+import { parseIdNameMapFileSource } from "../testSupport/parseIdNameMapFileSource";
 import {
   ConfigCoordinator,
   type ConfigRegeneration,
 } from "./ConfigCoordinator";
-import { parseIdNameMapFileSource } from "./configFileSource";
 
 type GridRange = GoogleAppsScript.Sheets.Schema.GridRange;
 

@@ -22,7 +22,7 @@ A `generatedDir` holds the three generated data files, `tableConfigs.ts`, `colum
 
 ## The ID-name map
 
-**`idNameMap.ts` is generated and never hand-edited**; regenerate it with the configs. It exports one type, `IdNameMap`, and no runtime value, so no tier's type check pays for it. It lists every live Table by Table ID with its codebase name (its Table key when it has API access, else its title through the word splitter) and its tab's GID, every tab by GID with its title and Table IDs, and, for each Table with API access, its columns as column name to column ID. A test in `scripts/genConfigs.test.ts` asserts the dev package's map and configs agree, so a hand edit or a partial regen fails CI.
+`idNameMap.ts` exports one type, `IdNameMap`, and no runtime value, so no tier's type check pays for it. It lists every live Table by Table ID with its codebase name (its Table key when it has API access, else its title through the word splitter) and its tab's GID, every tab by GID with its title and Table IDs, and, for each Table with API access, its columns as column name to column ID. A suite in `scripts/genConfigs.test.ts` asserts the dev package's map and configs agree. It skips itself until the dev map is first generated, so until then a hand edit or a partial regen does not fail CI.
 
 ## Why the three files depend on each other
 
@@ -30,7 +30,7 @@ Table keys live as keys in `tableConfigs.ts`, and `columnConfigs.ts` is keyed by
 
 ## What a regeneration runs, on the Node host
 
-Regenerate all three with `sheets-framework gen-configs` (see [`docs/how-it-runs/gen-configs.md`](./how-it-runs/gen-configs.md#what-gen-configs-writes)), which runs `ConfigCoordinator` (`05_Operators`) **on the Node host**, in your working tree; it is the only way to regenerate. It syncs the live Table Config sheet, then the live Column Config sheet (including adding any missing column IDs to business sheets), flushes all of that in one write, then reads the live Value Config sheet, and only then emits source for all three files and the ID-name map. **Live Table sampling on that run — Table header row, column-ID row, first data row — is for this run's Let api access Tables**, after Table Config is loaded, not for every Table. Everyday Table-placement checks still use last-generate sheet GIDs, one regen behind the live box. The command writes all five files or none, and runs `npm run tsc` itself afterward so a stale hand-written reference surfaces immediately.
+Regenerate them all with `sheets-framework gen-configs` (see [`docs/how-it-runs/gen-configs.md`](./how-it-runs/gen-configs.md#what-gen-configs-writes)), which runs `ConfigCoordinator` (`05_Operators`) **on the Node host**, in your working tree; it is the only way to regenerate. It syncs the live Table Config sheet, then the live Column Config sheet (including adding any missing column IDs to business sheets), flushes all of that in one write, then reads the live Value Config sheet, and only then emits source for all three files and the ID-name map. **Live Table sampling on that run — Table header row, column-ID row, first data row — is for this run's Let api access Tables**, after Table Config is loaded, not for every Table. Everyday Table-placement checks still use last-generate sheet GIDs, one regen behind the live box. The command writes all five files or none, and runs `npm run tsc` itself afterward so a stale hand-written reference surfaces immediately.
 
 ## One word splitter derives keys, names and prefixes
 
