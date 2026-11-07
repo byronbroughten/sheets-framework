@@ -52,7 +52,7 @@ describe("BraceFormula.compileForCell", () => {
     expect(
       BraceFormula.compileForCell({
         configs,
-        tableName: "item",
+        tableKey: "item",
         formula: "=${price}*${count}",
       }),
     ).toBe("=SINGLE(Items[Purchase Price])*SINGLE(Items[Count])");
@@ -62,7 +62,7 @@ describe("BraceFormula.compileForCell", () => {
     expect(
       BraceFormula.compileForCell({
         configs,
-        tableName: "item",
+        tableKey: "item",
         formula: "=COUNTA(${unit[rent]})+SUM(${item[count]})",
       }),
     ).toBe("=COUNTA(Unit_list[Rent])+SUM(Items[Count])");
@@ -72,7 +72,7 @@ describe("BraceFormula.compileForCell", () => {
     expect(
       BraceFormula.compileForCell({
         configs,
-        tableName: "item",
+        tableKey: "item",
         formula: '="${count} is ""${count}"""&${count}',
       }),
     ).toBe('="${count} is ""${count}"""&SINGLE(Items[Count])');
@@ -82,7 +82,7 @@ describe("BraceFormula.compileForCell", () => {
     expect(() =>
       BraceFormula.compileForCell({
         configs,
-        tableName: "item",
+        tableKey: "item",
         formula: "=${prise}*2",
       }),
     ).toThrow(
@@ -91,7 +91,7 @@ describe("BraceFormula.compileForCell", () => {
     expect(() =>
       BraceFormula.compileForCell({
         configs,
-        tableName: "item",
+        tableKey: "item",
         formula: "=${unit[price]}",
       }),
     ).toThrow(
@@ -100,7 +100,7 @@ describe("BraceFormula.compileForCell", () => {
     expect(() =>
       BraceFormula.compileForCell({
         configs,
-        tableName: "item",
+        tableKey: "item",
         formula: "=${units[rent]}",
       }),
     ).toThrow(
@@ -114,7 +114,7 @@ describe("BraceFormula.decompile", () => {
     expect(
       BraceFormula.decompile({
         configs,
-        tableName: "item",
+        tableKey: "item",
         formula:
           "=SINGLE(Items[Purchase Price])*COUNTA(Unit_list[Rent])+SUM(Items[Count])",
       }),
@@ -125,7 +125,7 @@ describe("BraceFormula.decompile", () => {
     expect(
       BraceFormula.decompile({
         configs,
-        tableName: "item",
+        tableKey: "item",
         formula: "=SINGLE(Unit_list[Rent])",
       }),
     ).toBe("=SINGLE(${unit[rent]})");
@@ -151,11 +151,11 @@ describe("BraceFormula.decompile", () => {
     expect(
       BraceFormula.decompile({
         configs: renamed,
-        tableName: "item",
+        tableKey: "item",
         formula: after,
       }),
     ).toBe(
-      BraceFormula.decompile({ configs, tableName: "item", formula: before }),
+      BraceFormula.decompile({ configs, tableKey: "item", formula: before }),
     );
   });
 
@@ -163,7 +163,7 @@ describe("BraceFormula.decompile", () => {
     expect(
       BraceFormula.decompile({
         configs,
-        tableName: "item",
+        tableKey: "item",
         formula:
           '=Other[Thing]&Items[Gone]&"Items[Count]"&SINGLE(\nItems[Count])',
       }),
@@ -175,11 +175,11 @@ describe("BraceFormula.decompile", () => {
       "=IF(${count}>0, ${price}/COUNTA(${unit[rent]}), SINGLE(${unit[rent]}))";
     const compiled = BraceFormula.compileForCell({
       configs,
-      tableName: "item",
+      tableKey: "item",
       formula,
     });
     expect(
-      BraceFormula.decompile({ configs, tableName: "item", formula: compiled }),
+      BraceFormula.decompile({ configs, tableKey: "item", formula: compiled }),
     ).toBe(formula);
   });
 });
@@ -187,14 +187,14 @@ describe("BraceFormula.decompile", () => {
 describe("BraceFormula.compileForRule", () => {
   // Header row 4 (index 3) from column C, so the first body row is row 5.
   const layout = {
-    topLeft: { rowIndex: SheetIndex.row(3), colIndex: SheetIndex.col(2) },
-    columnNames: ["count", "newColumn", "price"],
+    headerTopLeft: { rowIndex: SheetIndex.row(3), colIndex: SheetIndex.col(2) },
+    columnNamesLeftToRight: ["count", "newColumn", "price"],
   };
 
   it("anchors a bare brace's column to the first body row, relative by row", () => {
     expect(
       BraceFormula.compileForRule({
-        tableName: "item",
+        tableKey: "item",
         layout,
         formula: "=${price}>${newColumn}",
       }),
@@ -204,7 +204,7 @@ describe("BraceFormula.compileForRule", () => {
   it("gives an own-Table qualified brace the whole body column", () => {
     expect(
       BraceFormula.compileForRule({
-        tableName: "item",
+        tableKey: "item",
         layout,
         formula: "=COUNTIF(${item[count]}, ${count})>1",
       }),
@@ -214,7 +214,7 @@ describe("BraceFormula.compileForRule", () => {
   it("refuses a brace naming no column of the layout, or another Table", () => {
     expect(() =>
       BraceFormula.compileForRule({
-        tableName: "item",
+        tableKey: "item",
         layout,
         formula: "=${prise}",
       }),
@@ -223,7 +223,7 @@ describe("BraceFormula.compileForRule", () => {
     );
     expect(() =>
       BraceFormula.compileForRule({
-        tableName: "item",
+        tableKey: "item",
         layout,
         formula: "=${unit[rent]}",
       }),

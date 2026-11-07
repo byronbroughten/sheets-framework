@@ -13,9 +13,8 @@ export type BraceConfigs = Pick<
   "tableConfigs" | "columnConfigs"
 >;
 
-// tableName is the codebase name of the Table whose formula this is.
 interface FormulaText {
-  tableName: string;
+  tableKey: string;
   formula: string;
 }
 interface BraceFormulaProps extends FormulaText {
@@ -25,57 +24,68 @@ interface RuleFormulaProps extends FormulaText {
   layout: RuleLayout;
 }
 
-// `${columnName}` is the formula's own row; `${tableName[columnName]}` the whole column.
 interface Brace {
   text: string;
-  tableName: string;
+  tableKey: string;
   columnName: string;
-  isQualified: boolean;
+  isWholeColumn: boolean;
 }
 
-// The Table's top-left cell is its header row's first cell; columns are codebase names, left to right.
 export interface RuleLayout {
-  topLeft: { rowIndex: SheetRowIndex; colIndex: SheetColIndex };
-  columnNames: readonly string[];
+  headerTopLeft: { rowIndex: SheetRowIndex; colIndex: SheetColIndex };
+  columnNamesLeftToRight: readonly string[];
 }
 
 interface LiveTable {
-  tableName: string;
+  tableKey: string;
   columnNamesByHeader: Map<string, string>;
 }
 
-const stringLiteral = /"(?:[^"]|"")*"/.source;
-const braceText = /\$\{([^{}[\]"]+?)(?:\[([^{}[\]"]+)\])?\}/.source;
-const liveReference = /([A-Za-z_][\w.]*)\[([^[\]"]+)\]/.source;
+interface ConfiguredColumn {
+  tableKey: string;
+  columnName: string;
+}
+
+const formulaPatterns = {
+  stringLiteral: /"(?:[^"]|"")*"/.source,
+  brace: /\$\{([^{}[\]"]+?)(?:\[([^{}[\]"]+)\])?\}/.source,
+  liveReference: /([A-Za-z_][\w.]*)\[([^[\]"]+)\]/.source,
+} as const;
 
 export const BraceFormula = {
-  compileForCell({ configs, tableName, formula }: BraceFormulaProps): string {
-    return replaceBraces({ tableName, formula }, (brace) => {
+  compileForCell({ configs, tableKey, formula }: BraceFormulaProps): string {
+    return replaceBraces({ tableKey, formula }, (brace) => {
       const reference = liveReferenceOf(configs, brace, formula);
-      if (brace.isQualified) return reference;
+      if (brace.isWholeColumn) return reference;
       return `SINGLE(${reference})`;
     });
   },
   // Takes a layout rather than reading the configs, so a rule can compile against a planned layout.
-  compileForRule({ tableName, formula, layout }: RuleFormulaProps): string {
-    return replaceBraces({ tableName, formula }, (brace) => {
-      if (brace.tableName !== tableName) {
+  compileForRule({ tableKey, formula, layout }: RuleFormulaProps): string {
+    return replaceBraces({ tableKey, formula }, (brace) => {
+      if (brace.tableKey !== tableKey) {
         throw new Error(
-          `The brace ${brace.text} names another Table, which a rule's formula can't reach, in formula ${formula}.`,
+          braceMessage(
+            brace,
+            "names another Table, which a rule's formula can't reach",
+            formula,
+          ),
         );
       }
-      const offset = layout.columnNames.indexOf(brace.columnName);
+      const offset = layout.columnNamesLeftToRight.indexOf(brace.columnName);
       if (offset === -1) throw new Error(noColumnMessage(brace, formula));
-      const colIndex = SheetIndex.col(layout.topLeft.colIndex + offset);
-      const firstBodyRow = SheetIndex.row(layout.topLeft.rowIndex + 1);
-      if (!brace.isQualified) return schema.anchoredA1(colIndex, firstBodyRow);
-      const letter = schema.columnLetter(colIndex);
-      return `$${letter}$${firstBodyRow + 1}:$${letter}`;
+      const colIndex = SheetIndex.col(layout.headerTopLeft.colIndex + offset);
+      const firstBodyRow = SheetIndex.row(layout.headerTopLeft.rowIndex + 1);
+      if (brace.isWholeColumn) {
+        return schema.openColumnA1(colIndex, firstBodyRow);
+      }
+      return schema.anchoredA1(colIndex, firstBodyRow);
     });
   },
   // A reference to no configured column stays as Sheets wrote it.
-  decompile({ configs, tableName, formula }: BraceFormulaProps): string {
+  decompile({ configs, tableKey, formula }: BraceFormulaProps): string {
     const liveTables = liveTablesByName(configs);
+    const { stringLiteral, liveReference } = formulaPatterns;
     const pattern = new RegExp(
       `(${stringLiteral})|SINGLE\\(\\s*${liveReference}\\s*\\)|${liveReference}`,
       "g",
@@ -92,16 +102,18 @@ export const BraceFormula = {
       ) => {
         if (literal !== undefined) return literal;
         if (singleTable !== undefined && singleHeader !== undefined) {
-          const liveTable = liveTables.get(singleTable);
-          const columnName = liveTable?.columnNamesByHeader.get(singleHeader);
-          if (liveTable === undefined || columnName === undefined) return match;
-          if (liveTable.tableName === tableName) return `\${${columnName}}`;
-          return `SINGLE(\${${liveTable.tableName}[${columnName}]})`;
+          const column = configuredColumn(
+            liveTables,
+            singleTable,
+            singleHeader,
+          );
+          if (column === undefined) return match;
+          if (column.tableKey === tableKey) return `\${${column.columnName}}`;
+          return `SINGLE(${wholeColumnBrace(column)})`;
         }
-        const liveTable = liveTables.get(table);
-        const columnName = liveTable?.columnNamesByHeader.get(header);
-        if (liveTable === undefined || columnName === undefined) return match;
-        return `\${${liveTable.tableName}[${columnName}]}`;
+        const column = configuredColumn(liveTables, table, header);
+        if (column === undefined) return match;
+        return wholeColumnBrace(column);
       },
     );
   },
@@ -109,10 +121,13 @@ export const BraceFormula = {
 
 // A string literal is matched first and kept, so a brace inside one stays text.
 function replaceBraces(
-  { tableName, formula }: FormulaText,
+  { tableKey, formula }: FormulaText,
   replace: (brace: Brace) => string,
 ): string {
-  const pattern = new RegExp(`(${stringLiteral})|${braceText}`, "g");
+  const pattern = new RegExp(
+    `(${formulaPatterns.stringLiteral})|${formulaPatterns.brace}`,
+    "g",
+  );
   return formula.replace(
     pattern,
     (
@@ -125,16 +140,16 @@ function replaceBraces(
       if (second === undefined) {
         return replace({
           text,
-          tableName,
+          tableKey,
           columnName: first,
-          isQualified: false,
+          isWholeColumn: false,
         });
       }
       return replace({
         text,
-        tableName: first,
+        tableKey: first,
         columnName: second,
-        isQualified: true,
+        isWholeColumn: true,
       });
     },
   );
@@ -145,36 +160,57 @@ function liveReferenceOf(
   brace: Brace,
   formula: string,
 ): string {
-  const tableConfig = configs.tableConfigs[brace.tableName];
+  const tableConfig = configs.tableConfigs[brace.tableKey];
   if (tableConfig === undefined) {
-    throw new Error(
-      `The brace ${brace.text} names no Table, in formula ${formula}.`,
-    );
+    throw new Error(braceMessage(brace, "names no Table", formula));
   }
   const columnConfig =
-    configs.columnConfigs[brace.tableName]?.[brace.columnName];
+    configs.columnConfigs[brace.tableKey]?.[brace.columnName];
   if (columnConfig === undefined) {
     throw new Error(noColumnMessage(brace, formula));
   }
   return `${tableConfig.tableName}[${columnConfig.header}]`;
 }
 
+function braceMessage(brace: Brace, problem: string, formula: string): string {
+  return `The brace ${brace.text} ${problem}, in formula ${formula}.`;
+}
+
 function noColumnMessage(brace: Brace, formula: string): string {
-  return `The brace ${brace.text} names no column of Table ${brace.tableName}, in formula ${formula}.`;
+  return braceMessage(
+    brace,
+    `names no column of Table ${brace.tableKey}`,
+    formula,
+  );
 }
 
 function liveTablesByName(configs: BraceConfigs): Map<string, LiveTable> {
   return Object.entries(configs.tableConfigs).reduce(
-    (byName, [tableName, tableConfig]) => {
+    (byName, [tableKey, tableConfig]) => {
       const columnNamesByHeader = Object.entries(
-        configs.columnConfigs[tableName] ?? {},
+        configs.columnConfigs[tableKey] ?? {},
       ).reduce((byHeader, [columnName, columnConfig]) => {
         byHeader.set(columnConfig.header, columnName);
         return byHeader;
       }, new Map<string, string>());
-      byName.set(tableConfig.tableName, { tableName, columnNamesByHeader });
+      byName.set(tableConfig.tableName, { tableKey, columnNamesByHeader });
       return byName;
     },
     new Map<string, LiveTable>(),
   );
+}
+
+function configuredColumn(
+  liveTables: Map<string, LiveTable>,
+  liveTableName: string,
+  header: string,
+): ConfiguredColumn | undefined {
+  const liveTable = liveTables.get(liveTableName);
+  const columnName = liveTable?.columnNamesByHeader.get(header);
+  if (liveTable === undefined || columnName === undefined) return undefined;
+  return { tableKey: liveTable.tableKey, columnName };
+}
+
+function wholeColumnBrace({ tableKey, columnName }: ConfiguredColumn): string {
+  return `\${${tableKey}[${columnName}]}`;
 }

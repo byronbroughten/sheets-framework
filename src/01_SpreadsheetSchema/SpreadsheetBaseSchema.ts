@@ -42,6 +42,10 @@ export class SpreadsheetBaseSchema {
   anchoredA1(colIndex: SheetColIndex, rowIndex: SheetRowIndex): string {
     return `$${this.columnLetter(colIndex)}${rowIndex + 1}`;
   }
+  openColumnA1(colIndex: SheetColIndex, rowIndex: SheetRowIndex): string {
+    const letter = this.columnLetter(colIndex);
+    return `$${letter}$${rowIndex + 1}:$${letter}`;
+  }
   get colIdRowIndex(): number {
     return headRows.index("columnId");
   }
