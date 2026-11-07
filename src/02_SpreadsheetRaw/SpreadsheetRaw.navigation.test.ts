@@ -153,6 +153,8 @@ describe("Raw profile members", () => {
         | "topFormula"
         | "dataValidationConditionType"
         | "header"
+        | "actionRowValue"
+        | "groupHeading1"
         | "valueValidationStrings"
         | "validationConditionType"
         | "valueTitle"
