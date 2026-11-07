@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { loadSheetsConfig } from "./sheetsConfig.ts";
 
 const usage = `Usage: sheets-framework <command> [args]
-  gen-configs          regenerate the package's four generated files from its config sheets
+  gen-configs          regenerate the package's five generated files from its config sheets
   configs-diff         summarise how the generated files differ from HEAD; read-only
   chore [name] [--send] [--json]
                        dry-run a chore (or apply it with --send); no name lists them

@@ -1,5 +1,8 @@
+import { Val } from "@byronbroughten/utils/val";
+
 import { columnConfigsByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
 import { assertFloorMatchesSeed } from "../01_SpreadsheetSchema/configReaders/floorSeedCheck";
+import type { ColumnConfigsGeneric } from "../01_SpreadsheetSchema/configReaders/makeConfigs";
 import { tableConfigsByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import {
   SpreadsheetBaseNamed,
@@ -7,6 +10,7 @@ import {
 } from "../04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
 import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
 import { ColumnConfigOperator } from "./ColumnConfigOperator";
+import { idNameMapFileSource, type IdNameMapGeneric } from "./configFileSource";
 import { ConfigSheetFloor } from "./ConfigSheetFloor";
 import { assertFloorIdentityUnchanged } from "./floorIdentityGuard";
 import { SpreadsheetBaseOperator } from "./SpreadsheetBaseOperator";
@@ -18,6 +22,7 @@ export interface ConfigRegeneration {
   tableConfigs: string;
   columnConfigs: string;
   valueConfigs: string;
+  idNameMap: string;
   untypedColumnsSummary: string | undefined;
   floorReport: string;
   idPrefixReport: string | undefined;
@@ -27,7 +32,7 @@ export interface ConfigRegeneration {
 /**
  * Coordinates Spreadsheet/Table/Column Config: the config-sheet floor
  * first (one extra flush), sync the live config sheets, one more flush, then
- * emit all three generated files or none. Config maintenance is this Operator
+ * emit all three generated config files and the ID-name map, or none. Config maintenance is this Operator
  * family, not Raw or Named. npm run gen:configs is the only regeneration path.
  * docs/generated-data.md
  */
@@ -85,6 +90,7 @@ export class ConfigCoordinator extends SpreadsheetBaseOperator {
       tableConfigs: this.tableConfigOperator.toFileSource(makeConfigsImport),
       columnConfigs: this.columnConfigOperator.toFileSource(makeConfigsImport),
       valueConfigs: this.valueConfigOperator.toFileSource(makeConfigsImport),
+      idNameMap: idNameMapFileSource(this._idNameMap()),
       untypedColumnsSummary,
       floorReport,
       idPrefixReport: this.tableConfigOperator.idPrefixChangeReport(),
@@ -114,6 +120,33 @@ export class ConfigCoordinator extends SpreadsheetBaseOperator {
       this.columnConfigOperator.newColumnConfigs(),
     );
   }
+  private _idNameMap(): IdNameMapGeneric {
+    const { raw } = this.ss;
+    const columnConfigs = this.columnConfigOperator.newColumnConfigs();
+    const tableKeysByTableId = this.tableConfigOperator.tableKeysByTableId();
+    const tables: IdNameMapGeneric["tables"] = {};
+    raw.activeTableIds.forEach((tableId) => {
+      const { name, sheetGid } = raw.table(tableId);
+      const tableKey = tableKeysByTableId.get(tableId);
+      if (tableKey === undefined) {
+        tables[tableId] = { name: this.ss.schema.titleToName(name), sheetGid };
+        return;
+      }
+      tables[tableId] = {
+        name: tableKey,
+        sheetGid,
+        columns: columnIdsByName(
+          Val.assert(columnConfigs[tableKey], `column configs of ${tableKey}`),
+        ),
+      };
+    });
+    const tabs: IdNameMapGeneric["tabs"] = {};
+    raw.activeSheetGids.forEach((sheetGid) => {
+      const sheet = raw.sheet(sheetGid);
+      tabs[String(sheetGid)] = { title: sheet.title, tableIds: sheet.tableIds };
+    });
+    return { tables, tabs };
+  }
   private _syncConfigSheetRows(): string | undefined {
     this.ss.fetchAllSheetProperties();
     this.spreadsheetConfigOperator.validateExactlyOneDataRow();
@@ -141,6 +174,18 @@ export class ConfigCoordinator extends SpreadsheetBaseOperator {
       this.columnConfigOperator.declaredCellReport(),
     );
   }
+}
+
+function columnIdsByName(
+  tableColumnConfigs: ColumnConfigsGeneric[string],
+): Record<string, string> {
+  return Object.entries(tableColumnConfigs).reduce<Record<string, string>>(
+    (byName, [columnName, columnConfig]) => {
+      byName[columnName] = columnConfig.columnId;
+      return byName;
+    },
+    {},
+  );
 }
 
 function combineConfigSyncReports(
