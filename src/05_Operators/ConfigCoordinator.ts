@@ -2,6 +2,7 @@ import { Val } from "@byronbroughten/utils/val";
 
 import { columnConfigsByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
 import { assertFloorMatchesSeed } from "../01_SpreadsheetSchema/configReaders/floorSeedCheck";
+import type { IdNameMapGeneric } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
 import { tableConfigsByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import {
   SpreadsheetBaseNamed,
@@ -9,11 +10,7 @@ import {
 } from "../04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
 import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
 import { ColumnConfigOperator } from "./ColumnConfigOperator";
-import {
-  columnIdsByName,
-  idNameMapFileSource,
-  type IdNameMapGeneric,
-} from "./configFileSource";
+import { columnIdsByName, idNameMapFileSource } from "./configFileSource";
 import { ConfigSheetFloor } from "./ConfigSheetFloor";
 import { assertFloorIdentityUnchanged } from "./floorIdentityGuard";
 import { SpreadsheetBaseOperator } from "./SpreadsheetBaseOperator";
@@ -162,6 +159,7 @@ export class ConfigCoordinator extends SpreadsheetBaseOperator {
       (tabs, sheetGid) => {
         const sheet = raw.sheet(sheetGid);
         tabs[String(sheetGid)] = {
+          name: this.ss.schema.titleToName(sheet.title),
           title: sheet.title,
           tableIds: sheet.tableIds,
         };

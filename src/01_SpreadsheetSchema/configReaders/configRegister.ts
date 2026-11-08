@@ -1,4 +1,9 @@
 import type {
+  IdNameMapGeneric,
+  IdNameMapTab,
+  IdNameMapTable,
+} from "./idNameMapTypes";
+import type {
   ColumnConfigsBase,
   TableConfigsBase,
   ValueConfigsBase,
@@ -25,6 +30,20 @@ export type ConfigsOf<RG> = RG extends {
   : ConfigsNotRegistered;
 
 export type Configs = ConfigsOf<Register>;
+
+// Names nothing, so an app that hasn't generated its map yet still type-checks an empty `alterations.ts`.
+interface IdNameMapEmpty {
+  tables: Record<never, IdNameMapTable>;
+  tabs: Record<never, IdNameMapTab>;
+}
+
+export type IdNameMapOf<RG> = RG extends {
+  idNameMap: infer IM extends IdNameMapGeneric;
+}
+  ? IM
+  : IdNameMapEmpty;
+
+export type IdNameMapRegistered = IdNameMapOf<Register>;
 
 let installed: Configs | undefined;
 

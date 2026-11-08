@@ -1,11 +1,11 @@
 import { Val } from "@byronbroughten/utils/val";
 
-import {
-  type IdNameMapGeneric,
-  idNameMapOpening,
-  type IdNameMapTab,
-  type IdNameMapTable,
-} from "../05_Operators/configFileSource";
+import type {
+  IdNameMapGeneric,
+  IdNameMapTab,
+  IdNameMapTable,
+} from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
+import { idNameMapOpening } from "../05_Operators/configFileSource";
 
 // Reads a generated ID-name map back, for the tests that check what gen:configs emitted.
 export function parseIdNameMapFileSource(source: string): IdNameMapGeneric {
@@ -49,11 +49,13 @@ function validateTab(value: unknown): IdNameMapTab {
   if (!Array.isArray(tab.tableIds)) {
     throw new Error("An ID-name map tab's tableIds is not an array.");
   }
+  const tableIds = tab.tableIds.map((tableId: unknown) =>
+    Val.validate.string(tableId),
+  );
   return {
+    name: Val.validate.string(tab.name),
     title: Val.validate.string(tab.title),
-    tableIds: tab.tableIds.map((tableId: unknown) =>
-      Val.validate.string(tableId),
-    ),
+    tableIds,
   };
 }
 

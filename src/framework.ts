@@ -2,6 +2,11 @@
 /// <reference path="./TypeDeclarations/google-apps-script-ext.d.ts" />
 // The framework's public runtime entry (`.`): app code imports nothing else, bar `./testing` in tests.
 export type { Register } from "./01_SpreadsheetSchema/configReaders/configRegister";
+export {
+  type ClaimedTraits,
+  makePendingAlterations,
+  type PendingAlterations,
+} from "./01_SpreadsheetSchema/configReaders/intendedState";
 export { TableBaseNamed } from "./04_SpreadsheetNamed/ClassBases/TableBaseNamed";
 export {
   SpreadsheetBaseNamed,

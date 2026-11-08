@@ -5,6 +5,7 @@ import type {
   ColumnNameFiltered,
 } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
 import type { FloorTabName } from "../01_SpreadsheetSchema/configReaders/configSheetFloorSeed";
+import type { ClaimedTraits } from "../01_SpreadsheetSchema/configReaders/intendedState";
 import type { TableNameSimple } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { assertType, type IsExactly } from "../testSupport/typeAssertions";
 import type { Endpoint, Endpoints, EndpointsAll } from "./Endpoints";
@@ -40,6 +41,20 @@ describe("Endpoint's column parameters", () => {
       IsExactly<
         TimeLastRanOf<"runItem">,
         ColumnNameFiltered<"runItem", "string", false>
+      >
+    >(true);
+  });
+});
+
+describe("Endpoint's claimedTraits", () => {
+  it("is the optional claim, the same at every Table", () => {
+    assertType<
+      IsExactly<Endpoint<"runItem">["claimedTraits"], ClaimedTraits | undefined>
+    >(true);
+    assertType<
+      IsExactly<
+        Endpoint<TableNameSimple>["claimedTraits"],
+        ClaimedTraits | undefined
       >
     >(true);
   });
