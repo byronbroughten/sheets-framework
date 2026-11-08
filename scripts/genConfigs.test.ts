@@ -56,7 +56,6 @@ describe("the dev package's generated files", () => {
 
   it("name each tab in the ID-name map by its title camelCased", () => {
     Object.values(idNameMap.tabs).forEach((tab) => {
-      if (tab.name === undefined) return;
       expect(tab.name).toBe(Str.sentenceToCamelCase(tab.title));
     });
   });
