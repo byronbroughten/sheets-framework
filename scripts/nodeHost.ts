@@ -43,6 +43,7 @@ interface FetchResponse {
 }
 
 interface ClaspCredential {
+  label: string;
   client_id: string;
   client_secret: string;
   refresh_token: string;
@@ -92,7 +93,7 @@ export class SheetsTransport {
     const accessToken = status === 200 ? accessTokenOf(body) : null;
     if (!accessToken) {
       throw new Error(
-        `Could not refresh the "${claspAuth.user}" token (HTTP ${status}). ` +
+        `Could not refresh the token of the ${credential.label} (HTTP ${status}). ` +
           `Run sheets-framework setup-auth to re-mint it.\n${body}`,
       );
     }
@@ -136,6 +137,7 @@ export function claspCredential(
     );
   }
   return {
+    label: `"${user}" credential in ${claspRc}`,
     client_id: Val.validate.string(credential.client_id),
     client_secret: Val.validate.string(credential.client_secret),
     refresh_token: Val.validate.string(credential.refresh_token),
