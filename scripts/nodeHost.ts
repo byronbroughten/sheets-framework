@@ -8,7 +8,10 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { Val } from "@byronbroughten/utils/val";
 
 import type { SheetsHttpRequest } from "../src/00_Source/GoogleSheets/GoogleSheetsAPI.ts";
-import type { Configs } from "../src/01_SpreadsheetSchema/configReaders/configRegister.ts";
+import type {
+  Configs,
+  ConfigSetBase,
+} from "../src/01_SpreadsheetSchema/configReaders/configRegister.ts";
 import type { Endpoints } from "../src/06_API/Endpoints.ts";
 import type { NodeHost } from "../src/nodeHost/NodeHost.ts";
 import type { SheetsConfig } from "./sheetsConfig.ts";
@@ -26,12 +29,15 @@ const requiredConfigFiles = [
   "valueConfigs",
 ] as const;
 
+const optionalConfigFiles = ["tabConfigs", "retiredIdPrefixes"] as const;
+
 export const configFiles = [
   ...requiredConfigFiles,
-  "tabConfigs",
-  "retiredIdPrefixes",
+  ...optionalConfigFiles,
 ] as const;
 
+type RequiredConfigFile = (typeof requiredConfigFiles)[number];
+type OptionalConfigFile = (typeof optionalConfigFiles)[number];
 export type ConfigFile = (typeof configFiles)[number];
 
 interface FetchRequest {
@@ -189,33 +195,36 @@ export async function startNodeHost({
 export async function loadPackageConfigs({
   generatedDir,
 }: SheetsConfig): Promise<Configs> {
-  return {
+  const configs: Configs = {
     tableConfigs: await importConfig(generatedDir, "tableConfigs"),
+    columnConfigs: await importConfig(generatedDir, "columnConfigs"),
+    valueConfigs: await importConfig(generatedDir, "valueConfigs"),
+  };
+  return Object.assign(configs, {
     tabConfigs: await importConfigIfPresent(generatedDir, "tabConfigs"),
     retiredIdPrefixes: await importConfigIfPresent(
       generatedDir,
       "retiredIdPrefixes",
     ),
-    columnConfigs: await importConfig(generatedDir, "columnConfigs"),
-    valueConfigs: await importConfig(generatedDir, "valueConfigs"),
-  };
+  });
 }
 
-async function importConfig<CF extends ConfigFile>(
+async function importConfig<RF extends RequiredConfigFile>(
   generatedDir: string,
-  base: CF,
-): Promise<Configs[CF]> {
+  base: RF,
+): Promise<Configs[RF]> {
   const url = pathToFileURL(configFilePath(generatedDir, base));
   return (await import(url.href))[base];
 }
 
 // A file the package's last regen predates is absent, so its config reads as unset.
-async function importConfigIfPresent<CF extends ConfigFile>(
+async function importConfigIfPresent<OF extends OptionalConfigFile>(
   generatedDir: string,
-  base: CF,
-): Promise<Configs[CF] | undefined> {
-  if (!existsSync(configFilePath(generatedDir, base))) return undefined;
-  return importConfig(generatedDir, base);
+  base: OF,
+): Promise<ConfigSetBase[OF]> {
+  const filePath = configFilePath(generatedDir, base);
+  if (!existsSync(filePath)) return undefined;
+  return (await import(pathToFileURL(filePath).href))[base];
 }
 
 export function hasPackageConfigs({ generatedDir }: SheetsConfig): boolean {
