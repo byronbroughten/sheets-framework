@@ -1,9 +1,12 @@
 import type {
+  BoundedRange,
   GoogleGridRange,
   GridCell,
   GridSize,
+  IndexSpan,
+  ShiftDimension,
 } from "./flushClassifierTypes";
-import { isInRange } from "./RunReads";
+import { Grid } from "./Grid";
 
 export type CellOrigin =
   | { kind: "read"; cell: GridCell }
@@ -16,13 +19,6 @@ export type CellOrigin =
 type Layer = (
   cell: GridCell,
 ) => GridCell | Exclude<CellOrigin, { kind: "read" }>;
-
-export type ShiftDimension = "ROWS" | "COLUMNS";
-
-interface IndexSpan {
-  startIndex: number;
-  endIndex: number;
-}
 
 export interface DimensionShift {
   sheetGid: number;
@@ -39,12 +35,6 @@ export interface DimensionMove extends IndexSpan {
   dimension: ShiftDimension;
   // Counted before the moved span is lifted out, as Google counts it.
   destinationIndex: number;
-}
-
-export interface BoundedRange {
-  sheetGid: number;
-  rows: IndexSpan;
-  cols: IndexSpan;
 }
 
 // Maps a cell as it stands partway through a flush back to the cell the run read, one request at a time.
@@ -89,13 +79,16 @@ export class FlushTracker {
   }
   shift(shift: DimensionShift): this {
     if (shift.band === undefined || shift.count > 0) {
-      this._grow(shift.sheetGid, shift.dimension, shift.count);
+      this.grow(shift.sheetGid, shift.dimension, shift.count);
     }
     this.layers.push((cell) => shiftedBack(cell, shift));
     return this;
   }
   grow(sheetGid: number, dimension: ShiftDimension, count: number): this {
-    this._grow(sheetGid, dimension, count);
+    const size = this.gridSizes.get(sheetGid);
+    if (size !== undefined) {
+      this.gridSizes.set(sheetGid, Grid.grown(size, dimension, count));
+    }
     return this;
   }
   move(move: DimensionMove): this {
@@ -115,7 +108,7 @@ export class FlushTracker {
   }
   reorder(range: GoogleGridRange): this {
     this.layers.push((cell) =>
-      isInRange(range, cell) ? { kind: "reordered" } : cell,
+      Grid.isInRange(range, cell) ? { kind: "reordered" } : cell,
     );
     return this;
   }
@@ -130,87 +123,53 @@ export class FlushTracker {
     this.addedTableIds.add(tableId);
     return this;
   }
-  private _grow(
-    sheetGid: number,
-    dimension: ShiftDimension,
-    count: number,
-  ): void {
-    const size = this.gridSizes.get(sheetGid);
-    if (size === undefined) return;
-    if (dimension === "ROWS") {
-      this.gridSizes.set(sheetGid, {
-        ...size,
-        rowCount: size.rowCount + count,
-      });
-    } else {
-      this.gridSizes.set(sheetGid, {
-        ...size,
-        columnCount: size.columnCount + count,
-      });
-    }
-  }
 }
 
 function cellKey(cell: GridCell): string {
   return [cell.sheetGid, cell.rowIndex, cell.colIndex].join(":");
 }
 
-function isInSpan(index: number, span: IndexSpan): boolean {
-  return index >= span.startIndex && index < span.endIndex;
-}
-
-// The index along a dimension and the one across it, so one shift or move serves rows and columns.
-function alongAndAcross(
-  cell: GridCell,
-  dimension: ShiftDimension,
-): [number, number] {
-  if (dimension === "ROWS") return [cell.rowIndex, cell.colIndex];
-  return [cell.colIndex, cell.rowIndex];
-}
-
-function withAlong(
-  cell: GridCell,
-  dimension: ShiftDimension,
-  index: number,
-): GridCell {
-  if (dimension === "ROWS") return { ...cell, rowIndex: index };
-  return { ...cell, colIndex: index };
-}
-
 function shiftedBack(cell: GridCell, shift: DimensionShift): ReturnType<Layer> {
   if (cell.sheetGid !== shift.sheetGid) return cell;
-  const [along, across] = alongAndAcross(cell, shift.dimension);
-  if (shift.band !== undefined && !isInSpan(across, shift.band)) return cell;
+  const along = Grid.along(cell, shift.dimension);
+  const across = Grid.across(cell, shift.dimension);
+  if (shift.band !== undefined && !Grid.isInSpan(across, shift.band)) {
+    return cell;
+  }
   if (along < shift.startIndex) return cell;
   if (along < shift.startIndex + shift.count) return { kind: "created" };
-  return withAlong(cell, shift.dimension, along - shift.count);
+  return Grid.withAlong(cell, shift.dimension, along - shift.count);
 }
 
 function movedBack(cell: GridCell, move: DimensionMove): GridCell {
   if (cell.sheetGid !== move.sheetGid) return cell;
-  const [along] = alongAndAcross(cell, move.dimension);
+  const along = Grid.along(cell, move.dimension);
   const movedCount = move.endIndex - move.startIndex;
   const { startIndex, endIndex, destinationIndex } = move;
   if (destinationIndex >= endIndex) {
     const landedStart = destinationIndex - movedCount;
     if (along >= landedStart && along < destinationIndex) {
-      return withAlong(cell, move.dimension, startIndex + along - landedStart);
+      return Grid.withAlong(
+        cell,
+        move.dimension,
+        startIndex + along - landedStart,
+      );
     }
     if (along >= startIndex && along < landedStart) {
-      return withAlong(cell, move.dimension, along + movedCount);
+      return Grid.withAlong(cell, move.dimension, along + movedCount);
     }
     return cell;
   }
   if (destinationIndex <= startIndex) {
     if (along >= destinationIndex && along < destinationIndex + movedCount) {
-      return withAlong(
+      return Grid.withAlong(
         cell,
         move.dimension,
         startIndex + along - destinationIndex,
       );
     }
     if (along >= destinationIndex + movedCount && along < endIndex) {
-      return withAlong(cell, move.dimension, along - movedCount);
+      return Grid.withAlong(cell, move.dimension, along - movedCount);
     }
   }
   return cell;
@@ -236,9 +195,5 @@ function cutBack(
       colIndex: source.cols.startIndex + colOffset,
     };
   }
-  const isVacated =
-    cell.sheetGid === source.sheetGid &&
-    isInSpan(cell.rowIndex, source.rows) &&
-    isInSpan(cell.colIndex, source.cols);
-  return isVacated ? { kind: "created" } : cell;
+  return Grid.isInBounded(source, cell) ? { kind: "created" } : cell;
 }

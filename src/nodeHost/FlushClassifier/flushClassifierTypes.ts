@@ -1,6 +1,8 @@
 import type { GoogleRequest } from "../../00_Source/GoogleSheets/GoogleSheetsAPI";
 
 export type GoogleGridRange = GoogleAppsScript.Sheets.Schema.GridRange;
+export type GoogleGridCoordinate =
+  GoogleAppsScript.Sheets.Schema.GridCoordinate;
 export type GoogleCellData = GoogleAppsScript.Sheets.Schema.CellData;
 export type ExtendedValue = GoogleAppsScript.Sheets.Schema.ExtendedValue;
 export type RequestVerb = keyof GoogleRequest;
@@ -28,6 +30,19 @@ export interface GridCell {
 export interface GridSize {
   rowCount: number;
   columnCount: number;
+}
+
+export type ShiftDimension = "ROWS" | "COLUMNS";
+
+export interface IndexSpan {
+  startIndex: number;
+  endIndex: number;
+}
+
+export interface BoundedRange {
+  sheetGid: number;
+  rows: IndexSpan;
+  cols: IndexSpan;
 }
 
 export type HeldRow =

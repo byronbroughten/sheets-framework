@@ -328,6 +328,30 @@ describe("FlushClassifier.heldItems", () => {
         },
       ]);
     });
+
+    it("holds a cutPaste that pastes no values as emptying its source", () => {
+      const held = heldItems([
+        {
+          cutPaste: {
+            source: cellRange(rentRow, amount),
+            destination: {
+              sheetId: gid,
+              rowIndex: emptyRow,
+              columnIndex: amount,
+            },
+            pasteType: "PASTE_FORMAT",
+          },
+        },
+      ]);
+      expect(cellChanges(held)).toEqual([
+        {
+          requestIndex: 0,
+          column: "Amount",
+          row: rentId,
+          change: { kind: "overwrite", before: "1200", after: "(empty)" },
+        },
+      ]);
+    });
   });
 
   describe("other held kinds", () => {
@@ -467,6 +491,52 @@ describe("FlushClassifier.heldItems", () => {
           requestIndex: 1,
           verb: "updateCells",
         }),
+      ]);
+    });
+
+    it("holds an open-ended range on a tab no read sized as unmeasured", () => {
+      expect(
+        heldItems([
+          {
+            updateCells: {
+              range: { sheetId: 99, startRowIndex: 0 },
+              fields: "userEnteredValue",
+            },
+          },
+        ]),
+      ).toEqual([
+        {
+          kind: "unmeasured",
+          requestIndex: 0,
+          verb: "updateCells",
+          detail: "an open-ended range on gid 99, a tab no read sized",
+        },
+      ]);
+    });
+
+    it("holds a tab's grid properties as unmeasured and frees its title", () => {
+      expect(
+        heldItems([
+          {
+            updateSheetProperties: {
+              properties: { sheetId: gid, gridProperties: { rowCount: 5 } },
+              fields: "gridProperties.rowCount",
+            },
+          },
+          {
+            updateSheetProperties: {
+              properties: { sheetId: gid, title: "Paid" },
+              fields: "title",
+            },
+          },
+        ]),
+      ).toEqual([
+        {
+          kind: "unmeasured",
+          requestIndex: 0,
+          verb: "updateSheetProperties",
+          detail: "a tab's grid properties, which can drop rows or columns",
+        },
       ]);
     });
   });
@@ -645,6 +715,83 @@ describe("FlushClassifier.heldItems", () => {
       expect(cellChanges(held)).toEqual([
         {
           requestIndex: 2,
+          column: "Amount",
+          row: rentId,
+          change: { kind: "overwrite", before: "1200", after: "1" },
+        },
+      ]);
+    });
+
+    it("maps a write before a backward moveDimension's source back to the row moved down", () => {
+      const held = heldItems([
+        {
+          moveDimension: {
+            source: {
+              sheetId: gid,
+              dimension: "ROWS",
+              startIndex: depositRow,
+              endIndex: depositRow + 1,
+            },
+            destinationIndex: rentRow,
+          },
+        },
+        writeCell(rentRow, amount, { numberValue: 1 }),
+        writeCell(depositRow, amount, { numberValue: 1 }),
+      ]);
+      expect(cellChanges(held)).toEqual([
+        {
+          requestIndex: 2,
+          column: "Amount",
+          row: rentId,
+          change: { kind: "overwrite", before: "1200", after: "1" },
+        },
+      ]);
+    });
+
+    it("maps a write right of an inserted column back to the column that moved over", () => {
+      const held = heldItems([
+        {
+          insertDimension: {
+            range: {
+              sheetId: gid,
+              dimension: "COLUMNS",
+              startIndex: name,
+              endIndex: name + 1,
+            },
+          },
+        },
+        writeCell(rentRow, name, { stringValue: "Lease" }),
+        writeCell(rentRow, amount + 1, { numberValue: 1 }),
+      ]);
+      expect(cellChanges(held)).toEqual([
+        {
+          requestIndex: 2,
+          column: "Amount",
+          row: rentId,
+          change: { kind: "overwrite", before: "1200", after: "1" },
+        },
+      ]);
+    });
+
+    it("maps a write after a cutPaste back to the cut cell, and frees its emptied source", () => {
+      const held = heldItems([
+        {
+          cutPaste: {
+            source: cellRange(rentRow, amount),
+            destination: {
+              sheetId: gid,
+              rowIndex: emptyRow,
+              columnIndex: amount,
+            },
+            pasteType: "PASTE_NORMAL",
+          },
+        },
+        writeCell(emptyRow, amount, { numberValue: 1 }),
+        writeCell(rentRow, amount, { numberValue: 1 }),
+      ]);
+      expect(cellChanges(held)).toEqual([
+        {
+          requestIndex: 1,
           column: "Amount",
           row: rentId,
           change: { kind: "overwrite", before: "1200", after: "1" },

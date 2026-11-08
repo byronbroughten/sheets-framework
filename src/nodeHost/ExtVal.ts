@@ -7,7 +7,7 @@ const comparedKinds = [
   "formulaValue",
 ] as const;
 
-export const extendedValue = {
+export const ExtVal = {
   label(value: ExtendedValue | undefined): string {
     if (!value) return "(no value)";
     const { stringValue, numberValue, boolValue, formulaValue } = value;

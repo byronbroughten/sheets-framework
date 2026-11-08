@@ -1,5 +1,6 @@
-import { extendedValue } from "../extendedValue";
+import { ExtVal } from "../ExtVal";
 import type {
+  BoundedRange,
   CellAfter,
   CellChange,
   DropdownStyleReset,
@@ -8,7 +9,8 @@ import type {
   HeldItem,
   RequestVerb,
 } from "./flushClassifierTypes";
-import type { BoundedRange, FlushTracker } from "./FlushTracker";
+import type { FlushTracker } from "./FlushTracker";
+import { Grid } from "./Grid";
 import type { RunReads } from "./RunReads";
 
 type GoogleTable = GoogleAppsScript.Sheets.Schema.Table;
@@ -28,8 +30,8 @@ export interface RequestJudgeProps {
 
 // Judges one request's cells against the run's reads and gathers what it holds.
 export class RequestJudge {
-  readonly reads: RunReads;
-  readonly tracker: FlushTracker;
+  private reads: RunReads;
+  private tracker: FlushTracker;
   private requestIndex: number;
   private verb: RequestVerb;
   private dropdownStyleReset: DropdownStyleReset;
@@ -58,20 +60,16 @@ export class RequestJudge {
   cellsIn(range: GoogleGridRange): GridCell[] {
     const bounded = this.bounded(range);
     if (bounded === undefined) return [];
-    return boundedCells(bounded);
+    return Grid.cells(bounded);
   }
   // What a cell holds partway through the flush, as a value it could pass on.
   afterFrom(cell: GridCell): CellAfter {
     const origin = this.tracker.resolve(cell);
-    if (origin.kind === "read") {
-      const read = this.reads.valueAt(origin.cell);
-      if (read.kind === "read") {
-        return read.value === undefined
-          ? { kind: "cleared" }
-          : { kind: "value", value: read.value };
-      }
-    }
-    return { kind: "unknown", label: "(not read)" };
+    if (origin.kind !== "read") return notReadAfter;
+    const read = this.reads.valueAt(origin.cell);
+    if (read.kind === "unread") return notReadAfter;
+    if (read.value === undefined) return { kind: "cleared" };
+    return { kind: "value", value: read.value };
   }
   write(writes: CellWrite[]): this {
     writes.forEach(({ cell, after }) => this._judge(cell, after));
@@ -94,7 +92,7 @@ export class RequestJudge {
     ) {
       return this;
     }
-    this._hold({
+    this.held.push({
       kind: "dropdownReset",
       requestIndex: this.requestIndex,
       table: readTable?.name ?? table.name ?? tableId,
@@ -102,7 +100,7 @@ export class RequestJudge {
     return this;
   }
   holdFindReplace(find: string, replacement: string): this {
-    this._hold({
+    this.held.push({
       kind: "findReplace",
       requestIndex: this.requestIndex,
       find,
@@ -111,7 +109,7 @@ export class RequestJudge {
     return this;
   }
   holdUnmeasured(detail: string): this {
-    this._hold({
+    this.held.push({
       kind: "unmeasured",
       requestIndex: this.requestIndex,
       verb: this.verb,
@@ -132,7 +130,7 @@ export class RequestJudge {
     if (read.kind === "outsideTables") return;
     const heldCell = this.reads.heldCell(origin.cell);
     if (read.kind === "unread") {
-      this._hold({
+      this.held.push({
         kind: "unreadCell",
         requestIndex: this.requestIndex,
         verb: this.verb,
@@ -142,35 +140,20 @@ export class RequestJudge {
     }
     const before = read.value;
     if (before === undefined || before.formulaValue !== undefined) return;
-    if (after.kind === "value" && extendedValue.isEqual(after.value, before)) {
+    if (after.kind === "value" && ExtVal.isEqual(after.value, before)) {
       return;
     }
-    this._hold({
+    this.held.push({
       kind: "enteredData",
       requestIndex: this.requestIndex,
       verb: this.verb,
       cell: heldCell,
-      change: cellChange(extendedValue.label(before), after),
+      change: cellChange(ExtVal.label(before), after),
     });
   }
-  private _hold(item: HeldItem): void {
-    this.held.push(item);
-  }
 }
 
-export function boundedCells(range: BoundedRange): GridCell[] {
-  const { sheetGid, rows, cols } = range;
-  return spanIndexes(rows).flatMap((rowIndex) =>
-    spanIndexes(cols).map((colIndex) => ({ sheetGid, rowIndex, colIndex })),
-  );
-}
-
-function spanIndexes(span: { startIndex: number; endIndex: number }): number[] {
-  return Array.from(
-    { length: Math.max(span.endIndex - span.startIndex, 0) },
-    (_, offset) => span.startIndex + offset,
-  );
-}
+const notReadAfter: CellAfter = { kind: "unknown", label: "(not read)" };
 
 function hasDropdown(table: GoogleTable): boolean {
   return (table.columnProperties ?? []).some(
@@ -192,7 +175,7 @@ function cellChange(before: string, after: CellAfter): CellChange {
       return {
         kind: "overwrite",
         before,
-        after: extendedValue.label(after.value),
+        after: ExtVal.label(after.value),
       };
     case "unknown":
       return { kind: "overwrite", before, after: after.label };

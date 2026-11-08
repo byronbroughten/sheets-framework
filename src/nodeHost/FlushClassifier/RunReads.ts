@@ -1,19 +1,20 @@
 import { tableLayout } from "../../01_SpreadsheetSchema/tableLayout";
 import { colLetters } from "../colLetters";
-import { extendedValue } from "../extendedValue";
+import { ExtVal } from "../ExtVal";
 import type {
   ExtendedValue,
   FlushRead,
   GoogleCellData,
-  GoogleGridRange,
   GridCell,
   GridSize,
   HeldCell,
   HeldRow,
 } from "./flushClassifierTypes";
+import { Grid } from "./Grid";
 
 type GoogleSheet = GoogleAppsScript.Sheets.Schema.Sheet;
 type GoogleTable = GoogleAppsScript.Sheets.Schema.Table;
+type GoogleGridProperties = GoogleAppsScript.Sheets.Schema.GridProperties;
 
 interface SheetTables {
   tables: GoogleTable[];
@@ -95,7 +96,7 @@ export class RunReads {
     );
     if (colIndex === undefined) return undefined;
     const data = this._cellData({ ...cell, colIndex });
-    return extendedValue.text(data && readValue(data));
+    return ExtVal.text(data && readValue(data));
   }
   private _columnName(table: GoogleTable, colIndex: number): string {
     const range = table.range ?? {};
@@ -110,14 +111,12 @@ export class RunReads {
       rowIndex: range.startRowIndex ?? 0,
       colIndex,
     });
-    return (
-      extendedValue.text(header && readValue(header)) ?? colLetters(colIndex)
-    );
+    return ExtVal.text(header && readValue(header)) ?? colLetters(colIndex);
   }
   // A later read wins, since it saw the sheet after any flush between them.
   private _cellData(cell: GridCell): GoogleCellData | undefined {
     const read = this.latestFirst.find(({ gridRanges }) =>
-      gridRanges.some((range) => isInRange(range, cell)),
+      gridRanges.some((range) => Grid.isInRange(range, cell)),
     );
     if (read === undefined) return undefined;
     return blockCellData(read, cell) ?? {};
@@ -129,20 +128,21 @@ function tablesBySheet(reads: FlushRead[]): Map<number, SheetTables> {
     .flatMap((read) => read.spreadsheet.sheets ?? [])
     .filter(hasTablesRead)
     .reduce((bySheet, sheet) => {
-      const gridProperties = sheet.properties?.gridProperties;
       bySheet.set(sheet.properties?.sheetId ?? 0, {
         tables: sheet.tables ?? [],
-        gridSize:
-          gridProperties?.rowCount !== undefined &&
-          gridProperties.columnCount !== undefined
-            ? {
-                rowCount: gridProperties.rowCount,
-                columnCount: gridProperties.columnCount,
-              }
-            : undefined,
+        gridSize: gridSizeOf(sheet.properties?.gridProperties),
       });
       return bySheet;
     }, new Map<number, SheetTables>());
+}
+
+function gridSizeOf(
+  gridProperties: GoogleGridProperties | undefined,
+): GridSize | undefined {
+  const rowCount = gridProperties?.rowCount;
+  const columnCount = gridProperties?.columnCount;
+  if (rowCount === undefined || columnCount === undefined) return undefined;
+  return { rowCount, columnCount };
 }
 
 // Google omits an empty tables list, but every read that asks for Tables asks for grid properties too.
@@ -159,7 +159,9 @@ function bodyTableAt(
 ): GoogleTable | undefined {
   return tables.find((table) => {
     const range = table.range ?? {};
-    return isInRange(range, cell) && cell.rowIndex > (range.startRowIndex ?? 0);
+    return (
+      Grid.isInRange(range, cell) && cell.rowIndex > (range.startRowIndex ?? 0)
+    );
   });
 }
 
@@ -169,24 +171,6 @@ function tableColIndexes(table: GoogleTable): number[] {
   return Array.from(
     { length: endColumnIndex - startColumnIndex },
     (_, offset) => startColumnIndex + offset,
-  );
-}
-
-export function isInRange(range: GoogleGridRange, cell: GridCell): boolean {
-  return (
-    (range.sheetId ?? 0) === cell.sheetGid &&
-    isInSpan(cell.rowIndex, range.startRowIndex, range.endRowIndex) &&
-    isInSpan(cell.colIndex, range.startColumnIndex, range.endColumnIndex)
-  );
-}
-
-function isInSpan(
-  index: number,
-  startIndex: number | undefined,
-  endIndex: number | undefined,
-): boolean {
-  return (
-    index >= (startIndex ?? 0) && (endIndex === undefined || index < endIndex)
   );
 }
 
@@ -208,7 +192,7 @@ function blockCellData(
 }
 
 // A formula's text, else what the cell shows; undefined for an empty cell.
-export function readValue(data: GoogleCellData): ExtendedValue | undefined {
+function readValue(data: GoogleCellData): ExtendedValue | undefined {
   const formulaValue = data.userEnteredValue?.formulaValue;
   if (formulaValue !== undefined) return { formulaValue };
   const shown = data.effectiveValue ?? data.userEnteredValue;
