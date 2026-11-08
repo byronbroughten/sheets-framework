@@ -1,4 +1,4 @@
-// `sheets-framework gen-configs`: regenerates the package's five generated files from its live config sheets, on the Node host.
+// `sheets-framework gen-configs`: regenerates the package's generated files from its live config sheets, on the Node host.
 import { spawnSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
@@ -24,6 +24,8 @@ class ConfigFilesGenerator {
     const { generatedDir } = sheetsConfig;
     this.path = {
       tableConfigs: configFilePath(generatedDir, "tableConfigs"),
+      tabConfigs: configFilePath(generatedDir, "tabConfigs"),
+      retiredIdPrefixes: configFilePath(generatedDir, "retiredIdPrefixes"),
       columnConfigs: configFilePath(generatedDir, "columnConfigs"),
       valueConfigs: configFilePath(generatedDir, "valueConfigs"),
       appConfigs: join(generatedDir, "appConfigs.ts"),
@@ -36,6 +38,8 @@ class ConfigFilesGenerator {
   async run(): Promise<void> {
     const {
       tableConfigs,
+      tabConfigs,
+      retiredIdPrefixes,
       columnConfigs,
       valueConfigs,
       idNameMap,
@@ -45,9 +49,11 @@ class ConfigFilesGenerator {
       declaredCellReport,
     } = await this._generate();
 
-    // Write nothing until all three configs and the ID-name map are confirmed good; a subset would go stale.
+    // Write nothing until every config and the ID-name map are confirmed good; a subset would go stale.
     mkdirSync(this.sheetsConfig.generatedDir, { recursive: true });
     writeFileSync(this.path.tableConfigs, tableConfigs);
+    writeFileSync(this.path.tabConfigs, tabConfigs);
+    writeFileSync(this.path.retiredIdPrefixes, retiredIdPrefixes);
     writeFileSync(this.path.columnConfigs, columnConfigs);
     writeFileSync(this.path.valueConfigs, valueConfigs);
     writeFileSync(this.path.appConfigs, appConfigsText());
@@ -118,7 +124,7 @@ class ConfigFilesGenerator {
 
 function reportTscFailure(): void {
   console.error(
-    "\ngen:configs: regeneration succeeded and all five files were written, " +
+    "\ngen:configs: regeneration succeeded and every generated file was written," +
       "but this package's `npm run tsc` failed above. This usually means " +
       "hand-written references in this package still name a sheet or column " +
       "that no longer exists after this regeneration. Fix those references " +
@@ -135,7 +141,9 @@ export function appConfigsText(): string {
 import type {} from "@byronbroughten/sheets-framework";
 
 import { columnConfigs } from "./columnConfigs";
-import { retiredIdPrefixes, tabConfigs, tableConfigs } from "./tableConfigs";
+import { retiredIdPrefixes } from "./retiredIdPrefixes";
+import { tabConfigs } from "./tabConfigs";
+import { tableConfigs } from "./tableConfigs";
 import { valueConfigs } from "./valueConfigs";
 
 export const appConfigs = {

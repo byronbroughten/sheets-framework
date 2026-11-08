@@ -8,6 +8,7 @@ import {
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
 import { tableIdOnTab } from "../testSupport/fakeTableConfigSheet";
+import { TabConfigOperator } from "./TabConfigOperator";
 import { TableConfigOperator } from "./TableConfigOperator";
 
 const { columnConfigs } = installedConfigs();
@@ -637,7 +638,7 @@ describe("TableConfigOperator.newTableConfigs Table identity and position", () =
     const source = operator.toFileSource("../makeConfigs");
 
     expect(source).toContain(
-      'import { makeRetiredIdPrefixes, makeTabConfigs, makeTableConfigs } from "../makeConfigs";',
+      'import { makeTableConfigs } from "../makeConfigs";',
     );
     expect(source).toContain("export const tableConfigs = makeTableConfigs({");
     expect(source).toContain(
@@ -742,9 +743,29 @@ describe("TableConfigOperator Table keys and prefixes", () => {
     expect(operator.newTableConfigs().item?.idPrefix).toBe("itm2");
     expect(operator.retiredIdPrefixes()).toContain("itm");
   });
+
+  it("writes the retired prefixes through makeRetiredIdPrefixes", () => {
+    stubTwoTables({
+      widget: { name: "Item", columnIds: [] },
+      gadget: { name: "Gadget", columnIds: ["c:gdg:aaa"] },
+    });
+
+    const source =
+      syncedOperator().retiredIdPrefixesFileSource("../makeConfigs");
+    expect(source).toContain(
+      'import { makeRetiredIdPrefixes } from "../makeConfigs";',
+    );
+    expect(source).toMatch(
+      /export const retiredIdPrefixes = makeRetiredIdPrefixes\(\[.*"itm".*\]\);/,
+    );
+  });
 });
 
 describe("TabConfigOperator.newTabConfigs", () => {
+  function syncedTabOperator(): TabConfigOperator {
+    return new TabConfigOperator(syncedOperator().operatorProps);
+  }
+
   function stubTabs(widgetTab: Partial<FakeSheetProperties>): void {
     stubSheetsService({
       sheets: [
@@ -771,7 +792,7 @@ describe("TabConfigOperator.newTabConfigs", () => {
       hidden: true,
     });
 
-    const tabConfigs = syncedOperator().tabConfigOperator.newTabConfigs();
+    const tabConfigs = syncedTabOperator().newTabConfigs();
     expect(tabConfigs.widgetOrders).toEqual({
       sheetGid: widgetGid,
       title: "Widget orders",
@@ -788,12 +809,25 @@ describe("TabConfigOperator.newTabConfigs", () => {
     });
   });
 
+  it("writes the tabs through makeTabConfigs", () => {
+    stubTabs({});
+
+    const source = syncedTabOperator().toFileSource("../makeConfigs");
+    expect(source).toContain(
+      'import { makeTabConfigs } from "../makeConfigs";',
+    );
+    expect(source).toContain("export const tabConfigs = makeTabConfigs({");
+    expect(source).toContain(
+      `"widgetOrders": { "sheetGid": ${widgetGid}, "title": "Widget orders"`,
+    );
+  });
+
   it("records a theme colour by its name", () => {
     stubTabs({ tabColorStyle: { themeColor: "ACCENT1" } });
 
-    expect(
-      syncedOperator().tabConfigOperator.newTabConfigs().widgetOrders?.color,
-    ).toBe("ACCENT1");
+    expect(syncedTabOperator().newTabConfigs().widgetOrders?.color).toBe(
+      "ACCENT1",
+    );
   });
 
   it("fails when two tab titles give the same tab name, naming both", () => {
@@ -814,7 +848,7 @@ describe("TabConfigOperator.newTabConfigs", () => {
       ],
     });
 
-    expect(() => syncedOperator().tabConfigOperator.newTabConfigs()).toThrow(
+    expect(() => syncedTabOperator().newTabConfigs()).toThrow(
       'Tabs "Widget orders" and "Widget Orders" both give the tab name "widgetOrders".',
     );
   });

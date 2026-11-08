@@ -20,7 +20,7 @@
 
 - **The platform boundary**: no `GoogleSheets/` import, `GoogleAppsScript` type, or Apps Script global such as `SpreadsheetApp`. The framework's own config applies the same blocks through `sheetsSrcBlocks`, so the boundary can't drift between them.
 - **The public entry**: the framework is imported only as `@byronbroughten/sheets-framework`, and `/testing` only from `*.test.ts` and the `testSetupFiles`, which are the non-test files that install configs for tests. `src/generated/**` is exempt, because `gen:configs` writes a relative import of the framework's `makeConfigs`.
-- **The generated boundary**: outside `src/generated/`, a module imports only `generated/appConfigs`, never one of the three config files it gathers. Files inside `generated/` import each other freely.
+- **The generated boundary**: outside `src/generated/`, a module imports only `generated/appConfigs`, never one of the config files it gathers. Files inside `generated/` import each other freely.
 - **No relative import out of `src/`**. The `../` count differs by depth, so there is one block per depth, covering `src/` down to five folders deep. A file nested deeper gets none of the import rules; add a depth to the preset before nesting that far.
 
 ## A toast from the edit trigger reaches the editor who ticked

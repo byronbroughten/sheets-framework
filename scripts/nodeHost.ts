@@ -19,10 +19,17 @@ const claspAuth = {
 } as const;
 const maxResponseBytes = 256 * 1024 * 1024;
 
-export const configFiles = [
+// An app's configs register without the rest, so only these decide whether it has configs of its own.
+const requiredConfigFiles = [
   "tableConfigs",
   "columnConfigs",
   "valueConfigs",
+] as const;
+
+export const configFiles = [
+  ...requiredConfigFiles,
+  "tabConfigs",
+  "retiredIdPrefixes",
 ] as const;
 
 export type ConfigFile = (typeof configFiles)[number];
@@ -178,12 +185,17 @@ export async function startNodeHost({
   }).ensureGlobals();
 }
 
-// The three files in the package's generatedDir, as the package's entry passes them to the framework.
+// The generated files in the package's generatedDir, as the package's entry passes them to the framework.
 export async function loadPackageConfigs({
   generatedDir,
 }: SheetsConfig): Promise<Configs> {
   return {
     tableConfigs: await importConfig(generatedDir, "tableConfigs"),
+    tabConfigs: await importConfigIfPresent(generatedDir, "tabConfigs"),
+    retiredIdPrefixes: await importConfigIfPresent(
+      generatedDir,
+      "retiredIdPrefixes",
+    ),
     columnConfigs: await importConfig(generatedDir, "columnConfigs"),
     valueConfigs: await importConfig(generatedDir, "valueConfigs"),
   };
@@ -197,8 +209,17 @@ async function importConfig<CF extends ConfigFile>(
   return (await import(url.href))[base];
 }
 
+// A file the package's last regen predates is absent, so its config reads as unset.
+async function importConfigIfPresent<CF extends ConfigFile>(
+  generatedDir: string,
+  base: CF,
+): Promise<Configs[CF] | undefined> {
+  if (!existsSync(configFilePath(generatedDir, base))) return undefined;
+  return importConfig(generatedDir, base);
+}
+
 export function hasPackageConfigs({ generatedDir }: SheetsConfig): boolean {
-  return configFiles.every((base) =>
+  return requiredConfigFiles.every((base) =>
     existsSync(configFilePath(generatedDir, base)),
   );
 }

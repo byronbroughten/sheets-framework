@@ -1,5 +1,9 @@
-import type { TabConfigsBase } from "../01_SpreadsheetSchema/configReaders/makeConfigs";
+import {
+  makeImportLine,
+  type TabConfigsBase,
+} from "../01_SpreadsheetSchema/configReaders/makeConfigs";
 import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
+import { oneLinePerEntryFileSource } from "./configFileSource";
 import { SpreadsheetBaseOperator } from "./SpreadsheetBaseOperator";
 
 export class TabConfigOperator extends SpreadsheetBaseOperator {
@@ -32,5 +36,15 @@ export class TabConfigOperator extends SpreadsheetBaseOperator {
       },
       {},
     );
+  }
+  toFileSource(makeConfigsImport: string): string {
+    return [
+      makeImportLine(["makeTabConfigs"], makeConfigsImport),
+      ``,
+      `export const tabConfigs = makeTabConfigs(${oneLinePerEntryFileSource(
+        this.newTabConfigs(),
+      )});`,
+      ``,
+    ].join("\n");
   }
 }

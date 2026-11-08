@@ -25,7 +25,6 @@ import {
   type OperatorProps,
   SpreadsheetBaseOperator,
 } from "./SpreadsheetBaseOperator";
-import { TabConfigOperator } from "./TabConfigOperator";
 
 export interface ColumnReference {
   tableId: string;
@@ -41,9 +40,6 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
   }
   static init(): TableConfigOperator {
     return new TableConfigOperator(SpreadsheetBaseOperator.initOperatorProps());
-  }
-  get tabConfigOperator(): TabConfigOperator {
-    return new TabConfigOperator(this.operatorProps);
   }
   get tableConfigSync(): ConfigSyncState["tableConfigSync"] {
     return this.configSyncState.tableConfigSync;
@@ -270,18 +266,17 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
   }
   toFileSource(makeConfigsImport: string): string {
     return [
-      makeImportLine(
-        ["makeRetiredIdPrefixes", "makeTabConfigs", "makeTableConfigs"],
-        makeConfigsImport,
-      ),
+      makeImportLine(["makeTableConfigs"], makeConfigsImport),
       ``,
       `export const tableConfigs = makeTableConfigs(${oneLinePerEntryFileSource(
         this.newTableConfigs(),
       )});`,
       ``,
-      `export const tabConfigs = makeTabConfigs(${oneLinePerEntryFileSource(
-        this.tabConfigOperator.newTabConfigs(),
-      )});`,
+    ].join("\n");
+  }
+  retiredIdPrefixesFileSource(makeConfigsImport: string): string {
+    return [
+      makeImportLine(["makeRetiredIdPrefixes"], makeConfigsImport),
       ``,
       `export const retiredIdPrefixes = makeRetiredIdPrefixes(${JSON.stringify(
         this.retiredIdPrefixes(),

@@ -1,6 +1,6 @@
 # `tableConfigs` and Table Config: the Table list
 
-Part of [generated data](../generated-data.md). Table Config lists every Google Table in the spreadsheet, and `tableConfigs` holds the ones ticked Let api access; `hasIdColumn`, `hasNameColumn` and `idPrefix` are sampled from the described Table. The same file, `generated/tableConfigs.ts`, holds `tabConfigs`, the tab list, and `retiredIdPrefixes`.
+Part of [generated data](../generated-data.md). Table Config lists every Google Table in the spreadsheet, and `tableConfigs` holds the ones ticked Let api access; `hasIdColumn`, `hasNameColumn` and `idPrefix` are sampled from the described Table. Beside it, `generated/tabConfigs.ts` holds `tabConfigs`, the tab list, and `generated/retiredIdPrefixes.ts` holds `retiredIdPrefixes`.
 
 ## The Table Config sheet
 
