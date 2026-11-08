@@ -194,8 +194,10 @@ CLASP_USER="desktop-clasp-run"
 CLASPRC="$HOME/.clasprc.json"
 AGENT_AUTH_DIR="$HOME/.config/sheets-framework"
 AGENT_AUTH_FILE="$AGENT_AUTH_DIR/agent-auth.json"
-# Only what the Sheets transport and clasp push/deploy need, so code that skips
-# the framework reaches only what is shared with the agent account.
+AGENT_SKIPPED="agent credential (re-run this wizard and say yes at stage 7)"
+# clasp reads clasp_config_auth too, so an exported one would aim stage 4 at the agent file.
+unset clasp_config_auth
+# Only what the Sheets transport and clasp push/deploy need.
 AGENT_SCOPES=(
   "https://www.googleapis.com/auth/spreadsheets"
   "https://www.googleapis.com/auth/script.projects"
@@ -523,9 +525,9 @@ say ""
 if confirm "Mint the agent credential now?"; then
   mkdir -p "$AGENT_AUTH_DIR"
   chmod 700 "$AGENT_AUTH_DIR"
-  # clasp login has no flag for an exact scope list, but --use-project-scopes
-  # requests exactly a manifest's, so it gets a throwaway manifest of the three.
+  # clasp login has no exact-scope flag, but --use-project-scopes requests a throwaway manifest's.
   SCOPE_DIR=$(mktemp -d)
+  trap 'rm -rf "$SCOPE_DIR"' EXIT
   node -e '
     const fs = require("fs");
     const [dir, ...oauthScopes] = process.argv.slice(1);
@@ -549,18 +551,19 @@ if confirm "Mint the agent credential now?"; then
   rm -rf "$SCOPE_DIR"
   if (( AGENT_LOGIN_STATUS != 0 )); then
     warn "clasp login exited with status $AGENT_LOGIN_STATUS."
-    SKIPPED+=("agent credential (re-run this wizard and say yes at stage 7)")
+    SKIPPED+=("$AGENT_SKIPPED")
   else
     chmod 600 "$AGENT_AUTH_FILE"
     step "Wrote $AGENT_AUTH_FILE (chmod 600)."
     say ""
     say "To have the framework run as the agent account, set:"
     note "  export clasp_config_auth=$AGENT_AUTH_FILE"
-    say "To revoke it, sign in as the agent account and remove '$PROJECT_ID' at:"
+    say "To revoke it, sign in as the agent account, open the page below and"
+    say "remove the app named on $PROJECT_ID's consent screen (its Branding tab):"
     note "  https://myaccount.google.com/connections"
   fi
 else
-  SKIPPED+=("agent credential (re-run this wizard and say yes at stage 7)")
+  SKIPPED+=("$AGENT_SKIPPED")
 fi
 say ""
 pause "Press Enter for the summary"
