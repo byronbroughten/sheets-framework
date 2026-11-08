@@ -52,9 +52,11 @@ function validateTab(value: unknown): IdNameMapTab {
   const tableIds = tab.tableIds.map((tableId: unknown) =>
     Val.validate.string(tableId),
   );
-  const title = Val.validate.string(tab.title);
-  if (tab.name === undefined) return { title, tableIds };
-  return { name: Val.validate.string(tab.name), title, tableIds };
+  return {
+    name: Val.validate.string(tab.name),
+    title: Val.validate.string(tab.title),
+    tableIds,
+  };
 }
 
 function validateRecord(

@@ -1,5 +1,4 @@
 import type { StrictOmit } from "@byronbroughten/utils/obj";
-import type { SentenceToCamelCase } from "@byronbroughten/utils/str";
 
 import type { ColumnTypeBaseline } from "../columnBaseline";
 import type { IdNameMapRegistered } from "./configRegister";
@@ -21,11 +20,9 @@ type MappedColumnName<TN extends MappedTableName> =
     ? keyof CS & string
     : never;
 
-// The regen writes each tab's name, its title camelCased; a map from before that pays ~340 instantiations a title.
+// The regen writes each tab's name: camelCasing its title at the type level costs ~340 instantiations a title.
 type MappedTabName = {
-  [GID in keyof MapTabs]: MapTabs[GID] extends { name: infer TB extends string }
-    ? TB
-    : SentenceToCamelCase<MapTabs[GID]["title"]>;
+  [GID in keyof MapTabs]: MapTabs[GID]["name"];
 }[keyof MapTabs];
 
 // Deleting an entry says everything about it, so a trait beside the deletion can't be meant.
