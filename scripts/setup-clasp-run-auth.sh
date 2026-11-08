@@ -184,7 +184,7 @@ finish() {
 # Replace the example below. Set TOTAL_STAGES to match the stages you write.
 # ──────────────────────────────────────────────────────────────────────────
 
-TOTAL_STAGES=6
+TOTAL_STAGES=7
 
 # ── Wizard-specific setup ─────────────────────────────────────────────────
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -192,6 +192,17 @@ STATE_DIR="$HOME/.config/clasp-real-estate-manager"
 ENV_FILE="$STATE_DIR/wizard.env"
 CLASP_USER="desktop-clasp-run"
 CLASPRC="$HOME/.clasprc.json"
+AGENT_AUTH_DIR="$HOME/.config/sheets-framework"
+AGENT_AUTH_FILE="$AGENT_AUTH_DIR/agent-auth.json"
+AGENT_SKIPPED="agent credential (re-run this wizard and say yes at stage 7)"
+# clasp reads clasp_config_auth too, so an exported one would aim stage 4 at the agent file.
+unset clasp_config_auth
+# Only what the Sheets transport and clasp push/deploy need.
+AGENT_SCOPES=(
+  "https://www.googleapis.com/auth/spreadsheets"
+  "https://www.googleapis.com/auth/script.projects"
+  "https://www.googleapis.com/auth/script.deployments"
+)
 mkdir -p "$STATE_DIR"
 chmod 700 "$STATE_DIR"
 
@@ -497,6 +508,63 @@ say ""
 say "If gen:configs fails later with an auth error, the fix is stage 4 alone:"
 note "  cd $REPO_DIR"
 note "  npx clasp -u $CLASP_USER login --creds '$CREDS_FILE' --use-project-scopes"
+say ""
+pause "Press Enter to continue"
+
+# ── Stage 7 ───────────────────────────────────────────────────────────────
+stage "Mint the agent account's narrow credential"
+say "An agent's Sheets calls can run as a second Google account instead of"
+say "yours, the agent account, so code that skips the framework reaches only"
+say "what is shared with that account. This stage mints its credential, limited"
+say "to three scopes:"
+for scope in "${AGENT_SCOPES[@]}"; do note "  $scope"; done
+say ""
+say "It is written to $AGENT_AUTH_FILE (chmod 600), and"
+say "the transport reads it once clasp_config_auth names that file."
+say ""
+if confirm "Mint the agent credential now?"; then
+  mkdir -p "$AGENT_AUTH_DIR"
+  chmod 700 "$AGENT_AUTH_DIR"
+  # clasp login has no exact-scope flag, but --use-project-scopes requests a throwaway manifest's.
+  SCOPE_DIR=$(mktemp -d)
+  trap 'rm -rf "$SCOPE_DIR"' EXIT
+  node -e '
+    const fs = require("fs");
+    const [dir, ...oauthScopes] = process.argv.slice(1);
+    fs.writeFileSync(dir + "/.clasp.json", JSON.stringify({ scriptId: "agent-auth-scopes", rootDir: dir }));
+    fs.writeFileSync(dir + "/appsscript.json", JSON.stringify({ timeZone: "Etc/UTC", oauthScopes }));
+  ' "$SCOPE_DIR" "${AGENT_SCOPES[@]}"
+  say ""
+  say "A browser window is about to open. In it:"
+  step "Choose the AGENT account, not your own."
+  step "On 'Google hasn't verified this app': click 'Advanced', then"
+  step "  'Go to $PROJECT_ID (unsafe)'."
+  step "Grant the three scopes, then return to this terminal."
+  say ""
+  pause "Press Enter to launch the login flow"
+  say ""
+  set +e
+  (cd "$REPO_DIR" && npx clasp -A "$AGENT_AUTH_FILE" -P "$SCOPE_DIR/.clasp.json" \
+    login --creds "$CREDS_FILE" --use-project-scopes)
+  AGENT_LOGIN_STATUS=$?
+  set -e
+  rm -rf "$SCOPE_DIR"
+  if (( AGENT_LOGIN_STATUS != 0 )); then
+    warn "clasp login exited with status $AGENT_LOGIN_STATUS."
+    SKIPPED+=("$AGENT_SKIPPED")
+  else
+    chmod 600 "$AGENT_AUTH_FILE"
+    step "Wrote $AGENT_AUTH_FILE (chmod 600)."
+    say ""
+    say "To have the framework run as the agent account, set:"
+    note "  export clasp_config_auth=$AGENT_AUTH_FILE"
+    say "To revoke it, sign in as the agent account, open the page below and"
+    say "remove the app named on $PROJECT_ID's consent screen (its Branding tab):"
+    note "  https://myaccount.google.com/connections"
+  fi
+else
+  SKIPPED+=("$AGENT_SKIPPED")
+fi
 say ""
 pause "Press Enter for the summary"
 
