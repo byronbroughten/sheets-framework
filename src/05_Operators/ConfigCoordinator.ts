@@ -159,6 +159,7 @@ export class ConfigCoordinator extends SpreadsheetBaseOperator {
       (tabs, sheetGid) => {
         const sheet = raw.sheet(sheetGid);
         tabs[String(sheetGid)] = {
+          name: this.ss.schema.titleToName(sheet.title),
           title: sheet.title,
           tableIds: sheet.tableIds,
         };

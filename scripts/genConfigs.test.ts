@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { Str } from "@byronbroughten/utils/str";
 import { beforeAll, describe, expect, it } from "vitest";
 
 import { appConfigs } from "../dev/generated/appConfigs.ts";
@@ -51,6 +52,13 @@ describe("the dev package's generated files", () => {
         .map((tableConfig) => tableConfig.tableId)
         .sort(),
     );
+  });
+
+  it("name each tab in the ID-name map by its title camelCased", () => {
+    Object.values(idNameMap.tabs).forEach((tab) => {
+      if (tab.name === undefined) return;
+      expect(tab.name).toBe(Str.sentenceToCamelCase(tab.title));
+    });
   });
 
   it("place each Table in the ID-name map on a tab that lists it", () => {

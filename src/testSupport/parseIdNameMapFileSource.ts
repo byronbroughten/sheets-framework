@@ -49,12 +49,12 @@ function validateTab(value: unknown): IdNameMapTab {
   if (!Array.isArray(tab.tableIds)) {
     throw new Error("An ID-name map tab's tableIds is not an array.");
   }
-  return {
-    title: Val.validate.string(tab.title),
-    tableIds: tab.tableIds.map((tableId: unknown) =>
-      Val.validate.string(tableId),
-    ),
-  };
+  const tableIds = tab.tableIds.map((tableId: unknown) =>
+    Val.validate.string(tableId),
+  );
+  const title = Val.validate.string(tab.title);
+  if (tab.name === undefined) return { title, tableIds };
+  return { name: Val.validate.string(tab.name), title, tableIds };
 }
 
 function validateRecord(

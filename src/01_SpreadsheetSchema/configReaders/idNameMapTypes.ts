@@ -4,6 +4,8 @@ export interface IdNameMapTable {
   columns?: Record<string, string>;
 }
 export interface IdNameMapTab {
+  // Optional only until each package's map is regenerated with it.
+  name?: string;
   title: string;
   tableIds: string[];
 }

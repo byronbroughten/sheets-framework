@@ -21,9 +21,11 @@ type MappedColumnName<TN extends MappedTableName> =
     ? keyof CS & string
     : never;
 
-// A tab name is its title camelCased, as a Table's column name is its header.
+// The regen writes each tab's name, its title camelCased; a map from before that pays ~340 instantiations a title.
 type MappedTabName = {
-  [GID in keyof MapTabs]: SentenceToCamelCase<MapTabs[GID]["title"]>;
+  [GID in keyof MapTabs]: MapTabs[GID] extends { name: infer TB extends string }
+    ? TB
+    : SentenceToCamelCase<MapTabs[GID]["title"]>;
 }[keyof MapTabs];
 
 // Deleting an entry says everything about it, so a trait beside the deletion can't be meant.

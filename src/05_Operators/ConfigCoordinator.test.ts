@@ -567,17 +567,21 @@ describe("ConfigCoordinator.generateConfigFiles", () => {
     expect(tables.notes).toEqual({ name: "deskNotes", sheetGid: notesGid });
   });
 
-  it("lists every tab by GID with its title and Tables", () => {
+  it("lists every tab by GID with its name, title and Tables", () => {
     seedFixture();
 
     const { tabs } = parseIdNameMapFileSource(
       ConfigCoordinator.init().generateConfigFiles("../makeConfigs").idNameMap,
     );
     expect(tabs[String(testSheetGid)]).toEqual({
+      name: "item",
       title: "Item",
       tableIds: ["item"],
     });
-    expect(tabs[String(tableConfigGid)]?.title).toBe("Table Config");
+    expect(tabs[String(tableConfigGid)]).toMatchObject({
+      name: "tableConfig",
+      title: "Table Config",
+    });
   });
 
   it("emits no Spreadsheet Config file", () => {
