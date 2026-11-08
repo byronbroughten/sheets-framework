@@ -1,4 +1,5 @@
 import type { GoogleRequest } from "../../00_Source/GoogleSheets/GoogleSheetsAPI";
+import type { ForcedTrait } from "../../05_Operators/syncRunResult";
 
 export type GoogleGridRange = GoogleAppsScript.Sheets.Schema.GridRange;
 export type GoogleGridCoordinate =
@@ -14,12 +15,6 @@ export interface FlushRead {
 }
 
 export type DropdownStyleReset = "ask" | "allow";
-
-export interface ForcedTrait {
-  table: string;
-  column: string;
-  trait: string;
-}
 
 export interface GridCell {
   sheetGid: number;

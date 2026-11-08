@@ -82,6 +82,17 @@ export const BraceFormula = {
       return schema.anchoredA1(colIndex, firstBodyRow);
     });
   },
+  columnsNamed({ tableKey, formula }: FormulaText): ConfiguredColumn[] {
+    const columns: ConfiguredColumn[] = [];
+    replaceBraces({ tableKey, formula }, (brace) => {
+      columns.push({
+        tableKey: brace.tableKey,
+        columnName: brace.columnName,
+      });
+      return brace.text;
+    });
+    return columns;
+  },
   // A reference to no configured column stays as Sheets wrote it.
   decompile({ configs, tableKey, formula }: BraceFormulaProps): string {
     const liveTables = liveTablesByName(configs);

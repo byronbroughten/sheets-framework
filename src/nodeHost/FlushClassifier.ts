@@ -2,10 +2,10 @@ import { Obj } from "@byronbroughten/utils/obj";
 import { Val } from "@byronbroughten/utils/val";
 
 import type { GoogleRequest } from "../00_Source/GoogleSheets/GoogleSheetsAPI";
+import type { ForcedTrait } from "../05_Operators/syncRunResult";
 import type {
   DropdownStyleReset,
   FlushRead,
-  ForcedTrait,
   HeldItem,
 } from "./FlushClassifier/flushClassifierTypes";
 import { FlushTracker } from "./FlushClassifier/FlushTracker";

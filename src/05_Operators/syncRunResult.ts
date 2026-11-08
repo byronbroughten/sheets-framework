@@ -74,6 +74,8 @@ export type SyncOutsideReferenceEffect = "blank" | "ref";
 export interface SyncTabSubject {
   tab: string;
   gid?: number;
+  // A tab's own trait, as a Table subject's `path` holds one of a Table's.
+  path?: string;
 }
 
 export interface SyncSendLine {
@@ -131,13 +133,36 @@ export type SyncRefusal =
       path: string;
       brace: string;
       columns: string[];
+    }
+  | {
+      kind: "disagreeingDeclarers";
+      table: string;
+      path: string;
+      declarers: [SyncDeclarer, SyncDeclarer];
+    }
+  | {
+      kind: "touchesDeletion";
+      deleted: SyncSubject;
+      deletedAt: string;
+      touchedBy: string;
     };
+
+export interface SyncDeclarer {
+  declaredBy: string;
+  value: string;
+}
+
+export interface ForcedTrait {
+  table: string;
+  column: string;
+  trait: string;
+}
 
 export type SyncStop = SyncConflict | SyncHeadRowsStop;
 
 export interface SyncConflict {
   kind: "conflict";
-  subject: SyncTableSubject;
+  subject: SyncSubject;
   label: string;
   cause: string;
   yours: string;
@@ -204,7 +229,7 @@ export interface SyncConfigs {
 }
 
 export interface SyncHeldBackTrait {
-  subject: SyncTableSubject;
+  subject: SyncSubject;
   value: string;
 }
 
