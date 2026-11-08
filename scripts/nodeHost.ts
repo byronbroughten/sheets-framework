@@ -15,6 +15,9 @@ import type { SheetsConfig } from "./sheetsConfig.ts";
 
 const claspAuth = {
   user: "desktop-clasp-run",
+  // clasp's own name for a `.clasprc.json`-format file's one login.
+  agentUser: "default",
+  fileEnvVar: "clasp_config_auth",
   tokenUrl: "https://oauth2.googleapis.com/token",
 } as const;
 const maxResponseBytes = 256 * 1024 * 1024;
@@ -40,15 +43,16 @@ interface FetchResponse {
 }
 
 interface ClaspCredential {
+  label: string;
   client_id: string;
   client_secret: string;
   refresh_token: string;
 }
 
-const path = {
-  fetchSync: fileURLToPath(new URL("./fetchSync.js", import.meta.url)),
-  claspRc: fileURLToPath(new URL(".clasprc.json", `file://${homedir()}/`)),
-};
+const fetchSyncPath = fileURLToPath(new URL("./fetchSync.js", import.meta.url));
+
+// Node's built-in env proxy, so fetch reaches Google through the Bash sandbox's proxy with no dependency.
+const fetchSyncFlags = ["--use-env-proxy", "--disable-warning=UNDICI-EHPA"];
 
 export class SheetsTransport {
   accessToken: string | null = null;
@@ -89,7 +93,7 @@ export class SheetsTransport {
     const accessToken = status === 200 ? accessTokenOf(body) : null;
     if (!accessToken) {
       throw new Error(
-        `Could not refresh the "${claspAuth.user}" token (HTTP ${status}). ` +
+        `Could not refresh the token of the ${credential.label} (HTTP ${status}). ` +
           `Run sheets-framework setup-auth to re-mint it.\n${body}`,
       );
     }
@@ -108,24 +112,32 @@ function accessTokenOf(body: string): string | null {
   }
 }
 
-function claspCredential(): ClaspCredential {
+// The agent credential file when `clasp_config_auth` names one, else the developer's own clasp login.
+export function claspCredential(
+  env: NodeJS.ProcessEnv = process.env,
+  homeDir: string = homedir(),
+): ClaspCredential {
+  const agentFile = env[claspAuth.fileEnvVar];
+  const claspRc = agentFile || join(homeDir, ".clasprc.json");
+  const user = agentFile ? claspAuth.agentUser : claspAuth.user;
   let tokens;
   try {
-    ({ tokens } = JSON.parse(readFileSync(path.claspRc, "utf8")));
+    ({ tokens } = JSON.parse(readFileSync(claspRc, "utf8")));
   } catch (error) {
     throw new Error(
-      `Could not read ${path.claspRc}: ${error.message}. ` +
+      `Could not read ${claspRc}: ${error.message}. ` +
         "Run sheets-framework setup-auth.",
     );
   }
-  const credential = tokens?.[claspAuth.user];
+  const credential = tokens?.[user];
   if (!credential?.refresh_token) {
     throw new Error(
-      `No "${claspAuth.user}" credential in ${path.claspRc}. ` +
+      `No "${user}" credential in ${claspRc}. ` +
         "Run sheets-framework setup-auth.",
     );
   }
   return {
+    label: `"${user}" credential in ${claspRc}`,
     client_id: Val.validate.string(credential.client_id),
     client_secret: Val.validate.string(credential.client_secret),
     refresh_token: Val.validate.string(credential.refresh_token),
@@ -135,7 +147,7 @@ function claspCredential(): ClaspCredential {
 function fetchSync(request: FetchRequest): FetchResponse {
   const { status, stdout, stderr, error } = spawnSync(
     process.execPath,
-    [path.fetchSync],
+    [...fetchSyncFlags, fetchSyncPath],
     {
       input: JSON.stringify(request),
       encoding: "utf8",
