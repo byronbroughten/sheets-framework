@@ -29,15 +29,12 @@ const requiredConfigFiles = [
   "valueConfigs",
 ] as const;
 
-const optionalConfigFiles = ["tabConfigs", "retiredIdPrefixes"] as const;
-
 export const configFiles = [
   ...requiredConfigFiles,
-  ...optionalConfigFiles,
+  "tabConfigs",
+  "retiredIdPrefixes",
 ] as const;
 
-type RequiredConfigFile = (typeof requiredConfigFiles)[number];
-type OptionalConfigFile = (typeof optionalConfigFiles)[number];
 export type ConfigFile = (typeof configFiles)[number];
 
 interface FetchRequest {
@@ -195,33 +192,33 @@ export async function startNodeHost({
 export async function loadPackageConfigs({
   generatedDir,
 }: SheetsConfig): Promise<Configs> {
-  const configs: Configs = {
+  const configs: ConfigSetBase = {
     tableConfigs: await importConfig(generatedDir, "tableConfigs"),
-    columnConfigs: await importConfig(generatedDir, "columnConfigs"),
-    valueConfigs: await importConfig(generatedDir, "valueConfigs"),
-  };
-  return Object.assign(configs, {
     tabConfigs: await importConfigIfPresent(generatedDir, "tabConfigs"),
     retiredIdPrefixes: await importConfigIfPresent(
       generatedDir,
       "retiredIdPrefixes",
     ),
-  });
+    columnConfigs: await importConfig(generatedDir, "columnConfigs"),
+    valueConfigs: await importConfig(generatedDir, "valueConfigs"),
+  };
+  // The registered set may or may not carry the two optional files, and these are the generated files it registers.
+  return configs as Configs;
 }
 
-async function importConfig<RF extends RequiredConfigFile>(
+async function importConfig<CF extends ConfigFile>(
   generatedDir: string,
-  base: RF,
-): Promise<Configs[RF]> {
+  base: CF,
+): Promise<ConfigSetBase[CF]> {
   const url = pathToFileURL(configFilePath(generatedDir, base));
   return (await import(url.href))[base];
 }
 
 // A file the package's last regen predates is absent, so its config reads as unset.
-async function importConfigIfPresent<OF extends OptionalConfigFile>(
+async function importConfigIfPresent<CF extends ConfigFile>(
   generatedDir: string,
-  base: OF,
-): Promise<ConfigSetBase[OF]> {
+  base: CF,
+): Promise<ConfigSetBase[CF] | undefined> {
   const filePath = configFilePath(generatedDir, base);
   if (!existsSync(filePath)) return undefined;
   return (await import(pathToFileURL(filePath).href))[base];
