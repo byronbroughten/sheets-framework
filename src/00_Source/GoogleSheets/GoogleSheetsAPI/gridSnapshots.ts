@@ -1,6 +1,7 @@
 import { Val } from "@byronbroughten/utils/val";
 
 import type { CellValue } from "../../CellValues/cellValues";
+import type { ConditionalFormatRule } from "../../RawSource/ConditionalFormat";
 import type {
   GridCellSnapshot,
   GridRangeProps,
@@ -17,11 +18,15 @@ type GoogleSheet = GoogleAppsScript.Sheets.Schema.Sheet;
 type GoogleCellData = GoogleAppsScript.Sheets.Schema.CellData;
 
 export const googleGrid = {
-  toSpreadsheetSnapshot(spreadsheet: GoogleSpreadsheet): SpreadsheetSnapshot {
+  // The rule reader is passed in because conditionalFormats.ts imports this file.
+  toSpreadsheetSnapshot(
+    spreadsheet: GoogleSpreadsheet,
+    readConditionalFormats?: (sheet: GoogleSheet) => ConditionalFormatRule[],
+  ): SpreadsheetSnapshot {
     return {
       timeZone: spreadsheet.properties?.timeZone ?? null,
       sheets: Val.assert(spreadsheet.sheets, "spreadsheet.sheets").map(
-        toSheetSnapshot,
+        (sheet) => toSheetSnapshot(sheet, readConditionalFormats?.(sheet)),
       ),
     };
   },
@@ -43,9 +48,13 @@ export const googleGrid = {
   },
 };
 
-function toSheetSnapshot(sheet: GoogleSheet): SheetSnapshot {
+function toSheetSnapshot(
+  sheet: GoogleSheet,
+  conditionalFormats: ConditionalFormatRule[] | undefined,
+): SheetSnapshot {
   const properties = Val.assert(sheet.properties, "sheet.properties");
   return {
+    conditionalFormats,
     sheetGid: Val.assert(properties.sheetId, "sheetId"),
     title: properties.title ?? null,
     rowCount: properties.gridProperties?.rowCount,

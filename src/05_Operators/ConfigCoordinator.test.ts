@@ -1830,6 +1830,82 @@ describe("ConfigCoordinator placement check", () => {
   });
 });
 
+describe("ConfigCoordinator conditional-format rule read", () => {
+  const rulesGid = 777000222;
+  const separateRuleGet = "sheets(properties(sheetId),conditionalFormats)";
+
+  function seedSheetWithRule(): FakeSheetsService {
+    return seedFixture({
+      extraSheets: [
+        {
+          sheetId: rulesGid,
+          title: "Rules",
+          rows: buildGridRows({}),
+          conditionalFormats: [
+            {
+              ranges: [
+                {
+                  sheetId: rulesGid,
+                  startRowIndex: 4,
+                  endRowIndex: 8,
+                  startColumnIndex: 1,
+                  endColumnIndex: 2,
+                },
+              ],
+              booleanRule: {
+                condition: {
+                  type: "CUSTOM_FORMULA",
+                  values: [{ userEnteredValue: "=$B5>1" }],
+                },
+                format: { backgroundColor: { red: 1, green: 0, blue: 0 } },
+              },
+            },
+          ],
+        },
+      ],
+    });
+  }
+
+  it("brings every sheet's rules into Raw on the regen's plain get, with no separate rule get", () => {
+    const service = seedSheetWithRule();
+    const coordinator = ConfigCoordinator.init();
+
+    coordinator.generateConfigFiles("../makeConfigs");
+
+    expect(coordinator.ss.raw.sheet(rulesGid).conditionalFormatRules()).toEqual(
+      [
+        {
+          kind: "boolean",
+          ranges: [
+            {
+              sheetId: rulesGid,
+              startRowIndex: 4,
+              endRowIndex: 8,
+              startColumnIndex: 1,
+              endColumnIndex: 2,
+            },
+          ],
+          condition: { type: "CUSTOM_FORMULA", formula: "=$B5>1" },
+          format: { backgroundColor: { red: 1, green: 0, blue: 0 } },
+        },
+      ],
+    );
+    expect(service.getCalls.map(({ fields }) => fields)).not.toContain(
+      separateRuleGet,
+    );
+  });
+
+  it("leaves rules out of the config-sync endpoint's get", () => {
+    const service = seedSheetWithRule();
+
+    ConfigCoordinator.init().syncConfigSheetRows();
+
+    service.getCalls.forEach(({ fields }) => {
+      expect(fields).not.toContain("conditionalFormats");
+    });
+  });
+});
+
 describe("ConfigCoordinator.generateConfigFiles value sources", () => {
   const listGid = 889001;
   const ledgerGid = 889002;

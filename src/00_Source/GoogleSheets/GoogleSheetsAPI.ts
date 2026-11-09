@@ -1,5 +1,6 @@
 import { Val } from "@byronbroughten/utils/val";
 
+import type { ConditionalFormatRule } from "../RawSource/ConditionalFormat";
 import { PartialTableRefusal } from "../RawSource/PartialTableRefusal";
 import type {
   GridFetchOptions,
@@ -9,6 +10,7 @@ import type {
   RawSource,
   SheetConditionalFormatSnapshot,
   SheetEditProtectionSnapshot,
+  SheetPropertiesFetchOptions,
   SpreadsheetSnapshot,
   TableColumnPropertiesAdd,
   TableColumnPropertiesUpdate,
@@ -79,13 +81,15 @@ const timeZoneMask = "properties(timeZone)";
 const sheetPropertiesMask =
   "properties(sheetId,title,hidden,tabColorStyle,gridProperties(rowCount,columnCount,frozenRowCount,frozenColumnCount))";
 
+const sheetPropertiesAndTablesMask =
+  `${sheetPropertiesMask},` +
+  "tables(tableId,name,range,columnProperties(columnIndex,columnType))";
+
 // The time zone, grid size and column types ride every standing fetch, so none costs its own get.
 const fieldMasks = {
   timeZone: timeZoneMask,
-  sheetProperties:
-    `${timeZoneMask},` +
-    `sheets(${sheetPropertiesMask},` +
-    "tables(tableId,name,range,columnProperties(columnIndex,columnType)))",
+  sheetProperties: `${timeZoneMask},sheets(${sheetPropertiesAndTablesMask})`,
+  sheetPropertiesWithConditionalFormats: `${timeZoneMask},sheets(${sheetPropertiesAndTablesMask},conditionalFormats)`,
   conditionalFormats: "sheets(properties(sheetId),conditionalFormats)",
   protectedRanges: "sheets(properties(sheetId),protectedRanges)",
   gridWithProgrammaticFacts:
@@ -169,7 +173,17 @@ export class GoogleSheetsAPI implements RawSource {
       props.spreadsheetId,
     );
   }
-  fetchSheetProperties(): SpreadsheetSnapshot {
+  fetchSheetProperties(
+    options?: SheetPropertiesFetchOptions,
+  ): SpreadsheetSnapshot {
+    if (options?.includeConditionalFormats) {
+      return googleGrid.toSpreadsheetSnapshot(
+        this.sheets.Spreadsheets.get(this.spreadsheetId, {
+          fields: fieldMasks.sheetPropertiesWithConditionalFormats,
+        }),
+        conditionalFormatRulesOf,
+      );
+    }
     return googleGrid.toSpreadsheetSnapshot(
       this.sheets.Spreadsheets.get(this.spreadsheetId, {
         fields: fieldMasks.sheetProperties,
@@ -203,10 +217,7 @@ export class GoogleSheetsAPI implements RawSource {
   fetchConditionalFormatRules(): SheetConditionalFormatSnapshot[] {
     return this._fetchSheets(fieldMasks.conditionalFormats).map((sheet) => ({
       sheetGid: sheetGidOf(sheet),
-      // Google omits an empty list; observed: docs/sheets-behaviour.md#empty-lists-and-zero-valued-fields.
-      rules: (sheet.conditionalFormats ?? []).map((rule, index) =>
-        googleConditionalFormatRule.toConditionalFormatRule(rule, index),
-      ),
+      rules: conditionalFormatRulesOf(sheet),
     }));
   }
   // The code assumes Google drops an empty protectedRanges list the same way; observed: docs/sheets-behaviour.md#reading-protections-back.
@@ -244,6 +255,13 @@ export class GoogleSheetsAPI implements RawSource {
     });
     return Val.assert(spreadsheet.sheets, "spreadsheet.sheets");
   }
+}
+
+function conditionalFormatRulesOf(sheet: GoogleSheet): ConditionalFormatRule[] {
+  // Google omits an empty list; observed: docs/sheets-behaviour.md#empty-lists-and-zero-valued-fields.
+  return (sheet.conditionalFormats ?? []).map((rule, index) =>
+    googleConditionalFormatRule.toConditionalFormatRule(rule, index),
+  );
 }
 
 function sheetGidOf(sheet: GoogleSheet): number {

@@ -35,7 +35,12 @@ export const googleConditionalFormatRule = {
     const ranges = (rule.ranges ?? []).map(googleGrid.toGridRangeProps);
     const modelled = toModelableRule(rule, ranges);
     if (modelled === null) {
-      return { kind: "unmodelable", ranges, index };
+      return {
+        kind: "unmodelable",
+        ranges,
+        index,
+        rawContent: JSON.stringify({ ...rule, ranges: undefined }),
+      };
     }
     return modelled;
   },

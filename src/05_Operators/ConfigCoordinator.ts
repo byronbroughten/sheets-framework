@@ -1,5 +1,6 @@
 import { Val } from "@byronbroughten/utils/val";
 
+import type { SheetPropertiesFetchOptions } from "../00_Source/RawSource/RawSource";
 import { columnConfigsByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
 import { assertFloorMatchesSeed } from "../01_SpreadsheetSchema/configReaders/floorSeedCheck";
 import type { IdNameMapGeneric } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
@@ -87,7 +88,9 @@ export class ConfigCoordinator extends SpreadsheetBaseOperator {
   }
   generateConfigFiles(makeConfigsImport: string): ConfigRegeneration {
     const floorReport = this._ensureFloorAndFlush();
-    const untypedColumnsSummary = this._syncConfigSheetRows();
+    const untypedColumnsSummary = this._syncConfigSheetRows({
+      includeConditionalFormats: true,
+    });
     this.ss.batchUpdateGSheets();
     this.valueConfigOperator.fetchAfterColumnConfigSynced();
     this._assertFloorIdentityUnchanged();
@@ -177,8 +180,10 @@ export class ConfigCoordinator extends SpreadsheetBaseOperator {
       {},
     );
   }
-  private _syncConfigSheetRows(): string | undefined {
-    this.ss.fetchAllSheetProperties();
+  private _syncConfigSheetRows(
+    propertiesFetch?: SheetPropertiesFetchOptions,
+  ): string | undefined {
+    this.ss.fetchAllSheetProperties(propertiesFetch);
     this.spreadsheetConfigOperator.validateExactlyOneDataRow();
     this.tableConfigOperator.prepFetchForSync();
     this.columnConfigOperator.prepFetchWithTableConfig();
