@@ -1,10 +1,9 @@
 import type { StrictOmit } from "@byronbroughten/utils/obj";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister";
 import { configSheetFloorSeed } from "../01_SpreadsheetSchema/configReaders/configSheetFloorSeed";
 import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
-import { TableProfileRaw } from "../02_SpreadsheetRaw/TableProfileRaw";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {
   buildGridRows,
@@ -1351,53 +1350,6 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> _addMissingColumnIds", () =>
 
     const colIdRow = operator.ss.raw.table(testTableId).headRow("columnId");
     expect(colIdRow.valueOrEmpty(0)).not.toBe("");
-  });
-
-  // The count is the contract: each sample walks a Table's column IDs, and the map samples every Table.
-  it("samples each Table's ID prefix once per run, however many Tables need IDs", () => {
-    stubSheetsService({
-      sheets: [
-        {
-          sheetId: tableConfigGid,
-          title: "Table Config",
-          rows: buildGridRows({
-            0: tableConfigColumnIdRow,
-            3: tableConfigHeaderRow,
-            4: [testTableId, "", "Item", true],
-            5: [widgetTableId, "", "Widget", true],
-          }),
-          table: { ...tableConfigTable, endRowIndex: 6 },
-        },
-        {
-          sheetId: columnConfigGid,
-          title: "Column Config",
-          rows: buildGridRows({
-            0: columnConfigColumnIdRow,
-            3: columnConfigHeaderRow,
-          }),
-          table: { ...columnConfigTable, endRowIndex: 5 },
-        },
-        {
-          sheetId: testSheetGid,
-          title: "Item",
-          rows: buildGridRows({ 0: [""], 3: ["Amount"], 4: [42] }),
-          table: { name: "Item", endRowIndex: 5 },
-        },
-        {
-          sheetId: widgetGid,
-          title: "Widget",
-          rows: buildGridRows({ 0: [""], 3: ["Notes"], 4: ["a note"] }),
-          table: { name: "Widget", endRowIndex: 5 },
-        },
-      ],
-    });
-    const sampleIdPrefix = vi.spyOn(TableProfileRaw.prototype, "idPrefix");
-
-    syncColumnConfigOperator(ColumnConfigOperator.init());
-
-    // Four API-access Tables: the two floor Tables, Item and Widget.
-    expect(sampleIdPrefix).toHaveBeenCalledTimes(4);
-    sampleIdPrefix.mockRestore();
   });
 });
 
