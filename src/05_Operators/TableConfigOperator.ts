@@ -142,7 +142,7 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
     this.ss.raw.validateHeadersInZone(this.tableIdsApiAccesses());
   }
   idPrefix(tableId: string): string {
-    return Val.assert(this._idPrefixesByTableId().get(tableId), "ID prefix");
+    return idPrefixIn(this._idPrefixesByTableId(), tableId);
   }
   private _idPrefixesByTableId(): Map<string, string> {
     const prefixesInUse = new Set<string>();
@@ -212,10 +212,7 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
           `Tables "${existing.tableName}" and "${tableName}" both give the key "${tableKey}".`,
         );
       }
-      const idPrefix = Val.assert(
-        idPrefixesByTableId.get(tableId),
-        "ID prefix",
-      );
+      const idPrefix = idPrefixIn(idPrefixesByTableId, tableId);
       const headerRow = table.headRow("header");
       tableConfigs[tableKey] = {
         tableId,
@@ -289,6 +286,13 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
       ``,
     ].join("\n");
   }
+}
+
+function idPrefixIn(
+  idPrefixesByTableId: Map<string, string>,
+  tableId: string,
+): string {
+  return Val.assert(idPrefixesByTableId.get(tableId), "ID prefix");
 }
 
 function columnReferenceLabel(reference: string): string {
