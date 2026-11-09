@@ -147,7 +147,8 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
   private _idPrefixesByTableId(): Map<string, string> {
     const prefixesInUse = new Set<string>();
     const assigned = new Map<string, string>();
-    this._apiAccessTables().forEach((table) => {
+    const apiAccessTables = this._apiAccessTables();
+    apiAccessTables.forEach((table) => {
       const sampled = table.profile.idPrefix();
       if (sampled === undefined) return;
       prefixesInUse.add(sampled);
@@ -157,9 +158,9 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
     const retiredPrefixes = idPrefixes.retiredOrGone({
       previouslyRetired: configRetiredIdPrefixes(),
       previousByTableId: previousIdPrefixesByTableId(),
-      liveTableIds: new Set(this.tableIdsApiAccesses()),
+      liveTableIds: new Set(apiAccessTables.map((table) => table.tableId)),
     });
-    this._apiAccessTables().forEach((table) => {
+    apiAccessTables.forEach((table) => {
       if (assigned.has(table.tableId)) return;
       const generated = idPrefixes.fromTitle({
         title: table.name,
@@ -201,6 +202,7 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
   newTableConfigs(): TableConfigsBase {
     const tableConfigs: TableConfigsBase = {};
     const idPrefixLabels: IdPrefixLabel[] = [];
+    const idPrefixesByTableId = this._idPrefixesByTableId();
     this._apiAccessTables().forEach((table) => {
       const { tableId, name: tableName } = table;
       const tableKey = this.schema.titleToName(tableName);
@@ -210,7 +212,10 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
           `Tables "${existing.tableName}" and "${tableName}" both give the key "${tableKey}".`,
         );
       }
-      const idPrefix = this.idPrefix(tableId);
+      const idPrefix = Val.assert(
+        idPrefixesByTableId.get(tableId),
+        "ID prefix",
+      );
       const headerRow = table.headRow("header");
       tableConfigs[tableKey] = {
         tableId,
