@@ -1,0 +1,33 @@
+import { makeTabConfigs } from "../../src/01_SpreadsheetSchema/configReaders/makeConfigs";
+
+export const tabConfigs = makeTabConfigs({
+  "test": { "sheetGid": 604825146, "title": "Test", "color": null, "hidden": false, "frozenRows": 0, "frozenColumns": 0 },
+  "spreadsheetConfig": { "sheetGid": 1967106628, "title": "Spreadsheet Config", "color": null, "hidden": false, "frozenRows": 0, "frozenColumns": 0 },
+  "tableConfig": { "sheetGid": 210603630, "title": "Table Config", "color": null, "hidden": false, "frozenRows": 0, "frozenColumns": 0 },
+  "columnConfig": { "sheetGid": 2034522667, "title": "Column Config", "color": null, "hidden": false, "frozenRows": 0, "frozenColumns": 0 },
+  "valueConfig": { "sheetGid": 2119236084, "title": "Value Config", "color": null, "hidden": false, "frozenRows": 0, "frozenColumns": 0 },
+  "item": { "sheetGid": 1100001, "title": "Item", "color": null, "hidden": false, "frozenRows": 0, "frozenColumns": 0 },
+  "valueTypes": { "sheetGid": 1100002, "title": "Value Types", "color": null, "hidden": false, "frozenRows": 0, "frozenColumns": 0 },
+  "log": { "sheetGid": 1100003, "title": "Log", "color": null, "hidden": false, "frozenRows": 0, "frozenColumns": 0 },
+  "runItem": { "sheetGid": 1100004, "title": "Run Item", "color": null, "hidden": false, "frozenRows": 0, "frozenColumns": 0 },
+  "computed": { "sheetGid": 1100005, "title": "Computed", "color": null, "hidden": false, "frozenRows": 0, "frozenColumns": 0 },
+  "dates": { "sheetGid": 1100006, "title": "Dates", "color": null, "hidden": false, "frozenRows": 0, "frozenColumns": 0 },
+  "layout": { "sheetGid": 1100007, "title": "Layout", "color": null, "hidden": false, "frozenRows": 0, "frozenColumns": 0 },
+  "scratch208A": { "sheetGid": 2080001, "title": "Scratch208A", "color": null, "hidden": false, "frozenRows": 0, "frozenColumns": 0 },
+  "scratch208B": { "sheetGid": 2080002, "title": "Scratch208B", "color": null, "hidden": false, "frozenRows": 0, "frozenColumns": 0 },
+  "scratch208C": { "sheetGid": 2080003, "title": "Scratch208C", "color": null, "hidden": false, "frozenRows": 0, "frozenColumns": 0 },
+  "scratch208D": { "sheetGid": 2080004, "title": "Scratch208D", "color": null, "hidden": false, "frozenRows": 0, "frozenColumns": 0 },
+  "scratch208Ref": { "sheetGid": 2080009, "title": "Scratch208Ref", "color": null, "hidden": false, "frozenRows": 0, "frozenColumns": 0 },
+  "scratch217A": { "sheetGid": 217001, "title": "Scratch217A", "color": null, "hidden": false, "frozenRows": 0, "frozenColumns": 0 },
+  "scratch217B": { "sheetGid": 217002, "title": "Scratch217B", "color": null, "hidden": false, "frozenRows": 0, "frozenColumns": 0 },
+  "scratch217C": { "sheetGid": 217003, "title": "Scratch217C", "color": null, "hidden": false, "frozenRows": 0, "frozenColumns": 0 },
+  "scratch217D": { "sheetGid": 217004, "title": "Scratch217D", "color": null, "hidden": false, "frozenRows": 0, "frozenColumns": 0 },
+  "scratch217E": { "sheetGid": 217005, "title": "Scratch217E", "color": null, "hidden": false, "frozenRows": 0, "frozenColumns": 0 },
+  "scratch217F": { "sheetGid": 217006, "title": "Scratch217F", "color": null, "hidden": false, "frozenRows": 0, "frozenColumns": 0 },
+  "scratch217G": { "sheetGid": 217007, "title": "Scratch217G", "color": null, "hidden": false, "frozenRows": 0, "frozenColumns": 0 },
+  "scratch217H": { "sheetGid": 217008, "title": "Scratch217H", "color": null, "hidden": false, "frozenRows": 0, "frozenColumns": 0 },
+  "scratch217I": { "sheetGid": 217009, "title": "Scratch217I", "color": null, "hidden": false, "frozenRows": 0, "frozenColumns": 0 },
+  "scratch217J": { "sheetGid": 217010, "title": "Scratch217J", "color": null, "hidden": false, "frozenRows": 0, "frozenColumns": 0 },
+  "scratch217K": { "sheetGid": 217011, "title": "Scratch217K", "color": null, "hidden": false, "frozenRows": 0, "frozenColumns": 0 },
+  "scratch217L": { "sheetGid": 217012, "title": "Scratch217L", "color": null, "hidden": false, "frozenRows": 0, "frozenColumns": 0 }
+});
