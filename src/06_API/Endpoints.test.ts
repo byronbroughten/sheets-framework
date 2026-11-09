@@ -106,4 +106,9 @@ describe("Endpoints, the endpoint map", () => {
       IsExactly<Extract<keyof Endpoints, "runItem_result">, "runItem_result">
     >(true);
   });
+  it("types each entry by its own column's sheet", () => {
+    assertType<
+      IsExactly<Endpoints["runItem_result"], Endpoint<"runItem"> | undefined>
+    >(true);
+  });
 });
