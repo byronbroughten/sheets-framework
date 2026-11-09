@@ -76,8 +76,12 @@ After three changes to the column-map types (#262, Nov 2026), the app's program 
 | `packages/framework` | 140,653 | 132,258 | 1.14s (1.11–1.42) | 1.40s (1.37–1.48) |
 | `packages/framework/scripts` | 102,831 | 96,778 | 0.72s (0.72–0.77) | 0.67s (0.63–0.80) |
 | `packages/framework/valueKinds` | 102,545 | 95,859 | 0.69s (0.67–0.69) | 0.62s (0.59–0.62) |
+| root | 45,079 | 45,079 | 0.75s (0.72–1.16) | 0.75s (0.72–1.16) |
+| `runner` | 36,721 | 36,721 | 0.81s (0.74–0.84) | 0.81s (0.74–0.84) |
+| `packages/utils` | 19,273 | 19,273 | 0.21s (0.18–0.22) | 0.21s (0.18–0.22) |
+| `config` | 5,193 | 5,193 | 0.09s (0.09–0.10) | 0.09s (0.09–0.10) |
 
-The root, `runner`, `packages/utils` and `config` programs don't compile the framework's types, and their counts didn't move.
+The last four programs compile no framework file, so their trees are the same before and after, and one set of three runs, taken after, stands for both. Their counts match #261's baselines at the same base.
 
 The three changes, in the order of what they save:
 
@@ -87,7 +91,7 @@ The three changes, in the order of what they save:
 
 The framework's check time rose while its count fell, and that wasn't traced. Its count includes ~30 for a new assertion that pins each `Endpoints` entry to its own column's sheet, which nothing pinned before. A second assertion, that the entry isn't another sheet's, cost ~5k and was dropped: the first fails on its own when the entry widens. The tracing, the per-type credit and the candidates measured and dropped are in [#262's finding](https://github.com/byronbroughten/sheets-framework/issues/262#issuecomment-6752060986). A further ~26k in the app's program is available by casting `CheckboxColumnOperator`'s checkbox comparison through `unknown`; it wasn't taken, since it removes a compile-time check.
 
-Only the framework's own program pins these guarantees: breaking any of the three changes leaves the app's program compiling, so check the framework after touching them.
+Breaking any of the three changes leaves the app's program compiling; only the framework's own type-level tests, against its dev configs, fail.
 
 ### #78 camelCase-aware `SentenceToCamelCase`
 

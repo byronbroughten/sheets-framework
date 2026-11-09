@@ -217,7 +217,6 @@ type ColumnFullNameFiltered<VN extends ValueName, IF extends boolean> = keyof {
   string;
 
 // Absolute addressing: one correlated key, so a filtered subset of columns is expressible.
-// The unfiltered name skips the filter, which every column would pass.
 export type ColumnFullName<
   VN extends ValueName = ValueName,
   IF extends boolean = boolean,

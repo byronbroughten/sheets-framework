@@ -67,8 +67,7 @@ export type EndpointsAll = {
 
 type FloorFullName = `${FloorTabName}${CodebaseNameDelimiter}${string}`;
 
-// The framework owns the config sheets' entries, so the app's map can't name one.
-// Read from EndpointsAll, not rebuilt per key, so the two maps share one resolved entry type.
+// The framework owns the config sheets' entries, so the app's map can't name one; reading EndpointsAll's is cheaper than rebuilding them.
 export type Endpoints = {
   [FN in Exclude<keyof EndpointsAll, FloorFullName>]?: EndpointsAll[FN];
 };
