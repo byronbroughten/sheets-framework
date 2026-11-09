@@ -83,15 +83,13 @@ export const BraceFormula = {
     });
   },
   columnsNamed({ tableKey, formula }: FormulaText): ConfiguredColumn[] {
-    const columns: ConfiguredColumn[] = [];
-    replaceBraces({ tableKey, formula }, (brace) => {
-      columns.push({
-        tableKey: brace.tableKey,
-        columnName: brace.columnName,
-      });
-      return brace.text;
-    });
-    return columns;
+    return [...formula.matchAll(bracePattern())].flatMap(
+      ([text, literal, first, second]) => {
+        const brace = braceOf(tableKey, { text, literal, first, second });
+        if (brace === undefined) return [];
+        return [{ tableKey: brace.tableKey, columnName: brace.columnName }];
+      },
+    );
   },
   // A reference to no configured column stays as Sheets wrote it.
   decompile({ configs, tableKey, formula }: BraceFormulaProps): string {
@@ -130,40 +128,50 @@ export const BraceFormula = {
   },
 };
 
-// A string literal is matched first and kept, so a brace inside one stays text.
 function replaceBraces(
   { tableKey, formula }: FormulaText,
   replace: (brace: Brace) => string,
 ): string {
-  const pattern = new RegExp(
-    `(${formulaPatterns.stringLiteral})|${formulaPatterns.brace}`,
-    "g",
-  );
   return formula.replace(
-    pattern,
+    bracePattern(),
     (
       text: string,
       literal: string | undefined,
-      first: string,
+      first: string | undefined,
       second: string | undefined,
     ) => {
-      if (literal !== undefined) return literal;
-      if (second === undefined) {
-        return replace({
-          text,
-          tableKey,
-          columnName: first,
-          isWholeColumn: false,
-        });
-      }
-      return replace({
-        text,
-        tableKey: first,
-        columnName: second,
-        isWholeColumn: true,
-      });
+      const brace = braceOf(tableKey, { text, literal, first, second });
+      if (brace === undefined) return text;
+      return replace(brace);
     },
   );
+}
+
+// A string literal is matched first and kept, so a brace inside one stays text.
+function bracePattern(): RegExp {
+  return new RegExp(
+    `(${formulaPatterns.stringLiteral})|${formulaPatterns.brace}`,
+    "g",
+  );
+}
+
+interface BraceMatch {
+  text: string;
+  literal: string | undefined;
+  first: string | undefined;
+  second: string | undefined;
+}
+
+// Undefined for a string literal, which isn't a brace.
+function braceOf(
+  tableKey: string,
+  { text, literal, first, second }: BraceMatch,
+): Brace | undefined {
+  if (literal !== undefined || first === undefined) return undefined;
+  if (second === undefined) {
+    return { text, tableKey, columnName: first, isWholeColumn: false };
+  }
+  return { text, tableKey: first, columnName: second, isWholeColumn: true };
 }
 
 function liveReferenceOf(

@@ -6,7 +6,7 @@ import type {
   SyncDryRunResult,
   SyncRunResult,
   SyncSendResult,
-} from "../05_Operators/syncRunResult";
+} from "../01_SpreadsheetSchema/configReaders/syncRunResult";
 import { SyncRunReport } from "./SyncRunReport";
 
 // The eight cases sheets-framework#216 retested on fresh agents; names and IDs are illustrative.
@@ -593,7 +593,10 @@ describe("SyncRunReport's intended-state refusals", () => {
 });
 
 describe("SyncRunReport's force way out", () => {
-  function conflictText(subject: SyncConflict["subject"]): string {
+  function conflictText(
+    subject: SyncConflict["subject"],
+    gone: Pick<SyncConflict, "isColumnGone" | "claimedBy"> = {},
+  ): string {
     return render({
       ...appDryRun,
       outcome: { kind: "stopped" },
@@ -606,10 +609,24 @@ describe("SyncRunReport's force way out", () => {
           yours: "a",
           agreed: "b",
           live: "c",
+          ...gone,
         },
       ],
     }).join("\n");
   }
+
+  it("isn't offered for a column a person deleted, which has nothing to send to", () => {
+    const subject = { table: "item", column: "name", path: "header" };
+    expect(conflictText(subject, { isColumnGone: true })).not.toContain(
+      "force",
+    );
+    expect(
+      conflictText(
+        { table: "item", column: "count", path: "formula" },
+        { isColumnGone: true, claimedBy: "itemEndpoint" },
+      ),
+    ).not.toContain("force");
+  });
 
   it("is offered for a column's trait", () => {
     expect(

@@ -1,5 +1,5 @@
 import type { GoogleRequest } from "../../00_Source/GoogleSheets/GoogleSheetsAPI";
-import type { ForcedTrait } from "../../05_Operators/syncRunResult";
+import type { ForcedTrait } from "../../01_SpreadsheetSchema/configReaders/syncRunResult";
 
 export type GoogleGridRange = GoogleAppsScript.Sheets.Schema.GridRange;
 export type GoogleGridCoordinate =

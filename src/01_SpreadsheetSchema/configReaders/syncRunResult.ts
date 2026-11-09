@@ -1,4 +1,4 @@
-// What one `sync` run did or would do, as `SyncRunReport` prints it. Every wording lives in the report; this holds only facts.
+// What one `sync` run did or would do, as `SyncRunReport` prints it. Facts, apart from the few phrases a producer words: a stop's label and cause, a send's what, a sent summary.
 
 export type SyncRunResult = SyncDryRunResult | SyncSendResult;
 
@@ -170,6 +170,8 @@ export interface SyncConflict {
   live: string;
   // Set on a claim's conflict: the endpoint or module declaring the claim.
   claimedBy?: string;
+  // Set when a person deleted the column: force has no column to send to.
+  isColumnGone?: true;
 }
 
 export interface SyncHeadRowsStop {

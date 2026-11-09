@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type {
-  ClaimedTraits,
-  PendingAlterations,
-} from "../01_SpreadsheetSchema/configReaders/intendedState";
+import type { ClaimedTraits, PendingAlterations } from "./intendedState";
 import {
   SyncPlanner,
   type SyncPlannerProps,
@@ -261,7 +258,9 @@ describe("a key in intended state and the configs but not live", () => {
         { table: "item", column: "requiredCount", trait: "formula" },
       ],
     }).plan({ previous: formulaReadings("=1"), live: noColumn });
-    expect(result.stops).toHaveLength(1);
+    expect(result.stops).toEqual([
+      expect.objectContaining({ isColumnGone: true }),
+    ]);
     expect(result.plan).toEqual([]);
     expect(result.forcedTraits).toEqual([]);
   });
