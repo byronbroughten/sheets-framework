@@ -537,8 +537,9 @@ describe("ConfigCoordinator.generateConfigFiles", () => {
     seedFixture();
 
     const parsed = ConfigCoordinator.init().generateConfigFiles();
-    const importLine = (maker: string) =>
-      `import { ${maker} } from "@byronbroughten/sheets-framework";`;
+    function importLine(maker: string): string {
+      return `import { ${maker} } from "@byronbroughten/sheets-framework";`;
+    }
     expect(parsed.tableConfigs).toContain(importLine("makeTableConfigs"));
     expect(parsed.tabConfigs).toContain(importLine("makeTabConfigs"));
     expect(parsed.retiredIdPrefixes).toContain(
