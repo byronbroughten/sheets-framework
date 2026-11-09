@@ -66,6 +66,29 @@ After the tiers took their config types from the `Register` the app augments (#1
 
 After the intended-state types (`PendingAlterations`, `ClaimedTraits`, #222, Nov 2026): **~130.8k instantiations** in the framework's program, against **~128.6k** at the branch's base `5a982df`, and **~786.9k** in the app's, against **~786.7k**, on TypeScript 5.9.2. So the types cost **~2.2k** in the framework, whose dev map names every tab, and **~0.2k** in the app, whose map is still empty; the ticket's cap is ~10k. A first cut that camelcased each tab's title with `SentenceToCamelCase` cost ~13.3k in a standalone program, about 340 instantiations a title, paid when the file is checked, used or not; a key-remapped mapped type cost more, not less. So the regen writes each tab's name into `idNameMap.ts`, as it does a Table's, and the types read it.
 
+### #262 cheaper column-map types
+
+After three changes to the column-map types (#262, Nov 2026), the app's program dropped from **789,199 to 577,646 instantiations** (−26.8%), on TypeScript 5.9.2 at base framework `54a8b21` and real-estate `4106438`. Each count reproduced exactly across three runs. Check time is the median of three runs, before and after taken one after the other in one session on the same machine:
+
+| Program | Before | After | Check time before | Check time after |
+| --- | ---: | ---: | --- | --- |
+| `packages/real-estate` | 789,199 | 577,646 | 2.54s (2.28–2.70) | 2.23s (2.15–2.26) |
+| `packages/framework` | 140,653 | 132,258 | 1.14s (1.11–1.42) | 1.40s (1.37–1.48) |
+| `packages/framework/scripts` | 102,831 | 96,778 | 0.72s (0.72–0.77) | 0.67s (0.63–0.80) |
+| `packages/framework/valueKinds` | 102,545 | 95,859 | 0.69s (0.67–0.69) | 0.62s (0.59–0.62) |
+
+The root, `runner`, `packages/utils` and `config` programs don't compile the framework's types, and their counts didn't move.
+
+The three changes, in the order of what they save:
+
+- **`ColumnConfigsFlat` is one mapped object** over `FlattenTwoLevels`' result, rather than the intersection of one object per Table that `FlattenTwoLevels` returns. Every full-name lookup reads it, and it saved most of the total.
+- **`ColumnFullName` skips the filter when neither parameter narrows it**, and otherwise filters by key remapping (`as`) rather than indexing a mapped object by every full name.
+- **`Endpoints` reads each entry from `EndpointsAll`** and drops the config-sheet keys with one template literal, a Floor tab name plus any string, rather than rebuilding each entry and testing its Table per key. The saving comes from `frameworkEndpoints`' spread into `EndpointsAll` sharing one resolved map, not from the relation: casting that spread through `unknown` saved nothing.
+
+The framework's check time rose while its count fell, and that wasn't traced. Its count includes ~30 for a new assertion that pins each `Endpoints` entry to its own column's sheet, which nothing pinned before. A second assertion, that the entry isn't another sheet's, cost ~5k and was dropped: the first fails on its own when the entry widens. The tracing, the per-type credit and the candidates measured and dropped are in [#262's finding](https://github.com/byronbroughten/sheets-framework/issues/262#issuecomment-6752060986). A further ~26k in the app's program is available by casting `CheckboxColumnOperator`'s checkbox comparison through `unknown`; it wasn't taken, since it removes a compile-time check.
+
+Only the framework's own program pins these guarantees: breaking any of the three changes leaves the app's program compiling, so check the framework after touching them.
+
 ### #78 camelCase-aware `SentenceToCamelCase`
 
 After `SentenceToCamelCase` learned the shared splitter's camelCase and acronym boundaries (#78, Oct 2026): **~112.3k instantiations, ~0.9s check time**, against **~105.4k, ~0.89s** at its parent, both exactly reproducible on TypeScript 5.9.2. With `Str.test.ts` removed from both trees the gap is **~0.9k**, so nearly all of the ~6.9k is the eleven type assertions added there; the `\s`-sized whitespace union roughly doubled the non-test share from 393. No production call site passes a literal, and `string extends S` now returns `string` for a widened name before any character walk, so the type stays on the runtime's rules rather than requiring sentence-case headers.

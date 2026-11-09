@@ -27,14 +27,14 @@ export type EndpointsAll = {
   [FN in ColumnFullName]?: Endpoint<TableNameOf<FN>>;
 };
 
+type FloorFullName = `${FloorTabName}${CodebaseNameDelimiter}${string}`;
+
 export type Endpoints = {
-  [FN in ColumnFullName as TableNameOf<FN> extends FloorTabName
-    ? never
-    : FN]?: Endpoint<TableNameOf<FN>>;
+  [FN in Exclude<keyof EndpointsAll, FloorFullName>]?: EndpointsAll[FN];
 };
 ```
 
-`Endpoints` is the app's map: a key on one of the three config sheets is a type error, because the framework owns those entries (`frameworkEndpoints`). `Api` spreads the framework's entries last into an `EndpointsAll`, so a collision still resolves to the framework at runtime.
+`Endpoints` is the app's map: a key on one of the three config sheets is a type error, because the framework owns those entries (`frameworkEndpoints`). It reads each entry from `EndpointsAll` rather than rebuilding it per key, so the two maps share one resolved entry type ([what that saves](./type-check-cost.md#262-cheaper-column-map-types)). `Api` spreads the framework's entries last into an `EndpointsAll`, so a collision still resolves to the framework at runtime.
 
 `action` is the only required field, so an endpoint takes exactly the machinery it wants: a bulk "select all" declares an action alone and stays at the round-trip floor; a run over a selection declares the feedback columns and the selector too. `retainSelection` and `requireOneRow` are nameable only inside a declared selector, so an endpoint without one cannot carry either as a silent no-op. Register endpoints with a plain `: Endpoints` annotation — **not** `makeStructuredConfig`, which lets an unknown key through (the house style's "Type modeling").
 
