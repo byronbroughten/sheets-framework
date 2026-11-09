@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { SyncRunReport } from "./SyncRunReport";
 import type {
   SyncConfigs,
+  SyncConflict,
   SyncDryRunResult,
   SyncRunResult,
   SyncSendResult,
-} from "./syncRunResult";
+} from "../01_SpreadsheetSchema/configReaders/syncRunResult";
+import { SyncRunReport } from "./SyncRunReport";
 
 // The eight cases sheets-framework#216 retested on fresh agents; names and IDs are illustrative.
 
@@ -551,6 +552,92 @@ describe("SyncRunReport, case E: a rename and a swap the dry run took up", () =>
     expect(text).toContain(
       '  unit.columns.moveIn → unit.columns.moveOut    (c:unt:k2PqA9x, which a person retitled "Move out")',
     );
+  });
+});
+
+describe("SyncRunReport's intended-state refusals", () => {
+  const text = render({
+    ...appDryRun,
+    outcome: { kind: "refused" },
+    refusals: [
+      {
+        kind: "disagreeingDeclarers",
+        table: "item",
+        path: "total.formula",
+        declarers: [
+          { declaredBy: "itemEndpoint", value: "=1" },
+          { declaredBy: "alterations.ts", value: "=2" },
+        ],
+      },
+      {
+        kind: "touchesDeletion",
+        deleted: { tab: "log" },
+        deletedAt: "tabs.log",
+        touchedBy: "tabs.item.before",
+      },
+    ],
+  }).join("\n");
+
+  it("names both declarers and their values", () => {
+    expect(text).toContain("REFUSED 1 · item › total.formula");
+    expect(text).toMatch(/itemEndpoint\s+=1/);
+    expect(text).toMatch(/alterations\.ts\s+=2/);
+  });
+
+  it("names the deletion and what touches it", () => {
+    expect(text).toContain("REFUSED 2 · tab log");
+    expect(text).toContain(
+      "tabs.log deletes tab log, and tabs.item.before touches it in the same run.",
+    );
+  });
+});
+
+describe("SyncRunReport's force way out", () => {
+  function conflictText(
+    subject: SyncConflict["subject"],
+    gone: Pick<SyncConflict, "isColumnGone" | "claimedBy"> = {},
+  ): string {
+    return render({
+      ...appDryRun,
+      outcome: { kind: "stopped" },
+      stops: [
+        {
+          kind: "conflict",
+          subject,
+          label: "both changed",
+          cause: "Both changed it.",
+          yours: "a",
+          agreed: "b",
+          live: "c",
+          ...gone,
+        },
+      ],
+    }).join("\n");
+  }
+
+  it("isn't offered for a column a person deleted, which has nothing to send to", () => {
+    const subject = { table: "item", column: "name", path: "header" };
+    expect(conflictText(subject, { isColumnGone: true })).not.toContain(
+      "force",
+    );
+    expect(
+      conflictText(
+        { table: "item", column: "count", path: "formula" },
+        { isColumnGone: true, claimedBy: "itemEndpoint" },
+      ),
+    ).not.toContain("force");
+  });
+
+  it("is offered for a column's trait", () => {
+    expect(
+      conflictText({ table: "item", column: "name", path: "header" }),
+    ).toContain("force");
+  });
+
+  it("isn't offered for a tab's trait, which --force can't address", () => {
+    const text = conflictText({ tab: "log", path: "title" });
+    expect(text).toContain("tab log › title");
+    expect(text).not.toContain("force");
   });
 });
 

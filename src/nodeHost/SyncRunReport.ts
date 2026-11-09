@@ -2,6 +2,7 @@ import type {
   SyncCheck,
   SyncConfigs,
   SyncConflict,
+  SyncDeclarer,
   SyncDryRunOutcome,
   SyncHeld,
   SyncHeldGroup,
@@ -18,7 +19,7 @@ import type {
   SyncStop,
   SyncStoppedPartwayOutcome,
   SyncSubject,
-} from "./syncRunResult";
+} from "../01_SpreadsheetSchema/configReaders/syncRunResult";
 
 const layout = {
   rowLabelWidth: 30,
@@ -270,7 +271,8 @@ const outsideReferenceWords: Record<
 function subjectLabel(subject: SyncSubject): string {
   if ("tab" in subject) {
     const gid = subject.gid === undefined ? "" : ` (gid ${subject.gid})`;
-    return `tab ${subject.tab}${gid}`;
+    const trait = subject.path === undefined ? "" : ` › ${subject.path}`;
+    return `tab ${subject.tab}${gid}${trait}`;
   }
   const { table, column, rewrittenFrom, path } = subject;
   let columnLabel = column;
@@ -339,13 +341,45 @@ function checkLines(check: SyncCheck): string[] {
 }
 
 function refusalBlocks(refusals: SyncRefusal[]): string[] {
-  return refusals.flatMap((refusal, index) => [
-    `REFUSED ${index + 1} · ${refusal.table} › ${refusal.path}`,
-    ...indent(2, refusalText(refusal)),
-  ]);
+  return refusals.flatMap((refusal, index) => {
+    const { heading, lines } = refusalWords(refusal);
+    return [`REFUSED ${index + 1} · ${heading}`, ...indent(2, lines)];
+  });
 }
 
-function refusalText(refusal: SyncRefusal): string[] {
+interface RefusalWords {
+  heading: string;
+  lines: string[];
+}
+
+function refusalWords(refusal: SyncRefusal): RefusalWords {
+  if (refusal.kind === "touchesDeletion") {
+    const { deleted, deletedAt, touchedBy } = refusal;
+    return {
+      heading: subjectLabel(deleted),
+      lines: [
+        `${deletedAt} deletes ${subjectLabel(deleted)}, and ${touchedBy} touches it in the same run.`,
+        "Take one of the two out, then rerun.",
+      ],
+    };
+  }
+  return {
+    heading: `${refusal.table} › ${refusal.path}`,
+    lines: tableRefusalText(refusal),
+  };
+}
+
+function tableRefusalText(
+  refusal: Exclude<SyncRefusal, { kind: "touchesDeletion" }>,
+): string[] {
+  if (refusal.kind === "disagreeingDeclarers") {
+    const [first, second] = refusal.declarers;
+    return [
+      "Two declarers give this trait different values:",
+      ...indent(2, [first, second].map(declarerLine)),
+      "Make them agree or take one out, then rerun.",
+    ];
+  }
   const { table } = refusal;
   if (refusal.kind === "noApiAccess") {
     return [
@@ -365,6 +399,10 @@ function refusalText(refusal: SyncRefusal): string[] {
   return [
     `${refusal.brace} names no column of ${table}. Its columns: ${refusal.columns.join(", ")}.`,
   ];
+}
+
+function declarerLine({ declaredBy, value }: SyncDeclarer): string {
+  return `${declaredBy.padEnd(layout.rowLabelWidth)}${value}`;
 }
 
 function ruleHandleLines(table: string, handles: string[]): string[] {
@@ -417,29 +455,49 @@ const forceNeeds =
   "Needs the developer's yes for this trait; the yes covers one run.";
 
 // Force's flag is never printed: an agent looks it up only after the developer's yes.
-function waysOut({ yours, live, claimedBy }: SyncConflict): [string, string][] {
+function waysOut(conflict: SyncConflict): [string, string][] {
+  const { yours, live, claimedBy } = conflict;
   if (claimedBy !== undefined) {
+    const adopt: [string, string] = [
+      "adopt",
+      `Set the claim to the sheet's text. Free; check first that ${claimedBy} still works on it.`,
+    ];
+    const drop: [string, string] = [
+      "drop",
+      `Drop the claim from ${claimedBy}. Free; the sheet owns this formula from then on and nothing guards it.`,
+    ];
+    const ask: [string, string] = [
+      "ask",
+      "Change nothing and ask the developer.",
+    ];
+    if (!isForceable(conflict)) return [adopt, drop, ask];
     return [
-      [
-        "adopt",
-        `Set the claim to the sheet's text. Free; check first that ${claimedBy} still works on it.`,
-      ],
-      [
-        "drop",
-        `Drop the claim from ${claimedBy}. Free; the sheet owns this formula from then on and nothing guards it.`,
-      ],
+      adopt,
+      drop,
       ["force", `Send the claim's text over the sheet's. ${forceNeeds}`],
-      ["ask", "Change nothing and ask the developer."],
+      ask,
     ];
   }
-  return [
-    [
-      "adopt",
-      `Remove the entry, or set it to ${live}. Free, but your change to this trait is given up.`,
-    ],
-    ["force", `Send ${yours} over the sheet's ${live}. ${forceNeeds}`],
-    ["ask", "Change nothing and ask the developer which value they want."],
+  const adopt: [string, string] = [
+    "adopt",
+    `Remove the entry, or set it to ${live}. Free, but your change to this trait is given up.`,
   ];
+  const ask: [string, string] = [
+    "ask",
+    "Change nothing and ask the developer which value they want.",
+  ];
+  if (!isForceable(conflict)) return [adopt, ask];
+  return [
+    adopt,
+    ["force", `Send ${yours} over the sheet's ${live}. ${forceNeeds}`],
+    ask,
+  ];
+}
+
+// --force addresses <table>/<column>/<trait>, so a Table's or tab's own trait, or a deleted column's, has no force to offer.
+function isForceable({ subject, isColumnGone }: SyncConflict): boolean {
+  if (isColumnGone === true) return false;
+  return "column" in subject && subject.column !== undefined;
 }
 
 function landedLine(item: SyncLandedItem): string {
