@@ -29,7 +29,7 @@ function unwrapRawRequest(request: OpaqueRawRequest): GoogleRequest {
   return request as unknown as GoogleRequest;
 }
 
-// Naming a verb here obliges UpdateRequestSummary to give it a line format.
+// Naming a verb here obliges UpdateRequestSummary to give it a line format and FlushClassifier to judge it.
 export type ModeledRequestVerb =
   | "appendCells"
   | "appendDimension"

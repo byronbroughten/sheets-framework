@@ -5,14 +5,12 @@ import type {
   ModeledRequestVerb,
 } from "../00_Source/GoogleSheets/GoogleSheetsAPI";
 import { loneTableConfigOnGid } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
+import { colLetters } from "./colLetters";
+import { ExtVal } from "./ExtVal";
+import { Rfc4180 } from "./Rfc4180";
 
 type GoogleUpdateRequest = GoogleRequest;
 type GoogleGridRange = GoogleAppsScript.Sheets.Schema.GridRange;
-type UserEnteredValue = NonNullable<
-  NonNullable<
-    GoogleAppsScript.Sheets.Schema.UpdateCellsRequest["rows"]
-  >[number]["values"]
->[number]["userEnteredValue"];
 type RowData = GoogleAppsScript.Sheets.Schema.RowData;
 type DimensionRange = GoogleAppsScript.Sheets.Schema.DimensionRange;
 
@@ -197,7 +195,11 @@ const requestBody: {
     const coordinate = pasteData?.coordinate;
     const startRowIndex = coordinate?.rowIndex ?? 0;
     const startColumnIndex = coordinate?.columnIndex ?? 0;
-    const rowCount = Math.max(rfc4180RecordCount(pasteData?.data ?? ""), 1);
+    const records = Rfc4180.records(
+      pasteData?.data ?? "",
+      pasteData?.delimiter ?? "\t",
+    );
+    const rowCount = records.length;
     const range = coordinate && {
       sheetId: coordinate.sheetId,
       startRowIndex,
@@ -208,7 +210,7 @@ const requestBody: {
     return columns(
       label.range(range),
       `${rowCount} row(s)`,
-      firstRfc4180Field(pasteData?.data ?? "").replaceAll("\n", " "),
+      (records[0]?.[0] ?? "").replaceAll("\n", " "),
       pasteData?.type ?? "",
     );
   },
@@ -421,7 +423,7 @@ const label = {
   },
   values(rows: RowData[] | undefined): string {
     const values = (rows ?? []).flatMap((row) =>
-      (row.values ?? []).map((cell) => valueLabel(cell.userEnteredValue)),
+      (row.values ?? []).map((cell) => ExtVal.label(cell.userEnteredValue)),
     );
     if (values.length === 0) return "(no values)";
     const shown = values.slice(0, layoutLimits.maxSampleValues).join(", ");
@@ -483,75 +485,8 @@ function rangeCellCount(range: GoogleGridRange | undefined): number {
   return (endRowIndex - startRowIndex) * (endColumnIndex - startColumnIndex);
 }
 
-function colLetters(colIndex: number): string {
-  let remaining = colIndex + 1;
-  let letters = "";
-  while (remaining > 0) {
-    const rest = (remaining - 1) % 26;
-    letters = String.fromCharCode(65 + rest) + letters;
-    remaining = Math.floor((remaining - 1) / 26);
-  }
-  return letters;
-}
-
-function rfc4180RecordCount(data: string): number {
-  if (data === "") return 0;
-  let count = 0;
-  let i = 0;
-  while (i < data.length) {
-    count += 1;
-    if (data[i] === '"') {
-      i += 1;
-      while (i < data.length) {
-        if (data[i] === '"' && data[i + 1] === '"') {
-          i += 2;
-          continue;
-        }
-        if (data[i] === '"') {
-          i += 1;
-          break;
-        }
-        i += 1;
-      }
-    } else {
-      while (i < data.length && data[i] !== "\n") i += 1;
-    }
-    if (data[i] === "\n") i += 1;
-  }
-  return count;
-}
-
-function firstRfc4180Field(data: string): string {
-  if (!data.startsWith('"')) return data.split(/\t|\n/, 1)[0] ?? "";
-  let field = "";
-  for (let i = 1; i < data.length; i++) {
-    if (data[i] !== '"') {
-      field += data[i];
-      continue;
-    }
-    if (data[i + 1] === '"') {
-      field += '"';
-      i += 1;
-      continue;
-    }
-    return field;
-  }
-  return field;
-}
-
 // An unmodelled request may still name a sheet, and usually does.
 function sheetIdOf(inner: object | undefined): number | undefined {
   const sheetId = (inner as { sheetId?: unknown } | undefined)?.sheetId;
   return typeof sheetId === "number" ? sheetId : undefined;
-}
-
-function valueLabel(userEnteredValue: UserEnteredValue): string {
-  if (!userEnteredValue) return "(no value)";
-  const { stringValue, numberValue, boolValue, formulaValue } =
-    userEnteredValue;
-  if (stringValue !== undefined) return `"${stringValue}"`;
-  if (numberValue !== undefined) return String(numberValue);
-  if (boolValue !== undefined) return String(boolValue);
-  if (formulaValue !== undefined) return formulaValue;
-  return "(no value)";
 }

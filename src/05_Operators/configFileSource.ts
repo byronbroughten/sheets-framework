@@ -1,3 +1,4 @@
+import type { IdNameMapGeneric } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
 import type { ColumnConfigsGeneric } from "../01_SpreadsheetSchema/configReaders/makeConfigs";
 
 function oneLineJsonObject(record: object): string {
@@ -22,21 +23,6 @@ export function columnConfigsFileSource(
     return `  ${JSON.stringify(tableName)}: {\n${columnLines.join(",\n")}\n  }`;
   });
   return `{\n${blocks.join(",\n")}\n}`;
-}
-
-export interface IdNameMapTable {
-  name: string;
-  sheetGid: number;
-  columns?: Record<string, string>;
-}
-export interface IdNameMapTab {
-  title: string;
-  tableIds: string[];
-}
-// Tables are keyed by Table ID and tabs by GID, the two keys a live spreadsheet keeps unique.
-export interface IdNameMapGeneric {
-  tables: Record<string, IdNameMapTable>;
-  tabs: Record<string, IdNameMapTab>;
 }
 
 export const idNameMapOpening = "export interface IdNameMap ";

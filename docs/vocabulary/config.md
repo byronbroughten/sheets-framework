@@ -23,7 +23,7 @@ Planned by [the map to replace Table Config and Column Config](https://github.co
   - An endpoint's key claims a checkbox in its column's action-row cell, so `claimedTraits` never names that trait: what an endpoint's declaration already implies about the sheet is derived, never restated ([Fill Row IDs](https://github.com/byronbroughten/sheets-framework/issues/182#issuecomment-6638561142)).
 - **Alteration**: a trait `gen:configs` applies once and then removes, a new column or a deletion included, as in SQL's `ALTER TABLE`. `alterations.ts` holds the **pending alterations** (`pendingAlterations`, built by `makePendingAlterations`) until each lands.
   - Not "one-off": that is a transient chore in `chores/oneOff/`. Not "migration": a migration is kept and recorded as applied, and "migrating" already names moving the config tabs' ticks into intended state. Not "queued": the write queue's queued writes have that word.
-- **ID-name map** (`idNameMap.ts`, `IdNameMap`): the generated, type-only file pairing every Table's ID with its name, and every column's for Tables with API access; intended state's `name` fields are typed against it.
+- **ID-name map** (`idNameMap.ts`, `IdNameMap`): the generated, type-only file pairing every Table's ID with its name, and every column's for Tables with API access; intended state's keys and `before:` values are typed against it.
 
 ## Entered data and held sends
 
