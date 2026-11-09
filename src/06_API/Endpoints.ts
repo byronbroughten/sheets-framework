@@ -1,3 +1,4 @@
+import type { CodebaseNameDelimiter } from "../00_Source/CellValues/cellValues";
 import type {
   ColumnFullName,
   ColumnNameFiltered,
@@ -64,9 +65,10 @@ export type EndpointsAll = {
   [FN in ColumnFullName]?: Endpoint<TableNameOf<FN>>;
 };
 
+type FloorFullName = `${FloorTabName}${CodebaseNameDelimiter}${string}`;
+
 // The framework owns the config sheets' entries, so the app's map can't name one.
+// Read from EndpointsAll, not rebuilt per key, so the two maps share one resolved entry type.
 export type Endpoints = {
-  [
-    FN in ColumnFullName as TableNameOf<FN> extends FloorTabName ? never : FN
-  ]?: Endpoint<TableNameOf<FN>>;
+  [FN in Exclude<keyof EndpointsAll, FloorFullName>]?: EndpointsAll[FN];
 };
