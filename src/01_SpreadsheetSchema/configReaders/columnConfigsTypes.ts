@@ -205,6 +205,7 @@ type ColumnConfigsFlat = {
 };
 type ColumnFullNameAll = keyof ColumnConfigsFlat & string;
 
+// Repeats ColumnNameFiltered's test: one shared predicate cost the app ~20k instantiations (type-check-cost.md, #268).
 type ColumnFullNameFiltered<VN extends ValueName, IF extends boolean> = keyof {
   [
     FN in ColumnFullNameAll as ColumnConfigsFlat[FN]["valueName"] extends VN
