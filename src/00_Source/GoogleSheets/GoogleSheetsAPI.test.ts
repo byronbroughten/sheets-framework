@@ -762,6 +762,12 @@ describe("GoogleSheetsAPI payload mapping", () => {
         {
           sheetGid: 111,
           title: "Records",
+          tabProperties: {
+            color: undefined,
+            hidden: false,
+            frozenRows: 0,
+            frozenColumns: 0,
+          },
           tables: [
             {
               tableId: "tbl",
@@ -822,6 +828,51 @@ describe("GoogleSheetsAPI payload mapping", () => {
     expect(
       api.fetchSheetProperties().sheets.map((sheet) => sheet.rowCount),
     ).toEqual([514, undefined]);
+  });
+
+  it("reads a tab's colour, hidden flag and frozen counts, defaulting what Google leaves out", () => {
+    const { api } = recordingSheets({
+      sheets: [
+        {
+          properties: {
+            sheetId: 111,
+            hidden: true,
+            tabColorStyle: { rgbColor: { red: 1, blue: 0.5 } },
+            gridProperties: { frozenRowCount: 4, frozenColumnCount: 1 },
+          },
+        },
+        {
+          properties: {
+            sheetId: 222,
+            tabColorStyle: { themeColor: "ACCENT1" },
+          },
+        },
+        { properties: { sheetId: 333 } },
+      ],
+    });
+
+    expect(
+      api.fetchSheetProperties().sheets.map((sheet) => sheet.tabProperties),
+    ).toEqual([
+      {
+        color: "#ff0080",
+        hidden: true,
+        frozenRows: 4,
+        frozenColumns: 1,
+      },
+      {
+        color: "ACCENT1",
+        hidden: false,
+        frozenRows: 0,
+        frozenColumns: 0,
+      },
+      {
+        color: undefined,
+        hidden: false,
+        frozenRows: 0,
+        frozenColumns: 0,
+      },
+    ]);
   });
 
   it("reads a Table column with no columnIndex as index 0", () => {
@@ -1019,7 +1070,7 @@ describe("GoogleSheetsAPI time zone read", () => {
     expect(masks).toHaveLength(3);
     masks.forEach((mask) => {
       expect(mask).toContain(
-        "properties(sheetId,title,gridProperties(rowCount,columnCount))",
+        "properties(sheetId,title,hidden,tabColorStyle,gridProperties(rowCount,columnCount,frozenRowCount,frozenColumnCount))",
       );
       expect(mask).toMatch(
         /tables\(tableId,name,range,columnProperties\(columnIndex,[^)]*columnType/,
@@ -1552,7 +1603,7 @@ describe("GoogleSheetsAPI HTTP transport", () => {
   it("sends one GET for sheet properties, carrying the field mask", () => {
     const { api, transport } = seedApi();
     const fields =
-      "properties(timeZone),sheets(properties(sheetId,title,gridProperties(rowCount,columnCount)),tables(tableId,name,range,columnProperties(columnIndex,columnType)))";
+      "properties(timeZone),sheets(properties(sheetId,title,hidden,tabColorStyle,gridProperties(rowCount,columnCount,frozenRowCount,frozenColumnCount)),tables(tableId,name,range,columnProperties(columnIndex,columnType)))";
 
     api.fetchSheetProperties();
 

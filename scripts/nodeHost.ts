@@ -8,7 +8,10 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { Val } from "@byronbroughten/utils/val";
 
 import type { SheetsHttpRequest } from "../src/00_Source/GoogleSheets/GoogleSheetsAPI.ts";
-import type { Configs } from "../src/01_SpreadsheetSchema/configReaders/configRegister.ts";
+import type {
+  Configs,
+  ConfigSetBase,
+} from "../src/01_SpreadsheetSchema/configReaders/configRegister.ts";
 import type { Endpoints } from "../src/06_API/Endpoints.ts";
 import type { NodeHost } from "../src/nodeHost/NodeHost.ts";
 import type { SheetsConfig } from "./sheetsConfig.ts";
@@ -22,10 +25,17 @@ const claspAuth = {
 } as const;
 const maxResponseBytes = 256 * 1024 * 1024;
 
-export const configFiles = [
+// An app's configs register without the rest, so only these decide whether it has configs of its own.
+const requiredConfigFiles = [
   "tableConfigs",
   "columnConfigs",
   "valueConfigs",
+] as const;
+
+export const configFiles = [
+  ...requiredConfigFiles,
+  "tabConfigs",
+  "retiredIdPrefixes",
 ] as const;
 
 export type ConfigFile = (typeof configFiles)[number];
@@ -190,27 +200,44 @@ export async function startNodeHost({
   }).ensureGlobals();
 }
 
-// The three files in the package's generatedDir, as the package's entry passes them to the framework.
+// The generated files in the package's generatedDir, as the package's entry passes them to the framework.
 export async function loadPackageConfigs({
   generatedDir,
 }: SheetsConfig): Promise<Configs> {
-  return {
+  const configs: ConfigSetBase = {
     tableConfigs: await importConfig(generatedDir, "tableConfigs"),
+    tabConfigs: await importConfigIfPresent(generatedDir, "tabConfigs"),
+    retiredIdPrefixes: await importConfigIfPresent(
+      generatedDir,
+      "retiredIdPrefixes",
+    ),
     columnConfigs: await importConfig(generatedDir, "columnConfigs"),
     valueConfigs: await importConfig(generatedDir, "valueConfigs"),
   };
+  // The registered set may or may not carry the two optional files, and these are the generated files it registers.
+  return configs as Configs;
 }
 
 async function importConfig<CF extends ConfigFile>(
   generatedDir: string,
   base: CF,
-): Promise<Configs[CF]> {
+): Promise<ConfigSetBase[CF]> {
   const url = pathToFileURL(configFilePath(generatedDir, base));
   return (await import(url.href))[base];
 }
 
+// A file the package's last regen predates is absent, so its config reads as unset.
+async function importConfigIfPresent<CF extends ConfigFile>(
+  generatedDir: string,
+  base: CF,
+): Promise<ConfigSetBase[CF] | undefined> {
+  const filePath = configFilePath(generatedDir, base);
+  if (!existsSync(filePath)) return undefined;
+  return (await import(pathToFileURL(filePath).href))[base];
+}
+
 export function hasPackageConfigs({ generatedDir }: SheetsConfig): boolean {
-  return configFiles.every((base) =>
+  return requiredConfigFiles.every((base) =>
     existsSync(configFilePath(generatedDir, base)),
   );
 }

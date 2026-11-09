@@ -4,9 +4,11 @@ import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRe
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {
   buildGridRows,
+  type FakeSheetProperties,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
 import { tableIdOnTab } from "../testSupport/fakeTableConfigSheet";
+import { TabConfigOperator } from "./TabConfigOperator";
 import { TableConfigOperator } from "./TableConfigOperator";
 
 const { columnConfigs } = installedConfigs();
@@ -729,6 +731,126 @@ describe("TableConfigOperator Table keys and prefixes", () => {
     const tableConfigs = syncedOperator().newTableConfigs();
     expect(tableConfigs.gadget?.idPrefix).toBe("gdg");
     expect(tableConfigs.gadgets?.idPrefix).toBe("gdgt");
+  });
+
+  it("skips a prefix the last configs retired, so a new Table never takes an old one's IDs", () => {
+    stubTwoTables({
+      widget: { name: "Item", columnIds: [] },
+      gadget: { name: "Gadget", columnIds: ["c:gdg:aaa"] },
+    });
+
+    const operator = syncedOperator();
+    expect(operator.newTableConfigs().item?.idPrefix).toBe("itm2");
+    expect(operator.retiredIdPrefixes()).toContain("itm");
+  });
+
+  it("writes the retired prefixes through makeRetiredIdPrefixes", () => {
+    stubTwoTables({
+      widget: { name: "Item", columnIds: [] },
+      gadget: { name: "Gadget", columnIds: ["c:gdg:aaa"] },
+    });
+
+    const source =
+      syncedOperator().retiredIdPrefixesFileSource("../makeConfigs");
+    expect(source).toContain(
+      'import { makeRetiredIdPrefixes } from "../makeConfigs";',
+    );
+    expect(source).toMatch(
+      /export const retiredIdPrefixes = makeRetiredIdPrefixes\(\[.*"itm".*\]\);/,
+    );
+  });
+});
+
+describe("TabConfigOperator.newTabConfigs", () => {
+  function syncedTabOperator(): TabConfigOperator {
+    return new TabConfigOperator(syncedOperator().operatorProps);
+  }
+
+  function stubTabs(widgetTab: Partial<FakeSheetProperties>): void {
+    stubSheetsService({
+      sheets: [
+        {
+          sheetId: tableConfigGid,
+          title: "Table Config",
+          rows: buildGridRows({ 0: tableConfigColumnIdRow }),
+          table: {
+            tableId: tableIdOnTab(tableConfigGid),
+            name: "tableConfig",
+            endRowIndex: 5,
+          },
+        },
+        { sheetId: widgetGid, title: "Widget orders", ...widgetTab },
+      ],
+    });
+  }
+
+  it("records each tab's title, colour, frozen counts and hidden flag, keyed by tab name", () => {
+    stubTabs({
+      tabColorStyle: { rgbColor: { red: 1, blue: 0.5 } },
+      frozenRowCount: 4,
+      frozenColumnCount: 1,
+      hidden: true,
+    });
+
+    const tabConfigs = syncedTabOperator().newTabConfigs();
+    expect(tabConfigs.widgetOrders).toEqual({
+      sheetGid: widgetGid,
+      title: "Widget orders",
+      color: "#ff0080",
+      frozenRows: 4,
+      frozenColumns: 1,
+      hidden: true,
+    });
+    expect(tabConfigs.tableConfig).toMatchObject({
+      color: null,
+      frozenRows: 0,
+      frozenColumns: 0,
+      hidden: false,
+    });
+  });
+
+  it("writes the tabs through makeTabConfigs", () => {
+    stubTabs({});
+
+    const source = syncedTabOperator().toFileSource("../makeConfigs");
+    expect(source).toContain(
+      'import { makeTabConfigs } from "../makeConfigs";',
+    );
+    expect(source).toContain("export const tabConfigs = makeTabConfigs({");
+    expect(source).toContain(
+      `"widgetOrders": { "sheetGid": ${widgetGid}, "title": "Widget orders"`,
+    );
+  });
+
+  it("records a theme colour by its name", () => {
+    stubTabs({ tabColorStyle: { themeColor: "ACCENT1" } });
+
+    expect(syncedTabOperator().newTabConfigs().widgetOrders?.color).toBe(
+      "ACCENT1",
+    );
+  });
+
+  it("fails when two tab titles give the same tab name, naming both", () => {
+    stubSheetsService({
+      sheets: [
+        {
+          sheetId: tableConfigGid,
+          title: "Table Config",
+          rows: buildGridRows({ 0: tableConfigColumnIdRow }),
+          table: {
+            tableId: tableIdOnTab(tableConfigGid),
+            name: "tableConfig",
+            endRowIndex: 5,
+          },
+        },
+        { sheetId: widgetGid, title: "Widget orders" },
+        { sheetId: gadgetGid, title: "Widget Orders" },
+      ],
+    });
+
+    expect(() => syncedTabOperator().newTabConfigs()).toThrow(
+      'Tabs "Widget orders" and "Widget Orders" both give the tab name "widgetOrders".',
+    );
   });
 });
 

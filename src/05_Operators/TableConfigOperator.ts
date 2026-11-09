@@ -9,7 +9,10 @@ import {
   makeImportLine,
   type TableConfigsBase,
 } from "../01_SpreadsheetSchema/configReaders/makeConfigs";
-import { tableConfigsByTableId } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
+import {
+  configRetiredIdPrefixes,
+  tableConfigsByTableId,
+} from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import {
   idPrefixes,
   type IdPrefixLabel,
@@ -150,13 +153,30 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
       prefixesInUse.add(sampled);
       assigned.set(table.tableId, sampled);
     });
+    // A Table gone since the last run retires its prefix before this run mints any.
+    const retiredPrefixes = idPrefixes.retiredOrGone({
+      previouslyRetired: configRetiredIdPrefixes(),
+      previousByTableId: previousIdPrefixesByTableId(),
+      liveTableIds: new Set(this.tableIdsApiAccesses()),
+    });
     this._apiAccessTables().forEach((table) => {
       if (assigned.has(table.tableId)) return;
-      const generated = idPrefixes.fromTitle(table.name, prefixesInUse);
+      const generated = idPrefixes.fromTitle({
+        title: table.name,
+        prefixesInUse,
+        retiredPrefixes,
+      });
       prefixesInUse.add(generated);
       assigned.set(table.tableId, generated);
     });
     return assigned;
+  }
+  retiredIdPrefixes(): string[] {
+    return idPrefixes.retiredAfter({
+      previouslyRetired: configRetiredIdPrefixes(),
+      previousByTableId: previousIdPrefixesByTableId(),
+      currentByTableId: this._idPrefixesByTableId(),
+    });
   }
   idPrefixChangeReport(): string | undefined {
     const changes: string[] = [];
@@ -246,10 +266,20 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
   }
   toFileSource(makeConfigsImport: string): string {
     return [
-      makeImportLine("makeTableConfigs", makeConfigsImport),
+      makeImportLine(["makeTableConfigs"], makeConfigsImport),
       ``,
       `export const tableConfigs = makeTableConfigs(${oneLinePerEntryFileSource(
         this.newTableConfigs(),
+      )});`,
+      ``,
+    ].join("\n");
+  }
+  retiredIdPrefixesFileSource(makeConfigsImport: string): string {
+    return [
+      makeImportLine(["makeRetiredIdPrefixes"], makeConfigsImport),
+      ``,
+      `export const retiredIdPrefixes = makeRetiredIdPrefixes(${JSON.stringify(
+        this.retiredIdPrefixes(),
       )});`,
       ``,
     ].join("\n");
@@ -258,4 +288,13 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
 
 function columnReferenceLabel(reference: string): string {
   return `Column reference "${reference}"`;
+}
+
+function previousIdPrefixesByTableId(): Map<string, string> {
+  return new Map(
+    [...tableConfigsByTableId()].map(([tableId, config]) => [
+      tableId,
+      config.idPrefix,
+    ]),
+  );
 }

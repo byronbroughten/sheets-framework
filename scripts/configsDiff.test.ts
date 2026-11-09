@@ -19,6 +19,8 @@ const itemQty = { columnId: "c:itm:bbb", header: "Qty", valueName: "number" };
 function snapshot(overrides: Partial<ConfigSnapshot> = {}): ConfigSnapshot {
   return {
     tableConfigs: { item },
+    tabConfigs: {},
+    retiredIdPrefixes: [],
     columnConfigs: { item: { name: itemName, qty: itemQty } },
     valueConfigs: { status: ["Open", "Closed"] },
     ...overrides,
@@ -142,6 +144,33 @@ describe("summarizeConfigsDiff", () => {
     ]);
   });
 
+  it("pairs tabs by sheetGid, so a retitled tab is one rename with its changed fields", () => {
+    const items = { sheetGid: 7, title: "Items", hidden: false };
+    const before = snapshot({ tabConfigs: { items } });
+    const after = snapshot({
+      tabConfigs: {
+        goods: { ...items, title: "Goods" },
+        notes: { sheetGid: 8, title: "Notes", hidden: false },
+      },
+    });
+
+    expect(summarizeConfigsDiff({ before, after })).toEqual([
+      'Tab items → goods: renamed; title "Items" → "Goods"',
+      "Tab notes: added",
+      "2 changes.",
+    ]);
+  });
+
+  it("lists prefixes added to and dropped from the retired list", () => {
+    const before = snapshot({ retiredIdPrefixes: ["old"] });
+    const after = snapshot({ retiredIdPrefixes: ["itm"] });
+
+    expect(summarizeConfigsDiff({ before, after })).toEqual([
+      'Retired ID prefixes: added "itm"; removed "old"',
+      "1 change.",
+    ]);
+  });
+
   it("counts everything as added on a first generation with no HEAD version", () => {
     expect(
       summarizeConfigsDiff({ before: undefined, after: snapshot() }),
@@ -182,19 +211,17 @@ describe("readConfigsDiff", () => {
     if (status !== 0) throw new Error(stderr);
   }
 
-  it("reads live references and number lists from the generated files", () => {
+  function committedPackage(
+    valueConfigs: ConfigSnapshot["valueConfigs"],
+  ): SheetsConfig {
     const dir = mkdtempSync(join(tmpdir(), "configs-diff-"));
     const generatedDir = join(dir, "generated");
     mkdirSync(generatedDir);
-    writeConfigFiles(generatedDir, { status: ["Open"], size: ["S"] });
+    writeConfigFiles(generatedDir, valueConfigs);
     git(dir, "init", "-q");
     git(dir, "add", ".");
     git(dir, "commit", "-q", "-m", "HEAD");
-    writeConfigFiles(generatedDir, {
-      status: { kind: "liveReference" },
-      size: [1, 2],
-    });
-    const sheetsConfig: SheetsConfig = {
+    return {
       path: join(dir, "sheets.config.json"),
       dir,
       spreadsheetId: "",
@@ -202,6 +229,27 @@ describe("readConfigsDiff", () => {
       choreHomes: [],
       endpointModule: undefined,
     };
+  }
+
+  it("reads the retired list from its own file, and a package with no tab file yet as having no tabs", () => {
+    const sheetsConfig = committedPackage({});
+    writeFileSync(
+      join(sheetsConfig.generatedDir, "retiredIdPrefixes.ts"),
+      'export const retiredIdPrefixes = makeRetiredIdPrefixes(["itm"]);\n',
+    );
+
+    expect(readConfigsDiff(sheetsConfig)).toEqual([
+      'Retired ID prefixes: added "itm"',
+      "1 change.",
+    ]);
+  });
+
+  it("reads live references and number lists from the generated files", () => {
+    const sheetsConfig = committedPackage({ status: ["Open"], size: ["S"] });
+    writeConfigFiles(sheetsConfig.generatedDir, {
+      status: { kind: "liveReference" },
+      size: [1, 2],
+    });
     expect(readConfigsDiff(sheetsConfig)).toEqual([
       "Value status: fixed list → live reference",
       'Value size: added 1, 2; removed "S"',

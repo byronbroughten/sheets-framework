@@ -15,11 +15,14 @@ import { ConfigSheetFloor } from "./ConfigSheetFloor";
 import { assertFloorIdentityUnchanged } from "./floorIdentityGuard";
 import { SpreadsheetBaseOperator } from "./SpreadsheetBaseOperator";
 import { SpreadsheetConfigOperator } from "./SpreadsheetConfigOperator";
+import { TabConfigOperator } from "./TabConfigOperator";
 import { TableConfigOperator } from "./TableConfigOperator";
 import { ValueConfigOperator } from "./ValueConfigOperator";
 
 export interface ConfigRegeneration {
   tableConfigs: string;
+  tabConfigs: string;
+  retiredIdPrefixes: string;
   columnConfigs: string;
   valueConfigs: string;
   idNameMap: string;
@@ -32,7 +35,7 @@ export interface ConfigRegeneration {
 /**
  * Coordinates Spreadsheet/Table/Column Config: the config-sheet floor
  * first (one extra flush), sync the live config sheets, one more flush, then
- * emit all three generated config files and the ID-name map, or none. Config maintenance is this Operator
+ * emit every generated config file and the ID-name map, or none. Config maintenance is this Operator
  * family, not Raw or Named. npm run gen:configs is the only regeneration path.
  * docs/generated-data.md
  */
@@ -61,6 +64,9 @@ export class ConfigCoordinator extends SpreadsheetBaseOperator {
   get tableConfigOperator(): TableConfigOperator {
     return new TableConfigOperator(this.operatorProps);
   }
+  get tabConfigOperator(): TabConfigOperator {
+    return new TabConfigOperator(this.operatorProps);
+  }
   get valueConfigOperator(): ValueConfigOperator {
     return new ValueConfigOperator(this.operatorProps);
   }
@@ -88,6 +94,9 @@ export class ConfigCoordinator extends SpreadsheetBaseOperator {
     this._assertFloorMatchesSeed();
     return {
       tableConfigs: this.tableConfigOperator.toFileSource(makeConfigsImport),
+      tabConfigs: this.tabConfigOperator.toFileSource(makeConfigsImport),
+      retiredIdPrefixes:
+        this.tableConfigOperator.retiredIdPrefixesFileSource(makeConfigsImport),
       columnConfigs: this.columnConfigOperator.toFileSource(makeConfigsImport),
       valueConfigs: this.valueConfigOperator.toFileSource(makeConfigsImport),
       idNameMap: idNameMapFileSource(this._idNameMap()),

@@ -72,12 +72,16 @@ describe("the dev package's generated files", () => {
 describe("appConfigsText", () => {
   const text = appConfigsText();
 
-  it("builds appConfigs from the three sibling config files", () => {
+  it("builds appConfigs from the sibling config files", () => {
     expect(text).toContain('import { columnConfigs } from "./columnConfigs";');
+    expect(text).toContain(
+      'import { retiredIdPrefixes } from "./retiredIdPrefixes";',
+    );
+    expect(text).toContain('import { tabConfigs } from "./tabConfigs";');
     expect(text).toContain('import { tableConfigs } from "./tableConfigs";');
     expect(text).toContain('import { valueConfigs } from "./valueConfigs";');
     expect(text).toContain(
-      "export const appConfigs = {\n  tableConfigs,\n  columnConfigs,\n  valueConfigs,\n};",
+      "export const appConfigs = {\n  tableConfigs,\n  tabConfigs,\n  retiredIdPrefixes,\n  columnConfigs,\n  valueConfigs,\n};",
     );
   });
 

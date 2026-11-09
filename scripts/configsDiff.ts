@@ -1,6 +1,6 @@
 // `sheets-framework configs-diff`: summarises how the generated config files on disk differ from their HEAD versions. Read-only; no credential.
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { relative } from "node:path";
 
 import { Obj } from "@byronbroughten/utils/obj";
@@ -21,9 +21,12 @@ import type { SheetsConfig } from "./sheetsConfig.ts";
 type ConfigEntry = Record<string, unknown>;
 type IdField = "tableId" | "columnId";
 type IdentifiedEntry<FN extends IdField> = ConfigEntry & Record<FN, string>;
+type TabEntry = ConfigEntry & { sheetGid: number };
 
 export interface ConfigSnapshot {
   tableConfigs: Record<string, IdentifiedEntry<"tableId">>;
+  tabConfigs: Record<string, TabEntry>;
+  retiredIdPrefixes: string[];
   columnConfigs: Record<string, Record<string, IdentifiedEntry<"columnId">>>;
   valueConfigs: Record<string, ValueConfigBase>;
 }
@@ -60,6 +63,11 @@ export function summarizeConfigsDiff({
 }: SnapshotPair): string[] {
   const sections = [
     ...diffTables({ before, after }),
+    ...diffTabs({ before: before.tabConfigs, after: after.tabConfigs }),
+    ...diffRetiredIdPrefixes({
+      before: before.retiredIdPrefixes,
+      after: after.retiredIdPrefixes,
+    }),
     ...diffValues({ before: before.valueConfigs, after: after.valueConfigs }),
   ];
   const headerCount = sections.filter(
@@ -86,7 +94,13 @@ function sectionHeader({ header, changes }: Section): string {
 }
 
 function emptySnapshot(): ConfigSnapshot {
-  return { tableConfigs: {}, columnConfigs: {}, valueConfigs: {} };
+  return {
+    tableConfigs: {},
+    tabConfigs: {},
+    retiredIdPrefixes: [],
+    columnConfigs: {},
+    valueConfigs: {},
+  };
 }
 
 function diffTables({ before, after }: BeforeAfter<ConfigSnapshot>): Section[] {
@@ -141,6 +155,28 @@ function colLine(label: string, changes: string[]): string {
   return `  column ${label}: ${changes.join("; ")}`;
 }
 
+function diffTabs(tabs: BeforeAfter<Record<string, TabEntry>>): Section[] {
+  const pairings = pairEntries(tabs, (_key, { sheetGid }) => sheetGid);
+  return pairings.flatMap((pairing) => {
+    if (pairing.kind !== "matched") {
+      return [tabSection(pairing.key, [pairing.kind])];
+    }
+    const changes = entryChanges(pairing, "sheetGid");
+    if (changes.length === 0) return [];
+    return [tabSection(renameLabel(pairing), changes)];
+  });
+}
+
+function tabSection(label: string, changes: string[]): Section {
+  return { header: `Tab ${label}`, changes, lines: [] };
+}
+
+function diffRetiredIdPrefixes(prefixes: BeforeAfter<string[]>): Section[] {
+  const changes = memberChanges(prefixes);
+  if (changes.length === 0) return [];
+  return [{ header: "Retired ID prefixes", changes, lines: [] }];
+}
+
 // Removed and matched entries keep the before order; added entries follow in the after order.
 function pairEntries<EN extends object>(
   { before, after }: BeforeAfter<Record<string, EN>>,
@@ -175,7 +211,7 @@ function pairEntries<EN extends object>(
 
 function entryChanges(
   { beforeKey, afterKey, before, after }: Matched<ConfigEntry>,
-  idField: IdField,
+  idField: IdField | "sheetGid",
 ): string[] {
   const renamed = beforeKey === afterKey ? [] : ["renamed"];
   const fields = [...new Set([...Object.keys(before), ...Object.keys(after)])];
@@ -273,9 +309,15 @@ export function readConfigsDiff(sheetsConfig: SheetsConfig): string[] {
       readHeadFile(dir, configFilePath(generatedDir, file)),
     ),
     after: readSnapshot((file) =>
-      readFileSync(configFilePath(generatedDir, file), "utf8"),
+      readFileIfPresent(configFilePath(generatedDir, file)),
     ),
   });
+}
+
+// A package whose last regen predates a generated file has none on disk yet.
+function readFileIfPresent(path: string): string | undefined {
+  if (!existsSync(path)) return undefined;
+  return readFileSync(path, "utf8");
 }
 
 function readSnapshot(
@@ -285,6 +327,11 @@ function readSnapshot(
     tableConfigs: mapValues(readConfigFile(readFile, "tableConfigs"), (entry) =>
       validateEntry(entry, "tableId"),
     ),
+    tabConfigs: mapValues(
+      readConfigFile(readFile, "tabConfigs"),
+      validateTabEntry,
+    ),
+    retiredIdPrefixes: readRetiredIdPrefixes(readFile),
     columnConfigs: mapValues(
       readConfigFile(readFile, "columnConfigs"),
       (columns) =>
@@ -309,9 +356,21 @@ function readConfigFile(
   return validateRecord(parseConfigFile(text), file);
 }
 
-// The generated files are one `make…Configs(<JSON>)` call; parsing the JSON avoids importing two versions of one module.
+function readRetiredIdPrefixes(
+  readFile: (file: ConfigFile) => string | undefined,
+): string[] {
+  const text = readFile("retiredIdPrefixes");
+  if (text === undefined) return [];
+  const value = parseConfigFile(text);
+  if (Array.isArray(value)) {
+    return value.map((prefix) => Val.validate.string(prefix));
+  }
+  throw new Error("configs:diff: retiredIdPrefixes is not a JSON array.");
+}
+
+// The generated files are one `make…(<JSON>)` call; parsing the JSON avoids importing two versions of one module.
 function parseConfigFile(text: string): unknown {
-  const start = text.indexOf("(", text.indexOf("Configs = make"));
+  const start = text.indexOf("(", text.indexOf(" = make"));
   const end = text.lastIndexOf(")");
   return JSON.parse(text.slice(start + 1, end));
 }
@@ -328,6 +387,12 @@ function validateEntry<FN extends IdField>(
   const entry = validateRecord(value, `a ${idField} entry`);
   Val.validate.string(entry[idField]);
   return entry as IdentifiedEntry<FN>;
+}
+
+function validateTabEntry(value: unknown): TabEntry {
+  const entry = validateRecord(value, "a tabConfigs entry");
+  Val.validate.number(entry.sheetGid);
+  return entry as TabEntry;
 }
 
 function validateValueConfig(value: unknown): ValueConfigBase {

@@ -73,8 +73,30 @@ export interface SheetSnapshot {
   title: string | null;
   rowCount: number | undefined;
   columnCount: number | undefined;
+  tabProperties: SheetTabProperties;
   tables: TableSnapshot[] | undefined;
   gridBlocks: GridBlockSnapshot[] | undefined;
+}
+
+export const themeColorNames = [
+  "TEXT",
+  "BACKGROUND",
+  "ACCENT1",
+  "ACCENT2",
+  "ACCENT3",
+  "ACCENT4",
+  "ACCENT5",
+  "ACCENT6",
+  "LINK",
+] as const;
+export type ThemeColorName = (typeof themeColorNames)[number];
+export type TabColor = `#${string}` | ThemeColorName;
+
+export interface SheetTabProperties {
+  color: TabColor | undefined;
+  hidden: boolean;
+  frozenRows: number;
+  frozenColumns: number;
 }
 
 export interface SheetConditionalFormatSnapshot {

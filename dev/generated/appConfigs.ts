@@ -3,11 +3,15 @@ import type {} from "@byronbroughten/sheets-framework";
 
 import { columnConfigs } from "./columnConfigs";
 import type { IdNameMap } from "./idNameMap";
+import { retiredIdPrefixes } from "./retiredIdPrefixes";
+import { tabConfigs } from "./tabConfigs";
 import { tableConfigs } from "./tableConfigs";
 import { valueConfigs } from "./valueConfigs";
 
 export const appConfigs = {
   tableConfigs,
+  tabConfigs,
+  retiredIdPrefixes,
   columnConfigs,
   valueConfigs,
 };

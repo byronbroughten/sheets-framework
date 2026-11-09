@@ -1,3 +1,4 @@
+import type { TabColor } from "../../00_Source/RawSource/RawSource";
 import type {
   ActionRowCellBaseline,
   ColumnTypeBaseline,
@@ -5,12 +6,18 @@ import type {
 import { idPrefixes } from "../idPrefixes";
 import type { Value, ValueName } from "./valueSchemas";
 
+type ConfigMakerName =
+  | "makeTableConfigs"
+  | "makeTabConfigs"
+  | "makeRetiredIdPrefixes"
+  | "makeColumnConfigs"
+  | "makeValueConfigs";
+
 export function makeImportLine(
-  configMakerName:
-    "makeTableConfigs" | "makeColumnConfigs" | "makeValueConfigs",
+  configMakerNames: readonly ConfigMakerName[],
   makeConfigsImport: string,
 ): string {
-  return `import { ${configMakerName} } from ${JSON.stringify(makeConfigsImport)};`;
+  return `import { ${configMakerNames.join(", ")} } from ${JSON.stringify(makeConfigsImport)};`;
 }
 
 function makeStructuredConfig<ST, const CF extends ST>(
@@ -45,6 +52,26 @@ function assertUniqueIdPrefixes(
       idPrefix: config.idPrefix,
     })),
   );
+}
+
+// Order is left out: a tab's place in the tab bar is never part of the baseline.
+export interface TabConfigStored {
+  sheetGid: number;
+  title: string;
+  color: TabColor | null;
+  frozenRows: number;
+  frozenColumns: number;
+  hidden: boolean;
+}
+export type TabConfigsBase = Record<string, TabConfigStored>;
+export function makeTabConfigs<TC extends TabConfigsBase>(tabConfigs: TC): TC {
+  return tabConfigs;
+}
+
+export function makeRetiredIdPrefixes(
+  retiredIdPrefixes: readonly string[],
+): readonly string[] {
+  return retiredIdPrefixes;
 }
 
 export type FixedListMember = string | number | boolean;

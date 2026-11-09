@@ -50,6 +50,13 @@ function toSheetSnapshot(sheet: GoogleSheet): SheetSnapshot {
     title: properties.title ?? null,
     rowCount: properties.gridProperties?.rowCount,
     columnCount: properties.gridProperties?.columnCount,
+    // Google omits a false hidden and a zero frozen count, as it does other zero-valued fields.
+    tabProperties: {
+      color: googleColor.toTabColor(properties.tabColorStyle),
+      hidden: properties.hidden ?? false,
+      frozenRows: properties.gridProperties?.frozenRowCount ?? 0,
+      frozenColumns: properties.gridProperties?.frozenColumnCount ?? 0,
+    },
     tables: sheet.tables?.map(toTableSnapshot),
     gridBlocks: sheet.data?.map((block) => {
       const columnCount = (block.columnMetadata ?? []).length;

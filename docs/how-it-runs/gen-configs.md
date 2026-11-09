@@ -8,4 +8,4 @@
 
 ## What configs-diff prints
 
-`sheets-framework configs-diff` prints what changed in those three config files since `HEAD`: Tables, columns and values added, removed or renamed (matched by `tableId` and `columnId`), and each changed field's old and new values, or "No config changes." It is read-only, with no credential and no Sheets call, and `gen-configs` prints the same summary when it finishes, so the summary is how to review a regen without reading the large `columnConfigs.ts`.
+`sheets-framework configs-diff` prints what changed in those config files since `HEAD`: Tables, tabs, columns and values added, removed or renamed (matched by `tableId`, `sheetGid` and `columnId`), prefixes added to or dropped from the retired list, and each changed field's old and new values, or "No config changes." It is read-only, with no credential and no Sheets call, and `gen-configs` prints the same summary when it finishes, so the summary is how to review a regen without reading the large `columnConfigs.ts`.

@@ -5,12 +5,16 @@ import type {
 } from "./idNameMapTypes";
 import type {
   ColumnConfigsBase,
+  TabConfigsBase,
   TableConfigsBase,
   ValueConfigsBase,
 } from "./makeConfigs";
 
+// The tab list and retired prefixes are optional so a configs set generated before them still registers.
 export interface ConfigSetBase {
   tableConfigs: TableConfigsBase;
+  tabConfigs?: TabConfigsBase;
+  retiredIdPrefixes?: readonly string[];
   columnConfigs: ColumnConfigsBase;
   valueConfigs: ValueConfigsBase;
 }
