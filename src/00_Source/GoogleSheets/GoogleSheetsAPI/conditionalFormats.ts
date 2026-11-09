@@ -11,6 +11,7 @@ import type { GridRangeProps } from "../../RawSource/RawSource";
 import { googleColor } from "./googleColor";
 import { googleGrid } from "./gridSnapshots";
 
+type GoogleSheet = GoogleAppsScript.Sheets.Schema.Sheet;
 type GoogleColor = GoogleAppsScript.Sheets.Schema.Color;
 type GoogleConditionalFormatRule =
   GoogleAppsScript.Sheets.Schema.ConditionalFormatRule;
@@ -27,6 +28,12 @@ export const googleConditionalFormatRule = {
         format: googleCellFormat.fromConditionalFormat(rule.format),
       },
     };
+  },
+  toConditionalFormatRules(sheet: GoogleSheet): ConditionalFormatRule[] {
+    // Google omits an empty list; observed: docs/sheets-behaviour.md#empty-lists-and-zero-valued-fields.
+    return (sheet.conditionalFormats ?? []).map((rule, index) =>
+      googleConditionalFormatRule.toConditionalFormatRule(rule, index),
+    );
   },
   toConditionalFormatRule(
     rule: GoogleConditionalFormatRule,

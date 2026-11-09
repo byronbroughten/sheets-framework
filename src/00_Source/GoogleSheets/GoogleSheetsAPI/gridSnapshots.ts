@@ -18,17 +18,15 @@ type GoogleSheet = GoogleAppsScript.Sheets.Schema.Sheet;
 type GoogleCellData = GoogleAppsScript.Sheets.Schema.CellData;
 
 export const googleGrid = {
+  toSpreadsheetSnapshot(spreadsheet: GoogleSpreadsheet): SpreadsheetSnapshot {
+    return spreadsheetSnapshot(spreadsheet, () => undefined);
+  },
   // The rule reader is passed in because conditionalFormats.ts imports this file.
-  toSpreadsheetSnapshot(
+  toSpreadsheetSnapshotWithRules(
     spreadsheet: GoogleSpreadsheet,
-    readConditionalFormats?: (sheet: GoogleSheet) => ConditionalFormatRule[],
+    conditionalFormatsOf: (sheet: GoogleSheet) => ConditionalFormatRule[],
   ): SpreadsheetSnapshot {
-    return {
-      timeZone: spreadsheet.properties?.timeZone ?? null,
-      sheets: Val.assert(spreadsheet.sheets, "spreadsheet.sheets").map(
-        (sheet) => toSheetSnapshot(sheet, readConditionalFormats?.(sheet)),
-      ),
-    };
+    return spreadsheetSnapshot(spreadsheet, conditionalFormatsOf);
   },
   toGridRangeProps(
     range: GoogleAppsScript.Sheets.Schema.GridRange,
@@ -47,6 +45,20 @@ export const googleGrid = {
     };
   },
 };
+
+function spreadsheetSnapshot(
+  spreadsheet: GoogleSpreadsheet,
+  conditionalFormatsOf: (
+    sheet: GoogleSheet,
+  ) => ConditionalFormatRule[] | undefined,
+): SpreadsheetSnapshot {
+  return {
+    timeZone: spreadsheet.properties?.timeZone ?? null,
+    sheets: Val.assert(spreadsheet.sheets, "spreadsheet.sheets").map((sheet) =>
+      toSheetSnapshot(sheet, conditionalFormatsOf(sheet)),
+    ),
+  };
+}
 
 function toSheetSnapshot(
   sheet: GoogleSheet,

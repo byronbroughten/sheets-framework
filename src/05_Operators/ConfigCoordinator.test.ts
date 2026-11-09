@@ -1895,14 +1895,15 @@ describe("ConfigCoordinator conditional-format rule read", () => {
     );
   });
 
-  it("leaves rules out of the config-sync endpoint's get", () => {
-    const service = seedSheetWithRule();
+  it("leaves rules unread on the config-sync endpoint", () => {
+    seedSheetWithRule();
+    const coordinator = ConfigCoordinator.init();
 
-    ConfigCoordinator.init().syncConfigSheetRows();
+    coordinator.syncConfigSheetRows();
 
-    service.getCalls.forEach(({ fields }) => {
-      expect(fields).not.toContain("conditionalFormats");
-    });
+    expect(() =>
+      coordinator.ss.raw.sheet(rulesGid).conditionalFormatRules(),
+    ).toThrowError(/have not been fetched/);
   });
 });
 

@@ -1,6 +1,5 @@
 import { Val } from "@byronbroughten/utils/val";
 
-import type { ConditionalFormatRule } from "../RawSource/ConditionalFormat";
 import { PartialTableRefusal } from "../RawSource/PartialTableRefusal";
 import type {
   GridFetchOptions,
@@ -177,23 +176,17 @@ export class GoogleSheetsAPI implements RawSource {
     options?: SheetPropertiesFetchOptions,
   ): SpreadsheetSnapshot {
     if (options?.includeConditionalFormats) {
-      return googleGrid.toSpreadsheetSnapshot(
-        this.sheets.Spreadsheets.get(this.spreadsheetId, {
-          fields: fieldMasks.sheetPropertiesWithConditionalFormats,
-        }),
-        conditionalFormatRulesOf,
+      return googleGrid.toSpreadsheetSnapshotWithRules(
+        this._getSpreadsheet(fieldMasks.sheetPropertiesWithConditionalFormats),
+        googleConditionalFormatRule.toConditionalFormatRules,
       );
     }
     return googleGrid.toSpreadsheetSnapshot(
-      this.sheets.Spreadsheets.get(this.spreadsheetId, {
-        fields: fieldMasks.sheetProperties,
-      }),
+      this._getSpreadsheet(fieldMasks.sheetProperties),
     );
   }
   fetchTimeZone(): string | null {
-    const spreadsheet = this.sheets.Spreadsheets.get(this.spreadsheetId, {
-      fields: fieldMasks.timeZone,
-    });
+    const spreadsheet = this._getSpreadsheet(fieldMasks.timeZone);
     return spreadsheet.properties?.timeZone ?? null;
   }
   fetchGrid(
@@ -217,7 +210,7 @@ export class GoogleSheetsAPI implements RawSource {
   fetchConditionalFormatRules(): SheetConditionalFormatSnapshot[] {
     return this._fetchSheets(fieldMasks.conditionalFormats).map((sheet) => ({
       sheetGid: sheetGidOf(sheet),
-      rules: conditionalFormatRulesOf(sheet),
+      rules: googleConditionalFormatRule.toConditionalFormatRules(sheet),
     }));
   }
   // The code assumes Google drops an empty protectedRanges list the same way; observed: docs/sheets-behaviour.md#reading-protections-back.
@@ -250,18 +243,14 @@ export class GoogleSheetsAPI implements RawSource {
     }
   }
   private _fetchSheets(fields: string): GoogleSheet[] {
-    const spreadsheet = this.sheets.Spreadsheets.get(this.spreadsheetId, {
-      fields,
-    });
-    return Val.assert(spreadsheet.sheets, "spreadsheet.sheets");
+    return Val.assert(
+      this._getSpreadsheet(fields).sheets,
+      "spreadsheet.sheets",
+    );
   }
-}
-
-function conditionalFormatRulesOf(sheet: GoogleSheet): ConditionalFormatRule[] {
-  // Google omits an empty list; observed: docs/sheets-behaviour.md#empty-lists-and-zero-valued-fields.
-  return (sheet.conditionalFormats ?? []).map((rule, index) =>
-    googleConditionalFormatRule.toConditionalFormatRule(rule, index),
-  );
+  private _getSpreadsheet(fields: string): GoogleSpreadsheet {
+    return this.sheets.Spreadsheets.get(this.spreadsheetId, { fields });
+  }
 }
 
 function sheetGidOf(sheet: GoogleSheet): number {
