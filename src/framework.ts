@@ -3,6 +3,13 @@
 // The framework's public runtime entry (`.`): app code imports nothing else, bar `./testing` in tests.
 export type { Register } from "./01_SpreadsheetSchema/configReaders/configRegister";
 export {
+  makeColumnConfigs,
+  makeRetiredIdPrefixes,
+  makeTabConfigs,
+  makeTableConfigs,
+  makeValueConfigs,
+} from "./01_SpreadsheetSchema/configReaders/makeConfigs";
+export {
   type ClaimedTraits,
   makePendingAlterations,
   type PendingAlterations,

@@ -1,4 +1,4 @@
-import { makeTabConfigs } from "../../src/01_SpreadsheetSchema/configReaders/makeConfigs";
+import { makeTabConfigs } from "@byronbroughten/sheets-framework";
 
 export const tabConfigs = makeTabConfigs({
   "test": { "sheetGid": 604825146, "title": "Test", "color": null, "hidden": false, "frozenRows": 0, "frozenColumns": 0 },

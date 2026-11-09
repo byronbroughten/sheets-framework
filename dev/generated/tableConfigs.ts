@@ -1,4 +1,4 @@
-import { makeTableConfigs } from "../../src/01_SpreadsheetSchema/configReaders/makeConfigs";
+import { makeTableConfigs } from "@byronbroughten/sheets-framework";
 
 export const tableConfigs = makeTableConfigs({
   "spreadsheetConfig": { "tableId": "spreadsheetConfig", "tableName": "spreadsheetConfig", "sheetGid": 1967106628, "idPrefix": "sscf", "hasIdColumn": false, "hasNameColumn": false },
