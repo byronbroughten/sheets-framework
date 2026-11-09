@@ -93,6 +93,19 @@ The framework's check time rose while its count fell, and that wasn't traced. It
 
 Breaking any of the three changes leaves the app's program compiling; only the framework's own type-level tests, against its dev configs, fail.
 
+### #268 one predicate for both column-name filters, dropped
+
+`ColumnNameFiltered` and `ColumnFullNameFiltered` each test a column's value name and then its `isFormula`, one over a Table's columns and one over the flat map by full name. One shared predicate for both was measured and dropped (#268, Nov 2026): every form tried put the app's program over #262's 577,646. Counts are on TypeScript 5.9.2 at framework `df55091` and real-estate `4106438`, for the cheapest form, one conditional testing the whole config entry against `{ valueName: VN; isFormula: IF }`:
+
+| Program | Before | Shared predicate |
+| --- | ---: | ---: |
+| `packages/real-estate` | 577,646 | 597,419 |
+| `packages/framework` | 132,771 | 134,863 |
+| `packages/framework/scripts` | 96,778 | 97,082 |
+| `packages/framework/valueKinds` | 95,859 | 97,318 |
+
+The two other forms were measured in the app's program only. Passing the value name and `isFormula` as separate parameters to a predicate that keeps the nested conditionals cost 718,692 with naked parameters, which distribute, and 605,247 with each wrapped in a one-element tuple, which doesn't. The cheapest form compiled cleanly in all four programs, so the cost is all that ruled it out. Check times are not recorded: identical runs on that machine swung by several seconds.
+
 ### #78 camelCase-aware `SentenceToCamelCase`
 
 After `SentenceToCamelCase` learned the shared splitter's camelCase and acronym boundaries (#78, Oct 2026): **~112.3k instantiations, ~0.9s check time**, against **~105.4k, ~0.89s** at its parent, both exactly reproducible on TypeScript 5.9.2. With `Str.test.ts` removed from both trees the gap is **~0.9k**, so nearly all of the ~6.9k is the eleven type assertions added there; the `\s`-sized whitespace union roughly doubled the non-test share from 393. No production call site passes a literal, and `string extends S` now returns `string` for a widened name before any character walk, so the type stays on the runtime's rules rather than requiring sentence-case headers.
