@@ -15,9 +15,8 @@ type ConfigMakerName =
 
 export function makeImportLine(
   configMakerNames: readonly ConfigMakerName[],
-  makeConfigsImport: string,
 ): string {
-  return `import { ${configMakerNames.join(", ")} } from ${JSON.stringify(makeConfigsImport)};`;
+  return `import { ${configMakerNames.join(", ")} } from "@byronbroughten/sheets-framework";`;
 }
 
 function makeStructuredConfig<ST, const CF extends ST>(
