@@ -264,9 +264,9 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
     });
     return map;
   }
-  toFileSource(makeConfigsImport: string): string {
+  toFileSource(): string {
     return [
-      makeImportLine(["makeTableConfigs"], makeConfigsImport),
+      makeImportLine(["makeTableConfigs"]),
       ``,
       `export const tableConfigs = makeTableConfigs(${oneLinePerEntryFileSource(
         this.newTableConfigs(),
@@ -274,9 +274,9 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
       ``,
     ].join("\n");
   }
-  retiredIdPrefixesFileSource(makeConfigsImport: string): string {
+  retiredIdPrefixesFileSource(): string {
     return [
-      makeImportLine(["makeRetiredIdPrefixes"], makeConfigsImport),
+      makeImportLine(["makeRetiredIdPrefixes"]),
       ``,
       `export const retiredIdPrefixes = makeRetiredIdPrefixes(${JSON.stringify(
         this.retiredIdPrefixes(),

@@ -85,7 +85,7 @@ export class ConfigCoordinator extends SpreadsheetBaseOperator {
     this.ss.batchUpdateGSheets();
     return summary;
   }
-  generateConfigFiles(makeConfigsImport: string): ConfigRegeneration {
+  generateConfigFiles(): ConfigRegeneration {
     const floorReport = this._ensureFloorAndFlush();
     const untypedColumnsSummary = this._syncConfigSheetRows();
     this.ss.batchUpdateGSheets();
@@ -93,12 +93,11 @@ export class ConfigCoordinator extends SpreadsheetBaseOperator {
     this._assertFloorIdentityUnchanged();
     this._assertFloorMatchesSeed();
     return {
-      tableConfigs: this.tableConfigOperator.toFileSource(makeConfigsImport),
-      tabConfigs: this.tabConfigOperator.toFileSource(makeConfigsImport),
-      retiredIdPrefixes:
-        this.tableConfigOperator.retiredIdPrefixesFileSource(makeConfigsImport),
-      columnConfigs: this.columnConfigOperator.toFileSource(makeConfigsImport),
-      valueConfigs: this.valueConfigOperator.toFileSource(makeConfigsImport),
+      tableConfigs: this.tableConfigOperator.toFileSource(),
+      tabConfigs: this.tabConfigOperator.toFileSource(),
+      retiredIdPrefixes: this.tableConfigOperator.retiredIdPrefixesFileSource(),
+      columnConfigs: this.columnConfigOperator.toFileSource(),
+      valueConfigs: this.valueConfigOperator.toFileSource(),
       idNameMap: idNameMapFileSource(this._idNameMap()),
       untypedColumnsSummary,
       floorReport,

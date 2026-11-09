@@ -127,7 +127,7 @@ export function appEslintPreset({ testSetupFiles }) {
     return [
       {
         files,
-        // generated/ imports the framework's makeConfigs by the relative path gen:configs writes.
+        // A committed generated/columnConfigs.ts keeps a relative makeConfigs import until its next regen.
         ignores: ["**/*.test.ts", "src/generated/**", ...testSetupFiles],
         rules: restrict(false),
       },
