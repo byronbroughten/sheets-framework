@@ -2,6 +2,7 @@ import { Val } from "@byronbroughten/utils/val";
 
 import type {
   GridFetchRange,
+  SheetPropertiesFetchOptions,
   SheetSnapshot,
   SpreadsheetSnapshot,
 } from "../../00_Source/RawSource/RawSource";
@@ -25,8 +26,10 @@ export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
     }
     return Val.assert(this.spreadsheetStateRaw.timeZone, "timeZone");
   }
-  fetchAllSheetProperties(): { activeSheetGids: number[] } {
-    this._fetchAndIntegrateAllSheetProperties();
+  fetchAllSheetProperties(options?: SheetPropertiesFetchOptions): {
+    activeSheetGids: number[];
+  } {
+    this._fetchAndIntegrateAllSheetProperties(options);
     return { activeSheetGids: this.ss.activeSheetGids };
   }
   fetchAllGathered(includeProgrammaticFacts = false): void {
@@ -61,8 +64,11 @@ export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
     Logger.log(`Fetched the spreadsheet's time zone on its own: ${timeZone}.`);
     this.spreadsheetStateRaw.timeZone = timeZone;
   }
-  private _fetchAndIntegrateAllSheetProperties(): void {
-    const data = this.spreadsheetStateRaw.rawSource.fetchSheetProperties();
+  private _fetchAndIntegrateAllSheetProperties(
+    options?: SheetPropertiesFetchOptions,
+  ): void {
+    const data =
+      this.spreadsheetStateRaw.rawSource.fetchSheetProperties(options);
     this._removeTablesAbsentFrom(data.sheets);
     this._addDataToState(data);
     this.spreadsheetStateRaw.allSheetPropertiesAreFetched = true;

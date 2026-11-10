@@ -63,6 +63,10 @@ export interface GridFetchOptions {
   includeProgrammaticFacts: boolean;
 }
 
+export interface SheetPropertiesFetchOptions {
+  includeConditionalFormats: boolean;
+}
+
 export interface SpreadsheetSnapshot {
   timeZone: string | null;
   sheets: SheetSnapshot[];
@@ -76,6 +80,7 @@ export interface SheetSnapshot {
   tabProperties: SheetTabProperties;
   tables: TableSnapshot[] | undefined;
   gridBlocks: GridBlockSnapshot[] | undefined;
+  conditionalFormats: ConditionalFormatRule[] | undefined;
 }
 
 export const themeColorNames = [
@@ -356,7 +361,9 @@ export interface RawWriteOperation {
 }
 
 export interface RawSource {
-  fetchSheetProperties(): SpreadsheetSnapshot;
+  fetchSheetProperties(
+    options?: SheetPropertiesFetchOptions,
+  ): SpreadsheetSnapshot;
   fetchTimeZone(): string | null;
   fetchGrid(
     gridRanges: GridFetchRange[],

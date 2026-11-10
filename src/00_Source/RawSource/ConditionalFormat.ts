@@ -45,6 +45,7 @@ export interface UnmodelableConditionalFormatRule {
   kind: "unmodelable";
   ranges: GridRangeProps[];
   index: number;
+  rawContent: string;
 }
 
 export function isModelledConditionType(

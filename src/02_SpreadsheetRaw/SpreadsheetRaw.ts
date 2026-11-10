@@ -4,6 +4,7 @@ import type {
   AddSheetOperation,
   BoundedGridRange,
   OpaqueRawRequest,
+  SheetPropertiesFetchOptions,
 } from "../00_Source/RawSource/RawSource";
 import { validateFormulaString } from "./CellRaw";
 import { SpreadsheetBaseRaw } from "./ClassBases/SpreadsheetBaseRaw";
@@ -101,8 +102,10 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
   ensureAllSheetPropertiesAreFetched(): void {
     this.fetcher.ensureAllSheetPropertiesAreFetched();
   }
-  fetchAllSheetProperties(): { activeSheetGids: number[] } {
-    return this.fetcher.fetchAllSheetProperties();
+  fetchAllSheetProperties(options?: SheetPropertiesFetchOptions): {
+    activeSheetGids: number[];
+  } {
+    return this.fetcher.fetchAllSheetProperties(options);
   }
   fetchAllGathered(includeProgrammaticFacts = false): void {
     this.fetcher.fetchAllGathered(includeProgrammaticFacts);
