@@ -37,6 +37,7 @@ export type SyncSendOutcome =
   | { kind: "stopped" }
   | { kind: "refused" }
   | SyncSentOutcome
+  | SyncStoppedBeforeSendingOutcome
   | SyncStoppedPartwayOutcome;
 
 export interface SyncSentOutcome {
@@ -44,13 +45,21 @@ export interface SyncSentOutcome {
   summary: string;
 }
 
+export interface SyncStoppedBeforeSendingOutcome {
+  kind: "stoppedBeforeSending";
+  heldBy: SyncHeldBy;
+}
+
 export interface SyncStoppedPartwayOutcome {
   kind: "stoppedPartway";
+  // At least 1: a send held at its first flush is stoppedBeforeSending, since nothing in it landed.
   landedFlushes: number;
   flushCount: number;
-  // "uncovered": the send had no --confirm; "mismatched": the sheet or plan changed since the dry run.
-  heldBy: "uncovered" | "mismatched";
+  heldBy: SyncHeldBy;
 }
+
+// "uncovered": the send had no --confirm; "mismatched": the sheet or plan changed since the dry run.
+export type SyncHeldBy = "uncovered" | "mismatched";
 
 // Names a Table, a column or a tab by codebase name, as alterations.ts keys it.
 export type SyncSubject = SyncTableSubject | SyncTabSubject;
