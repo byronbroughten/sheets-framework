@@ -63,6 +63,7 @@ export interface TabConfigStored {
   hidden: boolean;
 }
 export type TabConfigsBase = Record<string, TabConfigStored>;
+// Every generated data file is a literal passed through its constructor from makeConfigs, never a bare literal, so this and makeRetiredIdPrefixes check nothing.
 export function makeTabConfigs<TC extends TabConfigsBase>(tabConfigs: TC): TC {
   return tabConfigs;
 }
