@@ -1,3 +1,3 @@
-import { makeRetiredIdPrefixes } from "../../src/01_SpreadsheetSchema/configReaders/makeConfigs";
+import { makeRetiredIdPrefixes } from "@byronbroughten/sheets-framework";
 
 export const retiredIdPrefixes = makeRetiredIdPrefixes([]);

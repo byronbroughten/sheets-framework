@@ -1,8 +1,7 @@
 // `sheets-framework gen-configs`: regenerates the package's generated files from its live config sheets, on the Node host.
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
-import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 
 import type { ConfigRegeneration } from "../src/05_Operators/ConfigCoordinator.ts";
 import { readConfigsDiff } from "./configsDiff.ts";
@@ -108,19 +107,7 @@ class ConfigFilesGenerator {
     });
     const { ConfigCoordinator } =
       await import("../src/05_Operators/ConfigCoordinator.ts");
-    return ConfigCoordinator.init().generateConfigFiles(
-      this._makeConfigsImport(),
-    );
-  }
-
-  _makeConfigsImport(): string {
-    const makeConfigsPath = fileURLToPath(
-      new URL(
-        "../src/01_SpreadsheetSchema/configReaders/makeConfigs",
-        import.meta.url,
-      ),
-    );
-    return relative(this.sheetsConfig.generatedDir, makeConfigsPath);
+    return ConfigCoordinator.init().generateConfigFiles();
   }
 
   _runTsc(): boolean {

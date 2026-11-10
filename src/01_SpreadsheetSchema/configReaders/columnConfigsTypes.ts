@@ -193,25 +193,39 @@ export type MakeColumnFullName<
   CN extends ColumnName<TN>,
 > = `${TN}${CodebaseNameDelimiter}${CN & string}`;
 
-type ColumnConfigsFlat = FlattenTwoLevels<
+type ColumnConfigsFlatParts = FlattenTwoLevels<
   ColumnConfigs,
   CodebaseNameDelimiter,
   "tableName",
   "columnName"
 >;
+// One object, not the intersection of one per Table: every full-name lookup reads it, at a fraction of the cost.
+type ColumnConfigsFlat = {
+  [FN in keyof ColumnConfigsFlatParts]: ColumnConfigsFlatParts[FN];
+};
 type ColumnFullNameAll = keyof ColumnConfigsFlat & string;
+
+// Repeats ColumnNameFiltered's test: one shared predicate cost the app ~20k instantiations (type-check-cost.md, #268).
+type ColumnFullNameFiltered<VN extends ValueName, IF extends boolean> = keyof {
+  [
+    FN in ColumnFullNameAll as ColumnConfigsFlat[FN]["valueName"] extends VN
+      ? ColumnConfigsFlat[FN]["isFormula"] extends IF
+        ? FN
+        : never
+      : never
+  ]: 1;
+} &
+  string;
 
 // Absolute addressing: one correlated key, so a filtered subset of columns is expressible.
 export type ColumnFullName<
   VN extends ValueName = ValueName,
   IF extends boolean = boolean,
-> = {
-  [FN in ColumnFullNameAll]: ColumnConfigsFlat[FN]["valueName"] extends VN
-    ? ColumnConfigsFlat[FN]["isFormula"] extends IF
-      ? FN
-      : never
-    : never;
-}[ColumnFullNameAll];
+> = [ValueName] extends [VN]
+  ? [boolean] extends [IF]
+    ? ColumnFullNameAll
+    : ColumnFullNameFiltered<VN, IF>
+  : ColumnFullNameFiltered<VN, IF>;
 
 export type TableNameOf<FN extends ColumnFullName> =
   ColumnConfigsFlat[FN]["tableName"];

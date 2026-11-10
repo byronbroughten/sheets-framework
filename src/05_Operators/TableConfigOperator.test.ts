@@ -39,7 +39,7 @@ beforeEach(() => {
   stubLogger();
 });
 
-// newTableConfigs()/tableKeysByTableId()/toFileSource("../makeConfigs") all read letApiAccess,
+// newTableConfigs()/tableKeysByTableId()/toFileSource() all read letApiAccess,
 // which prepFetchForSync doesn't prep on its own — production code only
 // preps it via ColumnConfigOperator.prepFetchWithTableConfig, so a
 // standalone TableConfigOperator test has to prep it itself.
@@ -563,9 +563,7 @@ describe("TableConfigOperator.newTableConfigs / toFileSource", () => {
     const operator = TableConfigOperator.init();
     syncTableConfigOperator(operator);
 
-    expect(() => operator.toFileSource("../makeConfigs")).toThrow(
-      /Widget.*Gadget.*"wdg"/,
-    );
+    expect(() => operator.toFileSource()).toThrow(/Widget.*Gadget.*"wdg"/);
   });
 });
 
@@ -635,10 +633,10 @@ describe("TableConfigOperator.newTableConfigs Table identity and position", () =
 
     const operator = TableConfigOperator.init();
     syncTableConfigOperator(operator);
-    const source = operator.toFileSource("../makeConfigs");
+    const source = operator.toFileSource();
 
     expect(source).toContain(
-      'import { makeTableConfigs } from "../makeConfigs";',
+      'import { makeTableConfigs } from "@byronbroughten/sheets-framework";',
     );
     expect(source).toContain("export const tableConfigs = makeTableConfigs({");
     expect(source).toContain(
@@ -750,10 +748,9 @@ describe("TableConfigOperator Table keys and prefixes", () => {
       gadget: { name: "Gadget", columnIds: ["c:gdg:aaa"] },
     });
 
-    const source =
-      syncedOperator().retiredIdPrefixesFileSource("../makeConfigs");
+    const source = syncedOperator().retiredIdPrefixesFileSource();
     expect(source).toContain(
-      'import { makeRetiredIdPrefixes } from "../makeConfigs";',
+      'import { makeRetiredIdPrefixes } from "@byronbroughten/sheets-framework";',
     );
     expect(source).toMatch(
       /export const retiredIdPrefixes = makeRetiredIdPrefixes\(\[.*"itm".*\]\);/,
@@ -812,9 +809,9 @@ describe("TabConfigOperator.newTabConfigs", () => {
   it("writes the tabs through makeTabConfigs", () => {
     stubTabs({});
 
-    const source = syncedTabOperator().toFileSource("../makeConfigs");
+    const source = syncedTabOperator().toFileSource();
     expect(source).toContain(
-      'import { makeTabConfigs } from "../makeConfigs";',
+      'import { makeTabConfigs } from "@byronbroughten/sheets-framework";',
     );
     expect(source).toContain("export const tabConfigs = makeTabConfigs({");
     expect(source).toContain(

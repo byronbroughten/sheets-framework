@@ -141,13 +141,11 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
   validateHeadersInZone(): void {
     this.ss.raw.validateHeadersInZone(this.tableIdsApiAccesses());
   }
-  idPrefix(tableId: string): string {
-    return Val.assert(this._idPrefixesByTableId().get(tableId), "ID prefix");
-  }
-  private _idPrefixesByTableId(): Map<string, string> {
+  idPrefixesByTableId(): Map<string, string> {
     const prefixesInUse = new Set<string>();
     const assigned = new Map<string, string>();
-    this._apiAccessTables().forEach((table) => {
+    const apiAccessTables = this._apiAccessTables();
+    apiAccessTables.forEach((table) => {
       const sampled = table.profile.idPrefix();
       if (sampled === undefined) return;
       prefixesInUse.add(sampled);
@@ -157,9 +155,9 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
     const retiredPrefixes = idPrefixes.retiredOrGone({
       previouslyRetired: configRetiredIdPrefixes(),
       previousByTableId: previousIdPrefixesByTableId(),
-      liveTableIds: new Set(this.tableIdsApiAccesses()),
+      liveTableIds: new Set(apiAccessTables.map((table) => table.tableId)),
     });
-    this._apiAccessTables().forEach((table) => {
+    apiAccessTables.forEach((table) => {
       if (assigned.has(table.tableId)) return;
       const generated = idPrefixes.fromTitle({
         title: table.name,
@@ -175,7 +173,7 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
     return idPrefixes.retiredAfter({
       previouslyRetired: configRetiredIdPrefixes(),
       previousByTableId: previousIdPrefixesByTableId(),
-      currentByTableId: this._idPrefixesByTableId(),
+      currentByTableId: this.idPrefixesByTableId(),
     });
   }
   idPrefixChangeReport(): string | undefined {
@@ -201,6 +199,7 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
   newTableConfigs(): TableConfigsBase {
     const tableConfigs: TableConfigsBase = {};
     const idPrefixLabels: IdPrefixLabel[] = [];
+    const idPrefixesByTableId = this.idPrefixesByTableId();
     this._apiAccessTables().forEach((table) => {
       const { tableId, name: tableName } = table;
       const tableKey = this.schema.titleToName(tableName);
@@ -210,7 +209,7 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
           `Tables "${existing.tableName}" and "${tableName}" both give the key "${tableKey}".`,
         );
       }
-      const idPrefix = this.idPrefix(tableId);
+      const idPrefix = idPrefixIn(idPrefixesByTableId, tableId);
       const headerRow = table.headRow("header");
       tableConfigs[tableKey] = {
         tableId,
@@ -264,9 +263,9 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
     });
     return map;
   }
-  toFileSource(makeConfigsImport: string): string {
+  toFileSource(): string {
     return [
-      makeImportLine(["makeTableConfigs"], makeConfigsImport),
+      makeImportLine(["makeTableConfigs"]),
       ``,
       `export const tableConfigs = makeTableConfigs(${oneLinePerEntryFileSource(
         this.newTableConfigs(),
@@ -274,9 +273,9 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
       ``,
     ].join("\n");
   }
-  retiredIdPrefixesFileSource(makeConfigsImport: string): string {
+  retiredIdPrefixesFileSource(): string {
     return [
-      makeImportLine(["makeRetiredIdPrefixes"], makeConfigsImport),
+      makeImportLine(["makeRetiredIdPrefixes"]),
       ``,
       `export const retiredIdPrefixes = makeRetiredIdPrefixes(${JSON.stringify(
         this.retiredIdPrefixes(),
@@ -284,6 +283,13 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
       ``,
     ].join("\n");
   }
+}
+
+export function idPrefixIn(
+  idPrefixesByTableId: Map<string, string>,
+  tableId: string,
+): string {
+  return Val.assert(idPrefixesByTableId.get(tableId), "ID prefix");
 }
 
 function columnReferenceLabel(reference: string): string {

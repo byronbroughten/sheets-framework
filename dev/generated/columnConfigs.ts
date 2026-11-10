@@ -1,4 +1,4 @@
-import { makeColumnConfigs } from "../../src/01_SpreadsheetSchema/configReaders/makeConfigs";
+import { makeColumnConfigs } from "@byronbroughten/sheets-framework";
 
 export const columnConfigs = makeColumnConfigs({
   "spreadsheetConfig": {
