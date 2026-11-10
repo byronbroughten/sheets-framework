@@ -23,6 +23,29 @@ interface BraceFormulaProps extends FormulaText {
 interface RuleFormulaProps extends FormulaText {
   layout: RuleLayout;
 }
+export interface RuleDecompileProps extends RuleFormulaProps {
+  isOneColumn: boolean;
+}
+
+interface RuleReference {
+  sheetPrefix: string | undefined;
+  start: CellAddress;
+  end: CellAddress | undefined;
+}
+
+interface CellAddress {
+  isColAbsolute: boolean;
+  colLetter: string;
+  isRowAbsolute: boolean;
+  rowNumber: number | undefined;
+}
+
+interface RuleBraceContext {
+  tableKey: string;
+  columnNamesByLetter: Map<string, string>;
+  firstBodyRowNumber: number;
+  isOneColumn: boolean;
+}
 
 interface Brace {
   text: string;
@@ -50,6 +73,10 @@ const formulaPatterns = {
   stringLiteral: /"(?:[^"]|"")*"/.source,
   brace: /\$\{([^{}[\]"]+?)(?:\[([^{}[\]"]+)\])?\}/.source,
   liveReference: /([A-Za-z_][\w.]*)\[([^[\]"]+)\]/.source,
+  // The lookarounds keep a function name such as LOG10( from reading as a cell.
+  a1Reference:
+    /(?<![\w$.'])((?:'(?:[^']|'')*'|[A-Za-z_][\w.]*)!)?(\$?)([A-Z]{1,3})(\$?)(\d+)?(?::(\$?)([A-Z]{1,3})(\$?)(\d+)?)?(?![\w$(])/
+      .source,
 } as const;
 
 export const BraceFormula = {
@@ -81,6 +108,51 @@ export const BraceFormula = {
       }
       return schema.anchoredA1(colIndex, firstBodyRow);
     });
+  },
+  // The inverse of compileForRule; undefined when a reference has no brace form.
+  decompileForRule({
+    tableKey,
+    formula,
+    layout,
+    isOneColumn,
+  }: RuleDecompileProps): string | undefined {
+    const columnNamesByLetter = layout.columnNamesLeftToRight.reduce(
+      (byLetter, columnName, offset) => {
+        const colIndex = SheetIndex.col(layout.headerTopLeft.colIndex + offset);
+        byLetter.set(schema.columnLetter(colIndex), columnName);
+        return byLetter;
+      },
+      new Map<string, string>(),
+    );
+    const firstBodyRowNumber = layout.headerTopLeft.rowIndex + 2;
+    const pattern = new RegExp(
+      `(${formulaPatterns.stringLiteral})|${formulaPatterns.a1Reference}`,
+      "g",
+    );
+    let isExpressible = true;
+    const decompiled = formula.replace(
+      pattern,
+      (
+        match: string,
+        literal: string | undefined,
+        sheetPrefix: string | undefined,
+        ...addressParts: unknown[]
+      ) => {
+        if (literal !== undefined) return match;
+        const reference = ruleReferenceOf(sheetPrefix, addressParts);
+        if (reference === undefined) return match;
+        const brace = ruleBraceOf(reference, {
+          tableKey,
+          columnNamesByLetter,
+          firstBodyRowNumber,
+          isOneColumn,
+        });
+        if (brace === undefined) isExpressible = false;
+        return brace ?? match;
+      },
+    );
+    if (!isExpressible) return undefined;
+    return decompiled;
   },
   columnsNamed({ tableKey, formula }: FormulaText): ConfiguredColumn[] {
     return [...formula.matchAll(bracePattern())].flatMap(
@@ -201,6 +273,56 @@ function noColumnMessage(brace: Brace, formula: string): string {
     `names no column of Table ${brace.tableKey}`,
     formula,
   );
+}
+
+// Undefined for a bare word such as TRUE, which has neither a row nor a colon.
+function ruleReferenceOf(
+  sheetPrefix: string | undefined,
+  addressParts: unknown[],
+): RuleReference | undefined {
+  const start = cellAddressOf(addressParts.slice(0, 4));
+  if (start === undefined) return undefined;
+  const end = cellAddressOf(addressParts.slice(4, 8));
+  if (end === undefined && start.rowNumber === undefined) return undefined;
+  return { sheetPrefix, start, end };
+}
+
+// Takes one address's four groups: column $, column letters, row $, row digits.
+function cellAddressOf(groups: unknown[]): CellAddress | undefined {
+  const [colAbs, colLetter, rowAbs, rowDigits] = groups;
+  if (typeof colLetter !== "string") return undefined;
+  let rowNumber: number | undefined;
+  if (typeof rowDigits === "string") rowNumber = Number(rowDigits);
+  return {
+    isColAbsolute: colAbs === "$",
+    colLetter,
+    isRowAbsolute: rowAbs === "$",
+    rowNumber,
+  };
+}
+
+function ruleBraceOf(
+  { sheetPrefix, start, end }: RuleReference,
+  context: RuleBraceContext,
+): string | undefined {
+  if (sheetPrefix !== undefined) return undefined;
+  const columnName = context.columnNamesByLetter.get(start.colLetter);
+  if (columnName === undefined) return undefined;
+  if (end === undefined) {
+    if (start.isRowAbsolute) return undefined;
+    if (start.rowNumber !== context.firstBodyRowNumber) return undefined;
+    if (!start.isColAbsolute && !context.isOneColumn) return undefined;
+    return `\${${columnName}}`;
+  }
+  const isOpenColumn =
+    start.isColAbsolute &&
+    start.isRowAbsolute &&
+    start.rowNumber === context.firstBodyRowNumber &&
+    end.isColAbsolute &&
+    end.colLetter === start.colLetter &&
+    end.rowNumber === undefined;
+  if (!isOpenColumn) return undefined;
+  return wholeColumnBrace({ tableKey: context.tableKey, columnName });
 }
 
 function liveTablesByName(configs: BraceConfigs): Map<string, LiveTable> {

@@ -6,6 +6,7 @@ import {
 import {
   quantizeRgbChannels,
   type RgbChannels,
+  rgbChannelsHex,
   type RgbColor,
 } from "../../RawSource/RgbColor";
 
@@ -44,8 +45,7 @@ export const googleColor = {
       return themeColorName(style.themeColor);
     }
     if (style?.rgbColor === undefined) return undefined;
-    const { red, green, blue } = style.rgbColor;
-    return `#${[red, green, blue].map(hexChannel).join("")}`;
+    return rgbChannelsHex(style.rgbColor);
   },
 };
 
@@ -57,11 +57,4 @@ function themeColorName(themeColor: string): ThemeColorName {
     );
   }
   return name;
-}
-
-// Google omits a zero channel, so an absent one is 0.
-function hexChannel(value: number | undefined): string {
-  return Math.round((value ?? 0) * 255)
-    .toString(16)
-    .padStart(2, "0");
 }

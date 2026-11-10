@@ -8,6 +8,8 @@ export interface RgbColor {
 // Rule colours omit alpha: a defaulted alpha makes every content comparison fail.
 export type RgbChannels = Pick<RgbColor, "red" | "green" | "blue">;
 
+export type HexColor = `#${string}`;
+
 export function rgbChannelsEqual(
   left?: RgbChannels,
   right?: RgbChannels,
@@ -19,6 +21,17 @@ export function rgbChannelsEqual(
     quantizedChannel(left.green) === quantizedChannel(right.green) &&
     quantizedChannel(left.blue) === quantizedChannel(right.blue)
   );
+}
+
+export function rgbChannelsHex({ red, green, blue }: RgbChannels): HexColor {
+  return `#${[red, green, blue].map(hexChannel).join("")}`;
+}
+
+// Google omits a zero channel, so an absent one is 0.
+function hexChannel(value: number | undefined): string {
+  return Math.round((value ?? 0) * 255)
+    .toString(16)
+    .padStart(2, "0");
 }
 
 export function quantizeRgbChannels(color: RgbChannels): RgbChannels {

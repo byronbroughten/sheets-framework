@@ -232,3 +232,46 @@ describe("BraceFormula.compileForRule", () => {
     );
   });
 });
+
+describe("BraceFormula.decompileForRule", () => {
+  // Header row 4 (index 3) from column C, so the first body row is row 5.
+  const layout = {
+    headerTopLeft: { rowIndex: SheetIndex.row(3), colIndex: SheetIndex.col(2) },
+    columnNamesLeftToRight: ["count", "newColumn", "price"],
+  };
+
+  function decompile(formula: string, isOneColumn = false) {
+    return BraceFormula.decompileForRule({
+      tableKey: "item",
+      layout,
+      formula,
+      isOneColumn,
+    });
+  }
+
+  it("gives back the brace form a rule's formula compiled from", () => {
+    expect(decompile("=COUNTIF($C$5:$C, $C5)>1")).toBe(
+      "=COUNTIF(${item[count]}, ${count})>1",
+    );
+    expect(decompile('=$E5>$D5&"$C5"')).toBe('=${price}>${newColumn}&"$C5"');
+  });
+
+  it("reads a column-relative reference as its column only on a one-column rule", () => {
+    expect(decompile("=D5>2", true)).toBe("=${newColumn}>2");
+    expect(decompile("=D5>2")).toBeUndefined();
+  });
+
+  it("can't express a reference off the first body row, outside the Table or on another tab", () => {
+    expect(decompile("=$D6>2")).toBeUndefined();
+    expect(decompile("=$D$5>2")).toBeUndefined();
+    expect(decompile("=$B5>2")).toBeUndefined();
+    expect(decompile("=Other!$D5>2")).toBeUndefined();
+    expect(decompile("=COUNTA($D:$D)>2")).toBeUndefined();
+  });
+
+  it("leaves function names alone", () => {
+    expect(decompile("=LOG10($E5)>ATAN2($C5, 1)")).toBe(
+      "=LOG10(${price})>ATAN2(${count}, 1)",
+    );
+  });
+});
