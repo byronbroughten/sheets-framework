@@ -1,5 +1,3 @@
-import { Val } from "@byronbroughten/utils/val";
-
 import type { SheetPropertiesFetchOptions } from "../00_Source/RawSource/RawSource";
 import { columnConfigsByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
 import { assertFloorMatchesSeed } from "../01_SpreadsheetSchema/configReaders/floorSeedCheck";
@@ -143,13 +141,13 @@ export class ConfigCoordinator extends SpreadsheetBaseOperator {
   }
   private _idNameMapTables(): IdNameMapGeneric["tables"] {
     const { raw } = this.ss;
-    const columnConfigs = this.columnConfigOperator.newColumnConfigs();
-    const tableKeysByTableId = this.tableConfigOperator.tableKeysByTableId();
+    const apiTableColumnsByTableId =
+      this.columnConfigOperator.apiTableColumnsByTableId();
     return raw.activeTableIds.reduce<IdNameMapGeneric["tables"]>(
       (tables, tableId) => {
         const { name, sheetGid } = raw.table(tableId);
-        const tableKey = tableKeysByTableId.get(tableId);
-        if (tableKey === undefined) {
+        const apiTableColumns = apiTableColumnsByTableId.get(tableId);
+        if (apiTableColumns === undefined) {
           tables[tableId] = {
             name: this.ss.schema.titleToName(name),
             sheetGid,
@@ -157,14 +155,9 @@ export class ConfigCoordinator extends SpreadsheetBaseOperator {
           return tables;
         }
         tables[tableId] = {
-          name: tableKey,
+          name: apiTableColumns.tableKey,
           sheetGid,
-          columns: columnIdsByName(
-            Val.assert(
-              columnConfigs[tableKey],
-              `column configs of ${tableKey}`,
-            ),
-          ),
+          columns: columnIdsByName(apiTableColumns.columnConfigs),
         };
         return tables;
       },

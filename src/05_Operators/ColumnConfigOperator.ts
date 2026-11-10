@@ -36,6 +36,11 @@ import {
 } from "./SpreadsheetBaseOperator";
 import { TableConfigOperator } from "./TableConfigOperator";
 
+export interface ApiTableColumns {
+  tableKey: string;
+  columnConfigs: ColumnConfigsGeneric[string];
+}
+
 interface ColumnIdentity {
   tableId: string;
   columnId: string;
@@ -413,6 +418,21 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
       };
     });
     return this._withFormulasInBraceForm(columnConfigs);
+  }
+  apiTableColumnsByTableId(): Map<string, ApiTableColumns> {
+    const columnConfigs = this.newColumnConfigs();
+    const tableKeysByTableId = this.tableConfigOperator.tableKeysByTableId();
+    return [...tableKeysByTableId].reduce(
+      (byTableId, [tableId, tableKey]) =>
+        byTableId.set(tableId, {
+          tableKey,
+          columnConfigs: Val.assert(
+            columnConfigs[tableKey],
+            `column configs of ${tableKey}`,
+          ),
+        }),
+      new Map<string, ApiTableColumns>(),
+    );
   }
   // A second pass, because a brace names a column by the name this run gives it.
   private _withFormulasInBraceForm(

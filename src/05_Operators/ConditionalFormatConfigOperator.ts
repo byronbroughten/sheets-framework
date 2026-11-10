@@ -1,7 +1,6 @@
 import { Val } from "@byronbroughten/utils/val";
 
 import {
-  type ColumnConfigsGeneric,
   type ConditionalFormatConfigsBase,
   makeImportLine,
 } from "../01_SpreadsheetSchema/configReaders/makeConfigs";
@@ -12,19 +11,16 @@ import {
 } from "../01_SpreadsheetSchema/configReaders/RuleRecords";
 import type { SheetRaw } from "../02_SpreadsheetRaw/SheetRaw";
 import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
-import { ColumnConfigOperator } from "./ColumnConfigOperator";
 import {
-  indentFollowingLines,
+  type ApiTableColumns,
+  ColumnConfigOperator,
+} from "./ColumnConfigOperator";
+import {
+  columnNamesByColumnId,
   oneLinePerLeafFileSource,
+  tablesAndTabsFileSource,
 } from "./configFileSource";
 import { SpreadsheetBaseOperator } from "./SpreadsheetBaseOperator";
-import { TableConfigOperator } from "./TableConfigOperator";
-
-interface RuleTableProps {
-  tableId: string;
-  tableKey: string;
-  columnConfigs: ColumnConfigsGeneric;
-}
 
 // Reads the rules the regen's plain property get brought into Raw, so it costs no round trip of its own.
 export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
@@ -36,38 +32,26 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
   get ss(): SpreadsheetNamed {
     return new SpreadsheetNamed(this.spreadsheetNamedProps);
   }
-  get tableConfigOperator(): TableConfigOperator {
-    return new TableConfigOperator(this.operatorProps);
-  }
   get columnConfigOperator(): ColumnConfigOperator {
     return new ColumnConfigOperator(this.operatorProps);
   }
   newConditionalFormatConfigs(): ConditionalFormatConfigsBase {
-    const tableKeysByTableId = this.tableConfigOperator.tableKeysByTableId();
-    const columnConfigs = this.columnConfigOperator.newColumnConfigs();
+    const apiTableColumnsByTableId =
+      this.columnConfigOperator.apiTableColumnsByTableId();
     const { raw } = this.ss;
     const tabs = raw.activeSheetGids.map((sheetGid) =>
-      this._ruleRecordsTab({
-        sheet: raw.sheet(sheetGid),
-        tableKeysByTableId,
-        columnConfigs,
-      }),
+      this._ruleRecordsTab(raw.sheet(sheetGid), apiTableColumnsByTableId),
     );
     return RuleRecords.build(tabs);
   }
-  private _ruleRecordsTab({
-    sheet,
-    tableKeysByTableId,
-    columnConfigs,
-  }: {
-    sheet: SheetRaw;
-    tableKeysByTableId: Map<string, string>;
-    columnConfigs: ColumnConfigsGeneric;
-  }): RuleRecordsTab {
+  private _ruleRecordsTab(
+    sheet: SheetRaw,
+    apiTableColumnsByTableId: Map<string, ApiTableColumns>,
+  ): RuleRecordsTab {
     const tables = sheet.tableIds.flatMap((tableId) => {
-      const tableKey = tableKeysByTableId.get(tableId);
-      if (tableKey === undefined) return [];
-      return [this._ruleRecordsTable({ tableId, tableKey, columnConfigs })];
+      const apiTableColumns = apiTableColumnsByTableId.get(tableId);
+      if (apiTableColumns === undefined) return [];
+      return [this._ruleRecordsTable(tableId, apiTableColumns)];
     });
     return {
       tabName: this.schema.titleToName(sheet.title),
@@ -76,15 +60,12 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
       rules: sheet.conditionalFormatRules(),
     };
   }
-  private _ruleRecordsTable({
-    tableId,
-    tableKey,
-    columnConfigs,
-  }: RuleTableProps): RuleRecordsTable {
+  private _ruleRecordsTable(
+    tableId: string,
+    { tableKey, columnConfigs }: ApiTableColumns,
+  ): RuleRecordsTable {
     const table = this.ss.raw.table(tableId);
-    const columnNamesById = columnNamesByColumnId(
-      Val.assert(columnConfigs[tableKey], `column configs of ${tableKey}`),
-    );
+    const columnNamesById = columnNamesByColumnId(columnConfigs);
     const columnNamesLeftToRight = table.fullTableColIndexes.map((colIndex) =>
       Val.assert(
         columnNamesById.get(table.columnResolver.columnIdAt(colIndex)),
@@ -105,25 +86,14 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
     };
   }
   toFileSource(): string {
-    const { tables, tabs } = this.newConditionalFormatConfigs();
     return [
       makeImportLine(["makeConditionalFormatConfigs"]),
       ``,
-      `export const conditionalFormatConfigs = makeConditionalFormatConfigs({`,
-      `  "tables": ${indentFollowingLines(oneLinePerLeafFileSource(tables))},`,
-      `  "tabs": ${indentFollowingLines(oneLinePerLeafFileSource(tabs))}`,
-      `});`,
+      `export const conditionalFormatConfigs = makeConditionalFormatConfigs(${tablesAndTabsFileSource(
+        this.newConditionalFormatConfigs(),
+        oneLinePerLeafFileSource,
+      )});`,
       ``,
     ].join("\n");
   }
-}
-
-function columnNamesByColumnId(
-  tableColumnConfigs: ColumnConfigsGeneric[string],
-): Map<string, string> {
-  return Object.entries(tableColumnConfigs).reduce(
-    (namesById, [columnName, { columnId }]) =>
-      namesById.set(columnId, columnName),
-    new Map<string, string>(),
-  );
 }
