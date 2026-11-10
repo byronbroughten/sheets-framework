@@ -542,6 +542,9 @@ describe("ConfigCoordinator.generateConfigFiles", () => {
     }
     expect(parsed.tableConfigs).toContain(importLine("makeTableConfigs"));
     expect(parsed.tabConfigs).toContain(importLine("makeTabConfigs"));
+    expect(parsed.conditionalFormatConfigs).toContain(
+      importLine("makeConditionalFormatConfigs"),
+    );
     expect(parsed.retiredIdPrefixes).toContain(
       importLine("makeRetiredIdPrefixes"),
     );
@@ -1870,6 +1873,82 @@ describe("ConfigCoordinator conditional-format rule read", () => {
     );
     expect(service.getCalls.map(({ fields }) => fields)).not.toContain(
       separateRuleGet,
+    );
+  });
+
+  it("writes a Table's rules under its Table key and a tab's under its tab name, each by its rule handle", () => {
+    const widgetGid = 777000333;
+    seedFixture({
+      extraSheets: [
+        {
+          sheetId: rulesGid,
+          title: "Rules",
+          rows: buildGridRows({}),
+          conditionalFormats: [
+            {
+              ranges: [
+                {
+                  sheetId: rulesGid,
+                  startRowIndex: 4,
+                  endRowIndex: 8,
+                  startColumnIndex: 1,
+                  endColumnIndex: 2,
+                },
+              ],
+              booleanRule: {
+                condition: {
+                  type: "CUSTOM_FORMULA",
+                  values: [{ userEnteredValue: "=$B5>1" }],
+                },
+                format: { backgroundColor: { red: 1, green: 0, blue: 0 } },
+              },
+            },
+          ],
+        },
+        {
+          sheetId: widgetGid,
+          title: "Widget",
+          rows: buildGridRows({ 3: ["Name", "Score"], 4: [] }),
+          table: { name: "Widget", endRowIndex: 5 },
+          conditionalFormats: [
+            {
+              ranges: [
+                {
+                  sheetId: widgetGid,
+                  startRowIndex: 4,
+                  endRowIndex: 5,
+                  startColumnIndex: 1,
+                  endColumnIndex: 2,
+                },
+              ],
+              booleanRule: {
+                condition: {
+                  type: "CUSTOM_FORMULA",
+                  values: [{ userEnteredValue: "=$B5>1" }],
+                },
+                format: { backgroundColor: { red: 1, green: 0, blue: 0 } },
+              },
+            },
+          ],
+        },
+      ],
+      extraTableConfigDataRows: {
+        5: [tableIdOnTab(widgetGid), "", "Widget", true, ""],
+      },
+      tableConfigTableEndRowIndex: 6,
+    });
+
+    const { conditionalFormatConfigs } =
+      ConfigCoordinator.init().generateConfigFiles();
+
+    expect(conditionalFormatConfigs).toContain(
+      "export const conditionalFormatConfigs = makeConditionalFormatConfigs({",
+    );
+    expect(conditionalFormatConfigs).toContain(
+      `  "tables": {\n    "widget": {\n      "score | =\${score}>1 | background #ff0000": { "kind": "boolean", "tableId": "${tableIdOnTab(widgetGid)}", "columns": ["score"], "condition": {"type":"CUSTOM_FORMULA","formula":"=\${score}>1"}, "format": {"backgroundColor":"#ff0000"} }\n    }\n  },`,
+    );
+    expect(conditionalFormatConfigs).toContain(
+      `  "tabs": {\n    "rules": {\n      "B5:B8 | =$B5>1 | background #ff0000": { "kind": "boolean", "sheetGid": ${rulesGid}, "ranges": ["B5:B8"], "condition": {"type":"CUSTOM_FORMULA","formula":"=$B5>1"}, "format": {"backgroundColor":"#ff0000"} }\n    }\n  }\n});`,
     );
   });
 

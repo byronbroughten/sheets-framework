@@ -23,7 +23,7 @@ import type {
   ColumnProfileRaw,
   TableColumnReference,
 } from "../02_SpreadsheetRaw/ColumnProfileRaw";
-import { columnConfigsFileSource } from "./configFileSource";
+import { oneLinePerLeafFileSource } from "./configFileSource";
 import { GenericTableOperator } from "./GenericTableOperator";
 import {
   type ConfigSyncState,
@@ -35,6 +35,11 @@ import {
   type ValueSource,
 } from "./SpreadsheetBaseOperator";
 import { TableConfigOperator } from "./TableConfigOperator";
+
+export interface ApiTableColumns {
+  tableKey: string;
+  columnConfigs: ColumnConfigsGeneric[string];
+}
 
 interface ColumnIdentity {
   tableId: string;
@@ -414,6 +419,21 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
     });
     return this._withFormulasInBraceForm(columnConfigs);
   }
+  apiTableColumnsByTableId(): Map<string, ApiTableColumns> {
+    const columnConfigs = this.newColumnConfigs();
+    const tableKeysByTableId = this.tableConfigOperator.tableKeysByTableId();
+    return [...tableKeysByTableId].reduce(
+      (byTableId, [tableId, tableKey]) =>
+        byTableId.set(tableId, {
+          tableKey,
+          columnConfigs: Val.assert(
+            columnConfigs[tableKey],
+            `column configs of ${tableKey}`,
+          ),
+        }),
+      new Map<string, ApiTableColumns>(),
+    );
+  }
   // A second pass, because a brace names a column by the name this run gives it.
   private _withFormulasInBraceForm(
     columnConfigs: ColumnConfigsGeneric,
@@ -446,7 +466,7 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
     return [
       `${makeImportLine(["makeColumnConfigs"])}`,
       ``,
-      `export const columnConfigs = makeColumnConfigs(${columnConfigsFileSource(
+      `export const columnConfigs = makeColumnConfigs(${oneLinePerLeafFileSource(
         this.newColumnConfigs(),
       )});`,
       ``,
