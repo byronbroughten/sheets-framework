@@ -21,6 +21,21 @@ export function rgbChannelsEqual(
   );
 }
 
+export function rgbChannelsHex({
+  red,
+  green,
+  blue,
+}: RgbChannels): `#${string}` {
+  return `#${[red, green, blue].map(hexChannel).join("")}`;
+}
+
+// Google omits a zero channel, so an absent one is 0.
+function hexChannel(value: number | undefined): string {
+  return Math.round((value ?? 0) * 255)
+    .toString(16)
+    .padStart(2, "0");
+}
+
 export function quantizeRgbChannels(color: RgbChannels): RgbChannels {
   return {
     ...(color.red !== undefined ? { red: quantizeRgbChannel(color.red) } : {}),
