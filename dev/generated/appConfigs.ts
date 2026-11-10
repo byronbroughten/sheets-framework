@@ -2,6 +2,7 @@
 import type {} from "@byronbroughten/sheets-framework";
 
 import { columnConfigs } from "./columnConfigs";
+import { conditionalFormatConfigs } from "./conditionalFormatConfigs";
 import type { IdNameMap } from "./idNameMap";
 import { retiredIdPrefixes } from "./retiredIdPrefixes";
 import { tabConfigs } from "./tabConfigs";
@@ -11,6 +12,7 @@ import { valueConfigs } from "./valueConfigs";
 export const appConfigs = {
   tableConfigs,
   tabConfigs,
+  conditionalFormatConfigs,
   retiredIdPrefixes,
   columnConfigs,
   valueConfigs,
