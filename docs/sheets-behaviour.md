@@ -142,6 +142,7 @@ Write-ups sourced from Google's docs live on `research/*` branches, listed by `g
 
 ### Reading conditional formats
 
+- Observed: A REST API v4 plain `spreadsheets.get` whose fields mask asked for each sheet's properties, its Tables and its `conditionalFormats` in one `sheets(...)` returned the rules beside the properties, 43 boolean rules over 11 tabs; `Scratch217` tabs on the dev spreadsheet, read by `dev:gen:configs`; 2026-11-09; [resolution on #264](https://github.com/byronbroughten/sheets-framework/issues/264#issuecomment-6757052221).
 - Observed: A REST API v4 `getByDataFilter` returned no `conditionalFormats` for sheets holding rules, and a plain `spreadsheets.get` with the fields mask `sheets(properties(sheetId),conditionalFormats)` returned them; live spreadsheet, the sheets not recorded; 2026-09-16; [recorded in 62abd855](https://github.com/byronbroughten/byro-repo/commit/62abd85537ae0110cd80e3311e00c2aa298f9eb0), [recorded in 613de032](https://github.com/byronbroughten/byro-repo/commit/613de032e7a8310dd19277de344f51caca4e4ce2).
 - Observed: A REST API v4 read of conditional-format rules returned each colour as a `*ColorStyle` (`backgroundColorStyle`, `foregroundColorStyle`) beside the plain colour field; live spreadsheet, the sheets not recorded; 2026-09-16; [recorded in 62abd855](https://github.com/byronbroughten/byro-repo/commit/62abd85537ae0110cd80e3311e00c2aa298f9eb0), [recorded in 613de032](https://github.com/byronbroughten/byro-repo/commit/613de032e7a8310dd19277de344f51caca4e4ce2).
 
