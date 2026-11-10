@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { idPrefixes } from "./idPrefixes";
+import { idPrefixes, IdPrefixesByTableId } from "./idPrefixes";
 
 describe("idPrefixes.fromTitle", () => {
   it("abbreviates a one-word title to the first letter plus consonants, up to 3", () => {
@@ -118,11 +118,13 @@ describe("idPrefixes.retiredAfter", () => {
     expect(
       idPrefixes.retiredAfter({
         previouslyRetired: ["old"],
-        previousByTableId: new Map([
-          ["tbl-a", "aaa"],
-          ["tbl-b", "bbb"],
-        ]),
-        currentByTableId: new Map([["tbl-a", "aaa"]]),
+        previousByTableId: new IdPrefixesByTableId(
+          new Map([
+            ["tbl-a", "aaa"],
+            ["tbl-b", "bbb"],
+          ]),
+        ),
+        currentByTableId: new IdPrefixesByTableId(new Map([["tbl-a", "aaa"]])),
       }),
     ).toEqual(["bbb", "old"]);
   });
@@ -131,8 +133,8 @@ describe("idPrefixes.retiredAfter", () => {
     expect(
       idPrefixes.retiredAfter({
         previouslyRetired: ["aaa"],
-        previousByTableId: new Map(),
-        currentByTableId: new Map([["tbl-a", "aaa"]]),
+        previousByTableId: new IdPrefixesByTableId(new Map()),
+        currentByTableId: new IdPrefixesByTableId(new Map([["tbl-a", "aaa"]])),
       }),
     ).toEqual([]);
   });
