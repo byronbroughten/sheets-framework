@@ -15,6 +15,7 @@ import {
 } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import {
   idPrefixes,
+  IdPrefixesByTableId,
   type IdPrefixLabel,
 } from "../01_SpreadsheetSchema/idPrefixes";
 import type { TableRaw } from "../02_SpreadsheetRaw/TableRaw";
@@ -141,7 +142,7 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
   validateHeadersInZone(): void {
     this.ss.raw.validateHeadersInZone(this.tableIdsApiAccesses());
   }
-  idPrefixesByTableId(): Map<string, string> {
+  idPrefixesByTableId(): IdPrefixesByTableId {
     const prefixesInUse = new Set<string>();
     const assigned = new Map<string, string>();
     const apiAccessTables = this._apiAccessTables();
@@ -167,7 +168,7 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
       prefixesInUse.add(generated);
       assigned.set(table.tableId, generated);
     });
-    return assigned;
+    return new IdPrefixesByTableId(assigned);
   }
   retiredIdPrefixes(): string[] {
     return idPrefixes.retiredAfter({
@@ -209,7 +210,7 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
           `Tables "${existing.tableName}" and "${tableName}" both give the key "${tableKey}".`,
         );
       }
-      const idPrefix = idPrefixIn(idPrefixesByTableId, tableId);
+      const idPrefix = idPrefixesByTableId.assertIdPrefix(tableId);
       const headerRow = table.headRow("header");
       tableConfigs[tableKey] = {
         tableId,
@@ -285,22 +286,17 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
   }
 }
 
-export function idPrefixIn(
-  idPrefixesByTableId: Map<string, string>,
-  tableId: string,
-): string {
-  return Val.assert(idPrefixesByTableId.get(tableId), "ID prefix");
-}
-
 function columnReferenceLabel(reference: string): string {
   return `Column reference "${reference}"`;
 }
 
-function previousIdPrefixesByTableId(): Map<string, string> {
-  return new Map(
-    [...tableConfigsByTableId()].map(([tableId, config]) => [
-      tableId,
-      config.idPrefix,
-    ]),
+function previousIdPrefixesByTableId(): IdPrefixesByTableId {
+  return new IdPrefixesByTableId(
+    new Map(
+      [...tableConfigsByTableId()].map(([tableId, config]) => [
+        tableId,
+        config.idPrefix,
+      ]),
+    ),
   );
 }

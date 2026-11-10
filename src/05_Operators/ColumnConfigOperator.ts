@@ -34,7 +34,7 @@ import {
   type UntypedHeadersByTableName,
   type ValueSource,
 } from "./SpreadsheetBaseOperator";
-import { idPrefixIn, TableConfigOperator } from "./TableConfigOperator";
+import { TableConfigOperator } from "./TableConfigOperator";
 
 interface ColumnIdentity {
   tableId: string;
@@ -209,7 +209,7 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
     let idsAdded = 0;
     const idPrefixesByTableId = this.tableConfigOperator.idPrefixesByTableId();
     this.tableIdsApiAccesses.forEach((tableId) => {
-      const idPrefix = idPrefixIn(idPrefixesByTableId, tableId);
+      const idPrefix = idPrefixesByTableId.assertIdPrefix(tableId);
       // Raw, not TableIdentified: a Table here may predate its generated schema.
       const table = this.ss.raw.table(tableId);
       const colIndexes = table.columnResolver.colIndexesWithoutColumnId;
