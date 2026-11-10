@@ -8,6 +8,8 @@ export interface RgbColor {
 // Rule colours omit alpha: a defaulted alpha makes every content comparison fail.
 export type RgbChannels = Pick<RgbColor, "red" | "green" | "blue">;
 
+export type HexColor = `#${string}`;
+
 export function rgbChannelsEqual(
   left?: RgbChannels,
   right?: RgbChannels,
@@ -21,11 +23,7 @@ export function rgbChannelsEqual(
   );
 }
 
-export function rgbChannelsHex({
-  red,
-  green,
-  blue,
-}: RgbChannels): `#${string}` {
+export function rgbChannelsHex({ red, green, blue }: RgbChannels): HexColor {
   return `#${[red, green, blue].map(hexChannel).join("")}`;
 }
 

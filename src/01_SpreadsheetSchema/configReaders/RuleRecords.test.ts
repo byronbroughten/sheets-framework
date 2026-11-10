@@ -4,6 +4,7 @@ import type {
   BooleanCondition,
   ConditionalFormat,
   ConditionalFormatRule,
+  ModelableConditionalFormatRule,
 } from "../../00_Source/RawSource/ConditionalFormat";
 import type { GridRangeProps } from "../../00_Source/RawSource/RawSource";
 import { SheetIndex } from "../../00_Source/RawSource/SheetIndex";
@@ -36,30 +37,29 @@ function itemTab(rules: ConditionalFormatRule[]): RuleRecordsTab {
   };
 }
 
-function range(
-  startRow: number,
-  endRow: number,
-  startCol: number,
-  endCol: number,
-): GridRangeProps {
+// Each pair is a start and an exclusive end index.
+interface RangeBounds {
+  rows: [number, number];
+  cols: [number, number];
+}
+
+function range({ rows, cols }: RangeBounds): GridRangeProps {
   return {
     sheetId: sheetGid,
-    startRowIndex: SheetIndex.row(startRow),
-    endRowIndex: SheetIndex.row(endRow),
-    startColumnIndex: SheetIndex.col(startCol),
-    endColumnIndex: SheetIndex.col(endCol),
+    startRowIndex: SheetIndex.row(rows[0]),
+    endRowIndex: SheetIndex.row(rows[1]),
+    startColumnIndex: SheetIndex.col(cols[0]),
+    endColumnIndex: SheetIndex.col(cols[1]),
   };
 }
 
 function booleanRule(
-  ranges: GridRangeProps[],
-  condition: BooleanCondition,
-  format: ConditionalFormat,
+  rule: Omit<ModelableConditionalFormatRule, "kind">,
 ): ConditionalFormatRule {
-  return { kind: "boolean", ranges, condition, format };
+  return { kind: "boolean", ...rule };
 }
 
-const newColumnBody = range(4, 10, 3, 4);
+const newColumnBody = range({ rows: [4, 10], cols: [3, 4] });
 const overTwo: BooleanCondition = {
   type: "CUSTOM_FORMULA",
   formula: "=$D5>2",
@@ -69,12 +69,16 @@ describe("RuleRecords.build", () => {
   it("keys a Table's rule by its columns, brace-form condition and format, leaving out rows", () => {
     const records = RuleRecords.build([
       itemTab([
-        booleanRule([newColumnBody], overTwo, red),
-        booleanRule(
-          [range(4, 10, 2, 5)],
-          { type: "NUMBER_GREATER", value: 5 },
-          blueText,
-        ),
+        booleanRule({
+          ranges: [newColumnBody],
+          condition: overTwo,
+          format: red,
+        }),
+        booleanRule({
+          ranges: [range({ rows: [4, 10], cols: [2, 5] })],
+          condition: { type: "NUMBER_GREATER", value: 5 },
+          format: blueText,
+        }),
       ]),
     ]);
     expect(records).toEqual({
@@ -103,11 +107,14 @@ describe("RuleRecords.build", () => {
   it("names the columns of a rule over several ranges left to right", () => {
     const records = RuleRecords.build([
       itemTab([
-        booleanRule(
-          [range(4, 10, 4, 5), range(4, 8, 2, 3)],
-          { type: "TEXT_EQ", value: "x" },
-          red,
-        ),
+        booleanRule({
+          ranges: [
+            range({ rows: [4, 10], cols: [4, 5] }),
+            range({ rows: [4, 8], cols: [2, 3] }),
+          ],
+          condition: { type: "TEXT_EQ", value: "x" },
+          format: red,
+        }),
       ]),
     ]);
     expect(Object.keys(records.tables.item ?? {})).toEqual([
@@ -116,7 +123,11 @@ describe("RuleRecords.build", () => {
   });
 
   it("suffixes identical rules -2 and -3 in list order", () => {
-    const rule = booleanRule([newColumnBody], overTwo, red);
+    const rule = booleanRule({
+      ranges: [newColumnBody],
+      condition: overTwo,
+      format: red,
+    });
     const records = RuleRecords.build([itemTab([rule, rule, rule])]);
     expect(Object.keys(records.tables.item ?? {})).toEqual([
       "newColumn | =${newColumn}>2 | background #ff0000",
@@ -130,16 +141,20 @@ describe("RuleRecords.build", () => {
       itemTab([
         {
           kind: "unmodelable",
-          ranges: [range(4, 10, 2, 3)],
+          ranges: [range({ rows: [4, 10], cols: [2, 3] })],
           index: 0,
           rawContent: '{"gradientRule":{}}',
         },
-        booleanRule(
-          [newColumnBody],
-          { type: "CUSTOM_FORMULA", formula: "=$D6>2" },
-          red,
-        ),
-        booleanRule([range(3, 10, 3, 4)], overTwo, red),
+        booleanRule({
+          ranges: [newColumnBody],
+          condition: { type: "CUSTOM_FORMULA", formula: "=$D6>2" },
+          format: red,
+        }),
+        booleanRule({
+          ranges: [range({ rows: [3, 10], cols: [3, 4] })],
+          condition: overTwo,
+          format: red,
+        }),
       ]),
     ]);
     const offRowContent =
@@ -170,7 +185,13 @@ describe("RuleRecords.build", () => {
 
   it("records a rule outside any Table under its tab, with its ranges and formula as written", () => {
     const records = RuleRecords.build([
-      itemTab([booleanRule([range(0, 3, 0, 2)], overTwo, red)]),
+      itemTab([
+        booleanRule({
+          ranges: [range({ rows: [0, 3], cols: [0, 2] })],
+          condition: overTwo,
+          format: red,
+        }),
+      ]),
     ]);
     expect(records).toEqual({
       tables: {},

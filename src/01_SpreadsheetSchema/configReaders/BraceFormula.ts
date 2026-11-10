@@ -37,7 +37,14 @@ interface CellAddress {
   isColAbsolute: boolean;
   colLetter: string;
   isRowAbsolute: boolean;
-  rowNumber: string | undefined;
+  rowNumber: number | undefined;
+}
+
+interface RuleBraceContext {
+  tableKey: string;
+  columnNamesByLetter: Map<string, string>;
+  firstBodyRowNumber: number;
+  isOneColumn: boolean;
 }
 
 interface Brace {
@@ -117,7 +124,7 @@ export const BraceFormula = {
       },
       new Map<string, string>(),
     );
-    const firstBodyRowNumber = String(layout.headerTopLeft.rowIndex + 2);
+    const firstBodyRowNumber = layout.headerTopLeft.rowIndex + 2;
     const pattern = new RegExp(
       `(${formulaPatterns.stringLiteral})|${formulaPatterns.a1Reference}`,
       "g",
@@ -273,35 +280,25 @@ function ruleReferenceOf(
   sheetPrefix: string | undefined,
   addressParts: unknown[],
 ): RuleReference | undefined {
-  const [startColAbs, startCol, startRowAbs, startRow] = addressParts;
-  const [endColAbs, endCol, endRowAbs, endRow] = addressParts.slice(4);
-  const start = cellAddressOf(startColAbs, startCol, startRowAbs, startRow);
+  const start = cellAddressOf(addressParts.slice(0, 4));
   if (start === undefined) return undefined;
-  const end = cellAddressOf(endColAbs, endCol, endRowAbs, endRow);
+  const end = cellAddressOf(addressParts.slice(4, 8));
   if (end === undefined && start.rowNumber === undefined) return undefined;
   return { sheetPrefix, start, end };
 }
 
-function cellAddressOf(
-  colAbs: unknown,
-  colLetter: unknown,
-  rowAbs: unknown,
-  rowNumber: unknown,
-): CellAddress | undefined {
+// Takes one address's four groups: column $, column letters, row $, row digits.
+function cellAddressOf(groups: unknown[]): CellAddress | undefined {
+  const [colAbs, colLetter, rowAbs, rowDigits] = groups;
   if (typeof colLetter !== "string") return undefined;
+  let rowNumber: number | undefined;
+  if (typeof rowDigits === "string") rowNumber = Number(rowDigits);
   return {
     isColAbsolute: colAbs === "$",
     colLetter,
     isRowAbsolute: rowAbs === "$",
-    rowNumber: typeof rowNumber === "string" ? rowNumber : undefined,
+    rowNumber,
   };
-}
-
-interface RuleBraceContext {
-  tableKey: string;
-  columnNamesByLetter: Map<string, string>;
-  firstBodyRowNumber: string;
-  isOneColumn: boolean;
 }
 
 function ruleBraceOf(

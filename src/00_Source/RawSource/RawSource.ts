@@ -4,7 +4,7 @@ import type {
   ModelableConditionalFormatRule,
 } from "./ConditionalFormat";
 import type { EditProtection, EditProtectionContent } from "./EditProtection";
-import type { RgbColor } from "./RgbColor";
+import type { HexColor, RgbColor } from "./RgbColor";
 import type { SheetColIndex, SheetRowIndex } from "./SheetIndex";
 
 export interface GridRangeProps {
@@ -95,7 +95,7 @@ export const themeColorNames = [
   "LINK",
 ] as const;
 export type ThemeColorName = (typeof themeColorNames)[number];
-export type TabColor = `#${string}` | ThemeColorName;
+export type TabColor = HexColor | ThemeColorName;
 
 export interface SheetTabProperties {
   color: TabColor | undefined;

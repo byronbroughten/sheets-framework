@@ -5,11 +5,11 @@ import type {
   ModelableConditionalFormatRule,
 } from "../../00_Source/RawSource/ConditionalFormat";
 import type { GridRangeProps } from "../../00_Source/RawSource/RawSource";
-import { rgbChannelsHex } from "../../00_Source/RawSource/RgbColor";
 import {
-  SheetIndex,
-  type SheetRowIndex,
-} from "../../00_Source/RawSource/SheetIndex";
+  type HexColor,
+  rgbChannelsHex,
+} from "../../00_Source/RawSource/RgbColor";
+import type { SheetRowIndex } from "../../00_Source/RawSource/SheetIndex";
 import { SpreadsheetBaseSchema } from "../SpreadsheetBaseSchema";
 import { BraceFormula, type RuleLayout } from "./BraceFormula";
 
@@ -30,38 +30,56 @@ export interface RuleRecordsTable {
 }
 
 export interface RuleRecordFormat {
-  backgroundColor?: `#${string}`;
-  foregroundColor?: `#${string}`;
+  backgroundColor?: HexColor;
+  foregroundColor?: HexColor;
 }
 
-export interface TableRuleRecord {
+export type RuleColumns = string[] | "all";
+
+interface BooleanRuleContent {
   kind: "boolean";
-  tableId: string;
-  columns: string[] | "all";
   condition: BooleanCondition;
   format: RuleRecordFormat;
 }
 
-export interface TabRuleRecord {
-  kind: "boolean";
-  sheetGid: number;
+interface UnmodelableRuleContent {
+  kind: "unmodelable";
   ranges: string[];
+  rawContent: string;
+}
+
+interface TableRecordOwner {
+  tableId: string;
+}
+
+interface TabRecordOwner {
+  sheetGid: number;
+}
+
+export interface TableRuleRecord extends BooleanRuleContent, TableRecordOwner {
+  columns: RuleColumns;
+}
+
+export interface TabRuleRecord extends BooleanRuleContent, TabRecordOwner {
+  ranges: string[];
+}
+
+export interface UnmodelableTableRuleRecord
+  extends UnmodelableRuleContent, TableRecordOwner {}
+
+export interface UnmodelableTabRuleRecord
+  extends UnmodelableRuleContent, TabRecordOwner {}
+
+interface HandleParts {
+  scope: string;
   condition: BooleanCondition;
   format: RuleRecordFormat;
 }
 
-export interface UnmodelableTableRuleRecord {
-  kind: "unmodelable";
-  tableId: string;
-  ranges: string[];
-  rawContent: string;
-}
-
-export interface UnmodelableTabRuleRecord {
-  kind: "unmodelable";
-  sheetGid: number;
-  ranges: string[];
-  rawContent: string;
+interface BraceConditionProps {
+  condition: BooleanCondition;
+  table: RuleRecordsTable;
+  isOneColumn: boolean;
 }
 
 export type TableRuleRecords = Record<
@@ -146,7 +164,7 @@ function tabRecord(
   rule: ConditionalFormatRule,
   sheetGid: number,
 ): HandledRecord<TabRuleRecord | UnmodelableTabRuleRecord> {
-  const ranges = rule.ranges.map(rangeA1);
+  const ranges = rule.ranges.map((range) => schema.gridRangeA1(range));
   if (rule.kind === "unmodelable") {
     const { rawContent } = rule;
     return {
@@ -156,7 +174,11 @@ function tabRecord(
   }
   const format = recordFormat(rule.format);
   return {
-    handle: handleOf(ranges.join(","), rule.condition, format),
+    handle: handleOf({
+      scope: ranges.join(","),
+      condition: rule.condition,
+      format,
+    }),
     record: {
       kind: "boolean",
       sheetGid,
@@ -172,7 +194,7 @@ function tableRecord(
   table: RuleRecordsTable,
 ): HandledRecord<TableRuleRecord | UnmodelableTableRuleRecord> {
   const { tableId } = table;
-  const ranges = rule.ranges.map(rangeA1);
+  const ranges = rule.ranges.map((range) => schema.gridRangeA1(range));
   const modelled =
     rule.kind === "boolean" ? modelledRecord(rule, table) : undefined;
   if (modelled !== undefined) return modelled;
@@ -190,15 +212,19 @@ function modelledRecord(
 ): HandledRecord<TableRuleRecord> | undefined {
   const columnNames = coveredColumnNames(rule.ranges, table);
   if (columnNames === undefined) return undefined;
-  const condition = braceCondition(rule.condition, table, columnNames);
+  const condition = braceCondition({
+    condition: rule.condition,
+    table,
+    isOneColumn: columnNames.length === 1,
+  });
   if (condition === undefined) return undefined;
-  let columns: string[] | "all" = columnNames;
+  let columns: RuleColumns = columnNames;
   if (columnNames.length === table.layout.columnNamesLeftToRight.length) {
     columns = "all";
   }
   const format = recordFormat(rule.format);
   return {
-    handle: handleOf(columnsText(columns), condition, format),
+    handle: handleOf({ scope: columnsText(columns), condition, format }),
     record: {
       kind: "boolean",
       tableId: table.tableId,
@@ -253,32 +279,28 @@ function bodyColumnOffsets(
   );
 }
 
-function braceCondition(
-  condition: BooleanCondition,
-  table: RuleRecordsTable,
-  columnNames: string[],
-): BooleanCondition | undefined {
+function braceCondition({
+  condition,
+  table,
+  isOneColumn,
+}: BraceConditionProps): BooleanCondition | undefined {
   if (condition.type !== "CUSTOM_FORMULA") return condition;
   const formula = BraceFormula.decompileForRule({
     tableKey: table.tableKey,
     layout: table.layout,
     formula: condition.formula,
-    isOneColumn: columnNames.length === 1,
+    isOneColumn,
   });
   if (formula === undefined) return undefined;
   return { type: "CUSTOM_FORMULA", formula };
 }
 
-function columnsText(columns: string[] | "all"): string {
+function columnsText(columns: RuleColumns): string {
   if (columns === "all") return "all";
   return columns.join("+");
 }
 
-function handleOf(
-  scope: string,
-  condition: BooleanCondition,
-  format: RuleRecordFormat,
-): string {
+function handleOf({ scope, condition, format }: HandleParts): string {
   return `${scope} | ${conditionText(condition)} | ${formatText(format)}`;
 }
 
@@ -321,21 +343,4 @@ function recordFormat({
       ? { foregroundColor: rgbChannelsHex(foregroundColor) }
       : {}),
   };
-}
-
-// An absent bound is open, so it is left off the A1 text.
-function rangeA1({
-  startRowIndex,
-  endRowIndex,
-  startColumnIndex,
-  endColumnIndex,
-}: GridRangeProps): string {
-  const startCol = schema.columnLetter(startColumnIndex ?? SheetIndex.col(0));
-  let endCol = "";
-  if (endColumnIndex !== undefined) {
-    endCol = schema.columnLetter(SheetIndex.col(endColumnIndex - 1));
-  }
-  let endRow = "";
-  if (endRowIndex !== undefined) endRow = String(endRowIndex);
-  return `${startCol}${startRowIndex + 1}:${endCol}${endRow}`;
 }
