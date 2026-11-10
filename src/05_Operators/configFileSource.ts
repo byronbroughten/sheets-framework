@@ -8,19 +8,20 @@ function oneLineJsonObject(record: object): string {
   return `{ ${fields.join(", ")} }`;
 }
 
-export function columnConfigsFileSource(
-  columnConfigs: ColumnConfigsGeneric,
+// Each group opens a block and each record in it is one line, so a grep for a key finds one record.
+export function oneLinePerLeafFileSource(
+  configs: Record<string, Record<string, object>>,
 ): string {
-  const sheets = Object.entries(columnConfigs);
-  if (sheets.length === 0) {
+  const groups = Object.entries(configs);
+  if (groups.length === 0) {
     return "{}";
   }
-  const blocks = sheets.map(([tableName, tableColumnConfigs]) => {
-    const columnLines = Object.entries(tableColumnConfigs).map(
-      ([columnName, columnConfig]) =>
-        `    ${JSON.stringify(columnName)}: ${oneLineJsonObject(columnConfig)}`,
+  const blocks = groups.map(([groupKey, records]) => {
+    const lines = Object.entries(records).map(
+      ([recordKey, record]) =>
+        `    ${JSON.stringify(recordKey)}: ${oneLineJsonObject(record)}`,
     );
-    return `  ${JSON.stringify(tableName)}: {\n${columnLines.join(",\n")}\n  }`;
+    return `  ${JSON.stringify(groupKey)}: {\n${lines.join(",\n")}\n  }`;
   });
   return `{\n${blocks.join(",\n")}\n}`;
 }
@@ -54,7 +55,7 @@ export function idNameMapFileSource(idNameMap: IdNameMapGeneric): string {
   ].join("\n");
 }
 
-function indentFollowingLines(text: string): string {
+export function indentFollowingLines(text: string): string {
   return text.split("\n").join("\n  ");
 }
 

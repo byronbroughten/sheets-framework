@@ -11,6 +11,7 @@ import {
 } from "../04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
 import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
 import { ColumnConfigOperator } from "./ColumnConfigOperator";
+import { ConditionalFormatConfigOperator } from "./ConditionalFormatConfigOperator";
 import { columnIdsByName, idNameMapFileSource } from "./configFileSource";
 import { ConfigSheetFloor } from "./ConfigSheetFloor";
 import { assertFloorIdentityUnchanged } from "./floorIdentityGuard";
@@ -23,6 +24,7 @@ import { ValueConfigOperator } from "./ValueConfigOperator";
 export interface ConfigRegeneration {
   tableConfigs: string;
   tabConfigs: string;
+  conditionalFormatConfigs: string;
   retiredIdPrefixes: string;
   columnConfigs: string;
   valueConfigs: string;
@@ -68,6 +70,9 @@ export class ConfigCoordinator extends SpreadsheetBaseOperator {
   get tabConfigOperator(): TabConfigOperator {
     return new TabConfigOperator(this.operatorProps);
   }
+  get conditionalFormatConfigOperator(): ConditionalFormatConfigOperator {
+    return new ConditionalFormatConfigOperator(this.operatorProps);
+  }
   get valueConfigOperator(): ValueConfigOperator {
     return new ValueConfigOperator(this.operatorProps);
   }
@@ -98,6 +103,8 @@ export class ConfigCoordinator extends SpreadsheetBaseOperator {
     return {
       tableConfigs: this.tableConfigOperator.toFileSource(),
       tabConfigs: this.tabConfigOperator.toFileSource(),
+      conditionalFormatConfigs:
+        this.conditionalFormatConfigOperator.toFileSource(),
       retiredIdPrefixes: this.tableConfigOperator.retiredIdPrefixesFileSource(),
       columnConfigs: this.columnConfigOperator.toFileSource(),
       valueConfigs: this.valueConfigOperator.toFileSource(),

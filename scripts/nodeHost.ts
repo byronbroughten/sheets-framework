@@ -35,6 +35,7 @@ const requiredConfigFiles = [
 export const configFiles = [
   ...requiredConfigFiles,
   "tabConfigs",
+  "conditionalFormatConfigs",
   "retiredIdPrefixes",
 ] as const;
 
@@ -207,6 +208,10 @@ export async function loadPackageConfigs({
   const configs: ConfigSetBase = {
     tableConfigs: await importConfig(generatedDir, "tableConfigs"),
     tabConfigs: await importConfigIfPresent(generatedDir, "tabConfigs"),
+    conditionalFormatConfigs: await importConfigIfPresent(
+      generatedDir,
+      "conditionalFormatConfigs",
+    ),
     retiredIdPrefixes: await importConfigIfPresent(
       generatedDir,
       "retiredIdPrefixes",
@@ -214,7 +219,7 @@ export async function loadPackageConfigs({
     columnConfigs: await importConfig(generatedDir, "columnConfigs"),
     valueConfigs: await importConfig(generatedDir, "valueConfigs"),
   };
-  // The registered set may or may not carry the two optional files, and these are the generated files it registers.
+  // The registered set may or may not carry the optional files, and these are the generated files it registers.
   return configs as Configs;
 }
 

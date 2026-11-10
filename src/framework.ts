@@ -4,6 +4,7 @@
 export type { Register } from "./01_SpreadsheetSchema/configReaders/configRegister";
 export {
   makeColumnConfigs,
+  makeConditionalFormatConfigs,
   makeRetiredIdPrefixes,
   makeTabConfigs,
   makeTableConfigs,

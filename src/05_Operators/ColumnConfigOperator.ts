@@ -23,7 +23,7 @@ import type {
   ColumnProfileRaw,
   TableColumnReference,
 } from "../02_SpreadsheetRaw/ColumnProfileRaw";
-import { columnConfigsFileSource } from "./configFileSource";
+import { oneLinePerLeafFileSource } from "./configFileSource";
 import { GenericTableOperator } from "./GenericTableOperator";
 import {
   type ConfigSyncState,
@@ -446,7 +446,7 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
     return [
       `${makeImportLine(["makeColumnConfigs"])}`,
       ``,
-      `export const columnConfigs = makeColumnConfigs(${columnConfigsFileSource(
+      `export const columnConfigs = makeColumnConfigs(${oneLinePerLeafFileSource(
         this.newColumnConfigs(),
       )});`,
       ``,

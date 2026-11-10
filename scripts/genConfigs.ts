@@ -24,6 +24,10 @@ class ConfigFilesGenerator {
     this.path = {
       tableConfigs: configFilePath(generatedDir, "tableConfigs"),
       tabConfigs: configFilePath(generatedDir, "tabConfigs"),
+      conditionalFormatConfigs: configFilePath(
+        generatedDir,
+        "conditionalFormatConfigs",
+      ),
       retiredIdPrefixes: configFilePath(generatedDir, "retiredIdPrefixes"),
       columnConfigs: configFilePath(generatedDir, "columnConfigs"),
       valueConfigs: configFilePath(generatedDir, "valueConfigs"),
@@ -38,6 +42,7 @@ class ConfigFilesGenerator {
     const {
       tableConfigs,
       tabConfigs,
+      conditionalFormatConfigs,
       retiredIdPrefixes,
       columnConfigs,
       valueConfigs,
@@ -52,6 +57,7 @@ class ConfigFilesGenerator {
     mkdirSync(this.sheetsConfig.generatedDir, { recursive: true });
     writeFileSync(this.path.tableConfigs, tableConfigs);
     writeFileSync(this.path.tabConfigs, tabConfigs);
+    writeFileSync(this.path.conditionalFormatConfigs, conditionalFormatConfigs);
     writeFileSync(this.path.retiredIdPrefixes, retiredIdPrefixes);
     writeFileSync(this.path.columnConfigs, columnConfigs);
     writeFileSync(this.path.valueConfigs, valueConfigs);
@@ -150,6 +156,7 @@ export function appConfigsText(): string {
 import type {} from "@byronbroughten/sheets-framework";
 
 import { columnConfigs } from "./columnConfigs";
+import { conditionalFormatConfigs } from "./conditionalFormatConfigs";
 import type { IdNameMap } from "./idNameMap";
 import { retiredIdPrefixes } from "./retiredIdPrefixes";
 import { tabConfigs } from "./tabConfigs";
@@ -159,6 +166,7 @@ import { valueConfigs } from "./valueConfigs";
 export const appConfigs = {
   tableConfigs,
   tabConfigs,
+  conditionalFormatConfigs,
   retiredIdPrefixes,
   columnConfigs,
   valueConfigs,
