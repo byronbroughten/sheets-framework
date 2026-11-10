@@ -1848,7 +1848,7 @@ describe("ConfigCoordinator conditional-format rule read", () => {
     const service = seedSheetWithRule();
     const coordinator = ConfigCoordinator.init();
 
-    coordinator.generateConfigFiles("../makeConfigs");
+    coordinator.generateConfigFiles();
 
     expect(coordinator.ss.raw.sheet(rulesGid).conditionalFormatRules()).toEqual(
       [
