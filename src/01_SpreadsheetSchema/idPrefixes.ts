@@ -11,6 +11,9 @@ export class IdPrefixesByTableId {
   assertIdPrefix(tableId: string): string {
     return Val.assert(this.byTableId.get(tableId), "ID prefix");
   }
+  get(tableId: string): string | undefined {
+    return this.byTableId.get(tableId);
+  }
   tableIds(): string[] {
     return [...this.byTableId.keys()];
   }

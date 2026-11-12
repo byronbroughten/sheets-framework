@@ -16,15 +16,9 @@ export interface ValueSource extends SourceColumn {
 
 // Lives on operator props, not each collaborator, so getter rebuilds share it.
 export interface ConfigSyncState {
-  tableConfigSync: {
-    prepFetchIsComplete: boolean;
-    syncedToSpreadsheet: boolean;
-    declaredCellReportLines: string[];
-  };
   columnConfigSync: {
     syncedToSpreadsheet: boolean;
     untypedHeadersByTableName: UntypedHeadersByTableName;
-    declaredCellReportLines: string[];
   };
   valueConfigSync: { valueSources: ValueSource[] };
 }
@@ -47,15 +41,9 @@ export class SpreadsheetBaseOperator extends SpreadsheetBaseNamed {
   }
   static initConfigSyncState(): ConfigSyncState {
     return {
-      tableConfigSync: {
-        prepFetchIsComplete: false,
-        syncedToSpreadsheet: false,
-        declaredCellReportLines: [],
-      },
       columnConfigSync: {
         syncedToSpreadsheet: false,
         untypedHeadersByTableName: new Map(),
-        declaredCellReportLines: [],
       },
       valueConfigSync: { valueSources: [] },
     };

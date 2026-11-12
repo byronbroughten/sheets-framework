@@ -1,10 +1,5 @@
 import { Val } from "@byronbroughten/utils/val";
 
-import { getColumnTraitByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
-import {
-  configSheetFloorSeed,
-  floorTabSeedByTableId,
-} from "../01_SpreadsheetSchema/configReaders/configSheetFloorSeed";
 import {
   makeImportLine,
   type TableConfigsBase,
@@ -19,122 +14,28 @@ import {
   type IdPrefixLabel,
 } from "../01_SpreadsheetSchema/idPrefixes";
 import type { TableRaw } from "../02_SpreadsheetRaw/TableRaw";
+import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
 import { oneLinePerEntryFileSource } from "./configFileSource";
-import { GenericTableOperator } from "./GenericTableOperator";
-import {
-  type ConfigSyncState,
-  type OperatorProps,
-  SpreadsheetBaseOperator,
-} from "./SpreadsheetBaseOperator";
+import { validateIdPrefixesUnchanged } from "./idPrefixGuard";
+import { SpreadsheetBaseOperator } from "./SpreadsheetBaseOperator";
 
 export interface ColumnReference {
   tableId: string;
   columnId: string;
 }
 
-export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
-  constructor(props: OperatorProps) {
-    super({
-      tableName: "tableConfig",
-      ...props,
-    });
-  }
+export class TableConfigOperator extends SpreadsheetBaseOperator {
   static init(): TableConfigOperator {
     return new TableConfigOperator(SpreadsheetBaseOperator.initOperatorProps());
   }
-  get tableConfigSync(): ConfigSyncState["tableConfigSync"] {
-    return this.configSyncState.tableConfigSync;
+  get ss(): SpreadsheetNamed {
+    return new SpreadsheetNamed(this.spreadsheetNamedProps);
   }
-  assertPrepFetchIsComplete(): void {
-    if (!this.tableConfigSync.prepFetchIsComplete) {
-      throw new Error(
-        "TableConfigOperator has not yet completed its prepFetch operation.",
-      );
-    }
-  }
-  assertSyncedToSpreadsheet(): void {
-    if (!this.tableConfigSync.syncedToSpreadsheet) {
-      throw new Error(
-        "TableConfigOperator has not yet synced to the spreadsheet.",
-      );
-    }
-  }
-  prepFetchForSync(): void {
-    this.table.prepFetchColumnsFull(
-      "tableId",
-      "tableName",
-      "sheetTitle",
-      "letApiAccess",
-    );
-    this.tableConfigSync.prepFetchIsComplete = true;
-  }
-  syncToSpreadsheet(): void {
-    this._deleteStaleTableConfigs();
-    this._appendMissingTableConfigs();
-    this._updateProgrammaticValues();
-    this.tableConfigSync.syncedToSpreadsheet = true;
-  }
-  private _deleteStaleTableConfigs(): void {
-    this.table.rows.forEach((row) => {
-      const tableId = row.valueOrEmpty("tableId");
-      if (tableId === "" || !this.ss.raw.tableIdIsActive(tableId)) {
-        row.delete();
-      }
-    });
-  }
-  private _appendMissingTableConfigs(): void {
-    const colTableId = this.table.column("tableId");
-    this.ss.raw.activeTableIds.forEach((tableId) => {
-      if (!colTableId.hasValue(tableId)) {
-        this.table.appendRowWithVals({ tableId });
-      }
-    });
-  }
-  private _updateProgrammaticValues(): void {
-    const col = this.table.columns("tableId", "tableName", "sheetTitle");
-    const reportLines = this.tableConfigSync.declaredCellReportLines;
-    reportLines.length = 0;
-    let updatedValues = 0;
-    this.table.workingRowIndexesWithData.forEach((rowIndex) => {
-      const liveTable = this.ss.raw.table(col.tableId.value(rowIndex));
-      if (col.tableName.valueOrEmpty(rowIndex) !== liveTable.name) {
-        col.tableName.cell(rowIndex).updateValue(liveTable.name);
-        updatedValues++;
-      }
-      if (col.sheetTitle.valueOrEmpty(rowIndex) !== liveTable.sheetTitle) {
-        col.sheetTitle.cell(rowIndex).updateValue(liveTable.sheetTitle);
-        updatedValues++;
-      }
-      if (this._updateSelfDescribingLetApiAccess(rowIndex, liveTable)) {
-        updatedValues++;
-      }
-    });
-    Logger.log(`Corrected ${updatedValues} inaccurate Table Config cells.`);
-  }
-  private _updateSelfDescribingLetApiAccess(
-    rowIndex: number,
-    liveTable: TableRaw,
-  ): boolean {
-    const seed = floorTabSeedByTableId(liveTable.tableId);
-    if (seed === undefined) return false;
-    const letApiAccess = this.table.column("letApiAccess");
-    if (letApiAccess.valueOrEmpty(rowIndex) === seed.letApiAccess) return false;
-    letApiAccess.cell(rowIndex).updateValue(seed.letApiAccess);
-    this.tableConfigSync.declaredCellReportLines.push(
-      `${configSheetFloorSeed.tableConfig.title} · ${getColumnTraitByName(
-        "tableConfig",
-        "letApiAccess",
-        "header",
-      )} · ${liveTable.sheetTitle} → ${seed.letApiAccess ? "TRUE" : "FALSE"}`,
-    );
-    return true;
-  }
+  // The previous configs' order, so a quiet run leaves the generated files unchanged.
   tableIdsApiAccesses(): string[] {
-    const col = this.table.columns("tableId", "letApiAccess");
-    return this.table.workingRowIndexesWithData.flatMap((rowIndex) => {
-      if (!col.letApiAccess.valueOrEmpty(rowIndex)) return [];
-      return [col.tableId.value(rowIndex)];
-    });
+    return [...tableConfigsByTableId().keys()].filter((tableId) =>
+      this.ss.raw.tableIdIsActive(tableId),
+    );
   }
   validateHeadRowsClear(): void {
     this.ss.raw.validateHeadRowsClear(this.tableIdsApiAccesses());
@@ -142,24 +43,26 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
   validateHeadersInZone(): void {
     this.ss.raw.validateHeadersInZone(this.tableIdsApiAccesses());
   }
+  validateIdPrefixesUnchanged(): void {
+    validateIdPrefixesUnchanged({
+      previousByTableId: previousIdPrefixesByTableId(),
+      nextByTableId: this.idPrefixesByTableId(),
+      retiredPrefixes: this._retiredOrGoneIdPrefixes(),
+    });
+  }
   idPrefixesByTableId(): IdPrefixesByTableId {
-    const prefixesInUse = new Set<string>();
+    const previousByTableId = previousIdPrefixesByTableId();
     const assigned = new Map<string, string>();
     const apiAccessTables = this._apiAccessTables();
-    apiAccessTables.forEach((table) => {
-      const sampled = table.profile.idPrefix();
-      if (sampled === undefined) return;
-      prefixesInUse.add(sampled);
-      assigned.set(table.tableId, sampled);
-    });
-    // A Table gone since the last run retires its prefix before this run mints any.
-    const retiredPrefixes = idPrefixes.retiredOrGone({
-      previouslyRetired: configRetiredIdPrefixes(),
-      previousByTableId: previousIdPrefixesByTableId(),
-      liveTableIds: new Set(apiAccessTables.map((table) => table.tableId)),
-    });
-    apiAccessTables.forEach((table) => {
-      if (assigned.has(table.tableId)) return;
+    for (const table of apiAccessTables) {
+      const kept =
+        table.profile.idPrefix() ?? previousByTableId.get(table.tableId);
+      if (kept !== undefined) assigned.set(table.tableId, kept);
+    }
+    const prefixesInUse = new Set(assigned.values());
+    const retiredPrefixes = this._retiredOrGoneIdPrefixes();
+    for (const table of apiAccessTables) {
+      if (assigned.has(table.tableId)) continue;
       const generated = idPrefixes.fromTitle({
         title: table.name,
         prefixesInUse,
@@ -167,8 +70,16 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
       });
       prefixesInUse.add(generated);
       assigned.set(table.tableId, generated);
-    });
+    }
     return new IdPrefixesByTableId(assigned);
+  }
+  // A Table gone since the last run retires its prefix before this run mints any.
+  private _retiredOrGoneIdPrefixes(): Set<string> {
+    return idPrefixes.retiredOrGone({
+      previouslyRetired: configRetiredIdPrefixes(),
+      previousByTableId: previousIdPrefixesByTableId(),
+      liveTableIds: new Set(this.tableIdsApiAccesses()),
+    });
   }
   retiredIdPrefixes(): string[] {
     return idPrefixes.retiredAfter({
@@ -176,26 +87,6 @@ export class TableConfigOperator extends GenericTableOperator<"tableConfig"> {
       previousByTableId: previousIdPrefixesByTableId(),
       currentByTableId: this.idPrefixesByTableId(),
     });
-  }
-  idPrefixChangeReport(): string | undefined {
-    const changes: string[] = [];
-    this.tableIdsApiAccesses().forEach((tableId) => {
-      const previous = tableConfigsByTableId().get(tableId);
-      if (previous === undefined) return;
-      const table = this.ss.raw.table(tableId);
-      const sampled = table.profile.idPrefix();
-      if (sampled === undefined || sampled === previous.idPrefix) return;
-      changes.push(
-        `Table "${table.name}" sampled ID prefix "${sampled}" differs from last generated "${previous.idPrefix}".`,
-      );
-    });
-    if (changes.length === 0) return undefined;
-    return changes.join(" ");
-  }
-  declaredCellReport(): string | undefined {
-    const lines = this.tableConfigSync.declaredCellReportLines;
-    if (lines.length === 0) return undefined;
-    return lines.join(" ");
   }
   newTableConfigs(): TableConfigsBase {
     const tableConfigs: TableConfigsBase = {};

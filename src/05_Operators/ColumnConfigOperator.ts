@@ -6,12 +6,6 @@ import {
   type BraceConfigs,
   BraceFormula,
 } from "../01_SpreadsheetSchema/configReaders/BraceFormula";
-import { getColumnTraitByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
-import {
-  configSheetFloorSeed,
-  floorSeedColumnById,
-  floorSeedEmptyValueAllowed,
-} from "../01_SpreadsheetSchema/configReaders/configSheetFloorSeed";
 import {
   type ColumnConfigsGeneric,
   type ColumnConfigStored,
@@ -23,11 +17,11 @@ import type {
   ColumnProfileRaw,
   TableColumnReference,
 } from "../02_SpreadsheetRaw/ColumnProfileRaw";
+import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
 import { oneLinePerLeafFileSource } from "./configFileSource";
-import { GenericTableOperator } from "./GenericTableOperator";
+import { PreviousColumnConfigs } from "./PreviousColumnConfigs";
 import {
   type ConfigSyncState,
-  type OperatorProps,
   type SourceColumn,
   sourceLabel,
   SpreadsheetBaseOperator,
@@ -46,17 +40,14 @@ interface ColumnIdentity {
   columnId: string;
 }
 
-export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
-  constructor(props: OperatorProps) {
-    super({
-      tableName: "columnConfig",
-      ...props,
-    });
-  }
+export class ColumnConfigOperator extends SpreadsheetBaseOperator {
   static init(): ColumnConfigOperator {
     return new ColumnConfigOperator(
       SpreadsheetBaseOperator.initOperatorProps(),
     );
+  }
+  get ss(): SpreadsheetNamed {
+    return new SpreadsheetNamed(this.spreadsheetNamedProps);
   }
   get columnConfigSync(): ConfigSyncState["columnConfigSync"] {
     return this.configSyncState.columnConfigSync;
@@ -75,12 +66,12 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
   valueSources(): ValueSource[] {
     const tableKeysByTableId = this.tableConfigOperator.tableKeysByTableId();
     const sourcesByValueName = new Map<string, ValueSource>();
-    this.table.workingRowIndexesWithData.forEach((rowIndex) => {
+    for (const identity of this._columnIdentities()) {
       const source = this._valueSource(
-        this._describedColumn(this._columnIdentity(rowIndex)),
+        this._describedColumn(identity),
         tableKeysByTableId,
       );
-      if (source === undefined) return;
+      if (source === undefined) continue;
       const claimed = sourcesByValueName.get(source.valueName);
       if (claimed !== undefined && !isSameSourceColumn(claimed, source)) {
         throw new Error(
@@ -89,7 +80,7 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
         );
       }
       sourcesByValueName.set(source.valueName, source);
-    });
+    }
     return [...sourcesByValueName.values()];
   }
   private _sourceLabel({ tableId, header }: SourceColumn): string {
@@ -135,21 +126,10 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
       );
     }
   }
-  prepFetchWithTableConfig(): void {
-    this.tableConfigOperator.assertPrepFetchIsComplete();
-    this.table.prepFetchColumnsFull(
-      "tableId",
-      "columnId",
-      "tableName",
-      "header",
-      "emptyValueAllowed",
-    );
-  }
-  fetchAfterTableConfigSynced(): this {
-    this.tableConfigOperator.assertSyncedToSpreadsheet();
+  fetchHeadRows(): this {
     this.tableIdsApiAccesses.forEach((tableId) => {
       const table = this.ss.raw.table(tableId);
-      // hasIdColumn samples this row after Let api access is known.
+      // hasIdColumn samples this row after API access is known.
       table.headRow("header").gatherFetchFull();
       table.headRow("columnId").gatherFetchFull();
       table.headRow("action").gatherFetchFull();
@@ -161,9 +141,7 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
   }
   syncToSpreadsheet(): this {
     this._addMissingColumnIds();
-    this._pruneColumnRows();
-    this._appendColumnRows();
-    this._updateProgrammaticValues();
+    this._recordUntypedColumns();
     this._logUntypedColumns();
     this.columnConfigSync.syncedToSpreadsheet = true;
     return this;
@@ -193,11 +171,6 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
       );
     }
     return sentences.join(" ");
-  }
-  declaredCellReport(): string | undefined {
-    const lines = this.columnConfigSync.declaredCellReportLines;
-    if (lines.length === 0) return undefined;
-    return lines.join(" ");
   }
   // Derived, since blank facts are deliberately indistinguishable from real ones.
   private _blankSampleTableNames(): string[] {
@@ -230,56 +203,23 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
     );
     return this;
   }
-  private _pruneColumnRows(): this {
-    const col = this.table.columns("tableId", "columnId");
-    let staleCount = 0;
-    this.table.workingRowIndexes.forEach((rowIndex) => {
-      const tableId = col.tableId.valueOrEmpty(rowIndex);
-      const columnId = col.columnId.valueOrEmpty(rowIndex);
-      if (
-        tableId === "" ||
-        columnId === "" ||
-        !this.tableIdsApiAccesses.has(tableId) ||
-        !this._hasColumnId(tableId, columnId)
-      ) {
-        this.table.row(rowIndex).delete();
-        staleCount++;
-      }
+  // Per Table, the previous configs' order first, so a quiet run leaves the generated files unchanged.
+  private _columnIdentities(): ColumnIdentity[] {
+    return [...this.tableIdsApiAccesses].flatMap((tableId) => {
+      const { profile } = this.ss.raw.table(tableId);
+      const liveColumnIds = new Set(profile.columnIds);
+      const previousColumnIds = new PreviousColumnConfigs(
+        tableId,
+      ).columnIds.filter((columnId) => liveColumnIds.has(columnId));
+      const previous = new Set(previousColumnIds);
+      const newColumnIds = profile.columnIds.filter(
+        (columnId) => !previous.has(columnId),
+      );
+      return [...previousColumnIds, ...newColumnIds].map((columnId) => ({
+        tableId,
+        columnId,
+      }));
     });
-    Logger.log(`_pruneColumnRows: pruned ${staleCount} stale row(s).`);
-    return this;
-  }
-  private _hasColumnId(tableId: string, columnId: string): boolean {
-    return this.ss.raw.table(tableId).columnResolver.hasColumnId(columnId);
-  }
-  private _appendColumnRows(): this {
-    const existingIdentityKeys = new Set(
-      this.table.workingRowIndexesWithData.map((rowIndex) =>
-        columnIdentityKey(this._columnIdentity(rowIndex)),
-      ),
-    );
-
-    let appendedCount = 0;
-    this.tableIdsApiAccesses.forEach((tableId) => {
-      const { columnIds } = this.ss.raw.table(tableId).profile;
-      columnIds.forEach((columnId) => {
-        if (
-          !existingIdentityKeys.has(columnIdentityKey({ tableId, columnId }))
-        ) {
-          this.table.appendRowWithVals({ tableId, columnId });
-          appendedCount++;
-        }
-      });
-    });
-    Logger.log(`_appendColumnRows: added ${appendedCount} new row(s).`);
-    return this;
-  }
-  private _columnIdentity(rowIndex: number): ColumnIdentity {
-    const col = this.table.columns("tableId", "columnId");
-    return {
-      tableId: col.tableId.value(rowIndex),
-      columnId: col.columnId.value(rowIndex),
-    };
   }
   private _describedColumn({
     tableId,
@@ -287,77 +227,20 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
   }: ColumnIdentity): ColumnProfileRaw {
     return this.ss.raw.table(tableId).profile.columnById(columnId);
   }
-  private _updateProgrammaticValues(): void {
-    const col = this.table.columns("tableName", "header", "emptyValueAllowed");
-    const reportLines = this.columnConfigSync.declaredCellReportLines;
-    reportLines.length = 0;
-    let updatedValues = 0;
+  private _recordUntypedColumns(): void {
     this.untypedHeadersByTableName.clear();
-    this.table.workingRowIndexesWithData.forEach((rowIndex) => {
-      const identity = this._columnIdentity(rowIndex);
-
-      const actualTableName = this.ss.raw.table(identity.tableId).name;
-      if (col.tableName.valueOrEmpty(rowIndex) !== actualTableName) {
-        col.tableName.cell(rowIndex).updateValue(actualTableName);
-        updatedValues++;
-      }
-
+    for (const identity of this._columnIdentities()) {
       const describedColumn = this._describedColumn(identity);
-      const actualHeader = describedColumn.header;
-      if (col.header.valueOrEmpty(rowIndex) !== actualHeader) {
-        col.header.cell(rowIndex).updateValue(actualHeader);
-        updatedValues++;
-      }
-
-      if (
-        this._updateSelfDescribingEmptyValueAllowed({
-          rowIndex,
-          identity,
-          tableName: actualTableName,
-          header: actualHeader,
-        })
-      ) {
-        updatedValues++;
-      }
-
       if (
         this._sourceColumn(describedColumn) === undefined &&
         describedColumn.declaredValueTitle() === undefined
       ) {
-        this._recordUntypedColumn(actualTableName, actualHeader);
+        this._recordUntypedColumn(
+          this.ss.raw.table(identity.tableId).name,
+          describedColumn.header,
+        );
       }
-    });
-    Logger.log(`Corrected ${updatedValues} inaccurate Column Config cell(s).`);
-  }
-  private _updateSelfDescribingEmptyValueAllowed({
-    rowIndex,
-    identity,
-    tableName,
-    header,
-  }: {
-    rowIndex: number;
-    identity: ColumnIdentity;
-    tableName: string;
-    header: string;
-  }): boolean {
-    const seedColumn = floorSeedColumnById(identity.tableId, identity.columnId);
-    if (seedColumn === undefined) return false;
-    const seedEmptyValueAllowed = floorSeedEmptyValueAllowed(seedColumn);
-    const emptyValueAllowed = this.table.column("emptyValueAllowed");
-    if (emptyValueAllowed.valueOrEmpty(rowIndex) === seedEmptyValueAllowed) {
-      return false;
     }
-    emptyValueAllowed.cell(rowIndex).updateValue(seedEmptyValueAllowed);
-    this.columnConfigSync.declaredCellReportLines.push(
-      `${configSheetFloorSeed.columnConfig.title} · ${getColumnTraitByName(
-        "columnConfig",
-        "emptyValueAllowed",
-        "header",
-      )} · ${tableName} · ${header} → ${
-        seedEmptyValueAllowed ? "TRUE" : "FALSE"
-      }`,
-    );
-    return true;
   }
   private _recordUntypedColumn(tableName: string, header: string): void {
     const headers = this.untypedHeadersByTableName.get(tableName) ?? [];
@@ -373,19 +256,15 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
   }
   newColumnConfigs(): ColumnConfigsGeneric {
     const tableKeysByTableId = this.tableConfigOperator.tableKeysByTableId();
-    const col = this.table.columns("header", "emptyValueAllowed");
     const columnConfigs: ColumnConfigsGeneric = {};
-    this.table.workingRowIndexesWithData.forEach((rowIndex) => {
-      const identity = this._columnIdentity(rowIndex);
+    for (const identity of this._columnIdentities()) {
       const { tableId, columnId } = identity;
-      const header = col.header.value(rowIndex);
-      const tableKey = tableKeysByTableId.get(tableId);
-      if (tableKey === undefined) {
-        throw new Error(
-          `generateColumnConfigFileSource: column "${columnId}" references Table ID ` +
-            `"${tableId}", which has no ticked row in Table Config.`,
-        );
-      }
+      const describedColumn = this._describedColumn(identity);
+      const { header } = describedColumn;
+      const tableKey = Val.assert(
+        tableKeysByTableId.get(tableId),
+        "API-access Table key",
+      );
       const columnName = Str.sentenceToCamelCase(header);
       if (!columnConfigs[tableKey]) {
         columnConfigs[tableKey] = {};
@@ -397,7 +276,6 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
             `derived from header "${header}" on Table "${tableKey}".`,
         );
       }
-      const describedColumn = this._describedColumn(identity);
       const valueName =
         this._valueSource(describedColumn, tableKeysByTableId)?.valueName ??
         this.schema.titleToName(describedColumn.valueTitle());
@@ -406,7 +284,9 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
         header,
         valueName: valueName as ValueName,
         isFormula: describedColumn.isFormula,
-        emptyValueAllowed: col.emptyValueAllowed.value(rowIndex),
+        emptyValueAllowed: new PreviousColumnConfigs(tableId).emptyValueAllowed(
+          columnId,
+        ),
         customDefaultValue: null,
         formula: describedColumn.topFormula ?? null,
         columnType: {
@@ -416,7 +296,7 @@ export class ColumnConfigOperator extends GenericTableOperator<"columnConfig"> {
         actionRowCell: describedColumn.actionRowCell ?? null,
         groupHeading1: describedColumn.groupHeading1 || null,
       };
-    });
+    }
     return this._withFormulasInBraceForm(columnConfigs);
   }
   apiTableColumnsByTableId(): Map<string, ApiTableColumns> {
@@ -508,8 +388,4 @@ function valueSourceName({
 
 function isSameSourceColumn(a: SourceColumn, b: SourceColumn): boolean {
   return a.tableId === b.tableId && a.header === b.header;
-}
-
-function columnIdentityKey({ tableId, columnId }: ColumnIdentity): string {
-  return `${tableId}:${columnId}`;
 }

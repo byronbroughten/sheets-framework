@@ -1,20 +1,17 @@
 import type { configSheetFloorSeed } from "../01_SpreadsheetSchema/configReaders/configSheetFloorSeed";
-import { ConfigCoordinator } from "../05_Operators/ConfigCoordinator";
 import type { Endpoint, Endpoints, EndpointsAll } from "./Endpoints";
 
+// The floor seed still lists Sync Config until the floor goes.
 type SeededFrameworkEndpoints = {
   [
-    K in keyof typeof configSheetFloorSeed.spreadsheetConfig.endpoints
+    K in Exclude<
+      keyof typeof configSheetFloorSeed.spreadsheetConfig.endpoints,
+      "spreadsheetConfig_syncConfigSheetRowsTimeLastRan"
+    >
   ]: Endpoint<"spreadsheetConfig">;
 };
 
 export const frameworkEndpoints = {
-  spreadsheetConfig_syncConfigSheetRowsTimeLastRan: {
-    action: (ss) =>
-      new ConfigCoordinator(ss.spreadsheetNamedProps).syncConfigSheetRows(),
-    timeLastRan: "syncConfigSheetRowsTimeLastRan",
-    runStatus: "syncConfigSheetRowsRunStatus",
-  },
   spreadsheetConfig_fillRowIdsTimeLastRan: {
     action: (ss) => {
       ss.fillMissingRowIds();
