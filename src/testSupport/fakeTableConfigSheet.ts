@@ -12,14 +12,7 @@ import {
   stubSheetsService,
 } from "./fakeSheetsService";
 
-/**
- * A fake "Table Config" sheet, left only for the config-sheet floor's tests.
- * Whole-row behaviour (clearing, the blank test, the wipe, append reuse) is
- * tested on `valueTypesTableSheet.ts` instead.
- *
- * The column ids are the installed configs' ones, and the default columnId row
- * lists every column the config declares so clear / blank / wipe resolve each.
- */
+// Left only for the config-sheet floor's tests; whole-row behaviour is tested on valueTypesTableSheet.ts.
 export const tableConfigGid = getTableTraitByName("tableConfig", "sheetGid");
 
 export const tableConfigColumnIdRow = (

@@ -3,7 +3,11 @@ import {
   installedConfigs,
 } from "../01_SpreadsheetSchema/configReaders/configRegister";
 import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
-import type { FakeSheetProperties } from "./fakeSheetsService";
+import {
+  type FakeSheetProperties,
+  type FakeSheetsService,
+  stubSheetsService,
+} from "./fakeSheetsService";
 import {
   type FakeBodyRow,
   fakeTableSheet,
@@ -11,12 +15,6 @@ import {
 
 type ValueTypesColumnConfigs = Configs["columnConfigs"]["valueTypes"];
 
-/**
- * The dev Value Types Table, for tests about behaviour that reads or writes a
- * whole row rather than one named cell — clearing, the blank test, the wipe,
- * append reuse. Its columns are every one the installed configs declare, so
- * clear / blank / wipe resolve each, and it holds a text and a checkbox column.
- */
 export const valueTypesGid = getTableTraitByName("valueTypes", "sheetGid");
 
 export type ValueTypesColumnName = keyof ValueTypesColumnConfigs & string;
@@ -61,4 +59,14 @@ export function valueTypesTableSheet(
     }),
     rowsWithNoGridData: options.rowsWithNoGridData,
   };
+}
+
+/** Stubs the Sheets service with just the Value Types Table's sheet. */
+export function stubValueTypesTable(
+  bodyRows: readonly ValueTypesBodyRow[],
+  options?: ValueTypesTableSheetOptions,
+): FakeSheetsService {
+  return stubSheetsService({
+    sheets: [valueTypesTableSheet(bodyRows, options)],
+  });
 }

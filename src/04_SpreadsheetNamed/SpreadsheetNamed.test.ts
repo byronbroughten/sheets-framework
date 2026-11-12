@@ -17,7 +17,6 @@ import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {
   buildGridRows,
-  type FakeCell,
   type FakeCellValue,
   type FakeSheetProperties,
   type FakeSheetsService,
@@ -31,8 +30,9 @@ import {
 import {
   blankValueTypesRow,
   filledValueTypesRow,
-  type ValueTypesBodyRow,
+  stubValueTypesTable,
   valueTypesColumnNames,
+  valueTypesGid,
   valueTypesTableSheet,
 } from "../testSupport/valueTypesTableSheet";
 import type { SpreadsheetNamedProps } from "./ClassBases/SpreadsheetBaseNamed";
@@ -297,7 +297,6 @@ describe("SpreadsheetNamed.fetch", () => {
 
 const topDataRowIndex = expectedSheetLayout.tableHeaderRowIndex + 1;
 const datesGid = getTableTraitByName("dates", "sheetGid");
-const valueTypesGid = getTableTraitByName("valueTypes", "sheetGid");
 const idColumnId = getColumnTraitByName("dates", "id", "columnId");
 const requiredDateColumnId = getColumnTraitByName(
   "dates",
@@ -671,10 +670,18 @@ function tableDataRows(
 
 const stringValueColIndex = valueTypesColumnNames().indexOf("stringValue");
 
-function stubValueTypesTable(
-  bodyRows: readonly ValueTypesBodyRow[],
-): FakeSheetsService {
-  return stubSheetsService({ sheets: [valueTypesTableSheet(bodyRows)] });
+function fetchedValueTypesSpreadsheet(): SpreadsheetNamed {
+  const ss = SpreadsheetNamed.init();
+  ss.table("valueTypes").prepFetchColumnsFull(
+    "id",
+    "stringValue",
+    "numberValue",
+    "dateValue",
+    "sampledBoolean",
+    "checkbox",
+  );
+  ss.fetchAllPrepped();
+  return ss;
 }
 
 function valueTypesStringValues(service: FakeSheetsService): FakeCellValue[] {
@@ -844,23 +851,14 @@ describe("TableNamed.appendRowWithVals, growing a lone blank row", () => {
   const looseRowIndex = topDataRowIndex + 2;
   // The inserted rows should copy the blank row's colour; the loose cell below shows any insert.
   function stubColouredBlankRowAboveLooseCell(): FakeSheetsService {
-    const blankRow = valueTypesColumnIdRow.map(
-      (_columnId, colIndex): FakeCell =>
-        colIndex === stringValueColIndex
-          ? { value: null, backgroundColor: blankRowColour }
-          : null,
-    );
+    const sheet = valueTypesTableSheet([
+      { stringValue: { value: null, backgroundColor: blankRowColour } },
+    ]);
     return stubSheetsService({
       sheets: [
         {
-          sheetId: valueTypesGid,
-          title: "Value Types",
-          rows: buildGridRows({
-            0: valueTypesColumnIdRow,
-            [topDataRowIndex]: blankRow,
-            [looseRowIndex]: ["loose"],
-          }),
-          table: { endRowIndex: topDataRowIndex + 1 },
+          ...sheet,
+          rows: buildGridRows({ ...sheet.rows, [looseRowIndex]: ["loose"] }),
         },
       ],
     });
@@ -871,8 +869,8 @@ describe("TableNamed.appendRowWithVals, growing a lone blank row", () => {
 
     const ss = fetchedValueTypesSpreadsheet();
     const sheet = ss.table("valueTypes");
-    const titles = ["one", "two", "three"];
-    const rows = titles.map((stringValue) =>
+    const stringValues = ["one", "two", "three"];
+    const rows = stringValues.map((stringValue) =>
       sheet.appendRowWithVals({ stringValue }),
     );
     ss.batchUpdateGSheets();
@@ -888,7 +886,7 @@ describe("TableNamed.appendRowWithVals, growing a lone blank row", () => {
         endColumnIndex: stringValueColIndex + 1,
       }),
     ).toEqual(
-      titles.map((value) => [{ value, backgroundColor: blankRowColour }]),
+      stringValues.map((value) => [{ value, backgroundColor: blankRowColour }]),
     );
     expect(grid.cell(looseRowIndex + 2, 0)).toBe("loose");
   });
@@ -909,47 +907,8 @@ describe("TableNamed.appendRowWithVals, growing a lone blank row", () => {
   });
 });
 
-const valueTypesColumnIdRow = Object.values({
-  id: getColumnTraitByName("valueTypes", "id", "columnId"),
-  stringValue: getColumnTraitByName("valueTypes", "stringValue", "columnId"),
-  numberValue: getColumnTraitByName("valueTypes", "numberValue", "columnId"),
-  dateValue: getColumnTraitByName("valueTypes", "dateValue", "columnId"),
-  sampledBoolean: getColumnTraitByName(
-    "valueTypes",
-    "sampledBoolean",
-    "columnId",
-  ),
-  checkbox: getColumnTraitByName("valueTypes", "checkbox", "columnId"),
-});
-
 function stubValueTypesWithBlankRow() {
-  return stubSheetsService({
-    sheets: [
-      {
-        sheetId: valueTypesGid,
-        title: "Value Types",
-        rows: buildGridRows({
-          0: valueTypesColumnIdRow,
-          4: valueTypesColumnIdRow.map(() => null),
-        }),
-        table: { endRowIndex: 5 },
-      },
-    ],
-  });
-}
-
-function fetchedValueTypesSpreadsheet(): SpreadsheetNamed {
-  const ss = SpreadsheetNamed.init();
-  ss.table("valueTypes").prepFetchColumnsFull(
-    "id",
-    "stringValue",
-    "numberValue",
-    "dateValue",
-    "sampledBoolean",
-    "checkbox",
-  );
-  ss.fetchAllPrepped();
-  return ss;
+  return stubValueTypesTable([blankValueTypesRow]);
 }
 
 type CompleteAppendBag<TN extends TableName> = Parameters<

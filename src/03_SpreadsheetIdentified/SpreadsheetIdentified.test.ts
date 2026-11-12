@@ -34,9 +34,8 @@ import { assertType, type IsExactly } from "../testSupport/typeAssertions";
 import {
   blankValueTypesRow,
   filledValueTypesRow,
-  type ValueTypesBodyRow,
-  valueTypesTableSheet,
-  type ValueTypesTableSheetOptions,
+  stubValueTypesTable,
+  valueTypesGid,
 } from "../testSupport/valueTypesTableSheet";
 import { CellIdentified } from "./CellIdentified";
 import { SpreadsheetBaseIdentified } from "./ClassBases/SpreadsheetBaseIdentified";
@@ -143,7 +142,6 @@ describe("SpreadsheetIdentified navigation", () => {
   });
 });
 
-const valueTypesGid = getTableTraitByName("valueTypes", "sheetGid");
 const valueTypesIdColumnId = getColumnTraitByName(
   "valueTypes",
   "id",
@@ -305,15 +303,6 @@ describe("Identified value accessors", () => {
   });
 });
 
-function stubValueTypesTable(
-  bodyRows: readonly ValueTypesBodyRow[],
-  options?: ValueTypesTableSheetOptions,
-) {
-  return stubSheetsService({
-    sheets: [valueTypesTableSheet(bodyRows, options)],
-  });
-}
-
 // Google omits a row nothing was ever written to, which is what "never read" looks like.
 function stubValueTypesWithUnreadTopRow() {
   return stubValueTypesTable([blankValueTypesRow], {
@@ -321,7 +310,7 @@ function stubValueTypesWithUnreadTopRow() {
   });
 }
 
-function fetchedValueTypes(): TableIdentified {
+function valueTypesWithTopRowFetched(): TableIdentified {
   const ssi = new SpreadsheetIdentified(
     SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
   );
@@ -331,7 +320,7 @@ function fetchedValueTypes(): TableIdentified {
   return sheet;
 }
 
-function unfetchedValueTypes(): TableIdentified {
+function valueTypesWithColumnIdsFetched(): TableIdentified {
   const ssi = new SpreadsheetIdentified(
     SpreadsheetBaseIdentified.initSpreadsheetIdentifiedProps(),
   );
@@ -446,25 +435,25 @@ describe("RowIdentified.isBlank / isReusable", () => {
   it("calls a row whose every non-formula cell is empty blank", () => {
     stubValueTypesTable([blankValueTypesRow]);
 
-    expect(fetchedValueTypes().topRow.isBlank).toBe(true);
+    expect(valueTypesWithTopRowFetched().topRow.isBlank).toBe(true);
   });
 
   it("calls a row holding any non-formula value not blank", () => {
     stubValueTypesTable([filledValueTypesRow]);
 
-    expect(fetchedValueTypes().topRow.isBlank).toBe(false);
+    expect(valueTypesWithTopRowFetched().topRow.isBlank).toBe(false);
   });
 
   it("calls a row nothing fetched not blank, since nothing read it", () => {
     stubValueTypesWithUnreadTopRow();
 
-    expect(unfetchedValueTypes().topRow.isBlank).toBe(false);
+    expect(valueTypesWithColumnIdsFetched().topRow.isBlank).toBe(false);
   });
 
   it("makes a blank row reusable until an append reserves it", () => {
     stubValueTypesTable([blankValueTypesRow]);
 
-    const sheet = fetchedValueTypes();
+    const sheet = valueTypesWithTopRowFetched();
     expect(sheet.topRow.isReusable).toBe(true);
 
     sheet.appendRowDefault();
@@ -476,13 +465,13 @@ describe("TableIdentified.hasNoData", () => {
   it("is true for a sheet whose one row is blank", () => {
     stubValueTypesTable([blankValueTypesRow]);
 
-    expect(fetchedValueTypes().hasNoData).toBe(true);
+    expect(valueTypesWithTopRowFetched().hasNoData).toBe(true);
   });
 
   it("is false while any row still holds data", () => {
     stubValueTypesTable([blankValueTypesRow, filledValueTypesRow]);
 
-    expect(fetchedValueTypes().hasNoData).toBe(false);
+    expect(valueTypesWithTopRowFetched().hasNoData).toBe(false);
   });
 });
 
@@ -587,7 +576,7 @@ describe("RowIdentified.clearValues", () => {
   it("leaves a cleared checkbox reading unchecked rather than blank", () => {
     stubValueTypesTable([filledValueTypesRow]);
 
-    const sheet = fetchedValueTypes();
+    const sheet = valueTypesWithTopRowFetched();
     sheet.topRow.clearValues();
 
     expect(sheet.topRow.valueOrEmpty(checkboxColumnId)).toBe(false);
@@ -598,7 +587,7 @@ describe("RowIdentified.clearValues", () => {
   it("defaults a checkbox cell to the same unchecked a blank reads as", () => {
     stubValueTypesTable([filledValueTypesRow]);
 
-    const cell = fetchedValueTypes().topRow.cell(checkboxColumnId);
+    const cell = valueTypesWithTopRowFetched().topRow.cell(checkboxColumnId);
     cell.updateToDefault();
 
     expect(cell.valueOrEmpty()).toBe(false);
@@ -644,7 +633,9 @@ describe("TableIdentified.appendRowDefault", () => {
   it("throws when the Table's one data row was never fetched, naming the Table and the prefetch owed", () => {
     stubValueTypesWithUnreadTopRow();
 
-    expect(() => unfetchedValueTypes().appendRowDefault()).toThrowError(
+    expect(() =>
+      valueTypesWithColumnIdsFetched().appendRowDefault(),
+    ).toThrowError(
       /Table ".*" on "Value Types".*never fetched.*Prefetch its top data row/,
     );
   });
