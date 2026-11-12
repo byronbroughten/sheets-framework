@@ -1,4 +1,4 @@
-// `sheets-framework gen-configs`: regenerates the package's generated files from its live config sheets, on the Node host.
+// `sheets-framework gen-configs`: regenerates the package's generated files from its live Tables and previous configs, on the Node host.
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
@@ -44,9 +44,6 @@ class ConfigFilesGenerator {
       valueConfigs,
       idNameMap,
       untypedColumnsSummary,
-      floorReport,
-      idPrefixReport,
-      declaredCellReport,
     } = await this._generate();
 
     // Write nothing until every config and the ID-name map are confirmed good; a subset would go stale.
@@ -64,15 +61,6 @@ class ConfigFilesGenerator {
     this._createAlterationsIfMissing();
     console.log("\ngen:configs: changes against HEAD:");
     console.log(readConfigsDiff(this.sheetsConfig).join("\n"));
-    if (floorReport !== "") {
-      console.log(`\ngen:configs: ${floorReport}`);
-    }
-    if (idPrefixReport !== undefined) {
-      console.log(`\ngen:configs: ${idPrefixReport}`);
-    }
-    if (declaredCellReport !== undefined) {
-      console.log(`\ngen:configs: ${declaredCellReport}`);
-    }
     console.log(
       `\ngen:configs: ${untypedColumnsSummary ?? "every column is declared; no value name was guessed."}`,
     );
@@ -97,7 +85,7 @@ class ConfigFilesGenerator {
   }
 
   async _generate(): Promise<ConfigRegeneration> {
-    // Only the config floor is read here; a package with no generated files yet borrows the framework's.
+    // The previous configs say which Tables have API access; a package with no generated files yet borrows the framework's.
     // No app endpoints: they may name columns the configs being regenerated don't have yet.
     await startNodeHost({
       isDryRun: false,

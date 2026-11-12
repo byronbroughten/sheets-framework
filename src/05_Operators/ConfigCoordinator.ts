@@ -1,9 +1,6 @@
 import { Val } from "@byronbroughten/utils/val";
 
-import { columnConfigsByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
-import { assertFloorMatchesSeed } from "../01_SpreadsheetSchema/configReaders/floorSeedCheck";
 import type { IdNameMapGeneric } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
-import { tableConfigsByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import {
   SpreadsheetBaseNamed,
   type SpreadsheetNamedProps,
@@ -12,9 +9,7 @@ import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
 import { ColumnConfigOperator } from "./ColumnConfigOperator";
 import { columnIdsByName, idNameMapFileSource } from "./configFileSource";
 import { ConfigSheetFloor } from "./ConfigSheetFloor";
-import { assertFloorIdentityUnchanged } from "./floorIdentityGuard";
 import { SpreadsheetBaseOperator } from "./SpreadsheetBaseOperator";
-import { SpreadsheetConfigOperator } from "./SpreadsheetConfigOperator";
 import { TabConfigOperator } from "./TabConfigOperator";
 import { TableConfigOperator } from "./TableConfigOperator";
 import { ValueConfigOperator } from "./ValueConfigOperator";
@@ -27,16 +22,14 @@ export interface ConfigRegeneration {
   valueConfigs: string;
   idNameMap: string;
   untypedColumnsSummary: string | undefined;
-  floorReport: string;
-  idPrefixReport: string | undefined;
-  declaredCellReport: string | undefined;
 }
 
 /**
- * Coordinates Spreadsheet/Table/Column Config: the config-sheet floor
- * first (one extra flush), sync the live config sheets, one more flush, then
- * emit every generated config file and the ID-name map, or none. Config maintenance is this Operator
- * family, not Raw or Named. npm run gen:configs is the only regeneration path.
+ * Coordinates Table/Column/Value Config: reads the live Tables and the
+ * previous configs, writes any missing column IDs in one flush, then emits
+ * every generated config file and the ID-name map, or none. The config tabs
+ * are neither read nor written. Config maintenance is this Operator family,
+ * not Raw or Named. npm run gen:configs is the only regeneration path.
  * docs/generated-data.md
  */
 export class ConfigCoordinator extends SpreadsheetBaseOperator {
@@ -54,9 +47,6 @@ export class ConfigCoordinator extends SpreadsheetBaseOperator {
   }
   get ss(): SpreadsheetNamed {
     return new SpreadsheetNamed(this.spreadsheetNamedProps);
-  }
-  get spreadsheetConfigOperator(): SpreadsheetConfigOperator {
-    return new SpreadsheetConfigOperator(this.operatorProps);
   }
   get columnConfigOperator(): ColumnConfigOperator {
     return new ColumnConfigOperator(this.operatorProps);
@@ -76,22 +66,10 @@ export class ConfigCoordinator extends SpreadsheetBaseOperator {
   ensureConfigSheetFloor(): string {
     return this.configSheetFloor.ensure();
   }
-  // Returns the run status an endpoint should report, if there's one to make.
-  syncConfigSheetRows(): string | undefined {
-    return this._combinedSyncReport(this._ensureFloorAndFlush());
-  }
-  syncAndFlushConfigSheets(): string | undefined {
-    const summary = this.syncConfigSheetRows();
-    this.ss.batchUpdateGSheets();
-    return summary;
-  }
   generateConfigFiles(makeConfigsImport: string): ConfigRegeneration {
-    const floorReport = this._ensureFloorAndFlush();
-    const untypedColumnsSummary = this._syncConfigSheetRows();
+    const untypedColumnsSummary = this._syncColumnIds();
     this.ss.batchUpdateGSheets();
     this.valueConfigOperator.fetchAfterColumnConfigSynced();
-    this._assertFloorIdentityUnchanged();
-    this._assertFloorMatchesSeed();
     return {
       tableConfigs: this.tableConfigOperator.toFileSource(makeConfigsImport),
       tabConfigs: this.tabConfigOperator.toFileSource(makeConfigsImport),
@@ -101,33 +79,17 @@ export class ConfigCoordinator extends SpreadsheetBaseOperator {
       valueConfigs: this.valueConfigOperator.toFileSource(makeConfigsImport),
       idNameMap: idNameMapFileSource(this._idNameMap()),
       untypedColumnsSummary,
-      floorReport,
-      idPrefixReport: this.tableConfigOperator.idPrefixChangeReport(),
-      declaredCellReport: this._declaredCellReport(),
     };
   }
-  private _ensureFloorAndFlush(): string {
-    const floorReport = this.ensureConfigSheetFloor();
-    this.ss.batchUpdateGSheets();
-    return floorReport;
-  }
-  private _assertFloorIdentityUnchanged(): void {
-    assertFloorIdentityUnchanged({
-      previous: {
-        tableConfigs: tableConfigsByName(),
-        columnConfigs: columnConfigsByName(),
-      },
-      next: {
-        tableConfigs: this.tableConfigOperator.newTableConfigs(),
-        columnConfigs: this.columnConfigOperator.newColumnConfigs(),
-      },
-    });
-  }
-  private _assertFloorMatchesSeed(): void {
-    assertFloorMatchesSeed(
-      this.tableConfigOperator.newTableConfigs(),
-      this.columnConfigOperator.newColumnConfigs(),
-    );
+  // The ID-prefix guard runs before the column-ID write it guards.
+  private _syncColumnIds(): string | undefined {
+    this.ss.fetchAllSheetProperties();
+    this.tableConfigOperator.validateHeadRowsClear();
+    this.tableConfigOperator.validateHeadersInZone();
+    this.columnConfigOperator.fetchHeadRows();
+    this.tableConfigOperator.assertIdPrefixesUnchanged();
+    this.columnConfigOperator.syncToSpreadsheet();
+    return this.columnConfigOperator.untypedColumnsSummary();
   }
   private _idNameMap(): IdNameMapGeneric {
     return { tables: this._idNameMapTables(), tabs: this._idNameMapTabs() };
@@ -177,41 +139,4 @@ export class ConfigCoordinator extends SpreadsheetBaseOperator {
       {},
     );
   }
-  private _syncConfigSheetRows(): string | undefined {
-    this.ss.fetchAllSheetProperties();
-    this.spreadsheetConfigOperator.validateExactlyOneDataRow();
-    this.tableConfigOperator.prepFetchForSync();
-    this.columnConfigOperator.prepFetchWithTableConfig();
-    this.ss.fetchAllPrepped({ skipFetchingProperties: true });
-    this.tableConfigOperator.syncToSpreadsheet();
-    this.tableConfigOperator.validateHeadRowsClear();
-    this.tableConfigOperator.validateHeadersInZone();
-    this.columnConfigOperator.fetchAfterTableConfigSynced();
-    this.columnConfigOperator.syncToSpreadsheet();
-    return this.columnConfigOperator.untypedColumnsSummary();
-  }
-  private _combinedSyncReport(floorReport: string): string | undefined {
-    const untypedColumnsSummary = this._syncConfigSheetRows();
-    return combineConfigSyncReports(
-      floorReport,
-      this._declaredCellReport(),
-      untypedColumnsSummary,
-    );
-  }
-  private _declaredCellReport(): string | undefined {
-    return combineConfigSyncReports(
-      this.tableConfigOperator.declaredCellReport(),
-      this.columnConfigOperator.declaredCellReport(),
-    );
-  }
-}
-
-function combineConfigSyncReports(
-  ...parts: Array<string | undefined>
-): string | undefined {
-  const present = parts.filter(
-    (part): part is string => part !== undefined && part !== "",
-  );
-  if (present.length === 0) return undefined;
-  return present.join(" ");
 }
