@@ -6,7 +6,7 @@ Every managed Table keeps its header row in the sheet's header zone: its top row
 
 ## The placement check
 
-It runs in Identified, right after Raw's fetch and finalize (`SpreadsheetIdentified.fetchAllGathered`, through `SpreadsheetTableValidatorIdentified.validateUsedTables`), per recorded Table the run uses: one it gathered a fetch for in that fetch cycle. Which GIDs it checks: [generated data](../generated-data.md#what-a-regeneration-runs-on-the-node-host). Every read needs a fetch, and so does every gathered write (`originAtGathering`), so that covers both. Raw's fetcher records which Tables gathered before it resets their fetch queues (`SpreadsheetRaw.usedTableIds`), and judges none of them. Every Identified fetch path runs the check: `fetchAllPrepped`, `TableIdentified.ensureColumnIdsAreFetched`, the edit trigger's, and the config sync's column-config fetch (`ColumnConfigOperator.fetchAfterTableConfigSynced`):
+It runs in Identified, right after Raw's fetch and finalize (`SpreadsheetIdentified.fetchAllGathered`, through `SpreadsheetTableValidatorIdentified.validateUsedTables`), per recorded Table the run uses: one it gathered a fetch for in that fetch cycle. Which GIDs it checks: [generated data](../generated-data.md#what-a-regeneration-runs-on-the-node-host). Every read needs a fetch, and so does every gathered write (`originAtGathering`), so that covers both. Raw's fetcher records which Tables gathered before it resets their fetch queues (`SpreadsheetRaw.usedTableIds`), and judges none of them. Every Identified fetch path runs the check: `fetchAllPrepped`, `TableIdentified.ensureColumnIdsAreFetched`, the edit trigger's:
 
 - the Table is on its sheet: found by its recorded `tableId`. Judged only once the sheet's zone has been fetched (`SheetRaw.hasFetchedHeaderZone`), since only the zone is sure to bring it.
 - its header row is in the zone, with room for its head rows above it (`headerZone.holdsHeaderRow`). With the default depth that means row 4. Judged on every fetch that brings the Table, since it reads geometry alone.
@@ -37,7 +37,7 @@ The zone costs the used cells it covers, not its depth ([finding Tables](./findi
 
 A regen checks each Table in the live sheet, in `ConfigCoordinator._syncColumnIds`, right after the head-row overlap check below and before anything is flushed or a config file is returned (`SpreadsheetTableValidatorRaw.validateHeadersInZone`). Every Table outside the zone goes into one throw, naming it. So the configs never record a Table that every run would stop on.
 
-Generation itself skips the run's placement check (`isRegeneratingConfigs` on Identified's state, set by `ConfigCoordinator.init`), since that check judges the Tables against the very configs it replaces. Otherwise a recorded Table moved out of the zone would stop generation with the run's message and could never be dropped from the configs. 
+Generation itself skips the run's placement check (`isRegeneratingConfigs` on Identified's state, set by `ConfigCoordinator.init`), since that check judges the Tables against the very configs it replaces. Otherwise a recorded Table moved out of the zone would stop generation with the run's message and could never be dropped from the configs.
 
 ## Head rows that sit on another Table stop the regen
 
