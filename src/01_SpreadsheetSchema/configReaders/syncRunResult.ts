@@ -135,6 +135,10 @@ export type SyncCheck =
 
 export type SyncRefusal =
   | { kind: "noApiAccess"; table: string; path: string }
+  // A `tables` or `tabs` entry naming one the previous ID-name map doesn't hold.
+  | { kind: "noSuchTable"; entry: "tables" | "tabs"; name: string }
+  // `table` names the tab for a tab's trait; `path` is the trait's, with its column in front for a column's.
+  | { kind: "notSendableYet"; table: string; path: string }
   | { kind: "noSuchRule"; table: string; path: string; handles: string[] }
   | {
       kind: "unknownBrace";

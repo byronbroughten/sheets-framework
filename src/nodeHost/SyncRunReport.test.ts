@@ -592,6 +592,35 @@ describe("SyncRunReport's intended-state refusals", () => {
   });
 });
 
+describe("SyncRunReport's refusals before the read", () => {
+  const text = render({
+    ...appDryRun,
+    outcome: { kind: "refused" },
+    refusals: [
+      { kind: "noSuchTable", entry: "tables", name: "vendor" },
+      { kind: "noSuchTable", entry: "tabs", name: "vendors" },
+      { kind: "notSendableYet", table: "item", path: "name.header" },
+    ],
+  }).join("\n");
+
+  it("says a Table entry's Table is gone, under the entry", () => {
+    expect(text).toContain("REFUSED 1 · tables › vendor");
+    expect(text).toContain("  no such Table: adopt by removing the entry.");
+  });
+
+  it("says a tab entry's tab is gone, in words for a tab", () => {
+    expect(text).toContain("REFUSED 2 · tabs › vendors");
+    expect(text).toContain("  no such tab: adopt by removing the entry.");
+  });
+
+  it("names the Table and the trait it can't send yet", () => {
+    expect(text).toContain("REFUSED 3 · item › name.header");
+    expect(text).toContain(
+      "  sync can't send name.header yet: for now it sends only a column's emptyValueAllowed.",
+    );
+  });
+});
+
 describe("SyncRunReport's force way out", () => {
   function conflictText(
     subject: SyncConflict["subject"],
