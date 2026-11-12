@@ -379,6 +379,17 @@ function refusalWords(refusal: SyncRefusal): RefusalWords {
       ],
     };
   }
+  if (refusal.kind === "noSuchTable") {
+    const { entry, name } = refusal;
+    const noun = entry === "tables" ? "Table" : "tab";
+    return {
+      heading: `${entry} › ${name}`,
+      lines: [
+        `no such ${noun}: adopt by removing the entry.`,
+        `idNameMap.ts holds no ${noun} named ${name}, so it is gone from the sheet or went by another name at the last sync.`,
+      ],
+    };
+  }
   return {
     heading: `${refusal.table} › ${refusal.path}`,
     lines: tableRefusalText(refusal),
@@ -386,8 +397,14 @@ function refusalWords(refusal: SyncRefusal): RefusalWords {
 }
 
 function tableRefusalText(
-  refusal: Exclude<SyncRefusal, { kind: "touchesDeletion" }>,
+  refusal: Exclude<SyncRefusal, { kind: "touchesDeletion" | "noSuchTable" }>,
 ): string[] {
+  if (refusal.kind === "notSendableYet") {
+    return [
+      `sync can't send ${refusal.path} yet: for now it sends only a column's emptyValueAllowed.`,
+      "Take this entry out, then rerun.",
+    ];
+  }
   if (refusal.kind === "disagreeingDeclarers") {
     const [first, second] = refusal.declarers;
     return [
