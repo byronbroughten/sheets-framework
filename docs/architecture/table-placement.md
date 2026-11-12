@@ -6,7 +6,7 @@ Every managed Table keeps its header row in the sheet's header zone: its top row
 
 ## The placement check
 
-It runs in Identified, right after Raw's fetch and finalize (`SpreadsheetIdentified.fetchAllGathered`, through `SpreadsheetTableValidatorIdentified.validateUsedTables`), per recorded Table the run uses: one it gathered a fetch for in that fetch cycle. Which GIDs it checks: [generated data](../generated-data.md#what-a-regeneration-runs-on-the-node-host). Every read needs a fetch, and so does every gathered write (`originAtGathering`), so that covers both. Raw's fetcher records which Tables gathered before it resets their fetch queues (`SpreadsheetRaw.usedTableIds`), and judges none of them. Every Identified fetch path runs the check: `fetchAllPrepped`, `TableIdentified.ensureColumnIdsAreFetched`, the edit trigger's, and the config sync's column-config fetch (`ColumnConfigOperator.fetchAfterTableConfigSynced`):
+It runs in Identified, right after Raw's fetch and finalize (`SpreadsheetIdentified.fetchAllGathered`, through `SpreadsheetTableValidatorIdentified.validateUsedTables`), per recorded Table the run uses: one it gathered a fetch for in that fetch cycle. Which GIDs it checks: [generated data](../generated-data.md#what-a-regeneration-runs-on-the-node-host). Every read needs a fetch, and so does every gathered write (`originAtGathering`), so that covers both. Raw's fetcher records which Tables gathered before it resets their fetch queues (`SpreadsheetRaw.usedTableIds`), and judges none of them. Every Identified fetch path runs the check: `fetchAllPrepped`, `TableIdentified.ensureColumnIdsAreFetched`, the edit trigger's:
 
 - the Table is on its sheet: found by its recorded `tableId`. Judged only once the sheet's zone has been fetched (`SheetRaw.hasFetchedHeaderZone`), since only the zone is sure to bring it.
 - its header row is in the zone, with room for its head rows above it (`headerZone.holdsHeaderRow`). With the default depth that means row 4. Judged on every fetch that brings the Table, since it reads geometry alone.
@@ -33,17 +33,17 @@ Before a Table's properties arrive, the few reads that need a position, such as 
 
 The zone costs the used cells it covers, not its depth ([finding Tables](./finding-tables.md#what-each-route-costs)). On the dev Layout tab it came back smaller than the strips it replaced ([measured](../sheets-behaviour.md#reads-that-find-a-table)).
 
-## Generation refuses a ticked Table outside the zone
+## Generation refuses a Table outside the zone
 
-A config sync checks each Table ticked **Let api access**, this sync's ticks included, in `ConfigCoordinator._syncConfigSheetRows`, right after the head-row overlap check below and before anything is flushed or a config file is returned (`SpreadsheetTableValidatorRaw.validateHeadersInZone`). Every Table outside the zone goes into one throw, naming it. So the configs never record a Table that every run would stop on.
+A regen checks each Table in the live sheet, in `ConfigCoordinator._syncColumnIds`, right after the head-row overlap check below and before anything is flushed or a config file is returned (`SpreadsheetTableValidatorRaw.validateHeadersInZone`). Every Table outside the zone goes into one throw, naming it. So the configs never record a Table that every run would stop on.
 
-Generation itself skips the run's placement check (`isRegeneratingConfigs` on Identified's state, set by `ConfigCoordinator.init`), since that check judges the Tables against the very configs it replaces. Otherwise a recorded Table moved out of the zone would stop generation with the run's message, ticked or not, and could never be unticked. The sync endpoint shares its run's state and keeps the check.
+Generation itself skips the run's placement check (`isRegeneratingConfigs` on Identified's state, set by `ConfigCoordinator.init`), since that check judges the Tables against the very configs it replaces. Otherwise a recorded Table moved out of the zone would stop generation with the run's message and could never be dropped from the configs.
 
-## Head rows that sit on another Table stop the config sync
+## Head rows that sit on another Table stop the regen
 
-Google refuses one Table's range over another's, but it can't see head rows, so it accepts a managed Table whose head rows sit on another Table. Head-row writes would then land in the other Table's cells. Nothing the framework does creates that overlap: growth, row deletes and the column insert move a neighbour together with its head rows. Only the operator's arrangement can, and every change to a managed Table's layout passes through a config sync.
+Google refuses one Table's range over another's, but it can't see head rows, so it accepts a managed Table whose head rows sit on another Table. Head-row writes would then land in the other Table's cells. Nothing the framework does creates that overlap: growth, row deletes and the column insert move a neighbour together with its head rows. Only the operator's arrangement can, and every change to a managed Table's layout passes through a regen.
 
-So a config sync checks it, in `ConfigCoordinator._syncConfigSheetRows`, once the Table Config rows are read and before anything is flushed or a config file is returned. Each Table ticked **Let api access** on the live sheet, this sync's ticks included, has its head rows compared with the range of every other Table on its sheet, managed or not. The comparison uses geometry alone and reads no cells. A managed Table's head rows on another managed Table's head rows also sit on that Table's range, since a range starts at its header row, so one message covers both. Every overlap goes into one throw, naming the Table, its head rows' 1-based rows and the Table under them.
+So a regen checks it, in `ConfigCoordinator._syncColumnIds`, before anything is flushed or a config file is returned. Each Table on the live sheet has its head rows compared with the range of every other Table on its sheet, managed or not. The comparison uses geometry alone and reads no cells. A managed Table's head rows on another managed Table's head rows also sit on that Table's range, since a range starts at its header row, so one message covers both. Every overlap goes into one throw, naming the Table, its head rows' 1-based rows and the Table under them.
 
 The head rows' extent runs from `tableLayout`'s largest offset down to just above the header (`headRows.topIndex`, `TableOrigin.topHeadSheetRowIndex`). The column insert's shift and split check uses the same extent.
 
