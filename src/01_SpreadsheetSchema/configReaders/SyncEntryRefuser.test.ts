@@ -171,7 +171,9 @@ describe("SyncEntryRefuser, traits not sendable yet", () => {
   });
 
   it("refuses a claim's formula once, however many declare it", () => {
-    const traits = { item: { columns: { count: { formula: "=1" } } } };
+    const traits = {
+      item: { columns: { requiredCount: { formula: "=1" } } },
+    };
     expect(
       refusals({
         claims: [
@@ -180,7 +182,7 @@ describe("SyncEntryRefuser, traits not sendable yet", () => {
         ],
       }),
     ).toEqual([
-      { kind: "notSendableYet", table: "item", path: "count.formula" },
+      { kind: "notSendableYet", table: "item", path: "requiredCount.formula" },
     ]);
   });
 
