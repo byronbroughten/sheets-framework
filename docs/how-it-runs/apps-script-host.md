@@ -25,4 +25,4 @@
 
 ## A toast from the edit trigger reaches the editor who ticked
 
-**`SpreadsheetApp.getActive().toast(...)` from the installed edit trigger shows to the editor whose edit fired it, not to the installer it runs as** ([observed](../sheets-behaviour.md#toasts-from-an-installed-edit-trigger)), so an endpoint can report by toast to whoever ticked its box, as each Table's Fill Row IDs endpoint does, through `SpreadsheetNamed.toast`. Over the Node HTTP host there is no `SpreadsheetApp`, so a toast throws there; only an endpoint run toasts.
+**`SpreadsheetApp.getActive().toast(...)` from the installed edit trigger shows to the editor whose edit fired it, not to the installer it runs as** ([observed](../sheets-behaviour.md#toasts-from-an-installed-edit-trigger)), so an endpoint can report by toast to whoever ticked its box, through `SpreadsheetNamed.toast`; [Fill Row IDs](../architecture/endpoint-dispatch.md#the-endpoint-entry) does.

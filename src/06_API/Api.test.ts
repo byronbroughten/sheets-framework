@@ -538,6 +538,7 @@ describe("Api.handleSheetEdit, the endpoints it installs", () => {
         },
       ],
     });
+    const unkeyedResultColIndex = 1;
     fresh.Api.handleSheetEdit(
       {
         configs,
@@ -545,8 +546,7 @@ describe("Api.handleSheetEdit, the endpoints it installs", () => {
           runItem_selected: { action: vi.fn(), runStatus: "runStatus" },
         },
       },
-      // The result column, which no endpoint is keyed on.
-      actionRowEdit(1, "TRUE"),
+      actionRowEdit(unkeyedResultColIndex, "TRUE"),
       vi.fn(),
     );
 

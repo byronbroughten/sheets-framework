@@ -14,7 +14,10 @@ import type { GatherDataPrerequisitesProps } from "../03_SpreadsheetIdentified/T
 import { SpreadsheetBaseNamed } from "./ClassBases/SpreadsheetBaseNamed.js";
 import { SheetNamed } from "./SheetNamed";
 import { TableNamed } from "./TableNamed.js";
-import { isInTnGroup, type SheetNameWithIdColumn } from "./TableNameGroups.js";
+import {
+  type SheetNameWithIdColumn,
+  tableNamesWithIdColumn,
+} from "./TableNameGroups.js";
 import {
   type ColumnSpecifierNamed,
   type FetchColumnSpecifierNamed,
@@ -191,7 +194,7 @@ export class SpreadsheetNamed extends SpreadsheetBaseNamed {
   }
   // Not flushed, so the caller's flush carries the IDs.
   fillMissingRowIds(
-    tableNames: SheetNameWithIdColumn[] = this._tableNamesWithIdColumn(),
+    tableNames: SheetNameWithIdColumn[] = tableNamesWithIdColumn(),
   ): void {
     // could potentially be reconfigured to not rely on the schema.
     const idSheets = tableNames.map((tableName) =>
@@ -204,11 +207,6 @@ export class SpreadsheetNamed extends SpreadsheetBaseNamed {
     for (const sheet of idSheets) {
       sheet.column("id").emptyWorkingCellsToDefault();
     }
-  }
-  private _tableNamesWithIdColumn(): SheetNameWithIdColumn[] {
-    return this.schema.sheetNames.filter((tableName) =>
-      isInTnGroup("hasIdColumn", tableName),
-    );
   }
   private _tableWithIdPrefix(
     tableName: SheetNameWithIdColumn,

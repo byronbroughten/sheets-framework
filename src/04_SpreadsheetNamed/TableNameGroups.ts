@@ -1,6 +1,7 @@
 import { type SubType } from "@byronbroughten/utils/obj";
 
 import {
+  configTableNames,
   type TableConfigs,
   tableConfigsByName,
 } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
@@ -31,4 +32,10 @@ export function isInTnGroup<GN extends TnGroupName>(
   sn: string,
 ): sn is SheetNameByGroup<GN> {
   return tableConfigsByName()[sn]?.[groupName] === true;
+}
+
+export function tableNamesWithIdColumn(): SheetNameWithIdColumn[] {
+  return configTableNames().filter((tableName) =>
+    isInTnGroup("hasIdColumn", tableName),
+  );
 }
