@@ -29,7 +29,7 @@ export const retiredSheetConfigTitle = "Sheet Config";
  * Restores floor tab titles, Table names, headers, column IDs, group
  * headings, data values and column types, has ConfigSheetFloorCreator
  * create missing floor tabs and columns, and has ConfigSheetFloorEditWarnings declare
- * the edit warnings. ConfigCoordinator
+ * the edit warnings. SyncCoordinator
  * runs this at the start of every config sync; the
  * ensureConfigSheetFloor chore is the other caller.
  * docs/generated-data/config-sheet-floor.md

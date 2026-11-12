@@ -9,7 +9,7 @@ import {
   type FakeCell,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
-import { ColumnConfigOperator } from "./ColumnConfigOperator";
+import { ColumnConfigsOperator } from "./ColumnConfigsOperator";
 
 const { columnConfigs } = installedConfigs();
 
@@ -24,8 +24,8 @@ beforeEach(() => {
   stubLogger();
 });
 
-function syncedOperator(): ColumnConfigOperator {
-  const operator = ColumnConfigOperator.init();
+function syncedOperator(): ColumnConfigsOperator {
+  const operator = ColumnConfigsOperator.init();
   operator.ss.fetchAllSheetProperties();
   operator.fetchHeadRows();
   operator.syncToSpreadsheet();
@@ -59,7 +59,7 @@ function stubWidgetAndBrandNewSheet(): void {
   });
 }
 
-describe("ColumnConfigOperator.newColumnConfigs / toFileSource", () => {
+describe("ColumnConfigsOperator.newColumnConfigs / toFileSource", () => {
   const emptyBaseline = {
     formula: null,
     columnType: { type: null, rule: null },
@@ -186,7 +186,7 @@ describe("ColumnConfigOperator.newColumnConfigs / toFileSource", () => {
   });
 });
 
-describe("ColumnConfigOperator.newColumnConfigs value-source and live-fact detection", () => {
+describe("ColumnConfigsOperator.newColumnConfigs value-source and live-fact detection", () => {
   it("detects a value source from the column's live data-validation formula", () => {
     stubSheetsService({
       sheets: [
@@ -252,7 +252,7 @@ function syncColumnsUnderTest({
   columnTypes,
   columnValidationValues,
   columnValidationConditionTypes,
-}: ColumnsUnderTest): ColumnConfigOperator {
+}: ColumnsUnderTest): ColumnConfigsOperator {
   const columnIds = headers.map((_, index) => `c:itm:col${index}`);
   stubSheetsService({
     sheets: [
@@ -275,7 +275,7 @@ function syncColumnsUnderTest({
   return syncedOperator();
 }
 
-function valueTitles(operator: ColumnConfigOperator, count: number) {
+function valueTitles(operator: ColumnConfigsOperator, count: number) {
   const { profile } = operator.ss.raw.table(itemTableId);
   const titles = profile.columnIds.map((columnId) =>
     profile.columnById(columnId).valueTitle(),
@@ -287,14 +287,14 @@ function valueTitles(operator: ColumnConfigOperator, count: number) {
 // The reported bug's shape: a sheet emptied by a run that consumed its input.
 function syncBlankSheetUnderTest(
   props: StrictOmit<ColumnsUnderTest, "topDataRow">,
-): ColumnConfigOperator {
+): ColumnConfigsOperator {
   return syncColumnsUnderTest({
     topDataRowAbsence: "rowsWithNoGridData",
     ...props,
   });
 }
 
-describe("ColumnConfigOperator.syncToSpreadsheet -> declared column types", () => {
+describe("ColumnConfigsOperator.syncToSpreadsheet -> declared column types", () => {
   it("maps every declared column type to its value name", () => {
     const operator = syncColumnsUnderTest({
       headers: [
@@ -599,7 +599,7 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> declared column types", () =
   });
 });
 
-describe("ColumnConfigOperator.syncToSpreadsheet -> a sheet whose only data row is blank", () => {
+describe("ColumnConfigsOperator.syncToSpreadsheet -> a sheet whose only data row is blank", () => {
   it("completes the sync and emits every column", () => {
     const operator = syncBlankSheetUnderTest({
       headers: ["Supplier Name", "Amount"],
@@ -659,7 +659,7 @@ describe("ColumnConfigOperator.syncToSpreadsheet -> a sheet whose only data row 
   });
 });
 
-describe("ColumnConfigOperator.syncToSpreadsheet -> _addMissingColumnIds", () => {
+describe("ColumnConfigsOperator.syncToSpreadsheet -> _addMissingColumnIds", () => {
   it("adds a missing column ID, under the previous configs' prefix, only on a Table the configs grant", () => {
     stubSheetsService({
       sheets: [

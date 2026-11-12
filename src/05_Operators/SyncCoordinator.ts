@@ -4,14 +4,14 @@ import {
   type SpreadsheetNamedProps,
 } from "../04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
 import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
-import { ColumnConfigOperator } from "./ColumnConfigOperator";
+import { ColumnConfigsOperator } from "./ColumnConfigsOperator";
 import { ConditionalFormatConfigOperator } from "./ConditionalFormatConfigOperator";
 import { columnIdsByName, idNameMapFileSource } from "./configFileSource";
 import { ConfigSheetFloor } from "./ConfigSheetFloor";
 import { SpreadsheetBaseOperator } from "./SpreadsheetBaseOperator";
 import { TabConfigOperator } from "./TabConfigOperator";
-import { TableConfigOperator } from "./TableConfigOperator";
-import { ValueConfigOperator } from "./ValueConfigOperator";
+import { TableConfigsOperator } from "./TableConfigsOperator";
+import { ValueConfigsOperator } from "./ValueConfigsOperator";
 
 export interface ConfigRegeneration {
   tableConfigs: string;
@@ -33,7 +33,7 @@ export interface ConfigRegeneration {
  * not Raw or Named. npm run gen:configs is the only regeneration path.
  * docs/generated-data.md
  */
-export class ConfigCoordinator extends SpreadsheetBaseOperator {
+export class SyncCoordinator extends SpreadsheetBaseOperator {
   constructor(props: SpreadsheetNamedProps) {
     super({
       ...props,
@@ -41,19 +41,19 @@ export class ConfigCoordinator extends SpreadsheetBaseOperator {
     });
   }
   // Generation's own state, so the sync's refusals judge the live Tables in place of the configs it replaces.
-  static init(): ConfigCoordinator {
+  static init(): SyncCoordinator {
     const props = SpreadsheetBaseNamed.initSpreadsheetNamedProps();
     props.spreadsheetStateIdentified.isRegeneratingConfigs = true;
-    return new ConfigCoordinator(props);
+    return new SyncCoordinator(props);
   }
   get ss(): SpreadsheetNamed {
     return new SpreadsheetNamed(this.spreadsheetNamedProps);
   }
-  get columnConfigOperator(): ColumnConfigOperator {
-    return new ColumnConfigOperator(this.operatorProps);
+  get columnConfigOperator(): ColumnConfigsOperator {
+    return new ColumnConfigsOperator(this.operatorProps);
   }
-  get tableConfigOperator(): TableConfigOperator {
-    return new TableConfigOperator(this.operatorProps);
+  get tableConfigOperator(): TableConfigsOperator {
+    return new TableConfigsOperator(this.operatorProps);
   }
   get tabConfigOperator(): TabConfigOperator {
     return new TabConfigOperator(this.operatorProps);
@@ -61,8 +61,8 @@ export class ConfigCoordinator extends SpreadsheetBaseOperator {
   get conditionalFormatConfigOperator(): ConditionalFormatConfigOperator {
     return new ConditionalFormatConfigOperator(this.operatorProps);
   }
-  get valueConfigOperator(): ValueConfigOperator {
-    return new ValueConfigOperator(this.operatorProps);
+  get valueConfigOperator(): ValueConfigsOperator {
+    return new ValueConfigsOperator(this.operatorProps);
   }
   get configSheetFloor(): ConfigSheetFloor {
     return new ConfigSheetFloor(this.spreadsheetNamedProps);

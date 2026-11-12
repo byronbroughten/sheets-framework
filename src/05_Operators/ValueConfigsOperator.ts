@@ -9,7 +9,7 @@ import {
 import { tableLayout } from "../01_SpreadsheetSchema/tableLayout";
 import type { ColumnRaw } from "../02_SpreadsheetRaw/ColumnRaw";
 import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
-import { ColumnConfigOperator } from "./ColumnConfigOperator";
+import { ColumnConfigsOperator } from "./ColumnConfigsOperator";
 import {
   type ConfigSyncState,
   type SourceColumn,
@@ -18,15 +18,17 @@ import {
   type ValueSource,
 } from "./SpreadsheetBaseOperator";
 
-export class ValueConfigOperator extends SpreadsheetBaseOperator {
-  static init(): ValueConfigOperator {
-    return new ValueConfigOperator(SpreadsheetBaseOperator.initOperatorProps());
+export class ValueConfigsOperator extends SpreadsheetBaseOperator {
+  static init(): ValueConfigsOperator {
+    return new ValueConfigsOperator(
+      SpreadsheetBaseOperator.initOperatorProps(),
+    );
   }
   get ss(): SpreadsheetNamed {
     return new SpreadsheetNamed(this.spreadsheetNamedProps);
   }
-  get columnConfigOperator(): ColumnConfigOperator {
-    return new ColumnConfigOperator(this.operatorProps);
+  get columnConfigOperator(): ColumnConfigsOperator {
+    return new ColumnConfigsOperator(this.operatorProps);
   }
   get valueConfigSync(): ConfigSyncState["valueConfigSync"] {
     return this.configSyncState.valueConfigSync;

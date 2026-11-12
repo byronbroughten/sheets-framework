@@ -19,10 +19,7 @@ import {
   fakeTableSheet,
 } from "../testSupport/fakeSheetsService/fakeTableSheet";
 import { parseIdNameMapFileSource } from "../testSupport/parseIdNameMapFileSource";
-import {
-  ConfigCoordinator,
-  type ConfigRegeneration,
-} from "./ConfigCoordinator";
+import { type ConfigRegeneration, SyncCoordinator } from "./SyncCoordinator";
 
 type GridRange = GoogleAppsScript.Sheets.Schema.GridRange;
 
@@ -118,11 +115,11 @@ function tableConfigsEntry({
   return `"${tableKey}": { "tableId": "${tableId}", "tableName": "${tableName}", "sheetGid": ${sheetGid}, "idPrefix": "${idPrefix}", "hasIdColumn": ${hasIdColumn}, "hasNameColumn": true }`;
 }
 
-describe("ConfigCoordinator.generateConfigFiles", () => {
+describe("SyncCoordinator.generateConfigFiles", () => {
   it("returns every file's source together, reflecting the synced state", () => {
     seedFixture();
 
-    const parsed = ConfigCoordinator.init().generateConfigFiles();
+    const parsed = SyncCoordinator.init().generateConfigFiles();
     expect(typeof parsed.tableConfigs).toBe("string");
     expect(typeof parsed.columnConfigs).toBe("string");
     expect(parsed.tableConfigs).toContain('"item"');
@@ -139,7 +136,7 @@ describe("ConfigCoordinator.generateConfigFiles", () => {
   it("writes every make*Configs import from the framework's package name", () => {
     seedFixture();
 
-    const parsed = ConfigCoordinator.init().generateConfigFiles();
+    const parsed = SyncCoordinator.init().generateConfigFiles();
     function importLine(maker: string): string {
       return `import { ${maker} } from "@byronbroughten/sheets-framework";`;
     }
@@ -158,7 +155,7 @@ describe("ConfigCoordinator.generateConfigFiles", () => {
   it("emits the ID-name map as a type-only file", () => {
     seedFixture();
 
-    const { idNameMap } = ConfigCoordinator.init().generateConfigFiles();
+    const { idNameMap } = SyncCoordinator.init().generateConfigFiles();
     expect(idNameMap).toContain("export interface IdNameMap {");
     expect(idNameMap).not.toMatch(/\b(const|let|function|import)\b/);
   });
@@ -167,7 +164,7 @@ describe("ConfigCoordinator.generateConfigFiles", () => {
     seedFixture();
 
     const { tables } = parseIdNameMapFileSource(
-      ConfigCoordinator.init().generateConfigFiles().idNameMap,
+      SyncCoordinator.init().generateConfigFiles().idNameMap,
     );
     expect(tables.item).toEqual({
       name: "item",
@@ -185,7 +182,7 @@ describe("ConfigCoordinator.generateConfigFiles", () => {
     seedFixture({ extraSheets: [notesSheet()] });
 
     const { tabs } = parseIdNameMapFileSource(
-      ConfigCoordinator.init().generateConfigFiles().idNameMap,
+      SyncCoordinator.init().generateConfigFiles().idNameMap,
     );
     expect(tabs[String(itemGid)]).toEqual({
       name: "item",
@@ -202,7 +199,7 @@ describe("ConfigCoordinator.generateConfigFiles", () => {
   it("emits no Spreadsheet Config file", () => {
     seedFixture();
 
-    const parsed = ConfigCoordinator.init().generateConfigFiles();
+    const parsed = SyncCoordinator.init().generateConfigFiles();
     expect(Object.keys(parsed)).not.toContain("spreadsheetConfig");
     expect(Object.values(parsed).join("\n")).not.toContain(
       "makeSpreadsheetConfig",
@@ -213,12 +210,12 @@ describe("ConfigCoordinator.generateConfigFiles", () => {
     seedFixture();
 
     expect(
-      ConfigCoordinator.init().generateConfigFiles().untypedColumnsSummary,
+      SyncCoordinator.init().generateConfigFiles().untypedColumnsSummary,
     ).toContain("column(s) across 1 Table(s)");
   });
 });
 
-describe("ConfigCoordinator.generateConfigFiles API access", () => {
+describe("SyncCoordinator.generateConfigFiles API access", () => {
   const logGid = getTableTraitByName("log", "sheetGid");
 
   function logSheet(): FakeSheetProperties {
@@ -243,14 +240,14 @@ describe("ConfigCoordinator.generateConfigFiles API access", () => {
     stubSheetsService({ sheets: [logSheet(), notesSheet(), itemSheet()] });
 
     expect(
-      tableConfigKeys(ConfigCoordinator.init().generateConfigFiles()),
+      tableConfigKeys(SyncCoordinator.init().generateConfigFiles()),
     ).toEqual(["item", "log"]);
   });
 
   it("gives a Table the previous configs don't hold no prefix, no column IDs and no columns in the ID-name map", () => {
     const { grid } = seedFixture({ extraSheets: [notesSheet()] });
 
-    const files = ConfigCoordinator.init().generateConfigFiles();
+    const files = SyncCoordinator.init().generateConfigFiles();
 
     expect(tableConfigKeys(files)).toEqual(["item"]);
     expect(
@@ -263,9 +260,9 @@ describe("ConfigCoordinator.generateConfigFiles API access", () => {
   });
 });
 
-describe("ConfigCoordinator.generateConfigFiles Empty value allowed", () => {
+describe("SyncCoordinator.generateConfigFiles Empty value allowed", () => {
   function generateItemColumns() {
-    const coordinator = ConfigCoordinator.init();
+    const coordinator = SyncCoordinator.init();
     coordinator.generateConfigFiles();
     return Val.assert(
       coordinator.columnConfigOperator.newColumnConfigs().item,
@@ -306,7 +303,7 @@ describe("ConfigCoordinator.generateConfigFiles Empty value allowed", () => {
   });
 });
 
-describe("ConfigCoordinator.generateConfigFiles ID-prefix guard", () => {
+describe("SyncCoordinator.generateConfigFiles ID-prefix guard", () => {
   it("stops before writing when a Table's live ID prefix differs from the configs", () => {
     const zzzColumns = Object.fromEntries(
       Object.entries(itemColumns).map(([columnName, column]) => [
@@ -321,14 +318,14 @@ describe("ConfigCoordinator.generateConfigFiles ID-prefix guard", () => {
       item: { columns: zzzColumns },
     });
 
-    expect(() => ConfigCoordinator.init().generateConfigFiles()).toThrow(
+    expect(() => SyncCoordinator.init().generateConfigFiles()).toThrow(
       'The regen would change an ID prefix, so it stopped before writing. Table "item" had ID prefix "itm" and is now "zzz".',
     );
     expect(batchUpdateCount()).toBe(0);
   });
 });
 
-describe("ConfigCoordinator.generateConfigFiles ID prefix", () => {
+describe("SyncCoordinator.generateConfigFiles ID prefix", () => {
   const widgetGid = 888001;
   // A Table the previous configs grant, standing in for the fixture's own.
   const widgetTableId = getTableTraitByName("log", "tableId");
@@ -362,7 +359,7 @@ describe("ConfigCoordinator.generateConfigFiles ID prefix", () => {
       ],
     });
 
-    const parsed = ConfigCoordinator.init().generateConfigFiles();
+    const parsed = SyncCoordinator.init().generateConfigFiles();
     expect(parsed.tableConfigs).toContain(
       tableConfigsEntry({
         tableKey: "renamedTab",
@@ -386,7 +383,7 @@ describe("ConfigCoordinator.generateConfigFiles ID prefix", () => {
       ],
     });
 
-    const parsed = ConfigCoordinator.init().generateConfigFiles();
+    const parsed = SyncCoordinator.init().generateConfigFiles();
     const minted =
       parsed.columnConfigs.match(
         new RegExp(`c:${widgetIdPrefix}:[^"]+`, "g"),
@@ -406,7 +403,7 @@ describe("ConfigCoordinator.generateConfigFiles ID prefix", () => {
       ],
     });
 
-    expect(() => ConfigCoordinator.init().generateConfigFiles()).toThrow(
+    expect(() => SyncCoordinator.init().generateConfigFiles()).toThrow(
       /Widget.*c:gzm:xyz1234/,
     );
   });
@@ -416,13 +413,13 @@ describe("ConfigCoordinator.generateConfigFiles ID prefix", () => {
       extraSheets: [widgetSheet({ title: "Widget", tableName: "item" })],
     });
 
-    expect(() => ConfigCoordinator.init().generateConfigFiles()).toThrow(
+    expect(() => SyncCoordinator.init().generateConfigFiles()).toThrow(
       'Tables "Item" and "item" both give the key "item".',
     );
   });
 });
 
-describe("ConfigCoordinator.generateConfigFiles head-row overlap", () => {
+describe("SyncCoordinator.generateConfigFiles head-row overlap", () => {
   const recordsGid = 888000222;
 
   interface RecordsTable {
@@ -502,7 +499,7 @@ describe("ConfigCoordinator.generateConfigFiles head-row overlap", () => {
 
     let parsed: ConfigRegeneration | undefined;
     expect(() => {
-      parsed = ConfigCoordinator.init().generateConfigFiles();
+      parsed = SyncCoordinator.init().generateConfigFiles();
     }).toThrow(messages.join(" "));
     expect(parsed).toBeUndefined();
     expect(recordsValues()).toEqual(before);
@@ -630,7 +627,7 @@ describe("ConfigCoordinator.generateConfigFiles head-row overlap", () => {
       },
     ]);
 
-    expect(() => ConfigCoordinator.init().generateConfigFiles()).toThrowError(
+    expect(() => SyncCoordinator.init().generateConfigFiles()).toThrowError(
       /^Table "Tenants" on "Records" \(gid \d+\) must have its header row on row 4\.$/,
     );
   });
@@ -640,7 +637,7 @@ describe("ConfigCoordinator.generateConfigFiles head-row overlap", () => {
       item: { startRowIndex: expectedSheetLayout.tableHeaderRowIndex + 2 },
     });
 
-    expect(() => ConfigCoordinator.init().generateConfigFiles()).toThrowError(
+    expect(() => SyncCoordinator.init().generateConfigFiles()).toThrowError(
       /^Table "Item" on "Item" \(gid \d+\) must have its header row on row 4\.$/,
     );
   });
@@ -658,7 +655,7 @@ describe("ConfigCoordinator.generateConfigFiles head-row overlap", () => {
       },
     ]);
 
-    const parsed = ConfigCoordinator.init().generateConfigFiles();
+    const parsed = SyncCoordinator.init().generateConfigFiles();
     expect(parsed.tableConfigs).toContain('"leases"');
     expect(parsed.tableConfigs).not.toContain('"tenants"');
   });
@@ -683,13 +680,13 @@ describe("ConfigCoordinator.generateConfigFiles head-row overlap", () => {
       },
     ]);
 
-    const parsed = ConfigCoordinator.init().generateConfigFiles();
+    const parsed = SyncCoordinator.init().generateConfigFiles();
     expect(parsed.tableConfigs).toContain('"tenants"');
     expect(parsed.tableConfigs).toContain('"leases"');
   });
 });
 
-describe("ConfigCoordinator conditional-format rule read", () => {
+describe("SyncCoordinator conditional-format rule read", () => {
   const rulesGid = 777000222;
   const widgetGid = 777000333;
   // A Table the previous configs grant, so its rules go under its Table key.
@@ -730,7 +727,7 @@ describe("ConfigCoordinator conditional-format rule read", () => {
 
   it("brings every sheet's rules into Raw on the regen's plain get, with no separate rule get", () => {
     const service = seedFixture({ extraSheets: [rulesSheet()] });
-    const coordinator = ConfigCoordinator.init();
+    const coordinator = SyncCoordinator.init();
 
     coordinator.generateConfigFiles();
 
@@ -785,7 +782,7 @@ describe("ConfigCoordinator conditional-format rule read", () => {
     });
 
     const { conditionalFormatConfigs } =
-      ConfigCoordinator.init().generateConfigFiles();
+      SyncCoordinator.init().generateConfigFiles();
 
     expect(conditionalFormatConfigs).toContain(
       "export const conditionalFormatConfigs = makeConditionalFormatConfigs({",
@@ -799,7 +796,7 @@ describe("ConfigCoordinator conditional-format rule read", () => {
   });
 });
 
-describe("ConfigCoordinator.generateConfigFiles value sources", () => {
+describe("SyncCoordinator.generateConfigFiles value sources", () => {
   const listGid = 889001;
   const ledgerGid = 889002;
   // The previous configs grant API access, so an API-access fixture takes a Table ID they hold.
@@ -894,7 +891,7 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
   }
 
   function generate() {
-    const coordinator = ConfigCoordinator.init();
+    const coordinator = SyncCoordinator.init();
     const files = coordinator.generateConfigFiles();
     return {
       valueConfigs: emittedValueConfigs(files),
@@ -1043,7 +1040,7 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
       ],
     });
 
-    expect(() => ConfigCoordinator.init().generateConfigFiles()).toThrow(
+    expect(() => SyncCoordinator.init().generateConfigFiles()).toThrow(
       'Value source "List[Rent]" declares number members, but holds "TBD".',
     );
   });
@@ -1139,7 +1136,7 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
     });
     const logger = stubLogger();
 
-    const coordinator = ConfigCoordinator.init();
+    const coordinator = SyncCoordinator.init();
     const files = coordinator.generateConfigFiles();
 
     expect(emittedValueConfigs(files)).toEqual({});
@@ -1168,7 +1165,7 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
       ],
     });
 
-    expect(() => ConfigCoordinator.init().generateConfigFiles()).toThrow(
+    expect(() => SyncCoordinator.init().generateConfigFiles()).toThrow(
       'Value source "Number[#]" takes the value name "number", which is already the framework value name "number".',
     );
   });
@@ -1190,14 +1187,14 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
       ],
     });
 
-    expect(() => ConfigCoordinator.init().generateConfigFiles()).toThrow(
+    expect(() => SyncCoordinator.init().generateConfigFiles()).toThrow(
       'Value sources "List[Payment status]" and "List Payment[Status]" both take the value name "listPaymentStatus".',
     );
   });
 
   describe("the baseline each column records", () => {
     function generateLedgerColumns() {
-      const coordinator = ConfigCoordinator.init();
+      const coordinator = SyncCoordinator.init();
       const files = coordinator.generateConfigFiles();
       return {
         files,

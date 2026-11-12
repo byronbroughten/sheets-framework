@@ -43,7 +43,7 @@ export const fakeTimeZone = "America/Chicago";
 export type FakeCellValue = string | number | boolean | null;
 
 /**
- * A cell's value plus the live facts `ColumnConfigOperator
+ * A cell's value plus the live facts `ColumnConfigsOperator
  * .fetchAndUpdateColumnConfig` reads off it (`CellRaw.isFormula`/
  * `numberFormatType`) — use this richer form instead of a bare
  * `FakeCellValue` wherever a test needs to mark a cell as a live formula or
@@ -89,7 +89,7 @@ export interface FakeTable {
   /**
    * A column's live data-validation condition values (e.g. a value source
    * `["=List[Payment status]"]` or a list of items `["open", "closed"]`),
-   * keyed by absolute column index — read by `ColumnConfigOperator`'s
+   * keyed by absolute column index — read by `ColumnConfigsOperator`'s
    * valueName detection (`ColumnProfileRaw.valueValidationStrings`). Omit
    * for a table with no validated columns.
    */
@@ -104,7 +104,7 @@ export interface FakeTable {
   /**
    * A column's declared Sheets column type (e.g. `"CURRENCY"`, `"DATE"`,
    * `"BOOLEAN"`), keyed by absolute column index — read by
-   * `ColumnProfileRaw.columnType`, which `ColumnConfigOperator`'s
+   * `ColumnProfileRaw.columnType`, which `ColumnConfigsOperator`'s
    * valueName derivation consults before falling back to the top-row
    * sample. Omit a column here to leave it untyped (Automatic), which is
    * what the real API reports for a column whose type was never set.

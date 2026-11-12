@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-import type { ConfigRegeneration } from "../src/05_Operators/ConfigCoordinator.ts";
+import type { ConfigRegeneration } from "../src/05_Operators/SyncCoordinator.ts";
 import { readConfigsDiff } from "./configsDiff.ts";
 import {
   type ConfigFile,
@@ -99,9 +99,9 @@ class ConfigFilesGenerator {
         ? await loadPackageConfigs(this.sheetsConfig)
         : await loadFrameworkConfigs(),
     });
-    const { ConfigCoordinator } =
-      await import("../src/05_Operators/ConfigCoordinator.ts");
-    return ConfigCoordinator.init().generateConfigFiles();
+    const { SyncCoordinator } =
+      await import("../src/05_Operators/SyncCoordinator.ts");
+    return SyncCoordinator.init().generateConfigFiles();
   }
 
   _runTsc(): boolean {
