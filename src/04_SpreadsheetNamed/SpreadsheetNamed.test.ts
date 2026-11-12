@@ -24,18 +24,17 @@ import {
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
 import {
-  blankTableConfigRow,
-  filledTableConfigRow,
-  sheetTitleColIndex,
-  stubTableConfigSheet,
-  tableConfigColumnIdRow,
-  tableConfigGid,
-} from "../testSupport/fakeTableConfigSheet";
-import {
   assertNotType,
   assertType,
   type IsExactly,
 } from "../testSupport/typeAssertions";
+import {
+  blankValueTypesRow,
+  filledValueTypesRow,
+  type ValueTypesBodyRow,
+  valueTypesColumnNames,
+  valueTypesTableSheet,
+} from "../testSupport/valueTypesTableSheet";
 import type { SpreadsheetNamedProps } from "./ClassBases/SpreadsheetBaseNamed";
 import { ColumnNamed } from "./ColumnNamed";
 import { RowNamed } from "./RowNamed";
@@ -657,18 +656,6 @@ describe("Named value accessors", () => {
   });
 });
 
-function fetchedTableConfig(): SpreadsheetNamed {
-  const ss = SpreadsheetNamed.init();
-  ss.table("tableConfig").prepFetchColumnsFull(
-    "tableId",
-    "tableName",
-    "sheetTitle",
-    "letApiAccess",
-  );
-  ss.fetchAllPrepped();
-  return ss;
-}
-
 // Each data row's cells, top data row to the Table's end.
 function tableDataRows(
   service: FakeSheetsService,
@@ -682,9 +669,17 @@ function tableDataRows(
   });
 }
 
-function tableConfigSheetTitles(service: FakeSheetsService): FakeCellValue[] {
-  return tableDataRows(service, tableConfigGid).map(
-    (row) => row[sheetTitleColIndex] ?? null,
+const stringValueColIndex = valueTypesColumnNames().indexOf("stringValue");
+
+function stubValueTypesTable(
+  bodyRows: readonly ValueTypesBodyRow[],
+): FakeSheetsService {
+  return stubSheetsService({ sheets: [valueTypesTableSheet(bodyRows)] });
+}
+
+function valueTypesStringValues(service: FakeSheetsService): FakeCellValue[] {
+  return tableDataRows(service, valueTypesGid).map(
+    (row) => row[stringValueColIndex] ?? null,
   );
 }
 
@@ -743,27 +738,27 @@ function stubDatesWithDuplicateIds() {
 
 describe("TableNamed.DELETE_ALL_DATA_ROWS", () => {
   it("deletes every data row but the top one, and leaves that one blank", () => {
-    const service = stubTableConfigSheet({
-      4: filledTableConfigRow,
-      5: filledTableConfigRow,
-      6: filledTableConfigRow,
-    });
+    const service = stubValueTypesTable([
+      filledValueTypesRow,
+      filledValueTypesRow,
+      filledValueTypesRow,
+    ]);
 
-    const ss = fetchedTableConfig();
-    ss.table("tableConfig").DELETE_ALL_DATA_ROWS();
+    const ss = fetchedValueTypesSpreadsheet();
+    ss.table("valueTypes").DELETE_ALL_DATA_ROWS();
     ss.batchUpdateGSheets();
 
-    expect(tableDataRows(service, tableConfigGid)).toEqual([["", "", "", ""]]);
-    expect(ss.table("tableConfig").topRow.isBlank).toBe(true);
+    expect(tableDataRows(service, valueTypesGid)).toEqual([
+      valueTypesColumnNames().map(() => ""),
+    ]);
+    expect(ss.table("valueTypes").topRow.isBlank).toBe(true);
   });
 
   it("sends no batch update for a sheet already down to its blank row", () => {
-    const service = stubTableConfigSheet({
-      4: blankTableConfigRow,
-    });
+    const service = stubValueTypesTable([blankValueTypesRow]);
 
-    const ss = fetchedTableConfig();
-    ss.table("tableConfig").DELETE_ALL_DATA_ROWS();
+    const ss = fetchedValueTypesSpreadsheet();
+    ss.table("valueTypes").DELETE_ALL_DATA_ROWS();
     ss.batchUpdateGSheets();
 
     expect(service.batchUpdateCount()).toBe(0);
@@ -772,83 +767,75 @@ describe("TableNamed.DELETE_ALL_DATA_ROWS", () => {
 
 describe("TableNamed.appendRowWithVals", () => {
   it("reuses the blank row of an emptied sheet rather than appending beneath it", () => {
-    const service = stubTableConfigSheet({
-      4: blankTableConfigRow,
-    });
+    const service = stubValueTypesTable([blankValueTypesRow]);
 
-    const ss = fetchedTableConfig();
-    const row = ss.table("tableConfig").appendRowWithVals({
-      sheetTitle: "Item",
+    const ss = fetchedValueTypesSpreadsheet();
+    const row = ss.table("valueTypes").appendRowWithVals({
+      stringValue: "Item",
     });
     ss.batchUpdateGSheets();
 
     expect(row.rowIndex).toBe(0);
-    expect(tableConfigSheetTitles(service)).toEqual(["Item"]);
-    expect(row.value("sheetTitle")).toBe("Item");
+    expect(valueTypesStringValues(service)).toEqual(["Item"]);
+    expect(row.value("stringValue")).toBe("Item");
   });
 
   it("appends beneath a one-row sheet that still holds data", () => {
-    const service = stubTableConfigSheet({
-      4: filledTableConfigRow,
-    });
+    const service = stubValueTypesTable([filledValueTypesRow]);
 
-    const ss = fetchedTableConfig();
+    const ss = fetchedValueTypesSpreadsheet();
     const row = ss
-      .table("tableConfig")
-      .appendRowWithVals({ sheetTitle: "Log" });
+      .table("valueTypes")
+      .appendRowWithVals({ stringValue: "Log" });
     ss.batchUpdateGSheets();
 
     expect(row.rowIndex).toBe(1);
-    expect(tableConfigSheetTitles(service)).toEqual(["Item", "Log"]);
+    expect(valueTypesStringValues(service)).toEqual(["Item", "Log"]);
   });
 
   it("reuses the blank row once and appends for the second row", () => {
-    const service = stubTableConfigSheet({
-      4: blankTableConfigRow,
-    });
+    const service = stubValueTypesTable([blankValueTypesRow]);
 
-    const ss = fetchedTableConfig();
-    const sheet = ss.table("tableConfig");
-    const first = sheet.appendRowWithVals({ sheetTitle: "one" });
-    const second = sheet.appendRowWithVals({ sheetTitle: "two" });
+    const ss = fetchedValueTypesSpreadsheet();
+    const sheet = ss.table("valueTypes");
+    const first = sheet.appendRowWithVals({ stringValue: "one" });
+    const second = sheet.appendRowWithVals({ stringValue: "two" });
     ss.batchUpdateGSheets();
 
     expect([first.rowIndex, second.rowIndex]).toEqual([0, 1]);
-    expect(tableConfigSheetTitles(service)).toEqual(["one", "two"]);
+    expect(valueTypesStringValues(service)).toEqual(["one", "two"]);
   });
 
   // The wipe has to lift the reservation the first append took, or the second strands a row.
   it("hands the same row to a second append once a wipe has released it", () => {
-    const service = stubTableConfigSheet({
-      4: blankTableConfigRow,
-    });
+    const service = stubValueTypesTable([blankValueTypesRow]);
 
-    const ss = fetchedTableConfig();
-    const sheet = ss.table("tableConfig");
-    sheet.appendRowWithVals({ sheetTitle: "one" });
+    const ss = fetchedValueTypesSpreadsheet();
+    const sheet = ss.table("valueTypes");
+    sheet.appendRowWithVals({ stringValue: "one" });
     sheet.DELETE_ALL_DATA_ROWS();
-    const rebuilt = sheet.appendRowWithVals({ sheetTitle: "two" });
+    const rebuilt = sheet.appendRowWithVals({ stringValue: "two" });
     ss.batchUpdateGSheets();
 
     expect(rebuilt.rowIndex).toBe(0);
-    expect(tableConfigSheetTitles(service)).toEqual(["two"]);
-    expect(rebuilt.value("sheetTitle")).toBe("two");
+    expect(valueTypesStringValues(service)).toEqual(["two"]);
+    expect(rebuilt.value("stringValue")).toBe("two");
   });
 
   it("reuses the row a wipe just cleared, so the wipe and rebuild leave only rebuilt rows", () => {
-    const service = stubTableConfigSheet({
-      4: filledTableConfigRow,
-      5: filledTableConfigRow,
-    });
+    const service = stubValueTypesTable([
+      filledValueTypesRow,
+      filledValueTypesRow,
+    ]);
 
-    const ss = fetchedTableConfig();
-    const sheet = ss.table("tableConfig");
+    const ss = fetchedValueTypesSpreadsheet();
+    const sheet = ss.table("valueTypes");
     sheet.DELETE_ALL_DATA_ROWS();
-    const row = sheet.appendRowWithVals({ sheetTitle: "new" });
+    const row = sheet.appendRowWithVals({ stringValue: "new" });
     ss.batchUpdateGSheets();
 
     expect(row.rowIndex).toBe(0);
-    expect(tableConfigSheetTitles(service)).toEqual(["new"]);
+    expect(valueTypesStringValues(service)).toEqual(["new"]);
   });
 });
 
@@ -857,18 +844,19 @@ describe("TableNamed.appendRowWithVals, growing a lone blank row", () => {
   const looseRowIndex = topDataRowIndex + 2;
   // The inserted rows should copy the blank row's colour; the loose cell below shows any insert.
   function stubColouredBlankRowAboveLooseCell(): FakeSheetsService {
-    const blankRow = blankTableConfigRow.map((cell, colIndex): FakeCell =>
-      colIndex === sheetTitleColIndex
-        ? { value: null, backgroundColor: blankRowColour }
-        : cell,
+    const blankRow = valueTypesColumnIdRow.map(
+      (_columnId, colIndex): FakeCell =>
+        colIndex === stringValueColIndex
+          ? { value: null, backgroundColor: blankRowColour }
+          : null,
     );
     return stubSheetsService({
       sheets: [
         {
-          sheetId: tableConfigGid,
-          title: "Table Config",
+          sheetId: valueTypesGid,
+          title: "Value Types",
           rows: buildGridRows({
-            0: tableConfigColumnIdRow,
+            0: valueTypesColumnIdRow,
             [topDataRowIndex]: blankRow,
             [looseRowIndex]: ["loose"],
           }),
@@ -881,23 +869,23 @@ describe("TableNamed.appendRowWithVals, growing a lone blank row", () => {
   it("writes the blank row in place and inserts the rest beneath it, modelled on it", () => {
     const service = stubColouredBlankRowAboveLooseCell();
 
-    const ss = fetchedTableConfig();
-    const sheet = ss.table("tableConfig");
+    const ss = fetchedValueTypesSpreadsheet();
+    const sheet = ss.table("valueTypes");
     const titles = ["one", "two", "three"];
-    const rows = titles.map((sheetTitle) =>
-      sheet.appendRowWithVals({ sheetTitle }),
+    const rows = titles.map((stringValue) =>
+      sheet.appendRowWithVals({ stringValue }),
     );
     ss.batchUpdateGSheets();
 
-    const grid = service.grid.sheet(tableConfigGid);
+    const grid = service.grid.sheet(valueTypesGid);
     expect(rows.map((row) => row.rowIndex)).toEqual([0, 1, 2]);
     expect(grid.tables[0]?.range?.endRowIndex).toBe(topDataRowIndex + 3);
     expect(
       grid.rows({
         startRowIndex: topDataRowIndex,
         endRowIndex: topDataRowIndex + 3,
-        startColumnIndex: sheetTitleColIndex,
-        endColumnIndex: sheetTitleColIndex + 1,
+        startColumnIndex: stringValueColIndex,
+        endColumnIndex: stringValueColIndex + 1,
       }),
     ).toEqual(
       titles.map((value) => [{ value, backgroundColor: blankRowColour }]),
@@ -907,14 +895,14 @@ describe("TableNamed.appendRowWithVals, growing a lone blank row", () => {
 
   it("only fills the blank row when growing by one, inserting nothing", () => {
     const service = stubColouredBlankRowAboveLooseCell();
-    const rowCountBefore = service.grid.sheet(tableConfigGid).rowCount;
+    const rowCountBefore = service.grid.sheet(valueTypesGid).rowCount;
 
-    const ss = fetchedTableConfig();
-    ss.table("tableConfig").appendRowWithVals({ sheetTitle: "one" });
+    const ss = fetchedValueTypesSpreadsheet();
+    ss.table("valueTypes").appendRowWithVals({ stringValue: "one" });
     ss.batchUpdateGSheets();
 
-    const grid = service.grid.sheet(tableConfigGid);
-    expect(tableConfigSheetTitles(service)).toEqual(["one"]);
+    const grid = service.grid.sheet(valueTypesGid);
+    expect(valueTypesStringValues(service)).toEqual(["one"]);
     expect(grid.tables[0]?.range?.endRowIndex).toBe(topDataRowIndex + 1);
     expect(grid.rowCount).toBe(rowCountBefore);
     expect(grid.cell(looseRowIndex, 0)).toBe("loose");
