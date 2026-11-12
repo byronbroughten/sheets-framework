@@ -13,8 +13,8 @@ import type { SheetRaw } from "../02_SpreadsheetRaw/SheetRaw";
 import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
 import {
   type ApiTableColumns,
-  ColumnConfigOperator,
-} from "./ColumnConfigOperator";
+  ColumnConfigsOperator,
+} from "./ColumnConfigsOperator";
 import {
   columnNamesByColumnId,
   oneLinePerLeafFileSource,
@@ -32,8 +32,8 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
   get ss(): SpreadsheetNamed {
     return new SpreadsheetNamed(this.spreadsheetNamedProps);
   }
-  get columnConfigOperator(): ColumnConfigOperator {
-    return new ColumnConfigOperator(this.operatorProps);
+  get columnConfigOperator(): ColumnConfigsOperator {
+    return new ColumnConfigsOperator(this.operatorProps);
   }
   newConditionalFormatConfigs(): ConditionalFormatConfigsBase {
     const apiTableColumnsByTableId =

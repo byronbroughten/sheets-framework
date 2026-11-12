@@ -7,9 +7,9 @@ import {
   type FakeSheetProperties,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
-import { ColumnConfigOperator } from "./ColumnConfigOperator";
+import { ColumnConfigsOperator } from "./ColumnConfigsOperator";
 import { TabConfigOperator } from "./TabConfigOperator";
-import type { TableConfigOperator } from "./TableConfigOperator";
+import type { TableConfigsOperator } from "./TableConfigsOperator";
 
 // The previous configs grant API access, so the fixtures reuse Table IDs the installed configs hold.
 const itemTableId = getTableTraitByName("item", "tableId");
@@ -23,8 +23,8 @@ beforeEach(() => {
   stubLogger();
 });
 
-function syncedOperator(): TableConfigOperator {
-  const columnConfigOperator = ColumnConfigOperator.init();
+function syncedOperator(): TableConfigsOperator {
+  const columnConfigOperator = ColumnConfigsOperator.init();
   columnConfigOperator.ss.fetchAllSheetProperties();
   columnConfigOperator.fetchHeadRows();
   return columnConfigOperator.tableConfigOperator;
@@ -77,7 +77,7 @@ function stubTables({
   });
 }
 
-describe("TableConfigOperator.newTableConfigs Table identity and position", () => {
+describe("TableConfigsOperator.newTableConfigs Table identity and position", () => {
   function stubWidgetTable(): void {
     stubTables({ widget: { name: "Widget orders", columnIds: ["c:itm:aaa"] } });
   }
@@ -134,7 +134,7 @@ describe("TableConfigOperator.newTableConfigs Table identity and position", () =
   );
 });
 
-describe("TableConfigOperator Table keys and prefixes", () => {
+describe("TableConfigsOperator Table keys and prefixes", () => {
   it("fails when two Tables' names give the same key, naming both", () => {
     stubTables({
       widget: { name: "Widget orders", columnIds: ["c:itm:aaa"] },
@@ -281,7 +281,7 @@ describe("TabConfigOperator.newTabConfigs", () => {
   });
 });
 
-describe("TableConfigOperator.parseColumnReference", () => {
+describe("TableConfigsOperator.parseColumnReference", () => {
   beforeEach(() => {
     stubSheetsService({
       sheets: [

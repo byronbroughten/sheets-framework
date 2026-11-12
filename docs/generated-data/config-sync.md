@@ -8,6 +8,6 @@ Part of [generated data](../generated-data.md). The regen reads the live sheet a
 
 ## The regen leaves the config tabs alone
 
-`ConfigCoordinator.generateConfigFiles()` takes API access from a Table's presence in the previous configs and carries `emptyValueAllowed` forward from them (false for a new column). It writes only missing column IDs onto business sheets' header rows, in one flush, then returns every generated file. There is no sync endpoint, no `syncConfigSheetRows` and no correction pass over the config tabs' rows. The [config-sheet floor](./config-sheet-floor.md) is the `ensureConfigSheetFloor` chore's alone; `npm run gen:configs` does not run it.
+`SyncCoordinator.generateConfigFiles()` takes API access from a Table's presence in the previous configs and carries `emptyValueAllowed` forward from them (false for a new column). It writes only missing column IDs onto business sheets' header rows, in one flush, then returns every generated file. There is no sync endpoint, no `syncConfigSheetRows` and no correction pass over the config tabs' rows. The [config-sheet floor](./config-sheet-floor.md) is the `ensureConfigSheetFloor` chore's alone; `npm run gen:configs` does not run it.
 
 A live ID prefix that differs from the configs stops the run before any write (`idPrefixGuard`, run over every Table, sharing the retired prefixes with the title-derived prefix).

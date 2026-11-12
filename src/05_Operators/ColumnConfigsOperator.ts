@@ -28,7 +28,7 @@ import {
   type UntypedHeadersByTableName,
   type ValueSource,
 } from "./SpreadsheetBaseOperator";
-import { TableConfigOperator } from "./TableConfigOperator";
+import { TableConfigsOperator } from "./TableConfigsOperator";
 
 export interface ApiTableColumns {
   tableKey: string;
@@ -40,9 +40,9 @@ interface ColumnIdentity {
   columnId: string;
 }
 
-export class ColumnConfigOperator extends SpreadsheetBaseOperator {
-  static init(): ColumnConfigOperator {
-    return new ColumnConfigOperator(
+export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
+  static init(): ColumnConfigsOperator {
+    return new ColumnConfigsOperator(
       SpreadsheetBaseOperator.initOperatorProps(),
     );
   }
@@ -52,8 +52,8 @@ export class ColumnConfigOperator extends SpreadsheetBaseOperator {
   get columnConfigSync(): ConfigSyncState["columnConfigSync"] {
     return this.configSyncState.columnConfigSync;
   }
-  get tableConfigOperator(): TableConfigOperator {
-    return new TableConfigOperator(this.operatorProps);
+  get tableConfigOperator(): TableConfigsOperator {
+    return new TableConfigsOperator(this.operatorProps);
   }
   private get untypedHeadersByTableName(): UntypedHeadersByTableName {
     return this.columnConfigSync.untypedHeadersByTableName;
@@ -122,7 +122,7 @@ export class ColumnConfigOperator extends SpreadsheetBaseOperator {
   assertSyncedToSpreadsheet(): void {
     if (!this.columnConfigSync.syncedToSpreadsheet) {
       throw new Error(
-        "ColumnConfigOperator has not yet synced to the spreadsheet.",
+        "ColumnConfigsOperator has not yet synced to the spreadsheet.",
       );
     }
   }

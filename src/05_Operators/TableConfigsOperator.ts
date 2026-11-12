@@ -24,9 +24,11 @@ export interface ColumnReference {
   columnId: string;
 }
 
-export class TableConfigOperator extends SpreadsheetBaseOperator {
-  static init(): TableConfigOperator {
-    return new TableConfigOperator(SpreadsheetBaseOperator.initOperatorProps());
+export class TableConfigsOperator extends SpreadsheetBaseOperator {
+  static init(): TableConfigsOperator {
+    return new TableConfigsOperator(
+      SpreadsheetBaseOperator.initOperatorProps(),
+    );
   }
   get ss(): SpreadsheetNamed {
     return new SpreadsheetNamed(this.spreadsheetNamedProps);
