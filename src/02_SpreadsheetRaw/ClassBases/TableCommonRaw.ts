@@ -67,6 +67,10 @@ export abstract class TableCommonRaw extends TableBaseRaw {
     const { startRowIndex, endRowIndex } = this._workingTableProperties();
     return endRowIndex - startRowIndex - 1;
   }
+  // No stale check: the regen reads rule records after its own flush, and accepts that a prune leaves a config Table's stale.
+  get endRowIndex(): SheetRowIndex {
+    return this._knownTableProperties().endRowIndex;
+  }
   get columnCount(): number {
     const { startColumnIndex, endColumnIndex } = this._workingTableProperties();
     return endColumnIndex - startColumnIndex;

@@ -5,6 +5,7 @@ import type {
   SyncDeclarer,
   SyncDryRunOutcome,
   SyncHeld,
+  SyncHeldBy,
   SyncHeldGroup,
   SyncLandedItem,
   SyncNotice,
@@ -17,6 +18,7 @@ import type {
   SyncSendOutcome,
   SyncSentOutcome,
   SyncStop,
+  SyncStoppedBeforeSendingOutcome,
   SyncStoppedPartwayOutcome,
   SyncSubject,
 } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
@@ -103,6 +105,9 @@ export class SyncRunReport {
     if (outcome.kind === "stopped") return this._stoppedText;
     if (outcome.kind === "refused") return this._refusedText;
     if (outcome.kind === "sent") return this._sentText(outcome);
+    if (outcome.kind === "stoppedBeforeSending") {
+      return this._stoppedBeforeSendingText(outcome);
+    }
     return this._stoppedPartwayText(outcome);
   }
   private get _stoppedText(): OutcomeText {
@@ -163,6 +168,15 @@ export class SyncRunReport {
       next: `sync wrote ${generatedDir} and ${alterationsPath}. Run npm run check, then commit them with your change.`,
     };
   }
+  private _stoppedBeforeSendingText({
+    heldBy,
+  }: SyncStoppedBeforeSendingOutcome): OutcomeText {
+    return {
+      resultLine: `STOPPED: the send was refused before any flush landed, because ${heldByReason[heldBy]}. Nothing was sent.`,
+      planTitle: planTitles.send,
+      next: this._rerunDryRunLine,
+    };
+  }
   private _stoppedPartwayText(outcome: SyncStoppedPartwayOutcome): OutcomeText {
     const { landedFlushes, flushCount, heldBy } = outcome;
     const refused = landedFlushes + 1;
@@ -170,8 +184,11 @@ export class SyncRunReport {
     return {
       resultLine: `STOPPED PARTWAY: ${landed}; flush ${refused} was refused, because ${heldByReason[heldBy]}. Nothing after it was sent.`,
       planTitle: planTitles.send,
-      next: `Rerun the dry run: ${this.result.command}`,
+      next: this._rerunDryRunLine,
     };
+  }
+  private get _rerunDryRunLine(): string {
+    return `Rerun the dry run: ${this.result.command}`;
   }
   private get _checkClause(): string {
     const { checks } = this.result;
@@ -290,12 +307,11 @@ function heldCount(held: SyncHeld): number {
 }
 
 function flushSpan(landedFlushes: number, flushCount: number): string {
-  if (landedFlushes === 0) return `no flush of ${flushCount} landed`;
   if (landedFlushes === 1) return `flush 1 of ${flushCount} landed`;
   return `flushes 1 to ${landedFlushes} of ${flushCount} landed`;
 }
 
-const heldByReason: Record<SyncStoppedPartwayOutcome["heldBy"], string> = {
+const heldByReason: Record<SyncHeldBy, string> = {
   uncovered: "it holds items and the send had no --confirm",
   mismatched:
     "the sheet or the plan changed after the dry run, so --confirm doesn't cover its held items",

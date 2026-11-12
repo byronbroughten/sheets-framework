@@ -777,6 +777,33 @@ describe("SyncRunReport, case G: a send stopped partway", () => {
   });
 });
 
+describe("SyncRunReport, a send refused at its first flush", () => {
+  const lines = render({
+    ...appSend,
+    outcome: { kind: "stoppedBeforeSending", heldBy: "uncovered" },
+    landed: [],
+    notSent: [
+      {
+        subject: { table: "occCharge", column: "notes" },
+        what: "the formula alteration.",
+      },
+    ],
+    configs: noConfigChanges,
+  });
+  const text = lines.join("\n");
+
+  it("says nothing was sent, never that it stopped partway", () => {
+    expect(resultLine(lines)).toBe(
+      "STOPPED: the send was refused before any flush landed, because it holds items and the send had no --confirm. Nothing was sent.",
+    );
+    expect(text).not.toContain("PARTWAY");
+  });
+
+  it("points to the dry run", () => {
+    expect(text).toContain("Rerun the dry run: npm run app:sync");
+  });
+});
+
 describe("SyncRunReport, case H: a clean send", () => {
   const lines = render({
     ...appSend,

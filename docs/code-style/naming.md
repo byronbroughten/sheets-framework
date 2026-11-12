@@ -46,5 +46,8 @@ This is the list's one home. **A framework method takes its verb from it**, each
 - `init` — factory setup
 - `sync`/`flush` — coordinate multiple operators / send a batched write
 - `discard` — drop queued changes without sending them; the counterpart to `flush`
+- `classify` — sort a flush's requests into held and free
+- `judge` — decide one request's cells against the run's reads
+- `track` — follow cells across a flush's shifts
 - **The list governs framework methods.**
 

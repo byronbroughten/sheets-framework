@@ -4,20 +4,21 @@ import type {
   ColumnTypeBaseline,
 } from "../columnBaseline";
 import { idPrefixes } from "../idPrefixes";
+import type { RuleRecordSet } from "./RuleRecords";
 import type { Value, ValueName } from "./valueSchemas";
 
 type ConfigMakerName =
   | "makeTableConfigs"
   | "makeTabConfigs"
+  | "makeConditionalFormatConfigs"
   | "makeRetiredIdPrefixes"
   | "makeColumnConfigs"
   | "makeValueConfigs";
 
 export function makeImportLine(
   configMakerNames: readonly ConfigMakerName[],
-  makeConfigsImport: string,
 ): string {
-  return `import { ${configMakerNames.join(", ")} } from ${JSON.stringify(makeConfigsImport)};`;
+  return `import { ${configMakerNames.join(", ")} } from "@byronbroughten/sheets-framework";`;
 }
 
 function makeStructuredConfig<ST, const CF extends ST>(
@@ -64,8 +65,17 @@ export interface TabConfigStored {
   hidden: boolean;
 }
 export type TabConfigsBase = Record<string, TabConfigStored>;
+// Every generated data file is a literal passed through its constructor from makeConfigs, never a bare literal, so this and makeRetiredIdPrefixes check nothing.
 export function makeTabConfigs<TC extends TabConfigsBase>(tabConfigs: TC): TC {
   return tabConfigs;
+}
+
+// Records under tables by Table key and under tabs by tab name, each keyed by its rule handle.
+export type ConditionalFormatConfigsBase = RuleRecordSet;
+export function makeConditionalFormatConfigs<
+  CF extends ConditionalFormatConfigsBase,
+>(conditionalFormatConfigs: CF): CF {
+  return conditionalFormatConfigs;
 }
 
 export function makeRetiredIdPrefixes(

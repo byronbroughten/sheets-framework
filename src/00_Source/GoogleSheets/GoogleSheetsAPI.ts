@@ -9,6 +9,7 @@ import type {
   RawSource,
   SheetConditionalFormatSnapshot,
   SheetEditProtectionSnapshot,
+  SheetPropertiesFetchOptions,
   SpreadsheetSnapshot,
   TableColumnPropertiesAdd,
   TableColumnPropertiesUpdate,
@@ -79,13 +80,15 @@ const timeZoneMask = "properties(timeZone)";
 const sheetPropertiesMask =
   "properties(sheetId,title,hidden,tabColorStyle,gridProperties(rowCount,columnCount,frozenRowCount,frozenColumnCount))";
 
+const sheetPropertiesAndTablesMask =
+  `${sheetPropertiesMask},` +
+  "tables(tableId,name,range,columnProperties(columnIndex,columnType))";
+
 // The time zone, grid size and column types ride every standing fetch, so none costs its own get.
 const fieldMasks = {
   timeZone: timeZoneMask,
-  sheetProperties:
-    `${timeZoneMask},` +
-    `sheets(${sheetPropertiesMask},` +
-    "tables(tableId,name,range,columnProperties(columnIndex,columnType)))",
+  sheetProperties: `${timeZoneMask},sheets(${sheetPropertiesAndTablesMask})`,
+  sheetPropertiesWithConditionalFormats: `${timeZoneMask},sheets(${sheetPropertiesAndTablesMask},conditionalFormats)`,
   conditionalFormats: "sheets(properties(sheetId),conditionalFormats)",
   protectedRanges: "sheets(properties(sheetId),protectedRanges)",
   gridWithProgrammaticFacts:
@@ -169,17 +172,21 @@ export class GoogleSheetsAPI implements RawSource {
       props.spreadsheetId,
     );
   }
-  fetchSheetProperties(): SpreadsheetSnapshot {
+  fetchSheetProperties(
+    options?: SheetPropertiesFetchOptions,
+  ): SpreadsheetSnapshot {
+    if (options?.includeConditionalFormats) {
+      return googleGrid.toSpreadsheetSnapshotWithRules(
+        this._getSpreadsheet(fieldMasks.sheetPropertiesWithConditionalFormats),
+        googleConditionalFormatRule.toConditionalFormatRules,
+      );
+    }
     return googleGrid.toSpreadsheetSnapshot(
-      this.sheets.Spreadsheets.get(this.spreadsheetId, {
-        fields: fieldMasks.sheetProperties,
-      }),
+      this._getSpreadsheet(fieldMasks.sheetProperties),
     );
   }
   fetchTimeZone(): string | null {
-    const spreadsheet = this.sheets.Spreadsheets.get(this.spreadsheetId, {
-      fields: fieldMasks.timeZone,
-    });
+    const spreadsheet = this._getSpreadsheet(fieldMasks.timeZone);
     return spreadsheet.properties?.timeZone ?? null;
   }
   fetchGrid(
@@ -203,10 +210,7 @@ export class GoogleSheetsAPI implements RawSource {
   fetchConditionalFormatRules(): SheetConditionalFormatSnapshot[] {
     return this._fetchSheets(fieldMasks.conditionalFormats).map((sheet) => ({
       sheetGid: sheetGidOf(sheet),
-      // Google omits an empty list; observed: docs/sheets-behaviour.md#empty-lists-and-zero-valued-fields.
-      rules: (sheet.conditionalFormats ?? []).map((rule, index) =>
-        googleConditionalFormatRule.toConditionalFormatRule(rule, index),
-      ),
+      rules: googleConditionalFormatRule.toConditionalFormatRules(sheet),
     }));
   }
   // The code assumes Google drops an empty protectedRanges list the same way; observed: docs/sheets-behaviour.md#reading-protections-back.
@@ -239,10 +243,13 @@ export class GoogleSheetsAPI implements RawSource {
     }
   }
   private _fetchSheets(fields: string): GoogleSheet[] {
-    const spreadsheet = this.sheets.Spreadsheets.get(this.spreadsheetId, {
-      fields,
-    });
-    return Val.assert(spreadsheet.sheets, "spreadsheet.sheets");
+    return Val.assert(
+      this._getSpreadsheet(fields).sheets,
+      "spreadsheet.sheets",
+    );
+  }
+  private _getSpreadsheet(fields: string): GoogleSpreadsheet {
+    return this.sheets.Spreadsheets.get(this.spreadsheetId, { fields });
   }
 }
 

@@ -1,8 +1,7 @@
 // `sheets-framework gen-configs`: regenerates the package's generated files from its live Tables and previous configs, on the Node host.
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
-import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 
 import type { ConfigRegeneration } from "../src/05_Operators/ConfigCoordinator.ts";
 import { readConfigsDiff } from "./configsDiff.ts";
@@ -25,6 +24,10 @@ class ConfigFilesGenerator {
     this.path = {
       tableConfigs: configFilePath(generatedDir, "tableConfigs"),
       tabConfigs: configFilePath(generatedDir, "tabConfigs"),
+      conditionalFormatConfigs: configFilePath(
+        generatedDir,
+        "conditionalFormatConfigs",
+      ),
       retiredIdPrefixes: configFilePath(generatedDir, "retiredIdPrefixes"),
       columnConfigs: configFilePath(generatedDir, "columnConfigs"),
       valueConfigs: configFilePath(generatedDir, "valueConfigs"),
@@ -39,6 +42,7 @@ class ConfigFilesGenerator {
     const {
       tableConfigs,
       tabConfigs,
+      conditionalFormatConfigs,
       retiredIdPrefixes,
       columnConfigs,
       valueConfigs,
@@ -50,6 +54,7 @@ class ConfigFilesGenerator {
     mkdirSync(this.sheetsConfig.generatedDir, { recursive: true });
     writeFileSync(this.path.tableConfigs, tableConfigs);
     writeFileSync(this.path.tabConfigs, tabConfigs);
+    writeFileSync(this.path.conditionalFormatConfigs, conditionalFormatConfigs);
     writeFileSync(this.path.retiredIdPrefixes, retiredIdPrefixes);
     writeFileSync(this.path.columnConfigs, columnConfigs);
     writeFileSync(this.path.valueConfigs, valueConfigs);
@@ -96,19 +101,7 @@ class ConfigFilesGenerator {
     });
     const { ConfigCoordinator } =
       await import("../src/05_Operators/ConfigCoordinator.ts");
-    return ConfigCoordinator.init().generateConfigFiles(
-      this._makeConfigsImport(),
-    );
-  }
-
-  _makeConfigsImport(): string {
-    const makeConfigsPath = fileURLToPath(
-      new URL(
-        "../src/01_SpreadsheetSchema/configReaders/makeConfigs",
-        import.meta.url,
-      ),
-    );
-    return relative(this.sheetsConfig.generatedDir, makeConfigsPath);
+    return ConfigCoordinator.init().generateConfigFiles();
   }
 
   _runTsc(): boolean {
@@ -151,6 +144,7 @@ export function appConfigsText(): string {
 import type {} from "@byronbroughten/sheets-framework";
 
 import { columnConfigs } from "./columnConfigs";
+import { conditionalFormatConfigs } from "./conditionalFormatConfigs";
 import type { IdNameMap } from "./idNameMap";
 import { retiredIdPrefixes } from "./retiredIdPrefixes";
 import { tabConfigs } from "./tabConfigs";
@@ -160,6 +154,7 @@ import { valueConfigs } from "./valueConfigs";
 export const appConfigs = {
   tableConfigs,
   tabConfigs,
+  conditionalFormatConfigs,
   retiredIdPrefixes,
   columnConfigs,
   valueConfigs,

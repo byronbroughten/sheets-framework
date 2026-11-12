@@ -1,5 +1,3 @@
-import { Val } from "@byronbroughten/utils/val";
-
 import type { IdNameMapGeneric } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
 import {
   SpreadsheetBaseNamed,
@@ -7,6 +5,7 @@ import {
 } from "../04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
 import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
 import { ColumnConfigOperator } from "./ColumnConfigOperator";
+import { ConditionalFormatConfigOperator } from "./ConditionalFormatConfigOperator";
 import { columnIdsByName, idNameMapFileSource } from "./configFileSource";
 import { ConfigSheetFloor } from "./ConfigSheetFloor";
 import { SpreadsheetBaseOperator } from "./SpreadsheetBaseOperator";
@@ -17,6 +16,7 @@ import { ValueConfigOperator } from "./ValueConfigOperator";
 export interface ConfigRegeneration {
   tableConfigs: string;
   tabConfigs: string;
+  conditionalFormatConfigs: string;
   retiredIdPrefixes: string;
   columnConfigs: string;
   valueConfigs: string;
@@ -58,6 +58,9 @@ export class ConfigCoordinator extends SpreadsheetBaseOperator {
   get tabConfigOperator(): TabConfigOperator {
     return new TabConfigOperator(this.operatorProps);
   }
+  get conditionalFormatConfigOperator(): ConditionalFormatConfigOperator {
+    return new ConditionalFormatConfigOperator(this.operatorProps);
+  }
   get valueConfigOperator(): ValueConfigOperator {
     return new ValueConfigOperator(this.operatorProps);
   }
@@ -67,26 +70,27 @@ export class ConfigCoordinator extends SpreadsheetBaseOperator {
   ensureConfigSheetFloor(): string {
     return this.configSheetFloor.ensure();
   }
-  generateConfigFiles(makeConfigsImport: string): ConfigRegeneration {
+  generateConfigFiles(): ConfigRegeneration {
     this._syncColumnIds();
     const untypedColumnsSummary =
       this.columnConfigOperator.untypedColumnsSummary();
     this.ss.batchUpdateGSheets();
     this.valueConfigOperator.fetchAfterColumnConfigSynced();
     return {
-      tableConfigs: this.tableConfigOperator.toFileSource(makeConfigsImport),
-      tabConfigs: this.tabConfigOperator.toFileSource(makeConfigsImport),
-      retiredIdPrefixes:
-        this.tableConfigOperator.retiredIdPrefixesFileSource(makeConfigsImport),
-      columnConfigs: this.columnConfigOperator.toFileSource(makeConfigsImport),
-      valueConfigs: this.valueConfigOperator.toFileSource(makeConfigsImport),
+      tableConfigs: this.tableConfigOperator.toFileSource(),
+      tabConfigs: this.tabConfigOperator.toFileSource(),
+      conditionalFormatConfigs:
+        this.conditionalFormatConfigOperator.toFileSource(),
+      retiredIdPrefixes: this.tableConfigOperator.retiredIdPrefixesFileSource(),
+      columnConfigs: this.columnConfigOperator.toFileSource(),
+      valueConfigs: this.valueConfigOperator.toFileSource(),
       idNameMap: idNameMapFileSource(this._idNameMap()),
       untypedColumnsSummary,
     };
   }
   // The ID-prefix guard runs before the column-ID write it guards.
   private _syncColumnIds(): void {
-    this.ss.fetchAllSheetProperties();
+    this.ss.fetchAllSheetProperties({ includeConditionalFormats: true });
     this.tableConfigOperator.validateHeadRowsClear();
     this.tableConfigOperator.validateHeadersInZone();
     this.columnConfigOperator.fetchHeadRows();
@@ -98,13 +102,13 @@ export class ConfigCoordinator extends SpreadsheetBaseOperator {
   }
   private _idNameMapTables(): IdNameMapGeneric["tables"] {
     const { raw } = this.ss;
-    const columnConfigs = this.columnConfigOperator.newColumnConfigs();
-    const tableKeysByTableId = this.tableConfigOperator.tableKeysByTableId();
+    const apiTableColumnsByTableId =
+      this.columnConfigOperator.apiTableColumnsByTableId();
     return raw.activeTableIds.reduce<IdNameMapGeneric["tables"]>(
       (tables, tableId) => {
         const { name, sheetGid } = raw.table(tableId);
-        const tableKey = tableKeysByTableId.get(tableId);
-        if (tableKey === undefined) {
+        const apiTableColumns = apiTableColumnsByTableId.get(tableId);
+        if (apiTableColumns === undefined) {
           tables[tableId] = {
             name: this.ss.schema.titleToName(name),
             sheetGid,
@@ -112,14 +116,9 @@ export class ConfigCoordinator extends SpreadsheetBaseOperator {
           return tables;
         }
         tables[tableId] = {
-          name: tableKey,
+          name: apiTableColumns.tableKey,
           sheetGid,
-          columns: columnIdsByName(
-            Val.assert(
-              columnConfigs[tableKey],
-              `column configs of ${tableKey}`,
-            ),
-          ),
+          columns: columnIdsByName(apiTableColumns.columnConfigs),
         };
         return tables;
       },

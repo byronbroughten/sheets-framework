@@ -46,6 +46,7 @@ One line per term. The elaboration is one file away. Open a reasoning file only 
 - **Intended state is what the repo says the sheet's structure will be, for the traits it names: its claims and pending alterations**; typed (`PendingAlterations`, `ClaimedTraits`) and read by `SyncPlanner`, which nothing runs yet.
 - **A claim is a trait an endpoint or chore holds, named in `claimedTraits` or implied by its declaration, compared every run; an alteration is one `gen:configs` applies once, then removes.** An endpoint's key claims a checkbox in its column's action-row cell. Either's value is an intended value.
 - **The ID-name map (`idNameMap.ts`) is the generated, type-only file pairing each Table and column ID with its name.**
+- **A rule handle is the readable key a conditional-format rule's record has in `conditionalFormatConfigs`, built from its content, never its position**: scope, condition and format, with `-2`, `-3` on a repeat.
 - **Entered data is a value in a Table data-row cell that isn't a formula; a held item is one a send holds back until `--confirm` covers it, and a send with none is free**; planned, not yet in code.
 
 ## The write queue

@@ -4,7 +4,7 @@ import type {
   ModelableConditionalFormatRule,
 } from "./ConditionalFormat";
 import type { EditProtection, EditProtectionContent } from "./EditProtection";
-import type { RgbColor } from "./RgbColor";
+import type { HexColor, RgbColor } from "./RgbColor";
 import type { SheetColIndex, SheetRowIndex } from "./SheetIndex";
 
 export interface GridRangeProps {
@@ -63,6 +63,10 @@ export interface GridFetchOptions {
   includeProgrammaticFacts: boolean;
 }
 
+export interface SheetPropertiesFetchOptions {
+  includeConditionalFormats: boolean;
+}
+
 export interface SpreadsheetSnapshot {
   timeZone: string | null;
   sheets: SheetSnapshot[];
@@ -76,6 +80,7 @@ export interface SheetSnapshot {
   tabProperties: SheetTabProperties;
   tables: TableSnapshot[] | undefined;
   gridBlocks: GridBlockSnapshot[] | undefined;
+  conditionalFormats: ConditionalFormatRule[] | undefined;
 }
 
 export const themeColorNames = [
@@ -90,7 +95,7 @@ export const themeColorNames = [
   "LINK",
 ] as const;
 export type ThemeColorName = (typeof themeColorNames)[number];
-export type TabColor = `#${string}` | ThemeColorName;
+export type TabColor = HexColor | ThemeColorName;
 
 export interface SheetTabProperties {
   color: TabColor | undefined;
@@ -356,7 +361,9 @@ export interface RawWriteOperation {
 }
 
 export interface RawSource {
-  fetchSheetProperties(): SpreadsheetSnapshot;
+  fetchSheetProperties(
+    options?: SheetPropertiesFetchOptions,
+  ): SpreadsheetSnapshot;
   fetchTimeZone(): string | null;
   fetchGrid(
     gridRanges: GridFetchRange[],

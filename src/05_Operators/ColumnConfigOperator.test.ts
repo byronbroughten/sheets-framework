@@ -108,9 +108,7 @@ describe("ColumnConfigOperator.newColumnConfigs / toFileSource", () => {
   it("emits one labeled column-config record per line", () => {
     stubWidgetAndBrandNewSheet();
 
-    const sourceLines = syncedOperator()
-      .toFileSource("../makeConfigs")
-      .split("\n");
+    const sourceLines = syncedOperator().toFileSource().split("\n");
 
     expect(sourceLines).toContain(
       '    "unitPrice": { "columnId": "c:itm:aaa", "header": "Unit Price", "valueName": "number", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null, "formula": null, "columnType": {"type":null,"rule":null}, "actionRowCell": null, "groupHeading1": null },',

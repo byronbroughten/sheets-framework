@@ -127,8 +127,7 @@ export function appEslintPreset({ testSetupFiles }) {
     return [
       {
         files,
-        // generated/ imports the framework's makeConfigs by the relative path gen:configs writes.
-        ignores: ["**/*.test.ts", "src/generated/**", ...testSetupFiles],
+        ignores: ["**/*.test.ts", ...testSetupFiles],
         rules: restrict(false),
       },
       {

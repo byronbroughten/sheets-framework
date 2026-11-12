@@ -106,10 +106,10 @@ describe("TableConfigOperator.newTableConfigs Table identity and position", () =
   it("writes the entries through makeTableConfigs", () => {
     stubWidgetTable();
 
-    const source = syncedOperator().toFileSource("../makeConfigs");
+    const source = syncedOperator().toFileSource();
 
     expect(source).toContain(
-      'import { makeTableConfigs } from "../makeConfigs";',
+      'import { makeTableConfigs } from "@byronbroughten/sheets-framework";',
     );
     expect(source).toContain("export const tableConfigs = makeTableConfigs({");
     expect(source).toContain(
@@ -166,7 +166,7 @@ describe("TableConfigOperator Table keys and prefixes", () => {
       gadget: { name: "Gadget", columnIds: ["c:wdg:bbb"] },
     });
 
-    expect(() => syncedOperator().toFileSource("../makeConfigs")).toThrow(
+    expect(() => syncedOperator().toFileSource()).toThrow(
       /Widget.*Gadget.*"wdg"/,
     );
   });
@@ -190,10 +190,9 @@ describe("TableConfigOperator Table keys and prefixes", () => {
   it("writes the retired prefixes through makeRetiredIdPrefixes", () => {
     stubTables({ widget: { name: "Item", columnIds: [] } });
 
-    const source =
-      syncedOperator().retiredIdPrefixesFileSource("../makeConfigs");
+    const source = syncedOperator().retiredIdPrefixesFileSource();
     expect(source).toContain(
-      'import { makeRetiredIdPrefixes } from "../makeConfigs";',
+      'import { makeRetiredIdPrefixes } from "@byronbroughten/sheets-framework";',
     );
     expect(source).toMatch(
       /export const retiredIdPrefixes = makeRetiredIdPrefixes\(\[.*"log".*\]\);/,
@@ -246,9 +245,9 @@ describe("TabConfigOperator.newTabConfigs", () => {
   it("writes the tabs through makeTabConfigs", () => {
     stubTabs({});
 
-    const source = syncedTabOperator().toFileSource("../makeConfigs");
+    const source = syncedTabOperator().toFileSource();
     expect(source).toContain(
-      'import { makeTabConfigs } from "../makeConfigs";',
+      'import { makeTabConfigs } from "@byronbroughten/sheets-framework";',
     );
     expect(source).toContain("export const tabConfigs = makeTabConfigs({");
     expect(source).toContain(

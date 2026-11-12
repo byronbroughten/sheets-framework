@@ -252,6 +252,9 @@ export class SheetRaw extends SheetBaseRaw {
     this.tableIds.forEach((tableId) => {
       this.table(tableId).integrateGridBlocks(sheet.gridBlocks ?? []);
     });
+    if (sheet.conditionalFormats !== undefined) {
+      this.integrateConditionalFormatRules(sheet.conditionalFormats);
+    }
   }
   removeTablesAbsentFrom(tables: TableSnapshot[]): void {
     const liveTableIds = tables.map(({ tableId }) => tableId);

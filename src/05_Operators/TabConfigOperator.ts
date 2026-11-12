@@ -37,9 +37,9 @@ export class TabConfigOperator extends SpreadsheetBaseOperator {
       {},
     );
   }
-  toFileSource(makeConfigsImport: string): string {
+  toFileSource(): string {
     return [
-      makeImportLine(["makeTabConfigs"], makeConfigsImport),
+      makeImportLine(["makeTabConfigs"]),
       ``,
       `export const tabConfigs = makeTabConfigs(${oneLinePerEntryFileSource(
         this.newTabConfigs(),

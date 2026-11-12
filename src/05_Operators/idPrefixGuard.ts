@@ -1,6 +1,8 @@
+import type { IdPrefixesByTableId } from "../01_SpreadsheetSchema/idPrefixes";
+
 export interface IdPrefixGuardProps {
-  previousByTableId: ReadonlyMap<string, string>;
-  nextByTableId: ReadonlyMap<string, string>;
+  previousByTableId: IdPrefixesByTableId;
+  nextByTableId: IdPrefixesByTableId;
   retiredPrefixes: ReadonlySet<string>;
 }
 
@@ -10,7 +12,8 @@ export function validateIdPrefixesUnchanged({
   nextByTableId,
   retiredPrefixes,
 }: IdPrefixGuardProps): void {
-  const changes = [...nextByTableId].flatMap(([tableId, next]) => {
+  const changes = nextByTableId.tableIds().flatMap((tableId) => {
+    const next = nextByTableId.assertIdPrefix(tableId);
     const previous = previousByTableId.get(tableId);
     if (previous === undefined) {
       if (!retiredPrefixes.has(next)) return [];

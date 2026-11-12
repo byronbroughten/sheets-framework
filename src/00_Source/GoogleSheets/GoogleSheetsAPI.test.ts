@@ -1038,7 +1038,68 @@ describe("GoogleSheetsAPI payload mapping", () => {
           endColumnIndex: 3,
         },
       ],
+      rawContent:
+        '{"gradientRule":{"minpoint":{"color":{"red":1},"type":"MIN"},"maxpoint":{"color":{"red":0},"type":"MAX"}}}',
     });
+  });
+});
+
+describe("GoogleSheetsAPI.fetchSheetProperties conditional-format rules", () => {
+  const rule = {
+    ranges: [{ sheetId: 111, startRowIndex: 4, endRowIndex: 6 }],
+    booleanRule: {
+      condition: {
+        type: "NUMBER_GREATER",
+        values: [{ userEnteredValue: "1" }],
+      },
+    },
+  };
+  const payload = {
+    sheets: [
+      { properties: { sheetId: 111 }, conditionalFormats: [rule] },
+      { properties: { sheetId: 222 } },
+    ],
+  };
+
+  it("reads each sheet's rules on the one get when asked, a sheet Google left the list off reading as none", () => {
+    const { api, getCalls } = recordingSheets(payload);
+
+    const { sheets } = api.fetchSheetProperties({
+      includeConditionalFormats: true,
+    });
+
+    expect(sheets.map((sheet) => sheet.conditionalFormats)).toEqual([
+      [
+        {
+          kind: "boolean",
+          ranges: [
+            {
+              sheetId: 111,
+              startRowIndex: 4,
+              endRowIndex: 6,
+              startColumnIndex: 0,
+            },
+          ],
+          condition: { type: "NUMBER_GREATER", value: 1 },
+          format: {},
+        },
+      ],
+      [],
+    ]);
+    expect(getCalls).toHaveLength(1);
+    expect(getCalls[0]?.fields).toContain(",conditionalFormats)");
+  });
+
+  it("leaves rules unread and unasked by default", () => {
+    const { api, getCalls } = recordingSheets(payload);
+
+    const { sheets } = api.fetchSheetProperties();
+
+    expect(sheets.map((sheet) => sheet.conditionalFormats)).toEqual([
+      undefined,
+      undefined,
+    ]);
+    expect(getCalls[0]?.fields).not.toContain("conditionalFormats");
   });
 });
 

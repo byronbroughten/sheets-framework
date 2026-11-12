@@ -3,6 +3,7 @@ import { SerialDate } from "@byronbroughten/utils/serial-date";
 import { SerialDateTime } from "@byronbroughten/utils/serial-date-time";
 import { Val } from "@byronbroughten/utils/val";
 
+import type { SheetPropertiesFetchOptions } from "../00_Source/RawSource/RawSource";
 import { SpreadsheetSchema } from "../01_SpreadsheetSchema/configReaders/SpreadsheetSchema";
 import type { TableName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes.js";
 import type { FindReplaceProps } from "../02_SpreadsheetRaw/ClassTypes/StateRaw";
@@ -180,8 +181,8 @@ export class SpreadsheetNamed extends SpreadsheetBaseNamed {
     this.raw.discardQueuedChanges();
     return this;
   }
-  fetchAllSheetProperties(): this {
-    this.raw.fetchAllSheetProperties();
+  fetchAllSheetProperties(options?: SheetPropertiesFetchOptions): this {
+    this.raw.fetchAllSheetProperties(options);
     return this;
   }
   ensureAllSheetPropertiesAreFetched(): this {

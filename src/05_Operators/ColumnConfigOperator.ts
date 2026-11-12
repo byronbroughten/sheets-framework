@@ -18,7 +18,7 @@ import type {
   TableColumnReference,
 } from "../02_SpreadsheetRaw/ColumnProfileRaw";
 import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
-import { columnConfigsFileSource } from "./configFileSource";
+import { oneLinePerLeafFileSource } from "./configFileSource";
 import { PreviousColumnConfigs } from "./PreviousColumnConfigs";
 import {
   type ConfigSyncState,
@@ -29,6 +29,11 @@ import {
   type ValueSource,
 } from "./SpreadsheetBaseOperator";
 import { TableConfigOperator } from "./TableConfigOperator";
+
+export interface ApiTableColumns {
+  tableKey: string;
+  columnConfigs: ColumnConfigsGeneric[string];
+}
 
 interface ColumnIdentity {
   tableId: string;
@@ -180,8 +185,9 @@ export class ColumnConfigOperator extends SpreadsheetBaseOperator {
   }
   private _addMissingColumnIds(): this {
     let idsAdded = 0;
+    const idPrefixesByTableId = this.tableConfigOperator.idPrefixesByTableId();
     this.tableIdsApiAccesses.forEach((tableId) => {
-      const idPrefix = this.tableConfigOperator.idPrefix(tableId);
+      const idPrefix = idPrefixesByTableId.assertIdPrefix(tableId);
       // Raw, not TableIdentified: a Table here may predate its generated schema.
       const table = this.ss.raw.table(tableId);
       const colIndexes = table.columnResolver.colIndexesWithoutColumnId;
@@ -293,6 +299,21 @@ export class ColumnConfigOperator extends SpreadsheetBaseOperator {
     }
     return this._withFormulasInBraceForm(columnConfigs);
   }
+  apiTableColumnsByTableId(): Map<string, ApiTableColumns> {
+    const columnConfigs = this.newColumnConfigs();
+    const tableKeysByTableId = this.tableConfigOperator.tableKeysByTableId();
+    return [...tableKeysByTableId].reduce(
+      (byTableId, [tableId, tableKey]) =>
+        byTableId.set(tableId, {
+          tableKey,
+          columnConfigs: Val.assert(
+            columnConfigs[tableKey],
+            `column configs of ${tableKey}`,
+          ),
+        }),
+      new Map<string, ApiTableColumns>(),
+    );
+  }
   // A second pass, because a brace names a column by the name this run gives it.
   private _withFormulasInBraceForm(
     columnConfigs: ColumnConfigsGeneric,
@@ -321,11 +342,11 @@ export class ColumnConfigOperator extends SpreadsheetBaseOperator {
       {},
     );
   }
-  toFileSource(makeConfigsImport: string): string {
+  toFileSource(): string {
     return [
-      `${makeImportLine(["makeColumnConfigs"], makeConfigsImport)}`,
+      `${makeImportLine(["makeColumnConfigs"])}`,
       ``,
-      `export const columnConfigs = makeColumnConfigs(${columnConfigsFileSource(
+      `export const columnConfigs = makeColumnConfigs(${oneLinePerLeafFileSource(
         this.newColumnConfigs(),
       )});`,
       ``,

@@ -10,6 +10,7 @@ import {
 } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import {
   idPrefixes,
+  IdPrefixesByTableId,
   type IdPrefixLabel,
 } from "../01_SpreadsheetSchema/idPrefixes";
 import type { TableRaw } from "../02_SpreadsheetRaw/TableRaw";
@@ -42,27 +43,25 @@ export class TableConfigOperator extends SpreadsheetBaseOperator {
   validateHeadersInZone(): void {
     this.ss.raw.validateHeadersInZone(this.tableIdsApiAccesses());
   }
-  idPrefix(tableId: string): string {
-    return Val.assert(this._idPrefixesByTableId().get(tableId), "ID prefix");
-  }
   validateIdPrefixesUnchanged(): void {
     validateIdPrefixesUnchanged({
       previousByTableId: previousIdPrefixesByTableId(),
-      nextByTableId: this._idPrefixesByTableId(),
+      nextByTableId: this.idPrefixesByTableId(),
       retiredPrefixes: this._retiredOrGoneIdPrefixes(),
     });
   }
-  private _idPrefixesByTableId(): Map<string, string> {
+  idPrefixesByTableId(): IdPrefixesByTableId {
     const previousByTableId = previousIdPrefixesByTableId();
     const assigned = new Map<string, string>();
-    for (const table of this._apiAccessTables()) {
+    const apiAccessTables = this._apiAccessTables();
+    for (const table of apiAccessTables) {
       const kept =
         table.profile.idPrefix() ?? previousByTableId.get(table.tableId);
       if (kept !== undefined) assigned.set(table.tableId, kept);
     }
     const prefixesInUse = new Set(assigned.values());
     const retiredPrefixes = this._retiredOrGoneIdPrefixes();
-    for (const table of this._apiAccessTables()) {
+    for (const table of apiAccessTables) {
       if (assigned.has(table.tableId)) continue;
       const generated = idPrefixes.fromTitle({
         title: table.name,
@@ -72,7 +71,7 @@ export class TableConfigOperator extends SpreadsheetBaseOperator {
       prefixesInUse.add(generated);
       assigned.set(table.tableId, generated);
     }
-    return assigned;
+    return new IdPrefixesByTableId(assigned);
   }
   // A Table gone since the last run retires its prefix before this run mints any.
   private _retiredOrGoneIdPrefixes(): Set<string> {
@@ -86,12 +85,13 @@ export class TableConfigOperator extends SpreadsheetBaseOperator {
     return idPrefixes.retiredAfter({
       previouslyRetired: configRetiredIdPrefixes(),
       previousByTableId: previousIdPrefixesByTableId(),
-      currentByTableId: this._idPrefixesByTableId(),
+      currentByTableId: this.idPrefixesByTableId(),
     });
   }
   newTableConfigs(): TableConfigsBase {
     const tableConfigs: TableConfigsBase = {};
     const idPrefixLabels: IdPrefixLabel[] = [];
+    const idPrefixesByTableId = this.idPrefixesByTableId();
     this._apiAccessTables().forEach((table) => {
       const { tableId, name: tableName } = table;
       const tableKey = this.schema.titleToName(tableName);
@@ -101,7 +101,7 @@ export class TableConfigOperator extends SpreadsheetBaseOperator {
           `Tables "${existing.tableName}" and "${tableName}" both give the key "${tableKey}".`,
         );
       }
-      const idPrefix = this.idPrefix(tableId);
+      const idPrefix = idPrefixesByTableId.assertIdPrefix(tableId);
       const headerRow = table.headRow("header");
       tableConfigs[tableKey] = {
         tableId,
@@ -155,9 +155,9 @@ export class TableConfigOperator extends SpreadsheetBaseOperator {
     });
     return map;
   }
-  toFileSource(makeConfigsImport: string): string {
+  toFileSource(): string {
     return [
-      makeImportLine(["makeTableConfigs"], makeConfigsImport),
+      makeImportLine(["makeTableConfigs"]),
       ``,
       `export const tableConfigs = makeTableConfigs(${oneLinePerEntryFileSource(
         this.newTableConfigs(),
@@ -165,9 +165,9 @@ export class TableConfigOperator extends SpreadsheetBaseOperator {
       ``,
     ].join("\n");
   }
-  retiredIdPrefixesFileSource(makeConfigsImport: string): string {
+  retiredIdPrefixesFileSource(): string {
     return [
-      makeImportLine(["makeRetiredIdPrefixes"], makeConfigsImport),
+      makeImportLine(["makeRetiredIdPrefixes"]),
       ``,
       `export const retiredIdPrefixes = makeRetiredIdPrefixes(${JSON.stringify(
         this.retiredIdPrefixes(),
@@ -181,11 +181,13 @@ function columnReferenceLabel(reference: string): string {
   return `Column reference "${reference}"`;
 }
 
-function previousIdPrefixesByTableId(): Map<string, string> {
-  return new Map(
-    [...tableConfigsByTableId()].map(([tableId, config]) => [
-      tableId,
-      config.idPrefix,
-    ]),
+function previousIdPrefixesByTableId(): IdPrefixesByTableId {
+  return new IdPrefixesByTableId(
+    new Map(
+      [...tableConfigsByTableId()].map(([tableId, config]) => [
+        tableId,
+        config.idPrefix,
+      ]),
+    ),
   );
 }

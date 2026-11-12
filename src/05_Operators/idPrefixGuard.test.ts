@@ -1,18 +1,20 @@
 import { describe, expect, it } from "vitest";
 
+import { IdPrefixesByTableId } from "../01_SpreadsheetSchema/idPrefixes";
 import { validateIdPrefixesUnchanged } from "./idPrefixGuard";
 
-const previousByTableId = new Map([
+const previousEntries: [string, string][] = [
   ["item", "itm"],
   ["log", "log"],
-]);
+];
+const previousByTableId = new IdPrefixesByTableId(new Map(previousEntries));
 
 describe("validateIdPrefixesUnchanged", () => {
   it("passes when every Table keeps its previous prefix", () => {
     expect(() =>
       validateIdPrefixesUnchanged({
         previousByTableId,
-        nextByTableId: new Map(previousByTableId),
+        nextByTableId: new IdPrefixesByTableId(new Map(previousEntries)),
         retiredPrefixes: new Set(["old"]),
       }),
     ).not.toThrow();
@@ -22,10 +24,12 @@ describe("validateIdPrefixesUnchanged", () => {
     expect(() =>
       validateIdPrefixesUnchanged({
         previousByTableId,
-        nextByTableId: new Map([
-          ["item", "zzz"],
-          ["log", "lgg"],
-        ]),
+        nextByTableId: new IdPrefixesByTableId(
+          new Map([
+            ["item", "zzz"],
+            ["log", "lgg"],
+          ]),
+        ),
         retiredPrefixes: new Set(),
       }),
     ).toThrow(
@@ -37,7 +41,9 @@ describe("validateIdPrefixesUnchanged", () => {
     expect(() =>
       validateIdPrefixesUnchanged({
         previousByTableId,
-        nextByTableId: new Map([...previousByTableId, ["gizmo", "old"]]),
+        nextByTableId: new IdPrefixesByTableId(
+          new Map([...previousEntries, ["gizmo", "old"]]),
+        ),
         retiredPrefixes: new Set(["old"]),
       }),
     ).toThrow(
@@ -49,10 +55,12 @@ describe("validateIdPrefixesUnchanged", () => {
     expect(() =>
       validateIdPrefixesUnchanged({
         previousByTableId,
-        nextByTableId: new Map([
-          ["item", "itm"],
-          ["gizmo", "gzm"],
-        ]),
+        nextByTableId: new IdPrefixesByTableId(
+          new Map([
+            ["item", "itm"],
+            ["gizmo", "gzm"],
+          ]),
+        ),
         retiredPrefixes: new Set(["log"]),
       }),
     ).not.toThrow();

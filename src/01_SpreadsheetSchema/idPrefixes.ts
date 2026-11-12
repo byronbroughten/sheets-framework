@@ -1,8 +1,28 @@
 import { Str } from "@byronbroughten/utils/str";
+import { Val } from "@byronbroughten/utils/val";
 
 export interface IdPrefixLabel {
   label: string;
   idPrefix: string;
+}
+
+export class IdPrefixesByTableId {
+  constructor(private readonly byTableId: ReadonlyMap<string, string>) {}
+  assertIdPrefix(tableId: string): string {
+    return Val.assert(this.byTableId.get(tableId), "ID prefix");
+  }
+  get(tableId: string): string | undefined {
+    return this.byTableId.get(tableId);
+  }
+  tableIds(): string[] {
+    return [...this.byTableId.keys()];
+  }
+  idPrefixes(): string[] {
+    return [...this.byTableId.values()];
+  }
+  forEach(callback: (idPrefix: string, tableId: string) => void): void {
+    this.byTableId.forEach(callback);
+  }
 }
 
 export interface IdPrefixFromTitleProps {
@@ -13,14 +33,14 @@ export interface IdPrefixFromTitleProps {
 
 export interface RetiredOrGoneProps {
   previouslyRetired: readonly string[];
-  previousByTableId: ReadonlyMap<string, string>;
+  previousByTableId: IdPrefixesByTableId;
   liveTableIds: ReadonlySet<string>;
 }
 
 export interface RetiredIdPrefixesProps {
   previouslyRetired: readonly string[];
-  previousByTableId: ReadonlyMap<string, string>;
-  currentByTableId: ReadonlyMap<string, string>;
+  previousByTableId: IdPrefixesByTableId;
+  currentByTableId: IdPrefixesByTableId;
 }
 
 const vowels = new Set(["a", "e", "i", "o", "u"]);
@@ -50,11 +70,11 @@ export const idPrefixes = {
     previousByTableId,
     currentByTableId,
   }: RetiredIdPrefixesProps): string[] {
-    const current = new Set(currentByTableId.values());
+    const current = new Set(currentByTableId.idPrefixes());
     const retired = idPrefixes.retiredOrGone({
       previouslyRetired,
       previousByTableId,
-      liveTableIds: new Set(currentByTableId.keys()),
+      liveTableIds: new Set(currentByTableId.tableIds()),
     });
     return [...retired].filter((idPrefix) => !current.has(idPrefix)).sort();
   },
