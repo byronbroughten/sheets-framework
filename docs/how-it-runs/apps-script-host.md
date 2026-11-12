@@ -25,4 +25,4 @@
 
 ## A toast from the edit trigger reaches the editor who ticked
 
-**`SpreadsheetApp.getActive().toast(...)` from the installed edit trigger shows to the editor whose edit fired it, not to the installer it runs as** ([observed](../sheets-behaviour.md#toasts-from-an-installed-edit-trigger)), so an endpoint could report by toast to whoever ticked its box. No endpoint does yet; the planned Fill Row IDs endpoint would be the first ([#182](https://github.com/byronbroughten/sheets-framework/issues/182)).
+**`SpreadsheetApp.getActive().toast(...)` from the installed edit trigger shows to the editor whose edit fired it, not to the installer it runs as** ([observed](../sheets-behaviour.md#toasts-from-an-installed-edit-trigger)), so an endpoint can report by toast to whoever ticked its box, through `SpreadsheetNamed.toast`; [Fill Row IDs](../architecture/endpoint-dispatch.md#the-endpoint-entry) does.

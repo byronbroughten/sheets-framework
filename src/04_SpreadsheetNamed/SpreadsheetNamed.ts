@@ -14,7 +14,10 @@ import type { GatherDataPrerequisitesProps } from "../03_SpreadsheetIdentified/T
 import { SpreadsheetBaseNamed } from "./ClassBases/SpreadsheetBaseNamed.js";
 import { SheetNamed } from "./SheetNamed";
 import { TableNamed } from "./TableNamed.js";
-import type { SheetNameByGroup } from "./TableNameGroups.js";
+import {
+  type SheetNameWithIdColumn,
+  tableNamesWithIdColumn,
+} from "./TableNameGroups.js";
 import {
   type ColumnSpecifierNamed,
   type FetchColumnSpecifierNamed,
@@ -189,31 +192,35 @@ export class SpreadsheetNamed extends SpreadsheetBaseNamed {
     this.raw.ensureAllSheetPropertiesAreFetched();
     return this;
   }
-  fillMissingRowIds(): void {
+  // Not flushed, so the caller's flush carries the IDs.
+  fillMissingRowIds(
+    tableNames: SheetNameWithIdColumn[] = tableNamesWithIdColumn(),
+  ): void {
     // could potentially be reconfigured to not rely on the schema.
-    const idSheets = this._sheetsWithRowIds();
-    idSheets.forEach((sheet) => {
+    const idSheets = tableNames.map((tableName) =>
+      this._tableWithIdPrefix(tableName),
+    );
+    for (const sheet of idSheets) {
       sheet.column("id").prepFetchFull();
-    });
+    }
     this.fetchAllPrepped();
-    idSheets.forEach((sheet) => {
+    for (const sheet of idSheets) {
       sheet.column("id").emptyWorkingCellsToDefault();
-    });
+    }
   }
-  private _sheetsWithRowIds(): TableNamed<SheetNameByGroup<"hasIdColumn">>[] {
-    return this.sheetsOfSchema.filter((sheet) => {
-      const hasIdCol = sheet.schema.trait("hasIdColumn");
-      const idPrefix = sheet.schema.trait("idPrefix");
-      if (hasIdCol) {
-        if (!idPrefix) {
-          throw new Error(
-            `Cannot fill missing row IDs in sheet "${sheet.tableName}" because it does not have an "ID prefix" defined in the schema.`,
-          );
-        }
-        return true;
-      }
-      return false;
-    }) as TableNamed<SheetNameByGroup<"hasIdColumn">>[];
+  private _tableWithIdPrefix(
+    tableName: SheetNameWithIdColumn,
+  ): TableNamed<SheetNameWithIdColumn> {
+    const table = this.table(tableName);
+    if (!table.schema.trait("idPrefix")) {
+      throw new Error(
+        `Cannot fill missing row IDs in sheet "${tableName}" because it does not have an "ID prefix" defined in the schema.`,
+      );
+    }
+    return table;
+  }
+  toast(message: string): void {
+    this.raw.toast(message);
   }
 }
 

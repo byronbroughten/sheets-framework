@@ -6,10 +6,11 @@ import { SheetIndex } from "../RawSource/SheetIndex";
 export class AppsScript {
   // A standalone script has no active spreadsheet; the framework's is always bound to its own.
   static boundSpreadsheetId(): string {
-    return Val.assert(
-      SpreadsheetApp.getActive(),
-      "Active spreadsheet (bind the Apps Script project to its spreadsheet)",
-    ).getId();
+    return boundSpreadsheet().getId();
+  }
+  // From the installed edit trigger it reaches the editor who ticked; observed: docs/sheets-behaviour.md#toasts-from-an-installed-edit-trigger.
+  static toast(message: string): void {
+    boundSpreadsheet().toast(message);
   }
   // Assumes 1-based event rows and columns; columns documented: docs/sheets-behaviour.md#edit-event-ranges.
   static sheetEdit(e: GoogleAppsScript.Events.SheetsOnEdit): SheetEdit {
@@ -46,4 +47,11 @@ export class AppsScript {
       },
     };
   }
+}
+
+function boundSpreadsheet(): GoogleAppsScript.Spreadsheet.Spreadsheet {
+  return Val.assert(
+    SpreadsheetApp.getActive(),
+    "Active spreadsheet (bind the Apps Script project to its spreadsheet)",
+  );
 }

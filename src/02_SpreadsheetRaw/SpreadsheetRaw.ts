@@ -120,6 +120,10 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
   batchUpdateGSheets(): void {
     this.flusher.flush();
   }
+  // Not queued: a toast is no write, so it shows the moment it's called.
+  toast(message: string): void {
+    this.spreadsheetStateRaw.rawSource.toast(message);
+  }
   // Queued on the spreadsheet: a tab that does not exist yet has no sheet state to hold it.
   gatherAddSheetOperation(props: Omit<AddSheetOperation, "kind">): this {
     this.writeOperations.addSheet.push({ kind: "addSheet", ...props });

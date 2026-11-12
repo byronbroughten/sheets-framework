@@ -1,26 +1,43 @@
-import type { configSheetFloorSeed } from "../01_SpreadsheetSchema/configReaders/configSheetFloorSeed";
+import {
+  type CodebaseNameDelimiter,
+  codebaseNameDelimiter,
+} from "../00_Source/CellValues/cellValues";
+import {
+  type SheetNameWithIdColumn,
+  tableNamesWithIdColumn,
+} from "../04_SpreadsheetNamed/TableNameGroups";
 import type { Endpoint, Endpoints, EndpointsAll } from "./Endpoints";
 
-// The floor seed still lists Sync Config until the floor goes.
-type SeededFrameworkEndpoints = {
+// Not MakeColumnFullName: "id" doesn't satisfy its ColumnName<TN> constraint over a generic TN.
+export type FillRowIdsEndpoints = {
   [
-    K in Exclude<
-      keyof typeof configSheetFloorSeed.spreadsheetConfig.endpoints,
-      "spreadsheetConfig_syncConfigSheetRowsTimeLastRan"
-    >
-  ]: Endpoint<"spreadsheetConfig">;
+    TN in SheetNameWithIdColumn as `${TN}${CodebaseNameDelimiter}id`
+  ]: Endpoint<TN>;
 };
 
-export const frameworkEndpoints = {
-  spreadsheetConfig_fillRowIdsTimeLastRan: {
-    action: (ss) => {
-      ss.fillMissingRowIds();
-    },
-    timeLastRan: "fillRowIdsTimeLastRan",
-    runStatus: "fillRowIdsRunStatus",
-  },
-} as const satisfies SeededFrameworkEndpoints;
-
 export function withFrameworkEndpoints(endpoints: Endpoints): EndpointsAll {
-  return { ...endpoints, ...frameworkEndpoints };
+  return { ...endpoints, ...fillRowIdsEndpoints() };
+}
+
+function fillRowIdsEndpoints(): FillRowIdsEndpoints {
+  return tableNamesWithIdColumn().reduce((acc, tableName) => {
+    acc[`${tableName}${codebaseNameDelimiter}id`] =
+      fillRowIdsEndpoint(tableName);
+    return acc;
+  }, {} as FillRowIdsEndpoints);
+}
+
+// Flushed before the toast, so the toast follows the IDs onto the sheet.
+function fillRowIdsEndpoint(
+  tableName: SheetNameWithIdColumn,
+): Pick<Endpoint<SheetNameWithIdColumn>, "action"> {
+  return {
+    action: (ss) => {
+      ss.fillMissingRowIds([tableName]);
+      ss.batchUpdateGSheets();
+      ss.toast(
+        `Filled the blank IDs in "${ss.table(tableName).raw.sheetTitle}".`,
+      );
+    },
+  };
 }

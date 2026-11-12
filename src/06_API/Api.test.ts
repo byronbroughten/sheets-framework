@@ -15,7 +15,10 @@ import {
   layoutTableId,
 } from "../02_SpreadsheetRaw/spreadsheetRawTestSupport";
 import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
-import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
+import {
+  stubLogger,
+  stubScriptAndSpreadsheetApp,
+} from "../testSupport/fakeAppsScriptGlobals";
 import {
   buildGridRows,
   type FakeCell,
@@ -380,12 +383,13 @@ describe("Api.handleSheetEdit, endpoint dispatch", () => {
 
   it("does nothing for a column with no registered entry", () => {
     const calls: string[] = [];
-    const { grid } = stubRunItemSheet(tickedAt(idColIndex));
+    const { grid } = stubRunItemSheet(tickedAt(twoWayColIndex));
     const before = grid.sheet(runItemGid).rows();
+    const endpoints: Endpoints = {
+      runItem_result: trackingEndpoints(calls).runItem_result,
+    };
 
-    Api.init(trackingEndpoints(calls)).handleSheetEdit(
-      actionRowEdit(idColIndex, "TRUE"),
-    );
+    Api.init(endpoints).handleSheetEdit(actionRowEdit(twoWayColIndex, "TRUE"));
 
     expect(calls).toEqual([]);
     expect(grid.sheet(runItemGid).rows()).toEqual(before);
@@ -460,6 +464,48 @@ describe("Api.handleSheetEdit, the entry checkbox", () => {
   });
 });
 
+describe("Api.handleSheetEdit, the Fill Row IDs endpoint", () => {
+  function stubRunItemSheetWithBlankIds() {
+    return stubSheetsService({
+      sheets: [
+        {
+          sheetId: runItemGid,
+          title: "Run item",
+          rows: buildGridRows({
+            0: columnIds,
+            [actionRowIndex]: tickedAt(idColIndex),
+            3: ["ID", "Selected", "Result", ""],
+            4: ["r:rit:row4", false, "kept", ""],
+            5: ["", false, "needs an ID", ""],
+            6: ["", false, "needs one too", ""],
+          }),
+          table: { endRowIndex },
+        },
+      ],
+    });
+  }
+
+  it("fills the ticked Table's blank IDs and says so in a toast", () => {
+    const { toasts } = stubScriptAndSpreadsheetApp();
+    const { grid } = stubRunItemSheetWithBlankIds();
+
+    Api.init({}).handleSheetEdit(actionRowEdit(idColIndex, "TRUE"));
+
+    const ids = grid
+      .sheet(runItemGid)
+      .values({ startRowIndex: 4 })
+      .map((row) => row[idColIndex]);
+    expect(ids).toEqual([
+      "r:rit:row4",
+      expect.stringMatching(/^r:rit:/),
+      expect.stringMatching(/^r:rit:/),
+    ]);
+    expect(new Set(ids).size).toBe(3);
+    expect(toasts).toEqual(['Filled the blank IDs in "Run item".']);
+    expect(actionRowCells(grid)).toEqual([false, null, null, null]);
+  });
+});
+
 describe("Api.handleSheetEdit, the endpoints it installs", () => {
   it("lets a spreadsheet built afterwards reuse a row holding only a run status", async () => {
     vi.resetModules();
@@ -492,6 +538,7 @@ describe("Api.handleSheetEdit, the endpoints it installs", () => {
         },
       ],
     });
+    const unkeyedResultColIndex = 1;
     fresh.Api.handleSheetEdit(
       {
         configs,
@@ -499,7 +546,7 @@ describe("Api.handleSheetEdit, the endpoints it installs", () => {
           runItem_selected: { action: vi.fn(), runStatus: "runStatus" },
         },
       },
-      actionRowEdit(idColIndex, "TRUE"),
+      actionRowEdit(unkeyedResultColIndex, "TRUE"),
       vi.fn(),
     );
 

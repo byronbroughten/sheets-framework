@@ -4,7 +4,6 @@ import type {
   ColumnFullName,
   ColumnNameFiltered,
 } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
-import type { FloorTabName } from "../01_SpreadsheetSchema/configReaders/configSheetFloorSeed";
 import type { ClaimedTraits } from "../01_SpreadsheetSchema/configReaders/intendedState";
 import type { TableNameSimple } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { assertType, type IsExactly } from "../testSupport/typeAssertions";
@@ -84,22 +83,20 @@ describe("EndpointsAll", () => {
 });
 
 describe("Endpoints, the endpoint map", () => {
-  it("rejects a column on a config sheet", () => {
-    assertType<
-      IsExactly<
-        Extract<keyof Endpoints, "spreadsheetConfig_fillRowIdsTimeLastRan">,
-        never
-      >
-    >(true);
-    assertType<
-      IsExactly<Extract<keyof Endpoints, `${FloorTabName}_${string}`>, never>
-    >(true);
+  it("rejects an ID column, whose entry the framework derives", () => {
+    assertType<IsExactly<Extract<keyof Endpoints, "runItem_id">, never>>(true);
+    assertType<IsExactly<Extract<keyof Endpoints, `${string}_id`>, never>>(
+      true,
+    );
   });
-  it("keeps every column on an app sheet", () => {
+  it("keeps every other column, a config sheet's included", () => {
+    assertType<
+      IsExactly<keyof Endpoints, Exclude<ColumnFullName, `${string}_id`>>
+    >(true);
     assertType<
       IsExactly<
-        keyof Endpoints,
-        Exclude<ColumnFullName, `${FloorTabName}_${string}`>
+        Extract<keyof Endpoints, "tableConfig_letApiAccess">,
+        "tableConfig_letApiAccess"
       >
     >(true);
     assertType<
