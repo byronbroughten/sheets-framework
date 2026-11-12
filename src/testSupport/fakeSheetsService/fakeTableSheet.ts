@@ -3,6 +3,7 @@ import {
   buildGridRows,
   type FakeCell,
   type FakeSheetProperties,
+  type FakeTable,
 } from "../fakeSheetsService";
 import { type FakeTablePlacement, fakeTables } from "./fakeTables";
 
@@ -13,9 +14,18 @@ export interface FakeTableColumn {
 
 export type FakeBodyRow<CN extends string> = Partial<Record<CN, FakeCell>>;
 
-export interface FakeTableSheetProps<
-  CN extends string,
-> extends FakeTablePlacement {
+// Passed through to the Table as given, so their column keys are absolute column indexes.
+type FakeTablePassThrough = Pick<
+  FakeTable,
+  | "tableId"
+  | "headRows"
+  | "columnTypes"
+  | "columnValidationValues"
+  | "columnValidationConditionTypes"
+>;
+
+export interface FakeTableSheetProps<CN extends string>
+  extends FakeTablePlacement, FakeTablePassThrough {
   sheetId: number;
   title: string;
   name?: string; // The Table's live name; omit to leave it unnamed, as FakeTable does.
@@ -32,9 +42,11 @@ export const fakeTableSheet = {
     columnConfigs,
     columnNames,
     bodyRows,
-    ...placement
+    startRowIndex,
+    startColumnIndex,
+    ...passThrough
   }: FakeTableSheetProps<CN>): FakeSheetProperties {
-    const origin = fakeTables.origin(placement);
+    const origin = fakeTables.origin({ startRowIndex, startColumnIndex });
     const columns = columnNames.map((columnName) => columnConfigs[columnName]);
     return {
       sheetId,
@@ -60,6 +72,7 @@ export const fakeTableSheet = {
       }),
       tables: [
         {
+          ...passThrough,
           name,
           startRowIndex: origin.headerRowIndex,
           startColumnIndex: origin.startColIndex,

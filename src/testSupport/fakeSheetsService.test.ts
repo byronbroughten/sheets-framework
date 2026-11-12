@@ -1221,6 +1221,44 @@ describe("fakeTableSheet builds a one-Table sheet from the layout", () => {
       endColumnIndex: 3,
     });
   });
+
+  it("carries a given Table ID, column facts and head rows onto the Table", () => {
+    const { grid } = stubSheetsService({
+      sheets: [
+        fakeTableSheet.build({
+          sheetId: gadgetGid,
+          title: "Gadget",
+          tableId: "gadget",
+          columnConfigs: gadgetColumnConfigs,
+          columnNames: ["size", "colour"],
+          bodyRows: [{}],
+          columnTypes: { 0: "DOUBLE" },
+          columnValidationValues: { 1: ["=Paint[Colour]"] },
+          columnValidationConditionTypes: { 1: "ONE_OF_RANGE" },
+          headRows: { 1: [false, "Looks"] },
+        }),
+      ],
+    });
+
+    const sheet = grid.sheet(gadgetGid);
+    expect(sheet.tables[0]?.tableId).toBe("gadget");
+    expect(sheet.tables[0]?.columnProperties).toEqual([
+      { columnName: "Size", columnType: "DOUBLE" },
+      {
+        columnIndex: 1,
+        columnName: "Colour",
+        dataValidationRule: {
+          condition: {
+            type: "ONE_OF_RANGE",
+            values: [{ userEnteredValue: "=Paint[Colour]" }],
+          },
+        },
+      },
+    ]);
+    expect(sheet.values()[expectedSheetLayout.tableHeaderRowIndex - 1]).toEqual(
+      [false, "Looks"],
+    );
+  });
 });
 
 describe("FakeSheetView reads a Table's body", () => {
