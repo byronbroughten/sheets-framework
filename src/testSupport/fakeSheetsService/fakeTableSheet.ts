@@ -3,6 +3,7 @@ import {
   buildGridRows,
   type FakeCell,
   type FakeSheetProperties,
+  type FakeTable,
 } from "../fakeSheetsService";
 import { type FakeTablePlacement, fakeTables } from "./fakeTables";
 
@@ -13,12 +14,21 @@ export interface FakeTableColumn {
 
 export type FakeBodyRow<CN extends string> = Partial<Record<CN, FakeCell>>;
 
-export interface FakeTableSheetProps<
-  CN extends string,
-> extends FakeTablePlacement {
+// Passed through to the Table as given, so their column keys are absolute column indexes.
+type FakeTablePassThrough = Pick<
+  FakeTable,
+  | "tableId"
+  | "name"
+  | "headRows"
+  | "columnTypes"
+  | "columnValidationValues"
+  | "columnValidationConditionTypes"
+>;
+
+export interface FakeTableSheetProps<CN extends string>
+  extends FakeTablePlacement, FakeTablePassThrough {
   sheetId: number;
   title: string;
-  name?: string; // The Table's live name; omit to leave it unnamed, as FakeTable does.
   columnConfigs: Record<CN, FakeTableColumn>;
   columnNames: readonly CN[]; // Only these are on the sheet, so a fixture needn't list every configured column.
   bodyRows: readonly FakeBodyRow<CN>[];
@@ -28,13 +38,14 @@ export const fakeTableSheet = {
   build<CN extends string>({
     sheetId,
     title,
-    name,
     columnConfigs,
     columnNames,
     bodyRows,
-    ...placement
+    startRowIndex,
+    startColumnIndex,
+    ...passThrough
   }: FakeTableSheetProps<CN>): FakeSheetProperties {
-    const origin = fakeTables.origin(placement);
+    const origin = fakeTables.origin({ startRowIndex, startColumnIndex });
     const columns = columnNames.map((columnName) => columnConfigs[columnName]);
     return {
       sheetId,
@@ -60,7 +71,7 @@ export const fakeTableSheet = {
       }),
       tables: [
         {
-          name,
+          ...passThrough,
           startRowIndex: origin.headerRowIndex,
           startColumnIndex: origin.startColIndex,
           endRowIndex: origin.sheetRowIndex(bodyRows.length),

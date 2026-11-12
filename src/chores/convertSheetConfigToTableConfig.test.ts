@@ -52,31 +52,18 @@ beforeEach(() => {
   stubLogger();
 });
 
-function withTableName(
-  sheet: FakeSheetProperties,
-  tableId: string,
-  name: string,
-): FakeSheetProperties {
-  return {
-    ...sheet,
-    tables: (sheet.tables ?? []).map((table) => ({ ...table, tableId, name })),
-  };
-}
-
 function sheetConfigTab(
   bodyRows: FakeBodyRow<keyof typeof sheetConfigColumns>[],
 ): FakeSheetProperties {
-  return withTableName(
-    fakeTableSheet.build({
-      sheetId: tableConfigGid,
-      title: "Sheet Config",
-      columnConfigs: sheetConfigColumns,
-      columnNames: ["sheetGid", "sheetTitle", "letApiAccess"],
-      bodyRows,
-    }),
-    "sheetConfig",
-    "sheetConfig",
-  );
+  return fakeTableSheet.build({
+    sheetId: tableConfigGid,
+    title: "Sheet Config",
+    tableId: "sheetConfig",
+    name: "sheetConfig",
+    columnConfigs: sheetConfigColumns,
+    columnNames: ["sheetGid", "sheetTitle", "letApiAccess"],
+    bodyRows,
+  });
 }
 
 function tableConfigTab(): FakeSheetProperties {
@@ -91,17 +78,15 @@ function columnConfigTab(
   columnNames: readonly ColumnConfigColumn[],
   bodyRows: FakeBodyRow<ColumnConfigColumn>[],
 ): FakeSheetProperties {
-  return withTableName(
-    fakeTableSheet.build({
-      sheetId: columnConfigGid,
-      title: "Column Config",
-      columnConfigs: columnConfigColumns,
-      columnNames,
-      bodyRows,
-    }),
-    "columnConfig",
-    "columnConfig",
-  );
+  return fakeTableSheet.build({
+    sheetId: columnConfigGid,
+    title: "Column Config",
+    tableId: "columnConfig",
+    name: "columnConfig",
+    columnConfigs: columnConfigColumns,
+    columnNames,
+    bodyRows,
+  });
 }
 
 function businessTabs(): FakeSheetProperties[] {

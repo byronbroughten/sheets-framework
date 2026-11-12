@@ -2,7 +2,6 @@ import { Val } from "@byronbroughten/utils/val";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister";
-import { configSheetFloorSeed } from "../01_SpreadsheetSchema/configReaders/configSheetFloorSeed";
 import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
@@ -14,7 +13,11 @@ import {
   type FakeSheetsService,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
-import { tableIdOnTab } from "../testSupport/fakeTableConfigSheet";
+import {
+  type FakeBodyRow,
+  type FakeTableColumn,
+  fakeTableSheet,
+} from "../testSupport/fakeSheetsService/fakeTableSheet";
 import { parseIdNameMapFileSource } from "../testSupport/parseIdNameMapFileSource";
 import {
   ConfigCoordinator,
@@ -24,216 +27,74 @@ import {
 type GridRange = GoogleAppsScript.Sheets.Schema.GridRange;
 
 const { columnConfigs } = installedConfigs();
-const testSheetGid = getTableTraitByName("item", "sheetGid");
-const tableConfigGid = 210603630;
-const columnConfigGid = 2034522667;
-const headerOnlyTableEndRowIndex = expectedSheetLayout.tableHeaderRowIndex + 1;
-const tableHeaderRowIndex = expectedSheetLayout.tableHeaderRowIndex;
-const startTableColIndex = expectedSheetLayout.startTableColIndex;
-const spreadsheetConfigGid = getTableTraitByName(
-  "spreadsheetConfig",
-  "sheetGid",
-);
-
-const tc = columnConfigs.tableConfig;
-const cc = columnConfigs.columnConfig;
-const ssc = columnConfigs.spreadsheetConfig;
-
-const sscColumns = [
-  "tableMenuSpace",
-  "fillRowIdsTimeLastRan",
-  "fillRowIdsRunStatus",
-  "syncConfigSheetRowsTimeLastRan",
-  "syncConfigSheetRowsRunStatus",
-] as const;
-
-function floorSeedType(
-  tableName: "spreadsheetConfig" | "tableConfig" | "columnConfig",
-  header: string,
-): string | undefined {
-  const column = configSheetFloorSeed[tableName].columns.find(
-    (entry) => entry.header === header,
-  );
-  if (column !== undefined) return column.columnType;
-  if (tableName !== "spreadsheetConfig") return undefined;
-  return Object.values(configSheetFloorSeed.spreadsheetConfig.endpoints)
-    .flatMap((endpoint) => [endpoint.timeLastRan, endpoint.runStatus])
-    .find((entry) => entry.header === header)?.columnType;
-}
-
-function columnTypesByHeader(
-  tableName: "spreadsheetConfig" | "tableConfig" | "columnConfig",
-  headers: readonly string[],
-): Record<number, string> {
-  const types: Record<number, string> = {};
-  headers.forEach((header, colIndex) => {
-    const columnType = floorSeedType(tableName, header);
-    if (columnType !== undefined) types[colIndex] = columnType;
-  });
-  return types;
-}
+const itemGid = getTableTraitByName("item", "sheetGid");
+const itemColumns = columnConfigs.item;
+type ItemColumnName = keyof typeof itemColumns;
 
 beforeEach(() => {
   stubLogger();
 });
 
-function spreadsheetConfigSheet(): FakeSheetProperties {
-  const headers = sscColumns.map((columnName) => ssc[columnName].header);
-  return {
-    sheetId: spreadsheetConfigGid,
-    title: "Spreadsheet Config",
-    rows: buildGridRows({
-      0: sscColumns.map((columnName) => ssc[columnName].columnId),
-      1: headers.map((header) => spreadsheetConfigGroupHeading(header)),
-      3: headers,
-      4: sscColumns.map((columnName) =>
-        columnName === "tableMenuSpace" ? "Not used" : "",
-      ),
-    }),
-    table: {
-      tableId: tableIdOnTab(spreadsheetConfigGid),
-      name: configSheetFloorSeed.spreadsheetConfig.liveTableName,
-      startRowIndex: tableHeaderRowIndex,
-      startColumnIndex: startTableColIndex,
-      endRowIndex: 5,
-      endColumnIndex: headers.length,
-      columnTypes: columnTypesByHeader("spreadsheetConfig", headers),
-    },
+interface ItemSheetOptions {
+  columns?: Record<string, FakeTableColumn>; // Replaces a configured column by name, or adds one after them.
+  startRowIndex?: number;
+}
+
+// The dev Item Table as the previous configs record it, so every run starts quiet.
+function itemSheet(options: ItemSheetOptions = {}): FakeSheetProperties {
+  const sheetColumns: Record<string, FakeTableColumn> = {
+    ...itemColumns,
+    ...options.columns,
   };
+  return fakeTableSheet.build({
+    sheetId: itemGid,
+    title: "Item",
+    tableId: "item",
+    name: "Item",
+    columnConfigs: sheetColumns,
+    columnNames: Object.keys(sheetColumns),
+    bodyRows: [{}],
+    startRowIndex: options.startRowIndex,
+  });
 }
 
 function seedFixture(
   options: {
-    testColumnId?: string;
-    itemHeaderRowIndex?: number;
+    item?: ItemSheetOptions;
     extraSheets?: FakeSheetProperties[];
   } = {},
-) {
-  const testColumnId = options.testColumnId ?? "c:itm:xyz123";
-  const itemHeaderRowIndex = options.itemHeaderRowIndex ?? tableHeaderRowIndex;
+): FakeSheetsService {
   return stubSheetsService({
-    sheets: [
-      spreadsheetConfigSheet(),
-      {
-        sheetId: tableConfigGid,
-        title: "Table Config",
-        rows: buildGridRows({
-          0: [
-            tc.tableId.columnId,
-            tc.tableName.columnId,
-            tc.sheetTitle.columnId,
-            tc.letApiAccess.columnId,
-          ],
-          3: [
-            tc.tableId.header,
-            tc.tableName.header,
-            tc.sheetTitle.header,
-            tc.letApiAccess.header,
-          ],
-          4: ["item", "", "Item", true],
-        }),
-        table: {
-          tableId: tableIdOnTab(tableConfigGid),
-          name: configSheetFloorSeed.tableConfig.liveTableName,
-          startRowIndex: tableHeaderRowIndex,
-          startColumnIndex: startTableColIndex,
-          endRowIndex: 5,
-          endColumnIndex: startTableColIndex + 4,
-          columnTypes: columnTypesByHeader("tableConfig", [
-            tc.tableId.header,
-            tc.tableName.header,
-            tc.sheetTitle.header,
-            tc.letApiAccess.header,
-          ]),
-        },
-      },
-      {
-        sheetId: columnConfigGid,
-        title: "Column Config",
-        rows: buildGridRows({
-          0: [
-            cc.tableId.columnId,
-            cc.columnId.columnId,
-            cc.tableName.columnId,
-            cc.header.columnId,
-            cc.emptyValueAllowed.columnId,
-          ],
-          3: [
-            cc.tableId.header,
-            cc.columnId.header,
-            cc.tableName.header,
-            cc.header.header,
-            cc.emptyValueAllowed.header,
-          ],
-          4: [],
-        }),
-        table: {
-          tableId: tableIdOnTab(columnConfigGid),
-          name: configSheetFloorSeed.columnConfig.liveTableName,
-          startRowIndex: tableHeaderRowIndex,
-          startColumnIndex: startTableColIndex,
-          endRowIndex: headerOnlyTableEndRowIndex + 1,
-          endColumnIndex: startTableColIndex + 5,
-          columnTypes: {
-            0: "TEXT",
-            1: "TEXT",
-            2: "TEXT",
-            3: "TEXT",
-            4: "BOOLEAN",
-          },
-        },
-      },
-      {
-        sheetId: testSheetGid,
-        title: "Item",
-        // Row 4 (the top data row) must be present, even blank, and a table
-        // range declared, now that
-        // ColumnConfigOperator emit samples both (for
-        // the live isFormula/valueName facts, the latter via the table's
-        // column data-validation rules) for every api-access sheet. The
-        // header row (3) needs real text — newColumnConfigs() now throws
-        // rather than skips a column still missing one after a sync.
-        rows: buildGridRows({
-          [itemHeaderRowIndex - 3]: [testColumnId],
-          [itemHeaderRowIndex]: ["Some Header"],
-          [itemHeaderRowIndex + 1]: [],
-        }),
-        table: {
-          tableId: "item",
-          name: "Item",
-          startRowIndex: itemHeaderRowIndex,
-          endRowIndex: itemHeaderRowIndex + 2,
-        },
-      },
-      ...(options.extraSheets ?? []),
-    ],
+    sheets: [itemSheet(options.item), ...(options.extraSheets ?? [])],
   });
 }
 
-function rowsFromFirstDataRow(
-  rows: readonly (readonly FakeCell[])[],
-): Record<number, readonly FakeCell[]> {
-  return rows.reduce<Record<number, readonly FakeCell[]>>(
-    (byIndex, row, offset) => {
-      byIndex[expectedSheetLayout.tableHeaderRowIndex + 1 + offset] = row;
-      return byIndex;
-    },
-    {},
+// Keyed by header, so a fixture names each column by what its sheet shows.
+function columnsByHeader(
+  headers: readonly string[],
+  columnIds: readonly string[] = [],
+): Record<string, FakeTableColumn> {
+  return Object.fromEntries(
+    headers.map((header, colIndex) => [
+      header,
+      { columnId: columnIds[colIndex] ?? "", header },
+    ]),
   );
 }
 
-function spreadsheetConfigGroupHeading(header: string): string {
-  const spreadsheetConfigSeed = configSheetFloorSeed.spreadsheetConfig;
-  const endpoint = Object.values(spreadsheetConfigSeed.endpoints).find(
-    (seededEndpoint) =>
-      seededEndpoint.timeLastRan.header === header ||
-      seededEndpoint.runStatus.header === header,
-  );
-  if (endpoint !== undefined) return endpoint.heading;
-  return (
-    spreadsheetConfigSeed.columns.find((column) => column.header === header)
-      ?.columnGroupHeading ?? ""
-  );
+// A Table the previous configs don't hold, at a GID they don't hold either.
+const notesGid = 999001;
+
+function notesSheet(): FakeSheetProperties {
+  return fakeTableSheet.build({
+    sheetId: notesGid,
+    title: "Notes",
+    tableId: "notes",
+    name: "Desk Notes",
+    columnConfigs: columnsByHeader(["Note"]),
+    columnNames: ["Note"],
+    bodyRows: [{}],
+  });
 }
 
 interface TableConfigsEntryFixture {
@@ -269,11 +130,10 @@ describe("ConfigCoordinator.generateConfigFiles", () => {
       "export const tableConfigs = makeTableConfigs({",
     );
     expect(parsed.tableConfigs).toContain(
-      `"sheetGid": ${testSheetGid}, "idPrefix": "itm"`,
+      `"sheetGid": ${itemGid}, "idPrefix": "itm"`,
     );
     expect(typeof parsed.valueConfigs).toBe("string");
-    // Gathered into Column Config by the sync, then headed by _updateProgrammaticValues.
-    expect(parsed.columnConfigs).toContain("c:itm:xyz123");
+    expect(parsed.columnConfigs).toContain(itemColumns.optionalNote.columnId);
   });
 
   it("writes every make*Configs import from the framework's package name", () => {
@@ -303,44 +163,39 @@ describe("ConfigCoordinator.generateConfigFiles", () => {
     expect(idNameMap).not.toMatch(/\b(const|let|function|import)\b/);
   });
 
-  it("maps every Table's ID to its name and tab, with columns only for a Table with API access", () => {
-    const notesGid = 999001;
-    seedFixture({
-      extraSheets: [
-        {
-          sheetId: notesGid,
-          title: "Notes",
-          rows: buildGridRows({ 3: ["Note"], 4: [] }),
-          table: { tableId: "notes", name: "Desk Notes", endRowIndex: 5 },
-        },
-      ],
-    });
+  it("maps a Table with API access to its name, tab and columns", () => {
+    seedFixture();
 
     const { tables } = parseIdNameMapFileSource(
       ConfigCoordinator.init().generateConfigFiles().idNameMap,
     );
     expect(tables.item).toEqual({
       name: "item",
-      sheetGid: testSheetGid,
-      columns: { someHeader: "c:itm:xyz123" },
+      sheetGid: itemGid,
+      columns: {
+        optionalNote: itemColumns.optionalNote.columnId,
+        requiredCount: itemColumns.requiredCount.columnId,
+        id: itemColumns.id.columnId,
+        name: itemColumns.name.columnId,
+      },
     });
-    expect(tables.notes).toEqual({ name: "deskNotes", sheetGid: notesGid });
   });
 
   it("lists every tab by GID with its name, title and Tables", () => {
-    seedFixture();
+    seedFixture({ extraSheets: [notesSheet()] });
 
     const { tabs } = parseIdNameMapFileSource(
       ConfigCoordinator.init().generateConfigFiles().idNameMap,
     );
-    expect(tabs[String(testSheetGid)]).toEqual({
+    expect(tabs[String(itemGid)]).toEqual({
       name: "item",
       title: "Item",
       tableIds: ["item"],
     });
-    expect(tabs[String(tableConfigGid)]).toMatchObject({
-      name: "tableConfig",
-      title: "Table Config",
+    expect(tabs[String(notesGid)]).toEqual({
+      name: "notes",
+      title: "Notes",
+      tableIds: ["notes"],
     });
   });
 
@@ -359,13 +214,112 @@ describe("ConfigCoordinator.generateConfigFiles", () => {
 
     expect(
       ConfigCoordinator.init().generateConfigFiles().untypedColumnsSummary,
-    ).toContain("1 column(s) across 1 Table(s)");
+    ).toContain("column(s) across 1 Table(s)");
+  });
+});
+
+describe("ConfigCoordinator.generateConfigFiles API access", () => {
+  const logGid = getTableTraitByName("log", "sheetGid");
+
+  function logSheet(): FakeSheetProperties {
+    return fakeTableSheet.build({
+      sheetId: logGid,
+      title: "Log",
+      tableId: "log",
+      name: "Log",
+      columnConfigs: columnConfigs.log,
+      columnNames: ["entry", "amount"],
+      bodyRows: [{}],
+    });
+  }
+
+  function tableConfigKeys(files: ConfigRegeneration): string[] {
+    return [...files.tableConfigs.matchAll(/^ {2}"([^"]+)": \{/gm)].map(
+      (match) => Val.assert(match[1], "Table key"),
+    );
+  }
+
+  it("gives API access to each live Table the previous configs hold, in their order", () => {
+    stubSheetsService({ sheets: [logSheet(), notesSheet(), itemSheet()] });
+
+    expect(
+      tableConfigKeys(ConfigCoordinator.init().generateConfigFiles()),
+    ).toEqual(["item", "log"]);
+  });
+
+  it("gives a Table the previous configs don't hold no prefix, no column IDs and no columns in the ID-name map", () => {
+    const { grid } = seedFixture({ extraSheets: [notesSheet()] });
+
+    const files = ConfigCoordinator.init().generateConfigFiles();
+
+    expect(tableConfigKeys(files)).toEqual(["item"]);
+    expect(
+      grid.sheet(notesGid).values()[expectedSheetLayout.colIdRowIndex],
+    ).toEqual([""]);
+    expect(parseIdNameMapFileSource(files.idNameMap).tables.notes).toEqual({
+      name: "deskNotes",
+      sheetGid: notesGid,
+    });
+  });
+});
+
+describe("ConfigCoordinator.generateConfigFiles Empty value allowed", () => {
+  function generateItemColumns() {
+    const coordinator = ConfigCoordinator.init();
+    coordinator.generateConfigFiles();
+    return Val.assert(
+      coordinator.columnConfigOperator.newColumnConfigs().item,
+      "Item column configs",
+    );
+  }
+
+  it("carries each column's Empty value allowed forward by column ID, through a header rename", () => {
+    const optionalNote: ItemColumnName = "optionalNote";
+    seedFixture({
+      item: {
+        columns: {
+          [optionalNote]: {
+            columnId: itemColumns.optionalNote.columnId,
+            header: "Side note",
+          },
+        },
+      },
+    });
+
+    const item = generateItemColumns();
+
+    expect(itemColumns.optionalNote.emptyValueAllowed).toBe(true);
+    expect(itemColumns.requiredCount.emptyValueAllowed).toBe(false);
+    expect(item.sideNote?.emptyValueAllowed).toBe(true);
+    expect(item.requiredCount?.emptyValueAllowed).toBe(false);
+  });
+
+  it("gives a new column Empty value allowed false", () => {
+    seedFixture({
+      item: { columns: { extra: { columnId: "", header: "Extra" } } },
+    });
+
+    const item = generateItemColumns();
+
+    expect(item.extra?.columnId).toMatch(/^c:itm:/);
+    expect(item.extra?.emptyValueAllowed).toBe(false);
   });
 });
 
 describe("ConfigCoordinator.generateConfigFiles ID-prefix guard", () => {
   it("stops before writing when a Table's live ID prefix differs from the configs", () => {
-    const { batchUpdateCount } = seedFixture({ testColumnId: "c:zzz:xyz123" });
+    const zzzColumns = Object.fromEntries(
+      Object.entries(itemColumns).map(([columnName, column]) => [
+        columnName,
+        {
+          header: column.header,
+          columnId: column.columnId.replace("c:itm:", "c:zzz:"),
+        },
+      ]),
+    );
+    const { batchUpdateCount } = seedFixture({
+      item: { columns: zzzColumns },
+    });
 
     expect(() => ConfigCoordinator.init().generateConfigFiles()).toThrow(
       'The regen would change an ID prefix, so it stopped before writing. Table "item" had ID prefix "itm" and is now "zzz".',
@@ -382,27 +336,20 @@ describe("ConfigCoordinator.generateConfigFiles ID prefix", () => {
 
   function widgetSheet(options: {
     title: string;
-    tableId?: string;
     tableName?: string;
     columnIds?: readonly string[];
     headers?: readonly string[];
   }): FakeSheetProperties {
     const headers = options.headers ?? ["Name"];
-    const columnIds = options.columnIds ?? headers.map(() => "");
-    return {
+    return fakeTableSheet.build({
       sheetId: widgetGid,
       title: options.title,
-      rows: buildGridRows({
-        0: columnIds,
-        3: headers,
-        4: [],
-      }),
-      table: {
-        tableId: options.tableId ?? widgetTableId,
-        name: options.tableName ?? options.title,
-        endRowIndex: 5,
-      },
-    };
+      tableId: widgetTableId,
+      name: options.tableName ?? options.title,
+      columnConfigs: columnsByHeader(headers, options.columnIds),
+      columnNames: headers,
+      bodyRows: [{}],
+    });
   }
 
   it("samples an existing sheet's prefix from its column IDs, whatever the tab title is now", () => {
@@ -473,22 +420,6 @@ describe("ConfigCoordinator.generateConfigFiles ID prefix", () => {
       'Tables "Item" and "item" both give the key "item".',
     );
   });
-
-  it("gives a Table the configs don't grant no prefix and no column IDs", () => {
-    seedFixture({
-      extraSheets: [
-        widgetSheet({
-          title: "Widget",
-          tableId: "widget-ungranted",
-          columnIds: [""],
-        }),
-      ],
-    });
-
-    const parsed = ConfigCoordinator.init().generateConfigFiles();
-    expect(parsed.tableConfigs).not.toContain("widget");
-    expect(parsed.columnConfigs).not.toMatch(/c:wdg:/);
-  });
 });
 
 describe("ConfigCoordinator.generateConfigFiles head-row overlap", () => {
@@ -519,6 +450,7 @@ describe("ConfigCoordinator.generateConfigFiles head-row overlap", () => {
     );
   }
 
+  // Several Tables on one sheet, which the one-Table builder can't place.
   function recordsSheet(tables: readonly RecordsTable[]): FakeSheetProperties {
     const rows: Record<number, FakeCellValue[]> = {};
     tables.forEach((table) => {
@@ -559,31 +491,21 @@ describe("ConfigCoordinator.generateConfigFiles head-row overlap", () => {
     return seedFixture({ extraSheets: [recordsSheet(tables)] });
   }
 
+  // The managed Tables' blank column ID cells are what a run that went on would write.
   function expectRefused(
     tables: readonly RecordsTable[],
     ...messages: string[]
   ): void {
     const { grid } = seedRecords(tables);
-    const configRows = () => ({
-      tableConfig: grid.sheet(tableConfigGid).values({
-        startRowIndex: 0,
-        endRowIndex: 30,
-        endColumnIndex: 10,
-      }),
-      columnConfig: grid.sheet(columnConfigGid).values({
-        startRowIndex: 0,
-        endRowIndex: 30,
-        endColumnIndex: 10,
-      }),
-    });
-    const before = configRows();
+    const recordsValues = () => grid.sheet(recordsGid).values();
+    const before = recordsValues();
 
     let parsed: ConfigRegeneration | undefined;
     expect(() => {
       parsed = ConfigCoordinator.init().generateConfigFiles();
     }).toThrow(messages.join(" "));
     expect(parsed).toBeUndefined();
-    expect(configRows()).toEqual(before);
+    expect(recordsValues()).toEqual(before);
   }
 
   // Rows 4–9 are its body, 0-based.
@@ -714,7 +636,9 @@ describe("ConfigCoordinator.generateConfigFiles head-row overlap", () => {
   });
 
   it("refuses a recorded Table moved below the header zone with generation's own fix", () => {
-    seedFixture({ itemHeaderRowIndex: tableHeaderRowIndex + 2 });
+    seedFixture({
+      item: { startRowIndex: expectedSheetLayout.tableHeaderRowIndex + 2 },
+    });
 
     expect(() => ConfigCoordinator.init().generateConfigFiles()).toThrowError(
       /^Table "Item" on "Item" \(gid \d+\) must have its header row on row 4\.$/,
@@ -838,10 +762,15 @@ describe("ConfigCoordinator conditional-format rule read", () => {
       extraSheets: [
         rulesSheet(),
         {
-          sheetId: widgetGid,
-          title: "Widget",
-          rows: buildGridRows({ 3: ["Name", "Score"], 4: [] }),
-          table: { tableId: widgetTableId, name: "Widget", endRowIndex: 5 },
+          ...fakeTableSheet.build({
+            sheetId: widgetGid,
+            title: "Widget",
+            tableId: widgetTableId,
+            name: "Widget",
+            columnConfigs: columnsByHeader(["Name", "Score"]),
+            columnNames: ["Name", "Score"],
+            bodyRows: [{}],
+          }),
           conditionalFormats: [
             backgroundRule({
               sheetId: widgetGid,
@@ -873,7 +802,10 @@ describe("ConfigCoordinator conditional-format rule read", () => {
 describe("ConfigCoordinator.generateConfigFiles value sources", () => {
   const listGid = 889001;
   const ledgerGid = 889002;
-  const listPaymentGid = 889004;
+  // The previous configs grant API access, so an API-access fixture takes a Table ID they hold.
+  const listTableId = getTableTraitByName("log", "tableId");
+  const ledgerTableId = getTableTraitByName("runItem", "tableId");
+  const listPaymentTableId = getTableTraitByName("computed", "tableId");
 
   interface FixtureColumn {
     header: string;
@@ -885,45 +817,51 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
     groupHeading1?: string;
   }
 
+  // Omit tableId for a Table the previous configs don't hold.
   function tableSheet(props: {
     sheetId: number;
     title: string;
+    tableId?: string;
     columns: readonly FixtureColumn[];
   }): FakeSheetProperties {
     const { columns } = props;
+    const headers = columns.map((column) => column.header);
     const rowCount = Math.max(
       1,
       ...columns.map((column) => column.values?.length ?? 0),
     );
-    const dataRows: (readonly FakeCell[])[] = Array.from(
+    const bodyRows: FakeBodyRow<string>[] = Array.from(
       { length: rowCount },
       (_, rowOffset) =>
-        columns.map((column) => column.values?.[rowOffset] ?? null),
+        Object.fromEntries(
+          columns.map((column) => [
+            column.header,
+            column.values?.[rowOffset] ?? null,
+          ]),
+        ),
     );
-    return {
+    return fakeTableSheet.build({
       sheetId: props.sheetId,
       title: props.title,
-      rows: buildGridRows({
-        0: columns.map(() => ""),
-        1: columns.map((column) => column.groupHeading1 ?? null),
-        2: columns.map((column) => column.actionRowCell ?? null),
-        3: columns.map((column) => column.header),
-        ...rowsFromFirstDataRow(dataRows),
-      }),
-      table: {
-        name: props.title,
-        endRowIndex: headerOnlyTableEndRowIndex + rowCount,
-        columnTypes: byColIndex(columns, (column) => column.columnType),
-        columnValidationValues: byColIndex(
-          columns,
-          (column) => column.validationValues,
-        ),
-        columnValidationConditionTypes: byColIndex(
-          columns,
-          (column) => column.validationConditionType,
-        ),
+      tableId: props.tableId,
+      name: props.title,
+      columnConfigs: columnsByHeader(headers),
+      columnNames: headers,
+      bodyRows,
+      headRows: {
+        1: columns.map((column) => column.actionRowCell ?? null),
+        2: columns.map((column) => column.groupHeading1 ?? null),
       },
-    };
+      columnTypes: byColIndex(columns, (column) => column.columnType),
+      columnValidationValues: byColIndex(
+        columns,
+        (column) => column.validationValues,
+      ),
+      columnValidationConditionTypes: byColIndex(
+        columns,
+        (column) => column.validationConditionType,
+      ),
+    });
   }
 
   function byColIndex<V>(
@@ -937,41 +875,22 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
     }, {});
   }
 
-  function seedValueSources(props: {
-    apiTables: readonly FakeSheetProperties[];
-    otherTables?: readonly FakeSheetProperties[];
-  }): FakeSheetsService {
-    const { apiTables, otherTables = [] } = props;
-    return seedFixture({
-      extraSheets: [...apiTables.map(withGrantedTableId), ...otherTables],
+  function ledgerSheet(columns: readonly FixtureColumn[]): FakeSheetProperties {
+    return tableSheet({
+      sheetId: ledgerGid,
+      title: "Ledger",
+      tableId: ledgerTableId,
+      columns,
     });
   }
 
-  // The previous configs grant API access, so an API-access fixture takes a Table ID they hold.
-  function withGrantedTableId(sheet: FakeSheetProperties): FakeSheetProperties {
-    const grantedTableIdsByGid = new Map([
-      [listGid, getTableTraitByName("log", "tableId")],
-      [ledgerGid, getTableTraitByName("runItem", "tableId")],
-      [listPaymentGid, getTableTraitByName("computed", "tableId")],
-    ]);
-    return {
-      ...sheet,
-      table: {
-        ...Val.assert(sheet.table, "API-access fixture Table"),
-        tableId: Val.assert(
-          grantedTableIdsByGid.get(sheet.sheetId),
-          "granted Table ID of an API-access fixture",
-        ),
-      },
-    };
-  }
-
-  function ledgerSheet(columns: readonly FixtureColumn[]): FakeSheetProperties {
-    return tableSheet({ sheetId: ledgerGid, title: "Ledger", columns });
-  }
-
   function listSheet(columns: readonly FixtureColumn[]): FakeSheetProperties {
-    return tableSheet({ sheetId: listGid, title: "List", columns });
+    return tableSheet({
+      sheetId: listGid,
+      title: "List",
+      tableId: listTableId,
+      columns,
+    });
   }
 
   function generate() {
@@ -1010,8 +929,8 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
   }
 
   it("types a dropdown from a Let api access Table column as that column's fixed list", () => {
-    seedValueSources({
-      apiTables: [
+    seedFixture({
+      extraSheets: [
         listSheet([
           { header: "Payment status", values: ["Paid", "Unpaid", "Late"] },
         ]),
@@ -1034,8 +953,8 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
   });
 
   function seedNameAndIdSources(): FakeSheetsService {
-    return seedValueSources({
-      apiTables: [
+    return seedFixture({
+      extraSheets: [
         listSheet([
           { header: "ID", values: ["r:lst:a1"] },
           { header: "Name", values: ["Unit 2B"], columnType: "DOUBLE" },
@@ -1076,8 +995,8 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
   });
 
   it("keeps a one-word camel-case header's casing in the value name", () => {
-    seedValueSources({
-      apiTables: [
+    seedFixture({
+      extraSheets: [
         listSheet([{ header: "CapEx", values: ["Roof"] }]),
         ledgerSheet([{ header: "CapEx", validationValues: ["=List[CapEx]"] }]),
       ],
@@ -1090,8 +1009,8 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
   });
 
   it("types every member by its source's declared type, numbers for number and date", () => {
-    seedValueSources({
-      apiTables: [
+    seedFixture({
+      extraSheets: [
         listSheet([
           { header: "Rent", values: [950, 1200], columnType: "DOUBLE" },
           { header: "Due date", values: [45000, 45031], columnType: "DATE" },
@@ -1115,8 +1034,8 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
   });
 
   it("fails the config sync when a declared source holds a member of another primitive, naming the source", () => {
-    seedValueSources({
-      apiTables: [
+    seedFixture({
+      extraSheets: [
         listSheet([
           { header: "Rent", values: [950, "TBD"], columnType: "DOUBLE" },
         ]),
@@ -1130,8 +1049,8 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
   });
 
   it("keeps each member's own primitive on an untyped source", () => {
-    seedValueSources({
-      apiTables: [
+    seedFixture({
+      extraSheets: [
         listSheet([{ header: "Score", values: ["N/A", 3, true] }]),
         ledgerSheet([{ header: "Score", validationValues: ["=List[Score]"] }]),
       ],
@@ -1143,8 +1062,8 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
   });
 
   it("drops blanks and collapses duplicates to their first position, keeping sheet order", () => {
-    seedValueSources({
-      apiTables: [
+    seedFixture({
+      extraSheets: [
         listSheet([
           {
             header: "Payment status",
@@ -1165,8 +1084,8 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
   });
 
   it("gives every dropdown on one source the one value name", () => {
-    seedValueSources({
-      apiTables: [
+    seedFixture({
+      extraSheets: [
         listSheet([{ header: "Payment status", values: ["Paid", "Unpaid"] }]),
         ledgerSheet([
           { header: "Status", validationValues: ["=List[Payment status]"] },
@@ -1186,8 +1105,8 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
   });
 
   it("leaves a dropdown untyped, and in the summary, unless it names a column of a Let api access Table", () => {
-    seedValueSources({
-      apiTables: [
+    seedFixture({
+      extraSheets: [
         listSheet([{ header: "Payment status", values: ["Paid", "Unpaid"] }]),
         ledgerSheet([
           {
@@ -1211,8 +1130,6 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
             validationValues: ["Paid", "Unpaid"],
           },
         ]),
-      ],
-      otherTables: [
         tableSheet({
           sheetId: 889003,
           title: "Hidden",
@@ -1239,11 +1156,12 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
   });
 
   it("fails the config sync when a source's value name is a framework value name, naming both", () => {
-    seedValueSources({
-      apiTables: [
+    seedFixture({
+      extraSheets: [
         tableSheet({
           sheetId: listGid,
           title: "Number",
+          tableId: listTableId,
           columns: [{ header: "#", values: [1, 2] }],
         }),
         ledgerSheet([{ header: "Pick", validationValues: ["=Number[#]"] }]),
@@ -1256,12 +1174,13 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
   });
 
   it("fails the config sync when two sources take one value name, naming both", () => {
-    seedValueSources({
-      apiTables: [
+    seedFixture({
+      extraSheets: [
         listSheet([{ header: "Payment status", values: ["Paid"] }]),
         tableSheet({
-          sheetId: listPaymentGid,
+          sheetId: 889004,
           title: "List Payment",
+          tableId: listPaymentTableId,
           columns: [{ header: "Status", values: ["Open"] }],
         }),
         ledgerSheet([
@@ -1290,8 +1209,8 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
     }
 
     it("records formula text in brace form, naming its own Table's columns bare and another Table's in full", () => {
-      seedValueSources({
-        apiTables: [
+      seedFixture({
+        extraSheets: [
           listSheet([{ header: "Payment status", values: ["Paid"] }]),
           ledgerSheet([
             { header: "Amount", values: [10] },
@@ -1330,8 +1249,8 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
     });
 
     it("records the column type, with the rule a dropdown carries", () => {
-      seedValueSources({
-        apiTables: [
+      seedFixture({
+        extraSheets: [
           listSheet([{ header: "Payment status", values: ["Paid"] }]),
           ledgerSheet([
             { header: "Amount", values: [10], columnType: "CURRENCY" },
@@ -1361,8 +1280,8 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
     });
 
     it("records each action-row cell as empty, a checkbox or a level-2 group heading", () => {
-      seedValueSources({
-        apiTables: [
+      seedFixture({
+        extraSheets: [
           ledgerSheet([
             { header: "Amount", values: [10] },
             { header: "Run", values: [false], actionRowCell: false },
@@ -1382,8 +1301,8 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
     });
 
     it("records a spanning level-1 group heading on its first cell only", () => {
-      seedValueSources({
-        apiTables: [
+      seedFixture({
+        extraSheets: [
           ledgerSheet([
             { header: "Amount", values: [10], groupHeading1: "Money" },
             { header: "Fee", values: [1] },
