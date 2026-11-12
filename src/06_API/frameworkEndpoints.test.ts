@@ -1,19 +1,35 @@
 import { describe, it } from "vitest";
 
-import type { configSheetFloorSeed } from "../01_SpreadsheetSchema/configReaders/configSheetFloorSeed";
+import type { SheetNameWithIdColumn } from "../04_SpreadsheetNamed/TableNameGroups";
 import { assertType, type IsExactly } from "../testSupport/typeAssertions";
-import type { frameworkEndpoints } from "./frameworkEndpoints";
+import type { Endpoint, EndpointsAll } from "./Endpoints";
+import type { FillRowIdsEndpoints } from "./frameworkEndpoints";
 
-describe("frameworkEndpoints", () => {
-  it("must supply exactly the seeded endpoints but Sync Config, which is gone", () => {
+describe("FillRowIdsEndpoints", () => {
+  it("is keyed by the ID column of every Table with one, and nothing else", () => {
+    assertType<
+      IsExactly<keyof FillRowIdsEndpoints, `${SheetNameWithIdColumn}_id`>
+    >(true);
+    assertType<
+      IsExactly<Extract<keyof FillRowIdsEndpoints, "runItem_id">, "runItem_id">
+    >(true);
+  });
+  it("leaves out a Table without an ID column", () => {
     assertType<
       IsExactly<
-        keyof typeof frameworkEndpoints,
-        Exclude<
-          keyof typeof configSheetFloorSeed.spreadsheetConfig.endpoints,
-          "spreadsheetConfig_syncConfigSheetRowsTimeLastRan"
-        >
+        Extract<keyof FillRowIdsEndpoints, "spreadsheetConfig_id">,
+        never
       >
+    >(true);
+  });
+  it("types each entry by its own Table", () => {
+    assertType<
+      IsExactly<FillRowIdsEndpoints["runItem_id"], Endpoint<"runItem">>
+    >(true);
+  });
+  it("names only columns EndpointsAll keys", () => {
+    assertType<
+      IsExactly<Exclude<keyof FillRowIdsEndpoints, keyof EndpointsAll>, never>
     >(true);
   });
 });

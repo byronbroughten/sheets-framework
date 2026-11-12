@@ -27,14 +27,14 @@ export type EndpointsAll = {
   [FN in ColumnFullName]?: Endpoint<TableNameOf<FN>>;
 };
 
-type FloorFullName = `${FloorTabName}${CodebaseNameDelimiter}${string}`;
+type IdColumnFullName = `${string}${CodebaseNameDelimiter}id`;
 
 export type Endpoints = {
-  [FN in Exclude<keyof EndpointsAll, FloorFullName>]?: EndpointsAll[FN];
+  [FN in Exclude<keyof EndpointsAll, IdColumnFullName>]?: EndpointsAll[FN];
 };
 ```
 
-`Endpoints` is the app's map: a key on one of the three config sheets is a type error, because the framework owns those entries (`frameworkEndpoints`). Why it reads its entries from `EndpointsAll`: [#262's measurement](./type-check-cost.md#262-cheaper-column-map-types). `Api` spreads the framework's entries last into an `EndpointsAll`, so a collision still resolves to the framework at runtime.
+`Endpoints` is the app's map: a key on an `id` column is a type error, because the framework owns those entries. `withFrameworkEndpoints` derives one Fill Row IDs endpoint per Table whose config has `hasIdColumn: true`, at runtime, so nothing is generated for it; it fills that Table's blank IDs, declares no feedback columns, and reports by toast. Why `Endpoints` reads its entries from `EndpointsAll`: [#262's measurement](./type-check-cost.md#262-cheaper-column-map-types). `Api` spreads the framework's entries last into an `EndpointsAll`, so a collision still resolves to the framework at runtime.
 
 `action` is the only required field, so an endpoint takes exactly the machinery it wants: a bulk "select all" declares an action alone and stays at the round-trip floor; a run over a selection declares the feedback columns and the selector too. `retainSelection` and `requireOneRow` are nameable only inside a declared selector, so an endpoint without one cannot carry either as a silent no-op. Register endpoints with a plain `: Endpoints` annotation — **not** `makeStructuredConfig`, which lets an unknown key through (the house style's "Type modeling").
 

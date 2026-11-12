@@ -18,15 +18,18 @@ export interface FakeTrigger {
 /**
  * Stubs `ScriptApp` and `SpreadsheetApp` with just enough of a fluent trigger
  * builder to cover AppsScript.trigger's usage. Created triggers are tracked
- * in the returned array so tests can assert on what was scheduled/deleted.
+ * in the returned array so tests can assert on what was scheduled/deleted,
+ * and so is every toast's message.
  * A null `spreadsheetId` stands in for a standalone script, which has no active spreadsheet.
  */
 export function stubScriptAndSpreadsheetApp({
   spreadsheetId = "fake-bound-spreadsheet",
 }: { spreadsheetId?: string | null } = {}): {
   triggers: FakeTrigger[];
+  toasts: string[];
 } {
   const triggers: FakeTrigger[] = [];
+  const toasts: string[] = [];
 
   function record(trigger: FakeTrigger): FakeTrigger {
     triggers.push(trigger);
@@ -78,9 +81,12 @@ export function stubScriptAndSpreadsheetApp({
       if (spreadsheetId === null) return null;
       return {
         getId: () => spreadsheetId,
+        toast: (message: string) => {
+          toasts.push(message);
+        },
       };
     },
   });
 
-  return { triggers };
+  return { triggers, toasts };
 }

@@ -242,6 +242,10 @@ export class GoogleSheetsAPI implements RawSource {
       throw partialTableRefusal(error, requestOperations) ?? error;
     }
   }
+  // The Sheets service has no toast, so this needs the Apps Script host; only an endpoint run toasts.
+  toast(message: string): void {
+    AppsScript.toast(message);
+  }
   private _fetchSheets(fields: string): GoogleSheet[] {
     return Val.assert(
       this._getSpreadsheet(fields).sheets,

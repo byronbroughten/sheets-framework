@@ -372,6 +372,7 @@ export interface RawSource {
   fetchConditionalFormatRules(): SheetConditionalFormatSnapshot[];
   fetchEditProtections(): SheetEditProtectionSnapshot[];
   flush(operations: LocalWriteOperation[]): void;
+  toast(message: string): void;
 }
 
 let installed: RawSource | undefined;

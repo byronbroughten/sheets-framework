@@ -4,7 +4,6 @@ import type {
   ColumnNameFiltered,
   TableNameOf,
 } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
-import type { FloorTabName } from "../01_SpreadsheetSchema/configReaders/configSheetFloorSeed";
 import type { ClaimedTraits } from "../01_SpreadsheetSchema/configReaders/intendedState";
 import type { TableNameSimple } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import type { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
@@ -65,9 +64,9 @@ export type EndpointsAll = {
   [FN in ColumnFullName]?: Endpoint<TableNameOf<FN>>;
 };
 
-type FloorFullName = `${FloorTabName}${CodebaseNameDelimiter}${string}`;
+type IdColumnFullName = `${string}${CodebaseNameDelimiter}id`;
 
-// The framework owns the config sheets' entries, so the app's map can't name one; reading EndpointsAll's is cheaper than rebuilding them.
+// The framework derives every ID column's entry, so the app's map can't name one; reading EndpointsAll's is cheaper than rebuilding them.
 export type Endpoints = {
-  [FN in Exclude<keyof EndpointsAll, FloorFullName>]?: EndpointsAll[FN];
+  [FN in Exclude<keyof EndpointsAll, IdColumnFullName>]?: EndpointsAll[FN];
 };

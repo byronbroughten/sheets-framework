@@ -209,28 +209,4 @@ describe("NodeHost.ensureGlobals, the endpoints it installs", () => {
 
     expect(rows).toHaveLength(2);
   });
-
-  it("counts the framework's own feedback columns on the config sheets with no endpoints given", async () => {
-    const rows = await appendBeneathOneRow({
-      sheetGid: getTableTraitByName("spreadsheetConfig", "sheetGid"),
-      title: "Spreadsheet Config",
-      columnIds: [
-        getColumnTraitByName("spreadsheetConfig", "tableMenuSpace", "columnId"),
-        getColumnTraitByName(
-          "spreadsheetConfig",
-          "fillRowIdsRunStatus",
-          "columnId",
-        ),
-      ],
-      topRow: [null, "Succeeded"],
-      append: (ss) => {
-        const sheet = ss.table("spreadsheetConfig");
-        sheet.row(topDataRowIndex).prepFetchFull();
-        ss.fetchAllPrepped();
-        sheet.appendRowWithVals({ tableMenuSpace: "space" });
-      },
-    });
-
-    expect(rows).toEqual([["space", ""]]);
-  });
 });
