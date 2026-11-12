@@ -186,6 +186,24 @@ describe("SyncEntryRefuser, traits not sendable yet", () => {
     ]);
   });
 
+  it("refuses a trait once when a claim and an alteration both name it", () => {
+    expect(
+      refusals({
+        alterations: {
+          tables: { item: { columns: { requiredCount: { formula: "=2" } } } },
+        },
+        claims: [
+          {
+            declaredBy: "itemEndpoint",
+            traits: { item: { columns: { requiredCount: { formula: "=1" } } } },
+          },
+        ],
+      }),
+    ).toEqual([
+      { kind: "notSendableYet", table: "item", path: "requiredCount.formula" },
+    ]);
+  });
+
   it("refuses nothing for no intended state", () => {
     expect(refusals({})).toEqual([]);
   });

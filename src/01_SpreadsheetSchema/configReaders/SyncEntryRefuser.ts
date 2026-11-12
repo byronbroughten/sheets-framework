@@ -5,7 +5,6 @@ import {
   type WideAlterations,
   type WideClaims,
   type WideColumnEntry,
-  type WideTabEntry,
   type WideTableEntry,
 } from "./SyncPlanner/wideAlterations";
 import type { SyncRefusal } from "./syncRunResult";
@@ -20,7 +19,7 @@ export interface SyncEntryRefuserProps {
 type NotSendableYet = Extract<SyncRefusal, { kind: "notSendableYet" }>;
 
 // Only a column's emptyValueAllowed can be sent so far; each later trait ticket takes its trait off this refusal.
-const sendableColumnTraits = new Set<string>(["emptyValueAllowed"]);
+export const sendableColumnTraits = new Set<string>(["emptyValueAllowed"]);
 
 // Pure: refuses what can't be planned from intended state and the previous ID-name map alone, so before any read.
 export class SyncEntryRefuser {
@@ -36,30 +35,29 @@ export class SyncEntryRefuser {
     return new SyncEntryRefuser(props);
   }
   get refusals(): SyncRefusal[] {
-    return [
+    return withoutRepeats([
       ...this._tableRefusals,
       ...this._tabRefusals,
       ...this._newTabRefusals,
       ...this._claimRefusals,
-    ];
+    ]);
   }
   // Checked against the map, not the Table configs: those hold only Tables with API access.
   private get _tableRefusals(): SyncRefusal[] {
-    const names = new Set(
-      Object.values(this.idNameMap.tables).map(({ name }) => name),
-    );
-    return entriesOf(this.alterations.tables).flatMap(([name, entry]) => {
-      if (!names.has(name)) return [noSuchTable("tables", name)];
-      return tableTraitRefusals(name, entry);
+    return entryRefusals({
+      entry: "tables",
+      mapNames: Object.values(this.idNameMap.tables).map(({ name }) => name),
+      entries: entriesOf(this.alterations.tables),
+      traitRefusals: tableTraitRefusals,
     });
   }
   private get _tabRefusals(): SyncRefusal[] {
-    const names = new Set(
-      Object.values(this.idNameMap.tabs).map(({ name }) => name),
-    );
-    return entriesOf(this.alterations.tabs).flatMap(([name, entry]) => {
-      if (!names.has(name)) return [noSuchTable("tabs", name)];
-      return tabTraitRefusals(name, entry);
+    return entryRefusals({
+      entry: "tabs",
+      mapNames: Object.values(this.idNameMap.tabs).map(({ name }) => name),
+      entries: entriesOf(this.alterations.tabs),
+      traitRefusals: (tab, entry) =>
+        definedKeys(entry).map((trait) => notSendableYet(tab, trait)),
     });
   }
   private get _newTabRefusals(): SyncRefusal[] {
@@ -68,7 +66,7 @@ export class SyncEntryRefuser {
     );
   }
   private get _claimRefusals(): SyncRefusal[] {
-    const refusals = this.claims.flatMap(({ traits }) =>
+    return this.claims.flatMap(({ traits }) =>
       entriesOf<WideClaims[string]>(traits).flatMap(([table, entry]) =>
         entriesOf(entry?.columns).flatMap(([column, claimed]) =>
           Object.keys(claimed).map((trait) =>
@@ -77,8 +75,27 @@ export class SyncEntryRefuser {
         ),
       ),
     );
-    return withoutRepeats(refusals);
   }
+}
+
+interface EntryRefusalsProps<EN extends object> {
+  entry: "tables" | "tabs";
+  mapNames: string[];
+  entries: [string, EN][];
+  traitRefusals: (name: string, entry: EN) => SyncRefusal[];
+}
+
+function entryRefusals<EN extends object>({
+  entry,
+  mapNames,
+  entries,
+  traitRefusals,
+}: EntryRefusalsProps<EN>): SyncRefusal[] {
+  const names = new Set(mapNames);
+  return entries.flatMap(([name, traits]) => {
+    if (!names.has(name)) return [noSuchTable(entry, name)];
+    return traitRefusals(name, traits);
+  });
 }
 
 function noSuchTable(entry: "tables" | "tabs", name: string): SyncRefusal {
@@ -112,10 +129,6 @@ function columnTraitRefusals(
     .map((trait) => notSendableYet(table, `${column}.${trait}`));
 }
 
-function tabTraitRefusals(tab: string, entry: WideTabEntry): SyncRefusal[] {
-  return definedKeys(entry).map((trait) => notSendableYet(tab, trait));
-}
-
 function definedKeys(entry: object): string[] {
   return Object.entries(entry).flatMap(([key, value]) => {
     if (value === undefined) return [];
@@ -123,11 +136,11 @@ function definedKeys(entry: object): string[] {
   });
 }
 
-// Two declarers claiming one trait are one refusal: the entry to take out is the same.
-function withoutRepeats(refusals: NotSendableYet[]): NotSendableYet[] {
+// Two declarers of one trait, or a claim beside an alteration of it, are one refusal: the entry to take out is the same.
+function withoutRepeats(refusals: SyncRefusal[]): SyncRefusal[] {
   const seen = new Set<string>();
-  return refusals.filter(({ table, path }) => {
-    const key = `${table}\n${path}`;
+  return refusals.filter((refusal) => {
+    const key = JSON.stringify(refusal);
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
