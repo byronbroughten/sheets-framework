@@ -97,21 +97,6 @@ function notesSheet(): FakeSheetProperties {
   });
 }
 
-function generateItemColumns() {
-  const coordinator = ConfigCoordinator.init();
-  coordinator.generateConfigFiles();
-  return Val.assert(
-    coordinator.columnConfigOperator.newColumnConfigs().item,
-    "Item column configs",
-  );
-}
-
-function tableConfigKeys(files: ConfigRegeneration): string[] {
-  return [...files.tableConfigs.matchAll(/^ {2}"([^"]+)": \{/gm)].map((match) =>
-    Val.assert(match[1], "Table key"),
-  );
-}
-
 interface TableConfigsEntryFixture {
   tableKey: string;
   tableId: string;
@@ -148,7 +133,7 @@ describe("ConfigCoordinator.generateConfigFiles", () => {
       `"sheetGid": ${itemGid}, "idPrefix": "itm"`,
     );
     expect(typeof parsed.valueConfigs).toBe("string");
-    expect(parsed.columnConfigs).toContain("c:itm:optionalNote");
+    expect(parsed.columnConfigs).toContain(itemColumns.optionalNote.columnId);
   });
 
   it("writes every make*Configs import from the framework's package name", () => {
@@ -188,10 +173,10 @@ describe("ConfigCoordinator.generateConfigFiles", () => {
       name: "item",
       sheetGid: itemGid,
       columns: {
-        optionalNote: "c:itm:optionalNote",
-        requiredCount: "c:itm:requiredCount",
-        id: "c:itm:id",
-        name: "c:itm:name",
+        optionalNote: itemColumns.optionalNote.columnId,
+        requiredCount: itemColumns.requiredCount.columnId,
+        id: itemColumns.id.columnId,
+        name: itemColumns.name.columnId,
       },
     });
   });
@@ -248,8 +233,14 @@ describe("ConfigCoordinator.generateConfigFiles API access", () => {
     });
   }
 
+  function tableConfigKeys(files: ConfigRegeneration): string[] {
+    return [...files.tableConfigs.matchAll(/^ {2}"([^"]+)": \{/gm)].map(
+      (match) => Val.assert(match[1], "Table key"),
+    );
+  }
+
   it("gives API access to each live Table the previous configs hold, in their order", () => {
-    seedFixture({ extraSheets: [notesSheet(), logSheet()] });
+    stubSheetsService({ sheets: [logSheet(), notesSheet(), itemSheet()] });
 
     expect(
       tableConfigKeys(ConfigCoordinator.init().generateConfigFiles()),
@@ -273,6 +264,15 @@ describe("ConfigCoordinator.generateConfigFiles API access", () => {
 });
 
 describe("ConfigCoordinator.generateConfigFiles Empty value allowed", () => {
+  function generateItemColumns() {
+    const coordinator = ConfigCoordinator.init();
+    coordinator.generateConfigFiles();
+    return Val.assert(
+      coordinator.columnConfigOperator.newColumnConfigs().item,
+      "Item column configs",
+    );
+  }
+
   it("carries each column's Empty value allowed forward by column ID, through a header rename", () => {
     const optionalNote: ItemColumnName = "optionalNote";
     seedFixture({
@@ -875,12 +875,6 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
     }, {});
   }
 
-  function seedValueSources(
-    sheets: readonly FakeSheetProperties[],
-  ): FakeSheetsService {
-    return seedFixture({ extraSheets: [...sheets] });
-  }
-
   function ledgerSheet(columns: readonly FixtureColumn[]): FakeSheetProperties {
     return tableSheet({
       sheetId: ledgerGid,
@@ -935,18 +929,20 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
   }
 
   it("types a dropdown from a Let api access Table column as that column's fixed list", () => {
-    seedValueSources([
-      listSheet([
-        { header: "Payment status", values: ["Paid", "Unpaid", "Late"] },
-      ]),
-      ledgerSheet([
-        {
-          header: "Status",
-          values: ["Paid"],
-          validationValues: ["=List[Payment status]"],
-        },
-      ]),
-    ]);
+    seedFixture({
+      extraSheets: [
+        listSheet([
+          { header: "Payment status", values: ["Paid", "Unpaid", "Late"] },
+        ]),
+        ledgerSheet([
+          {
+            header: "Status",
+            values: ["Paid"],
+            validationValues: ["=List[Payment status]"],
+          },
+        ]),
+      ],
+    });
 
     const { valueConfigs, ledgerValueName } = generate();
 
@@ -957,18 +953,20 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
   });
 
   function seedNameAndIdSources(): FakeSheetsService {
-    return seedValueSources([
-      listSheet([
-        { header: "ID", values: ["r:lst:a1"] },
-        { header: "Name", values: ["Unit 2B"], columnType: "DOUBLE" },
-        { header: "Kind", values: ["Flat"] },
-      ]),
-      ledgerSheet([
-        { header: "Unit", validationValues: ["=List[Name]"] },
-        { header: "Unit row", validationValues: ["=List[ID]"] },
-        { header: "Kind", validationValues: ["=List[Kind]"] },
-      ]),
-    ]);
+    return seedFixture({
+      extraSheets: [
+        listSheet([
+          { header: "ID", values: ["r:lst:a1"] },
+          { header: "Name", values: ["Unit 2B"], columnType: "DOUBLE" },
+          { header: "Kind", values: ["Flat"] },
+        ]),
+        ledgerSheet([
+          { header: "Unit", validationValues: ["=List[Name]"] },
+          { header: "Unit row", validationValues: ["=List[ID]"] },
+          { header: "Kind", validationValues: ["=List[Kind]"] },
+        ]),
+      ],
+    });
   }
 
   it("emits a dropdown from a Table's Name or ID column as a live reference, whatever its type", () => {
@@ -997,10 +995,12 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
   });
 
   it("keeps a one-word camel-case header's casing in the value name", () => {
-    seedValueSources([
-      listSheet([{ header: "CapEx", values: ["Roof"] }]),
-      ledgerSheet([{ header: "CapEx", validationValues: ["=List[CapEx]"] }]),
-    ]);
+    seedFixture({
+      extraSheets: [
+        listSheet([{ header: "CapEx", values: ["Roof"] }]),
+        ledgerSheet([{ header: "CapEx", validationValues: ["=List[CapEx]"] }]),
+      ],
+    });
 
     const { valueConfigs, ledgerValueName } = generate();
 
@@ -1009,18 +1009,20 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
   });
 
   it("types every member by its source's declared type, numbers for number and date", () => {
-    seedValueSources([
-      listSheet([
-        { header: "Rent", values: [950, 1200], columnType: "DOUBLE" },
-        { header: "Due date", values: [45000, 45031], columnType: "DATE" },
-        { header: "Unit", values: ["2B", 101], columnType: "TEXT" },
-      ]),
-      ledgerSheet([
-        { header: "Rent", validationValues: ["=List[Rent]"] },
-        { header: "Due", validationValues: ["=List[Due date]"] },
-        { header: "Unit", validationValues: ["=List[Unit]"] },
-      ]),
-    ]);
+    seedFixture({
+      extraSheets: [
+        listSheet([
+          { header: "Rent", values: [950, 1200], columnType: "DOUBLE" },
+          { header: "Due date", values: [45000, 45031], columnType: "DATE" },
+          { header: "Unit", values: ["2B", 101], columnType: "TEXT" },
+        ]),
+        ledgerSheet([
+          { header: "Rent", validationValues: ["=List[Rent]"] },
+          { header: "Due", validationValues: ["=List[Due date]"] },
+          { header: "Unit", validationValues: ["=List[Unit]"] },
+        ]),
+      ],
+    });
 
     const { valueConfigs } = generate();
 
@@ -1032,12 +1034,14 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
   });
 
   it("fails the config sync when a declared source holds a member of another primitive, naming the source", () => {
-    seedValueSources([
-      listSheet([
-        { header: "Rent", values: [950, "TBD"], columnType: "DOUBLE" },
-      ]),
-      ledgerSheet([{ header: "Rent", validationValues: ["=List[Rent]"] }]),
-    ]);
+    seedFixture({
+      extraSheets: [
+        listSheet([
+          { header: "Rent", values: [950, "TBD"], columnType: "DOUBLE" },
+        ]),
+        ledgerSheet([{ header: "Rent", validationValues: ["=List[Rent]"] }]),
+      ],
+    });
 
     expect(() => ConfigCoordinator.init().generateConfigFiles()).toThrow(
       'Value source "List[Rent]" declares number members, but holds "TBD".',
@@ -1045,10 +1049,12 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
   });
 
   it("keeps each member's own primitive on an untyped source", () => {
-    seedValueSources([
-      listSheet([{ header: "Score", values: ["N/A", 3, true] }]),
-      ledgerSheet([{ header: "Score", validationValues: ["=List[Score]"] }]),
-    ]);
+    seedFixture({
+      extraSheets: [
+        listSheet([{ header: "Score", values: ["N/A", 3, true] }]),
+        ledgerSheet([{ header: "Score", validationValues: ["=List[Score]"] }]),
+      ],
+    });
 
     const { valueConfigs } = generate();
 
@@ -1056,17 +1062,19 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
   });
 
   it("drops blanks and collapses duplicates to their first position, keeping sheet order", () => {
-    seedValueSources([
-      listSheet([
-        {
-          header: "Payment status",
-          values: ["Unpaid", null, "Paid", "Unpaid", "", "Late", "Paid"],
-        },
-      ]),
-      ledgerSheet([
-        { header: "Status", validationValues: ["=List[Payment status]"] },
-      ]),
-    ]);
+    seedFixture({
+      extraSheets: [
+        listSheet([
+          {
+            header: "Payment status",
+            values: ["Unpaid", null, "Paid", "Unpaid", "", "Late", "Paid"],
+          },
+        ]),
+        ledgerSheet([
+          { header: "Status", validationValues: ["=List[Payment status]"] },
+        ]),
+      ],
+    });
 
     const { valueConfigs } = generate();
 
@@ -1076,16 +1084,18 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
   });
 
   it("gives every dropdown on one source the one value name", () => {
-    seedValueSources([
-      listSheet([{ header: "Payment status", values: ["Paid", "Unpaid"] }]),
-      ledgerSheet([
-        { header: "Status", validationValues: ["=List[Payment status]"] },
-        {
-          header: "Deposit status",
-          validationValues: ["=List[Payment status]"],
-        },
-      ]),
-    ]);
+    seedFixture({
+      extraSheets: [
+        listSheet([{ header: "Payment status", values: ["Paid", "Unpaid"] }]),
+        ledgerSheet([
+          { header: "Status", validationValues: ["=List[Payment status]"] },
+          {
+            header: "Deposit status",
+            validationValues: ["=List[Payment status]"],
+          },
+        ]),
+      ],
+    });
 
     const { valueConfigs, ledgerValueName } = generate();
 
@@ -1095,36 +1105,38 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
   });
 
   it("leaves a dropdown untyped, and in the summary, unless it names a column of a Let api access Table", () => {
-    seedValueSources([
-      listSheet([{ header: "Payment status", values: ["Paid", "Unpaid"] }]),
-      ledgerSheet([
-        {
-          header: "Non-api",
-          values: ["Paid"],
-          validationValues: ["=Hidden[Payment status]"],
-        },
-        {
-          header: "Unknown header",
-          values: ["Paid"],
-          validationValues: ["=List[Nope]"],
-        },
-        {
-          header: "A1 range",
-          values: ["Paid"],
-          validationValues: ["=List!$A$5:$A$9"],
-        },
-        {
-          header: "Item list",
-          values: ["Paid"],
-          validationValues: ["Paid", "Unpaid"],
-        },
-      ]),
-      tableSheet({
-        sheetId: 889003,
-        title: "Hidden",
-        columns: [{ header: "Payment status", values: ["Paid"] }],
-      }),
-    ]);
+    seedFixture({
+      extraSheets: [
+        listSheet([{ header: "Payment status", values: ["Paid", "Unpaid"] }]),
+        ledgerSheet([
+          {
+            header: "Non-api",
+            values: ["Paid"],
+            validationValues: ["=Hidden[Payment status]"],
+          },
+          {
+            header: "Unknown header",
+            values: ["Paid"],
+            validationValues: ["=List[Nope]"],
+          },
+          {
+            header: "A1 range",
+            values: ["Paid"],
+            validationValues: ["=List!$A$5:$A$9"],
+          },
+          {
+            header: "Item list",
+            values: ["Paid"],
+            validationValues: ["Paid", "Unpaid"],
+          },
+        ]),
+        tableSheet({
+          sheetId: 889003,
+          title: "Hidden",
+          columns: [{ header: "Payment status", values: ["Paid"] }],
+        }),
+      ],
+    });
     const logger = stubLogger();
 
     const coordinator = ConfigCoordinator.init();
@@ -1144,15 +1156,17 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
   });
 
   it("fails the config sync when a source's value name is a framework value name, naming both", () => {
-    seedValueSources([
-      tableSheet({
-        sheetId: listGid,
-        title: "Number",
-        tableId: listTableId,
-        columns: [{ header: "#", values: [1, 2] }],
-      }),
-      ledgerSheet([{ header: "Pick", validationValues: ["=Number[#]"] }]),
-    ]);
+    seedFixture({
+      extraSheets: [
+        tableSheet({
+          sheetId: listGid,
+          title: "Number",
+          tableId: listTableId,
+          columns: [{ header: "#", values: [1, 2] }],
+        }),
+        ledgerSheet([{ header: "Pick", validationValues: ["=Number[#]"] }]),
+      ],
+    });
 
     expect(() => ConfigCoordinator.init().generateConfigFiles()).toThrow(
       'Value source "Number[#]" takes the value name "number", which is already the framework value name "number".',
@@ -1160,19 +1174,21 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
   });
 
   it("fails the config sync when two sources take one value name, naming both", () => {
-    seedValueSources([
-      listSheet([{ header: "Payment status", values: ["Paid"] }]),
-      tableSheet({
-        sheetId: 889004,
-        title: "List Payment",
-        tableId: listPaymentTableId,
-        columns: [{ header: "Status", values: ["Open"] }],
-      }),
-      ledgerSheet([
-        { header: "Status", validationValues: ["=List[Payment status]"] },
-        { header: "State", validationValues: ["=List Payment[Status]"] },
-      ]),
-    ]);
+    seedFixture({
+      extraSheets: [
+        listSheet([{ header: "Payment status", values: ["Paid"] }]),
+        tableSheet({
+          sheetId: 889004,
+          title: "List Payment",
+          tableId: listPaymentTableId,
+          columns: [{ header: "Status", values: ["Open"] }],
+        }),
+        ledgerSheet([
+          { header: "Status", validationValues: ["=List[Payment status]"] },
+          { header: "State", validationValues: ["=List Payment[Status]"] },
+        ]),
+      ],
+    });
 
     expect(() => ConfigCoordinator.init().generateConfigFiles()).toThrow(
       'Value sources "List[Payment status]" and "List Payment[Status]" both take the value name "listPaymentStatus".',
@@ -1193,32 +1209,34 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
     }
 
     it("records formula text in brace form, naming its own Table's columns bare and another Table's in full", () => {
-      seedValueSources([
-        listSheet([{ header: "Payment status", values: ["Paid"] }]),
-        ledgerSheet([
-          { header: "Amount", values: [10] },
-          {
-            header: "Double",
-            values: [
-              {
-                value: 20,
-                isFormula: true,
-                formula: "=SINGLE(Ledger[Amount])*2",
-              },
-            ],
-          },
-          {
-            header: "Statuses",
-            values: [
-              {
-                value: 1,
-                isFormula: true,
-                formula: '=COUNTA(List[Payment status])&"Ledger[Amount]"',
-              },
-            ],
-          },
-        ]),
-      ]);
+      seedFixture({
+        extraSheets: [
+          listSheet([{ header: "Payment status", values: ["Paid"] }]),
+          ledgerSheet([
+            { header: "Amount", values: [10] },
+            {
+              header: "Double",
+              values: [
+                {
+                  value: 20,
+                  isFormula: true,
+                  formula: "=SINGLE(Ledger[Amount])*2",
+                },
+              ],
+            },
+            {
+              header: "Statuses",
+              values: [
+                {
+                  value: 1,
+                  isFormula: true,
+                  formula: '=COUNTA(List[Payment status])&"Ledger[Amount]"',
+                },
+              ],
+            },
+          ]),
+        ],
+      });
 
       const { files, ledger } = generateLedgerColumns();
 
@@ -1231,20 +1249,22 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
     });
 
     it("records the column type, with the rule a dropdown carries", () => {
-      seedValueSources([
-        listSheet([{ header: "Payment status", values: ["Paid"] }]),
-        ledgerSheet([
-          { header: "Amount", values: [10], columnType: "CURRENCY" },
-          {
-            header: "Status",
-            values: ["Paid"],
-            columnType: "DROPDOWN",
-            validationConditionType: "ONE_OF_RANGE",
-            validationValues: ["=List[Payment status]"],
-          },
-          { header: "Note", values: ["x"] },
-        ]),
-      ]);
+      seedFixture({
+        extraSheets: [
+          listSheet([{ header: "Payment status", values: ["Paid"] }]),
+          ledgerSheet([
+            { header: "Amount", values: [10], columnType: "CURRENCY" },
+            {
+              header: "Status",
+              values: ["Paid"],
+              columnType: "DROPDOWN",
+              validationConditionType: "ONE_OF_RANGE",
+              validationValues: ["=List[Payment status]"],
+            },
+            { header: "Note", values: ["x"] },
+          ]),
+        ],
+      });
 
       const { ledger } = generateLedgerColumns();
 
@@ -1260,13 +1280,15 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
     });
 
     it("records each action-row cell as empty, a checkbox or a level-2 group heading", () => {
-      seedValueSources([
-        ledgerSheet([
-          { header: "Amount", values: [10] },
-          { header: "Run", values: [false], actionRowCell: false },
-          { header: "Due", values: [1], actionRowCell: "Dates" },
-        ]),
-      ]);
+      seedFixture({
+        extraSheets: [
+          ledgerSheet([
+            { header: "Amount", values: [10] },
+            { header: "Run", values: [false], actionRowCell: false },
+            { header: "Due", values: [1], actionRowCell: "Dates" },
+          ]),
+        ],
+      });
 
       const { ledger } = generateLedgerColumns();
 
@@ -1279,12 +1301,14 @@ describe("ConfigCoordinator.generateConfigFiles value sources", () => {
     });
 
     it("records a spanning level-1 group heading on its first cell only", () => {
-      seedValueSources([
-        ledgerSheet([
-          { header: "Amount", values: [10], groupHeading1: "Money" },
-          { header: "Fee", values: [1] },
-        ]),
-      ]);
+      seedFixture({
+        extraSheets: [
+          ledgerSheet([
+            { header: "Amount", values: [10], groupHeading1: "Money" },
+            { header: "Fee", values: [1] },
+          ]),
+        ],
+      });
 
       const { ledger } = generateLedgerColumns();
 

@@ -18,6 +18,7 @@ export type FakeBodyRow<CN extends string> = Partial<Record<CN, FakeCell>>;
 type FakeTablePassThrough = Pick<
   FakeTable,
   | "tableId"
+  | "name"
   | "headRows"
   | "columnTypes"
   | "columnValidationValues"
@@ -28,7 +29,6 @@ export interface FakeTableSheetProps<CN extends string>
   extends FakeTablePlacement, FakeTablePassThrough {
   sheetId: number;
   title: string;
-  name?: string; // The Table's live name; omit to leave it unnamed, as FakeTable does.
   columnConfigs: Record<CN, FakeTableColumn>;
   columnNames: readonly CN[]; // Only these are on the sheet, so a fixture needn't list every configured column.
   bodyRows: readonly FakeBodyRow<CN>[];
@@ -38,7 +38,6 @@ export const fakeTableSheet = {
   build<CN extends string>({
     sheetId,
     title,
-    name,
     columnConfigs,
     columnNames,
     bodyRows,
@@ -73,7 +72,6 @@ export const fakeTableSheet = {
       tables: [
         {
           ...passThrough,
-          name,
           startRowIndex: origin.headerRowIndex,
           startColumnIndex: origin.startColIndex,
           endRowIndex: origin.sheetRowIndex(bodyRows.length),
