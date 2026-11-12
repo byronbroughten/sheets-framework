@@ -5,7 +5,7 @@ export interface IdPrefixGuardProps {
 }
 
 // Every column ID and every generated key built on a prefix moves with it, so a change stops the run.
-export function assertIdPrefixesUnchanged({
+export function validateIdPrefixesUnchanged({
   previousByTableId,
   nextByTableId,
   retiredPrefixes,

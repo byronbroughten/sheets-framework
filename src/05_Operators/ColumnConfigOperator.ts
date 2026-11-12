@@ -6,13 +6,11 @@ import {
   type BraceConfigs,
   BraceFormula,
 } from "../01_SpreadsheetSchema/configReaders/BraceFormula";
-import { columnConfigsByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
 import {
   type ColumnConfigsGeneric,
   type ColumnConfigStored,
   makeImportLine,
 } from "../01_SpreadsheetSchema/configReaders/makeConfigs";
-import { tableConfigsByTableId } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { type ValueName } from "../01_SpreadsheetSchema/configReaders/valueSchemas";
 import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
 import type {
@@ -21,6 +19,7 @@ import type {
 } from "../02_SpreadsheetRaw/ColumnProfileRaw";
 import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
 import { columnConfigsFileSource } from "./configFileSource";
+import { PreviousColumnConfigs } from "./PreviousColumnConfigs";
 import {
   type ConfigSyncState,
   type SourceColumn,
@@ -203,9 +202,9 @@ export class ColumnConfigOperator extends SpreadsheetBaseOperator {
     return [...this.tableIdsApiAccesses].flatMap((tableId) => {
       const { profile } = this.ss.raw.table(tableId);
       const liveColumnIds = new Set(profile.columnIds);
-      const previousColumnIds = previousColumnIdsOf(tableId).filter(
-        (columnId) => liveColumnIds.has(columnId),
-      );
+      const previousColumnIds = new PreviousColumnConfigs(
+        tableId,
+      ).columnIds.filter((columnId) => liveColumnIds.has(columnId));
       const previous = new Set(previousColumnIds);
       const newColumnIds = profile.columnIds.filter(
         (columnId) => !previous.has(columnId),
@@ -279,7 +278,9 @@ export class ColumnConfigOperator extends SpreadsheetBaseOperator {
         header,
         valueName: valueName as ValueName,
         isFormula: describedColumn.isFormula,
-        emptyValueAllowed: previousEmptyValueAllowed(identity),
+        emptyValueAllowed: new PreviousColumnConfigs(tableId).emptyValueAllowed(
+          columnId,
+        ),
         customDefaultValue: null,
         formula: describedColumn.topFormula ?? null,
         columnType: {
@@ -366,29 +367,4 @@ function valueSourceName({
 
 function isSameSourceColumn(a: SourceColumn, b: SourceColumn): boolean {
   return a.tableId === b.tableId && a.header === b.header;
-}
-
-function previousColumnConfigsOf(
-  tableId: string,
-): ColumnConfigsGeneric[string] | undefined {
-  const tableKey = tableConfigsByTableId().get(tableId)?.tableKey;
-  if (tableKey === undefined) return undefined;
-  return columnConfigsByName()[tableKey];
-}
-
-function previousColumnIdsOf(tableId: string): string[] {
-  return Object.values(previousColumnConfigsOf(tableId) ?? {}).map(
-    ({ columnId }) => columnId,
-  );
-}
-
-// A column new to the configs is required until a later run's configs say otherwise.
-function previousEmptyValueAllowed({
-  tableId,
-  columnId,
-}: ColumnIdentity): boolean {
-  const previous = Object.values(previousColumnConfigsOf(tableId) ?? {}).find(
-    (columnConfig) => columnConfig.columnId === columnId,
-  );
-  return previous?.emptyValueAllowed ?? false;
 }

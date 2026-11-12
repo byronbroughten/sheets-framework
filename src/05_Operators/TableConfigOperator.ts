@@ -15,7 +15,7 @@ import {
 import type { TableRaw } from "../02_SpreadsheetRaw/TableRaw";
 import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
 import { oneLinePerEntryFileSource } from "./configFileSource";
-import { assertIdPrefixesUnchanged } from "./idPrefixGuard";
+import { validateIdPrefixesUnchanged } from "./idPrefixGuard";
 import { SpreadsheetBaseOperator } from "./SpreadsheetBaseOperator";
 
 export interface ColumnReference {
@@ -45,11 +45,11 @@ export class TableConfigOperator extends SpreadsheetBaseOperator {
   idPrefix(tableId: string): string {
     return Val.assert(this._idPrefixesByTableId().get(tableId), "ID prefix");
   }
-  assertIdPrefixesUnchanged(): void {
-    assertIdPrefixesUnchanged({
+  validateIdPrefixesUnchanged(): void {
+    validateIdPrefixesUnchanged({
       previousByTableId: previousIdPrefixesByTableId(),
       nextByTableId: this._idPrefixesByTableId(),
-      retiredPrefixes: this.retiredOrGoneIdPrefixes(),
+      retiredPrefixes: this._retiredOrGoneIdPrefixes(),
     });
   }
   private _idPrefixesByTableId(): Map<string, string> {
@@ -61,7 +61,7 @@ export class TableConfigOperator extends SpreadsheetBaseOperator {
       if (kept !== undefined) assigned.set(table.tableId, kept);
     }
     const prefixesInUse = new Set(assigned.values());
-    const retiredPrefixes = this.retiredOrGoneIdPrefixes();
+    const retiredPrefixes = this._retiredOrGoneIdPrefixes();
     for (const table of this._apiAccessTables()) {
       if (assigned.has(table.tableId)) continue;
       const generated = idPrefixes.fromTitle({
@@ -75,7 +75,7 @@ export class TableConfigOperator extends SpreadsheetBaseOperator {
     return assigned;
   }
   // A Table gone since the last run retires its prefix before this run mints any.
-  retiredOrGoneIdPrefixes(): Set<string> {
+  private _retiredOrGoneIdPrefixes(): Set<string> {
     return idPrefixes.retiredOrGone({
       previouslyRetired: configRetiredIdPrefixes(),
       previousByTableId: previousIdPrefixesByTableId(),

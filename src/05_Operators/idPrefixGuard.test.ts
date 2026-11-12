@@ -1,16 +1,16 @@
 import { describe, expect, it } from "vitest";
 
-import { assertIdPrefixesUnchanged } from "./idPrefixGuard";
+import { validateIdPrefixesUnchanged } from "./idPrefixGuard";
 
 const previousByTableId = new Map([
   ["item", "itm"],
   ["log", "log"],
 ]);
 
-describe("assertIdPrefixesUnchanged", () => {
+describe("validateIdPrefixesUnchanged", () => {
   it("passes when every Table keeps its previous prefix", () => {
     expect(() =>
-      assertIdPrefixesUnchanged({
+      validateIdPrefixesUnchanged({
         previousByTableId,
         nextByTableId: new Map(previousByTableId),
         retiredPrefixes: new Set(["old"]),
@@ -20,7 +20,7 @@ describe("assertIdPrefixesUnchanged", () => {
 
   it("throws naming every Table whose prefix differs from the configs", () => {
     expect(() =>
-      assertIdPrefixesUnchanged({
+      validateIdPrefixesUnchanged({
         previousByTableId,
         nextByTableId: new Map([
           ["item", "zzz"],
@@ -35,7 +35,7 @@ describe("assertIdPrefixesUnchanged", () => {
 
   it("throws for a Table new to the configs whose prefix was retired", () => {
     expect(() =>
-      assertIdPrefixesUnchanged({
+      validateIdPrefixesUnchanged({
         previousByTableId,
         nextByTableId: new Map([...previousByTableId, ["gizmo", "old"]]),
         retiredPrefixes: new Set(["old"]),
@@ -47,7 +47,7 @@ describe("assertIdPrefixesUnchanged", () => {
 
   it("passes a Table new to the configs with an unretired prefix, and ignores a gone one", () => {
     expect(() =>
-      assertIdPrefixesUnchanged({
+      validateIdPrefixesUnchanged({
         previousByTableId,
         nextByTableId: new Map([
           ["item", "itm"],

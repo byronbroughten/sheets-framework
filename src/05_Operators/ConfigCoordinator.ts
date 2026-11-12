@@ -27,8 +27,9 @@ export interface ConfigRegeneration {
 /**
  * Coordinates Table/Column/Value Config: reads the live Tables and the
  * previous configs, writes any missing column IDs in one flush, then emits
- * every generated config file and the ID-name map, or none. The config tabs
- * are neither read nor written. Config maintenance is this Operator family,
+ * every generated config file and the ID-name map, or none. The regen leaves
+ * the config tabs' rows alone; ensureConfigSheetFloor still writes them for
+ * the floor chore. Config maintenance is this Operator family,
  * not Raw or Named. npm run gen:configs is the only regeneration path.
  * docs/generated-data.md
  */
@@ -67,7 +68,9 @@ export class ConfigCoordinator extends SpreadsheetBaseOperator {
     return this.configSheetFloor.ensure();
   }
   generateConfigFiles(makeConfigsImport: string): ConfigRegeneration {
-    const untypedColumnsSummary = this._syncColumnIds();
+    this._syncColumnIds();
+    const untypedColumnsSummary =
+      this.columnConfigOperator.untypedColumnsSummary();
     this.ss.batchUpdateGSheets();
     this.valueConfigOperator.fetchAfterColumnConfigSynced();
     return {
@@ -82,14 +85,13 @@ export class ConfigCoordinator extends SpreadsheetBaseOperator {
     };
   }
   // The ID-prefix guard runs before the column-ID write it guards.
-  private _syncColumnIds(): string | undefined {
+  private _syncColumnIds(): void {
     this.ss.fetchAllSheetProperties();
     this.tableConfigOperator.validateHeadRowsClear();
     this.tableConfigOperator.validateHeadersInZone();
     this.columnConfigOperator.fetchHeadRows();
-    this.tableConfigOperator.assertIdPrefixesUnchanged();
+    this.tableConfigOperator.validateIdPrefixesUnchanged();
     this.columnConfigOperator.syncToSpreadsheet();
-    return this.columnConfigOperator.untypedColumnsSummary();
   }
   private _idNameMap(): IdNameMapGeneric {
     return { tables: this._idNameMapTables(), tabs: this._idNameMapTabs() };

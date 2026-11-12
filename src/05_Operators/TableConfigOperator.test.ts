@@ -7,8 +7,9 @@ import {
   type FakeSheetProperties,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
+import { ColumnConfigOperator } from "./ColumnConfigOperator";
 import { TabConfigOperator } from "./TabConfigOperator";
-import { TableConfigOperator } from "./TableConfigOperator";
+import type { TableConfigOperator } from "./TableConfigOperator";
 
 // The previous configs grant API access, so the fixtures reuse Table IDs the installed configs hold.
 const itemTableId = getTableTraitByName("item", "tableId");
@@ -23,15 +24,10 @@ beforeEach(() => {
 });
 
 function syncedOperator(): TableConfigOperator {
-  const operator = TableConfigOperator.init();
-  operator.ss.fetchAllSheetProperties();
-  for (const tableId of operator.tableIdsApiAccesses()) {
-    const table = operator.ss.raw.table(tableId);
-    table.headRow("header").gatherFetchFull();
-    table.headRow("columnId").gatherFetchFull();
-  }
-  operator.ss.identified.fetchAllGathered(true);
-  return operator;
+  const columnConfigOperator = ColumnConfigOperator.init();
+  columnConfigOperator.ss.fetchAllSheetProperties();
+  columnConfigOperator.fetchHeadRows();
+  return columnConfigOperator.tableConfigOperator;
 }
 
 interface TableFixture {
@@ -178,7 +174,7 @@ describe("TableConfigOperator Table keys and prefixes", () => {
   it("stops on a sampled prefix that differs from the previous configs", () => {
     stubTables({ widget: { name: "Widget", columnIds: ["c:zzz:aaa"] } });
 
-    expect(() => syncedOperator().assertIdPrefixesUnchanged()).toThrow(
+    expect(() => syncedOperator().validateIdPrefixesUnchanged()).toThrow(
       `Table "${itemTableId}" had ID prefix "itm" and is now "zzz".`,
     );
   });
