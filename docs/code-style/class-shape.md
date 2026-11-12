@@ -34,15 +34,16 @@ export class ConfigCoordinator extends SpreadsheetBaseOperator {
   get columnConfigOperator() {
     return new ColumnConfigOperator(this.operatorProps);
   }
-  syncAndFlushConfigSheets() {
-    this.tableConfigOperator.fetchAndUpdateAll();
-    this.columnConfigOperator.fetchAndUpdateColumnConfig();
-    this.ss.batchUpdateGSheets();
+  get configSheetFloor() {
+    return new ConfigSheetFloor(this.spreadsheetNamedProps);
+  }
+  ensureConfigSheetFloor(): string {
+    return this.configSheetFloor.ensure();
   }
 }
 ```
 
-Callers reach `orchestrator.tableConfigOperator` on the instance. The method returns nothing.
+Callers reach `orchestrator.tableConfigOperator` on the instance.
 
 ## A coordinator splits by the general rule
 

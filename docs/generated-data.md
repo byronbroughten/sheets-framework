@@ -2,7 +2,7 @@
 
 Each package's `generatedDir` (the app's `src/generated/`, the framework's `dev/generated/`) holds the config files generated from the live spreadsheet, plus `appConfigs.ts`, which gathers them into one `appConfigs` const and registers it and the type-only ID-name map, `idNameMap.ts`, on `Register`. The hand-written `alterations.ts` beside the `generatedDir` is not generated; the regen only creates it empty when missing. The rules for regenerating and editing them are [`src/01_SpreadsheetSchema/AGENTS.md`](../src/01_SpreadsheetSchema/AGENTS.md)'s; what the command writes is [`how-it-runs/gen-configs.md`](./how-it-runs/gen-configs.md#what-gen-configs-writes)'s.
 
-## One file per generated constant, the sync and the floor
+## One file per generated constant and the floor
 
 | When | File |
 | --- | --- |
@@ -10,7 +10,7 @@ Each package's `generatedDir` (the app's `src/generated/`, the framework's `dev/
 | `columnConfigs`, `emptyValueAllowed`, `isFormula`, `valueName` resolution, the untyped-columns summary | [`generated-data/column-configs.md`](./generated-data/column-configs.md) |
 | `valueConfigs` and its `const` type parameter | [`generated-data/value-configs.md`](./generated-data/value-configs.md) |
 | `conditionalFormatConfigs`, its `tables` and `tabs` groups, the rule handle | [`generated-data/conditional-format-configs.md`](./generated-data/conditional-format-configs.md) |
-| Which config-sheet columns exist, the correction pass, `syncConfigSheetRows` | [`generated-data/config-sync.md`](./generated-data/config-sync.md) |
+| Which config-sheet columns exist, what the regen leaves alone | [`generated-data/config-sync.md`](./generated-data/config-sync.md) |
 | The config-sheet floor, the floor seed, floor identity checks | [`generated-data/config-sheet-floor.md`](./generated-data/config-sheet-floor.md) |
 
 ## Reading the generated files by block
@@ -31,7 +31,7 @@ Table keys live as keys in `tableConfigs.ts`, and `columnConfigs.ts` is keyed by
 
 ## What a regeneration runs, on the Node host
 
-Regenerate them all with `sheets-framework gen-configs` (see [`docs/how-it-runs/gen-configs.md`](./how-it-runs/gen-configs.md#what-gen-configs-writes)), which runs `ConfigCoordinator` (`05_Operators`) **on the Node host**, in your working tree; it is the only way to regenerate. It syncs the live Table Config sheet, then the live Column Config sheet (including adding any missing column IDs to business sheets), flushes all of that in one write, then reads the live Value Config sheet, and only then emits source for every config file and the ID-name map. **Live Table sampling on that run — Table header row, column-ID row, first data row — is for this run's Let api access Tables**, after Table Config is loaded, not for every Table. Everyday Table-placement checks still use last-generate sheet GIDs, one regen behind the live box. The command writes every generated file or none, and runs `npm run tsc` itself afterward so a stale hand-written reference surfaces immediately.
+Regenerate them all with `sheets-framework gen-configs` (see [`docs/how-it-runs/gen-configs.md`](./how-it-runs/gen-configs.md#what-gen-configs-writes)), which runs `ConfigCoordinator` (`05_Operators`) **on the Node host**, in your working tree; it is the only way to regenerate. It reads the live sheet and the previous configs, adds any missing column IDs to business sheets in one write, and only then emits source for every config file and the ID-name map. **Live Table sampling on that run — Table header row, column-ID row, first data row — is for the Tables the previous configs record**, not for every Table. Everyday Table-placement checks still use last-generate sheet GIDs, one regen behind the live box. The command writes every generated file or none, and runs `npm run tsc` itself afterward so a stale hand-written reference surfaces immediately.
 
 ## One word splitter derives keys, names and prefixes
 

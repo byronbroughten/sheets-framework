@@ -1,10 +1,10 @@
 # gen-configs and configs-diff
 
-**`gen-configs` writes to the live spreadsheet before it regenerates the config files; `configs-diff` compares those files with `HEAD`, with no credential and no Sheets call.**
+**`gen-configs` writes business sheets' header rows before it regenerates the config files; `configs-diff` compares those files with `HEAD`, with no credential and no Sheets call.**
 
 ## What gen-configs writes
 
-`sheets-framework gen-configs` **writes** to the live Table Config/Column Config sheets and to business sheets' header rows (adding missing column IDs) before it regenerates the three local config files from the live config sheets, then writes `appConfigs.ts`, which gathers them and registers them and the ID-name map, `idNameMap.ts`, on `Register` (floor vs generated: [`generated-data.md`](../generated-data.md)). When the `generatedDir`'s parent holds no `alterations.ts`, it creates one holding an empty `makePendingAlterations({})`, and never touches an existing one. It prints the floor report — a one-line summary of what the config-sheet floor created, overwrote or left behind — beside the untyped-columns summary and the declared-cell report, which names any self-describing row whose declared cell it wrote back to the floor seed.
+`sheets-framework gen-configs` **writes** to business sheets' header rows (adding missing column IDs) before it regenerates the local config files from the live sheet and the previous configs, then writes `appConfigs.ts`, which gathers them and registers them and the ID-name map, `idNameMap.ts`, on `Register`. It leaves the Table Config and Column Config tabs alone. When the `generatedDir`'s parent holds no `alterations.ts`, it creates one holding an empty `makePendingAlterations({})`, and never touches an existing one. It prints the untyped-columns summary beside the configs diff.
 
 ## What configs-diff prints
 
