@@ -16,7 +16,7 @@ Claims are deferred to [#286](https://github.com/byronbroughten/sheets-framework
 
 ## Also decided
 
-- Braces in a conditional-format formula name columns by column name (`${moveOut}`), not header: the framework's own syntax uses codebase names, while Sheets' `Table[Header]` keeps header text.
+- Braces in a conditional-format formula name columns by column name (`${@moveOut}` for the row's own value, `${moveOut}` for the whole column), not header: the framework's own syntax uses codebase names, while Sheets' `Table[Header]` keeps header text.
 - A regen fails when two tab titles camelCase to the same tab name, as it already does for two headers in one Table.
 
 ## Considered options
