@@ -1,6 +1,14 @@
+import { Val } from "@byronbroughten/utils/val";
 import { describe, expect, it, vi } from "vitest";
 
-import type { SheetsHttpRequest } from "../00_Source/GoogleSheets/GoogleSheetsAPI";
+import {
+  googleRawRequest,
+  type GoogleRequest,
+  type GoogleSheetsAPI,
+  type SheetsHttpRequest,
+} from "../00_Source/GoogleSheets/GoogleSheetsAPI";
+import { HeldFlushRefusal } from "../00_Source/RawSource/HeldFlushRefusal";
+import { SheetIndex } from "../00_Source/RawSource/SheetIndex";
 import { getColumnTraitByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
 import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister";
 import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
@@ -13,7 +21,10 @@ import {
   type FakeCell,
   type FakeCellValue,
 } from "../testSupport/fakeSheetsService";
+import type { HeldList } from "./EnteredDataGate";
 import { NodeHost } from "./NodeHost";
+
+type GoogleCellData = GoogleAppsScript.Sheets.Schema.CellData;
 
 const spreadsheetId = "spreadsheet-under-test";
 const gadgetsGid = 111;
@@ -110,6 +121,346 @@ describe("NodeHost.ensureGlobals", () => {
     };
     expect(globals.Sheets).toBeUndefined();
     expect(globals.PropertiesService).toBeUndefined();
+  });
+});
+
+// The Payments Table on its own sheet: header at index 0, Rent at 1, an empty row at 2, columns A to C.
+const payments = { gid: 7, rentRow: 1, emptyRow: 2, endRow: 4, endCol: 3 };
+const paymentsAmountCol = 2;
+const gateTarget = "app:spreadsheet-under-test";
+
+function paymentsSheet(rows?: GoogleCellData[][]) {
+  return {
+    properties: {
+      sheetId: payments.gid,
+      title: "Payments",
+      gridProperties: { rowCount: 20, columnCount: 6 },
+    },
+    tables: [
+      {
+        tableId: "tbl-pay",
+        name: "Payments",
+        range: {
+          sheetId: payments.gid,
+          startRowIndex: 0,
+          endRowIndex: payments.endRow,
+          startColumnIndex: 0,
+          endColumnIndex: payments.endCol,
+        },
+        columnProperties: [
+          { columnIndex: 0, columnName: "Name" },
+          { columnIndex: 1, columnName: "ID" },
+          { columnIndex: 2, columnName: "Amount", columnType: "DOUBLE" },
+        ],
+      },
+    ],
+    data:
+      rows === undefined
+        ? undefined
+        : [
+            {
+              startRow: 0,
+              startColumn: 0,
+              rowData: rows.map((values) => ({ values })),
+            },
+          ],
+  };
+}
+
+function text(stringValue: string): GoogleCellData {
+  return { effectiveValue: { stringValue } };
+}
+
+const paymentsRows: GoogleCellData[][] = [
+  [text("Name"), text("ID"), text("Amount")],
+  [text("Rent"), text("pay-0001"), { effectiveValue: { numberValue: 1200 } }],
+];
+
+// Properties alone on a get; the grid on a getByDataFilter; an empty reply to a batchUpdate.
+function gateTransport() {
+  return vi.fn((request: SheetsHttpRequest) => {
+    if (request.url.includes(":batchUpdate")) return { replies: [] };
+    if (request.url.includes(":getByDataFilter")) {
+      return { sheets: [paymentsSheet(paymentsRows)] };
+    }
+    return { sheets: [paymentsSheet()] };
+  });
+}
+
+interface GatedHostCase {
+  isDryRun: boolean;
+  target?: string;
+  confirmedList?: HeldList;
+}
+
+interface SendCase extends Omit<GatedHostCase, "isDryRun"> {
+  flushes: GoogleRequest[][];
+}
+
+function seedGatedHost({ isDryRun, target, confirmedList }: GatedHostCase) {
+  const transport = gateTransport();
+  const host = NodeHost.init({
+    configs: installedConfigs(),
+    spreadsheetId,
+    transport,
+    isDryRun,
+    log: vi.fn(),
+    enteredDataGate: {
+      target: target ?? gateTarget,
+      confirmedList,
+      hash: (input) => `hash(${input})`,
+    },
+  });
+  return { host, api: host.googleSheetsAPI, transport };
+}
+
+function readPayments(api: GoogleSheetsAPI): void {
+  api.fetchGrid(
+    [
+      {
+        sheetId: payments.gid,
+        startRowIndex: SheetIndex.row(0),
+        endRowIndex: SheetIndex.row(payments.endRow),
+        startColumnIndex: SheetIndex.col(0),
+        endColumnIndex: SheetIndex.col(payments.endCol),
+      },
+    ],
+    { includeProgrammaticFacts: false },
+  );
+}
+
+function flushRequests(api: GoogleSheetsAPI, requests: GoogleRequest[]): void {
+  api.flush(
+    requests.map((request) => ({
+      kind: "raw",
+      request: googleRawRequest(request),
+    })),
+  );
+}
+
+function writeAmount(rowIndex: number, numberValue: number): GoogleRequest {
+  return {
+    updateCells: {
+      range: {
+        sheetId: payments.gid,
+        startRowIndex: rowIndex,
+        endRowIndex: rowIndex + 1,
+        startColumnIndex: paymentsAmountCol,
+        endColumnIndex: paymentsAmountCol + 1,
+      },
+      rows: [{ values: [{ userEnteredValue: { numberValue } }] }],
+      fields: "userEnteredValue",
+    },
+  };
+}
+
+const appendRows: GoogleRequest = {
+  appendDimension: { sheetId: payments.gid, dimension: "ROWS", length: 5 },
+};
+
+const replaceRent: GoogleRequest = {
+  findReplace: { find: "Rent", replacement: "Lease", allSheets: true },
+};
+
+function batchUpdatePosts(transport: ReturnType<typeof gateTransport>) {
+  return transport.mock.calls.filter(([request]) =>
+    request.url.includes(":batchUpdate"),
+  );
+}
+
+function heldKinds(heldList: HeldList | undefined): string[][] | undefined {
+  return heldList?.flushes.map((items) => items.map(({ kind }) => kind));
+}
+
+// A dry run of the given flushes after one read of the Payments grid, and the held list it leaves.
+function dryRunHeldList(flushes: GoogleRequest[][], target?: string): HeldList {
+  const { host, api } = seedGatedHost({ isDryRun: true, target });
+  readPayments(api);
+  for (const requests of flushes) flushRequests(api, requests);
+  return Val.assert(host.heldList, "heldList");
+}
+
+function sendFlushes({ flushes, confirmedList, target }: SendCase) {
+  const { host, api, transport } = seedGatedHost({
+    isDryRun: false,
+    target,
+    confirmedList,
+  });
+  readPayments(api);
+  let refusal: unknown;
+  try {
+    for (const requests of flushes) flushRequests(api, requests);
+  } catch (error) {
+    refusal = error;
+  }
+  return { host, refusal, posts: batchUpdatePosts(transport) };
+}
+
+describe("NodeHost with an entered-data gate", () => {
+  it.each([
+    { label: "frees an append", request: appendRows, kinds: [] },
+    {
+      label: "frees a write into an empty cell a read covered",
+      request: writeAmount(payments.emptyRow, 5),
+      kinds: [],
+    },
+    {
+      label: "holds a findReplace",
+      request: replaceRent,
+      kinds: ["findReplace"],
+    },
+    {
+      label: "holds an overwrite of entered data",
+      request: writeAmount(payments.rentRow, 900),
+      kinds: ["enteredData"],
+    },
+  ])("$label", ({ request, kinds }) => {
+    expect(heldKinds(dryRunHeldList([[request]]))).toEqual([kinds]);
+  });
+
+  it("keeps a free flush's empty list, so each flush's items sit at its index", () => {
+    expect(heldKinds(dryRunHeldList([[appendRows], [replaceRent]]))).toEqual([
+      [],
+      ["findReplace"],
+    ]);
+  });
+
+  it("judges a flush against the reads since the one before it, as the send will", () => {
+    expect(
+      heldKinds(
+        dryRunHeldList([[appendRows], [writeAmount(payments.emptyRow, 5)]]),
+      ),
+    ).toEqual([[], ["unreadCell"]]);
+  });
+
+  it("holds a write into a cell no read covered", () => {
+    const { host, api } = seedGatedHost({ isDryRun: true });
+    api.fetchSheetProperties();
+
+    flushRequests(api, [writeAmount(payments.emptyRow, 5)]);
+
+    expect(heldKinds(host.heldList)).toEqual([["unreadCell"]]);
+  });
+
+  it("withholds every flush on a dry run, free ones included, and still reports them", () => {
+    const { host, api, transport } = seedGatedHost({ isDryRun: true });
+    readPayments(api);
+
+    flushRequests(api, [appendRows]);
+    flushRequests(api, [writeAmount(payments.rentRow, 900)]);
+
+    expect(batchUpdatePosts(transport)).toEqual([]);
+    expect(host.summary.count).toBe(2);
+  });
+
+  it("gives one token for one target and list, and another when either differs", () => {
+    const flushes = [[writeAmount(payments.rentRow, 900)]];
+    const { token } = dryRunHeldList(flushes);
+
+    expect(dryRunHeldList(flushes).token).toBe(token);
+    expect(dryRunHeldList(flushes, "app:another-spreadsheet").token).not.toBe(
+      token,
+    );
+    expect(
+      dryRunHeldList([[writeAmount(payments.rentRow, 800)]]).token,
+    ).not.toBe(token);
+  });
+
+  it("sends a free flush with no token", () => {
+    const { refusal, posts } = sendFlushes({ flushes: [[appendRows]] });
+
+    expect(refusal).toBeUndefined();
+    expect(posts).toHaveLength(1);
+  });
+
+  it("refuses a held flush as uncovered when no token is given, and sends nothing", () => {
+    const { refusal, posts } = sendFlushes({
+      flushes: [[writeAmount(payments.rentRow, 900)]],
+    });
+
+    expect(refusal).toBeInstanceOf(HeldFlushRefusal);
+    expect(refusal).toMatchObject({
+      kind: "uncovered",
+      landedFlushes: 0,
+      flushCount: undefined,
+    });
+    expect(posts).toEqual([]);
+  });
+
+  it("sends a held flush the dry run's token and list cover", () => {
+    const flushes = [[appendRows], [writeAmount(payments.rentRow, 900)]];
+
+    const { refusal, posts } = sendFlushes({
+      flushes,
+      confirmedList: dryRunHeldList(flushes),
+    });
+
+    expect(refusal).toBeUndefined();
+    expect(posts).toHaveLength(2);
+  });
+
+  it("refuses as mismatched when the list's entry for the flush differs from its items, counting the list's flushes", () => {
+    const covered = dryRunHeldList([
+      [writeAmount(payments.rentRow, 900)],
+      [appendRows],
+    ]);
+
+    const { refusal, posts } = sendFlushes({
+      flushes: [[writeAmount(payments.rentRow, 800)]],
+      confirmedList: covered,
+    });
+
+    expect(refusal).toMatchObject({
+      kind: "mismatched",
+      landedFlushes: 0,
+      flushCount: 2,
+    });
+    expect(posts).toEqual([]);
+  });
+
+  it("refuses as mismatched when the list was edited after the token was made", () => {
+    const flushes = [[writeAmount(payments.rentRow, 800)]];
+    const covered = dryRunHeldList([[writeAmount(payments.rentRow, 900)]]);
+    const edited = { ...covered, flushes: dryRunHeldList(flushes).flushes };
+
+    const { refusal } = sendFlushes({ flushes, confirmedList: edited });
+
+    expect(refusal).toMatchObject({ kind: "mismatched" });
+  });
+
+  it("refuses as mismatched when the token was made for another target", () => {
+    const flushes = [[writeAmount(payments.rentRow, 900)]];
+
+    const { refusal } = sendFlushes({
+      flushes,
+      confirmedList: dryRunHeldList(flushes, "app:another-spreadsheet"),
+    });
+
+    expect(refusal).toMatchObject({ kind: "mismatched" });
+  });
+
+  it("refuses partway with the earlier flushes landed and counted", () => {
+    const { refusal, posts } = sendFlushes({
+      flushes: [
+        [appendRows],
+        [appendRows],
+        [writeAmount(payments.rentRow, 900)],
+      ],
+    });
+
+    expect(refusal).toMatchObject({ kind: "uncovered", landedFlushes: 2 });
+    expect(posts).toHaveLength(2);
+  });
+
+  it("classifies nothing without a gate, so a chore's write goes out", () => {
+    const { host, transport } = seedHost(false);
+
+    writeOneCell();
+
+    expect(host.heldList).toBeUndefined();
+    expect(
+      transport.mock.calls.filter(([request]) => request.method === "POST"),
+    ).toHaveLength(1);
   });
 });
 

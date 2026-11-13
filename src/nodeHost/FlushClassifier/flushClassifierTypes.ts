@@ -1,4 +1,7 @@
-import type { GoogleRequest } from "../../00_Source/GoogleSheets/GoogleSheetsAPI";
+import type {
+  GoogleRequest,
+  SheetsHttpRead,
+} from "../../00_Source/GoogleSheets/GoogleSheetsAPI";
 import type { ForcedTrait } from "../../01_SpreadsheetSchema/configReaders/syncRunResult";
 
 export type GoogleGridRange = GoogleAppsScript.Sheets.Schema.GridRange;
@@ -8,11 +11,7 @@ export type GoogleCellData = GoogleAppsScript.Sheets.Schema.CellData;
 export type ExtendedValue = GoogleAppsScript.Sheets.Schema.ExtendedValue;
 export type RequestVerb = keyof GoogleRequest;
 
-export interface FlushRead {
-  // Google trims trailing empty rows and cells from a reply, so what a read covers comes from the ranges it asked for.
-  gridRanges: GoogleGridRange[];
-  spreadsheet: GoogleAppsScript.Sheets.Schema.Spreadsheet;
-}
+export type FlushRead = SheetsHttpRead;
 
 export type DropdownStyleReset = "ask" | "allow";
 

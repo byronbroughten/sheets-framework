@@ -1,4 +1,5 @@
 import {
+  type GoogleBatchUpdateResponse,
   type GoogleRequest,
   GoogleSheetsAPI,
   type SheetsHttpTransport,
@@ -10,6 +11,11 @@ import {
 } from "../01_SpreadsheetSchema/configReaders/configRegister";
 import type { Endpoints } from "../06_API/Endpoints";
 import { installEndpoints } from "../06_API/feedbackColumnIds";
+import {
+  EnteredDataGate,
+  type EnteredDataGateProps,
+  type HeldList,
+} from "./EnteredDataGate";
 import { UpdateRequestSummary } from "./UpdateRequestSummary";
 
 export interface NodeHostProps {
@@ -20,6 +26,8 @@ export interface NodeHostProps {
   transport: SheetsHttpTransport;
   isDryRun: boolean;
   log: (message: string) => void;
+  // Only sync passes one; a chore's flushes go unclassified.
+  enteredDataGate?: EnteredDataGateProps;
 }
 
 // The framework's second host — Sheets only, in Node. See docs/how-it-runs/node-host.md.
@@ -28,6 +36,7 @@ export class NodeHost {
   private endpoints: Endpoints;
   readonly spreadsheetId: string;
   readonly isDryRun: boolean;
+  private enteredDataGate: EnteredDataGate | undefined;
   private transport: SheetsHttpTransport;
   private log: (message: string) => void;
   private sentRequests: GoogleRequest[];
@@ -36,6 +45,7 @@ export class NodeHost {
     this.endpoints = props.endpoints ?? {};
     this.spreadsheetId = props.spreadsheetId;
     this.isDryRun = props.isDryRun;
+    this.enteredDataGate = gateFor(props.enteredDataGate);
     this.transport = props.transport;
     this.log = props.log;
     this.sentRequests = [];
@@ -47,13 +57,17 @@ export class NodeHost {
     return GoogleSheetsAPI.initHttp({
       spreadsheetId: this.spreadsheetId,
       transport: this.transport,
-      isDryRun: this.isDryRun,
-      reportRequests: (requests) => this.sentRequests.push(...requests),
+      reportRead: (read) => this.enteredDataGate?.integrateRead(read),
+      gateFlush: (requests, send) => this._gateFlush(requests, send),
     });
   }
   // Every request the run produced, sent or withheld by the dry run.
   get summary(): UpdateRequestSummary {
     return new UpdateRequestSummary({ requests: this.sentRequests });
+  }
+  // Every flush's held items and their token; undefined when the host has no gate.
+  get heldList(): HeldList | undefined {
+    return this.enteredDataGate?.heldList;
   }
   ensureGlobals(): this {
     const globals = globalThis as Record<string, unknown>;
@@ -63,4 +77,21 @@ export class NodeHost {
     installRawSource(this.googleSheetsAPI);
     return this;
   }
+  private _gateFlush(
+    requests: GoogleRequest[],
+    send: () => GoogleBatchUpdateResponse,
+  ): GoogleBatchUpdateResponse {
+    this.sentRequests.push(...requests);
+    this.enteredDataGate?.classify(requests);
+    if (this.isDryRun) return {};
+    if (this.enteredDataGate === undefined) return send();
+    return this.enteredDataGate.flush(send);
+  }
+}
+
+function gateFor(
+  props: EnteredDataGateProps | undefined,
+): EnteredDataGate | undefined {
+  if (props === undefined) return undefined;
+  return EnteredDataGate.init(props);
 }
