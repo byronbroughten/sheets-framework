@@ -214,7 +214,7 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
   }
   deleteTables(sent: IntendedTrait[]): this {
     for (const intended of sent) {
-      if (!isTableDeletion(intended)) continue;
+      if (intended.kind !== "table" || !isTableDeletion(intended)) continue;
       this._previousTable(intended.table).queueDelete();
     }
     return this;
