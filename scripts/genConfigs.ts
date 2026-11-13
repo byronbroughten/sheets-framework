@@ -1,12 +1,19 @@
-// `sheets-framework gen-configs`: regenerates the package's generated files from its live Tables and previous configs, on the Node host.
+// `sheets-framework gen-configs`: runs sync on the Node host, planning against the live Tables and previous configs, and sending only with --send.
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
+import { pathToFileURL } from "node:url";
 
 import { Val } from "@byronbroughten/utils/val";
 
+import type { IdNameMapGeneric } from "../src/01_SpreadsheetSchema/configReaders/idNameMapTypes.ts";
 import { alterationsFileSource } from "../src/05_Operators/configFileSource.ts";
-import type { ConfigRegeneration } from "../src/05_Operators/SyncCoordinator.ts";
+import { parseIdNameMapFileSource } from "../src/05_Operators/parseIdNameMapFileSource.ts";
+import type {
+  ConfigRegeneration,
+  SyncIntendedState,
+  SyncRun,
+} from "../src/05_Operators/SyncCoordinator.ts";
 import { readConfigsDiff } from "./configsDiff.ts";
 import {
   type ConfigFile,
@@ -18,16 +25,21 @@ import {
 } from "./nodeHost.ts";
 import type { SheetsConfig } from "./sheetsConfig.ts";
 
-interface GeneratedFiles {
-  files: ConfigRegeneration;
-  notes: string[];
+interface ConfigFilesGeneratorProps {
+  sheetsConfig: SheetsConfig;
+  isSending: boolean;
 }
 
 class ConfigFilesGenerator {
   readonly sheetsConfig: SheetsConfig;
-  readonly path: Record<ConfigFile | "appConfigs" | "idNameMap", string>;
-  constructor({ sheetsConfig }: { sheetsConfig: SheetsConfig }) {
+  readonly isSending: boolean;
+  readonly path: Record<
+    ConfigFile | "appConfigs" | "idNameMap" | "alterations",
+    string
+  >;
+  constructor({ sheetsConfig, isSending }: ConfigFilesGeneratorProps) {
     this.sheetsConfig = sheetsConfig;
+    this.isSending = isSending;
     const { generatedDir } = sheetsConfig;
     this.path = {
       tableConfigs: configFilePath(generatedDir, "tableConfigs"),
@@ -41,40 +53,31 @@ class ConfigFilesGenerator {
       valueConfigs: configFilePath(generatedDir, "valueConfigs"),
       appConfigs: join(generatedDir, "appConfigs.ts"),
       idNameMap: idNameMapPath(generatedDir),
+      alterations: alterationsPath(generatedDir),
     };
   }
-  static init(sheetsConfig: SheetsConfig): ConfigFilesGenerator {
-    return new ConfigFilesGenerator({ sheetsConfig });
+  static init(
+    sheetsConfig: SheetsConfig,
+    argv: string[],
+  ): ConfigFilesGenerator {
+    return new ConfigFilesGenerator({
+      sheetsConfig,
+      isSending: argv.includes("--send"),
+    });
   }
   async run(): Promise<void> {
-    const { files, notes } = await this._generate();
-    const {
-      tableConfigs,
-      tabConfigs,
-      conditionalFormatConfigs,
-      retiredIdPrefixes,
-      columnConfigs,
-      valueConfigs,
-      idNameMap,
-    } = files;
-
-    // Write nothing until every config and the ID-name map are confirmed good; a subset would go stale.
-    mkdirSync(this.sheetsConfig.generatedDir, { recursive: true });
-    writeFileSync(this.path.tableConfigs, tableConfigs);
-    writeFileSync(this.path.tabConfigs, tabConfigs);
-    writeFileSync(this.path.conditionalFormatConfigs, conditionalFormatConfigs);
-    writeFileSync(this.path.retiredIdPrefixes, retiredIdPrefixes);
-    writeFileSync(this.path.columnConfigs, columnConfigs);
-    writeFileSync(this.path.valueConfigs, valueConfigs);
-    writeFileSync(this.path.appConfigs, appConfigsText());
-    writeFileSync(this.path.idNameMap, idNameMap);
-    Object.values(this.path).forEach((path) => {
-      console.log(`Wrote ${path}`);
-    });
-    this._createAlterationsIfMissing();
+    const { result, files } = await this._sync();
+    const { SyncRunReport } = await import("../src/nodeHost/SyncRunReport.ts");
+    const report = SyncRunReport.init(result).text;
+    // A refused run returns no files: the run writes every file or none.
+    if (files === undefined) {
+      console.log(report);
+      return;
+    }
+    this._write(files);
     console.log("\ngen:configs: changes against HEAD:");
     console.log(readConfigsDiff(this.sheetsConfig).join("\n"));
-    console.log(`\n${configsNotesText(notes)}`);
+    console.log(`\n${report}`);
 
     console.log(
       "\nRunning this package's npm run tsc to check the regenerated files...",
@@ -86,20 +89,15 @@ class ConfigFilesGenerator {
     console.log("gen:configs: tsc passed.");
   }
 
-  _createAlterationsIfMissing(): void {
-    const path = alterationsPath(this.sheetsConfig.generatedDir);
-    if (existsSync(path)) {
-      return;
-    }
-    writeFileSync(path, alterationsText());
-    console.log(`Created ${path}`);
-  }
-
-  async _generate(): Promise<GeneratedFiles> {
+  async _sync(): Promise<SyncRun> {
+    const { generatedDir } = this.sheetsConfig;
+    // Loaded before the host starts, as the configs are, so a broken alterations.ts costs no setup.
+    const intendedState = await loadIntendedState(generatedDir);
+    const previousIdNameMap = loadPreviousIdNameMap(generatedDir);
     // The previous configs say which Tables have API access; a package with no generated files yet borrows the framework's.
     // No app endpoints: they may name columns the configs being regenerated don't have yet.
     await startNodeHost({
-      isDryRun: false,
+      isDryRun: !this.isSending,
       sheetsConfig: this.sheetsConfig,
       configs: hasPackageConfigs(this.sheetsConfig)
         ? await loadPackageConfigs(this.sheetsConfig)
@@ -107,22 +105,45 @@ class ConfigFilesGenerator {
     });
     const { SyncCoordinator } =
       await import("../src/05_Operators/SyncCoordinator.ts");
-    // A send with empty intended state, so nothing can be refused, until the script that loads alterations.ts lands.
-    const { result, files } = SyncCoordinator.init().run({
-      isSending: true,
-      intendedState: { alterations: {} },
-      previousIdNameMap: { tables: {}, tabs: {} },
+    return SyncCoordinator.init().run({
+      isSending: this.isSending,
+      intendedState,
+      previousIdNameMap,
       frame: {
         target: basename(this.sheetsConfig.dir),
         command: "npm run gen:configs",
-        generatedDir: this.sheetsConfig.generatedDir,
-        alterationsPath: alterationsPath(this.sheetsConfig.generatedDir),
+        generatedDir,
+        alterationsPath: this.path.alterations,
       },
     });
-    return {
-      files: Val.assert(files, "the regen's files"),
-      notes: result.configs.notes,
-    };
+  }
+
+  // Called only with the whole set, so no subset of the files goes stale.
+  _write(files: ConfigRegeneration): void {
+    const { path } = this;
+    mkdirSync(this.sheetsConfig.generatedDir, { recursive: true });
+    const written: [string, string][] = [
+      [path.tableConfigs, files.tableConfigs],
+      [path.tabConfigs, files.tabConfigs],
+      [path.conditionalFormatConfigs, files.conditionalFormatConfigs],
+      [path.retiredIdPrefixes, files.retiredIdPrefixes],
+      [path.columnConfigs, files.columnConfigs],
+      [path.valueConfigs, files.valueConfigs],
+      [path.appConfigs, appConfigsText()],
+      [path.idNameMap, files.idNameMap],
+    ];
+    // alterations.ts is rewritten only when the run returns it, so a run that landed nothing leaves its comments alone.
+    if (files.alterations !== undefined) {
+      written.push([path.alterations, files.alterations]);
+    }
+    for (const [filePath, source] of written) {
+      writeFileSync(filePath, source);
+      console.log(`Wrote ${filePath}`);
+    }
+    if (!existsSync(path.alterations)) {
+      writeFileSync(path.alterations, alterationsText());
+      console.log(`Created ${path.alterations}`);
+    }
   }
 
   _runTsc(): boolean {
@@ -132,14 +153,6 @@ class ConfigFilesGenerator {
     });
     return status === 0;
   }
-}
-
-// The untyped-columns summary is the one note so far; with none, every column was declared.
-function configsNotesText(notes: string[]): string {
-  if (notes.length === 0) {
-    return "gen:configs: every column is declared; no value name was guessed.";
-  }
-  return notes.map((note) => `gen:configs: ${note}`).join("\n");
 }
 
 function reportTscFailure(): void {
@@ -163,6 +176,25 @@ export function alterationsPath(generatedDir: string): string {
 
 export function alterationsText(): string {
   return alterationsFileSource({});
+}
+
+// Intended state is the pending alterations alone until claims arrive; a package with no alterations.ts has none pending.
+export async function loadIntendedState(
+  generatedDir: string,
+): Promise<SyncIntendedState> {
+  const path = alterationsPath(generatedDir);
+  if (!existsSync(path)) return { alterations: {} };
+  const { pendingAlterations } = await import(pathToFileURL(path).href);
+  return {
+    alterations: Val.assert(pendingAlterations, `${path}'s pendingAlterations`),
+  };
+}
+
+// A package that has never synced has no map, so every Table is new to it.
+export function loadPreviousIdNameMap(generatedDir: string): IdNameMapGeneric {
+  const path = idNameMapPath(generatedDir);
+  if (!existsSync(path)) return { tables: {}, tabs: {} };
+  return parseIdNameMapFileSource(readFileSync(path, "utf8"));
 }
 
 export function appConfigsText(): string {
@@ -195,6 +227,9 @@ declare module "@byronbroughten/sheets-framework" {
 `;
 }
 
-export async function runGenConfigs(sheetsConfig: SheetsConfig): Promise<void> {
-  await ConfigFilesGenerator.init(sheetsConfig).run();
+export async function runGenConfigs(
+  sheetsConfig: SheetsConfig,
+  argv: string[],
+): Promise<void> {
+  await ConfigFilesGenerator.init(sheetsConfig, argv).run();
 }

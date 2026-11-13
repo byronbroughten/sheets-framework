@@ -55,7 +55,7 @@ The sync resolves it in six steps, first match winning: the ID column is always 
 
 ## The untyped-columns summary
 
-Because a column left on Automatic with no mapped format and no Insert > Checkbox declares nothing, the sample is still doing real work: **the sync counts every column whose value name it had to guess and returns a one-line summary**, naming how many Tables they span; the per-Table breakdown goes to the log. The regen never fails over an untyped column — it also writes missing column IDs, and a throw would discard that. The summary rides back in the run's result as a note in `configs.notes`, and `npm run gen:configs` prints every note. **The agent must report that count**, per `gen:configs`' standing permission in the byro-repo root's `docs/targets-and-gates.md`.
+Because a column left on Automatic with no mapped format and no Insert > Checkbox declares nothing, the sample is still doing real work: **the sync counts every column whose value name it had to guess and returns a one-line summary**, naming how many Tables they span; the per-Table breakdown goes to the log. The regen never fails over an untyped column — a send also writes missing column IDs, and a throw would discard that. The summary rides back in the run's result as a note in `configs.notes`, and `npm run gen:configs` prints every note in its report's Configs section. **The agent must report that count**, per `gen:configs`' standing permission in the byro-repo root's `docs/targets-and-gates.md`.
 
 ## The generated entry never says which step decided it
 

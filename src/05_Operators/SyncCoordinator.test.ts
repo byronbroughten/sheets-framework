@@ -21,7 +21,7 @@ import {
   type FakeTableColumn,
   fakeTableSheet,
 } from "../testSupport/fakeSheetsService/fakeTableSheet";
-import { parseIdNameMapFileSource } from "../testSupport/parseIdNameMapFileSource";
+import { parseIdNameMapFileSource } from "./parseIdNameMapFileSource";
 import {
   type ConfigRegeneration,
   SyncCoordinator,

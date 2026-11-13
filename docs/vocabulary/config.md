@@ -16,7 +16,7 @@ The elaboration behind [docs/vocabulary.md](../vocabulary.md), whose one-line en
 
 Planned by [the map to replace Table Config and Column Config](https://github.com/byronbroughten/sheets-framework/issues/178), and named in [its naming ticket](https://github.com/byronbroughten/sheets-framework/issues/187); no code uses these words yet.
 
-- **Intended state**: what the repo says the spreadsheet's structure will be, only for the traits it names; a trait it omits belongs to the sheet. It is the third side of `gen:configs`' comparison: intended state, the configs, and the live sheet. One trait's value in it is an **intended value**.
+- **Intended state**: what the repo says the spreadsheet's structure will be, only for the traits it names; a trait it omits belongs to the sheet. It is the third side of `gen:configs`' comparison: intended state, the configs, and the live sheet. For now it is `alterations.ts` alone. One trait's value in it is an **intended value**.
   - Not "declarations": TypeScript's declaration files, `declare` and declaration merging would send an agent looking for `.d.ts` files. The verb "declare" stays plain English.
   - Not "desired state": in Kubernetes and Terraform, drift from desired state is reverted. Here a person's change to an intended trait stops the run, and nothing is silently reverted.
   - Nothing names whatever holds an intended value; a message names the pending alterations. Claims, which would add endpoint and chore code to intended state, wait on [#286](https://github.com/byronbroughten/sheets-framework/issues/286).
