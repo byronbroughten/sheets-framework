@@ -1,7 +1,7 @@
 // `sheets-framework sync`: runs sync on the Node host, planning against the live Tables and previous configs, and sending only with --send.
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { basename, dirname, join, relative } from "node:path";
+import { basename, dirname, join } from "node:path";
 
 import type { IdNameMapGeneric } from "../src/01_SpreadsheetSchema/configReaders/idNameMapTypes.ts";
 import type { PendingAlterations } from "../src/01_SpreadsheetSchema/configReaders/intendedState.ts";
@@ -16,12 +16,9 @@ import type {
   SyncIntendedState,
   SyncRun,
 } from "../src/05_Operators/SyncCoordinator.ts";
-import type {
-  ConfirmedList,
-  HeldList,
-} from "../src/nodeHost/EnteredDataGate.ts";
-import type { HeldItem } from "../src/nodeHost/FlushClassifier/flushClassifierTypes.ts";
+import type { HeldList } from "../src/nodeHost/EnteredDataGate.ts";
 import { readConfigsDiff } from "./configsDiff.ts";
+import { HeldFile, parseConfirmToken } from "./HeldFile.ts";
 import {
   type ConfigFile,
   configFilePath,
@@ -44,9 +41,9 @@ export class ConfigFilesGenerator {
   readonly sheetsConfig: SheetsConfig;
   readonly isSending: boolean;
   readonly forcedTraits: ForcedTrait[];
-  readonly confirmToken: string | undefined;
+  readonly heldFile: HeldFile;
   readonly path: Record<
-    ConfigFile | "appConfigs" | "idNameMap" | "alterations" | "heldFile",
+    ConfigFile | "appConfigs" | "idNameMap" | "alterations",
     string
   >;
   constructor({
@@ -58,7 +55,12 @@ export class ConfigFilesGenerator {
     this.sheetsConfig = sheetsConfig;
     this.isSending = isSending;
     this.forcedTraits = forcedTraits;
-    this.confirmToken = confirmToken;
+    this.heldFile = HeldFile.init({
+      packageDir: sheetsConfig.dir,
+      command: "sync",
+      isSending,
+      confirmToken,
+    });
     const { generatedDir } = sheetsConfig;
     this.path = {
       tableConfigs: configFilePath(generatedDir, "tableConfigs"),
@@ -73,7 +75,6 @@ export class ConfigFilesGenerator {
       appConfigs: join(generatedDir, "appConfigs.ts"),
       idNameMap: idNameMapPath(generatedDir),
       alterations: alterationsPath(generatedDir),
-      heldFile: syncHeldFile.path(sheetsConfig.dir),
     };
   }
   static init(
@@ -127,7 +128,10 @@ export class ConfigFilesGenerator {
       configs: hasPackageConfigs(this.sheetsConfig)
         ? await loadPackageConfigs(this.sheetsConfig)
         : await loadFrameworkConfigs(),
-      enteredDataGate: { target, confirmedList: this._confirmedList() },
+      enteredDataGate: {
+        target,
+        confirmedList: this.heldFile.confirmedList,
+      },
     });
     const { SyncCoordinator } =
       await import("../src/05_Operators/SyncCoordinator.ts");
@@ -149,33 +153,15 @@ export class ConfigFilesGenerator {
     return { ...run, result: await this._withHeld(run.result, heldList) };
   }
 
-  // A send's token, with the dry run's held list it covers; a missing or unreadable held file leaves the list undefined, so the gate counts it mismatched.
-  _confirmedList(): ConfirmedList | undefined {
-    if (!this.isSending || this.confirmToken === undefined) return undefined;
-    return {
-      token: this.confirmToken,
-      flushes: syncHeldFile.readFlushes(this.path.heldFile),
-    };
-  }
-
   // Only a dry run prints the held list and its token, and writes every held item with its value to the held file.
   async _withHeld(
     result: SyncRunResult,
-    { token, flushes }: HeldList,
+    heldList: HeldList,
   ): Promise<SyncRunResult> {
     if (result.mode !== "dry run") return result;
-    if (flushes.every((items) => items.length === 0)) return result;
-    const { heldGroups } = await import("../src/nodeHost/heldGroups.ts");
-    const { heldFile } = this.path;
-    syncHeldFile.write(heldFile, { target: result.target, token, flushes });
-    return {
-      ...result,
-      held: {
-        groups: heldGroups(flushes),
-        token,
-        fullListPath: relative(process.cwd(), heldFile),
-      },
-    };
+    const held = await this.heldFile.dryRunHeld(heldList, result.target);
+    if (held === undefined) return result;
+    return { ...result, held };
   }
 
   // Write nothing until every config and the ID-name map are confirmed good; a subset would go stale.
@@ -229,51 +215,6 @@ export function parseForcedTraits(argv: string[]): ForcedTrait[] {
     return [{ table, column, trait }];
   });
 }
-
-// The token after `--confirm`, which the dry run printed beside its held list.
-export function parseConfirmToken(argv: string[]): string | undefined {
-  const index = argv.indexOf("--confirm");
-  if (index === -1) return undefined;
-  const token = argv[index + 1];
-  if (token === undefined || token.startsWith("--")) {
-    throw new Error("--confirm takes the token the dry run printed.");
-  }
-  return token;
-}
-
-interface HeldFileContents {
-  target: string;
-  token: string;
-  flushes: HeldItem[][];
-}
-
-// The dry run's held list on disk, which a send with --confirm reads back.
-export const syncHeldFile = {
-  // In the package's .probe/, beside the probe's output, since it holds live cell values and is never committed.
-  path(packageDir: string): string {
-    return join(packageDir, ".probe", "sync-held.json");
-  },
-  write(path: string, contents: HeldFileContents): void {
-    mkdirSync(dirname(path), { recursive: true });
-    writeFileSync(path, `${JSON.stringify(contents, null, 2)}\n`);
-  },
-  // Undefined when the file is missing or isn't a held list; the gate compares each entry with the flush it judges.
-  readFlushes(path: string): unknown[][] | undefined {
-    if (!existsSync(path)) return undefined;
-    try {
-      const { flushes }: { flushes?: unknown } = JSON.parse(
-        readFileSync(path, "utf8"),
-      );
-      if (!Array.isArray(flushes)) return undefined;
-      if (!flushes.every((flush): flush is unknown[] => Array.isArray(flush))) {
-        return undefined;
-      }
-      return flushes;
-    } catch {
-      return undefined;
-    }
-  },
-};
 
 function labelled(text: string): string {
   return `sync: ${text}`;

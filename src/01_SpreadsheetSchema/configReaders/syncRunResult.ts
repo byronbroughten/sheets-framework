@@ -45,8 +45,11 @@ export type SyncSendOutcome =
   | { kind: "stopped" }
   | { kind: "refused" }
   | SyncSentOutcome
-  | SyncStoppedBeforeSendingOutcome
-  | SyncStoppedPartwayOutcome;
+  | SyncHeldStoppedOutcome;
+
+// A send the entered-data gate refused at a held flush.
+export type SyncHeldStoppedOutcome =
+  SyncStoppedBeforeSendingOutcome | SyncStoppedPartwayOutcome;
 
 export interface SyncSentOutcome {
   kind: "sent";

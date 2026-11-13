@@ -1,5 +1,6 @@
 import type { HeldFlushRefusal } from "../../00_Source/RawSource/HeldFlushRefusal";
 import { hasLanded } from "./didntLand";
+import { heldStoppedOutcome } from "./heldStoppedOutcome";
 import type { SyncPlannerResult } from "./SyncPlanner";
 import {
   fillRowIdsName,
@@ -105,11 +106,7 @@ export class SyncRunResultBuilder {
     };
   }
   // A send the host refused at a held flush; nothing after it was sent.
-  heldStopped({
-    planned,
-    refusal: { kind, landedFlushes, flushCount },
-    rowIds,
-  }: SyncRunHeldStopped): SyncRunResult {
+  heldStopped({ planned, refusal, rowIds }: SyncRunHeldStopped): SyncRunResult {
     const common = this._common({
       refusals: [],
       planned,
@@ -117,15 +114,7 @@ export class SyncRunResultBuilder {
       notes: [],
       typedTraitChanges: [],
     });
-    if (landedFlushes === 0) {
-      return sendResult(common, { kind: "stoppedBeforeSending", heldBy: kind });
-    }
-    return sendResult(common, {
-      kind: "stoppedPartway",
-      landedFlushes,
-      flushCount,
-      heldBy: kind,
-    });
+    return sendResult(common, heldStoppedOutcome(refusal));
   }
   private _common({
     refusals,

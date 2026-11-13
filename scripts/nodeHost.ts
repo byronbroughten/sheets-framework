@@ -8,7 +8,10 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { Val } from "@byronbroughten/utils/val";
 
-import type { SheetsHttpRequest } from "../src/00_Source/GoogleSheets/GoogleSheetsAPI.ts";
+import type {
+  SheetsHttpRequest,
+  SheetsHttpTransport,
+} from "../src/00_Source/GoogleSheets/GoogleSheetsAPI.ts";
 import type {
   Configs,
   ConfigSetBase,
@@ -189,24 +192,31 @@ export async function startNodeHost({
   configs,
   endpoints,
   enteredDataGate,
+  transport = liveTransport(),
 }: {
   isDryRun: boolean;
   sheetsConfig: SheetsConfig;
   configs: Configs;
   endpoints?: Endpoints;
   enteredDataGate?: EnteredDataGateTerms;
+  // A test's stand-in for Google; the live one otherwise.
+  transport?: SheetsHttpTransport;
 }): Promise<NodeHost> {
   const { NodeHost } = await import("../src/nodeHost/NodeHost.ts");
-  const transport = SheetsTransport.init();
   return NodeHost.init({
     configs,
     endpoints,
     spreadsheetId: sheetsConfig.spreadsheetId,
-    transport: (request) => transport.send(request),
+    transport,
     isDryRun,
     log: (message) => console.log(`  log: ${message}`),
     enteredDataGate: hashedGate(enteredDataGate),
   }).ensureGlobals();
+}
+
+function liveTransport(): SheetsHttpTransport {
+  const transport = SheetsTransport.init();
+  return (request) => transport.send(request);
 }
 
 function hashedGate(

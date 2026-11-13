@@ -7,7 +7,10 @@ sheets-framework chore                   # list the chores
 sheets-framework chore <name>            # dry run: read the sheet, print what it would write
 sheets-framework chore <name> --json     # the same, as raw request JSON
 sheets-framework chore <name> --send     # apply it
+sheets-framework chore <name> --send --confirm <token>   # apply it, held items included
 ```
+
+**A chore's `--send` is gated on entered data as `sync`'s is** ([sync's gate](./sync.md#syncs-entered-data-gate-and---confirm)): a flush that could lose entered data is held until `--confirm` gives the token its dry run printed. Its held list goes to the package's `.probe/chore-held.json`, and a held send prints `STOPPED` and the dry run to rerun, then exits 1.
 
 **Dry-run mode is enforced at the adapter, not at the runner and not at the chore's handle**: a dry run records each request and returns an empty response, whoever calls the flush. Why there: [ADR 0032](../adr/0032-enforce-a-chores-dry-run-at-the-node-hosts-adapter.md). Reads are not gated: a dry run fetches from the live sheet normally, and only sends are suppressed.
 
