@@ -573,6 +573,29 @@ describe("GoogleSheetsAPI write mapping", () => {
     ]);
   });
 
+  it("maps a delete-Table operation onto a deleteTable, then a clear of its head-row cells' values and validation", () => {
+    const { api, batchUpdateCalls } = recordingSheets();
+    const headRows = {
+      sheetId: 555,
+      startRowIndex: SheetIndex.row(0),
+      endRowIndex: SheetIndex.row(3),
+      startColumnIndex: SheetIndex.col(0),
+      endColumnIndex: SheetIndex.col(4),
+    };
+
+    api.flush([{ kind: "deleteTable", tableId: "tbl-0a1b2c3d4e", headRows }]);
+
+    expect(batchUpdateCalls[0]?.requests).toEqual([
+      { deleteTable: { tableId: "tbl-0a1b2c3d4e" } },
+      {
+        updateCells: {
+          range: headRows,
+          fields: "userEnteredValue,dataValidation",
+        },
+      },
+    ]);
+  });
+
   it("maps an add-sheet and an add-Table handed together onto three requests in that order, and nothing else", () => {
     const { api, batchUpdateCalls } = recordingSheets();
 

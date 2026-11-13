@@ -283,6 +283,11 @@ const requestBody: {
       "",
     );
   },
+  deleteTable(
+    remove: GoogleAppsScript.Sheets.Schema.DeleteTableRequest | undefined,
+  ): string {
+    return columns(remove?.tableId ?? "(no table)", "delete Table", "", "");
+  },
   updateTable(
     update: GoogleAppsScript.Sheets.Schema.UpdateTableRequest | undefined,
   ): string {

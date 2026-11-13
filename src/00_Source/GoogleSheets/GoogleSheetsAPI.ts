@@ -49,6 +49,7 @@ export type ModeledRequestVerb =
   | "deleteProtectedRange"
   | "addSheet"
   | "addTable"
+  | "deleteTable"
   | "updateSheetProperties"
   | "updateTable"
   | "updateCells"
@@ -528,6 +529,17 @@ function modeledOperationToGoogleRequests(
           },
         },
         columnPropertiesRequest(operation.tableId, operation.columnProperties),
+      ];
+    // deleteTable leaves the head rows, so an updateCells with no rows clears their values and validation; observed: docs/sheets-behaviour.md#creating-and-updating-tables.
+    case "deleteTable":
+      return [
+        { deleteTable: { tableId: operation.tableId } },
+        {
+          updateCells: {
+            range: operation.headRows,
+            fields: "userEnteredValue,dataValidation",
+          },
+        },
       ];
     case "renameSheet":
       return [

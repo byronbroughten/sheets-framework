@@ -182,6 +182,13 @@ export const requestJudgements: {
       tracker.addTable(add.table.tableId);
     }
   },
+  deleteTable(remove, judge): void {
+    if (remove.tableId === undefined) {
+      judge.holdUnmeasured("a Table delete without a tableId");
+      return;
+    }
+    judge.deleteTable(remove.tableId);
+  },
   updateSheetProperties(update, judge): void {
     if (fieldMask.masks(update.fields, "gridProperties")) {
       judge.holdUnmeasured(

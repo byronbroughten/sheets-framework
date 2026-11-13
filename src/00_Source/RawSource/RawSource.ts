@@ -173,6 +173,7 @@ export interface GridCellSnapshot {
 export type LocalWriteOperation =
   | AddSheetOperation
   | AddTableOperation
+  | DeleteTableOperation
   | AppendDimensionOperation
   | InsertRangeOperation
   | UpdateTableRangeOperation
@@ -210,6 +211,13 @@ export interface AddTableOperation {
   name: string;
   range: BoundedGridRange;
   columnProperties: TableColumnPropertiesAdd[];
+}
+
+// deleteTable leaves the head rows above the header, so they are cleared beside it (sheets-framework#208).
+export interface DeleteTableOperation {
+  kind: "deleteTable";
+  tableId: string;
+  headRows: BoundedGridRange;
 }
 
 export interface TableColumnPropertiesAdd {

@@ -121,6 +121,11 @@ export class TableRaw extends TableCommonRaw {
     this._updateWorkingTableName(tableId, name);
     return this;
   }
+  // The head rows' range is gathered, so it takes the stale guard of any write placed by row.
+  queueDelete(): this {
+    this.assertRowIndexesNotStale();
+    return this.queueTableWrite({ action: "deleteTable" });
+  }
   updateHeader(columnId: string, header: string): this {
     this.headRow("header").updateValue(
       this.columnResolver.colIndexOf(columnId),
@@ -574,6 +579,23 @@ export class TableRaw extends TableCommonRaw {
     });
     writes.editProtections.forEach((protection) => {
       this.gatherEditProtectionOperation(protection);
+    });
+    if (writes.deletesTable) this._gatherDeleteTableOperation();
+  }
+  // Before the row deletes, which are sent after it, so the head rows are where it measures them.
+  private _gatherDeleteTableOperation(): void {
+    this.writeOperations.deleteTable.push({
+      kind: "deleteTable",
+      tableId: this.tableId,
+      headRows: this._boundedSheetGridRange(
+        {
+          startRowIndex: headRows.topIndex,
+          endRowIndex: headRows.index("header"),
+          startColIndex: 0,
+          endColIndex: this.columnCount,
+        },
+        this.originAtGathering(),
+      ),
     });
   }
   gatherCheckboxValidationOperation({ rowIndex, colIndex }: TableCell): void {

@@ -6,6 +6,7 @@ import {
   type FakeCell,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
+import { defaultTableId } from "../testSupport/fakeSheetsService/fakeSpreadsheet";
 import { SpreadsheetRaw } from "./SpreadsheetRaw";
 import {
   firstTableEndRowIndex,
@@ -70,6 +71,95 @@ describe("SpreadsheetRaw.gatherRawOperation", () => {
     raw.batchUpdateGSheets();
 
     expect(batchUpdateCount()).toBe(0);
+  });
+});
+
+describe("TableRaw.queueDelete", () => {
+  it("deletes the Table and blanks its range and the head-row cells over its columns, leaving the cells beside them", () => {
+    const { grid } = stubSheetsService({
+      sheets: [
+        {
+          sheetId: 111,
+          title: "Records",
+          rows: buildGridRows({
+            0: ["c:lse:aaa", "c:lse:bbb", "beside"],
+            1: ["Heading"],
+            [tableHeaderRowIndex]: ["ID", "Status"],
+            [topDataRowIndex]: ["r:lse:1", "live"],
+            [topDataRowIndex + 1]: ["below"],
+          }),
+          table: { endRowIndex: topDataRowIndex + 1, endColumnIndex: 2 },
+        },
+      ],
+    });
+
+    const raw = SpreadsheetRaw.init();
+    raw.fetchAllSheetProperties();
+    raw.table(tableId111).queueDelete();
+    raw.batchUpdateGSheets();
+
+    const sheet = grid.sheet(111);
+    expect(sheet.tables).toEqual([]);
+    expect(
+      sheet.values({ startRowIndex: 0, endRowIndex: topDataRowIndex + 2 }),
+    ).toEqual([
+      [null, null, "beside"],
+      [null, null, null],
+      [null, null, null],
+      [null, null, null],
+      [null, null, null],
+      ["below", null, null],
+    ]);
+  });
+
+  it("clears the head rows where they stand before a same-flush row delete in a Table above moves them", () => {
+    const lowerHeaderRowIndex = topDataRowIndex + 2 + tableHeaderRowIndex;
+    const { grid } = stubSheetsService({
+      sheets: [
+        {
+          sheetId: 111,
+          title: "Records",
+          rows: buildGridRows({
+            0: ["c:lse:aaa", "c:lse:bbb"],
+            [tableHeaderRowIndex]: ["ID", "Status"],
+            [topDataRowIndex]: ["r:lse:1", "kept"],
+            [topDataRowIndex + 1]: ["r:lse:2", "deleted"],
+            [topDataRowIndex + 2]: ["c:lse:ccc", "c:lse:ddd"],
+            [lowerHeaderRowIndex]: ["ID", "Note"],
+            [lowerHeaderRowIndex + 1]: ["r:lse:3", "gone"],
+            [lowerHeaderRowIndex + 2]: ["below"],
+          }),
+          tables: [
+            { endRowIndex: topDataRowIndex + 2, endColumnIndex: 2 },
+            {
+              startRowIndex: lowerHeaderRowIndex,
+              endRowIndex: lowerHeaderRowIndex + 2,
+              endColumnIndex: 2,
+            },
+          ],
+        },
+      ],
+    });
+
+    const raw = SpreadsheetRaw.init();
+    raw.fetchAllSheetProperties();
+    raw.table(tableId111).row(1).delete();
+    raw.table(defaultTableId(111, 1)).queueDelete();
+    raw.batchUpdateGSheets();
+
+    expect(
+      grid.sheet(111).values({
+        startRowIndex: topDataRowIndex + 1,
+        endRowIndex: lowerHeaderRowIndex + 2,
+      }),
+    ).toEqual([
+      [null, null],
+      [null, null],
+      [null, null],
+      [null, null],
+      [null, null],
+      ["below", null],
+    ]);
   });
 });
 

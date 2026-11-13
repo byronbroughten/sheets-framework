@@ -290,9 +290,12 @@ export abstract class TableCommonRaw extends TableBaseRaw {
       case "addEditProtection":
         writes.editProtections.push(Obj.strictOmit(props, "action"));
         break;
+      case "deleteTable":
+        writes.deletesTable = true;
+        break;
       default:
         throw new Error(
-          `Invalid action: ${(props as TableWriteProps).action}. Must be one of "sort", "insertTableEndColumn", "insertColumn", "deleteColumn", "fillColumn", "findReplace", "updateColumnType", "addCheckboxValidation", "addConditionalFormatRule" or "addEditProtection".`,
+          `Invalid action: ${(props as TableWriteProps).action}. Must be one of "sort", "insertTableEndColumn", "insertColumn", "deleteColumn", "fillColumn", "findReplace", "updateColumnType", "addCheckboxValidation", "addConditionalFormatRule", "addEditProtection" or "deleteTable".`,
         );
     }
     return this;

@@ -265,6 +265,7 @@ export interface TableWrites {
   checkboxCells: TableCell[];
   conditionalFormatRules: TableConditionalFormatRule[];
   editProtections: TableEditProtection[];
+  deletesTable: boolean;
 }
 // Table-relative until gathering; an absent bound stays open, and an absent start row is the sheet's top.
 export interface TableGridRange {
@@ -339,6 +340,7 @@ export interface TableWritePropsObj {
     action: "addConditionalFormatRule";
   } & TableConditionalFormatRule;
   addEditProtection: { action: "addEditProtection" } & TableEditProtection;
+  deleteTable: { action: "deleteTable" };
 }
 export type TableWriteProps = TableWritePropsObj[keyof TableWritePropsObj];
 

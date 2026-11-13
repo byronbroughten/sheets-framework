@@ -404,6 +404,84 @@ describe("stubSheetsService replays Table updates by their field mask", () => {
   });
 });
 
+describe("stubSheetsService replays deleteTable as the live API does", () => {
+  const deletedGid = 9;
+  const tableRange = {
+    sheetId: deletedGid,
+    startRowIndex: 3,
+    endRowIndex: 6,
+    startColumnIndex: 0,
+    endColumnIndex: 2,
+  };
+
+  function stubSheetWithHeadedTable() {
+    return stubSheetsService({
+      sheets: [
+        {
+          sheetId: deletedGid,
+          title: "Deleted",
+          rows: buildGridRows({
+            0: ["c:lse:aaa", "c:lse:bbb"],
+            1: ["Heading"],
+            3: ["ID", "Status"],
+            4: [
+              { value: 1, numberFormatType: "CURRENCY" },
+              { value: "x", dataValidationConditionType: "BOOLEAN" },
+            ],
+            5: [{ value: 2, isFormula: true, formula: "=1+1" }, "y"],
+            6: ["below"],
+          }),
+          table: {
+            name: "Deleted",
+            ...tableRange,
+            columnTypes: { 0: "DOUBLE" },
+          },
+          conditionalFormats: [
+            { ranges: [{ ...tableRange, startRowIndex: 4 }] },
+            { ranges: [{ ...tableRange, endRowIndex: 7 }] },
+            {
+              ranges: [
+                { sheetId: deletedGid, startColumnIndex: 0, endColumnIndex: 1 },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+  }
+
+  it("drops the Table and blanks its whole range, leaving the cells above and below", () => {
+    const { grid } = stubSheetWithHeadedTable();
+
+    send({ deleteTable: { tableId: "fake-table-9" } });
+
+    const sheet = grid.sheet(deletedGid);
+    expect(sheet.tables).toEqual([]);
+    expect(sheet.rows({ startRowIndex: 0, endRowIndex: 7 })).toEqual([
+      ["c:lse:aaa", "c:lse:bbb"],
+      ["Heading", null],
+      [null, null],
+      [null, null],
+      [null, null],
+      [null, null],
+      ["below", null],
+    ]);
+  });
+
+  it("removes the rules lying wholly over the Table and keeps those reaching past it", () => {
+    const { grid } = stubSheetWithHeadedTable();
+
+    send({ deleteTable: { tableId: "fake-table-9" } });
+
+    expect(
+      grid.sheet(deletedGid).conditionalFormats.map((rule) => rule.ranges),
+    ).toEqual([
+      [{ ...tableRange, endRowIndex: 7 }],
+      [{ sheetId: deletedGid, startColumnIndex: 0, endColumnIndex: 1 }],
+    ]);
+  });
+});
+
 describe("stubSheetsService replays tabs", () => {
   it("adds, renames and deletes a tab, and a later read sees it", () => {
     const { grid } = stubSheetsService({ sheets: [widgetSheet()] });

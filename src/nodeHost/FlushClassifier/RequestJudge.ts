@@ -80,6 +80,18 @@ export class RequestJudge {
     cells.forEach((cell) => this._judge(cell, { kind: "deleted" }));
     return this;
   }
+  // Every cell of the read range, header included, since deleteTable blanks it all.
+  deleteTable(tableId: string): this {
+    if (this.tracker.isTableAdded(tableId)) return this;
+    const range = this.reads.table(tableId)?.range;
+    if (range === undefined) {
+      return this.holdUnmeasured(`Table ${tableId}, which no read fetched`);
+    }
+    const cells = this.cellsIn(range);
+    this.delete(cells);
+    this.tracker.write(cells);
+    return this;
+  }
   judgeDropdownReset(table: GoogleTable): this {
     if (this.dropdownStyleReset === "allow") return this;
     const tableId = table.tableId ?? "";
