@@ -4,6 +4,8 @@ import type { SyncPlannerResult } from "./SyncPlanner";
 import type {
   SyncDryRunOutcome,
   SyncDryRunResult,
+  SyncNotice,
+  SyncPlanItem,
   SyncRefusal,
   SyncRunCommon,
   SyncRunFrame,
@@ -19,17 +21,25 @@ export interface SyncRunResultBuilderProps {
   frame: SyncRunFrame;
 }
 
+// sync's own sends, which no alteration asked for, and their notices: Fill Row IDs' checkbox and fill.
+export interface SyncRunDerived {
+  plan: SyncPlanItem[];
+  notices: SyncNotice[];
+}
+
 export interface SyncRunPlanned {
   planned: SyncPlannerResult;
   notes: string[];
   typedTraitChanges: SyncTypedTraitChange[];
   // The sent traits the refetch shows Sheets kept another value for; they leave the landed list.
   didntLand: SyncSendLine[];
+  derived: SyncRunDerived;
 }
 
 interface SyncRunCommonProps {
   refusals: SyncRefusal[];
   planned?: SyncPlannerResult;
+  derived?: SyncRunDerived;
   notes: string[];
   typedTraitChanges: SyncTypedTraitChange[];
 }
@@ -54,21 +64,30 @@ export class SyncRunResultBuilder {
     notes,
     typedTraitChanges,
     didntLand,
+    derived,
   }: SyncRunPlanned): SyncRunResult {
     const common = this._common({
       refusals: [],
       planned,
+      derived,
       notes,
       typedTraitChanges,
     });
     if (planned.isStopped) return this._unsent(common, { kind: "stopped" });
     if (!this.isSending) return dryRunResult(common, { kind: "ready" });
     const isLanded = hasLanded(didntLand);
-    const landed = planned.plan.filter(({ subject }) => isLanded(subject));
+    const landed = [
+      ...planned.plan.filter(({ subject }) => isLanded(subject)),
+      ...derived.plan,
+    ];
     return {
       ...sendResult(common, {
         kind: "sent",
-        summary: sentSummary(planned.plan.length, didntLand.length),
+        summary: sentSummary({
+          sentCount: planned.plan.length,
+          didntLandCount: didntLand.length,
+          derivedCount: derived.plan.length,
+        }),
       }),
       landed: landed.map(({ subject, what }) => ({
         kind: "send",
@@ -82,10 +101,12 @@ export class SyncRunResultBuilder {
   heldStopped(
     planned: SyncPlannerResult,
     { kind, landedFlushes, flushCount }: HeldFlushRefusal,
+    derived: SyncRunDerived,
   ): SyncRunResult {
     const common = this._common({
       refusals: [],
       planned,
+      derived,
       notes: [],
       typedTraitChanges: [],
     });
@@ -102,6 +123,7 @@ export class SyncRunResultBuilder {
   private _common({
     refusals,
     planned,
+    derived,
     notes,
     typedTraitChanges,
   }: SyncRunCommonProps): SyncRunCommon {
@@ -110,9 +132,9 @@ export class SyncRunResultBuilder {
       checks: [],
       refusals,
       stops: planned?.stops ?? [],
-      plan: planned?.plan ?? [],
+      plan: [...(planned?.plan ?? []), ...(derived?.plan ?? [])],
       forcedTraits: planned?.forcedTraits ?? [],
-      notices: [],
+      notices: derived?.notices ?? [],
       configs: {
         heldBack: planned?.configs.heldBack ?? [],
         renamed: [],
@@ -131,6 +153,13 @@ export class SyncRunResultBuilder {
     if (this.isSending) return sendResult(common, outcome);
     return dryRunResult(common, outcome);
   }
+}
+
+interface SentCounts {
+  sentCount: number;
+  didntLandCount: number;
+  // sync's own sends, counted apart from the alterations.
+  derivedCount: number;
 }
 
 function dryRunResult(
@@ -154,8 +183,22 @@ function sendResult(
   };
 }
 
-function sentSummary(sentCount: number, didntLandCount: number): string {
-  if (sentCount === 0) return "nothing to send";
+function sentSummary({
+  sentCount,
+  didntLandCount,
+  derivedCount,
+}: SentCounts): string {
+  const derived = `${derivedCount} Fill Row IDs ${derivedCount === 1 ? "send" : "sends"}`;
+  if (sentCount === 0) {
+    if (derivedCount === 0) return "nothing to send";
+    return derived;
+  }
+  const alterations = alterationsSummary(sentCount, didntLandCount);
+  if (derivedCount === 0) return alterations;
+  return `${alterations}; ${derived}`;
+}
+
+function alterationsSummary(sentCount: number, didntLandCount: number): string {
   const landedCount = sentCount - didntLandCount;
   const landed =
     landedCount === 0

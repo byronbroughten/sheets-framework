@@ -4,7 +4,7 @@
 
 ## What a sync run does
 
-`sheets-framework sync` (`npm run sync` in a package) runs `SyncCoordinator.run` with the pending alterations in `alterations.ts` as intended state and the previous `idNameMap.ts` as the map its entries are checked against; a missing `alterations.ts` is an empty one and a missing map an empty map. A bare run reads the live sheet, plans, and refreshes the configs from what it read, but sends nothing. `--send` sends the plan as well, and any missing column IDs to business sheets' header rows, in one flush. Either way, it prints the run's result through `SyncRunReport`.
+`sheets-framework sync` (`npm run sync` in a package) runs `SyncCoordinator.run` with the pending alterations in `alterations.ts` as intended state and the previous `idNameMap.ts` as the map its entries are checked against; a missing `alterations.ts` is an empty one and a missing map an empty map. A bare run reads the live sheet, plans, and refreshes the configs from what it read, but sends nothing. `--send` sends the plan as well, any missing column IDs to business sheets' header rows, and a Fill Row IDs checkbox into each empty action-row cell above an ID column, in one flush; a non-empty cell there is left alone. After the regen it fills every blank ID cell, planned from the fresh configs, as its own send; that is the only row data `sync` writes. A Table with an ID column but no ID prefix stops the run before any send, and a Table whose ID is its first column gets the `idFirst` notice, since the Table name chip hides its checkbox. Either way, it prints the run's result through `SyncRunReport`.
 
 ## sync's entered-data gate and --confirm
 
