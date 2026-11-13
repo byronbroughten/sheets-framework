@@ -514,7 +514,7 @@ describe("NodeHost with an entered-data gate", () => {
     expect(posts).toHaveLength(2);
   });
 
-  it("classifies nothing without a gate, so a chore's write goes out", () => {
+  it("classifies nothing without a gate, so every write goes out", () => {
     const { host, transport } = seedHost(false);
 
     writeOneCell();
