@@ -12,7 +12,7 @@ One line per term. The elaboration is one file away. Open a reasoning file only 
 | --- | --- |
 | Source, Platform, Raw, Identified, Named, `rowIndex` | [`docs/vocabulary/tiers.md`](./vocabulary/tiers.md) |
 | Tier word, State, Base, Operator, Collaborator | [`docs/vocabulary/class-names.md`](./vocabulary/class-names.md) |
-| `xConfigs` / `XConfig` / trait, the config-sheet floor; intended state, claim, alteration, ID-name map; entered data, held | [`docs/vocabulary/config.md`](./vocabulary/config.md) |
+| `xConfigs` / `XConfig` / trait, the config-sheet floor; intended state, alteration, ID-name map; entered data, held | [`docs/vocabulary/config.md`](./vocabulary/config.md) |
 | Profile, sampled facts, which class a member belongs to, Working, head rows | [`docs/vocabulary/profile.md`](./vocabulary/profile.md) |
 | Schema, blank cells, `value` / `valueOrEmpty` / `valueNotEmpty`, checkbox, `SerialDate`, `emptyValueAllowed` | [`docs/vocabulary/values.md`](./vocabulary/values.md) |
 
@@ -43,8 +43,8 @@ One line per term. The elaboration is one file away. Open a reasoning file only 
 - **Config is the data describing the spreadsheet's own structure, generated from the live sheet**, in each package's `generatedDir`.
 - **`xConfigs` is the whole map, `XConfig` is one entry's record, and a trait is one property of one record.** "Trait" never means a collection.
 - **The config-sheet floor is guaranteed, not data to fix**: the three config sheets' own entries always come out the same on regeneration.
-- **Intended state is what the repo says the sheet's structure will be, for the traits it names: its claims and pending alterations**; typed (`PendingAlterations`, `ClaimedTraits`) and read by `SyncPlanner`, which nothing runs yet.
-- **A claim is a trait an endpoint or chore holds, named in `claimedTraits` or implied by its declaration, compared every run; an alteration is one `gen:configs` applies once, then removes.** An endpoint's key claims a checkbox in its column's action-row cell. Either's value is an intended value.
+- **Intended state is what the repo says the sheet's structure will be, for the traits it names: its pending alterations**; typed (`PendingAlterations`) and read by `SyncPlanner`, which nothing runs yet.
+- **An alteration is a trait `gen:configs` applies once, then removes; its value is an intended value.** Claims, traits an endpoint or chore holds and a run compares, wait on [#286](https://github.com/byronbroughten/sheets-framework/issues/286).
 - **The ID-name map (`idNameMap.ts`) is the generated, type-only file pairing each Table and column ID with its name.**
 - **A rule handle is the readable key a conditional-format rule's record has in `conditionalFormatConfigs`, built from its content, never its position**: scope, condition and format, with `-2`, `-3` on a repeat.
 - **Entered data is a value in a Table data-row cell that isn't a formula; a held item is one a send holds back until `--confirm` covers it, and a send with none is free**; planned, not yet in code.

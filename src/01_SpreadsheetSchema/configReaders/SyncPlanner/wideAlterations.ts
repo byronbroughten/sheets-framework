@@ -49,11 +49,6 @@ export interface WideAlterations {
   newTabs?: (WideTabEntry & { tables: WideNewTable[] })[];
 }
 
-export type WideClaims = Record<
-  string,
-  { columns?: Record<string, { formula?: string } | undefined> } | undefined
->;
-
 export function entriesOf<VL>(
   record: Record<string, VL | undefined> | undefined,
 ): [string, VL][] {

@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import { assertType, type IsExactly } from "../../testSupport/typeAssertions";
 import {
-  type ClaimedTraits,
   makePendingAlterations,
   type PendingAlterations,
 } from "./intendedState";
@@ -16,7 +15,6 @@ type ItemColumnName = "optionalNote" | "requiredCount" | "id" | "name";
 type TabEntries = NonNullable<PendingAlterations["tabs"]>;
 type ItemTabEntry = NonNullable<TabEntries["item"]>;
 type NewTabs = NonNullable<PendingAlterations["newTabs"]>;
-type ItemClaim = NonNullable<ClaimedTraits["item"]>;
 
 describe("makePendingAlterations", () => {
   it("hands back the alterations it was given", () => {
@@ -182,47 +180,5 @@ describe("deleted: true", () => {
       tab,
       tabTables,
     ]).toHaveLength(6);
-  });
-});
-
-describe("ClaimedTraits", () => {
-  it("claims a column's formula text, keyed by codebase name", () => {
-    assertType<
-      {
-        item: { columns: { requiredCount: { formula: string } } };
-      } extends ClaimedTraits
-        ? true
-        : false
-    >(true);
-  });
-
-  it("omits newColumns and deleted", () => {
-    // @ts-expect-error a claim adds no column
-    const newColumns: ItemClaim = { newColumns: [] };
-    // @ts-expect-error nor deletes a Table
-    const deletedTable: ItemClaim = { deleted: true };
-    // @ts-expect-error nor a column
-    const deletedColumn: ItemClaim = { columns: { id: { deleted: true } } };
-    expect([newColumns, deletedTable, deletedColumn]).toHaveLength(3);
-  });
-
-  it("holds only formula text for now", () => {
-    type ItemColumnClaims = NonNullable<ItemClaim["columns"]>;
-    assertType<IsExactly<keyof ItemColumnClaims, ItemColumnName>>(true);
-    assertType<
-      IsExactly<NonNullable<ItemColumnClaims["id"]>, { formula?: string }>
-    >(true);
-    assertType<IsExactly<keyof ItemClaim, "columns">>(true);
-    // @ts-expect-error a header isn't claimed yet
-    const header: ItemClaim = { columns: { id: { header: "ID" } } };
-    expect(header).toBeDefined();
-  });
-
-  it("rejects a name the ID-name map doesn't hold", () => {
-    // @ts-expect-error no Table is named notATable
-    const unknownTable: ClaimedTraits = { notATable: {} };
-    // @ts-expect-error item has no column notAColumn
-    const unknownColumn: ItemClaim = { columns: { notAColumn: {} } };
-    expect([unknownTable, unknownColumn]).toHaveLength(2);
   });
 });

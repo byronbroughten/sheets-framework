@@ -25,7 +25,6 @@ const idNameMap: IdNameMapGeneric = {
 function refusals(props: Partial<SyncEntryRefuserProps>) {
   return SyncEntryRefuser.init({
     alterations: {},
-    claims: [],
     idNameMap,
     ...props,
   }).refusals;
@@ -170,38 +169,12 @@ describe("SyncEntryRefuser, traits not sendable yet", () => {
     ).toEqual([{ kind: "notSendableYet", table: "Vendors", path: "newTabs" }]);
   });
 
-  it("refuses a claim's formula once, however many declare it", () => {
-    const traits = {
-      item: { columns: { requiredCount: { formula: "=1" } } },
-    };
+  it("refuses two untitled new tabs once", () => {
     expect(
       refusals({
-        claims: [
-          { declaredBy: "itemEndpoint", traits },
-          { declaredBy: "otherEndpoint", traits },
-        ],
+        alterations: { newTabs: [{ tables: [] }, { tables: [] }] },
       }),
-    ).toEqual([
-      { kind: "notSendableYet", table: "item", path: "requiredCount.formula" },
-    ]);
-  });
-
-  it("refuses a trait once when a claim and an alteration both name it", () => {
-    expect(
-      refusals({
-        alterations: {
-          tables: { item: { columns: { requiredCount: { formula: "=2" } } } },
-        },
-        claims: [
-          {
-            declaredBy: "itemEndpoint",
-            traits: { item: { columns: { requiredCount: { formula: "=1" } } } },
-          },
-        ],
-      }),
-    ).toEqual([
-      { kind: "notSendableYet", table: "item", path: "requiredCount.formula" },
-    ]);
+    ).toEqual([{ kind: "notSendableYet", table: "newTabs", path: "newTabs" }]);
   });
 
   it("refuses nothing for no intended state", () => {

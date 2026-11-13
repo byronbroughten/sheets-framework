@@ -1,9 +1,7 @@
 import type { IdNameMapGeneric } from "./idNameMapTypes";
-import type { SyncClaim } from "./SyncPlanner";
 import {
   entriesOf,
   type WideAlterations,
-  type WideClaims,
   type WideColumnEntry,
   type WideTableEntry,
 } from "./SyncPlanner/wideAlterations";
@@ -11,7 +9,6 @@ import type { SyncRefusal } from "./syncRunResult";
 
 export interface SyncEntryRefuserProps {
   alterations: WideAlterations;
-  claims: SyncClaim[];
   // The previous one: what the last sync recorded, since nothing is read yet.
   idNameMap: IdNameMapGeneric;
 }
@@ -24,11 +21,9 @@ export const sendableColumnTraits = new Set<string>(["emptyValueAllowed"]);
 // Pure: refuses what can't be planned from intended state and the previous ID-name map alone, so before any read.
 export class SyncEntryRefuser {
   private alterations: WideAlterations;
-  private claims: SyncClaim[];
   private idNameMap: IdNameMapGeneric;
   constructor(props: SyncEntryRefuserProps) {
     this.alterations = props.alterations;
-    this.claims = props.claims;
     this.idNameMap = props.idNameMap;
   }
   static init(props: SyncEntryRefuserProps): SyncEntryRefuser {
@@ -39,7 +34,6 @@ export class SyncEntryRefuser {
       ...this._tableRefusals,
       ...this._tabRefusals,
       ...this._newTabRefusals,
-      ...this._claimRefusals,
     ]);
   }
   // Checked against the map, not the Table configs: those hold only Tables with API access.
@@ -63,17 +57,6 @@ export class SyncEntryRefuser {
   private get _newTabRefusals(): SyncRefusal[] {
     return (this.alterations.newTabs ?? []).map(({ title }) =>
       notSendableYet(title ?? "newTabs", "newTabs"),
-    );
-  }
-  private get _claimRefusals(): SyncRefusal[] {
-    return this.claims.flatMap(({ traits }) =>
-      entriesOf<WideClaims[string]>(traits).flatMap(([table, entry]) =>
-        entriesOf(entry?.columns).flatMap(([column, claimed]) =>
-          Object.keys(claimed).map((trait) =>
-            notSendableYet(table, `${column}.${trait}`),
-          ),
-        ),
-      ),
     );
   }
 }
@@ -136,7 +119,7 @@ function definedKeys(entry: object): string[] {
   });
 }
 
-// Two declarers of one trait, or a claim beside an alteration of it, are one refusal: the entry to take out is the same.
+// Alterations alone still repeat a refusal: two untitled `newTabs` are one.
 function withoutRepeats(refusals: SyncRefusal[]): SyncRefusal[] {
   const seen = new Set<string>();
   return refusals.filter((refusal) => {

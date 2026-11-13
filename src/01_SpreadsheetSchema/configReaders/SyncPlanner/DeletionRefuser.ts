@@ -8,17 +8,9 @@ import {
   type WideTableEntry,
 } from "./wideAlterations";
 
-export interface ClaimedFormula {
-  table: string;
-  column: string;
-  formula: string;
-  declaredBy: string;
-}
-
 interface DeletionRefuserProps {
   alterations: WideAlterations;
   tabsByTable: Record<string, string | undefined>;
-  claimedFormulas: ClaimedFormula[];
 }
 
 interface Deletion {
@@ -36,14 +28,12 @@ interface Touch {
 export class DeletionRefuser {
   private alterations: WideAlterations;
   private tabsByTable: Record<string, string | undefined>;
-  private claimedFormulas: ClaimedFormula[];
   constructor(props: DeletionRefuserProps) {
     this.alterations = props.alterations;
     this.tabsByTable = props.tabsByTable;
-    this.claimedFormulas = props.claimedFormulas;
   }
   get refusals(): SyncRefusal[] {
-    const touches = [...this._alterationTouches, ...this._claimTouches];
+    const touches = this._alterationTouches;
     return this._deletions.flatMap((deletion) =>
       touches.flatMap(({ targets, touchedBy }) => {
         if (!targets.includes(deletion.target)) return [];
@@ -210,17 +200,6 @@ export class DeletionRefuser {
           `${tablesAt}[${tableIndex}].columns[${columnIndex}].formula`,
         );
       }),
-    );
-  }
-  private get _claimTouches(): Touch[] {
-    return this.claimedFormulas.flatMap(
-      ({ table, column, formula, declaredBy }) => {
-        const touchedBy = `claim (${declaredBy})`;
-        return [
-          { targets: this._columnTargets(table, column), touchedBy },
-          ...this._braceTouches(table, formula, touchedBy),
-        ];
-      },
     );
   }
   private _braceTouches(

@@ -148,22 +148,11 @@ export type SyncRefusal =
       columns: string[];
     }
   | {
-      kind: "disagreeingDeclarers";
-      table: string;
-      path: string;
-      declarers: [SyncDeclarer, SyncDeclarer];
-    }
-  | {
       kind: "touchesDeletion";
       deleted: SyncSubject;
       deletedAt: string;
       touchedBy: string;
     };
-
-export interface SyncDeclarer {
-  declaredBy: string;
-  value: string;
-}
 
 export interface ForcedTrait {
   table: string;
@@ -181,8 +170,6 @@ export interface SyncConflict {
   yours: string;
   agreed: string;
   live: string;
-  // Set on a claim's conflict: the endpoint or module declaring the claim.
-  claimedBy?: string;
   // Set when a person deleted the column: force has no column to send to.
   isColumnGone?: true;
 }

@@ -1,5 +1,3 @@
-import type { StrictOmit } from "@byronbroughten/utils/obj";
-
 import type { ColumnTypeBaseline } from "../columnBaseline";
 import type { IdNameMapRegistered } from "./configRegister";
 
@@ -119,24 +117,12 @@ interface NewTab extends TabTraits {
   tables: NewTable[];
 }
 
-// Each entry is applied once, then removed; a claim is compared every run instead.
+// Each entry is applied once, then removed.
 export interface PendingAlterations {
   tables?: { [TN in MappedTableName]?: TableAlteration<TN> };
   tabs?: { [TB in MappedTabName]?: Deletable<TabAlteration> };
   newTabs?: NewTab[];
 }
-
-// Formula text only, for now: no other trait has a comparison to stop a run on yet.
-type ClaimedColumnTraits = Pick<ColumnTraits, "formula">;
-
-type ClaimedTableTraits<TN extends MappedTableName> = StrictOmit<
-  TableTraits<MappedColumnName<TN>, ClaimedColumnTraits>,
-  "newColumns" | "name" | "letApiAccess" | "conditionalFormats"
->;
-
-export type ClaimedTraits = {
-  [TN in MappedTableName]?: ClaimedTableTraits<TN>;
-};
 
 // Identity at runtime: it exists so `tsc` checks `alterations.ts` against the ID-name map before any send.
 export function makePendingAlterations(

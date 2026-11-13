@@ -3,7 +3,6 @@ import type {
   SyncCheck,
   SyncConfigs,
   SyncConflict,
-  SyncDeclarer,
   SyncDryRunOutcome,
   SyncHeld,
   SyncHeldBy,
@@ -406,14 +405,6 @@ function tableRefusalText(
       "Take this entry out, then rerun.",
     ];
   }
-  if (refusal.kind === "disagreeingDeclarers") {
-    const [first, second] = refusal.declarers;
-    return [
-      "Two declarers give this trait different values:",
-      ...indent(2, [first, second].map(declarerLine)),
-      "Make them agree or take one out, then rerun.",
-    ];
-  }
   const { table } = refusal;
   if (refusal.kind === "noApiAccess") {
     return [
@@ -433,10 +424,6 @@ function tableRefusalText(
   return [
     `${refusal.brace} names no column of ${table}. Its columns: ${refusal.columns.join(", ")}.`,
   ];
-}
-
-function declarerLine({ declaredBy, value }: SyncDeclarer): string {
-  return `${declaredBy.padEnd(layout.rowLabelWidth)}${value}`;
 }
 
 function ruleHandleLines(table: string, handles: string[]): string[] {
@@ -465,11 +452,9 @@ function stopBlock(stop: SyncStop, number: number): string[] {
 }
 
 function conflictBlock(conflict: SyncConflict, number: number): string[] {
-  const { subject, label, cause, yours, agreed, live, claimedBy } = conflict;
-  const yoursLabel =
-    claimedBy === undefined ? "alterations.ts (yours)" : `claim (${claimedBy})`;
+  const { subject, label, cause, yours, agreed, live } = conflict;
   const rows = [
-    [yoursLabel, yours],
+    ["alterations.ts (yours)", yours],
     ["configs (last agreed)", agreed],
     ["live sheet", live],
   ].map(([name = "", value = ""]) => name.padEnd(layout.rowLabelWidth) + value);
@@ -490,28 +475,7 @@ const forceNeeds =
 
 // Force's flag is never printed: an agent looks it up only after the developer's yes.
 function waysOut(conflict: SyncConflict): [string, string][] {
-  const { yours, live, claimedBy } = conflict;
-  if (claimedBy !== undefined) {
-    const adopt: [string, string] = [
-      "adopt",
-      `Set the claim to the sheet's text. Free; check first that ${claimedBy} still works on it.`,
-    ];
-    const drop: [string, string] = [
-      "drop",
-      `Drop the claim from ${claimedBy}. Free; the sheet owns this formula from then on and nothing guards it.`,
-    ];
-    const ask: [string, string] = [
-      "ask",
-      "Change nothing and ask the developer.",
-    ];
-    if (!isForceable(conflict)) return [adopt, drop, ask];
-    return [
-      adopt,
-      drop,
-      ["force", `Send the claim's text over the sheet's. ${forceNeeds}`],
-      ask,
-    ];
-  }
+  const { yours, live } = conflict;
   const adopt: [string, string] = [
     "adopt",
     `Remove the entry, or set it to ${live}. Free, but your change to this trait is given up.`,
