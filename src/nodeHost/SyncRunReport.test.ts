@@ -30,6 +30,7 @@ const appDryRun = {
   refusals: [],
   stops: [],
   plan: [],
+  forcedTraits: [],
   notices: [],
   configs: noConfigChanges,
 } as const satisfies Omit<SyncDryRunResult, "outcome">;
@@ -130,15 +131,11 @@ describe("SyncRunReport, case A: both changed", () => {
       "adopt  Remove the entry, or set it to NUMBER. Free, but your change to this trait is given up.",
     );
     expect(text).toContain(
-      "force  Send CURRENCY over the sheet's NUMBER. Needs the developer's yes for this trait; the yes covers one run.",
+      "force  Send CURRENCY over the sheet's NUMBER. Needs the developer's yes for this trait; the yes covers one run. Flag: --force occPayment/amount/columnType",
     );
     expect(text).toContain(
       "ask    Change nothing and ask the developer which value they want.",
     );
-  });
-
-  it("never prints force's flag", () => {
-    expect(text).not.toContain("--force");
   });
 
   it("indents the dropdown reset under its send", () => {

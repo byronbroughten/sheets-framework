@@ -77,6 +77,7 @@ export class SyncRunResultBuilder {
       refusals,
       stops: planned?.stops ?? [],
       plan: planned?.plan ?? [],
+      forcedTraits: planned?.forcedTraits ?? [],
       notices: [],
       configs: {
         heldBack: planned?.configs.heldBack ?? [],
