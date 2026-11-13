@@ -20,8 +20,10 @@ type NotSendableYet = Extract<SyncRefusal, { kind: "notSendableYet" }>;
 
 // Only these traits can be sent so far; each later trait ticket takes its trait off this refusal.
 export const sendableTraits = {
-  table: new Set<string>([...sheetTraits.table, "letApiAccess"]),
+  table: new Set<string>([...sheetTraits.table, "letApiAccess", "newColumns"]),
   column: new Set<string>([...sheetTraits.column, "emptyValueAllowed"]),
+  // A new column's own traits: a formula or column type would need a write after the insert.
+  newColumn: new Set<string>(["header", "before", "emptyValueAllowed"]),
   tab: new Set<string>(tabTraits),
 } as const;
 
@@ -166,9 +168,19 @@ function tableTraitRefusals(
   table: string,
   entry: WideTableEntry,
 ): SyncRefusal[] {
-  return traitPaths(entry)
+  return [...traitPaths(entry), ...newColumnTraitPaths(entry)]
     .filter(({ level, trait }) => !sendableTraits[level].has(trait))
     .map(({ path }) => notSendableYet(table, path));
+}
+
+function newColumnTraitPaths({ newColumns }: WideTableEntry): TraitPath[] {
+  return (newColumns ?? []).flatMap((newColumn, index) =>
+    definedKeys(newColumn).map((trait) => ({
+      level: "newColumn" as const,
+      trait,
+      path: `newColumns[${index}].${trait}`,
+    })),
+  );
 }
 
 // A grant takes its own run, since a column entry needs the column IDs the grant writes.

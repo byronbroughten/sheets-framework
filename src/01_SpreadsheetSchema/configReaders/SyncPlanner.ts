@@ -1,3 +1,5 @@
+import { Str } from "@byronbroughten/utils/str";
+
 import type { ColumnTypeBaseline } from "../columnBaseline";
 import type { PendingAlterations } from "./intendedState";
 import { DeletionRefuser } from "./SyncPlanner/DeletionRefuser";
@@ -5,11 +7,12 @@ import { entriesOf, type WideAlterations } from "./SyncPlanner/wideAlterations";
 import type {
   ForcedTrait,
   SyncConflict,
-  SyncHeadRowsStop,
   SyncHeldBackTrait,
   SyncPlanItem,
   SyncRefusal,
   SyncRunResult,
+  SyncSendLine,
+  SyncSheetStop,
   SyncSubject,
 } from "./syncRunResult";
 
@@ -41,7 +44,16 @@ export interface PlanReadings {
 
 export interface PlanProps extends PlanReadings {
   // Stops found reading the sheet, outside the comparison, that still stop every send.
-  headRowStops?: SyncHeadRowsStop[];
+  sheetStops?: SyncSheetStop[];
+}
+
+// One `newColumns` entry, by its Table's codebase name; `column` is the name the regen gives its header.
+export interface PlannedNewColumn {
+  table: string;
+  column: string;
+  header: string;
+  before?: string;
+  emptyValueAllowed: boolean;
 }
 
 export interface SyncPlannerResult extends Pick<
@@ -56,6 +68,8 @@ export interface SyncPlannerResult extends Pick<
   configTraits: TraitReadings;
   // The plan's sends by address, for the run to queue; empty when stopped.
   sentTraits: IntendedTrait[];
+  // The columns the plan creates, for the run to queue; empty when stopped.
+  newColumns: PlannedNewColumn[];
 }
 
 interface TableTraitAddress {
@@ -103,6 +117,23 @@ export const sheetTraits = {
 
 // A deletion's one value, `true`, says nothing a plan line could show.
 const deletionWhat = "delete the column";
+
+// The subject path of every `newColumns` entry's plan line; landing one drops the whole list from alterations.ts.
+export const newColumnsPath = "newColumns";
+
+// Where a new column goes, as its plan line and its created line say it.
+export function newColumnPosition({ before }: PlannedNewColumn): string {
+  if (before === undefined) return "at the Table's end";
+  return `before ${before}`;
+}
+
+// A new column's plan line, and its didntLand line when the refetch can't find it.
+export function newColumnSendLine(newColumn: PlannedNewColumn): SyncSendLine {
+  return {
+    subject: { table: newColumn.table, path: newColumnsPath },
+    what: `create "${newColumn.header}" ${newColumnPosition(newColumn)}`,
+  };
+}
 
 export function isSheetTrait(intended: IntendedTrait): boolean {
   if (intended.kind === "tab") return false;
@@ -163,7 +194,26 @@ export class SyncPlanner {
   get refusals(): SyncRefusal[] {
     return this._deletionRefuser.refusals;
   }
-  plan({ previous, live, headRowStops = [] }: PlanProps): SyncPlannerResult {
+  // From intended state alone, so the run can check each header against the sheet before planning.
+  get newColumns(): PlannedNewColumn[] {
+    return entriesOf(this.alterations.tables).flatMap(([table, entry]) =>
+      (entry.newColumns ?? []).flatMap(
+        ({ header, before, emptyValueAllowed }): PlannedNewColumn[] => {
+          if (header === undefined) return [];
+          return [
+            {
+              table,
+              column: Str.sentenceToCamelCase(header),
+              header,
+              ...(before === undefined ? {} : { before }),
+              emptyValueAllowed: emptyValueAllowed ?? false,
+            },
+          ];
+        },
+      ),
+    );
+  }
+  plan({ previous, live, sheetStops = [] }: PlanProps): SyncPlannerResult {
     const stops: SyncConflict[] = [];
     const sends: SyncPlanItem[] = [];
     const forced: ForcedTrait[] = [];
@@ -208,8 +258,16 @@ export class SyncPlanner {
         heldBack.push({ intended, agreed: stop.agreed });
       }
     });
-    const isStopped = stops.length + headRowStops.length > 0;
+    // A Table a person deleted has nowhere to put one.
+    const newColumns = this.newColumns.filter(
+      ({ table }) => live.tables[table] !== undefined,
+    );
+    for (const newColumn of newColumns) {
+      sends.push({ ...newColumnSendLine(newColumn), effects: [] });
+    }
+    const isStopped = stops.length + sheetStops.length > 0;
     const sentIfUnstopped = isStopped ? [] : sentTraits;
+    const newColumnsIfUnstopped = isStopped ? [] : newColumns;
     const forcedNotHeld = new Set(
       forced.map((trait) => addressKey({ kind: "column", ...trait })),
     );
@@ -217,7 +275,7 @@ export class SyncPlanner {
       ({ intended }) => isStopped || !forcedNotHeld.has(addressKey(intended)),
     );
     return {
-      stops: [...headRowStops, ...stops],
+      stops: [...sheetStops, ...stops],
       isStopped,
       plan: sends,
       configs: {
@@ -231,8 +289,10 @@ export class SyncPlanner {
         live,
         sent: sentIfUnstopped,
         heldBack: heldBackTraits,
+        newColumns: newColumnsIfUnstopped,
       }),
       sentTraits: sentIfUnstopped,
+      newColumns: newColumnsIfUnstopped,
     };
   }
   private _forcedTraitFor(intended: IntendedTrait): ForcedTrait | undefined {
@@ -417,19 +477,32 @@ interface ConfigTraitsProps {
   live: TraitReadings;
   sent: IntendedTrait[];
   heldBack: HeldBackValue[];
+  newColumns: PlannedNewColumn[];
 }
 
 function configTraitsOf({
   live,
   sent,
   heldBack,
+  newColumns,
 }: ConfigTraitsProps): TraitReadings {
+  const created = newColumns.flatMap(
+    ({ table, column, header, emptyValueAllowed }) =>
+      [
+        { trait: "header", value: header },
+        { trait: "emptyValueAllowed", value: emptyValueAllowed },
+      ].map(({ trait, value }) => ({
+        address: { kind: "column" as const, table, column, trait },
+        value,
+      })),
+  );
   const written = [
     ...sent.map((intended) => ({ address: intended, value: intended.value })),
     ...heldBack.map(({ intended, agreed }) => ({
       address: intended,
       value: agreed,
     })),
+    ...created,
   ];
   return written.reduce(
     (readings, { address, value }) => withTrait(readings, address, value),

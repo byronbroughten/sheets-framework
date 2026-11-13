@@ -14,13 +14,16 @@ import {
 } from "../01_SpreadsheetSchema/configReaders/makeConfigs";
 import {
   type IntendedTrait,
+  type PlannedNewColumn,
   type PlanReadings,
   type TableReading,
   type TraitReadings,
 } from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
+import type { SyncHeaderTakenStop } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
 import { tableConfigsByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { type ValueName } from "../01_SpreadsheetSchema/configReaders/valueSchemas";
 import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
+import type { NewColumnHeadCells } from "../02_SpreadsheetRaw/ClassTypes/StateRaw";
 import type {
   ColumnProfileRaw,
   TableColumnReference,
@@ -56,6 +59,20 @@ interface NamedColumnIdentity extends ColumnIdentity {
 
 interface SentColumnTrait extends NamedColumnIdentity {
   value: IntendedTrait["value"];
+}
+
+export interface MintedNewColumn extends PlannedNewColumn {
+  tableId: string;
+  columnId: string;
+}
+
+interface ColumnAt {
+  tableId: string;
+  colIndex: number;
+}
+
+interface ColumnInsert extends ColumnAt {
+  headCells: NewColumnHeadCells;
 }
 
 export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
@@ -243,17 +260,105 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
     }
     return this;
   }
-  // Rightmost first on each Table, so a delete's index isn't moved by the ones queued before it.
-  deleteColumns(sent: IntendedTrait[]): this {
+  // Matched by the name the regen would give the header, since two headers giving one name can't both be configured.
+  headerTakenStops(newColumns: PlannedNewColumn[]): SyncHeaderTakenStop[] {
+    const identities = this._namedColumnIdentities();
+    return newColumns.flatMap(({ table, column, header }) => {
+      const taken = identities.find(
+        (identity) =>
+          identity.tableKey === table &&
+          Str.sentenceToCamelCase(this._describedColumn(identity).header) ===
+            column,
+      );
+      if (taken === undefined) return [];
+      const { columnName, columnId } = taken;
+      return [
+        { kind: "headerTaken", table, header, column: columnName, columnId },
+      ];
+    });
+  }
+  // Minted before any queue, so a dry run's withheld flush and the report carry the same IDs.
+  mintColumnIds(newColumns: PlannedNewColumn[]): MintedNewColumn[] {
+    const identities = this._namedColumnIdentities();
+    const idPrefixesByTableId = this.tableConfigOperator.idPrefixesByTableId();
+    return newColumns.map((newColumn) => {
+      const { tableId } = Val.assert(
+        identities.find(({ tableKey }) => tableKey === newColumn.table),
+        `live Table ${newColumn.table}`,
+      );
+      const idPrefix = idPrefixesByTableId.assertIdPrefix(tableId);
+      return { ...newColumn, tableId, columnId: dimensionIds.col(idPrefix) };
+    });
+  }
+  // At the end, a new column shifts none of the plan's other writes, so it joins their flush.
+  appendColumns(minted: MintedNewColumn[]): this {
+    for (const { tableId, columnId, header, before } of minted) {
+      if (before !== undefined) continue;
+      this.ss.raw.table(tableId).appendColumn({ columnId, header });
+    }
+    return this;
+  }
+  // Deletes rightmost first on each Table, so one's index isn't moved by the ones before it; then inserts, each at its index once those deletes land.
+  changeColumns(sent: IntendedTrait[], minted: MintedNewColumn[]): this {
     const deletions = this._sentColumnTraits(sent, "deleted").map(
-      ({ tableId, columnId }) => {
-        const table = this.ss.raw.table(tableId);
-        return { table, colIndex: table.columnResolver.colIndexOf(columnId) };
-      },
+      ({ tableId, columnId }) => ({
+        tableId,
+        colIndex: this._colIndexOf(tableId, columnId),
+      }),
     );
     deletions.sort((first, second) => second.colIndex - first.colIndex);
-    for (const { table, colIndex } of deletions) table.deleteColumn(colIndex);
+    for (const { tableId, colIndex } of deletions) {
+      this.ss.raw.table(tableId).deleteColumn(colIndex);
+    }
+    for (const { tableId, colIndex, headCells } of this._inserts(
+      minted,
+      deletions,
+    )) {
+      this.ss.raw.table(tableId).insertColumn(colIndex, headCells);
+    }
     return this;
+  }
+  // Rightmost first, and two before one column in reverse entry order, so the entries land in the order written.
+  private _inserts(
+    minted: MintedNewColumn[],
+    deletions: ColumnAt[],
+  ): ColumnInsert[] {
+    const identities = this._namedColumnIdentities();
+    const inserts = minted.flatMap(
+      ({ tableId, table, columnId, header, before }): ColumnInsert[] => {
+        if (before === undefined) return [];
+        const beforeIdentity = Val.assert(
+          identities.find(
+            ({ tableKey, columnName }) =>
+              tableKey === table && columnName === before,
+          ),
+          `live column ${table}.${before}`,
+        );
+        const beforeIndex = this._colIndexOf(tableId, beforeIdentity.columnId);
+        if (beforeIndex === 0) {
+          throw new Error(
+            `Table ${table} can't take "${header}" before ${before}, its first column: a column inserted there lands outside the Table.`,
+          );
+        }
+        const deletedLeft = deletions.filter(
+          (deletion) =>
+            deletion.tableId === tableId && deletion.colIndex < beforeIndex,
+        ).length;
+        return [
+          {
+            tableId,
+            colIndex: beforeIndex - deletedLeft,
+            headCells: { columnId, header },
+          },
+        ];
+      },
+    );
+    return inserts
+      .reverse()
+      .sort((first, second) => second.colIndex - first.colIndex);
+  }
+  private _colIndexOf(tableId: string, columnId: string): number {
+    return this.ss.raw.table(tableId).columnResolver.colIndexOf(columnId);
   }
   private _sentColumnTraits(
     sent: IntendedTrait[],

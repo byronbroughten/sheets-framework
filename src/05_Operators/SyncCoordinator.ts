@@ -20,6 +20,8 @@ import { remainingAlterations } from "../01_SpreadsheetSchema/configReaders/rema
 import { SyncEntryRefuser } from "../01_SpreadsheetSchema/configReaders/SyncEntryRefuser";
 import {
   isSheetTrait,
+  newColumnPosition,
+  newColumnSendLine,
   type PlanProps,
   SyncPlanner,
   type SyncPlannerResult,
@@ -27,6 +29,7 @@ import {
 } from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
 import type {
   ForcedTrait,
+  SyncCreatedColumn,
   SyncPlanItem,
   SyncRunFrame,
   SyncRunResult,
@@ -41,7 +44,10 @@ import {
   type SpreadsheetNamedProps,
 } from "../04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
 import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
-import { ColumnConfigsOperator } from "./ColumnConfigsOperator";
+import {
+  ColumnConfigsOperator,
+  type MintedNewColumn,
+} from "./ColumnConfigsOperator";
 import { ConditionalFormatConfigOperator } from "./ConditionalFormatConfigOperator";
 import {
   alterationsFileSource,
@@ -89,12 +95,14 @@ interface Regeneration {
   changes: SyncTypedTraitChange[];
   notes: string[];
   didntLand: SyncSendLine[];
+  createdColumns: SyncCreatedColumn[];
 }
 
 // What a plan's flush writes, and the cells read before it so the gate can judge them.
 interface AppliedPlan {
   accessChanges: ApiAccessChanges;
   sentTraits: SyncPlannerResult["sentTraits"];
+  newColumns: MintedNewColumn[];
   reads: EnteredDataReads;
 }
 
@@ -103,6 +111,12 @@ interface RefetchProps {
   plan: SyncPlannerResult;
   sent: SyncSubject[];
   accessChanges: ApiAccessChanges;
+  newColumns: MintedNewColumn[];
+}
+
+interface ColumnsLanded {
+  createdColumns: SyncCreatedColumn[];
+  didntLand: SyncSendLine[];
 }
 
 // No files on a refused run: the run writes every file or none.
@@ -113,9 +127,12 @@ export interface SyncRun {
 
 /**
  * Runs sync: refuses what intended state alone can't plan, reads the live
- * Tables, plans the three-way comparison against the previous configs, sends
- * the plan, any missing column IDs and Fill Row IDs checkboxes in one flush
- * on an unstopped --send, then its column deletions in a flush of their own,
+ * Tables, plans the three-way comparison against the previous configs and
+ * each new column, stopping on a new column whose header its Table already
+ * has. On an unstopped --send it mints each new column's ID, sends the plan,
+ * any missing column IDs, Fill Row IDs checkboxes and new columns at a
+ * Table's end in one flush, then its column deletions and the new columns
+ * placed before another in a flush of their own,
  * refetches, then emits every generated config file, the ID-name map and
  * the remaining alterations, or none, and fills blank
  * row IDs from the fresh configs as its own send. A bare run sends nothing but still
@@ -199,9 +216,10 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     const readings = this._traitReadings();
     const planned = planner.plan({
       ...withApiAccessReadings(readings, props.previousIdNameMap),
-      headRowStops: this.tableConfigOperator.grantHeadRowStops(
-        accessChanges.grants,
-      ),
+      sheetStops: [
+        ...this.tableConfigOperator.grantHeadRowStops(accessChanges.grants),
+        ...this.columnConfigOperator.headerTakenStops(planner.newColumns),
+      ],
     });
     const isApplying = props.isSending && !planned.isStopped;
     // An unstopped dry run records the live readings: configTraits carry sends it won't make.
@@ -213,6 +231,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     const applied: AppliedPlan = {
       accessChanges,
       sentTraits: planned.sentTraits,
+      newColumns: this.columnConfigOperator.mintColumnIds(planned.newColumns),
       reads: enteredDataReads({
         alterations,
         sentTraits: planned.sentTraits,
@@ -224,7 +243,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     if (isApplying) this._applyPlan(applied);
     const notes = this._recordUntypedColumns();
     if (isApplying) {
-      const refusal = this._flushUnlessHeld(planned.sentTraits);
+      const refusal = this._flushUnlessHeld(applied);
       // No files: column IDs already recorded would reach the configs but not the sheet.
       if (refusal !== undefined) {
         return {
@@ -239,25 +258,29 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     const sent = isApplying ? planned.plan.map(({ subject }) => subject) : [];
     let refetched: SyncCoordinator | undefined;
     let regeneration: Regeneration;
-    // A fresh read, since Raw's state has no reset; only a sent sheet trait changes what it would read.
-    if (isApplying && planned.sentTraits.some(isSheetTrait)) {
+    // A fresh read, since Raw's state has no reset; only a sent sheet trait or a new column changes what it would read.
+    if (
+      isApplying &&
+      (planned.sentTraits.some(isSheetTrait) || applied.newColumns.length > 0)
+    ) {
       refetched = SyncCoordinator.init();
       regeneration = refetched._refetchedRegeneration({
         configTraits: planned.configTraits,
         plan: planned,
         sent,
         accessChanges,
+        newColumns: applied.newColumns,
       });
     } else {
       regeneration = this._regeneration(notes, sent);
     }
     // The fill reads the configs the files came from.
     const regenerator = refetched ?? this;
-    const { files, changes, didntLand } = regeneration;
+    const { files, changes, didntLand, createdColumns } = regeneration;
     // After the files are strings, so the host's gate judges what a send would write and the configs never see it.
     if (props.isHostWithholding && !props.isSending && !planned.isStopped) {
       this._applyPlan(applied);
-      this._flushPlan(applied.sentTraits);
+      this._flushPlan(applied);
     }
     const landed = sent.filter(hasLanded(didntLand));
     if (landed.length > 0) {
@@ -277,6 +300,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         notes: regeneration.notes,
         typedTraitChanges: changes,
         didntLand,
+        createdColumns,
         rowIds: { plan: [...checkboxPlan, ...fillPlan], notices },
       }),
       files,
@@ -294,23 +318,51 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     plan,
     sent,
     accessChanges,
+    newColumns,
   }: RefetchProps): Regeneration {
     // Recorded before the read, so its head-row fetch covers granted Tables and skips revoked ones.
     this.tableConfigOperator.recordApiAccessChanges(accessChanges);
     this._readLive();
     this.columnConfigOperator.recordEmptyValueAllowed(configTraits);
-    const didntLand = didntLandOf({
+    const traitsDidntLand = didntLandOf({
       sentTraits: plan.sentTraits,
       plan: plan.plan,
       live: this._traitReadings().live,
     });
-    return this._regeneration(this._recordUntypedColumns(), sent, didntLand);
+    const notes = this._recordUntypedColumns();
+    const columns = this._columnsLanded(newColumns);
+    return {
+      ...this._regeneration(notes, sent),
+      didntLand: [...traitsDidntLand, ...columns.didntLand],
+      createdColumns: columns.createdColumns,
+    };
   }
-  private _regeneration(
-    notes: string[],
-    sent: SyncSubject[],
-    didntLand: SyncSendLine[] = [],
-  ): Regeneration {
+  // Found by minted ID in the fresh configs, which name each column by its live header.
+  private _columnsLanded(newColumns: MintedNewColumn[]): ColumnsLanded {
+    const columnConfigs = this.columnConfigOperator.newColumnConfigs();
+    const landed: ColumnsLanded = { createdColumns: [], didntLand: [] };
+    for (const newColumn of newColumns) {
+      const found = Object.entries(columnConfigs[newColumn.table] ?? {}).find(
+        ([, config]) => config.columnId === newColumn.columnId,
+      );
+      if (found === undefined) {
+        landed.didntLand.push(newColumnSendLine(newColumn));
+        continue;
+      }
+      const [column, config] = found;
+      landed.createdColumns.push({
+        kind: "createdColumn",
+        table: newColumn.table,
+        header: config.header,
+        column,
+        columnId: newColumn.columnId,
+        columnType: config.columnType?.type ?? "AUTOMATIC",
+        position: newColumnPosition(newColumn),
+      });
+    }
+    return landed;
+  }
+  private _regeneration(notes: string[], sent: SyncSubject[]): Regeneration {
     this.valueConfigOperator.fetchAfterColumnConfigSynced();
     const changes = typedTraitChanges({
       previous: {
@@ -323,7 +375,13 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       },
       sent,
     });
-    return { files: this._configFiles(), changes, notes, didntLand };
+    return {
+      files: this._configFiles(),
+      changes,
+      notes,
+      didntLand: [],
+      createdColumns: [],
+    };
   }
   private _traitReadings(): PlanProps {
     const { previous, live } = this.columnConfigOperator.traitReadings();
@@ -339,13 +397,19 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     this.tableConfigOperator.validateHeadersInZone();
     this.columnConfigOperator.fetchHeadRows();
   }
-  private _applyPlan({ accessChanges, sentTraits, reads }: AppliedPlan): void {
+  private _applyPlan({
+    accessChanges,
+    sentTraits,
+    newColumns,
+    reads,
+  }: AppliedPlan): void {
     this._readEnteredData(reads);
     // Before the access changes, so it sends what the pre-send read planned.
     this.rowIdsOperator.addCheckboxes();
     this._applyApiAccessChanges(accessChanges);
     this.columnConfigOperator
       .addMissingColumnIds()
+      .appendColumns(newColumns)
       .updateHeaders(sentTraits)
       .updateFormulas(sentTraits);
     this.tableConfigOperator.updateTableNames(sentTraits);
@@ -377,21 +441,19 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     identified.fetchAllGathered();
   }
   // The Node host's gate refuses a held flush by throwing; any other error goes on up.
-  private _flushUnlessHeld(
-    sentTraits: SyncPlannerResult["sentTraits"],
-  ): HeldFlushRefusal | undefined {
+  private _flushUnlessHeld(applied: AppliedPlan): HeldFlushRefusal | undefined {
     try {
-      this._flushPlan(sentTraits);
+      this._flushPlan(applied);
       return undefined;
     } catch (error) {
       if (error instanceof HeldFlushRefusal) return error;
       throw error;
     }
   }
-  // A column delete goes in a flush of its own on its Table, since the plan's other writes are indexed by the columns before it.
-  private _flushPlan(sentTraits: SyncPlannerResult["sentTraits"]): void {
+  // A column delete or mid-Table insert goes in a flush of its own on its Table, since the plan's other writes are indexed by the columns before it.
+  private _flushPlan({ sentTraits, newColumns }: AppliedPlan): void {
     this.ss.batchUpdateGSheets();
-    this.columnConfigOperator.deleteColumns(sentTraits);
+    this.columnConfigOperator.changeColumns(sentTraits, newColumns);
     this.ss.batchUpdateGSheets();
   }
   private _applyApiAccessChanges(accessChanges: ApiAccessChanges): void {

@@ -5,6 +5,7 @@ import {
   type SyncConfigs,
   type SyncConflict,
   type SyncDryRunOutcome,
+  type SyncHeaderTakenStop,
   type SyncHeld,
   type SyncHeldBy,
   type SyncHeldGroup,
@@ -110,11 +111,17 @@ export class SyncRunReport {
   private get _stoppedText(): OutcomeText {
     const { stops, command } = this.result;
     const conflicts = stops.filter(({ kind }) => kind === "conflict").length;
-    const headRowStops = stops.length - conflicts;
+    const headRowStops = stops.filter(({ kind }) => kind === "headRows").length;
+    const headersTaken = stops.filter(
+      ({ kind }) => kind === "headerTaken",
+    ).length;
     const why = [
       ...(conflicts > 0 ? [counted(conflicts, "conflict", "conflicts")] : []),
       ...(headRowStops > 0
         ? [`${counted(headRowStops, "Table", "Tables")} can't take head rows`]
+        : []),
+      ...(headersTaken > 0
+        ? [`${counted(headersTaken, "new column", "new columns")} taken`]
         : []),
     ].join(" and ");
     const until = stops.length === 1 ? "it is resolved" : "they are resolved";
@@ -484,12 +491,26 @@ function stopBlocks(stops: SyncStop[]): string[] {
 
 function stopBlock(stop: SyncStop, number: number): string[] {
   if (stop.kind === "conflict") return conflictBlock(stop, number);
+  if (stop.kind === "headerTaken") return headerTakenBlock(stop, number);
   const { table, tab, headerRow } = stop;
   return [
     `STOP ${number} · ${table} › letApiAccess`,
     ...indent(2, [
       `${table}'s header row is on row ${headerRow} of its tab, ${tab}. A Table needs its header on row 4 to take head rows`,
       `(rows 1 to 3: column IDs, action row, heading). Move ${table} so its header sits on row 4, then rerun.`,
+      "The entry stays in alterations.ts.",
+    ]),
+  ];
+}
+
+function headerTakenBlock(
+  { table, header, column, columnId }: SyncHeaderTakenStop,
+  number: number,
+): string[] {
+  return [
+    `STOP ${number} · ${table} › newColumns`,
+    ...indent(2, [
+      `${table} already has a column headed "${header}": ${column}, ${columnId}.`,
       "The entry stays in alterations.ts.",
     ]),
   ];
