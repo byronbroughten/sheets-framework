@@ -525,44 +525,37 @@ function modeledOperationToGoogleRequests(
   }
 }
 
-// The field mask names only what the operation carries, so an absent property is left alone.
+type TabProperty = keyof UpdateTabPropertiesOperation["properties"];
+
+// The field each tab property sets; the mask names only what the operation carries, so an absent property is left alone.
+const tabPropertyMasks: [TabProperty, string][] = [
+  ["color", "tabColorStyle"],
+  ["hidden", "hidden"],
+  ["frozenRows", "gridProperties.frozenRowCount"],
+  ["frozenColumns", "gridProperties.frozenColumnCount"],
+  ["index", "index"],
+];
+
 function tabPropertiesRequest({
   sheetId,
   properties,
 }: UpdateTabPropertiesOperation): ModeledRequest {
   const { color, hidden, frozenRows, frozenColumns, index } = properties;
-  const fields = [
-    ...(color !== undefined ? ["tabColorStyle"] : []),
-    ...(hidden !== undefined ? ["hidden"] : []),
-    ...(frozenRows !== undefined ? ["gridProperties.frozenRowCount"] : []),
-    ...(frozenColumns !== undefined
-      ? ["gridProperties.frozenColumnCount"]
-      : []),
-    ...(index !== undefined ? ["index"] : []),
-  ];
-  const hasGridProperties =
-    frozenRows !== undefined || frozenColumns !== undefined;
+  const fields = tabPropertyMasks.flatMap(([property, mask]) =>
+    properties[property] === undefined ? [] : [mask],
+  );
   return {
     updateSheetProperties: {
       properties: {
         sheetId,
-        ...(color !== undefined
-          ? { tabColorStyle: googleColor.fromTabColor(color) }
-          : {}),
-        ...(hidden !== undefined ? { hidden } : {}),
-        ...(hasGridProperties
-          ? {
-              gridProperties: {
-                ...(frozenRows !== undefined
-                  ? { frozenRowCount: frozenRows }
-                  : {}),
-                ...(frozenColumns !== undefined
-                  ? { frozenColumnCount: frozenColumns }
-                  : {}),
-              },
-            }
-          : {}),
-        ...(index !== undefined ? { index } : {}),
+        tabColorStyle:
+          color === undefined ? undefined : googleColor.fromTabColor(color),
+        hidden,
+        gridProperties: {
+          frozenRowCount: frozenRows,
+          frozenColumnCount: frozenColumns,
+        },
+        index,
       },
       fields: fields.join(","),
     },

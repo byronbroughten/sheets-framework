@@ -16,6 +16,7 @@ import type {
   SheetSnapshot,
   SheetTabProperties,
   TableSnapshot,
+  UpdateTabPropertiesOperation,
 } from "../00_Source/RawSource/RawSource";
 import {
   type SheetColIndex,
@@ -94,11 +95,7 @@ export class SheetRaw extends SheetBaseRaw {
     return this;
   }
   updateTabProperties(properties: Partial<SheetTabProperties>): this {
-    this.writeOperations.updateTabProperties.push({
-      kind: "updateTabProperties",
-      sheetId: this.sheetGid,
-      properties,
-    });
+    this._queueTabProperties(properties);
     this.sheetState.working.tabProperties = {
       ...this.tabProperties,
       ...properties,
@@ -107,14 +104,32 @@ export class SheetRaw extends SheetBaseRaw {
   }
   // Google counts the index before the move, so the target's own index lands this tab just before it.
   moveBefore(target: SheetRaw): this {
+    this._queueTabProperties({ index: target.index });
+    this._placeBefore(target.sheetGid);
+    return this;
+  }
+  private _queueTabProperties(
+    properties: UpdateTabPropertiesOperation["properties"],
+  ): void {
     this.writeOperations.updateTabProperties.push({
       kind: "updateTabProperties",
       sheetId: this.sheetGid,
-      properties: { index: target.index },
+      properties,
     });
-    return this;
   }
-  // Raw keeps the sheets in the order the first fetch gave them, which is the tab order.
+  // So a later move in the same batch counts from where this one leaves the tabs.
+  private _placeBefore(targetGid: number): void {
+    const { sheets } = this.spreadsheetStateRaw;
+    const sheetState = this.sheetState;
+    const others = Array.from(sheets).filter(
+      ([sheetGid]) => sheetGid !== this.sheetGid,
+    );
+    const targetAt = others.findIndex(([sheetGid]) => sheetGid === targetGid);
+    others.splice(targetAt, 0, [this.sheetGid, sheetState]);
+    sheets.clear();
+    for (const [sheetGid, state] of others) sheets.set(sheetGid, state);
+  }
+  // Raw keeps the sheets in tab order: the first fetch's, then each queued move's.
   get index(): number {
     return Array.from(this.spreadsheetStateRaw.sheets.keys()).indexOf(
       this.sheetGid,

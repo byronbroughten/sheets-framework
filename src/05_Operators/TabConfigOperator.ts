@@ -52,9 +52,7 @@ export class TabConfigOperator extends SpreadsheetBaseOperator {
   }
   // `before` is read live only: order is never in the configs, so it can't conflict.
   traitReadings(): { previous: TabReadings; live: TabReadings } {
-    const tabNames = this.ss.raw.activeSheetGids.map((sheetGid) =>
-      this.schema.titleToName(this.ss.raw.sheet(sheetGid).title),
-    );
+    const tabNames = [...this._sheetsByTabName().keys()];
     const live = Object.entries(this.newTabConfigs()).reduce<TabReadings>(
       (readings, [tabName, config]) => {
         const next = tabNames[tabNames.indexOf(tabName) + 1];

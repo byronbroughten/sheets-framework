@@ -57,19 +57,7 @@ function remainingTabs(
   tabs: WideAlterations["tabs"],
   landedKeys: Set<string>,
 ): Record<string, object> {
-  return Object.fromEntries(
-    entriesOf(tabs).flatMap(([tabName, entry]) =>
-      keepIfNotEmpty(
-        tabName,
-        Object.fromEntries(
-          Object.entries(entry).filter(
-            ([trait]) =>
-              !landedKeys.has(traitKey(tabKeyPrefix, tabName, trait)),
-          ),
-        ),
-      ),
-    ),
-  );
+  return remainingEntries(tabs, landedKeys, tabKeyPrefix);
 }
 
 function remainingTables(
@@ -109,25 +97,25 @@ function remainingColumns(
   columns: WideTableEntry["columns"],
   landedKeys: Set<string>,
 ): Record<string, WideColumnEntry> {
-  return Object.fromEntries(
-    entriesOf(columns).flatMap(([columnName, entry]) =>
-      keepIfNotEmpty(
-        columnName,
-        remainingColumnEntry(tableName, columnName, entry, landedKeys),
-      ),
-    ),
-  );
+  return remainingEntries(columns, landedKeys, tableName);
 }
 
-function remainingColumnEntry(
-  tableName: string,
-  columnName: string,
-  entry: WideColumnEntry,
+// A tab's or a column's entries, each keeping only its traits not landed, keyed under `prefix`.
+function remainingEntries(
+  entries: Record<string, object | undefined> | undefined,
   landedKeys: Set<string>,
-): WideColumnEntry {
+  prefix: string,
+): Record<string, object> {
   return Object.fromEntries(
-    Object.entries(entry).filter(
-      ([trait]) => !landedKeys.has(traitKey(tableName, columnName, trait)),
+    entriesOf(entries).flatMap(([entryName, entry]) =>
+      keepIfNotEmpty(
+        entryName,
+        Object.fromEntries(
+          Object.entries(entry).filter(
+            ([trait]) => !landedKeys.has(traitKey(prefix, entryName, trait)),
+          ),
+        ),
+      ),
     ),
   );
 }

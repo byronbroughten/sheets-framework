@@ -612,13 +612,23 @@ describe("SyncCoordinator.run tab traits", () => {
     title: "Test",
   };
 
-  function runTabs(alterations: PendingAlterations): SyncRun {
+  const notesTabSheet: FakeSheetProperties = {
+    sheetId: 604825147,
+    title: "Notes",
+  };
+
+  function runTabs(
+    alterations: PendingAlterations,
+    extraTabs: FakeSheetProperties[] = [testTabSheet],
+  ): SyncRun {
     const previousIdNameMap = previousItemMap();
-    previousIdNameMap.tabs[String(testTabGid)] = {
-      name: "test",
-      title: "Test",
-      tableIds: [],
-    };
+    for (const { sheetId, title } of extraTabs) {
+      previousIdNameMap.tabs[String(sheetId)] = {
+        name: title.toLowerCase(),
+        title,
+        tableIds: [],
+      };
+    }
     return SyncCoordinator.init().run({
       isSending: true,
       intendedState: { alterations },
@@ -676,6 +686,18 @@ describe("SyncCoordinator.run tab traits", () => {
     expect(result).toMatchObject({
       landed: [{ subject: { tab: "test", path: "before" } }],
     });
+  });
+
+  it("moves two tabs in one run, the second counted from where the first left the tabs", () => {
+    const extraTabs = [testTabSheet, notesTabSheet];
+    const service = seedFixture({ extraSheets: extraTabs });
+
+    runTabs(
+      { tabs: { notes: { before: "item" }, test: { before: "item" } } },
+      extraTabs,
+    );
+
+    expect(service.grid.sheetTitles()).toEqual(["Notes", "Test", "Item"]);
   });
 
   it("skips a before the live order already satisfies", () => {

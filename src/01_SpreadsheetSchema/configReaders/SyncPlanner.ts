@@ -79,7 +79,17 @@ interface IntendedValue {
 
 export type IntendedTrait = TraitAddress & IntendedValue;
 
-// The traits a send writes to the sheet, so the run refetches after sending one.
+// The traits a tab entry sets.
+export const tabTraits = [
+  "title",
+  "color",
+  "before",
+  "frozenRows",
+  "frozenColumns",
+  "hidden",
+] as const;
+
+// The sent traits Raw's working view doesn't carry, so the run refetches after sending one; a tab's land in the working view.
 export const sheetTraits = {
   table: new Set<string>(["name"]),
   column: new Set<string>(["header"]),
@@ -242,18 +252,15 @@ export class SyncPlanner {
         ),
       ],
     );
-    const tabTraits = entriesOf(this.alterations.tabs).flatMap(
+    const tabDeclarations = entriesOf(this.alterations.tabs).flatMap(
       ([tab, entry]): IntendedTrait[] =>
-        pickTraits(entry, [
-          "title",
-          "color",
-          "before",
-          "frozenRows",
-          "frozenColumns",
-          "hidden",
-        ]).map((trait) => ({ kind: "tab", tab, ...trait })),
+        pickTraits(entry, tabTraits).map((trait) => ({
+          kind: "tab",
+          tab,
+          ...trait,
+        })),
     );
-    return [...tableTraits, ...tabTraits];
+    return [...tableTraits, ...tabDeclarations];
   }
 }
 
@@ -265,7 +272,7 @@ interface ComparedSides {
 
 function pickTraits<EN extends object, KY extends keyof EN & string>(
   entry: EN,
-  traits: KY[],
+  traits: readonly KY[],
 ): { trait: string; value: TraitValue }[] {
   return traits.flatMap((trait) => {
     const value = entry[trait] as TraitValue | undefined;
