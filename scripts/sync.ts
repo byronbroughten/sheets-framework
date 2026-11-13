@@ -1,10 +1,11 @@
-// `sheets-framework gen-configs`: runs sync on the Node host, planning against the live Tables and previous configs, and sending only with --send.
+// `sheets-framework sync`: runs sync on the Node host, planning against the live Tables and previous configs, and sending only with --send.
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 
 import type { IdNameMapGeneric } from "../src/01_SpreadsheetSchema/configReaders/idNameMapTypes.ts";
 import type { PendingAlterations } from "../src/01_SpreadsheetSchema/configReaders/intendedState.ts";
+import type { SyncRunResult } from "../src/01_SpreadsheetSchema/configReaders/syncRunResult.ts";
 import { alterationsFileSource } from "../src/05_Operators/configFileSource.ts";
 import { parseIdNameMapFileSource } from "../src/05_Operators/parseIdNameMapFileSource.ts";
 import type {
@@ -68,13 +69,14 @@ class ConfigFilesGenerator {
     const { result, files } = await this._sync();
     const { SyncRunReport } = await import("../src/nodeHost/SyncRunReport.ts");
     const report = SyncRunReport.init(result).text;
+    process.exitCode = syncExitCode(result);
     // A refused run returns no files: the run writes every file or none.
     if (files === undefined) {
       console.log(report);
       return;
     }
     this._write(files);
-    console.log("\ngen:configs: changes against HEAD:");
+    console.log("\nsync: changes against HEAD:");
     console.log(readConfigsDiff(this.sheetsConfig).join("\n"));
     console.log(`\n${report}`);
 
@@ -85,7 +87,7 @@ class ConfigFilesGenerator {
       reportTscFailure();
       process.exit(1);
     }
-    console.log("gen:configs: tsc passed.");
+    console.log("sync: tsc passed.");
   }
 
   async _sync(): Promise<SyncRun> {
@@ -110,7 +112,7 @@ class ConfigFilesGenerator {
       previousIdNameMap,
       frame: {
         target: basename(this.sheetsConfig.dir),
-        command: "npm run gen:configs",
+        command: "npm run sync",
         generatedDir,
         alterationsPath: this.path.alterations,
       },
@@ -156,7 +158,7 @@ class ConfigFilesGenerator {
 
 function reportTscFailure(): void {
   console.error(
-    "\ngen:configs: regeneration succeeded and every generated file was written," +
+    "\nsync: regeneration succeeded and every generated file was written," +
       "but this package's `npm run tsc` failed above. This usually means " +
       "hand-written references in this package still name a sheet or column " +
       "that no longer exists after this regeneration. Fix those references " +
@@ -226,7 +228,17 @@ declare module "@byronbroughten/sheets-framework" {
 `;
 }
 
-export async function runGenConfigs(
+// Non-zero whenever something the run meant to do didn't happen, so an agent can branch on the exit code alone.
+export function syncExitCode(result: SyncRunResult): number {
+  const { outcome } = result;
+  if (outcome.kind === "ready" || outcome.kind === "sent") {
+    if (result.mode === "send" && result.didntLand.length > 0) return 1;
+    return 0;
+  }
+  return 1;
+}
+
+export async function runSync(
   sheetsConfig: SheetsConfig,
   argv: string[],
 ): Promise<void> {

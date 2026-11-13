@@ -111,5 +111,4 @@ export class SpreadsheetTableValidatorIdentified extends SpreadsheetBaseIdentifi
   }
 }
 
-const regenerateFix =
-  "regenerate the configs with sheets-framework gen-configs";
+const regenerateFix = "regenerate the configs with sheets-framework sync";

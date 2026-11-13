@@ -5,8 +5,9 @@ import { fileURLToPath } from "node:url";
 import { loadSheetsConfig } from "./sheetsConfig.ts";
 
 const usage = `Usage: sheets-framework <command> [args]
-  gen-configs [--send] run sync: plan alterations.ts against the live sheet and
-                       refresh the generated files (send the plan with --send)
+  sync [--send]        plan alterations.ts against the live sheet and refresh
+                       the generated files (send the plan with --send); exits
+                       non-zero when the run stops, refuses or doesn't land
   configs-diff         summarise how the generated files differ from HEAD; read-only
   chore [name] [--send] [--json]
                        dry-run a chore (or apply it with --send); no name lists them
@@ -19,9 +20,9 @@ The spreadsheet ID comes only from the nearest sheets.config.json above cwd.`;
 const [command, ...argv] = process.argv.slice(2);
 
 switch (command) {
-  case "gen-configs": {
-    const { runGenConfigs } = await import("./genConfigs.ts");
-    await runGenConfigs(loadSheetsConfig(), argv);
+  case "sync": {
+    const { runSync } = await import("./sync.ts");
+    await runSync(loadSheetsConfig(), argv);
     break;
   }
   case "configs-diff": {

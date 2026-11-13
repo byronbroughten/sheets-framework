@@ -8,6 +8,10 @@ import { beforeAll, describe, expect, it } from "vitest";
 
 import { appConfigs } from "../dev/generated/appConfigs.ts";
 import type { IdNameMapGeneric } from "../src/01_SpreadsheetSchema/configReaders/idNameMapTypes.ts";
+import type {
+  SyncDryRunResult,
+  SyncSendResult,
+} from "../src/01_SpreadsheetSchema/configReaders/syncRunResult.ts";
 import {
   alterationsFileSource,
   columnIdsByName,
@@ -20,15 +24,108 @@ import {
   idNameMapPath,
   loadIntendedState,
   loadPreviousIdNameMap,
-} from "./genConfigs.ts";
+  syncExitCode,
+} from "./sync.ts";
 
 const devGeneratedDir = fileURLToPath(
   new URL("../dev/generated", import.meta.url),
 );
 const devIdNameMapPath = idNameMapPath(devGeneratedDir);
 const devAlterationsPath = alterationsPath(devGeneratedDir);
-const missingFilesDir = mkdtempSync(join(tmpdir(), "gen-configs-"));
-const fixtureAlterationsDir = mkdtempSync(join(tmpdir(), "gen-configs-"));
+const missingFilesDir = mkdtempSync(join(tmpdir(), "sync-"));
+const fixtureAlterationsDir = mkdtempSync(join(tmpdir(), "sync-"));
+
+const dryRun = {
+  mode: "dry run",
+  target: "dev",
+  command: "npm run sync",
+  generatedDir: "dev/generated/",
+  alterationsPath: "dev/alterations.ts",
+  checks: [],
+  refusals: [],
+  stops: [],
+  plan: [],
+  notices: [],
+  configs: {
+    heldBack: [],
+    renamed: [],
+    namesMoved: [],
+    rewrites: [],
+    typedTraitChanges: [],
+    notes: [],
+  },
+} as const satisfies Omit<SyncDryRunResult, "outcome">;
+
+const send = {
+  ...dryRun,
+  mode: "send",
+  landed: [],
+  notSent: [],
+  didntLand: [],
+} as const satisfies Omit<SyncSendResult, "outcome">;
+
+describe("syncExitCode", () => {
+  it("is 0 for a dry run that is ready", () => {
+    expect(syncExitCode({ ...dryRun, outcome: { kind: "ready" } })).toBe(0);
+  });
+
+  it("is 0 for a ready dry run with held items", () => {
+    const held = { groups: [], fullListPath: "held.txt", token: "abc" };
+    expect(syncExitCode({ ...dryRun, outcome: { kind: "ready" }, held })).toBe(
+      0,
+    );
+  });
+
+  it("is 0 for a send where everything landed", () => {
+    expect(
+      syncExitCode({ ...send, outcome: { kind: "sent", summary: "1 sent" } }),
+    ).toBe(0);
+  });
+
+  it("is 1 for a stopped run, dry or sent", () => {
+    expect(syncExitCode({ ...dryRun, outcome: { kind: "stopped" } })).toBe(1);
+    expect(syncExitCode({ ...send, outcome: { kind: "stopped" } })).toBe(1);
+  });
+
+  it("is 1 for a refused run, dry or sent", () => {
+    expect(syncExitCode({ ...dryRun, outcome: { kind: "refused" } })).toBe(1);
+    expect(syncExitCode({ ...send, outcome: { kind: "refused" } })).toBe(1);
+  });
+
+  it("is 1 for a send with an item that didn't land", () => {
+    const didntLand = [{ subject: { table: "widget" }, what: "rename" }];
+    expect(
+      syncExitCode({
+        ...send,
+        outcome: { kind: "sent", summary: "0 sent" },
+        didntLand,
+      }),
+    ).toBe(1);
+  });
+
+  it("is 1 for a send a held flush stopped before any flush landed", () => {
+    expect(
+      syncExitCode({
+        ...send,
+        outcome: { kind: "stoppedBeforeSending", heldBy: "uncovered" },
+      }),
+    ).toBe(1);
+  });
+
+  it("is 1 for a send a held flush stopped partway", () => {
+    expect(
+      syncExitCode({
+        ...send,
+        outcome: {
+          kind: "stoppedPartway",
+          landedFlushes: 1,
+          flushCount: 2,
+          heldBy: "mismatched",
+        },
+      }),
+    ).toBe(1);
+  });
+});
 
 describe("the dev package's generated files", () => {
   const { tableConfigs, columnConfigs } = appConfigs;
