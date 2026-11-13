@@ -48,24 +48,28 @@ const configs: BraceConfigs = {
 };
 
 describe("BraceFormula.compileForCell", () => {
-  it("wraps a column of the formula's own Table in SINGLE, as its same-row value", () => {
+  it("wraps an @ brace in SINGLE, as this row's value, of its own Table or another", () => {
     expect(
       BraceFormula.compileForCell({
         configs,
         tableKey: "item",
-        formula: "=${price}*${count}",
+        formula: "=${@price}*${@count}+${unit[@rent]}",
       }),
-    ).toBe("=SINGLE(Items[Purchase Price])*SINGLE(Items[Count])");
+    ).toBe(
+      "=SINGLE(Items[Purchase Price])*SINGLE(Items[Count])+SINGLE(Unit_list[Rent])",
+    );
   });
 
-  it("gives a Table-qualified brace the bare reference, the whole column", () => {
+  it("gives a brace with no @ the bare reference, the whole column", () => {
     expect(
       BraceFormula.compileForCell({
         configs,
         tableKey: "item",
-        formula: "=COUNTA(${unit[rent]})+SUM(${item[count]})",
+        formula: "=COUNTA(${unit[rent]})+SUM(${item[count]})+SUM(${price})",
       }),
-    ).toBe("=COUNTA(Unit_list[Rent])+SUM(Items[Count])");
+    ).toBe(
+      "=COUNTA(Unit_list[Rent])+SUM(Items[Count])+SUM(Items[Purchase Price])",
+    );
   });
 
   it("leaves a brace inside a string literal as text", () => {
@@ -73,9 +77,9 @@ describe("BraceFormula.compileForCell", () => {
       BraceFormula.compileForCell({
         configs,
         tableKey: "item",
-        formula: '="${count} is ""${count}"""&${count}',
+        formula: '="${@count} is ""${count}"""&${@count}',
       }),
-    ).toBe('="${count} is ""${count}"""&SINGLE(Items[Count])');
+    ).toBe('="${@count} is ""${count}"""&SINGLE(Items[Count])');
   });
 
   it("refuses a brace naming no column, naming the brace and the formula", () => {
@@ -83,19 +87,19 @@ describe("BraceFormula.compileForCell", () => {
       BraceFormula.compileForCell({
         configs,
         tableKey: "item",
-        formula: "=${prise}*2",
+        formula: "=${@prise}*2",
       }),
     ).toThrow(
-      "The brace ${prise} names no column of Table item, in formula =${prise}*2.",
+      "The brace ${@prise} names no column of Table item, in formula =${@prise}*2.",
     );
     expect(() =>
       BraceFormula.compileForCell({
         configs,
         tableKey: "item",
-        formula: "=${unit[price]}",
+        formula: "=${unit[@price]}",
       }),
     ).toThrow(
-      "The brace ${unit[price]} names no column of Table unit, in formula =${unit[price]}.",
+      "The brace ${unit[@price]} names no column of Table unit, in formula =${unit[@price]}.",
     );
     expect(() =>
       BraceFormula.compileForCell({
@@ -110,25 +114,15 @@ describe("BraceFormula.compileForCell", () => {
 });
 
 describe("BraceFormula.decompile", () => {
-  it("turns an own-Table SINGLE into a bare brace and any other reference into a qualified one", () => {
+  it("turns every SINGLE into an @ brace, bare for its own Table's columns and qualified for another's", () => {
     expect(
       BraceFormula.decompile({
         configs,
         tableKey: "item",
         formula:
-          "=SINGLE(Items[Purchase Price])*COUNTA(Unit_list[Rent])+SUM(Items[Count])",
+          "=SINGLE(Items[Purchase Price])*COUNTA(Unit_list[Rent])+SUM(Items[Count])+SINGLE(Unit_list[Rent])",
       }),
-    ).toBe("=${price}*COUNTA(${unit[rent]})+SUM(${item[count]})");
-  });
-
-  it("keeps SINGLE as text around another Table's column", () => {
-    expect(
-      BraceFormula.decompile({
-        configs,
-        tableKey: "item",
-        formula: "=SINGLE(Unit_list[Rent])",
-      }),
-    ).toBe("=SINGLE(${unit[rent]})");
+    ).toBe("=${@price}*COUNTA(${unit[rent]})+SUM(${count})+${unit[@rent]}");
   });
 
   it("reads a Table and header rename that Sheets propagated as the same brace form", () => {
@@ -167,12 +161,12 @@ describe("BraceFormula.decompile", () => {
         formula:
           '=Other[Thing]&Items[Gone]&"Items[Count]"&SINGLE(\nItems[Count])',
       }),
-    ).toBe('=Other[Thing]&Items[Gone]&"Items[Count]"&${count}');
+    ).toBe('=Other[Thing]&Items[Gone]&"Items[Count]"&${@count}');
   });
 
   it("gives back the brace form that compiled to the live text", () => {
     const formula =
-      "=IF(${count}>0, ${price}/COUNTA(${unit[rent]}), SINGLE(${unit[rent]}))";
+      "=IF(${@count}>0, ${@price}/COUNTA(${unit[rent]}), ${unit[@rent]}+SUM(${count}))";
     const compiled = BraceFormula.compileForCell({
       configs,
       tableKey: "item",
@@ -191,24 +185,24 @@ describe("BraceFormula.compileForRule", () => {
     columnNamesLeftToRight: ["count", "newColumn", "price"],
   };
 
-  it("anchors a bare brace's column to the first body row, relative by row", () => {
+  it("anchors an @ brace's column to the first body row, relative by row", () => {
     expect(
       BraceFormula.compileForRule({
         tableKey: "item",
         layout,
-        formula: "=${price}>${newColumn}",
+        formula: "=${@price}>${item[@newColumn]}",
       }),
     ).toBe("=$E5>$D5");
   });
 
-  it("gives an own-Table qualified brace the whole body column", () => {
+  it("gives a brace with no @ the whole body column", () => {
     expect(
       BraceFormula.compileForRule({
         tableKey: "item",
         layout,
-        formula: "=COUNTIF(${item[count]}, ${count})>1",
+        formula: "=COUNTIF(${count}, ${@count})>COUNTA(${item[price]})",
       }),
-    ).toBe("=COUNTIF($C$5:$C, $C5)>1");
+    ).toBe("=COUNTIF($C$5:$C, $C5)>COUNTA($E$5:$E)");
   });
 
   it("refuses a brace naming no column of the layout, or another Table", () => {
@@ -216,10 +210,10 @@ describe("BraceFormula.compileForRule", () => {
       BraceFormula.compileForRule({
         tableKey: "item",
         layout,
-        formula: "=${prise}",
+        formula: "=${@prise}",
       }),
     ).toThrow(
-      "The brace ${prise} names no column of Table item, in formula =${prise}.",
+      "The brace ${@prise} names no column of Table item, in formula =${@prise}.",
     );
     expect(() =>
       BraceFormula.compileForRule({
@@ -242,7 +236,6 @@ describe("BraceFormula.decompileForRule", () => {
 
   function decompile(formula: string, isOneColumn = false) {
     return BraceFormula.decompileForRule({
-      tableKey: "item",
       layout,
       formula,
       isOneColumn,
@@ -251,13 +244,13 @@ describe("BraceFormula.decompileForRule", () => {
 
   it("gives back the brace form a rule's formula compiled from", () => {
     expect(decompile("=COUNTIF($C$5:$C, $C5)>1")).toBe(
-      "=COUNTIF(${item[count]}, ${count})>1",
+      "=COUNTIF(${count}, ${@count})>1",
     );
-    expect(decompile('=$E5>$D5&"$C5"')).toBe('=${price}>${newColumn}&"$C5"');
+    expect(decompile('=$E5>$D5&"$C5"')).toBe('=${@price}>${@newColumn}&"$C5"');
   });
 
   it("reads a column-relative reference as its column only on a one-column rule", () => {
-    expect(decompile("=D5>2", true)).toBe("=${newColumn}>2");
+    expect(decompile("=D5>2", true)).toBe("=${@newColumn}>2");
     expect(decompile("=D5>2")).toBeUndefined();
   });
 
@@ -271,7 +264,34 @@ describe("BraceFormula.decompileForRule", () => {
 
   it("leaves function names alone", () => {
     expect(decompile("=LOG10($E5)>ATAN2($C5, 1)")).toBe(
-      "=LOG10(${price})>ATAN2(${count}, 1)",
+      "=LOG10(${@price})>ATAN2(${@count}, 1)",
     );
+  });
+});
+
+describe("BraceFormula.malformedBraces", () => {
+  it("names each ${…} that reads as no brace, outside string literals", () => {
+    expect(
+      BraceFormula.malformedBraces({
+        formula: '=${@vendor[cost]}+${@price}+${unit[@rent]}+${@@x}&"${@a[b]}"',
+      }),
+    ).toEqual(["${@vendor[cost]}", "${@@x}"]);
+  });
+});
+
+describe("BraceFormula.columnsNamed", () => {
+  it("names the column of every brace form, its own Table's and another's", () => {
+    expect(
+      BraceFormula.columnsNamed({
+        tableKey: "item",
+        formula:
+          '=${@price}+${count}+${unit[@rent]}+SUM(${unit[rent]})&"${gone}"',
+      }),
+    ).toEqual([
+      { brace: "${@price}", tableKey: "item", columnName: "price" },
+      { brace: "${count}", tableKey: "item", columnName: "count" },
+      { brace: "${unit[@rent]}", tableKey: "unit", columnName: "rent" },
+      { brace: "${unit[rent]}", tableKey: "unit", columnName: "rent" },
+    ]);
   });
 });

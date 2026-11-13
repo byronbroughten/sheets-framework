@@ -189,7 +189,7 @@ describe("ColumnProfileRaw sampled facts", () => {
   });
 });
 
-describe("TableRaw.appendColumn", () => {
+describe("TableRaw.appendColumn, insertColumn and deleteColumn", () => {
   const newColumn = { startColumnIndex: 3, endColumnIndex: 4 } as const;
 
   function stubThreeColumnTable(
@@ -348,6 +348,165 @@ describe("TableRaw.appendColumn", () => {
     });
   });
 
+  describe("insertColumn and deleteColumn", () => {
+    const lastBodyRow = topDataRowIndex + 1;
+    const belowRow = lastBodyRow + 1;
+    const tableBand = {
+      startRowIndex: colIdRowIndex,
+      endRowIndex: belowRow + 1,
+      endColumnIndex: 4,
+    };
+    function stubBodyTable() {
+      return stubSheetsService({
+        sheets: [
+          {
+            sheetId: 111,
+            title: "Records",
+            rows: buildGridRows({
+              [colIdRowIndex]: ["c:lse:aaa", "c:lse:bbb", "c:lse:ccc"],
+              [tableHeaderRowIndex]: ["ID", "Left", "Right"],
+              [topDataRowIndex]: ["r:lse:1", "left", "right"],
+              [lastBodyRow]: ["r:lse:2", "l2", "r2"],
+              [belowRow]: ["below", "below", "below", "below"],
+            }),
+            table: { endRowIndex: belowRow, endColumnIndex: 3 },
+          },
+        ],
+      });
+    }
+    function fetchedBodyRaw(): SpreadsheetRaw {
+      const raw = fetchedRaw();
+      raw.table(tableId111).topRow.gatherFetchFull();
+      raw.fetchAllGathered(true);
+      return raw;
+    }
+
+    it("inserts a column strictly inside the Table, moving its head rows and body right and growing it with no range update", () => {
+      const { grid } = stubBodyTable();
+
+      const raw = fetchedBodyRaw();
+      raw
+        .table(tableId111)
+        .insertColumn(1, { columnId: "c:lse:new", header: "New" });
+      raw.batchUpdateGSheets();
+
+      expect(grid.sheet(111).values(tableBand)).toEqual([
+        ["c:lse:aaa", "c:lse:new", "c:lse:bbb", "c:lse:ccc"],
+        [null, null, null, null],
+        [null, null, null, null],
+        ["ID", "New", "Left", "Right"],
+        ["r:lse:1", null, "left", "right"],
+        ["r:lse:2", null, "l2", "r2"],
+        ["below", "below", "below", "below"],
+      ]);
+      expect(grid.sheet(111).tables[0]?.range?.endColumnIndex).toBe(4);
+      expect(tableColumnNames(grid)).toEqual(["ID", "New", "Left", "Right"]);
+    });
+
+    it("leaves the working view one column wider, with the fetched cells moved alongside the sheet's", () => {
+      stubBodyTable();
+
+      const raw = fetchedBodyRaw();
+      raw
+        .table(tableId111)
+        .insertColumn(1, { columnId: "c:lse:new", header: "New" });
+      raw.batchUpdateGSheets();
+
+      const table = raw.table(tableId111);
+      expect(table.columnCount).toBe(4);
+      expect(
+        table.fullTableColIndexes.map((i) => table.topRow.valueOrEmpty(i)),
+      ).toEqual(["r:lse:1", "", "left", "right"]);
+      expect(table.columnResolver.colIndexOf("c:lse:new")).toBe(1);
+      expect(table.columnResolver.colIndexOf("c:lse:ccc")).toBe(3);
+    });
+
+    it("deletes a column from the column ID row to the last body row, shrinking the Table and leaving the cells below it", () => {
+      const { grid } = stubBodyTable();
+
+      const raw = fetchedBodyRaw();
+      raw.table(tableId111).deleteColumn(1);
+      raw.batchUpdateGSheets();
+
+      expect(grid.sheet(111).values(tableBand)).toEqual([
+        ["c:lse:aaa", "c:lse:ccc", null, null],
+        [null, null, null, null],
+        [null, null, null, null],
+        ["ID", "Right", null, null],
+        ["r:lse:1", "right", null, null],
+        ["r:lse:2", "r2", null, null],
+        ["below", "below", "below", "below"],
+      ]);
+      expect(grid.sheet(111).tables[0]?.range?.endColumnIndex).toBe(2);
+      expect(tableColumnNames(grid)).toEqual(["ID", "Right"]);
+      const table = raw.table(tableId111);
+      expect(table.columnCount).toBe(2);
+      expect(table.topRow.valueOrEmpty(1)).toBe("right");
+      expect(table.columnResolver.colIndexOf("c:lse:ccc")).toBe(1);
+    });
+
+    it("reads each change's index in the layout the ones queued before it leave", () => {
+      const { grid } = stubBodyTable();
+
+      const raw = fetchedBodyRaw();
+      raw
+        .table(tableId111)
+        .insertColumn(1, { columnId: "c:lse:new", header: "New" })
+        .deleteColumn(3);
+      raw.batchUpdateGSheets();
+
+      expect(tableColumnNames(grid)).toEqual(["ID", "New", "Left"]);
+      expect(raw.table(tableId111).columnCount).toBe(3);
+    });
+
+    it.each([
+      ["an insert at the Table's first column", 0],
+      ["an insert at the Table's end", 3],
+      ["an insert past the Table's end", 4],
+    ])("refuses %s, which isn't strictly inside it", (_, colIndex) => {
+      stubBodyTable();
+      const raw = fetchedRaw();
+
+      expect(() =>
+        raw
+          .table(tableId111)
+          .insertColumn(colIndex, { columnId: "c:lse:new", header: "New" }),
+      ).toThrow(/strictly inside its 3 columns/);
+    });
+
+    it("refuses a delete past the Table's end, counting the deletes already queued", () => {
+      stubBodyTable();
+      const raw = fetchedRaw();
+      raw.table(tableId111).deleteColumn(2);
+
+      expect(() => raw.table(tableId111).deleteColumn(2)).toThrow(
+        /has no table column 2 to delete: it has 2 columns/,
+      );
+    });
+
+    it("refuses to delete a Table's last column", () => {
+      stubBodyTable();
+      const raw = fetchedRaw();
+      raw.table(tableId111).deleteColumn(0).deleteColumn(0);
+
+      expect(() => raw.table(tableId111).deleteColumn(0)).toThrow(
+        /Refusing to delete the last column/,
+      );
+    });
+
+    it("refuses a column change flushed alongside another write on its Table, sending nothing", () => {
+      const { batchUpdateCount } = stubBodyTable();
+      const raw = fetchedBodyRaw();
+      raw.table(tableId111).deleteColumn(1);
+      raw.table(tableId111).row(0).cell(2).updateValue("moved");
+
+      expect(() => raw.batchUpdateGSheets()).toThrow(
+        /Refusing to change the columns of Table .* alongside its other queued writes/,
+      );
+      expect(batchUpdateCount()).toBe(0);
+    });
+  });
+
   describe("beside other Tables", () => {
     const headerRow = tableHeaderRowIndex + 2;
     const columnIdRow = headerRow - 3;
@@ -482,6 +641,62 @@ describe("TableRaw.appendColumn", () => {
         ["ID", "Code"],
         ["r1", "moved"],
         ["r2", "y"],
+      ]);
+    });
+
+    it("shifts a Table to the right by a column inserted inside its neighbour, and lands a write to it at its new columns", () => {
+      const { raw, grid } = fetchedTablesAround();
+
+      raw
+        .table("left")
+        .insertColumn(1, { columnId: "c:lft:new", header: "New" });
+      raw.table("right").row(0).cell(1).updateValue("moved");
+      raw.batchUpdateGSheets();
+
+      expect(tableColumns(grid)).toMatchObject({
+        left: [0, 3],
+        right: [rightStart + 1, rightStart + 3],
+        under: [0, 4],
+      });
+      expect(
+        grid.sheet(111).values({
+          startRowIndex: columnIdRow - 1,
+          endRowIndex: lastRow + 2,
+          endColumnIndex: rightStart + 3,
+        }),
+      ).toEqual([
+        ["", "", "above", null, null, null],
+        ["c:lft:a", "c:lft:new", "c:lft:b", null, "c:rgt:a", "c:rgt:b"],
+        [null, null, null, null, null, null],
+        [null, null, null, null, null, null],
+        ["ID", "New", "Name", "", "ID", "Code"],
+        ["l1", null, "a", "", "r1", "moved"],
+        ["l2", null, "b", "", "r2", "y"],
+        ["", "", "below", null, null, null],
+      ]);
+    });
+
+    it("shifts a Table to the right back by a column deleted from its neighbour", () => {
+      const { raw, grid } = fetchedTablesAround();
+
+      raw.table("left").deleteColumn(1);
+      raw.table("right").row(0).cell(1).updateValue("moved");
+      raw.batchUpdateGSheets();
+
+      expect(tableColumns(grid)).toMatchObject({
+        left: [0, 1],
+        right: [rightStart - 1, rightStart + 1],
+        under: [0, 4],
+      });
+      expect(
+        grid.sheet(111).values({
+          startRowIndex: headerRow,
+          endRowIndex: headerRow + 2,
+          endColumnIndex: rightStart + 1,
+        }),
+      ).toEqual([
+        ["ID", "", "ID", "Code"],
+        ["l1", "", "r1", "moved"],
       ]);
     });
 
@@ -621,6 +836,37 @@ describe("TableRaw.appendColumn", () => {
           const raw = fetchedRawInsertingOnLeft();
 
           expect(() => raw.batchUpdateGSheets()).toThrow(refusal);
+          expect(batchUpdateCount()).toBe(0);
+        },
+      );
+
+      it.each([
+        [
+          "an insert inside",
+          (raw: SpreadsheetRaw) =>
+            raw
+              .table("left")
+              .insertColumn(1, { columnId: "c:lft:new", header: "New" }),
+          "Inserting a column inside Table",
+        ],
+        [
+          "a delete from",
+          (raw: SpreadsheetRaw) => raw.table("left").deleteColumn(1),
+          "Deleting a column of Table",
+        ],
+      ])(
+        "refuses %s the Table when its band would split a neighbour, sending nothing",
+        (_, change, actionLabel) => {
+          const { batchUpdateCount } = stubLeftBeside(
+            neighbour({ startRowIndex: lastRow + 1, endRowIndex: lastRow + 3 }),
+          );
+          const raw = SpreadsheetRaw.init();
+          raw.fetchAllSheetProperties();
+          change(raw);
+
+          expect(() => raw.batchUpdateGSheets()).toThrow(
+            `${actionLabel} "Left" on sheet "Records" would shift only part of Table "Right" with its head rows.`,
+          );
           expect(batchUpdateCount()).toBe(0);
         },
       );
@@ -993,7 +1239,9 @@ describe("ColumnRaw.updateColumnType", () => {
       .table(tableId111)
       .appendColumn({ columnId: "c:lse:new", header: "New" });
 
-    expect(() => raw.batchUpdateGSheets()).toThrow(/inserts a column/);
+    expect(() => raw.batchUpdateGSheets()).toThrow(
+      /inserts or deletes a column/,
+    );
     expect(batchUpdateCount()).toBe(0);
   });
 

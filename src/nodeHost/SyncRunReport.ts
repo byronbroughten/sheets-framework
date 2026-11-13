@@ -391,7 +391,7 @@ function refusalWords(refusal: SyncRefusal): RefusalWords {
       heading: `${entry} › ${name}`,
       lines: [
         `no such ${noun}: adopt by removing the entry.`,
-        `idNameMap.ts holds no ${noun} named ${name}, so it is gone from the sheet or went by another name at the last sync.`,
+        `${noMapEntryText(noun, name)}, so it is gone from the sheet or went by another name at the last sync.`,
       ],
     };
   }
@@ -436,8 +436,29 @@ function tableRefusalText(
       ...ruleHandleLines(table, refusal.handles),
     ];
   }
+  if (refusal.kind === "malformedBrace") {
+    return [
+      `${refusal.brace} isn't a brace: write \${@column} or \${table[@column]} for this row, \${column} or \${table[column]} for the whole column.`,
+    ];
+  }
+  return unknownBraceText(refusal);
+}
+
+// The one phrase for a name the previous ID-name map lacks.
+function noMapEntryText(noun: string, name: string): string {
+  return `idNameMap.ts holds no ${noun} named ${name}`;
+}
+
+function unknownBraceText({
+  brace,
+  braceTable,
+  columns,
+}: Extract<SyncRefusal, { kind: "unknownBrace" }>): string[] {
+  if (columns === undefined) {
+    return [`${brace} names no Table: ${noMapEntryText("Table", braceTable)}.`];
+  }
   return [
-    `${refusal.brace} names no column of ${table}. Its columns: ${refusal.columns.join(", ")}.`,
+    `${brace} names no column of ${braceTable}. Its columns: ${columns.join(", ")}.`,
   ];
 }
 

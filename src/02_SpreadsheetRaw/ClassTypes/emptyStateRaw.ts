@@ -23,6 +23,7 @@ export const emptyStateRaw = {
       deleteTableRows: [],
       sortTable: [],
       insertTableEndColumns: [],
+      changeTableColumns: [],
       fillColumn: [],
       findReplace: [],
       deleteConditionalFormatRule: [],
@@ -47,6 +48,7 @@ export const emptyStateRaw = {
     return {
       sort: undefined,
       insertTableEndColumnCount: 0,
+      columnChanges: [],
       fillColumns: [],
       findReplaces: [],
       columnTypes: new Map(),

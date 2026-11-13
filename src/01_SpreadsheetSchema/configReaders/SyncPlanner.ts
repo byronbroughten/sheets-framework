@@ -98,7 +98,7 @@ export const tabTraits = [
 // The sent traits Raw's working view doesn't carry, so the run refetches after sending one; a tab's land in the working view.
 export const sheetTraits = {
   table: new Set<string>(["name"]),
-  column: new Set<string>(["header"]),
+  column: new Set<string>(["header", "formula"]),
 } as const;
 
 export function isSheetTrait(intended: IntendedTrait): boolean {

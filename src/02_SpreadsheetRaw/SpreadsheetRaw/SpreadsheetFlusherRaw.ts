@@ -13,9 +13,9 @@ import { rowShiftFrom } from "../ClassBases/TableCommonRaw";
 import { emptyStateRaw } from "../ClassTypes/emptyStateRaw";
 import type {
   AppendTableRows,
-  InsertTableEndColumns,
   RowWrites,
   SheetWriteQueueRaw,
+  TableColumnChangeOperation,
   TableColumnInsertOperation,
   TableGrowthOperation,
   TableStateRaw,
@@ -77,8 +77,14 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
     tables.forEach((table) => table.gatherAppendTableRowsOperation());
     this._shiftTablesBelowGrowth(this.writeOperations.appendTableRows);
     tables.forEach((table) => table.gatherInsertTableEndColumnsOperation());
-    this._shiftTablesRightOfColumnInserts(
-      this.writeOperations.insertTableEndColumns,
+    const { insertTableEndColumns, changeTableColumns } = this.writeOperations;
+    this._shiftTablesRight((table) =>
+      table.columnShiftFrom(insertTableEndColumns),
+    );
+    for (const table of tables) table.gatherColumnChangesOperation();
+    // Negative where a Table's deletes outnumber its inserts, which shifts the Tables to its right left.
+    this._shiftTablesRight((table) =>
+      table.columnShiftFromChanges(changeTableColumns),
     );
     tables.forEach((table) => {
       table.gatherQueuedTableWrites();
@@ -107,12 +113,10 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
       ({ table, shiftCount }) => table.shiftRowsUp(shiftCount),
     );
   }
-  private _shiftTablesRightOfColumnInserts(
-    inserts: InsertTableEndColumns[],
-  ): void {
-    this._measuredShifts((table) => table.columnShiftFrom(inserts)).forEach(
-      ({ table, shiftCount }) => table.shiftColumnsRight(shiftCount),
-    );
+  private _shiftTablesRight(shiftOf: (table: TableRaw) => number): void {
+    for (const { table, shiftCount } of this._measuredShifts(shiftOf)) {
+      table.shiftColumnsRight(shiftCount);
+    }
   }
   // Measured against the layout before the batch's shifting operations, then applied, so no shift sees another.
   private _measuredShifts(
@@ -121,7 +125,7 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
     return Array.from(this.tablesStateRaw.keys(), (tableId) => {
       const table = this.ss.table(tableId);
       return { table, shiftCount: shiftOf(table) };
-    }).filter(({ shiftCount }) => shiftCount > 0);
+    }).filter(({ shiftCount }) => shiftCount !== 0);
   }
   // Listed so a queue on a Table not yet fetched stops the run at gathering instead of vanishing.
   private _tablesWithWriteQueues(): TableRaw[] {
@@ -142,8 +146,14 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
       this.writeOperations.deleteTableRows.map(({ range }) => range.sheetId),
     );
   }
+  // A column delete removes a rule or protection it holds whole, so the sheet's fetched ones no longer match.
+  private _sheetGidsWithColumnChanges(): number[] {
+    return this.writeOperations.changeTableColumns.map(
+      ({ sheetId }) => sheetId,
+    );
+  }
   private _sheetGidsWithConditionalFormatMutations(): Set<number> {
-    const sheetGids = new Set<number>();
+    const sheetGids = new Set<number>(this._sheetGidsWithColumnChanges());
     this.writeOperations.deleteConditionalFormatRule.forEach(({ sheetId }) =>
       sheetGids.add(sheetId),
     );
@@ -160,6 +170,7 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
   }
   private _sheetGidsWithEditProtectionMutations(): Set<number> {
     return new Set([
+      ...this._sheetGidsWithColumnChanges(),
       ...this.writeOperations.deleteProtectedRange.map(
         ({ sheetId }) => sheetId,
       ),
@@ -182,6 +193,8 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
       ...this._appendDimensionOperations(),
       ...this._appendTableRowsOperationsBottomUp(),
       ...this._insertTableEndColumnsOperationsRightToLeft(),
+      // After the Table-end inserts, whose layout each change's band was gathered in.
+      ...this._changeTableColumnsOperationsRightToLeft(),
       // Column fills go before cell writes; a later-queued fill already erased the cell writes it covers.
       ...queued.fillColumn,
       ...queued.fillCell,
@@ -275,14 +288,15 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
   }
   // Rightmost Table first within a sheet, so no insert shifts a Table whose insert is still to come.
   private _insertTableEndColumnsOperationsRightToLeft(): TableColumnInsertOperation[] {
-    return [...this.writeOperations.insertTableEndColumns]
-      .sort(
-        bySheetThenPositionDescending(({ newColumns }) => ({
-          sheetId: newColumns.sheetId,
-          position: newColumns.startColumnIndex,
-        })),
-      )
-      .flatMap(({ operations }) => operations);
+    return operationsRightToLeft(
+      this.writeOperations.insertTableEndColumns.map(
+        ({ newColumns, operations }) => ({ ...newColumns, operations }),
+      ),
+    );
+  }
+  // Rightmost Table first within a sheet, so no change moves a Table whose own are still to come; each Table's in queue order.
+  private _changeTableColumnsOperationsRightToLeft(): TableColumnChangeOperation[] {
+    return operationsRightToLeft(this.writeOperations.changeTableColumns);
   }
   // Deletes within one batchUpdate apply sequentially and each shifts the
   // row indices below it, so same-sheet deletes must go highest-index-first
@@ -402,4 +416,21 @@ function bySheetThenPositionDescending<OP extends object>(
     }
     return placeB.position - placeA.position;
   };
+}
+
+function operationsRightToLeft<OP>(
+  columnWrites: {
+    sheetId: number;
+    startColumnIndex: number;
+    operations: OP[];
+  }[],
+): OP[] {
+  return [...columnWrites]
+    .sort(
+      bySheetThenPositionDescending(({ sheetId, startColumnIndex }) => ({
+        sheetId,
+        position: startColumnIndex,
+      })),
+    )
+    .flatMap(({ operations }) => operations);
 }
