@@ -2,6 +2,9 @@ import { Val } from "@byronbroughten/utils/val";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister";
+import type { IdNameMapGeneric } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
+import type { PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState";
+import type { SyncRunFrame } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
 import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
@@ -19,7 +22,11 @@ import {
   fakeTableSheet,
 } from "../testSupport/fakeSheetsService/fakeTableSheet";
 import { parseIdNameMapFileSource } from "../testSupport/parseIdNameMapFileSource";
-import { type ConfigRegeneration, SyncCoordinator } from "./SyncCoordinator";
+import {
+  type ConfigRegeneration,
+  SyncCoordinator,
+  type SyncRun,
+} from "./SyncCoordinator";
 
 type GridRange = GoogleAppsScript.Sheets.Schema.GridRange;
 
@@ -115,11 +122,263 @@ function tableConfigsEntry({
   return `"${tableKey}": { "tableId": "${tableId}", "tableName": "${tableName}", "sheetGid": ${sheetGid}, "idPrefix": "${idPrefix}", "hasIdColumn": ${hasIdColumn}, "hasNameColumn": true }`;
 }
 
-describe("SyncCoordinator.generateConfigFiles", () => {
+const frame: SyncRunFrame = {
+  target: "dev",
+  command: "npm run dev:sync",
+  generatedDir: "dev/generated",
+  alterationsPath: "dev/alterations.ts",
+};
+
+// The dev Item Table as the previous ID-name map records it.
+function previousItemMap(): IdNameMapGeneric {
+  return {
+    tables: {
+      item: {
+        name: "item",
+        sheetGid: itemGid,
+        columns: Object.fromEntries(
+          Object.entries(itemColumns).map(([columnName, { columnId }]) => [
+            columnName,
+            columnId,
+          ]),
+        ),
+      },
+    },
+    tabs: {
+      [String(itemGid)]: { name: "item", title: "Item", tableIds: ["item"] },
+    },
+  };
+}
+
+interface RunOptions {
+  isSending: boolean;
+  alterations?: PendingAlterations;
+}
+
+function runItem({ isSending, alterations = {} }: RunOptions): SyncRun {
+  return SyncCoordinator.init().run({
+    isSending,
+    intendedState: { alterations },
+    previousIdNameMap: previousItemMap(),
+    frame,
+  });
+}
+
+// A send with empty intended state, as gen:configs runs it, so each run is the regen alone.
+function runWithNoAlterations(coordinator = SyncCoordinator.init()): SyncRun {
+  return coordinator.run({
+    isSending: true,
+    intendedState: { alterations: {} },
+    previousIdNameMap: { tables: {}, tabs: {} },
+    frame,
+  });
+}
+
+function sendWithNoAlterations(
+  coordinator = SyncCoordinator.init(),
+): ConfigRegeneration {
+  return Val.assert(
+    runWithNoAlterations(coordinator).files,
+    "files of a send with no alterations",
+  );
+}
+
+// The emitted line of one Item column, so a test reads the trait the configs carry.
+function emittedItemColumn(
+  files: ConfigRegeneration,
+  columnName: string,
+): string {
+  const line = files.columnConfigs
+    .split("\n")
+    .find((sourceLine) => sourceLine.startsWith(`    "${columnName}": `));
+  return Val.assert(line, `emitted ${columnName} column`);
+}
+
+function emptyValueAllowedOf(
+  files: ConfigRegeneration,
+  columnName: string,
+): unknown {
+  const match = emittedItemColumn(files, columnName).match(
+    /"emptyValueAllowed": (true|false)/,
+  );
+  return JSON.parse(Val.assert(match?.[1], "emitted emptyValueAllowed"));
+}
+
+describe("SyncCoordinator.run", () => {
+  const optionalNoteAlteration: PendingAlterations = {
+    tables: {
+      item: { columns: { optionalNote: { emptyValueAllowed: false } } },
+    },
+  };
+
+  it("lands an emptyValueAllowed alteration in the configs, writing nothing to the sheet, and removes it from alterations.ts", () => {
+    const { batchUpdateCount } = seedFixture();
+
+    const { result, files } = runItem({
+      isSending: true,
+      alterations: optionalNoteAlteration,
+    });
+
+    const emitted = Val.assert(files, "emitted files");
+    expect(itemColumns.optionalNote.emptyValueAllowed).toBe(true);
+    expect(emptyValueAllowedOf(emitted, "optionalNote")).toBe(false);
+    expect(emitted.alterations).toBe(
+      [
+        "// sync rewrites this file: each alteration that lands is removed, and comments here won't survive a run.",
+        'import { makePendingAlterations } from "@byronbroughten/sheets-framework";',
+        "",
+        "export const pendingAlterations = makePendingAlterations({});",
+        "",
+      ].join("\n"),
+    );
+    expect(batchUpdateCount()).toBe(0);
+    expect(result).toMatchObject({
+      mode: "send",
+      outcome: { kind: "sent", summary: "1 alteration landed" },
+      landed: [
+        {
+          kind: "send",
+          subject: {
+            table: "item",
+            column: "optionalNote",
+            path: "emptyValueAllowed",
+          },
+          what: "set to false",
+        },
+      ],
+    });
+  });
+
+  it("refreshes the configs from the live sheet on a dry run, without the planned send, and leaves alterations.ts alone", () => {
+    const { batchUpdateCount } = seedFixture({
+      item: {
+        columns: {
+          requiredCount: { ...itemColumns.requiredCount, header: "Tally" },
+        },
+      },
+    });
+
+    const { result, files } = runItem({
+      isSending: false,
+      alterations: optionalNoteAlteration,
+    });
+
+    const emitted = Val.assert(files, "emitted files");
+    expect(itemColumns.requiredCount.header).not.toBe("Tally");
+    expect(emitted.columnConfigs).toContain('"header": "Tally"');
+    expect(emptyValueAllowedOf(emitted, "optionalNote")).toBe(true);
+    expect(emitted.alterations).toBeUndefined();
+    expect(batchUpdateCount()).toBe(0);
+    expect(result).toMatchObject({
+      mode: "dry run",
+      outcome: { kind: "ready" },
+      stops: [],
+      plan: [
+        {
+          subject: {
+            table: "item",
+            column: "optionalNote",
+            path: "emptyValueAllowed",
+          },
+          what: "set to false",
+        },
+      ],
+    });
+  });
+
+  it("writes no column ID on a bare run and leaves an ID-less column out of the configs", () => {
+    const { batchUpdateCount, grid } = seedFixture({
+      item: { columns: { extra: { columnId: "", header: "Extra" } } },
+    });
+
+    const { files } = runItem({ isSending: false });
+
+    const emitted = Val.assert(files, "emitted files");
+    expect(batchUpdateCount()).toBe(0);
+    expect(
+      grid.sheet(itemGid).values()[expectedSheetLayout.colIdRowIndex],
+    ).toContain("");
+    expect(emitted.columnConfigs).not.toContain('"extra"');
+    expect(
+      parseIdNameMapFileSource(emitted.idNameMap).tables.item?.columns,
+    ).not.toHaveProperty("extra");
+  });
+
+  it("sends nothing on a stop, unrelated changes included, yet lists the plan and the conflict", () => {
+    const { batchUpdateCount } = seedFixture({
+      item: { columns: { optionalNote: { columnId: "", header: "Scratch" } } },
+    });
+
+    const { result, files } = runItem({
+      isSending: true,
+      alterations: {
+        tables: {
+          item: {
+            columns: {
+              optionalNote: { emptyValueAllowed: false },
+              requiredCount: { emptyValueAllowed: true },
+            },
+          },
+        },
+      },
+    });
+
+    const emitted = Val.assert(files, "emitted files");
+    expect(batchUpdateCount()).toBe(0);
+    expect(emitted.alterations).toBeUndefined();
+    expect(emptyValueAllowedOf(emitted, "requiredCount")).toBe(false);
+    expect(result).toMatchObject({
+      mode: "send",
+      outcome: { kind: "stopped" },
+      landed: [],
+      stops: [
+        {
+          kind: "conflict",
+          subject: {
+            table: "item",
+            column: "optionalNote",
+            path: "emptyValueAllowed",
+          },
+          label: "a person deleted this column",
+          isColumnGone: true,
+        },
+      ],
+      plan: [
+        {
+          subject: {
+            table: "item",
+            column: "requiredCount",
+            path: "emptyValueAllowed",
+          },
+          what: "set to true",
+        },
+      ],
+    });
+  });
+
+  it("refuses an alteration naming a Table the previous map doesn't hold, before reading anything", () => {
+    const service = seedFixture();
+
+    const { result, files } = runItem({
+      isSending: true,
+      alterations: { tables: { noSuchTable: {} } } as PendingAlterations,
+    });
+
+    expect(files).toBeUndefined();
+    expect(service.getCalls).toEqual([]);
+    expect(result).toMatchObject({
+      mode: "send",
+      outcome: { kind: "refused" },
+      refusals: [{ kind: "noSuchTable", entry: "tables", name: "noSuchTable" }],
+    });
+  });
+});
+
+describe("SyncCoordinator send with no alterations", () => {
   it("returns every file's source together, reflecting the synced state", () => {
     seedFixture();
 
-    const parsed = SyncCoordinator.init().generateConfigFiles();
+    const parsed = sendWithNoAlterations();
     expect(typeof parsed.tableConfigs).toBe("string");
     expect(typeof parsed.columnConfigs).toBe("string");
     expect(parsed.tableConfigs).toContain('"item"');
@@ -136,7 +395,7 @@ describe("SyncCoordinator.generateConfigFiles", () => {
   it("writes every make*Configs import from the framework's package name", () => {
     seedFixture();
 
-    const parsed = SyncCoordinator.init().generateConfigFiles();
+    const parsed = sendWithNoAlterations();
     function importLine(maker: string): string {
       return `import { ${maker} } from "@byronbroughten/sheets-framework";`;
     }
@@ -155,7 +414,7 @@ describe("SyncCoordinator.generateConfigFiles", () => {
   it("emits the ID-name map as a type-only file", () => {
     seedFixture();
 
-    const { idNameMap } = SyncCoordinator.init().generateConfigFiles();
+    const { idNameMap } = sendWithNoAlterations();
     expect(idNameMap).toContain("export interface IdNameMap {");
     expect(idNameMap).not.toMatch(/\b(const|let|function|import)\b/);
   });
@@ -164,7 +423,7 @@ describe("SyncCoordinator.generateConfigFiles", () => {
     seedFixture();
 
     const { tables } = parseIdNameMapFileSource(
-      SyncCoordinator.init().generateConfigFiles().idNameMap,
+      sendWithNoAlterations().idNameMap,
     );
     expect(tables.item).toEqual({
       name: "item",
@@ -182,7 +441,7 @@ describe("SyncCoordinator.generateConfigFiles", () => {
     seedFixture({ extraSheets: [notesSheet()] });
 
     const { tabs } = parseIdNameMapFileSource(
-      SyncCoordinator.init().generateConfigFiles().idNameMap,
+      sendWithNoAlterations().idNameMap,
     );
     expect(tabs[String(itemGid)]).toEqual({
       name: "item",
@@ -199,7 +458,7 @@ describe("SyncCoordinator.generateConfigFiles", () => {
   it("emits no Spreadsheet Config file", () => {
     seedFixture();
 
-    const parsed = SyncCoordinator.init().generateConfigFiles();
+    const parsed = sendWithNoAlterations();
     expect(Object.keys(parsed)).not.toContain("spreadsheetConfig");
     expect(Object.values(parsed).join("\n")).not.toContain(
       "makeSpreadsheetConfig",
@@ -209,13 +468,15 @@ describe("SyncCoordinator.generateConfigFiles", () => {
   it("carries the untyped-column summary back, since no run status cell will show it", () => {
     seedFixture();
 
-    expect(
-      SyncCoordinator.init().generateConfigFiles().untypedColumnsSummary,
-    ).toContain("column(s) across 1 Table(s)");
+    const { result } = runWithNoAlterations();
+
+    expect(result.configs.notes).toEqual([
+      expect.stringContaining("column(s) across 1 Table(s)"),
+    ]);
   });
 });
 
-describe("SyncCoordinator.generateConfigFiles API access", () => {
+describe("SyncCoordinator send with no alterations API access", () => {
   const logGid = getTableTraitByName("log", "sheetGid");
 
   function logSheet(): FakeSheetProperties {
@@ -239,15 +500,13 @@ describe("SyncCoordinator.generateConfigFiles API access", () => {
   it("gives API access to each live Table the previous configs hold, in their order", () => {
     stubSheetsService({ sheets: [logSheet(), notesSheet(), itemSheet()] });
 
-    expect(
-      tableConfigKeys(SyncCoordinator.init().generateConfigFiles()),
-    ).toEqual(["item", "log"]);
+    expect(tableConfigKeys(sendWithNoAlterations())).toEqual(["item", "log"]);
   });
 
   it("gives a Table the previous configs don't hold no prefix, no column IDs and no columns in the ID-name map", () => {
     const { grid } = seedFixture({ extraSheets: [notesSheet()] });
 
-    const files = SyncCoordinator.init().generateConfigFiles();
+    const files = sendWithNoAlterations();
 
     expect(tableConfigKeys(files)).toEqual(["item"]);
     expect(
@@ -260,10 +519,10 @@ describe("SyncCoordinator.generateConfigFiles API access", () => {
   });
 });
 
-describe("SyncCoordinator.generateConfigFiles Empty value allowed", () => {
+describe("SyncCoordinator send with no alterations Empty value allowed", () => {
   function generateItemColumns() {
     const coordinator = SyncCoordinator.init();
-    coordinator.generateConfigFiles();
+    sendWithNoAlterations(coordinator);
     return Val.assert(
       coordinator.columnConfigOperator.newColumnConfigs().item,
       "Item column configs",
@@ -303,7 +562,7 @@ describe("SyncCoordinator.generateConfigFiles Empty value allowed", () => {
   });
 });
 
-describe("SyncCoordinator.generateConfigFiles ID-prefix guard", () => {
+describe("SyncCoordinator send with no alterations ID-prefix guard", () => {
   it("stops before writing when a Table's live ID prefix differs from the configs", () => {
     const zzzColumns = Object.fromEntries(
       Object.entries(itemColumns).map(([columnName, column]) => [
@@ -318,14 +577,14 @@ describe("SyncCoordinator.generateConfigFiles ID-prefix guard", () => {
       item: { columns: zzzColumns },
     });
 
-    expect(() => SyncCoordinator.init().generateConfigFiles()).toThrow(
+    expect(() => sendWithNoAlterations()).toThrow(
       'The regen would change an ID prefix, so it stopped before writing. Table "item" had ID prefix "itm" and is now "zzz".',
     );
     expect(batchUpdateCount()).toBe(0);
   });
 });
 
-describe("SyncCoordinator.generateConfigFiles ID prefix", () => {
+describe("SyncCoordinator send with no alterations ID prefix", () => {
   const widgetGid = 888001;
   // A Table the previous configs grant, standing in for the fixture's own.
   const widgetTableId = getTableTraitByName("log", "tableId");
@@ -359,7 +618,7 @@ describe("SyncCoordinator.generateConfigFiles ID prefix", () => {
       ],
     });
 
-    const parsed = SyncCoordinator.init().generateConfigFiles();
+    const parsed = sendWithNoAlterations();
     expect(parsed.tableConfigs).toContain(
       tableConfigsEntry({
         tableKey: "renamedTab",
@@ -383,7 +642,7 @@ describe("SyncCoordinator.generateConfigFiles ID prefix", () => {
       ],
     });
 
-    const parsed = SyncCoordinator.init().generateConfigFiles();
+    const parsed = sendWithNoAlterations();
     const minted =
       parsed.columnConfigs.match(
         new RegExp(`c:${widgetIdPrefix}:[^"]+`, "g"),
@@ -403,9 +662,7 @@ describe("SyncCoordinator.generateConfigFiles ID prefix", () => {
       ],
     });
 
-    expect(() => SyncCoordinator.init().generateConfigFiles()).toThrow(
-      /Widget.*c:gzm:xyz1234/,
-    );
+    expect(() => sendWithNoAlterations()).toThrow(/Widget.*c:gzm:xyz1234/);
   });
 
   it("fails when two Tables' names give the same key, naming both", () => {
@@ -413,13 +670,13 @@ describe("SyncCoordinator.generateConfigFiles ID prefix", () => {
       extraSheets: [widgetSheet({ title: "Widget", tableName: "item" })],
     });
 
-    expect(() => SyncCoordinator.init().generateConfigFiles()).toThrow(
+    expect(() => sendWithNoAlterations()).toThrow(
       'Tables "Item" and "item" both give the key "item".',
     );
   });
 });
 
-describe("SyncCoordinator.generateConfigFiles head-row overlap", () => {
+describe("SyncCoordinator send with no alterations head-row overlap", () => {
   const recordsGid = 888000222;
 
   interface RecordsTable {
@@ -499,7 +756,7 @@ describe("SyncCoordinator.generateConfigFiles head-row overlap", () => {
 
     let parsed: ConfigRegeneration | undefined;
     expect(() => {
-      parsed = SyncCoordinator.init().generateConfigFiles();
+      parsed = sendWithNoAlterations();
     }).toThrow(messages.join(" "));
     expect(parsed).toBeUndefined();
     expect(recordsValues()).toEqual(before);
@@ -627,7 +884,7 @@ describe("SyncCoordinator.generateConfigFiles head-row overlap", () => {
       },
     ]);
 
-    expect(() => SyncCoordinator.init().generateConfigFiles()).toThrowError(
+    expect(() => sendWithNoAlterations()).toThrowError(
       /^Table "Tenants" on "Records" \(gid \d+\) must have its header row on row 4\.$/,
     );
   });
@@ -637,7 +894,7 @@ describe("SyncCoordinator.generateConfigFiles head-row overlap", () => {
       item: { startRowIndex: expectedSheetLayout.tableHeaderRowIndex + 2 },
     });
 
-    expect(() => SyncCoordinator.init().generateConfigFiles()).toThrowError(
+    expect(() => sendWithNoAlterations()).toThrowError(
       /^Table "Item" on "Item" \(gid \d+\) must have its header row on row 4\.$/,
     );
   });
@@ -655,7 +912,7 @@ describe("SyncCoordinator.generateConfigFiles head-row overlap", () => {
       },
     ]);
 
-    const parsed = SyncCoordinator.init().generateConfigFiles();
+    const parsed = sendWithNoAlterations();
     expect(parsed.tableConfigs).toContain('"leases"');
     expect(parsed.tableConfigs).not.toContain('"tenants"');
   });
@@ -680,7 +937,7 @@ describe("SyncCoordinator.generateConfigFiles head-row overlap", () => {
       },
     ]);
 
-    const parsed = SyncCoordinator.init().generateConfigFiles();
+    const parsed = sendWithNoAlterations();
     expect(parsed.tableConfigs).toContain('"tenants"');
     expect(parsed.tableConfigs).toContain('"leases"');
   });
@@ -729,7 +986,7 @@ describe("SyncCoordinator conditional-format rule read", () => {
     const service = seedFixture({ extraSheets: [rulesSheet()] });
     const coordinator = SyncCoordinator.init();
 
-    coordinator.generateConfigFiles();
+    sendWithNoAlterations(coordinator);
 
     expect(coordinator.ss.raw.sheet(rulesGid).conditionalFormatRules()).toEqual(
       [
@@ -781,8 +1038,7 @@ describe("SyncCoordinator conditional-format rule read", () => {
       ],
     });
 
-    const { conditionalFormatConfigs } =
-      SyncCoordinator.init().generateConfigFiles();
+    const { conditionalFormatConfigs } = sendWithNoAlterations();
 
     expect(conditionalFormatConfigs).toContain(
       "export const conditionalFormatConfigs = makeConditionalFormatConfigs({",
@@ -796,7 +1052,7 @@ describe("SyncCoordinator conditional-format rule read", () => {
   });
 });
 
-describe("SyncCoordinator.generateConfigFiles value sources", () => {
+describe("SyncCoordinator send with no alterations value sources", () => {
   const listGid = 889001;
   const ledgerGid = 889002;
   // The previous configs grant API access, so an API-access fixture takes a Table ID they hold.
@@ -892,7 +1148,7 @@ describe("SyncCoordinator.generateConfigFiles value sources", () => {
 
   function generate() {
     const coordinator = SyncCoordinator.init();
-    const files = coordinator.generateConfigFiles();
+    const files = sendWithNoAlterations(coordinator);
     return {
       valueConfigs: emittedValueConfigs(files),
       ledgerValueName: (columnName: string) =>
@@ -1040,7 +1296,7 @@ describe("SyncCoordinator.generateConfigFiles value sources", () => {
       ],
     });
 
-    expect(() => SyncCoordinator.init().generateConfigFiles()).toThrow(
+    expect(() => sendWithNoAlterations()).toThrow(
       'Value source "List[Rent]" declares number members, but holds "TBD".',
     );
   });
@@ -1137,16 +1393,18 @@ describe("SyncCoordinator.generateConfigFiles value sources", () => {
     const logger = stubLogger();
 
     const coordinator = SyncCoordinator.init();
-    const files = coordinator.generateConfigFiles();
+    const { result, files } = runWithNoAlterations(coordinator);
 
-    expect(emittedValueConfigs(files)).toEqual({});
+    expect(emittedValueConfigs(Val.assert(files, "emitted files"))).toEqual({});
     const ledger = coordinator.columnConfigOperator.newColumnConfigs().ledger;
     expect(
       ["nonApi", "unknownHeader", "a1Range", "itemList"].map(
         (columnName) => ledger?.[columnName]?.valueName,
       ),
     ).toEqual(["string", "string", "string", "string"]);
-    expect(files.untypedColumnsSummary).toContain("column(s) across");
+    expect(result.configs.notes).toEqual([
+      expect.stringContaining("column(s) across"),
+    ]);
     expect(logger.log).toHaveBeenCalledWith(
       'Untyped columns on Table "Ledger" (4): Non-api, Unknown header, A1 range, Item list',
     );
@@ -1165,7 +1423,7 @@ describe("SyncCoordinator.generateConfigFiles value sources", () => {
       ],
     });
 
-    expect(() => SyncCoordinator.init().generateConfigFiles()).toThrow(
+    expect(() => sendWithNoAlterations()).toThrow(
       'Value source "Number[#]" takes the value name "number", which is already the framework value name "number".',
     );
   });
@@ -1187,7 +1445,7 @@ describe("SyncCoordinator.generateConfigFiles value sources", () => {
       ],
     });
 
-    expect(() => SyncCoordinator.init().generateConfigFiles()).toThrow(
+    expect(() => sendWithNoAlterations()).toThrow(
       'Value sources "List[Payment status]" and "List Payment[Status]" both take the value name "listPaymentStatus".',
     );
   });
@@ -1195,7 +1453,7 @@ describe("SyncCoordinator.generateConfigFiles value sources", () => {
   describe("the baseline each column records", () => {
     function generateLedgerColumns() {
       const coordinator = SyncCoordinator.init();
-      const files = coordinator.generateConfigFiles();
+      const files = sendWithNoAlterations(coordinator);
       return {
         files,
         ledger: Val.assert(

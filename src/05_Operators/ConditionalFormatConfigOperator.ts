@@ -10,6 +10,7 @@ import {
   type RuleRecordsTable,
 } from "../01_SpreadsheetSchema/configReaders/RuleRecords";
 import type { SheetRaw } from "../02_SpreadsheetRaw/SheetRaw";
+import type { TableRaw } from "../02_SpreadsheetRaw/TableRaw";
 import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
 import {
   type ApiTableColumns,
@@ -67,10 +68,7 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
     const table = this.ss.raw.table(tableId);
     const columnNamesById = columnNamesByColumnId(columnConfigs);
     const columnNamesLeftToRight = table.fullTableColIndexes.map((colIndex) =>
-      Val.assert(
-        columnNamesById.get(table.columnResolver.columnIdAt(colIndex)),
-        `column name at column index ${colIndex} of ${tableKey}`,
-      ),
+      columnNameAt({ table, colIndex, columnNamesById }),
     );
     return {
       tableKey,
@@ -96,4 +94,24 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
       ``,
     ].join("\n");
   }
+}
+
+interface ColumnNameAtProps {
+  table: TableRaw;
+  colIndex: number;
+  columnNamesById: Map<string, string>;
+}
+
+// Undefined for a column with no ID: a run that mints none leaves it out of the configs.
+function columnNameAt({
+  table,
+  colIndex,
+  columnNamesById,
+}: ColumnNameAtProps): string | undefined {
+  const columnId = table.columnResolver.columnIdAt(colIndex);
+  if (columnId === "") return undefined;
+  return Val.assert(
+    columnNamesById.get(columnId),
+    `column name at column index ${colIndex} of ${table.name}`,
+  );
 }

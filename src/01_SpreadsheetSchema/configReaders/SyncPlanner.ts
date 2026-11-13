@@ -42,6 +42,7 @@ export interface SyncPlannerResult extends Pick<
   SyncRunResult,
   "stops" | "plan"
 > {
+  isStopped: boolean;
   configs: { heldBack: SyncHeldBackTrait[] };
   // Handed to the flush classifier, which makes each one a held item.
   forcedTraits: ForcedTrait[];
@@ -175,6 +176,7 @@ export class SyncPlanner {
     );
     return {
       stops,
+      isStopped,
       plan: sends,
       configs: {
         heldBack: heldBackTraits.map(({ intended, agreed }) => ({

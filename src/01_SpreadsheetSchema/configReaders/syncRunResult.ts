@@ -16,7 +16,13 @@ export interface SyncSendResult extends SyncRunCommon {
   didntLand: SyncSendLine[];
 }
 
-interface SyncRunCommon {
+// What a run's caller says about it, before anything is read.
+export type SyncRunFrame = Pick<
+  SyncRunCommon,
+  "target" | "command" | "generatedDir" | "alterationsPath"
+>;
+
+export interface SyncRunCommon {
   target: string;
   // The dry run's command, e.g. `npm run app:sync`; Next names it.
   command: string;

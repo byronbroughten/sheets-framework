@@ -15,7 +15,14 @@ const red: ConditionalFormat = { backgroundColor: { red: 1 } };
 const blueText: ConditionalFormat = { foregroundColor: { blue: 1 } };
 
 // Header row 4 (index 3) over columns C:E, with body rows 5 to 10.
-function itemTab(rules: ConditionalFormatRule[]): RuleRecordsTab {
+function itemTab(
+  rules: ConditionalFormatRule[],
+  columnNamesLeftToRight: (string | undefined)[] = [
+    "count",
+    "newColumn",
+    "price",
+  ],
+): RuleRecordsTab {
   return {
     tabName: "items",
     sheetGid,
@@ -28,7 +35,7 @@ function itemTab(rules: ConditionalFormatRule[]): RuleRecordsTab {
             rowIndex: SheetIndex.row(3),
             colIndex: SheetIndex.col(2),
           },
-          columnNamesLeftToRight: ["count", "newColumn", "price"],
+          columnNamesLeftToRight,
         },
         endRowIndex: SheetIndex.row(10),
       },
@@ -102,6 +109,31 @@ describe("RuleRecords.build", () => {
       },
       tabs: {},
     });
+  });
+
+  it("records a rule over a column with no name this run as unmodelable, and still names a rule clear of it", () => {
+    const countBody = range({ rows: [4, 10], cols: [2, 3] });
+    const records = RuleRecords.build([
+      itemTab(
+        [
+          booleanRule({
+            ranges: [newColumnBody],
+            condition: overTwo,
+            format: red,
+          }),
+          booleanRule({
+            ranges: [countBody],
+            condition: { type: "NUMBER_GREATER", value: 5 },
+            format: blueText,
+          }),
+        ],
+        ["count", undefined, "price"],
+      ),
+    ]);
+    expect(Object.values(records.tables.item ?? {})).toMatchObject([
+      { kind: "unmodelable", tableId: "table-1", ranges: ["D5:D10"] },
+      { kind: "boolean", tableId: "table-1", columns: ["count"] },
+    ]);
   });
 
   it("names the columns of a rule over several ranges left to right", () => {
