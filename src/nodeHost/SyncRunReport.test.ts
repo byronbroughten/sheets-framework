@@ -596,7 +596,7 @@ describe("SyncRunReport's refusals before the read", () => {
   it("names the Table and the trait it can't send yet", () => {
     expect(text).toContain("REFUSED 3 · item › name.columnType");
     expect(text).toContain(
-      "  sync can't send name.columnType yet: for now it sends only a Table's name, letApiAccess, a column's header, formula, deleted, emptyValueAllowed and a tab's title, color, before, frozenRows, frozenColumns, hidden.",
+      "  sync can't send name.columnType yet: for now it sends only a Table's name, letApiAccess, newColumns, a column's header, formula, deleted, emptyValueAllowed and a tab's title, color, before, frozenRows, frozenColumns, hidden.",
     );
   });
 });
