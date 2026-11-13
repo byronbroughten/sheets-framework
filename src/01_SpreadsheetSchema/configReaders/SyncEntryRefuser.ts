@@ -1,4 +1,5 @@
 import { hasApiAccess } from "./apiAccessChanges";
+import { BraceFormula } from "./BraceFormula";
 import type { IdNameMapGeneric } from "./idNameMapTypes";
 import { sheetTraits, tabTraits } from "./SyncPlanner";
 import {
@@ -64,9 +65,44 @@ export class SyncEntryRefuser {
       mapNames: mapTables.map(({ name }) => name),
       entries: entriesOf(this.alterations.tables),
       traitRefusals: (table, entry) => {
-        if (apiAccessNames.has(table)) return tableTraitRefusals(table, entry);
-        return noApiAccessRefusals(table, entry);
+        if (!apiAccessNames.has(table)) {
+          return noApiAccessRefusals(table, entry);
+        }
+        return [
+          ...tableTraitRefusals(table, entry),
+          ...this._braceRefusals(table, entry),
+        ];
       },
+    });
+  }
+  private _braceRefusals(
+    table: string,
+    { columns }: WideTableEntry,
+  ): SyncRefusal[] {
+    const columnNamesByTable = new Map(
+      Object.values(this.idNameMap.tables).map(({ name, columns }) => [
+        name,
+        Object.keys(columns ?? {}),
+      ]),
+    );
+    return entriesOf(columns).flatMap(([column, { formula }]) => {
+      if (formula === undefined) return [];
+      return BraceFormula.columnsNamed({ tableKey: table, formula }).flatMap(
+        ({ brace, tableKey, columnName }): SyncRefusal[] => {
+          const columnNames = columnNamesByTable.get(tableKey);
+          if (columnNames?.includes(columnName)) return [];
+          return [
+            {
+              kind: "unknownBrace",
+              table,
+              path: `${column}.formula`,
+              brace,
+              braceTable: tableKey,
+              columns: columnNames,
+            },
+          ];
+        },
+      );
     });
   }
   private get _tabRefusals(): SyncRefusal[] {

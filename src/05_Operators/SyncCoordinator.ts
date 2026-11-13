@@ -343,7 +343,10 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     // Before the access changes, so it sends what the pre-send read planned.
     this.rowIdsOperator.addCheckboxes();
     this._applyApiAccessChanges(accessChanges);
-    this.columnConfigOperator.addMissingColumnIds().updateHeaders(sentTraits);
+    this.columnConfigOperator
+      .addMissingColumnIds()
+      .updateHeaders(sentTraits)
+      .updateFormulas(sentTraits);
     this.tableConfigOperator.updateTableNames(sentTraits);
     this.tabConfigOperator.updateTabTraits(sentTraits);
   }

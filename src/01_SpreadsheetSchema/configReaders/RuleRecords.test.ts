@@ -91,11 +91,11 @@ describe("RuleRecords.build", () => {
     expect(records).toEqual({
       tables: {
         item: {
-          "newColumn | =${newColumn}>2 | background #ff0000": {
+          "newColumn | =${@newColumn}>2 | background #ff0000": {
             kind: "boolean",
             tableId: "table-1",
             columns: ["newColumn"],
-            condition: { type: "CUSTOM_FORMULA", formula: "=${newColumn}>2" },
+            condition: { type: "CUSTOM_FORMULA", formula: "=${@newColumn}>2" },
             format: { backgroundColor: "#ff0000" },
           },
           "all | NUMBER_GREATER 5 | text #0000ff": {
@@ -162,9 +162,9 @@ describe("RuleRecords.build", () => {
     });
     const records = RuleRecords.build([itemTab([rule, rule, rule])]);
     expect(Object.keys(records.tables.item ?? {})).toEqual([
-      "newColumn | =${newColumn}>2 | background #ff0000",
-      "newColumn | =${newColumn}>2 | background #ff0000-2",
-      "newColumn | =${newColumn}>2 | background #ff0000-3",
+      "newColumn | =${@newColumn}>2 | background #ff0000",
+      "newColumn | =${@newColumn}>2 | background #ff0000-2",
+      "newColumn | =${@newColumn}>2 | background #ff0000-3",
     ]);
   });
 

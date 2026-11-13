@@ -436,8 +436,21 @@ function tableRefusalText(
       ...ruleHandleLines(table, refusal.handles),
     ];
   }
+  return unknownBraceText(refusal);
+}
+
+function unknownBraceText({
+  brace,
+  braceTable,
+  columns,
+}: Extract<SyncRefusal, { kind: "unknownBrace" }>): string[] {
+  if (columns === undefined) {
+    return [
+      `${brace} names no Table: idNameMap.ts holds no Table named ${braceTable}.`,
+    ];
+  }
   return [
-    `${refusal.brace} names no column of ${table}. Its columns: ${refusal.columns.join(", ")}.`,
+    `${brace} names no column of ${braceTable}. Its columns: ${columns.join(", ")}.`,
   ];
 }
 

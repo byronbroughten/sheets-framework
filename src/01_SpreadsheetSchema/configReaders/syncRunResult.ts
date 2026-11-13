@@ -155,12 +155,14 @@ export type SyncRefusal =
   // `table` names the tab for a tab's trait; `path` is the trait's, with its column in front for a column's.
   | { kind: "notSendableYet"; table: string; path: string }
   | { kind: "noSuchRule"; table: string; path: string; handles: string[] }
+  // A brace naming a Table or column the previous ID-name map lacks; `columns` is braceTable's, undefined when the map holds no such Table.
   | {
       kind: "unknownBrace";
       table: string;
       path: string;
       brace: string;
-      columns: string[];
+      braceTable: string;
+      columns: string[] | undefined;
     }
   | {
       kind: "touchesDeletion";

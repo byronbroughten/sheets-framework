@@ -579,7 +579,7 @@ describe("SyncRunReport's refusals before the read", () => {
     refusals: [
       { kind: "noSuchTable", entry: "tables", name: "vendor" },
       { kind: "noSuchTable", entry: "tabs", name: "vendors" },
-      { kind: "notSendableYet", table: "item", path: "name.formula" },
+      { kind: "notSendableYet", table: "item", path: "name.columnType" },
     ],
   }).join("\n");
 
@@ -594,9 +594,9 @@ describe("SyncRunReport's refusals before the read", () => {
   });
 
   it("names the Table and the trait it can't send yet", () => {
-    expect(text).toContain("REFUSED 3 · item › name.formula");
+    expect(text).toContain("REFUSED 3 · item › name.columnType");
     expect(text).toContain(
-      "  sync can't send name.formula yet: for now it sends only a Table's name, letApiAccess, a column's header, emptyValueAllowed and a tab's title, color, before, frozenRows, frozenColumns, hidden.",
+      "  sync can't send name.columnType yet: for now it sends only a Table's name, letApiAccess, a column's header, formula, emptyValueAllowed and a tab's title, color, before, frozenRows, frozenColumns, hidden.",
     );
   });
 });
@@ -671,6 +671,7 @@ describe("SyncRunReport, case F: three refusals, then a head-row stop", () => {
         table: "occCharge",
         path: "conditionalFormats.add[0].formula",
         brace: "${latefee}",
+        braceTable: "occCharge",
         columns: ["id", "amount", "lateFee", "void"],
       },
     ],
@@ -721,6 +722,27 @@ describe("SyncRunReport, case F: three refusals, then a head-row stop", () => {
     );
     expect(refusedText).toContain(
       "Fix each refused entry, then rerun npm run app:sync.",
+    );
+  });
+
+  it("names a brace's missing Table, with no columns to list", () => {
+    const text = render({
+      ...appDryRun,
+      outcome: { kind: "refused" },
+      refusals: [
+        {
+          kind: "unknownBrace",
+          table: "occCharge",
+          path: "amount.formula",
+          brace: "${vendor[@cost]}",
+          braceTable: "vendor",
+          columns: undefined,
+        },
+      ],
+    }).join("\n");
+    expect(text).toContain("REFUSED 1 · occCharge › amount.formula");
+    expect(text).toContain(
+      "${vendor[@cost]} names no Table: idNameMap.ts holds no Table named vendor.",
     );
   });
 

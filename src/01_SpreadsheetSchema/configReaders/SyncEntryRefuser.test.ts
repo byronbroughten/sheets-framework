@@ -11,7 +11,7 @@ const idNameMap: IdNameMapGeneric = {
     "t:itm:aaaaaaa": {
       name: "item",
       sheetGid: 1,
-      columns: { "c:itm:bbbbbbb": "name", "c:itm:ccccccc": "count" },
+      columns: { name: "c:itm:bbbbbbb", count: "c:itm:ccccccc" },
     },
     // A Table with no API access still has its entry in the map.
     "t:log:ddddddd": { name: "log", sheetGid: 2 },
@@ -110,7 +110,6 @@ describe("SyncEntryRefuser, traits not sendable yet", () => {
       }),
     ).toEqual([
       { kind: "notSendableYet", table: "item", path: "name.columnType" },
-      { kind: "notSendableYet", table: "item", path: "count.formula" },
       { kind: "notSendableYet", table: "item", path: "count.before" },
     ]);
   });
@@ -176,6 +175,59 @@ describe("SyncEntryRefuser, traits not sendable yet", () => {
 
   it("refuses nothing for no intended state", () => {
     expect(refusals({})).toEqual([]);
+  });
+});
+
+describe("SyncEntryRefuser, a formula's braces", () => {
+  function formulaRefusals(formula: string) {
+    return refusals({
+      alterations: { tables: { item: { columns: { count: { formula } } } } },
+    });
+  }
+
+  it("lets a formula through whose braces all name a column in the map", () => {
+    expect(
+      formulaRefusals('=${@name}&" "&COUNTA(${name})&"${nothing}"'),
+    ).toEqual([]);
+  });
+
+  it("refuses a brace naming no column of its Table, listing the Table's columns", () => {
+    expect(formulaRefusals("=${@nam}*2")).toEqual([
+      {
+        kind: "unknownBrace",
+        table: "item",
+        path: "count.formula",
+        brace: "${@nam}",
+        braceTable: "item",
+        columns: ["name", "count"],
+      },
+    ]);
+  });
+
+  it("refuses a brace naming no Table, with no columns to list", () => {
+    expect(formulaRefusals("=SUM(${vendor[@cost]})")).toEqual([
+      {
+        kind: "unknownBrace",
+        table: "item",
+        path: "count.formula",
+        brace: "${vendor[@cost]}",
+        braceTable: "vendor",
+        columns: undefined,
+      },
+    ]);
+  });
+
+  it("refuses a brace naming a column of a Table without API access, whose map entry holds none", () => {
+    expect(formulaRefusals("=${log[when]}")).toEqual([
+      {
+        kind: "unknownBrace",
+        table: "item",
+        path: "count.formula",
+        brace: "${log[when]}",
+        braceTable: "log",
+        columns: [],
+      },
+    ]);
   });
 });
 

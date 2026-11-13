@@ -23,7 +23,8 @@ interface BraceFormulaProps extends FormulaText {
 interface RuleFormulaProps extends FormulaText {
   layout: RuleLayout;
 }
-export interface RuleDecompileProps extends RuleFormulaProps {
+// No Table key: a rule reaches only its own Table, so every brace it gives back is bare.
+export interface RuleDecompileProps extends Omit<RuleFormulaProps, "tableKey"> {
   isOneColumn: boolean;
 }
 
@@ -41,7 +42,6 @@ interface CellAddress {
 }
 
 interface RuleBraceContext {
-  tableKey: string;
   columnNamesByLetter: Map<string, string>;
   firstBodyRowNumber: number;
   isOneColumn: boolean;
@@ -51,7 +51,8 @@ interface Brace {
   text: string;
   tableKey: string;
   columnName: string;
-  isWholeColumn: boolean;
+  // `@` before the column name: this row's value rather than the whole column.
+  isThisRow: boolean;
 }
 
 export interface RuleLayout {
@@ -70,9 +71,14 @@ interface ConfiguredColumn {
   columnName: string;
 }
 
+export interface NamedColumn extends ConfiguredColumn {
+  // The brace as written, so a refusal can quote it.
+  brace: string;
+}
+
 const formulaPatterns = {
   stringLiteral: /"(?:[^"]|"")*"/.source,
-  brace: /\$\{([^{}[\]"]+?)(?:\[([^{}[\]"]+)\])?\}/.source,
+  brace: /\$\{(@?)([^{}[\]"@]+?)(?:\[(@?)([^{}[\]"@]+)\])?\}/.source,
   liveReference: /([A-Za-z_][\w.]*)\[([^[\]"]+)\]/.source,
   // The lookarounds keep a function name such as LOG10( from reading as a cell.
   a1Reference:
@@ -84,7 +90,7 @@ export const BraceFormula = {
   compileForCell({ configs, tableKey, formula }: BraceFormulaProps): string {
     return replaceBraces({ tableKey, formula }, (brace) => {
       const reference = liveReferenceOf(configs, brace, formula);
-      if (brace.isWholeColumn) return reference;
+      if (!brace.isThisRow) return reference;
       return `SINGLE(${reference})`;
     });
   },
@@ -104,15 +110,12 @@ export const BraceFormula = {
       if (offset === -1) throw new Error(noColumnMessage(brace, formula));
       const colIndex = SheetIndex.col(layout.headerTopLeft.colIndex + offset);
       const firstBodyRow = SheetIndex.row(layout.headerTopLeft.rowIndex + 1);
-      if (brace.isWholeColumn) {
-        return schema.openColumnA1(colIndex, firstBodyRow);
-      }
-      return schema.anchoredA1(colIndex, firstBodyRow);
+      if (brace.isThisRow) return schema.anchoredA1(colIndex, firstBodyRow);
+      return schema.openColumnA1(colIndex, firstBodyRow);
     });
   },
   // The inverse of compileForRule; undefined when a reference has no brace form.
   decompileForRule({
-    tableKey,
     formula,
     layout,
     isOneColumn,
@@ -144,7 +147,6 @@ export const BraceFormula = {
         const reference = ruleReferenceOf(sheetPrefix, addressParts);
         if (reference === undefined) return match;
         const brace = ruleBraceOf(reference, {
-          tableKey,
           columnNamesByLetter,
           firstBodyRowNumber,
           isOneColumn,
@@ -156,12 +158,25 @@ export const BraceFormula = {
     if (!isExpressible) return undefined;
     return decompiled;
   },
-  columnsNamed({ tableKey, formula }: FormulaText): ConfiguredColumn[] {
+  columnsNamed({ tableKey, formula }: FormulaText): NamedColumn[] {
     return [...formula.matchAll(bracePattern())].flatMap(
-      ([text, literal, first, second]) => {
-        const brace = braceOf(tableKey, { text, literal, first, second });
+      ([text, literal, firstAt, first, secondAt, second]) => {
+        const brace = braceOf(tableKey, {
+          text,
+          literal,
+          firstAt,
+          first,
+          secondAt,
+          second,
+        });
         if (brace === undefined) return [];
-        return [{ tableKey: brace.tableKey, columnName: brace.columnName }];
+        return [
+          {
+            brace: brace.text,
+            tableKey: brace.tableKey,
+            columnName: brace.columnName,
+          },
+        ];
       },
     );
   },
@@ -191,16 +206,26 @@ export const BraceFormula = {
             singleHeader,
           );
           if (column === undefined) return match;
-          if (column.tableKey === tableKey) return `\${${column.columnName}}`;
-          return `SINGLE(${wholeColumnBrace(column)})`;
+          return braceText(tableKey, column, true);
         }
         const column = configuredColumn(liveTables, table, header);
         if (column === undefined) return match;
-        return wholeColumnBrace(column);
+        return braceText(tableKey, column, false);
       },
     );
   },
 };
+
+// Bare for the formula's own Table, qualified for another's.
+function braceText(
+  ownTableKey: string,
+  { tableKey, columnName }: ConfiguredColumn,
+  isThisRow: boolean,
+): string {
+  const column = isThisRow ? `@${columnName}` : columnName;
+  if (tableKey === ownTableKey) return `\${${column}}`;
+  return `\${${tableKey}[${column}]}`;
+}
 
 function replaceBraces(
   { tableKey, formula }: FormulaText,
@@ -211,10 +236,19 @@ function replaceBraces(
     (
       text: string,
       literal: string | undefined,
+      firstAt: string | undefined,
       first: string | undefined,
+      secondAt: string | undefined,
       second: string | undefined,
     ) => {
-      const brace = braceOf(tableKey, { text, literal, first, second });
+      const brace = braceOf(tableKey, {
+        text,
+        literal,
+        firstAt,
+        first,
+        secondAt,
+        second,
+      });
       if (brace === undefined) return text;
       return replace(brace);
     },
@@ -232,20 +266,29 @@ function bracePattern(): RegExp {
 interface BraceMatch {
   text: string;
   literal: string | undefined;
+  firstAt: string | undefined;
   first: string | undefined;
+  secondAt: string | undefined;
   second: string | undefined;
 }
 
-// Undefined for a string literal, which isn't a brace.
+// Undefined for a string literal, which isn't a brace, and for `@` before a Table key, which marks no column.
 function braceOf(
   tableKey: string,
-  { text, literal, first, second }: BraceMatch,
+  { text, literal, firstAt, first, secondAt, second }: BraceMatch,
 ): Brace | undefined {
   if (literal !== undefined || first === undefined) return undefined;
+  const isFirstAt = firstAt === "@";
   if (second === undefined) {
-    return { text, tableKey, columnName: first, isWholeColumn: false };
+    return { text, tableKey, columnName: first, isThisRow: isFirstAt };
   }
-  return { text, tableKey: first, columnName: second, isWholeColumn: true };
+  if (isFirstAt) return undefined;
+  return {
+    text,
+    tableKey: first,
+    columnName: second,
+    isThisRow: secondAt === "@",
+  };
 }
 
 function liveReferenceOf(
@@ -314,7 +357,7 @@ function ruleBraceOf(
     if (start.isRowAbsolute) return undefined;
     if (start.rowNumber !== context.firstBodyRowNumber) return undefined;
     if (!start.isColAbsolute && !context.isOneColumn) return undefined;
-    return `\${${columnName}}`;
+    return `\${@${columnName}}`;
   }
   const isOpenColumn =
     start.isColAbsolute &&
@@ -324,7 +367,7 @@ function ruleBraceOf(
     end.colLetter === start.colLetter &&
     end.rowNumber === undefined;
   if (!isOpenColumn) return undefined;
-  return wholeColumnBrace({ tableKey: context.tableKey, columnName });
+  return `\${${columnName}}`;
 }
 
 function liveTablesByName(configs: BraceConfigs): Map<string, LiveTable> {
@@ -352,8 +395,4 @@ function configuredColumn(
   const columnName = liveTable?.columnNamesByHeader.get(header);
   if (liveTable === undefined || columnName === undefined) return undefined;
   return { tableKey: liveTable.tableKey, columnName };
-}
-
-function wholeColumnBrace({ tableKey, columnName }: ConfiguredColumn): string {
-  return `\${${tableKey}[${columnName}]}`;
 }
