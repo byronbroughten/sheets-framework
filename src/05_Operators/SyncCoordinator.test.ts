@@ -5,6 +5,7 @@ import { HeldFlushRefusal } from "../00_Source/RawSource/HeldFlushRefusal";
 import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister";
 import type { IdNameMapGeneric } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
 import type { PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState";
+import { SyncEntryRefuser } from "../01_SpreadsheetSchema/configReaders/SyncEntryRefuser";
 import type {
   ForcedTrait,
   SyncRunFrame,
@@ -513,6 +514,93 @@ describe("SyncCoordinator.run entered-data gate", () => {
       landedFlushes: 1,
       flushCount: undefined,
       heldBy: "mismatched",
+    });
+  });
+
+  describe("a deleted column's cells", () => {
+    const deleteOptionalNote: PendingAlterations = {
+      tables: { item: { columns: { optionalNote: { deleted: true } } } },
+    };
+    const noteColIndex = Object.keys(itemColumns).indexOf("optionalNote");
+
+    // A deletion isn't sendable yet, so the entry refusals are cleared to let the run reach its flush.
+    beforeEach(() => {
+      vi.spyOn(SyncEntryRefuser.prototype, "refusals", "get").mockReturnValue(
+        [],
+      );
+    });
+
+    interface NoteAtFlush {
+      isNoteColumnRead: boolean;
+      note: unknown;
+    }
+
+    // One column's own range, from any row; the head-row reads span every column.
+    function readsNoteColumn(service: FakeSheetsService): boolean {
+      return service.getByDataFilterCalls.some((resource) =>
+        (
+          (resource as { dataFilters?: { gridRange?: GridRange }[] })
+            .dataFilters ?? []
+        ).some(
+          ({ gridRange }) =>
+            gridRange?.sheetId === itemGid &&
+            gridRange.startColumnIndex === noteColIndex &&
+            gridRange.endColumnIndex === noteColIndex + 1,
+        ),
+      );
+    }
+
+    // The note sits below the top row, which sync's head-row read already covers.
+    function heldNoteBeforeFlush(props: {
+      isSending: boolean;
+      isHostWithholding?: boolean;
+    }): NoteAtFlush[] {
+      const running: { coordinator?: SyncCoordinator } = {};
+      const heldAtFlush: NoteAtFlush[] = [];
+      const service = stubSheetsService({
+        sheets: [
+          itemSheet({
+            columns: extraColumn,
+            bodyRows: [
+              { id: itemRowId },
+              { id: "r:itm:second", optionalNote: "kept" },
+            ],
+          }),
+        ],
+        isDryRun: !props.isSending,
+        beforeEachBatchUpdate: () => {
+          heldAtFlush.push({
+            isNoteColumnRead: readsNoteColumn(service),
+            note: Val.assert(running.coordinator, "the running coordinator")
+              .ss.raw.table("item")
+              .row(1)
+              .cell(noteColIndex)
+              .valueOrEmpty(),
+          });
+        },
+      });
+      running.coordinator = SyncCoordinator.init();
+      running.coordinator.run({
+        ...props,
+        intendedState: { alterations: deleteOptionalNote },
+        previousIdNameMap: previousItemMap(),
+        forcedTraits: [],
+        frame,
+      });
+      return heldAtFlush;
+    }
+
+    it("reads the column before a send's flush, holding the cell a person entered", () => {
+      expect(heldNoteBeforeFlush({ isSending: true })[0]).toEqual({
+        isNoteColumnRead: true,
+        note: "kept",
+      });
+    });
+
+    it("reads the column before a withheld dry run's flush", () => {
+      expect(
+        heldNoteBeforeFlush({ isSending: false, isHostWithholding: true }),
+      ).toEqual([{ isNoteColumnRead: true, note: "kept" }]);
     });
   });
 

@@ -4,6 +4,7 @@ import type {
   ApiAccessChanges,
   ApiAccessGrant,
 } from "../01_SpreadsheetSchema/configReaders/apiAccessChanges";
+import type { ColumnReference } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
 import {
   makeImportLine,
   type TableConfigsBase,
@@ -29,11 +30,6 @@ import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
 import { oneLinePerEntryFileSource } from "./configFileSource";
 import { validateIdPrefixesUnchanged } from "./idPrefixGuard";
 import { SpreadsheetBaseOperator } from "./SpreadsheetBaseOperator";
-
-export interface ColumnReference {
-  tableId: string;
-  columnId: string;
-}
 
 export class TableConfigsOperator extends SpreadsheetBaseOperator {
   static init(): TableConfigsOperator {

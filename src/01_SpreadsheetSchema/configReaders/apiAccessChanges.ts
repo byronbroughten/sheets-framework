@@ -1,4 +1,4 @@
-import type { IdNameMapGeneric } from "./idNameMapTypes";
+import { type IdNameMapGeneric, tableIdsByName } from "./idNameMapTypes";
 import type { PlanReadings, TableReading, TraitReadings } from "./SyncPlanner";
 import { entriesOf, type WideAlterations } from "./SyncPlanner/wideAlterations";
 
@@ -31,15 +31,10 @@ export function apiAccessChanges({
   alterations,
   idNameMap,
 }: ApiAccessChangesProps): ApiAccessChanges {
-  const tableIdsByName = new Map(
-    Object.entries(idNameMap.tables).map(([tableId, { name }]) => [
-      name,
-      tableId,
-    ]),
-  );
+  const tableIds = tableIdsByName(idNameMap);
   return entriesOf(alterations.tables).reduce<ApiAccessChanges>(
     (changes, [table, { letApiAccess }]) => {
-      const tableId = tableIdsByName.get(table);
+      const tableId = tableIds.get(table);
       if (tableId === undefined || letApiAccess === undefined) return changes;
       const mapTable = idNameMap.tables[tableId];
       const isGranted = mapTable !== undefined && hasApiAccess(mapTable);
