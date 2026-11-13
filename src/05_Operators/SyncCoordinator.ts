@@ -205,28 +205,31 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       // No files: column IDs already recorded would reach the configs but not the sheet.
       if (refusal !== undefined) {
         return {
-          result: resultBuilder.heldStopped(planned, refusal, {
-            plan: checkboxPlan,
-            notices,
+          result: resultBuilder.heldStopped({
+            planned,
+            refusal,
+            rowIds: { plan: checkboxPlan, notices },
           }),
         };
       }
     }
     const sent = isApplying ? planned.plan.map(({ subject }) => subject) : [];
+    let refetched: SyncCoordinator | undefined;
+    let regeneration: Regeneration;
     // A fresh read, since Raw's state has no reset; only a sent sheet trait changes what it would read.
-    const regenerator =
-      isApplying && planned.sentTraits.some(isSheetTrait)
-        ? SyncCoordinator.init()
-        : this;
-    const regeneration =
-      regenerator === this
-        ? this._regeneration(notes, sent)
-        : regenerator._refetchedRegeneration({
-            configTraits: planned.configTraits,
-            plan: planned,
-            sent,
-            accessChanges,
-          });
+    if (isApplying && planned.sentTraits.some(isSheetTrait)) {
+      refetched = SyncCoordinator.init();
+      regeneration = refetched._refetchedRegeneration({
+        configTraits: planned.configTraits,
+        plan: planned,
+        sent,
+        accessChanges,
+      });
+    } else {
+      regeneration = this._regeneration(notes, sent);
+    }
+    // The fill reads the configs the files came from.
+    const regenerator = refetched ?? this;
     const { files, changes, didntLand } = regeneration;
     // After the files are strings, so the host's gate judges what a send would write and the configs never see it.
     if (props.isHostWithholding && !props.isSending && !planned.isStopped) {
@@ -239,23 +242,25 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         remainingAlterations(alterations, landed),
       );
     }
+    let fillPlan: SyncPlanItem[];
+    if (isApplying) {
+      fillPlan = regenerator._fillBlankIds();
+    } else {
+      fillPlan = regenerator.rowIdsOperator.fillPlan();
+    }
     return {
       result: resultBuilder.ran({
         planned,
         notes: regeneration.notes,
         typedTraitChanges: changes,
         didntLand,
-        derived: {
-          plan: [...checkboxPlan, ...regenerator._fillRowIds(isApplying)],
-          notices,
-        },
+        rowIds: { plan: [...checkboxPlan, ...fillPlan], notices },
       }),
       files,
     };
   }
   // Its own send after the regen, planned from the fresh configs; it writes only blank cells, so the entered-data gate holds nothing.
-  private _fillRowIds(isApplying: boolean): SyncPlanItem[] {
-    if (!isApplying) return this.rowIdsOperator.fillPlan();
+  private _fillBlankIds(): SyncPlanItem[] {
     const filled = this.rowIdsOperator.fillBlankIds();
     this.ss.batchUpdateGSheets();
     return filled;

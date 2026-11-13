@@ -1,6 +1,7 @@
-import type {
-  SyncNotice,
-  SyncPlanItem,
+import {
+  fillRowIdsName,
+  type SyncNotice,
+  type SyncPlanItem,
 } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
 import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
 import type { TableRaw } from "../02_SpreadsheetRaw/TableRaw";
@@ -19,7 +20,7 @@ interface BlankIdColumn extends IdColumn {
   rowIndexes: number[];
 }
 
-// sync's own sends for Fill Row IDs: the checkbox above each ID column, and the blank IDs once the configs are fresh.
+// Not SpreadsheetNamed.fillMissingRowIds: that reads the installed configs, and sync fills from the ones it just regenerated.
 export class RowIdsOperator extends SpreadsheetBaseOperator {
   get ss(): SpreadsheetNamed {
     return new SpreadsheetNamed(this.spreadsheetNamedProps);
@@ -39,11 +40,9 @@ export class RowIdsOperator extends SpreadsheetBaseOperator {
   }
   // Not a claim (#286): a cell holding anything is left alone.
   checkboxPlan(): SyncPlanItem[] {
-    return this._columnsLackingCheckbox().map(({ tableKey }) => ({
-      subject: { table: tableKey, column: idColumnName },
-      what: "add the Fill Row IDs checkbox",
-      effects: [],
-    }));
+    return this._columnsLackingCheckbox().map(({ tableKey }) =>
+      idPlanItem(tableKey, `add the ${fillRowIdsName} checkbox`),
+    );
   }
   addCheckboxes(): this {
     for (const { table, colIndex } of this._columnsLackingCheckbox()) {
@@ -70,7 +69,7 @@ export class RowIdsOperator extends SpreadsheetBaseOperator {
   fillBlankIds(): SyncPlanItem[] {
     const items: SyncPlanItem[] = [];
     for (const column of this._blankIdColumns()) {
-      items.push(fillPlanItem(column, fillBlankIds(column)));
+      items.push(fillPlanItem(column, mintRowIds(column)));
     }
     return items;
   }
@@ -94,8 +93,11 @@ export class RowIdsOperator extends SpreadsheetBaseOperator {
     return Object.entries(this.tableConfigOperator.newTableConfigs()).flatMap(
       ([tableKey, { tableId, idPrefix, hasIdColumn }]) => {
         if (!hasIdColumn) return [];
-        const table = raw.table(tableId);
-        return [{ table, tableKey, idPrefix, colIndex: idColIndexOf(table) }];
+        const idColumn = idColumnOf(raw.table(tableId), tableKey);
+        if (idColumn === undefined) {
+          throw new Error(`Table "${tableKey}" has no ID column to fill.`);
+        }
+        return [{ ...idColumn, idPrefix }];
       },
     );
   }
@@ -111,28 +113,21 @@ export class RowIdsOperator extends SpreadsheetBaseOperator {
       .tableIdsApiAccesses()
       .flatMap((tableId): IdColumn[] => {
         const table = raw.table(tableId);
-        const colIndex = idColIndexOrUndefined(table);
-        if (colIndex === undefined) return [];
-        const tableKey = this.schema.titleToName(table.name);
-        return [{ table, tableKey, colIndex }];
+        const idColumn = idColumnOf(table, this.schema.titleToName(table.name));
+        if (idColumn === undefined) return [];
+        return [idColumn];
       });
   }
 }
 
 const idColumnName = "id";
 
-function idColIndexOrUndefined(table: TableRaw): number | undefined {
-  return table.fullTableColIndexes.find(
-    (colIndex) => table.column(colIndex).profile.isIdColumn,
-  );
-}
-
-function idColIndexOf(table: TableRaw): number {
-  const colIndex = idColIndexOrUndefined(table);
-  if (colIndex === undefined) {
-    throw new Error(`${table.tableLabel} has no ID column to fill.`);
-  }
-  return colIndex;
+function idPlanItem(tableKey: string, what: string): SyncPlanItem {
+  return {
+    subject: { table: tableKey, column: idColumnName },
+    what,
+    effects: [],
+  };
 }
 
 function fillPlanItem(
@@ -141,23 +136,29 @@ function fillPlanItem(
 ): SyncPlanItem {
   const count = `${rowIndexes.length} blank ${rowIndexes.length === 1 ? "ID" : "IDs"}`;
   const listed = rowIds === undefined ? "" : `: ${rowIds.join(", ")}`;
-  return {
-    subject: { table: tableKey, column: idColumnName },
-    what: `fill ${count}${listed}`,
-    effects: [],
-  };
+  return idPlanItem(tableKey, `fill ${count}${listed}`);
 }
 
-function fillBlankIds({
+function mintRowIds({
   table,
   colIndex,
   idPrefix,
   rowIndexes,
 }: BlankIdColumn): string[] {
   const column = table.column(colIndex);
-  return rowIndexes.map((rowIndex) => {
+  const rowIds: string[] = [];
+  for (const rowIndex of rowIndexes) {
     const rowId = dimensionIds.row(idPrefix);
     column.updateValue(rowIndex, rowId);
-    return rowId;
-  });
+    rowIds.push(rowId);
+  }
+  return rowIds;
+}
+
+function idColumnOf(table: TableRaw, tableKey: string): IdColumn | undefined {
+  const colIndex = table.fullTableColIndexes.find(
+    (index) => table.column(index).profile.isIdColumn,
+  );
+  if (colIndex === undefined) return undefined;
+  return { table, tableKey, colIndex };
 }

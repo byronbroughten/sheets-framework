@@ -1,26 +1,27 @@
 import { sendableTraits } from "../01_SpreadsheetSchema/configReaders/SyncEntryRefuser";
-import type {
-  SyncCheck,
-  SyncConfigs,
-  SyncConflict,
-  SyncDryRunOutcome,
-  SyncHeld,
-  SyncHeldBy,
-  SyncHeldGroup,
-  SyncLandedItem,
-  SyncNotice,
-  SyncOutsideReferenceEffect,
-  SyncPlanEffect,
-  SyncPlanItem,
-  SyncRefusal,
-  SyncRunResult,
-  SyncSendLine,
-  SyncSendOutcome,
-  SyncSentOutcome,
-  SyncStop,
-  SyncStoppedBeforeSendingOutcome,
-  SyncStoppedPartwayOutcome,
-  SyncSubject,
+import {
+  fillRowIdsName,
+  type SyncCheck,
+  type SyncConfigs,
+  type SyncConflict,
+  type SyncDryRunOutcome,
+  type SyncHeld,
+  type SyncHeldBy,
+  type SyncHeldGroup,
+  type SyncLandedItem,
+  type SyncNotice,
+  type SyncOutsideReferenceEffect,
+  type SyncPlanEffect,
+  type SyncPlanItem,
+  type SyncRefusal,
+  type SyncRunResult,
+  type SyncSendLine,
+  type SyncSendOutcome,
+  type SyncSentOutcome,
+  type SyncStop,
+  type SyncStoppedBeforeSendingOutcome,
+  type SyncStoppedPartwayOutcome,
+  type SyncSubject,
 } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
 
 const layout = {
@@ -610,7 +611,7 @@ function effectLine(effect: SyncPlanEffect): string {
 function noticeLine(notice: SyncNotice): string {
   if (notice.kind === "text") return notice.text;
   const { table } = notice;
-  return `${table}: ID is the first column. Sheets' Table name chip covers the cell above it, so ${table}'s Fill Row IDs checkbox can't be clicked. Moving ID out of first place fixes it.`;
+  return `${table}: ID is the first column. Sheets' Table name chip covers the cell above it, so ${table}'s ${fillRowIdsName} checkbox can't be clicked. Moving ID out of first place fixes it.`;
 }
 
 function heldBackLines({ heldBack }: SyncConfigs): string[] {

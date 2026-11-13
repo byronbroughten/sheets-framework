@@ -1,19 +1,20 @@
 import type { HeldFlushRefusal } from "../../00_Source/RawSource/HeldFlushRefusal";
 import { hasLanded } from "./didntLand";
 import type { SyncPlannerResult } from "./SyncPlanner";
-import type {
-  SyncDryRunOutcome,
-  SyncDryRunResult,
-  SyncNotice,
-  SyncPlanItem,
-  SyncRefusal,
-  SyncRunCommon,
-  SyncRunFrame,
-  SyncRunResult,
-  SyncSendLine,
-  SyncSendOutcome,
-  SyncSendResult,
-  SyncTypedTraitChange,
+import {
+  fillRowIdsName,
+  type SyncDryRunOutcome,
+  type SyncDryRunResult,
+  type SyncNotice,
+  type SyncPlanItem,
+  type SyncRefusal,
+  type SyncRunCommon,
+  type SyncRunFrame,
+  type SyncRunResult,
+  type SyncSendLine,
+  type SyncSendOutcome,
+  type SyncSendResult,
+  type SyncTypedTraitChange,
 } from "./syncRunResult";
 
 export interface SyncRunResultBuilderProps {
@@ -21,10 +22,16 @@ export interface SyncRunResultBuilderProps {
   frame: SyncRunFrame;
 }
 
-// sync's own sends, which no alteration asked for, and their notices: Fill Row IDs' checkbox and fill.
-export interface SyncRunDerived {
+// Fill Row IDs' checkbox and fill: sync's own sends, which no alteration asked for, and their notices.
+export interface SyncRunRowIds {
   plan: SyncPlanItem[];
   notices: SyncNotice[];
+}
+
+export interface SyncRunHeldStopped {
+  planned: SyncPlannerResult;
+  refusal: HeldFlushRefusal;
+  rowIds: SyncRunRowIds;
 }
 
 export interface SyncRunPlanned {
@@ -33,13 +40,13 @@ export interface SyncRunPlanned {
   typedTraitChanges: SyncTypedTraitChange[];
   // The sent traits the refetch shows Sheets kept another value for; they leave the landed list.
   didntLand: SyncSendLine[];
-  derived: SyncRunDerived;
+  rowIds: SyncRunRowIds;
 }
 
 interface SyncRunCommonProps {
   refusals: SyncRefusal[];
   planned?: SyncPlannerResult;
-  derived?: SyncRunDerived;
+  rowIds?: SyncRunRowIds;
   notes: string[];
   typedTraitChanges: SyncTypedTraitChange[];
 }
@@ -64,12 +71,12 @@ export class SyncRunResultBuilder {
     notes,
     typedTraitChanges,
     didntLand,
-    derived,
+    rowIds,
   }: SyncRunPlanned): SyncRunResult {
     const common = this._common({
       refusals: [],
       planned,
-      derived,
+      rowIds,
       notes,
       typedTraitChanges,
     });
@@ -78,7 +85,7 @@ export class SyncRunResultBuilder {
     const isLanded = hasLanded(didntLand);
     const landed = [
       ...planned.plan.filter(({ subject }) => isLanded(subject)),
-      ...derived.plan,
+      ...rowIds.plan,
     ];
     return {
       ...sendResult(common, {
@@ -86,7 +93,7 @@ export class SyncRunResultBuilder {
         summary: sentSummary({
           sentCount: planned.plan.length,
           didntLandCount: didntLand.length,
-          derivedCount: derived.plan.length,
+          rowIdsSendCount: rowIds.plan.length,
         }),
       }),
       landed: landed.map(({ subject, what }) => ({
@@ -98,15 +105,15 @@ export class SyncRunResultBuilder {
     };
   }
   // A send the host refused at a held flush; nothing after it was sent.
-  heldStopped(
-    planned: SyncPlannerResult,
-    { kind, landedFlushes, flushCount }: HeldFlushRefusal,
-    derived: SyncRunDerived,
-  ): SyncRunResult {
+  heldStopped({
+    planned,
+    refusal: { kind, landedFlushes, flushCount },
+    rowIds,
+  }: SyncRunHeldStopped): SyncRunResult {
     const common = this._common({
       refusals: [],
       planned,
-      derived,
+      rowIds,
       notes: [],
       typedTraitChanges: [],
     });
@@ -123,7 +130,7 @@ export class SyncRunResultBuilder {
   private _common({
     refusals,
     planned,
-    derived,
+    rowIds,
     notes,
     typedTraitChanges,
   }: SyncRunCommonProps): SyncRunCommon {
@@ -132,9 +139,9 @@ export class SyncRunResultBuilder {
       checks: [],
       refusals,
       stops: planned?.stops ?? [],
-      plan: [...(planned?.plan ?? []), ...(derived?.plan ?? [])],
+      plan: [...(planned?.plan ?? []), ...(rowIds?.plan ?? [])],
       forcedTraits: planned?.forcedTraits ?? [],
-      notices: derived?.notices ?? [],
+      notices: rowIds?.notices ?? [],
       configs: {
         heldBack: planned?.configs.heldBack ?? [],
         renamed: [],
@@ -158,8 +165,7 @@ export class SyncRunResultBuilder {
 interface SentCounts {
   sentCount: number;
   didntLandCount: number;
-  // sync's own sends, counted apart from the alterations.
-  derivedCount: number;
+  rowIdsSendCount: number;
 }
 
 function dryRunResult(
@@ -186,16 +192,16 @@ function sendResult(
 function sentSummary({
   sentCount,
   didntLandCount,
-  derivedCount,
+  rowIdsSendCount,
 }: SentCounts): string {
-  const derived = `${derivedCount} Fill Row IDs ${derivedCount === 1 ? "send" : "sends"}`;
+  const rowIdsSends = `${rowIdsSendCount} ${fillRowIdsName} ${rowIdsSendCount === 1 ? "send" : "sends"}`;
   if (sentCount === 0) {
-    if (derivedCount === 0) return "nothing to send";
-    return derived;
+    if (rowIdsSendCount === 0) return "nothing to send";
+    return rowIdsSends;
   }
   const alterations = alterationsSummary(sentCount, didntLandCount);
-  if (derivedCount === 0) return alterations;
-  return `${alterations}; ${derived}`;
+  if (rowIdsSendCount === 0) return alterations;
+  return `${alterations}; ${rowIdsSends}`;
 }
 
 function alterationsSummary(sentCount: number, didntLandCount: number): string {

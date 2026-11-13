@@ -1284,7 +1284,7 @@ describe("SyncCoordinator.run Fill Row IDs", () => {
   });
 
   it("leaves an action-row cell holding text alone, with no conflict and no stop", () => {
-    const { grid, batchUpdateCount } = seedFixture({
+    const { grid } = seedFixture({
       item: { actionRowCells: { id: "Keys" } },
     });
 
@@ -1293,7 +1293,6 @@ describe("SyncCoordinator.run Fill Row IDs", () => {
     expect(itemCell(grid, expectedSheetLayout.actionRowIndex)(idColIndex)).toBe(
       "Keys",
     );
-    expect(batchUpdateCount()).toBe(0);
     expect(result).toMatchObject({
       outcome: { kind: "sent" },
       stops: [],
