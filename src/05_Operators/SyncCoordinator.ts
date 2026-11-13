@@ -2,15 +2,12 @@ import type { IdNameMapGeneric } from "../01_SpreadsheetSchema/configReaders/idN
 import type { PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState";
 import { remainingAlterations } from "../01_SpreadsheetSchema/configReaders/remainingAlterations";
 import { SyncEntryRefuser } from "../01_SpreadsheetSchema/configReaders/SyncEntryRefuser";
-import {
-  SyncPlanner,
-  type SyncPlannerResult,
-} from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
+import { SyncPlanner } from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
 import type {
-  SyncRefusal,
-  SyncRunCommon,
+  SyncRunFrame,
   SyncRunResult,
 } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
+import { SyncRunResultBuilder } from "../01_SpreadsheetSchema/configReaders/SyncRunResultBuilder";
 import {
   SpreadsheetBaseNamed,
   type SpreadsheetNamedProps,
@@ -41,18 +38,13 @@ export interface ConfigRegeneration {
   alterations?: string;
 }
 
-export type SyncRunFrame = Pick<
-  SyncRunResult,
-  "target" | "command" | "generatedDir" | "alterationsPath"
->;
-
 // Pending alterations alone until claims arrive.
 export interface SyncIntendedState {
   alterations: PendingAlterations;
 }
 
 export interface SyncRunProps {
-  // A bare run plans and sends nothing; --send sends.
+  // A bare run plans but sends nothing; --send sends.
   isSending: boolean;
   intendedState: SyncIntendedState;
   previousIdNameMap: IdNameMapGeneric;
@@ -63,12 +55,6 @@ export interface SyncRunProps {
 export interface SyncRun {
   result: SyncRunResult;
   files?: ConfigRegeneration;
-}
-
-interface PlannedRun {
-  props: SyncRunProps;
-  planned: SyncPlannerResult;
-  notes: string[];
 }
 
 /**
@@ -133,8 +119,9 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       }).refusals,
       ...planner.refusals,
     ];
+    const resultBuilder = SyncRunResultBuilder.init(props);
     if (refusals.length > 0) {
-      return { result: refusedResult(props, refusals) };
+      return { result: resultBuilder.refused(refusals) };
     }
     this._readLive();
     // The ID-prefix guard runs before the column-ID write it guards.
@@ -142,13 +129,17 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     const readings = this.columnConfigOperator.emptyValueAllowedReadings();
     const planned = planner.plan(readings);
     // The gate's holds go here, between the plan and the apply.
-    const isStopped = planned.stops.length > 0;
-    const isApplying = props.isSending && !isStopped;
+    const isApplying = props.isSending && !planned.isStopped;
     // An unstopped dry run records the live readings: configTraits carry sends it won't make.
     this.columnConfigOperator.recordEmptyValueAllowed(
-      props.isSending || isStopped ? planned.configTraits : readings.live,
+      props.isSending || planned.isStopped
+        ? planned.configTraits
+        : readings.live,
     );
-    const notes = this._apply(isApplying);
+    // Column IDs only on an unstopped send: one minted by any other run would reach the configs but never the sheet.
+    if (isApplying) this.columnConfigOperator.addMissingColumnIds();
+    const notes = this._recordUntypedColumns();
+    if (isApplying) this.ss.batchUpdateGSheets();
     this.valueConfigOperator.fetchAfterColumnConfigSynced();
     const files = this._configFiles();
     // The row-ID fill goes here: its own send, planned from the fresh configs.
@@ -160,7 +151,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         ),
       );
     }
-    return { result: ranResult({ props, planned, notes }), files };
+    return { result: resultBuilder.ran({ planned, notes }), files };
   }
   private _readLive(): void {
     this.ss.fetchAllSheetProperties({ includeConditionalFormats: true });
@@ -168,14 +159,10 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     this.tableConfigOperator.validateHeadersInZone();
     this.columnConfigOperator.fetchHeadRows();
   }
-  // Column IDs only on an unstopped send: one minted by any other run would reach the configs but never the sheet.
-  private _apply(isApplying: boolean): string[] {
-    const operator = this.columnConfigOperator;
-    if (isApplying) operator.addMissingColumnIds();
-    const untypedColumnsSummary = operator
+  private _recordUntypedColumns(): string[] {
+    const untypedColumnsSummary = this.columnConfigOperator
       .recordUntypedColumns()
       .untypedColumnsSummary();
-    if (isApplying) this.ss.batchUpdateGSheets();
     if (untypedColumnsSummary === undefined) return [];
     return [untypedColumnsSummary];
   }
@@ -248,78 +235,4 @@ function tabsByTable({
     },
     {},
   );
-}
-
-interface CommonFields {
-  refusals: SyncRefusal[];
-  planned?: SyncPlannerResult;
-  notes: string[];
-}
-
-function commonFields(
-  frame: SyncRunFrame,
-  { refusals, planned, notes }: CommonFields,
-): SyncRunCommon {
-  return {
-    ...frame,
-    checks: [],
-    refusals,
-    stops: planned?.stops ?? [],
-    plan: planned?.plan ?? [],
-    notices: [],
-    configs: {
-      heldBack: planned?.configs.heldBack ?? [],
-      renamed: [],
-      namesMoved: [],
-      rewrites: [],
-      typedTraitChanges: [],
-      notes,
-    },
-  };
-}
-
-function refusedResult(
-  { isSending, frame }: SyncRunProps,
-  refusals: SyncRefusal[],
-): SyncRunResult {
-  const common = commonFields(frame, { refusals, notes: [] });
-  const outcome = { kind: "refused" } as const;
-  if (!isSending) return { ...common, mode: "dry run", outcome };
-  return { ...common, mode: "send", outcome, ...nothingSent };
-}
-
-const nothingSent = { landed: [], notSent: [], didntLand: [] };
-
-function ranResult({ props, planned, notes }: PlannedRun): SyncRunResult {
-  const common = commonFields(props.frame, { refusals: [], planned, notes });
-  const isStopped = planned.stops.length > 0;
-  if (!props.isSending) {
-    const outcome = isStopped ? "stopped" : "ready";
-    return { ...common, mode: "dry run", outcome: { kind: outcome } };
-  }
-  if (isStopped) {
-    return {
-      ...common,
-      mode: "send",
-      outcome: { kind: "stopped" },
-      ...nothingSent,
-    };
-  }
-  return {
-    ...common,
-    mode: "send",
-    outcome: { kind: "sent", summary: sentSummary(planned.plan.length) },
-    ...nothingSent,
-    landed: planned.plan.map(({ subject, what }) => ({
-      kind: "send",
-      subject,
-      what,
-    })),
-  };
-}
-
-function sentSummary(landedCount: number): string {
-  if (landedCount === 0) return "nothing to send";
-  if (landedCount === 1) return "1 alteration landed";
-  return `${landedCount} alterations landed`;
 }

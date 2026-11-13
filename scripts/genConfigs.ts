@@ -20,7 +20,7 @@ import type { SheetsConfig } from "./sheetsConfig.ts";
 
 interface GeneratedFiles {
   files: ConfigRegeneration;
-  untypedColumnsSummary: string | undefined;
+  notes: string[];
 }
 
 class ConfigFilesGenerator {
@@ -47,7 +47,7 @@ class ConfigFilesGenerator {
     return new ConfigFilesGenerator({ sheetsConfig });
   }
   async run(): Promise<void> {
-    const { files, untypedColumnsSummary } = await this._generate();
+    const { files, notes } = await this._generate();
     const {
       tableConfigs,
       tabConfigs,
@@ -74,9 +74,7 @@ class ConfigFilesGenerator {
     this._createAlterationsIfMissing();
     console.log("\ngen:configs: changes against HEAD:");
     console.log(readConfigsDiff(this.sheetsConfig).join("\n"));
-    console.log(
-      `\ngen:configs: ${untypedColumnsSummary ?? "every column is declared; no value name was guessed."}`,
-    );
+    console.log(`\n${configsNotesText(notes)}`);
 
     console.log(
       "\nRunning this package's npm run tsc to check the regenerated files...",
@@ -123,7 +121,7 @@ class ConfigFilesGenerator {
     });
     return {
       files: Val.assert(files, "the regen's files"),
-      untypedColumnsSummary: result.configs.notes[0],
+      notes: result.configs.notes,
     };
   }
 
@@ -134,6 +132,14 @@ class ConfigFilesGenerator {
     });
     return status === 0;
   }
+}
+
+// The untyped-columns summary is the one note so far; with none, every column was declared.
+function configsNotesText(notes: string[]): string {
+  if (notes.length === 0) {
+    return "gen:configs: every column is declared; no value name was guessed.";
+  }
+  return notes.map((note) => `gen:configs: ${note}`).join("\n");
 }
 
 function reportTscFailure(): void {

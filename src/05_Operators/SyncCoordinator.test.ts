@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister";
 import type { IdNameMapGeneric } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
 import type { PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState";
+import type { SyncRunFrame } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
 import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
@@ -25,7 +26,6 @@ import {
   type ConfigRegeneration,
   SyncCoordinator,
   type SyncRun,
-  type SyncRunFrame,
 } from "./SyncCoordinator";
 
 type GridRange = GoogleAppsScript.Sheets.Schema.GridRange;
@@ -130,23 +130,18 @@ const frame: SyncRunFrame = {
 };
 
 // The dev Item Table as the previous ID-name map records it.
-function previousItemMap(
-  columns: Record<string, string> = {},
-): IdNameMapGeneric {
+function previousItemMap(): IdNameMapGeneric {
   return {
     tables: {
       item: {
         name: "item",
         sheetGid: itemGid,
-        columns: {
-          ...Object.fromEntries(
-            Object.entries(itemColumns).map(([columnName, { columnId }]) => [
-              columnName,
-              columnId,
-            ]),
-          ),
-          ...columns,
-        },
+        columns: Object.fromEntries(
+          Object.entries(itemColumns).map(([columnName, { columnId }]) => [
+            columnName,
+            columnId,
+          ]),
+        ),
       },
     },
     tabs: {
@@ -170,7 +165,7 @@ function runItem({ isSending, alterations = {} }: RunOptions): SyncRun {
 }
 
 // A send with empty intended state, as gen:configs runs it, so each run is the regen alone.
-function runQuiet(coordinator = SyncCoordinator.init()): SyncRun {
+function runWithNoAlterations(coordinator = SyncCoordinator.init()): SyncRun {
   return coordinator.run({
     isSending: true,
     intendedState: { alterations: {} },
@@ -179,8 +174,13 @@ function runQuiet(coordinator = SyncCoordinator.init()): SyncRun {
   });
 }
 
-function sendQuiet(coordinator = SyncCoordinator.init()): ConfigRegeneration {
-  return Val.assert(runQuiet(coordinator).files, "files of a quiet send");
+function sendWithNoAlterations(
+  coordinator = SyncCoordinator.init(),
+): ConfigRegeneration {
+  return Val.assert(
+    runWithNoAlterations(coordinator).files,
+    "files of a send with no alterations",
+  );
 }
 
 // The emitted line of one Item column, so a test reads the trait the configs carry.
@@ -211,7 +211,7 @@ describe("SyncCoordinator.run", () => {
     },
   };
 
-  it("lands an emptyValueAllowed alteration in the configs and removes it from alterations.ts", () => {
+  it("lands an emptyValueAllowed alteration in the configs, writing nothing to the sheet, and removes it from alterations.ts", () => {
     const { batchUpdateCount } = seedFixture();
 
     const { result, files } = runItem({
@@ -249,8 +249,14 @@ describe("SyncCoordinator.run", () => {
     });
   });
 
-  it("refreshes the configs on a dry run, without the planned send, and leaves alterations.ts alone", () => {
-    const { batchUpdateCount } = seedFixture();
+  it("refreshes the configs from the live sheet on a dry run, without the planned send, and leaves alterations.ts alone", () => {
+    const { batchUpdateCount } = seedFixture({
+      item: {
+        columns: {
+          requiredCount: { ...itemColumns.requiredCount, header: "Tally" },
+        },
+      },
+    });
 
     const { result, files } = runItem({
       isSending: false,
@@ -258,6 +264,8 @@ describe("SyncCoordinator.run", () => {
     });
 
     const emitted = Val.assert(files, "emitted files");
+    expect(itemColumns.requiredCount.header).not.toBe("Tally");
+    expect(emitted.columnConfigs).toContain('"header": "Tally"');
     expect(emptyValueAllowedOf(emitted, "optionalNote")).toBe(true);
     expect(emitted.alterations).toBeUndefined();
     expect(batchUpdateCount()).toBe(0);
@@ -366,11 +374,11 @@ describe("SyncCoordinator.run", () => {
   });
 });
 
-describe("SyncCoordinator quiet send", () => {
+describe("SyncCoordinator send with no alterations", () => {
   it("returns every file's source together, reflecting the synced state", () => {
     seedFixture();
 
-    const parsed = sendQuiet();
+    const parsed = sendWithNoAlterations();
     expect(typeof parsed.tableConfigs).toBe("string");
     expect(typeof parsed.columnConfigs).toBe("string");
     expect(parsed.tableConfigs).toContain('"item"');
@@ -387,7 +395,7 @@ describe("SyncCoordinator quiet send", () => {
   it("writes every make*Configs import from the framework's package name", () => {
     seedFixture();
 
-    const parsed = sendQuiet();
+    const parsed = sendWithNoAlterations();
     function importLine(maker: string): string {
       return `import { ${maker} } from "@byronbroughten/sheets-framework";`;
     }
@@ -406,7 +414,7 @@ describe("SyncCoordinator quiet send", () => {
   it("emits the ID-name map as a type-only file", () => {
     seedFixture();
 
-    const { idNameMap } = sendQuiet();
+    const { idNameMap } = sendWithNoAlterations();
     expect(idNameMap).toContain("export interface IdNameMap {");
     expect(idNameMap).not.toMatch(/\b(const|let|function|import)\b/);
   });
@@ -414,7 +422,9 @@ describe("SyncCoordinator quiet send", () => {
   it("maps a Table with API access to its name, tab and columns", () => {
     seedFixture();
 
-    const { tables } = parseIdNameMapFileSource(sendQuiet().idNameMap);
+    const { tables } = parseIdNameMapFileSource(
+      sendWithNoAlterations().idNameMap,
+    );
     expect(tables.item).toEqual({
       name: "item",
       sheetGid: itemGid,
@@ -430,7 +440,9 @@ describe("SyncCoordinator quiet send", () => {
   it("lists every tab by GID with its name, title and Tables", () => {
     seedFixture({ extraSheets: [notesSheet()] });
 
-    const { tabs } = parseIdNameMapFileSource(sendQuiet().idNameMap);
+    const { tabs } = parseIdNameMapFileSource(
+      sendWithNoAlterations().idNameMap,
+    );
     expect(tabs[String(itemGid)]).toEqual({
       name: "item",
       title: "Item",
@@ -446,7 +458,7 @@ describe("SyncCoordinator quiet send", () => {
   it("emits no Spreadsheet Config file", () => {
     seedFixture();
 
-    const parsed = sendQuiet();
+    const parsed = sendWithNoAlterations();
     expect(Object.keys(parsed)).not.toContain("spreadsheetConfig");
     expect(Object.values(parsed).join("\n")).not.toContain(
       "makeSpreadsheetConfig",
@@ -456,7 +468,7 @@ describe("SyncCoordinator quiet send", () => {
   it("carries the untyped-column summary back, since no run status cell will show it", () => {
     seedFixture();
 
-    const { result } = runQuiet();
+    const { result } = runWithNoAlterations();
 
     expect(result.configs.notes).toEqual([
       expect.stringContaining("column(s) across 1 Table(s)"),
@@ -464,7 +476,7 @@ describe("SyncCoordinator quiet send", () => {
   });
 });
 
-describe("SyncCoordinator quiet send API access", () => {
+describe("SyncCoordinator send with no alterations API access", () => {
   const logGid = getTableTraitByName("log", "sheetGid");
 
   function logSheet(): FakeSheetProperties {
@@ -488,13 +500,13 @@ describe("SyncCoordinator quiet send API access", () => {
   it("gives API access to each live Table the previous configs hold, in their order", () => {
     stubSheetsService({ sheets: [logSheet(), notesSheet(), itemSheet()] });
 
-    expect(tableConfigKeys(sendQuiet())).toEqual(["item", "log"]);
+    expect(tableConfigKeys(sendWithNoAlterations())).toEqual(["item", "log"]);
   });
 
   it("gives a Table the previous configs don't hold no prefix, no column IDs and no columns in the ID-name map", () => {
     const { grid } = seedFixture({ extraSheets: [notesSheet()] });
 
-    const files = sendQuiet();
+    const files = sendWithNoAlterations();
 
     expect(tableConfigKeys(files)).toEqual(["item"]);
     expect(
@@ -507,10 +519,10 @@ describe("SyncCoordinator quiet send API access", () => {
   });
 });
 
-describe("SyncCoordinator quiet send Empty value allowed", () => {
+describe("SyncCoordinator send with no alterations Empty value allowed", () => {
   function generateItemColumns() {
     const coordinator = SyncCoordinator.init();
-    sendQuiet(coordinator);
+    sendWithNoAlterations(coordinator);
     return Val.assert(
       coordinator.columnConfigOperator.newColumnConfigs().item,
       "Item column configs",
@@ -550,7 +562,7 @@ describe("SyncCoordinator quiet send Empty value allowed", () => {
   });
 });
 
-describe("SyncCoordinator quiet send ID-prefix guard", () => {
+describe("SyncCoordinator send with no alterations ID-prefix guard", () => {
   it("stops before writing when a Table's live ID prefix differs from the configs", () => {
     const zzzColumns = Object.fromEntries(
       Object.entries(itemColumns).map(([columnName, column]) => [
@@ -565,14 +577,14 @@ describe("SyncCoordinator quiet send ID-prefix guard", () => {
       item: { columns: zzzColumns },
     });
 
-    expect(() => sendQuiet()).toThrow(
+    expect(() => sendWithNoAlterations()).toThrow(
       'The regen would change an ID prefix, so it stopped before writing. Table "item" had ID prefix "itm" and is now "zzz".',
     );
     expect(batchUpdateCount()).toBe(0);
   });
 });
 
-describe("SyncCoordinator quiet send ID prefix", () => {
+describe("SyncCoordinator send with no alterations ID prefix", () => {
   const widgetGid = 888001;
   // A Table the previous configs grant, standing in for the fixture's own.
   const widgetTableId = getTableTraitByName("log", "tableId");
@@ -606,7 +618,7 @@ describe("SyncCoordinator quiet send ID prefix", () => {
       ],
     });
 
-    const parsed = sendQuiet();
+    const parsed = sendWithNoAlterations();
     expect(parsed.tableConfigs).toContain(
       tableConfigsEntry({
         tableKey: "renamedTab",
@@ -630,7 +642,7 @@ describe("SyncCoordinator quiet send ID prefix", () => {
       ],
     });
 
-    const parsed = sendQuiet();
+    const parsed = sendWithNoAlterations();
     const minted =
       parsed.columnConfigs.match(
         new RegExp(`c:${widgetIdPrefix}:[^"]+`, "g"),
@@ -650,7 +662,7 @@ describe("SyncCoordinator quiet send ID prefix", () => {
       ],
     });
 
-    expect(() => sendQuiet()).toThrow(/Widget.*c:gzm:xyz1234/);
+    expect(() => sendWithNoAlterations()).toThrow(/Widget.*c:gzm:xyz1234/);
   });
 
   it("fails when two Tables' names give the same key, naming both", () => {
@@ -658,13 +670,13 @@ describe("SyncCoordinator quiet send ID prefix", () => {
       extraSheets: [widgetSheet({ title: "Widget", tableName: "item" })],
     });
 
-    expect(() => sendQuiet()).toThrow(
+    expect(() => sendWithNoAlterations()).toThrow(
       'Tables "Item" and "item" both give the key "item".',
     );
   });
 });
 
-describe("SyncCoordinator quiet send head-row overlap", () => {
+describe("SyncCoordinator send with no alterations head-row overlap", () => {
   const recordsGid = 888000222;
 
   interface RecordsTable {
@@ -744,7 +756,7 @@ describe("SyncCoordinator quiet send head-row overlap", () => {
 
     let parsed: ConfigRegeneration | undefined;
     expect(() => {
-      parsed = sendQuiet();
+      parsed = sendWithNoAlterations();
     }).toThrow(messages.join(" "));
     expect(parsed).toBeUndefined();
     expect(recordsValues()).toEqual(before);
@@ -872,7 +884,7 @@ describe("SyncCoordinator quiet send head-row overlap", () => {
       },
     ]);
 
-    expect(() => sendQuiet()).toThrowError(
+    expect(() => sendWithNoAlterations()).toThrowError(
       /^Table "Tenants" on "Records" \(gid \d+\) must have its header row on row 4\.$/,
     );
   });
@@ -882,7 +894,7 @@ describe("SyncCoordinator quiet send head-row overlap", () => {
       item: { startRowIndex: expectedSheetLayout.tableHeaderRowIndex + 2 },
     });
 
-    expect(() => sendQuiet()).toThrowError(
+    expect(() => sendWithNoAlterations()).toThrowError(
       /^Table "Item" on "Item" \(gid \d+\) must have its header row on row 4\.$/,
     );
   });
@@ -900,7 +912,7 @@ describe("SyncCoordinator quiet send head-row overlap", () => {
       },
     ]);
 
-    const parsed = sendQuiet();
+    const parsed = sendWithNoAlterations();
     expect(parsed.tableConfigs).toContain('"leases"');
     expect(parsed.tableConfigs).not.toContain('"tenants"');
   });
@@ -925,7 +937,7 @@ describe("SyncCoordinator quiet send head-row overlap", () => {
       },
     ]);
 
-    const parsed = sendQuiet();
+    const parsed = sendWithNoAlterations();
     expect(parsed.tableConfigs).toContain('"tenants"');
     expect(parsed.tableConfigs).toContain('"leases"');
   });
@@ -974,7 +986,7 @@ describe("SyncCoordinator conditional-format rule read", () => {
     const service = seedFixture({ extraSheets: [rulesSheet()] });
     const coordinator = SyncCoordinator.init();
 
-    sendQuiet(coordinator);
+    sendWithNoAlterations(coordinator);
 
     expect(coordinator.ss.raw.sheet(rulesGid).conditionalFormatRules()).toEqual(
       [
@@ -1026,7 +1038,7 @@ describe("SyncCoordinator conditional-format rule read", () => {
       ],
     });
 
-    const { conditionalFormatConfigs } = sendQuiet();
+    const { conditionalFormatConfigs } = sendWithNoAlterations();
 
     expect(conditionalFormatConfigs).toContain(
       "export const conditionalFormatConfigs = makeConditionalFormatConfigs({",
@@ -1040,7 +1052,7 @@ describe("SyncCoordinator conditional-format rule read", () => {
   });
 });
 
-describe("SyncCoordinator quiet send value sources", () => {
+describe("SyncCoordinator send with no alterations value sources", () => {
   const listGid = 889001;
   const ledgerGid = 889002;
   // The previous configs grant API access, so an API-access fixture takes a Table ID they hold.
@@ -1136,7 +1148,7 @@ describe("SyncCoordinator quiet send value sources", () => {
 
   function generate() {
     const coordinator = SyncCoordinator.init();
-    const files = sendQuiet(coordinator);
+    const files = sendWithNoAlterations(coordinator);
     return {
       valueConfigs: emittedValueConfigs(files),
       ledgerValueName: (columnName: string) =>
@@ -1284,7 +1296,7 @@ describe("SyncCoordinator quiet send value sources", () => {
       ],
     });
 
-    expect(() => sendQuiet()).toThrow(
+    expect(() => sendWithNoAlterations()).toThrow(
       'Value source "List[Rent]" declares number members, but holds "TBD".',
     );
   });
@@ -1381,7 +1393,7 @@ describe("SyncCoordinator quiet send value sources", () => {
     const logger = stubLogger();
 
     const coordinator = SyncCoordinator.init();
-    const { result, files } = runQuiet(coordinator);
+    const { result, files } = runWithNoAlterations(coordinator);
 
     expect(emittedValueConfigs(Val.assert(files, "emitted files"))).toEqual({});
     const ledger = coordinator.columnConfigOperator.newColumnConfigs().ledger;
@@ -1411,7 +1423,7 @@ describe("SyncCoordinator quiet send value sources", () => {
       ],
     });
 
-    expect(() => sendQuiet()).toThrow(
+    expect(() => sendWithNoAlterations()).toThrow(
       'Value source "Number[#]" takes the value name "number", which is already the framework value name "number".',
     );
   });
@@ -1433,7 +1445,7 @@ describe("SyncCoordinator quiet send value sources", () => {
       ],
     });
 
-    expect(() => sendQuiet()).toThrow(
+    expect(() => sendWithNoAlterations()).toThrow(
       'Value sources "List[Payment status]" and "List Payment[Status]" both take the value name "listPaymentStatus".',
     );
   });
@@ -1441,7 +1453,7 @@ describe("SyncCoordinator quiet send value sources", () => {
   describe("the baseline each column records", () => {
     function generateLedgerColumns() {
       const coordinator = SyncCoordinator.init();
-      const files = sendQuiet(coordinator);
+      const files = sendWithNoAlterations(coordinator);
       return {
         files,
         ledger: Val.assert(
