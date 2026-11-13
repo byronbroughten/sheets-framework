@@ -3,11 +3,13 @@ import { Obj } from "@byronbroughten/utils/obj";
 import {
   GoogleSheetsAPI,
   type ModeledRequestVerb,
+  type SheetsAdvancedTransport,
 } from "../00_Source/GoogleSheets/GoogleSheetsAPI";
 import { installRawSource } from "../00_Source/RawSource/RawSource";
 import { cellReplays } from "./fakeSheetsService/cellReplays";
 import { dimensionReplays } from "./fakeSheetsService/dimensionReplays";
 import { FakeGoogleRefusal } from "./fakeSheetsService/FakeGoogleRefusal";
+import { FakeGridPayload } from "./fakeSheetsService/FakeGridPayload";
 import {
   type FakeSheetState,
   type FakeSpreadsheet,
@@ -25,7 +27,6 @@ type BatchUpdateRequest =
   GoogleAppsScript.Sheets.Schema.BatchUpdateSpreadsheetRequest;
 type BatchUpdateResponse =
   GoogleAppsScript.Sheets.Schema.BatchUpdateSpreadsheetResponse;
-type GoogleCellData = GoogleAppsScript.Sheets.Schema.CellData;
 type GridRange = GoogleAppsScript.Sheets.Schema.GridRange;
 type Request = GoogleAppsScript.Sheets.Schema.Request;
 type Table = GoogleAppsScript.Sheets.Schema.Table;
@@ -194,6 +195,8 @@ export interface FakeSheetsService {
   getByDataFilterCalls: object[];
   /** The params of every `Sheets.Spreadsheets.get` call, in call order. */
   getCalls: { fields?: string }[];
+  /** The fake Sheets service itself, for a read under a field mask the installed adapter doesn't send. */
+  sheets: SheetsAdvancedTransport;
 }
 
 /**
@@ -209,115 +212,6 @@ export function buildGridRows(
   return Array.from({ length: maxRowIndex + 1 }, (_, rowIndex) => [
     ...(rowsByIndex[rowIndex] ?? []),
   ]);
-}
-
-function fakeCellToGoogleCellData(cell: FakeCell): GoogleCellData {
-  if (cell === null) {
-    return {};
-  }
-  const rich: FakeRichCellValue =
-    typeof cell === "object" ? cell : { value: cell };
-  const data: GoogleCellData = {
-    effectiveValue: fakeValueToExtendedValue(rich.value),
-  };
-  if (rich.isFormula) {
-    data.userEnteredValue = {
-      formulaValue: rich.formula ?? formulaText(rich.value),
-    };
-  }
-  if (rich.numberFormatType) {
-    data.effectiveFormat = {
-      numberFormat: { type: rich.numberFormatType },
-    };
-  }
-  if (rich.dataValidationConditionType) {
-    data.dataValidation = {
-      condition: { type: rich.dataValidationConditionType },
-    };
-  }
-  return data;
-}
-
-// A replayed formula keeps its text; a fixture's formula cell gives only its computed value.
-function formulaText(value: FakeCellValue): string {
-  return typeof value === "string" && value.startsWith("=")
-    ? value
-    : "=FAKE_FORMULA()";
-}
-
-function fakeValueToExtendedValue(
-  value: FakeCellValue,
-): GoogleAppsScript.Sheets.Schema.ExtendedValue | undefined {
-  if (value === null) {
-    return undefined;
-  }
-  if (typeof value === "string") {
-    return { stringValue: value };
-  }
-  if (typeof value === "number") {
-    return { numberValue: value };
-  }
-  return { boolValue: value };
-}
-
-function fakeRowsToGoogleSheetData({
-  rows,
-  rowsWithNoGridData = [],
-  rowsWithNoGridBlock = [],
-}: FakeSheetState): GoogleAppsScript.Sheets.Schema.Sheet["data"] | undefined {
-  if (rows.length === 0) {
-    return undefined;
-  }
-  const columnCount = Math.max(0, ...rows.map((row) => row.length));
-  const noGridDataRows = new Set(rowsWithNoGridData);
-  const noGridBlockRows = new Set(rowsWithNoGridBlock);
-
-  // Real rowData blocks run contiguously from a real startRow, so either
-  // kind of absent row ends the block it was in.
-  const blocks: NonNullable<GoogleAppsScript.Sheets.Schema.Sheet["data"]> = [];
-  let currentBlockRows: GoogleAppsScript.Sheets.Schema.RowData[] = [];
-  let currentBlockStart: number | null = null;
-  function columnMetadata(): GoogleAppsScript.Sheets.Schema.DimensionProperties[] {
-    return Array.from({ length: columnCount }, () => ({}));
-  }
-  function flushCurrentBlock(): void {
-    if (currentBlockStart !== null) {
-      blocks.push({
-        startColumn: 0,
-        startRow: currentBlockStart,
-        columnMetadata: columnMetadata(),
-        rowData: currentBlockRows,
-      });
-    }
-    currentBlockRows = [];
-    currentBlockStart = null;
-  }
-  rows.forEach((row, rowIndex) => {
-    if (noGridBlockRows.has(rowIndex)) {
-      flushCurrentBlock();
-      return;
-    }
-    if (noGridDataRows.has(rowIndex)) {
-      flushCurrentBlock();
-      // Every grid column described, no rowData — the measured real shape.
-      blocks.push({
-        startColumn: 0,
-        startRow: rowIndex,
-        columnMetadata: columnMetadata(),
-      });
-      return;
-    }
-    currentBlockStart ??= rowIndex;
-    currentBlockRows.push({
-      values: Array.from(
-        { length: columnCount },
-        (_, colIndex): GoogleCellData =>
-          fakeCellToGoogleCellData(row[colIndex] ?? null),
-      ),
-    });
-  });
-  flushCurrentBlock();
-  return blocks;
 }
 
 export function stubSheetsService(
@@ -356,6 +250,7 @@ export function stubSheetsService(
       fields.includes("gridProperties(rowCount,columnCount");
     const includeTabProperties =
       fields === undefined || fields.includes("hidden,tabColorStyle");
+    const gridPayload = new FakeGridPayload(fields);
     return {
       ...(includeTimeZone ? { properties: { timeZone } } : {}),
       sheets: spreadsheet.sheets.map(
@@ -383,7 +278,7 @@ export function stubSheetsService(
                 }
               : {}),
           },
-          data: fakeRowsToGoogleSheetData(s),
+          data: gridPayload.sheetData(s),
           tables: googleTables(s),
           ...(includeConditionalFormats && s.conditionalFormats?.length
             ? { conditionalFormats: s.conditionalFormats }
@@ -427,7 +322,13 @@ export function stubSheetsService(
     },
   };
 
-  installRawSource(GoogleSheetsAPI.init(service, fakeSpreadsheetId));
+  installRawSource(
+    GoogleSheetsAPI.init({
+      sheets: service,
+      spreadsheetId: fakeSpreadsheetId,
+      host: "appsScript",
+    }),
+  );
 
   return {
     batchUpdateCount() {
@@ -436,6 +337,7 @@ export function stubSheetsService(
     grid: gridView.build(spreadsheet),
     getByDataFilterCalls,
     getCalls,
+    sheets: service,
   };
 }
 

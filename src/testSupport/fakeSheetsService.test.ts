@@ -1367,6 +1367,42 @@ describe("stubSheetsService as a whole", () => {
     expect(grid.sheetTitles()).toEqual(["Widget"]);
   });
 
+  it.each([
+    {
+      label:
+        "gives a non-formula value an empty userEnteredValue under a formula-only mask",
+      cellFields: "effectiveValue,userEnteredValue(formulaValue)",
+      userEnteredValues: [{}, { formulaValue: "=1+1" }, undefined],
+    },
+    {
+      label:
+        "leaves a non-formula value's userEnteredValue out when the mask names no formula",
+      cellFields: "effectiveValue",
+      userEnteredValues: [undefined, { formulaValue: "=1+1" }, undefined],
+    },
+  ])("$label", ({ cellFields, userEnteredValues }) => {
+    const { sheets } = stubSheetsService({
+      sheets: [
+        {
+          sheetId: widgetGid,
+          title: "Widget",
+          rows: [["x", { value: 2, isFormula: true, formula: "=1+1" }, null]],
+        },
+      ],
+    });
+
+    const read = sheets.Spreadsheets.getByDataFilter(
+      { dataFilters: [{ gridRange: { sheetId: widgetGid } }] },
+      "any",
+      { fields: `sheets(data(rowData(values(${cellFields}))))` },
+    );
+
+    const cells = read.sheets?.[0]?.data?.[0]?.rowData?.[0]?.values ?? [];
+    expect(cells.map((cell) => cell.userEnteredValue)).toEqual(
+      userEnteredValues,
+    );
+  });
+
   it("leaves a fixture untouched, so a test's writes never reach the next test that shares it", () => {
     const shared = widgetSheet();
     stubSheetsService({ sheets: [shared] });

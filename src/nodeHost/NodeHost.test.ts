@@ -124,8 +124,15 @@ describe("NodeHost.ensureGlobals", () => {
   });
 });
 
-// The Payments Table on its own sheet: header at index 0, Rent at 1, an empty row at 2, columns A to C.
-const payments = { gid: 7, rentRow: 1, emptyRow: 2, endRow: 4, endCol: 3 };
+// The Payments Table on its own sheet: header at index 0, Rent at 1, an empty row at 2, a Total formula at 3, columns A to C.
+const payments = {
+  gid: 7,
+  rentRow: 1,
+  emptyRow: 2,
+  totalRow: 3,
+  endRow: 4,
+  endCol: 3,
+};
 const paymentsAmountCol = 2;
 const gateTarget = "app:spreadsheet-under-test";
 
@@ -167,13 +174,27 @@ function paymentsSheet(rows?: GoogleCellData[][]) {
   };
 }
 
+// The Node host's mask gives a non-formula cell an empty userEnteredValue.
 function text(stringValue: string): GoogleCellData {
-  return { effectiveValue: { stringValue } };
+  return { effectiveValue: { stringValue }, userEnteredValue: {} };
+}
+
+function amount(numberValue: number): GoogleCellData {
+  return { effectiveValue: { numberValue }, userEnteredValue: {} };
 }
 
 const paymentsRows: GoogleCellData[][] = [
   [text("Name"), text("ID"), text("Amount")],
-  [text("Rent"), text("pay-0001"), { effectiveValue: { numberValue: 1200 } }],
+  [text("Rent"), text("pay-0001"), amount(1200)],
+  [],
+  [
+    text("Total"),
+    text("pay-0002"),
+    {
+      effectiveValue: { numberValue: 1200 },
+      userEnteredValue: { formulaValue: "=SUM(C2:C3)" },
+    },
+  ],
 ];
 
 // Properties alone on a get; the grid on a getByDataFilter; an empty reply to a batchUpdate.
@@ -238,17 +259,23 @@ function flushRequests(api: GoogleSheetsAPI, requests: GoogleRequest[]): void {
   );
 }
 
-function writeAmount(rowIndex: number, numberValue: number): GoogleRequest {
+// Amounts down the Amount column, one row each from startRowIndex.
+function writeAmounts(
+  startRowIndex: number,
+  numberValues: number[],
+): GoogleRequest {
   return {
     updateCells: {
       range: {
         sheetId: payments.gid,
-        startRowIndex: rowIndex,
-        endRowIndex: rowIndex + 1,
+        startRowIndex,
+        endRowIndex: startRowIndex + numberValues.length,
         startColumnIndex: paymentsAmountCol,
         endColumnIndex: paymentsAmountCol + 1,
       },
-      rows: [{ values: [{ userEnteredValue: { numberValue } }] }],
+      rows: numberValues.map((numberValue) => ({
+        values: [{ userEnteredValue: { numberValue } }],
+      })),
       fields: "userEnteredValue",
     },
   };
@@ -301,7 +328,7 @@ describe("NodeHost with an entered-data gate", () => {
     { label: "frees an append", request: appendRows, kinds: [] },
     {
       label: "frees a write into an empty cell a read covered",
-      request: writeAmount(payments.emptyRow, 5),
+      request: writeAmounts(payments.emptyRow, [5]),
       kinds: [],
     },
     {
@@ -311,11 +338,46 @@ describe("NodeHost with an entered-data gate", () => {
     },
     {
       label: "holds an overwrite of entered data",
-      request: writeAmount(payments.rentRow, 900),
+      request: writeAmounts(payments.rentRow, [900]),
       kinds: ["enteredData"],
+    },
+    {
+      label: "frees an overwrite of a formula cell",
+      request: writeAmounts(payments.totalRow, [900]),
+      kinds: [],
     },
   ])("$label", ({ request, kinds }) => {
     expect(heldKinds(dryRunHeldList([[request]]))).toEqual([kinds]);
+  });
+
+  it("holds only the entered cell of a write spanning entered, empty and formula cells", () => {
+    const heldList = dryRunHeldList([
+      [writeAmounts(payments.rentRow, [900, 5, 900])],
+    ]);
+
+    expect(heldList.flushes).toEqual([
+      [
+        expect.objectContaining({
+          kind: "enteredData",
+          cell: expect.objectContaining({
+            row: { rowId: "pay-0001" },
+          }),
+        }),
+      ],
+    ]);
+  });
+
+  it("asks each grid read for every cell's formula", () => {
+    const { api, transport } = seedGatedHost({ isDryRun: true });
+
+    readPayments(api);
+
+    const [read] = transport.mock.calls.filter(([request]) =>
+      request.url.includes(":getByDataFilter"),
+    );
+    expect(decodeURIComponent(read?.[0].url ?? "")).toContain(
+      "rowData(values(effectiveValue,userEnteredValue(formulaValue)))",
+    );
   });
 
   it("keeps a free flush's empty list, so each flush's items sit at its index", () => {
@@ -328,7 +390,7 @@ describe("NodeHost with an entered-data gate", () => {
   it("judges a flush against the reads since the one before it, as the send will", () => {
     expect(
       heldKinds(
-        dryRunHeldList([[appendRows], [writeAmount(payments.emptyRow, 5)]]),
+        dryRunHeldList([[appendRows], [writeAmounts(payments.emptyRow, [5])]]),
       ),
     ).toEqual([[], ["unreadCell"]]);
   });
@@ -337,7 +399,7 @@ describe("NodeHost with an entered-data gate", () => {
     const { host, api } = seedGatedHost({ isDryRun: true });
     api.fetchSheetProperties();
 
-    flushRequests(api, [writeAmount(payments.emptyRow, 5)]);
+    flushRequests(api, [writeAmounts(payments.emptyRow, [5])]);
 
     expect(heldKinds(host.heldList)).toEqual([["unreadCell"]]);
   });
@@ -347,14 +409,14 @@ describe("NodeHost with an entered-data gate", () => {
     readPayments(api);
 
     flushRequests(api, [appendRows]);
-    flushRequests(api, [writeAmount(payments.rentRow, 900)]);
+    flushRequests(api, [writeAmounts(payments.rentRow, [900])]);
 
     expect(batchUpdatePosts(transport)).toEqual([]);
     expect(host.summary.count).toBe(2);
   });
 
   it("gives one token for one target and list, and another when either differs", () => {
-    const flushes = [[writeAmount(payments.rentRow, 900)]];
+    const flushes = [[writeAmounts(payments.rentRow, [900])]];
     const { token } = dryRunHeldList(flushes);
 
     expect(dryRunHeldList(flushes).token).toBe(token);
@@ -362,7 +424,7 @@ describe("NodeHost with an entered-data gate", () => {
       token,
     );
     expect(
-      dryRunHeldList([[writeAmount(payments.rentRow, 800)]]).token,
+      dryRunHeldList([[writeAmounts(payments.rentRow, [800])]]).token,
     ).not.toBe(token);
   });
 
@@ -375,7 +437,7 @@ describe("NodeHost with an entered-data gate", () => {
 
   it("refuses a held flush as uncovered when no token is given, and sends nothing", () => {
     const { refusal, posts } = sendFlushes({
-      flushes: [[writeAmount(payments.rentRow, 900)]],
+      flushes: [[writeAmounts(payments.rentRow, [900])]],
     });
 
     expect(refusal).toBeInstanceOf(HeldFlushRefusal);
@@ -388,7 +450,7 @@ describe("NodeHost with an entered-data gate", () => {
   });
 
   it("sends a held flush the dry run's token and list cover", () => {
-    const flushes = [[appendRows], [writeAmount(payments.rentRow, 900)]];
+    const flushes = [[appendRows], [writeAmounts(payments.rentRow, [900])]];
 
     const { refusal, posts } = sendFlushes({
       flushes,
@@ -401,12 +463,12 @@ describe("NodeHost with an entered-data gate", () => {
 
   it("refuses as mismatched when the list's entry for the flush differs from its items, counting the list's flushes", () => {
     const covered = dryRunHeldList([
-      [writeAmount(payments.rentRow, 900)],
+      [writeAmounts(payments.rentRow, [900])],
       [appendRows],
     ]);
 
     const { refusal, posts } = sendFlushes({
-      flushes: [[writeAmount(payments.rentRow, 800)]],
+      flushes: [[writeAmounts(payments.rentRow, [800])]],
       confirmedList: covered,
     });
 
@@ -419,8 +481,8 @@ describe("NodeHost with an entered-data gate", () => {
   });
 
   it("refuses as mismatched when the list was edited after the token was made", () => {
-    const flushes = [[writeAmount(payments.rentRow, 800)]];
-    const covered = dryRunHeldList([[writeAmount(payments.rentRow, 900)]]);
+    const flushes = [[writeAmounts(payments.rentRow, [800])]];
+    const covered = dryRunHeldList([[writeAmounts(payments.rentRow, [900])]]);
     const edited = { ...covered, flushes: dryRunHeldList(flushes).flushes };
 
     const { refusal } = sendFlushes({ flushes, confirmedList: edited });
@@ -429,7 +491,7 @@ describe("NodeHost with an entered-data gate", () => {
   });
 
   it("refuses as mismatched when the token was made for another target", () => {
-    const flushes = [[writeAmount(payments.rentRow, 900)]];
+    const flushes = [[writeAmounts(payments.rentRow, [900])]];
 
     const { refusal } = sendFlushes({
       flushes,
@@ -444,7 +506,7 @@ describe("NodeHost with an entered-data gate", () => {
       flushes: [
         [appendRows],
         [appendRows],
-        [writeAmount(payments.rentRow, 900)],
+        [writeAmounts(payments.rentRow, [900])],
       ],
     });
 
