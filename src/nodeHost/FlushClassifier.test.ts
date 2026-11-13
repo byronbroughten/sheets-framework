@@ -240,6 +240,31 @@ describe("FlushClassifier.heldItems", () => {
       ]);
     });
 
+    it("holds a column deleteRange from the column ID row down per entered body cell as deleted", () => {
+      const held = heldItems([
+        {
+          deleteRange: {
+            range: {
+              sheetId: gid,
+              startRowIndex: 0,
+              endRowIndex: payments.endRow,
+              startColumnIndex: amount,
+              endColumnIndex: amount + 1,
+            },
+            shiftDimension: "COLUMNS",
+          },
+        },
+      ]);
+      expect(cellChanges(held)).toEqual([
+        {
+          requestIndex: 0,
+          column: "Amount",
+          row: rentId,
+          change: { kind: "delete", before: "1200" },
+        },
+      ]);
+    });
+
     it("holds a deleteTable per entered cell of the read Table range as deleted, and frees its formulas", () => {
       const held = heldItems([{ deleteTable: { tableId: "tbl-pay" } }]);
       const deleted = (before: string) => ({ kind: "delete", before });

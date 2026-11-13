@@ -115,8 +115,9 @@ export interface SyncRun {
  * Runs sync: refuses what intended state alone can't plan, reads the live
  * Tables, plans the three-way comparison against the previous configs, sends
  * the plan, any missing column IDs and Fill Row IDs checkboxes in one flush
- * on an unstopped --send, refetches, then emits every generated config file,
- * the ID-name map and the remaining alterations, or none, and fills blank
+ * on an unstopped --send, then its column deletions in a flush of their own,
+ * refetches, then emits every generated config file, the ID-name map and
+ * the remaining alterations, or none, and fills blank
  * row IDs from the fresh configs as its own send. A bare run sends nothing but still
  * refreshes the configs from its read; on a host that withholds, it then
  * flushes the plan for the host's entered-data gate to judge. Before either
@@ -223,7 +224,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     if (isApplying) this._applyPlan(applied);
     const notes = this._recordUntypedColumns();
     if (isApplying) {
-      const refusal = this._flushUnlessHeld();
+      const refusal = this._flushUnlessHeld(planned.sentTraits);
       // No files: column IDs already recorded would reach the configs but not the sheet.
       if (refusal !== undefined) {
         return {
@@ -256,7 +257,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     // After the files are strings, so the host's gate judges what a send would write and the configs never see it.
     if (props.isHostWithholding && !props.isSending && !planned.isStopped) {
       this._applyPlan(applied);
-      this.ss.batchUpdateGSheets();
+      this._flushPlan(applied.sentTraits);
     }
     const landed = sent.filter(hasLanded(didntLand));
     if (landed.length > 0) {
@@ -376,14 +377,22 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     identified.fetchAllGathered();
   }
   // The Node host's gate refuses a held flush by throwing; any other error goes on up.
-  private _flushUnlessHeld(): HeldFlushRefusal | undefined {
+  private _flushUnlessHeld(
+    sentTraits: SyncPlannerResult["sentTraits"],
+  ): HeldFlushRefusal | undefined {
     try {
-      this.ss.batchUpdateGSheets();
+      this._flushPlan(sentTraits);
       return undefined;
     } catch (error) {
       if (error instanceof HeldFlushRefusal) return error;
       throw error;
     }
+  }
+  // A column delete goes in a flush of its own on its Table, since the plan's other writes are indexed by the columns before it.
+  private _flushPlan(sentTraits: SyncPlannerResult["sentTraits"]): void {
+    this.ss.batchUpdateGSheets();
+    this.columnConfigOperator.deleteColumns(sentTraits);
+    this.ss.batchUpdateGSheets();
   }
   private _applyApiAccessChanges(accessChanges: ApiAccessChanges): void {
     this.tableConfigOperator.recordApiAccessChanges(accessChanges);

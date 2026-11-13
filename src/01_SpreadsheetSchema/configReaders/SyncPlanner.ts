@@ -98,8 +98,11 @@ export const tabTraits = [
 // The sent traits Raw's working view doesn't carry, so the run refetches after sending one; a tab's land in the working view.
 export const sheetTraits = {
   table: new Set<string>(["name"]),
-  column: new Set<string>(["header", "formula"]),
+  column: new Set<string>(["header", "formula", "deleted"]),
 } as const;
+
+// A deletion's one value, `true`, says nothing a plan line could show.
+const deletionWhat = "delete the column";
 
 export function isSheetTrait(intended: IntendedTrait): boolean {
   if (intended.kind === "tab") return false;
@@ -181,7 +184,10 @@ export class SyncPlanner {
       }
       const stop = stopOf(intended, sides);
       if (stop === undefined) {
-        if (sendsIntended(intended.value, sides)) {
+        if (!sendsIntended(intended.value, sides)) return;
+        if (isColumnDeletion(intended)) {
+          send(deletionWhat);
+        } else {
           send(`set to ${valueText(intended.value)}`);
         }
         return;
@@ -249,6 +255,7 @@ export class SyncPlanner {
             "columnType",
             "formula",
             "emptyValueAllowed",
+            "deleted",
           ]).map((trait) => ({
             kind: "column" as const,
             table,
@@ -290,6 +297,10 @@ function pickTraits<EN extends object, KY extends keyof EN & string>(
 // Order is never in the configs, so live alone decides it: sent unless live already has it.
 function isOrderTrait(intended: IntendedTrait): boolean {
   return intended.kind === "tab" && intended.trait === "before";
+}
+
+export function isColumnDeletion(address: TraitAddress): boolean {
+  return address.kind === "column" && address.trait === "deleted";
 }
 
 function addressKey(address: TraitAddress): string {
@@ -451,6 +462,10 @@ function withTrait(
     });
   }
   const { column } = address;
+  if (isColumnDeletion(address)) {
+    const { [column]: _deleted, ...columns } = tableReading.columns;
+    return withTable(readings, table, { ...tableReading, columns });
+  }
   return withTable(readings, table, {
     ...tableReading,
     columns: {
