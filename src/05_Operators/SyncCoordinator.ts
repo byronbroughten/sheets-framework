@@ -9,10 +9,16 @@ import type { IdNameMapGeneric } from "../01_SpreadsheetSchema/configReaders/idN
 import type { PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState";
 import { remainingAlterations } from "../01_SpreadsheetSchema/configReaders/remainingAlterations";
 import { SyncEntryRefuser } from "../01_SpreadsheetSchema/configReaders/SyncEntryRefuser";
-import { SyncPlanner } from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
+import {
+  isSheetTrait,
+  SyncPlanner,
+  type TraitReadings,
+} from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
 import type {
   SyncRunFrame,
   SyncRunResult,
+  SyncSubject,
+  SyncTypedTraitChange,
 } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
 import { SyncRunResultBuilder } from "../01_SpreadsheetSchema/configReaders/SyncRunResultBuilder";
 import { typedTraitChanges } from "../01_SpreadsheetSchema/configReaders/typedTraitChanges";
@@ -57,6 +63,18 @@ export interface SyncRunProps {
   intendedState: SyncIntendedState;
   previousIdNameMap: IdNameMapGeneric;
   frame: SyncRunFrame;
+}
+
+interface Regeneration {
+  files: ConfigRegeneration;
+  changes: SyncTypedTraitChange[];
+  notes: string[];
+}
+
+interface RefetchProps {
+  configTraits: TraitReadings;
+  sent: SyncSubject[];
+  accessChanges: ApiAccessChanges;
 }
 
 // No files on a refused run: the run writes every file or none.
@@ -138,7 +156,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     this._readLive();
     // The ID-prefix guard runs before the column-ID write it guards.
     this.tableConfigOperator.validateIdPrefixesUnchanged();
-    const readings = this.columnConfigOperator.emptyValueAllowedReadings();
+    const readings = this.columnConfigOperator.traitReadings();
     const planned = planner.plan({
       ...withApiAccessReadings(readings, props.previousIdNameMap),
       headRowStops: this.tableConfigOperator.grantHeadRowStops(
@@ -156,22 +174,25 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     // Grants join only on an unstopped send, so a dry run never records a Table with no column IDs.
     if (isApplying) this._applyApiAccessChanges(accessChanges);
     // Column IDs only on an unstopped send: one minted by any other run would reach the configs but never the sheet.
-    if (isApplying) this.columnConfigOperator.addMissingColumnIds();
+    if (isApplying) {
+      this.columnConfigOperator
+        .addMissingColumnIds()
+        .updateHeaders(planned.sentTraits);
+      this.tableConfigOperator.updateTableNames(planned.sentTraits);
+    }
     const notes = this._recordUntypedColumns();
     if (isApplying) this.ss.batchUpdateGSheets();
-    this.valueConfigOperator.fetchAfterColumnConfigSynced();
-    const changes = typedTraitChanges({
-      previous: {
-        columnConfigs: columnConfigsByName(),
-        valueConfigs: installedConfigs().valueConfigs,
-      },
-      regenerated: {
-        columnConfigs: this.columnConfigOperator.newColumnConfigs(),
-        valueConfigs: this.valueConfigOperator.newValueConfigs(),
-      },
-      sent: isApplying ? planned.plan.map(({ subject }) => subject) : [],
-    });
-    const files = this._configFiles();
+    const sent = isApplying ? planned.plan.map(({ subject }) => subject) : [];
+    // A fresh read, since Raw's state has no reset; only a sent sheet trait changes what it would read.
+    const regeneration =
+      isApplying && planned.sentTraits.some(isSheetTrait)
+        ? SyncCoordinator.init()._refetchedRegeneration({
+            configTraits: planned.configTraits,
+            sent,
+            accessChanges,
+          })
+        : this._regeneration(notes, sent);
+    const { files, changes } = regeneration;
     // The row-ID fill goes here: its own send, planned from the fresh configs.
     if (isApplying && planned.plan.length > 0) {
       files.alterations = alterationsFileSource(
@@ -182,9 +203,40 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       );
     }
     return {
-      result: resultBuilder.ran({ planned, notes, typedTraitChanges: changes }),
+      result: resultBuilder.ran({
+        planned,
+        notes: regeneration.notes,
+        typedTraitChanges: changes,
+      }),
       files,
     };
+  }
+  // The untyped-column notes come from the refetch, since a rename changes the headers and Table names they cite.
+  private _refetchedRegeneration({
+    configTraits,
+    sent,
+    accessChanges,
+  }: RefetchProps): Regeneration {
+    // Recorded before the read, so its head-row fetch covers granted Tables and skips revoked ones.
+    this.tableConfigOperator.recordApiAccessChanges(accessChanges);
+    this._readLive();
+    this.columnConfigOperator.recordEmptyValueAllowed(configTraits);
+    return this._regeneration(this._recordUntypedColumns(), sent);
+  }
+  private _regeneration(notes: string[], sent: SyncSubject[]): Regeneration {
+    this.valueConfigOperator.fetchAfterColumnConfigSynced();
+    const changes = typedTraitChanges({
+      previous: {
+        columnConfigs: columnConfigsByName(),
+        valueConfigs: installedConfigs().valueConfigs,
+      },
+      regenerated: {
+        columnConfigs: this.columnConfigOperator.newColumnConfigs(),
+        valueConfigs: this.valueConfigOperator.newValueConfigs(),
+      },
+      sent,
+    });
+    return { files: this._configFiles(), changes, notes };
   }
   private _readLive(): void {
     this.ss.fetchAllSheetProperties({ includeConditionalFormats: true });

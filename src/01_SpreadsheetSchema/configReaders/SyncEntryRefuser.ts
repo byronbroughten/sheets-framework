@@ -1,5 +1,6 @@
 import { hasApiAccess } from "./apiAccessChanges";
 import type { IdNameMapGeneric } from "./idNameMapTypes";
+import { sheetTraits } from "./SyncPlanner";
 import {
   entriesOf,
   type WideAlterations,
@@ -18,8 +19,8 @@ type NotSendableYet = Extract<SyncRefusal, { kind: "notSendableYet" }>;
 
 // Only these traits can be sent so far; each later trait ticket takes its trait off this refusal.
 export const sendableTraits = {
-  table: new Set<string>(["letApiAccess"]),
-  column: new Set<string>(["emptyValueAllowed"]),
+  table: new Set<string>([...sheetTraits.table, "letApiAccess"]),
+  column: new Set<string>([...sheetTraits.column, "emptyValueAllowed"]),
 } as const;
 
 interface TraitPath {

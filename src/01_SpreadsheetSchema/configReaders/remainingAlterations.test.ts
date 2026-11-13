@@ -94,7 +94,7 @@ describe("remainingAlterations", () => {
     });
   });
 
-  it("removes a landed Table trait, and the entry once it is empty", () => {
+  it("removes a landed letApiAccess, and the entry once it is empty", () => {
     const alterations = remainingAlterations(
       {
         tables: {
@@ -110,12 +110,26 @@ describe("remainingAlterations", () => {
     expect(alterations).toEqual({ tables: { log: { name: "journal" } } });
   });
 
-  it("throws on a landed subject that isn't a Table's or column's trait", () => {
+  it("removes a landed Table trait, keeping the Table's columns", () => {
+    const remaining = remainingAlterations(
+      {
+        tables: {
+          item: { name: "Stock", columns: { note: { header: "Remark" } } },
+        },
+      },
+      [{ table: "item", path: "name" }],
+    );
+    expect(remaining).toEqual({
+      tables: { item: { columns: { note: { header: "Remark" } } } },
+    });
+  });
+
+  it("throws on a landed subject that isn't a Table or column trait", () => {
     expect(() => remainingAlterations({}, [{ table: "item" }])).toThrow(
-      "column's trait",
+      "Table or column trait",
     );
     expect(() => remainingAlterations({}, [{ tab: "itemTab" }])).toThrow(
-      "column's trait",
+      "Table or column trait",
     );
   });
 });

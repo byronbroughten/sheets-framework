@@ -76,14 +76,15 @@ describe("SyncEntryRefuser, a Table or tab that no longer exists", () => {
 });
 
 describe("SyncEntryRefuser, traits not sendable yet", () => {
-  it("lets a column's emptyValueAllowed through", () => {
+  it("lets a Table's name and a column's header and emptyValueAllowed through", () => {
     expect(
       refusals({
         alterations: {
           tables: {
             item: {
+              name: "Stock",
               columns: {
-                name: { emptyValueAllowed: true },
+                name: { header: "Mine", emptyValueAllowed: true },
                 count: { emptyValueAllowed: false },
               },
             },
@@ -100,7 +101,7 @@ describe("SyncEntryRefuser, traits not sendable yet", () => {
           tables: {
             item: {
               columns: {
-                name: { header: "Mine", emptyValueAllowed: true },
+                name: { columnType: { type: "TEXT", rule: null } },
                 count: { formula: "=1", before: "name" },
               },
             },
@@ -108,13 +109,13 @@ describe("SyncEntryRefuser, traits not sendable yet", () => {
         },
       }),
     ).toEqual([
-      { kind: "notSendableYet", table: "item", path: "name.header" },
+      { kind: "notSendableYet", table: "item", path: "name.columnType" },
       { kind: "notSendableYet", table: "item", path: "count.formula" },
       { kind: "notSendableYet", table: "item", path: "count.before" },
     ]);
   });
 
-  it("refuses a Table's own traits and a column's deletion", () => {
+  it("refuses a Table's own traits but its name, and a column's deletion", () => {
     expect(
       refusals({
         alterations: {
@@ -130,7 +131,6 @@ describe("SyncEntryRefuser, traits not sendable yet", () => {
         },
       }),
     ).toEqual([
-      { kind: "notSendableYet", table: "item", path: "name" },
       { kind: "notSendableYet", table: "item", path: "deleted" },
       { kind: "notSendableYet", table: "item", path: "newColumns" },
       { kind: "notSendableYet", table: "item", path: "conditionalFormats" },
