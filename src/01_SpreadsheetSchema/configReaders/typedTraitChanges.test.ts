@@ -43,4 +43,14 @@ describe("typedTraitChanges", () => {
       },
     ]);
   });
+
+  it("doesn't list a change the run itself sent", () => {
+    const changes = typedTraitChanges({
+      previous: configs({ listStatus: ["Paid", "Unpaid"] }),
+      regenerated: configs({ listStatus: ["Paid", "Late"] }),
+      sent: [{ table: "ledger", column: "status", path: "columnType" }],
+    });
+
+    expect(changes).toEqual([]);
+  });
 });
