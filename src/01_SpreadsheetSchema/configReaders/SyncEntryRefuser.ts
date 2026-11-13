@@ -1,4 +1,5 @@
 import type { IdNameMapGeneric } from "./idNameMapTypes";
+import { sheetTraits } from "./SyncPlanner";
 import {
   entriesOf,
   type WideAlterations,
@@ -17,8 +18,8 @@ type NotSendableYet = Extract<SyncRefusal, { kind: "notSendableYet" }>;
 
 // Only these traits can be sent so far; each later trait ticket takes its trait off this refusal.
 export const sendableTraits = {
-  table: new Set<string>(["name"]),
-  column: new Set<string>(["header", "emptyValueAllowed"]),
+  table: new Set<string>(sheetTraits.table),
+  column: new Set<string>([...sheetTraits.column, "emptyValueAllowed"]),
 } as const;
 
 // Pure: refuses what can't be planned from intended state and the previous ID-name map alone, so before any read.

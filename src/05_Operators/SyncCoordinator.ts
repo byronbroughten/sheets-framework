@@ -5,7 +5,7 @@ import type { PendingAlterations } from "../01_SpreadsheetSchema/configReaders/i
 import { remainingAlterations } from "../01_SpreadsheetSchema/configReaders/remainingAlterations";
 import { SyncEntryRefuser } from "../01_SpreadsheetSchema/configReaders/SyncEntryRefuser";
 import {
-  type IntendedTrait,
+  isSheetTrait,
   SyncPlanner,
   type TraitReadings,
 } from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
@@ -155,7 +155,8 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     if (isApplying) {
       this.columnConfigOperator
         .addMissingColumnIds()
-        .updateSheetTraits(planned.sentTraits);
+        .updateHeaders(planned.sentTraits);
+      this.tableConfigOperator.updateTableNames(planned.sentTraits);
     }
     const notes = this._recordUntypedColumns();
     if (isApplying) this.ss.batchUpdateGSheets();
@@ -279,10 +280,6 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       {},
     );
   }
-}
-
-function isSheetTrait(intended: IntendedTrait): boolean {
-  return intended.kind !== "tab" && ["name", "header"].includes(intended.trait);
 }
 
 // Each Table's tab by name, from the previous map, since nothing is read before the refusals.

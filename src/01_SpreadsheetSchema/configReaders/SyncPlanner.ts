@@ -79,6 +79,17 @@ interface IntendedValue {
 
 export type IntendedTrait = TraitAddress & IntendedValue;
 
+// The traits a send writes to the sheet, so the run refetches after sending one.
+export const sheetTraits = {
+  table: new Set<string>(["name"]),
+  column: new Set<string>(["header"]),
+} as const;
+
+export function isSheetTrait(intended: IntendedTrait): boolean {
+  if (intended.kind === "tab") return false;
+  return sheetTraits[intended.kind].has(intended.trait);
+}
+
 interface HeldBackValue {
   intended: IntendedTrait;
   agreed: TraitValue;
@@ -170,6 +181,7 @@ export class SyncPlanner {
       }
     });
     const isStopped = stops.length > 0;
+    const sentIfUnstopped = isStopped ? [] : sentTraits;
     const forcedNotHeld = new Set(
       forced.map((trait) => addressKey({ kind: "column", ...trait })),
     );
@@ -189,10 +201,10 @@ export class SyncPlanner {
       forcedTraits: forced,
       configTraits: configTraitsOf({
         live,
-        sent: isStopped ? [] : sentTraits,
+        sent: sentIfUnstopped,
         heldBack: heldBackTraits,
       }),
-      sentTraits: isStopped ? [] : sentTraits,
+      sentTraits: sentIfUnstopped,
     };
   }
   private _forcedTraitFor(intended: IntendedTrait): ForcedTrait | undefined {

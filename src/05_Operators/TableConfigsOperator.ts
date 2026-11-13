@@ -5,7 +5,12 @@ import {
   type TableConfigsBase,
 } from "../01_SpreadsheetSchema/configReaders/makeConfigs";
 import {
+  type IntendedTrait,
+  isSheetTrait,
+} from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
+import {
   configRetiredIdPrefixes,
+  tableConfigsByName,
   tableConfigsByTableId,
 } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import {
@@ -149,6 +154,18 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
     throw new Error(
       `${columnReferenceLabel(reference)} names no managed Table "${tableName}".`,
     );
+  }
+  // A renamed Table is addressed by its previous key, which the refuser guarantees the previous configs hold.
+  updateTableNames(sent: IntendedTrait[]): this {
+    for (const intended of sent) {
+      if (intended.kind !== "table" || !isSheetTrait(intended)) continue;
+      const { tableId } = Val.assert(
+        tableConfigsByName()[intended.table],
+        `previous Table ${intended.table}`,
+      );
+      this.ss.raw.table(tableId).updateTableName(String(intended.value));
+    }
+    return this;
   }
   tableKeysByTableId(): Map<string, string> {
     const map = new Map<string, string>();

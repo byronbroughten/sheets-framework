@@ -12,11 +12,12 @@ import {
   type ColumnConfigStored,
   makeImportLine,
 } from "../01_SpreadsheetSchema/configReaders/makeConfigs";
-import type {
-  IntendedTrait,
-  PlanProps,
-  TableReading,
-  TraitReadings,
+import {
+  type IntendedTrait,
+  isSheetTrait,
+  type PlanProps,
+  type TableReading,
+  type TraitReadings,
 } from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
 import { tableConfigsByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { type ValueName } from "../01_SpreadsheetSchema/configReaders/valueSchemas";
@@ -202,35 +203,20 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
       live: { tables: live, tabs: {} },
     };
   }
-  // Queues each sent Table name and column header, addressed by the previous names the readings use.
-  updateSheetTraits(sent: IntendedTrait[]): this {
+  // Queues each sent column header, addressed by the previous names the readings use.
+  updateHeaders(sent: IntendedTrait[]): this {
     const identities = this._namedColumnIdentities();
     for (const intended of sent) {
-      if (intended.kind === "tab") continue;
-      const { table: tableKey } = intended;
-      const value = String(intended.value);
-      if (intended.kind === "table") {
-        if (intended.trait !== "name") continue;
-        const { tableId } = Val.assert(
-          identities.find((identity) => identity.tableKey === tableKey),
-          `live Table ${tableKey}`,
-        );
-        this.ss.raw.table(tableId).updateTableName(value);
-        continue;
-      }
-      if (intended.trait !== "header") continue;
+      if (intended.kind !== "column" || !isSheetTrait(intended)) continue;
+      const { table: tableKey, column } = intended;
       const { tableId, columnId } = Val.assert(
         identities.find(
           (identity) =>
-            identity.tableKey === tableKey &&
-            identity.columnName === intended.column,
+            identity.tableKey === tableKey && identity.columnName === column,
         ),
-        `live column ${tableKey}.${intended.column}`,
+        `live column ${tableKey}.${column}`,
       );
-      const table = this.ss.raw.table(tableId);
-      table
-        .headRow("header")
-        .updateValue(table.columnResolver.colIndexOf(columnId), value);
+      this.ss.raw.table(tableId).updateHeader(columnId, String(intended.value));
     }
     return this;
   }
