@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -8,9 +7,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { appConfigs } from "../dev/generated/appConfigs.ts";
 import type { SheetsHttpRequest } from "../src/00_Source/GoogleSheets/GoogleSheetsAPI.ts";
-import { NodeHost } from "../src/nodeHost/NodeHost.ts";
 import { ChoreRunner } from "./chore.ts";
-import { heldFile } from "./heldFile.ts";
 import type { SheetsConfig } from "./sheetsConfig.ts";
 
 const srcUrl = new URL("../src/", import.meta.url);
@@ -56,25 +53,14 @@ interface ChoreRun {
 
 // Runs the chore past its live host: only the Sheets transport is stood in for.
 async function runReplaceRent(argv: string[]): Promise<ChoreRun> {
-  const runner = ChoreRunner.init(sheetsConfig, ["replaceRent", ...argv]);
   const transport = vi.fn((request: SheetsHttpRequest) => {
     if (request.url.includes(":batchUpdate")) return { replies: [] };
     return { sheets: [] };
   });
-  vi.spyOn(runner, "_startHost").mockImplementation(async () =>
-    NodeHost.init({
-      configs: appConfigs,
-      spreadsheetId: sheetsConfig.spreadsheetId,
-      transport,
-      isDryRun: !runner.isSend,
-      log: vi.fn(),
-      enteredDataGate: {
-        target: runner.target,
-        confirmedList: runner._confirmedList(),
-        hash: (input) => createHash("sha256").update(input).digest("hex"),
-      },
-    }).ensureGlobals(),
-  );
+  const runner = ChoreRunner.init(sheetsConfig, ["replaceRent", ...argv], {
+    transport,
+    configs: appConfigs,
+  });
   const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
   process.exitCode = undefined;
   await runner.run();
@@ -93,12 +79,6 @@ describe("a chore's --send over entered data", () => {
   afterEach(() => {
     process.exitCode = undefined;
     vi.restoreAllMocks();
-  });
-
-  it("keeps its held list in its own held file", () => {
-    expect(heldFile.path(packageDir, "chore")).toBe(
-      join(packageDir, ".probe", "chore-held.json"),
-    );
   });
 
   it("is held without --confirm, then sent once --confirm gives the dry run's token", async () => {
@@ -120,6 +100,7 @@ describe("a chore's --send over entered data", () => {
     expect(dryRun.output).toContain(
       `Rerun with --send --confirm ${token} to send these.`,
     );
+    expect(dryRun.output).not.toContain("Re-run with `-- --send` to apply.");
     expect(dryRun.batchUpdates).toBe(0);
 
     const sent = await runReplaceRent(["--send", "--confirm", `${token}`]);

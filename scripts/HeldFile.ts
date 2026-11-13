@@ -23,16 +23,67 @@ interface HeldFileContents {
   flushes: HeldItem[][];
 }
 
-interface ConfirmedListProps {
-  path: string;
+export interface HeldFileProps {
+  packageDir: string;
+  command: HeldFileCommand;
   isSending: boolean;
   confirmToken: string | undefined;
 }
 
-interface DryRunHeldProps {
-  path: string;
-  target: string;
-  heldList: HeldList;
+// The dry run's held list on disk, which a send with --confirm reads back.
+export class HeldFile {
+  readonly path: string;
+  readonly isSending: boolean;
+  readonly confirmToken: string | undefined;
+  constructor({ packageDir, command, isSending, confirmToken }: HeldFileProps) {
+    // In the package's .probe/, beside the probe's output, since it holds live cell values and is never committed.
+    this.path = join(packageDir, ".probe", heldFileNames[command]);
+    this.isSending = isSending;
+    this.confirmToken = confirmToken;
+  }
+  static init(props: HeldFileProps): HeldFile {
+    return new HeldFile(props);
+  }
+  // Undefined when the file is missing or isn't a held list; the gate compares each entry with the flush it judges.
+  get flushes(): unknown[][] | undefined {
+    if (!existsSync(this.path)) return undefined;
+    try {
+      const { flushes }: { flushes?: unknown } = JSON.parse(
+        readFileSync(this.path, "utf8"),
+      );
+      if (!Array.isArray(flushes)) return undefined;
+      if (!flushes.every((flush): flush is unknown[] => Array.isArray(flush))) {
+        return undefined;
+      }
+      return flushes;
+    } catch {
+      return undefined;
+    }
+  }
+  // A send's token, with the dry run's held list it covers; a missing or unreadable held file leaves the list undefined, so the gate counts it mismatched.
+  get confirmedList(): ConfirmedList | undefined {
+    const { isSending, confirmToken } = this;
+    if (!isSending || confirmToken === undefined) return undefined;
+    return { token: confirmToken, flushes: this.flushes };
+  }
+  // Writes a dry run's held items with their values to the held file; undefined, writing nothing, when no flush held any.
+  async dryRunHeld(
+    { token, flushes }: HeldList,
+    target: string,
+  ): Promise<SyncHeld | undefined> {
+    if (flushes.every((items) => items.length === 0)) return undefined;
+    const { heldGroups } = await import("../src/nodeHost/heldGroups.ts");
+    this._write({ target, token, flushes });
+    return {
+      groups: heldGroups(flushes),
+      token,
+      fullListPath: relative(process.cwd(), this.path),
+    };
+  }
+  _write(contents: HeldFileContents): void {
+    mkdirSync(dirname(this.path), { recursive: true });
+    writeFileSync(this.path, `${JSON.stringify(contents, null, 2)}\n`);
+  }
 }
 
 // The token after `--confirm`, which the dry run printed beside its held list.
@@ -45,55 +96,3 @@ export function parseConfirmToken(argv: string[]): string | undefined {
   }
   return token;
 }
-
-// The dry run's held list on disk, which a send with --confirm reads back.
-export const heldFile = {
-  // In the package's .probe/, beside the probe's output, since it holds live cell values and is never committed.
-  path(packageDir: string, command: HeldFileCommand): string {
-    return join(packageDir, ".probe", heldFileNames[command]);
-  },
-  write(path: string, contents: HeldFileContents): void {
-    mkdirSync(dirname(path), { recursive: true });
-    writeFileSync(path, `${JSON.stringify(contents, null, 2)}\n`);
-  },
-  // Undefined when the file is missing or isn't a held list; the gate compares each entry with the flush it judges.
-  readFlushes(path: string): unknown[][] | undefined {
-    if (!existsSync(path)) return undefined;
-    try {
-      const { flushes }: { flushes?: unknown } = JSON.parse(
-        readFileSync(path, "utf8"),
-      );
-      if (!Array.isArray(flushes)) return undefined;
-      if (!flushes.every((flush): flush is unknown[] => Array.isArray(flush))) {
-        return undefined;
-      }
-      return flushes;
-    } catch {
-      return undefined;
-    }
-  },
-  // A send's token, with the dry run's held list it covers; a missing or unreadable held file leaves the list undefined, so the gate counts it mismatched.
-  confirmedList({
-    path,
-    isSending,
-    confirmToken,
-  }: ConfirmedListProps): ConfirmedList | undefined {
-    if (!isSending || confirmToken === undefined) return undefined;
-    return { token: confirmToken, flushes: heldFile.readFlushes(path) };
-  },
-  // Writes a dry run's held items with their values to the held file; undefined, writing nothing, when no flush held any.
-  async dryRunHeld({
-    path,
-    target,
-    heldList: { token, flushes },
-  }: DryRunHeldProps): Promise<SyncHeld | undefined> {
-    if (flushes.every((items) => items.length === 0)) return undefined;
-    const { heldGroups } = await import("../src/nodeHost/heldGroups.ts");
-    heldFile.write(path, { target, token, flushes });
-    return {
-      groups: heldGroups(flushes),
-      token,
-      fullListPath: relative(process.cwd(), path),
-    };
-  },
-};

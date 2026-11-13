@@ -39,7 +39,6 @@ import type {
 } from "../src/05_Operators/SyncCoordinator.ts";
 import type { HeldItem } from "../src/nodeHost/FlushClassifier/flushClassifierTypes.ts";
 import { SyncRunReport } from "../src/nodeHost/SyncRunReport.ts";
-import { heldFile } from "./heldFile.ts";
 import type { SheetsConfig } from "./sheetsConfig.ts";
 import {
   alterationsPath,
@@ -372,7 +371,6 @@ function enteredDataItem(rowIndex: number, column = "notes"): HeldItem {
 describe("the held file", () => {
   const heldDir = mkdtempSync(join(tmpdir(), "sync-held-"));
   const heldSheetsConfig: SheetsConfig = { ...runSheetsConfig, dir: heldDir };
-  const heldFilePath = heldFile.path(heldDir, "sync");
   const notesItems = Array.from({ length: 23 }, (_, rowIndex) =>
     enteredDataItem(rowIndex),
   );
@@ -381,6 +379,7 @@ describe("the held file", () => {
   function generator(argv: string[]): ConfigFilesGenerator {
     return ConfigFilesGenerator.init(heldSheetsConfig, argv);
   }
+  const heldFilePath = generator([]).heldFile.path;
 
   beforeEach(() => {
     rmSync(join(heldDir, ".probe"), { recursive: true, force: true });
@@ -455,26 +454,28 @@ describe("the held file", () => {
     );
 
     expect(
-      generator(["--send", "--confirm", "7f3a9c"])._confirmedList(),
+      generator(["--send", "--confirm", "7f3a9c"]).heldFile.confirmedList,
     ).toEqual({ token: "7f3a9c", flushes });
   });
 
   it("counts as mismatched when missing or unreadable", () => {
-    const send = generator(["--send", "--confirm", "7f3a9c"]);
-    expect(send._confirmedList()).toEqual({
+    const { heldFile } = generator(["--send", "--confirm", "7f3a9c"]);
+    expect(heldFile.confirmedList).toEqual({
       token: "7f3a9c",
       flushes: undefined,
     });
     mkdirSync(dirname(heldFilePath), { recursive: true });
     writeFileSync(heldFilePath, "{ not json");
-    expect(heldFile.readFlushes(heldFilePath)).toBeUndefined();
+    expect(heldFile.flushes).toBeUndefined();
     writeFileSync(heldFilePath, JSON.stringify({ flushes: "none" }));
-    expect(heldFile.readFlushes(heldFilePath)).toBeUndefined();
+    expect(heldFile.flushes).toBeUndefined();
   });
 
   it("isn't read by a send without --confirm or by a dry run", () => {
-    expect(generator(["--send"])._confirmedList()).toBeUndefined();
-    expect(generator(["--confirm", "7f3a9c"])._confirmedList()).toBeUndefined();
+    expect(generator(["--send"]).heldFile.confirmedList).toBeUndefined();
+    expect(
+      generator(["--confirm", "7f3a9c"]).heldFile.confirmedList,
+    ).toBeUndefined();
   });
 });
 

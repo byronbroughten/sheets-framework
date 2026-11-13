@@ -2,16 +2,14 @@
 import { basename } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import type { SheetsHttpTransport } from "../src/00_Source/GoogleSheets/GoogleSheetsAPI.ts";
 import type { HeldFlushRefusal } from "../src/00_Source/RawSource/HeldFlushRefusal.ts";
-import type {
-  SyncStoppedBeforeSendingOutcome,
-  SyncStoppedPartwayOutcome,
-} from "../src/01_SpreadsheetSchema/configReaders/syncRunResult.ts";
+import type { Configs } from "../src/01_SpreadsheetSchema/configReaders/configRegister.ts";
+import type { SyncHeld } from "../src/01_SpreadsheetSchema/configReaders/syncRunResult.ts";
 import type { Chore } from "../src/chores/Chore.ts";
-import type { ConfirmedList } from "../src/nodeHost/EnteredDataGate.ts";
 import type { NodeHost } from "../src/nodeHost/NodeHost.ts";
 import { ChoreIndex } from "./choreIndex.ts";
-import { heldFile, parseConfirmToken } from "./heldFile.ts";
+import { HeldFile, parseConfirmToken } from "./HeldFile.ts";
 import {
   importConstNamedAfterFile,
   loadPackageConfigs,
@@ -22,41 +20,54 @@ import type { SheetsConfig } from "./sheetsConfig.ts";
 
 const genericHome = fileURLToPath(new URL("../src/chores/", import.meta.url));
 
+// A test's stand-ins for Google and for the package's configs, which a program installs once.
+export interface ChoreHostStandIn {
+  transport: SheetsHttpTransport;
+  configs: Configs;
+}
+
 interface ChoreRunnerProps {
   sheetsConfig: SheetsConfig;
   index: ChoreIndex;
   choreName: string | undefined;
-  isSend: boolean;
+  isSending: boolean;
   isJson: boolean;
-  confirmToken: string | undefined;
+  heldFile: HeldFile;
+  standIn: ChoreHostStandIn | undefined;
 }
 
 export class ChoreRunner {
   readonly sheetsConfig: SheetsConfig;
   readonly index: ChoreIndex;
   readonly choreName: string | undefined;
-  readonly isSend: boolean;
+  readonly isSending: boolean;
   readonly isJson: boolean;
-  readonly confirmToken: string | undefined;
-  readonly heldFilePath: string;
+  readonly heldFile: HeldFile;
+  readonly standIn: ChoreHostStandIn | undefined;
   constructor({
     sheetsConfig,
     index,
     choreName,
-    isSend,
+    isSending,
     isJson,
-    confirmToken,
+    heldFile,
+    standIn,
   }: ChoreRunnerProps) {
     this.sheetsConfig = sheetsConfig;
     this.index = index;
     this.choreName = choreName;
-    this.isSend = isSend;
+    this.isSending = isSending;
     this.isJson = isJson;
-    this.confirmToken = confirmToken;
-    this.heldFilePath = heldFile.path(sheetsConfig.dir, "chore");
+    this.heldFile = heldFile;
+    this.standIn = standIn;
   }
-  static init(sheetsConfig: SheetsConfig, argv: string[]): ChoreRunner {
+  static init(
+    sheetsConfig: SheetsConfig,
+    argv: string[],
+    standIn?: ChoreHostStandIn,
+  ): ChoreRunner {
     const confirmToken = parseConfirmToken(argv);
+    const isSending = argv.includes("--send");
     return new ChoreRunner({
       sheetsConfig,
       index: ChoreIndex.init({
@@ -67,9 +78,15 @@ export class ChoreRunner {
       choreName: argv.find(
         (arg) => !arg.startsWith("--") && arg !== confirmToken,
       ),
-      isSend: argv.includes("--send"),
+      isSending,
       isJson: argv.includes("--json"),
-      confirmToken,
+      heldFile: HeldFile.init({
+        packageDir: sheetsConfig.dir,
+        command: "chore",
+        isSending,
+        confirmToken,
+      }),
+      standIn,
     });
   }
   get target(): string {
@@ -112,26 +129,23 @@ export class ChoreRunner {
       return;
     }
     if (result) console.log(`result: ${result}`);
-    this._report(host);
-    await this._reportHeld(host);
+    const held = await this._dryRunHeld(host);
+    this._report(host, held);
+    if (held !== undefined) await reportHeld(held);
   }
   async _startHost(): Promise<NodeHost> {
+    const { standIn } = this;
     return startNodeHost({
-      isDryRun: !this.isSend,
+      isDryRun: !this.isSending,
       sheetsConfig: this.sheetsConfig,
-      configs: await loadPackageConfigs(this.sheetsConfig),
+      configs:
+        standIn?.configs ?? (await loadPackageConfigs(this.sheetsConfig)),
       endpoints: await loadPackageEndpoints(this.sheetsConfig),
       enteredDataGate: {
         target: this.target,
-        confirmedList: this._confirmedList(),
+        confirmedList: this.heldFile.confirmedList,
       },
-    });
-  }
-  _confirmedList(): ConfirmedList | undefined {
-    return heldFile.confirmedList({
-      path: this.heldFilePath,
-      isSending: this.isSend,
-      confirmToken: this.confirmToken,
+      transport: standIn?.transport,
     });
   }
   _choreModulePath(choreName: string): string {
@@ -143,51 +157,42 @@ export class ChoreRunner {
     }
     return path;
   }
-  _report({ summary }: NodeHost): void {
+  // Only a dry run prints the held list and its token, and writes every held item with its value to the held file.
+  async _dryRunHeld({ heldList }: NodeHost): Promise<SyncHeld | undefined> {
+    if (this.isSending || heldList === undefined) return undefined;
+    return this.heldFile.dryRunHeld(heldList, this.target);
+  }
+  _report({ summary }: NodeHost, held: SyncHeld | undefined): void {
     if (summary.isEmpty) {
       console.log("\nThis chore wrote nothing.");
       return;
     }
-    const heading = this.isSend
+    const heading = this.isSending
       ? "SENT — the spreadsheet was written to:"
       : "DRY RUN — nothing was written. It would send:";
     console.log(`\n${heading}\n`);
     console.log(this.isJson ? summary.json : summary.lines.join("\n"));
-    const nextStep = this.isSend ? "" : " Re-run with `-- --send` to apply.";
-    console.log(`\n${summary.count} request(s).${nextStep}`);
+    console.log(`\n${summary.count} request(s).${this._nextStep(held)}`);
   }
-  // Only a dry run prints the held list and its token, and writes every held item with its value to the held file.
-  async _reportHeld({ heldList }: NodeHost): Promise<void> {
-    if (this.isSend || heldList === undefined) return;
-    const held = await heldFile.dryRunHeld({
-      path: this.heldFilePath,
-      target: this.target,
-      heldList,
-    });
-    if (held === undefined) return;
-    const { heldSection } = await import("../src/nodeHost/SyncRunReport.ts");
-    console.log(heldSection(held).join("\n"));
+  // A dry run that held items points at the held section's rerun instead, since a plain --send would be refused.
+  _nextStep(held: SyncHeld | undefined): string {
+    if (this.isSending || held !== undefined) return "";
+    return " Re-run with `-- --send` to apply.";
   }
   async _reportRefusal(refusal: HeldFlushRefusal): Promise<void> {
+    const { heldStoppedOutcome } =
+      await import("../src/01_SpreadsheetSchema/configReaders/heldStoppedOutcome.ts");
     const { heldRefusalLine, rerunDryRunLine } =
       await import("../src/nodeHost/SyncRunReport.ts");
-    console.log(`\n${heldRefusalLine(refusalOutcome(refusal))}`);
+    console.log(`\n${heldRefusalLine(heldStoppedOutcome(refusal))}`);
     console.log(rerunDryRunLine(`npm run chore ${this.choreName}`));
     process.exitCode = 1;
   }
 }
 
-// The gate's refusal in the shape sync's report reads; one refused at the first flush landed nothing.
-function refusalOutcome({
-  kind,
-  landedFlushes,
-  flushCount,
-}: HeldFlushRefusal):
-  SyncStoppedBeforeSendingOutcome | SyncStoppedPartwayOutcome {
-  if (landedFlushes === 0) {
-    return { kind: "stoppedBeforeSending", heldBy: kind };
-  }
-  return { kind: "stoppedPartway", landedFlushes, flushCount, heldBy: kind };
+async function reportHeld(held: SyncHeld): Promise<void> {
+  const { heldSection } = await import("../src/nodeHost/SyncRunReport.ts");
+  console.log(heldSection(held).join("\n"));
 }
 
 export async function runChore(

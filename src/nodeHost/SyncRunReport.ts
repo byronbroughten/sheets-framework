@@ -8,6 +8,7 @@ import {
   type SyncHeld,
   type SyncHeldBy,
   type SyncHeldGroup,
+  type SyncHeldStoppedOutcome,
   type SyncLandedItem,
   type SyncNotice,
   type SyncOutsideReferenceEffect,
@@ -19,8 +20,6 @@ import {
   type SyncSendOutcome,
   type SyncSentOutcome,
   type SyncStop,
-  type SyncStoppedBeforeSendingOutcome,
-  type SyncStoppedPartwayOutcome,
   type SyncSubject,
 } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
 
@@ -106,10 +105,7 @@ export class SyncRunReport {
     if (outcome.kind === "stopped") return this._stoppedText;
     if (outcome.kind === "refused") return this._refusedText;
     if (outcome.kind === "sent") return this._sentText(outcome);
-    if (outcome.kind === "stoppedBeforeSending") {
-      return this._stoppedBeforeSendingText(outcome);
-    }
-    return this._stoppedPartwayText(outcome);
+    return this._heldStoppedText(outcome);
   }
   private get _stoppedText(): OutcomeText {
     const { stops, command } = this.result;
@@ -169,16 +165,7 @@ export class SyncRunReport {
       next: `sync wrote ${generatedDir} and ${alterationsPath}. Run npm run check, then commit them with your change.`,
     };
   }
-  private _stoppedBeforeSendingText(
-    outcome: SyncStoppedBeforeSendingOutcome,
-  ): OutcomeText {
-    return {
-      resultLine: heldRefusalLine(outcome),
-      planTitle: planTitles.send,
-      next: rerunDryRunLine(this.result.command),
-    };
-  }
-  private _stoppedPartwayText(outcome: SyncStoppedPartwayOutcome): OutcomeText {
+  private _heldStoppedText(outcome: SyncHeldStoppedOutcome): OutcomeText {
     return {
       resultLine: heldRefusalLine(outcome),
       planTitle: planTitles.send,
@@ -242,9 +229,7 @@ export function heldSection(held: SyncHeld): string[] {
 }
 
 // The result line of a send the gate refused, sync's or a chore's.
-export function heldRefusalLine(
-  outcome: SyncStoppedBeforeSendingOutcome | SyncStoppedPartwayOutcome,
-): string {
+export function heldRefusalLine(outcome: SyncHeldStoppedOutcome): string {
   const reason = heldByReason[outcome.heldBy];
   if (outcome.kind === "stoppedBeforeSending") {
     return `STOPPED: the send was refused before any flush landed, because ${reason}. Nothing was sent.`;

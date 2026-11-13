@@ -16,12 +16,9 @@ import type {
   SyncIntendedState,
   SyncRun,
 } from "../src/05_Operators/SyncCoordinator.ts";
-import type {
-  ConfirmedList,
-  HeldList,
-} from "../src/nodeHost/EnteredDataGate.ts";
+import type { HeldList } from "../src/nodeHost/EnteredDataGate.ts";
 import { readConfigsDiff } from "./configsDiff.ts";
-import { heldFile, parseConfirmToken } from "./heldFile.ts";
+import { HeldFile, parseConfirmToken } from "./HeldFile.ts";
 import {
   type ConfigFile,
   configFilePath,
@@ -44,9 +41,9 @@ export class ConfigFilesGenerator {
   readonly sheetsConfig: SheetsConfig;
   readonly isSending: boolean;
   readonly forcedTraits: ForcedTrait[];
-  readonly confirmToken: string | undefined;
+  readonly heldFile: HeldFile;
   readonly path: Record<
-    ConfigFile | "appConfigs" | "idNameMap" | "alterations" | "heldFile",
+    ConfigFile | "appConfigs" | "idNameMap" | "alterations",
     string
   >;
   constructor({
@@ -58,7 +55,12 @@ export class ConfigFilesGenerator {
     this.sheetsConfig = sheetsConfig;
     this.isSending = isSending;
     this.forcedTraits = forcedTraits;
-    this.confirmToken = confirmToken;
+    this.heldFile = HeldFile.init({
+      packageDir: sheetsConfig.dir,
+      command: "sync",
+      isSending,
+      confirmToken,
+    });
     const { generatedDir } = sheetsConfig;
     this.path = {
       tableConfigs: configFilePath(generatedDir, "tableConfigs"),
@@ -73,7 +75,6 @@ export class ConfigFilesGenerator {
       appConfigs: join(generatedDir, "appConfigs.ts"),
       idNameMap: idNameMapPath(generatedDir),
       alterations: alterationsPath(generatedDir),
-      heldFile: heldFile.path(sheetsConfig.dir, "sync"),
     };
   }
   static init(
@@ -127,7 +128,10 @@ export class ConfigFilesGenerator {
       configs: hasPackageConfigs(this.sheetsConfig)
         ? await loadPackageConfigs(this.sheetsConfig)
         : await loadFrameworkConfigs(),
-      enteredDataGate: { target, confirmedList: this._confirmedList() },
+      enteredDataGate: {
+        target,
+        confirmedList: this.heldFile.confirmedList,
+      },
     });
     const { SyncCoordinator } =
       await import("../src/05_Operators/SyncCoordinator.ts");
@@ -149,25 +153,13 @@ export class ConfigFilesGenerator {
     return { ...run, result: await this._withHeld(run.result, heldList) };
   }
 
-  _confirmedList(): ConfirmedList | undefined {
-    return heldFile.confirmedList({
-      path: this.path.heldFile,
-      isSending: this.isSending,
-      confirmToken: this.confirmToken,
-    });
-  }
-
   // Only a dry run prints the held list and its token, and writes every held item with its value to the held file.
   async _withHeld(
     result: SyncRunResult,
     heldList: HeldList,
   ): Promise<SyncRunResult> {
     if (result.mode !== "dry run") return result;
-    const held = await heldFile.dryRunHeld({
-      path: this.path.heldFile,
-      target: result.target,
-      heldList,
-    });
+    const held = await this.heldFile.dryRunHeld(heldList, result.target);
     if (held === undefined) return result;
     return { ...result, held };
   }
