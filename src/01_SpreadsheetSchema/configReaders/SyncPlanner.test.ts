@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { ClaimedTraits, PendingAlterations } from "./intendedState";
+import type { PendingAlterations } from "./intendedState";
 import {
   SyncPlanner,
   type SyncPlannerProps,
@@ -39,7 +39,6 @@ const headerAlteration: PendingAlterations = {
 
 function planner(props: Partial<SyncPlannerProps>): SyncPlanner {
   return SyncPlanner.init({
-    claims: [],
     alterations: {},
     tabsByTable: {},
     forcedTraits: [],
@@ -214,21 +213,16 @@ describe("a trait the previous configs don't record", () => {
 });
 
 describe("a key in intended state and the configs but not live", () => {
-  const claims = [
-    {
-      declaredBy: "itemEndpoint",
-      traits: {
-        item: { columns: { requiredCount: { formula: "=1" } } },
-      } as ClaimedTraits,
-    },
-  ];
+  const alterations: PendingAlterations = {
+    tables: { item: { columns: { requiredCount: { formula: "=1" } } } },
+  };
   const noColumn: TraitReadings = {
     tables: { item: { traits: {}, columns: {} } },
     tabs: {},
   };
 
-  it("stops a claim on a column a person deleted", () => {
-    const result = planner({ claims }).plan({
+  it("stops an alteration on a column a person deleted", () => {
+    const result = planner({ alterations }).plan({
       previous: formulaReadings("=1"),
       live: noColumn,
     });
@@ -236,13 +230,12 @@ describe("a key in intended state and the configs but not live", () => {
       expect.objectContaining({
         kind: "conflict",
         subject: formulaSubject,
-        claimedBy: "itemEndpoint",
       }),
     ]);
   });
 
   it("keeps the column's agreed value in the configs, so the next run still stops", () => {
-    const result = planner({ claims }).plan({
+    const result = planner({ alterations }).plan({
       previous: formulaReadings("=1"),
       live: noColumn,
     });
@@ -253,7 +246,7 @@ describe("a key in intended state and the configs but not live", () => {
 
   it("stays a stop under force, having no column to send to", () => {
     const result = planner({
-      claims,
+      alterations,
       forcedTraits: [
         { table: "item", column: "requiredCount", trait: "formula" },
       ],
@@ -272,31 +265,6 @@ describe("a key in intended state and the configs but not live", () => {
     });
     expect(result.stops).toEqual([]);
     expect(result.plan).toEqual([]);
-  });
-});
-
-describe("a claim", () => {
-  const claims = [
-    {
-      declaredBy: "itemEndpoint",
-      traits: {
-        item: { columns: { requiredCount: { formula: "=1" } } },
-      } as ClaimedTraits,
-    },
-  ];
-
-  it("stops on a person's edit, naming its declarer", () => {
-    const result = planner({ claims }).plan({
-      previous: formulaReadings("=1"),
-      live: formulaReadings("=2"),
-    });
-    expect(result.stops).toEqual([
-      expect.objectContaining({
-        claimedBy: "itemEndpoint",
-        yours: "=1",
-        live: "=2",
-      }),
-    ]);
   });
 });
 
@@ -397,61 +365,6 @@ describe("force", () => {
 });
 
 describe("SyncPlanner.refusals", () => {
-  const claimOne = {
-    declaredBy: "itemEndpoint",
-    traits: {
-      item: { columns: { requiredCount: { formula: "=1" } } },
-    } as ClaimedTraits,
-  };
-  const claimTwo = {
-    declaredBy: "stockChore",
-    traits: {
-      item: { columns: { requiredCount: { formula: "=2" } } },
-    } as ClaimedTraits,
-  };
-
-  it("are empty for declarers that agree", () => {
-    const refusals = planner({
-      claims: [claimOne, { ...claimOne, declaredBy: "stockChore" }],
-      alterations: {
-        tables: { item: { columns: { requiredCount: { formula: "=1" } } } },
-      },
-    }).refusals;
-    expect(refusals).toEqual([]);
-  });
-
-  it("name two claims that disagree", () => {
-    expect(planner({ claims: [claimOne, claimTwo] }).refusals).toEqual([
-      {
-        kind: "disagreeingDeclarers",
-        table: "item",
-        path: "requiredCount.formula",
-        declarers: [
-          { declaredBy: "itemEndpoint", value: "=1" },
-          { declaredBy: "stockChore", value: "=2" },
-        ],
-      },
-    ]);
-  });
-
-  it("name a claim and an alteration that disagree", () => {
-    const refusals = planner({
-      claims: [claimOne],
-      alterations: {
-        tables: { item: { columns: { requiredCount: { formula: "=9" } } } },
-      },
-    }).refusals;
-    expect(refusals).toEqual([
-      expect.objectContaining({
-        kind: "disagreeingDeclarers",
-        declarers: [
-          { declaredBy: "itemEndpoint", value: "=1" },
-          { declaredBy: "alterations.ts", value: "=9" },
-        ],
-      }),
-    ]);
-  });
-
   function deletionRefusals(props: Partial<SyncPlannerProps>) {
     return planner(props).refusals.flatMap((refusal) =>
       refusal.kind === "touchesDeletion"
@@ -526,23 +439,6 @@ describe("SyncPlanner.refusals", () => {
           },
         },
         touchedBy: "tables.item.conditionalFormats.add[0].columns",
-      },
-      {
-        row: "a claim on the column",
-        props: {
-          claims: [
-            {
-              declaredBy: "itemEndpoint",
-              traits: {
-                item: { columns: { name: { formula: "=1" } } },
-              } as ClaimedTraits,
-            },
-          ],
-          alterations: {
-            tables: { item: { columns: { name: { deleted: true } } } },
-          },
-        },
-        touchedBy: "claim (itemEndpoint)",
       },
     ],
   )("name a column's deletion beside $row", ({ props, touchedBy }) => {

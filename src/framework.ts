@@ -11,7 +11,6 @@ export {
   makeValueConfigs,
 } from "./01_SpreadsheetSchema/configReaders/makeConfigs";
 export {
-  type ClaimedTraits,
   makePendingAlterations,
   type PendingAlterations,
 } from "./01_SpreadsheetSchema/configReaders/intendedState";

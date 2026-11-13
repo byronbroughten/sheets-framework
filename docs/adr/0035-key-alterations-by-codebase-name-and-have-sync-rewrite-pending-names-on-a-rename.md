@@ -10,9 +10,9 @@ A column name is the camelCase of its header and a tab name the camelCase of its
 
 ID keys with a `tsc`-checked `name` failed at a stale name. Name keys don't catch an agent that writes an entry from what it read before a `sync` took up a person's swap of two names: the stale name type-checks and resolves to the other column. That takes a person reusing a name another just lost, inside one agent's edit. The run report lists every name that now points at a different ID than at the last run, and the agent docs say to reread the ID-name map after a run that lists one.
 
-## Claims and endpoint code are not rewritten
+## Endpoint code is not rewritten, and claims are deferred
 
-`claimedTraits` are keyed by codebase name like the endpoint and chore code beside them, and `sync` never writes hand-written code. A rename fails `tsc` on both until retarget fixes them together, with its judgment over pins and asks. A swap that silently re-points endpoint code makes the claim compare the other column's formula and stop the run, which a rewritten claim would hide.
+Claims are deferred to [#286](https://github.com/byronbroughten/sheets-framework/issues/286); intended state is pending alterations alone. Endpoint and chore code are keyed by codebase name, and `sync` never writes hand-written code. A rename fails `tsc` there until retarget fixes it, with its judgment over pins and asks. When claims return, a swap that silently re-points endpoint code would make a claim compare the other column's formula and stop the run, which a rewritten claim would hide.
 
 ## Also decided
 
@@ -23,6 +23,6 @@ ID keys with a `tsc`-checked `name` failed at a stale name. Name keys don't catc
 
 - **ID keys with a `tsc`-checked `name`** ([file shape](https://github.com/byronbroughten/sheets-framework/issues/186), [tabs](https://github.com/byronbroughten/sheets-framework/issues/209)): rejected. It costs a lookup and a second copy of every name, and its `name` goes stale on a person's rename while an entry is pending, which `sync` can fix and the agent otherwise must.
 - **Keys in display text** (`"Rent"`, `"Rent Roll"`): rejected for the codebase names endpoints already use, which need no quotes where dot access applies.
-- **`sync` rewriting names in endpoint and chore code**: rejected. Only a type-aware codemod could tell a column name from any other string, a rename sometimes needs retarget's ask, it would widen what a run writes into hand-written `src/`, and it would hide the claim stop above. A codemod as retarget's first step is its own effort.
+- **`sync` rewriting names in endpoint and chore code**: rejected. Only a type-aware codemod could tell a column name from any other string, a rename sometimes needs retarget's ask, it would widen what a run writes into hand-written `src/`, and it would hide the claim stop that #286 may add. A codemod as retarget's first step is its own effort.
 
-Source: byronbroughten/sheets-framework#218, byronbroughten/sheets-framework#178
+Source: byronbroughten/sheets-framework#218, byronbroughten/sheets-framework#178, byronbroughten/sheets-framework#285

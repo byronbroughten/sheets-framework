@@ -1,18 +1,10 @@
 import type { ColumnTypeBaseline } from "../columnBaseline";
-import type { ClaimedTraits, PendingAlterations } from "./intendedState";
-import {
-  type ClaimedFormula,
-  DeletionRefuser,
-} from "./SyncPlanner/DeletionRefuser";
-import {
-  entriesOf,
-  type WideAlterations,
-  type WideClaims,
-} from "./SyncPlanner/wideAlterations";
+import type { PendingAlterations } from "./intendedState";
+import { DeletionRefuser } from "./SyncPlanner/DeletionRefuser";
+import { entriesOf, type WideAlterations } from "./SyncPlanner/wideAlterations";
 import type {
   ForcedTrait,
   SyncConflict,
-  SyncDeclarer,
   SyncHeldBackTrait,
   SyncPlanItem,
   SyncRefusal,
@@ -34,13 +26,7 @@ export interface TraitReadings {
   tabs: Record<string, TraitRecord | undefined>;
 }
 
-export interface SyncClaim {
-  declaredBy: string;
-  traits: ClaimedTraits;
-}
-
 export interface SyncPlannerProps {
-  claims: SyncClaim[];
   alterations: PendingAlterations;
   tabsByTable: Record<string, string | undefined>;
   // Only ever this run's --force arguments, so a yes can't outlive its run.
@@ -86,12 +72,9 @@ type TraitAddress = TableTraitAddress | ColumnTraitAddress | TabTraitAddress;
 
 interface IntendedValue {
   value: TraitValue;
-  claimedBy?: string;
 }
 
 type IntendedTrait = TraitAddress & IntendedValue;
-
-type Declaration = IntendedTrait & { declaredBy: string };
 
 interface HeldBackValue {
   intended: IntendedTrait;
@@ -106,8 +89,6 @@ interface StopContext {
   cause: string;
   isColumnGone: boolean;
 }
-
-const alterationsDeclarer = "alterations.ts";
 
 const stopWords = {
   personChanged: {
@@ -128,12 +109,10 @@ const absentText = "(none)";
 
 // Pure: the three-way comparison of intended state against the previous configs and the live sheet.
 export class SyncPlanner {
-  private claims: SyncClaim[];
   private alterations: WideAlterations;
   private tabsByTable: Record<string, string | undefined>;
   private forcedTraits: ForcedTrait[];
   constructor(props: SyncPlannerProps) {
-    this.claims = props.claims;
     this.alterations = props.alterations;
     this.tabsByTable = props.tabsByTable;
     this.forcedTraits = props.forcedTraits;
@@ -145,12 +124,11 @@ export class SyncPlanner {
     return new DeletionRefuser({
       alterations: this.alterations,
       tabsByTable: this.tabsByTable,
-      claimedFormulas: this._claimedFormulas,
     });
   }
   // Takes only intended state, so the run can refuse before reading anything.
   get refusals(): SyncRefusal[] {
-    return [...this._disagreeingDeclarers, ...this._deletionRefuser.refusals];
+    return this._deletionRefuser.refusals;
   }
   plan({ previous, live }: PlanProps): SyncPlannerResult {
     const stops: SyncConflict[] = [];
@@ -158,7 +136,7 @@ export class SyncPlanner {
     const forced: ForcedTrait[] = [];
     const sentTraits: IntendedTrait[] = [];
     const heldBack: HeldBackValue[] = [];
-    this._intendedTraits.forEach((intended) => {
+    this._alterationDeclarations.forEach((intended) => {
       const sides = comparedSides(intended, previous, live);
       if (sides === undefined) return;
       const stop = stopOf(intended, sides);
@@ -218,38 +196,13 @@ export class SyncPlanner {
       (trait) => addressKey({ kind: "column", ...trait }) === key,
     );
   }
-  private get _claimedFormulas(): ClaimedFormula[] {
-    return this.claims.flatMap(({ declaredBy, traits }) =>
-      entriesOf<WideClaims[string]>(traits).flatMap(([table, entry]) =>
-        entriesOf(entry?.columns).flatMap(([column, claimed]) => {
-          if (claimed.formula === undefined) return [];
-          return [{ table, column, formula: claimed.formula, declaredBy }];
-        }),
-      ),
-    );
-  }
-  private get _claimDeclarations(): Declaration[] {
-    return this._claimedFormulas.map(
-      ({ table, column, formula, declaredBy }) => ({
-        kind: "column",
-        table,
-        column,
-        trait: "formula",
-        value: formula,
-        claimedBy: declaredBy,
-        declaredBy,
-      }),
-    );
-  }
-  private get _alterationDeclarations(): Declaration[] {
-    const declaredBy = alterationsDeclarer;
+  private get _alterationDeclarations(): IntendedTrait[] {
     const tableTraits = entriesOf(this.alterations.tables).flatMap(
-      ([table, entry]): Declaration[] => [
+      ([table, entry]): IntendedTrait[] => [
         ...pickTraits(entry, ["name", "letApiAccess"]).map((trait) => ({
           kind: "table" as const,
           table,
           ...trait,
-          declaredBy,
         })),
         ...entriesOf(entry.columns).flatMap(([column, columnEntry]) =>
           pickTraits(columnEntry, [
@@ -262,65 +215,21 @@ export class SyncPlanner {
             table,
             column,
             ...trait,
-            declaredBy,
           })),
         ),
       ],
     );
     const tabTraits = entriesOf(this.alterations.tabs).flatMap(
-      ([tab, entry]): Declaration[] =>
+      ([tab, entry]): IntendedTrait[] =>
         pickTraits(entry, [
           "title",
           "color",
           "frozenRows",
           "frozenColumns",
           "hidden",
-        ]).map((trait) => ({ kind: "tab", tab, ...trait, declaredBy })),
+        ]).map((trait) => ({ kind: "tab", tab, ...trait })),
     );
     return [...tableTraits, ...tabTraits];
-  }
-  private get _declarationsByTrait(): Map<string, Declaration[]> {
-    return [...this._claimDeclarations, ...this._alterationDeclarations].reduce(
-      (byTrait, declaration) => {
-        const key = addressKey(declaration);
-        byTrait.set(key, [...(byTrait.get(key) ?? []), declaration]);
-        return byTrait;
-      },
-      new Map<string, Declaration[]>(),
-    );
-  }
-  // A claim's declarer stays on the merged trait: removing the alteration wouldn't clear its conflict.
-  private get _intendedTraits(): IntendedTrait[] {
-    return [...this._declarationsByTrait.values()].flatMap((declarations) => {
-      const [first] = declarations;
-      if (first === undefined) return [];
-      const claimedBy = declarations.find(
-        ({ claimedBy: claimant }) => claimant !== undefined,
-      )?.claimedBy;
-      const trait = intendedOf(first);
-      if (claimedBy === undefined) return [trait];
-      return [{ ...trait, claimedBy }];
-    });
-  }
-  private get _disagreeingDeclarers(): SyncRefusal[] {
-    return [...this._declarationsByTrait.values()].flatMap((declarations) => {
-      const [first, ...rest] = declarations;
-      if (first === undefined) return [];
-      return rest.flatMap((other) => {
-        if (isSameValue(first.value, other.value)) return [];
-        const declarers: [SyncDeclarer, SyncDeclarer] = [
-          declarerOf(first),
-          declarerOf(other),
-        ];
-        return [
-          {
-            kind: "disagreeingDeclarers" as const,
-            ...refusalPlaceOf(first),
-            declarers,
-          },
-        ];
-      });
-    });
   }
 }
 
@@ -350,28 +259,6 @@ function addressKey(address: TraitAddress): string {
   }
   const { kind, table, column, trait } = address;
   return JSON.stringify([kind, table, column, trait]);
-}
-
-function intendedOf(declaration: Declaration): IntendedTrait {
-  const { declaredBy: _declaredBy, ...trait } = declaration;
-  return trait;
-}
-
-function declarerOf({ declaredBy, value }: Declaration): SyncDeclarer {
-  return { declaredBy, value: valueText(value) };
-}
-
-function refusalPlaceOf(address: TraitAddress): {
-  table: string;
-  path: string;
-} {
-  if (address.kind === "tab") {
-    return { table: address.tab, path: address.trait };
-  }
-  if (address.kind === "table") {
-    return { table: address.table, path: address.trait };
-  }
-  return { table: address.table, path: `${address.column}.${address.trait}` };
 }
 
 // Undefined when there is nothing to compare: a Table or tab a person deleted isn't a conflict.
@@ -444,9 +331,6 @@ function conflictOf(stop: StopContext): SyncConflict {
     agreed: valueText(agreed),
     live: valueText(live),
   };
-  if (intended.claimedBy !== undefined) {
-    conflict.claimedBy = intended.claimedBy;
-  }
   if (isColumnGone) conflict.isColumnGone = true;
   return conflict;
 }

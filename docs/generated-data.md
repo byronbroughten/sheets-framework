@@ -23,7 +23,7 @@ A `generatedDir` holds the generated data files, `tableConfigs.ts`, `tabConfigs.
 
 ## The ID-name map
 
-`idNameMap.ts` exports one type, `IdNameMap`, and no runtime value. `appConfigs.ts` registers it on `Register`, and the intended-state types in `configReaders/intendedState.ts` read it from there to key `alterations.ts` and each `claimedTraits` by name; until a package has generated its map, they name nothing. It lists every live Table by Table ID with its codebase name (its Table key when it has API access, else its title through the word splitter) and its tab's GID, every tab by GID with its tab name (its title through the word splitter), title and Table IDs, and, for each Table with API access, its columns as column name to column ID. A suite in `scripts/genConfigs.test.ts` asserts the dev package's map and configs agree, so a hand edit or a partial regen fails CI.
+`idNameMap.ts` exports one type, `IdNameMap`, and no runtime value. `appConfigs.ts` registers it on `Register`, and the intended-state types in `configReaders/intendedState.ts` read it from there to key `alterations.ts` by name; until a package has generated its map, they name nothing. It lists every live Table by Table ID with its codebase name (its Table key when it has API access, else its title through the word splitter) and its tab's GID, every tab by GID with its tab name (its title through the word splitter), title and Table IDs, and, for each Table with API access, its columns as column name to column ID. A suite in `scripts/genConfigs.test.ts` asserts the dev package's map and configs agree, so a hand edit or a partial regen fails CI.
 
 ## Why the generated files depend on each other
 

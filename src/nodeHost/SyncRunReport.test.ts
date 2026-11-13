@@ -502,9 +502,7 @@ describe("SyncRunReport, case E: a rename and a swap the dry run took up", () =>
           why: 'c:unt:k2PqA9x, which a person retitled "Move out"',
         },
       ],
-      notes: [
-        "Not rewritten: claims and endpoint code. tsc fails where they say rent.",
-      ],
+      notes: ["Not rewritten: endpoint code. tsc fails where they say rent."],
     },
   });
   const text = lines.join("\n");
@@ -561,15 +559,6 @@ describe("SyncRunReport's intended-state refusals", () => {
     outcome: { kind: "refused" },
     refusals: [
       {
-        kind: "disagreeingDeclarers",
-        table: "item",
-        path: "total.formula",
-        declarers: [
-          { declaredBy: "itemEndpoint", value: "=1" },
-          { declaredBy: "alterations.ts", value: "=2" },
-        ],
-      },
-      {
         kind: "touchesDeletion",
         deleted: { tab: "log" },
         deletedAt: "tabs.log",
@@ -578,14 +567,8 @@ describe("SyncRunReport's intended-state refusals", () => {
     ],
   }).join("\n");
 
-  it("names both declarers and their values", () => {
-    expect(text).toContain("REFUSED 1 · item › total.formula");
-    expect(text).toMatch(/itemEndpoint\s+=1/);
-    expect(text).toMatch(/alterations\.ts\s+=2/);
-  });
-
   it("names the deletion and what touches it", () => {
-    expect(text).toContain("REFUSED 2 · tab log");
+    expect(text).toContain("REFUSED 1 · tab log");
     expect(text).toContain(
       "tabs.log deletes tab log, and tabs.item.before touches it in the same run.",
     );
@@ -614,7 +597,7 @@ describe("SyncRunReport's refusals before the read", () => {
   });
 
   it("names the Table and the trait it can't send yet", () => {
-    expect(text).toContain("REFUSED 3 · item › name.header");
+    expect(text).toContain("REFUSED 2 · item › name.header");
     expect(text).toContain(
       "  sync can't send name.header yet: for now it sends only a column's emptyValueAllowed.",
     );
@@ -624,7 +607,7 @@ describe("SyncRunReport's refusals before the read", () => {
 describe("SyncRunReport's force way out", () => {
   function conflictText(
     subject: SyncConflict["subject"],
-    gone: Pick<SyncConflict, "isColumnGone" | "claimedBy"> = {},
+    gone: Pick<SyncConflict, "isColumnGone"> = {},
   ): string {
     return render({
       ...appDryRun,
@@ -652,7 +635,7 @@ describe("SyncRunReport's force way out", () => {
     expect(
       conflictText(
         { table: "item", column: "count", path: "formula" },
-        { isColumnGone: true, claimedBy: "itemEndpoint" },
+        { isColumnGone: true },
       ),
     ).not.toContain("force");
   });
@@ -935,38 +918,6 @@ describe("SyncRunReport, case H: a clean send", () => {
     expect(text).toContain("  household › phone    columnType TEXT → NUMBER");
     expect(text).toContain(
       "sync wrote src/generated/ and src/alterations.ts. Run npm run check, then commit them with your change.",
-    );
-  });
-});
-
-describe("SyncRunReport, a claim's conflict", () => {
-  const text = render({
-    ...appDryRun,
-    outcome: { kind: "stopped" },
-    stops: [
-      {
-        kind: "conflict",
-        subject: { table: "occCharge", column: "total", path: "formula" },
-        label: "the sheet changed a claimed formula",
-        cause:
-          "A person changed this formula on the sheet after the last sync.",
-        yours: "=${amount}+${lateFee}",
-        agreed: "=${amount}+${lateFee}",
-        live: "=${amount}",
-        claimedBy: "chargeTotals",
-      },
-    ],
-  }).join("\n");
-
-  it("adds drop the claim to the ways out", () => {
-    expect(text).toMatch(
-      /claim \(chargeTotals\) +=\$\{amount\}\+\$\{lateFee\}/,
-    );
-    expect(text).toContain(
-      "    drop   Drop the claim from chargeTotals. Free; the sheet owns this formula from then on and nothing guards it.",
-    );
-    expect(text).toContain(
-      "Needs the developer's yes for this trait; the yes covers one run.",
     );
   });
 });
