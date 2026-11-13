@@ -94,12 +94,23 @@ describe("remainingAlterations", () => {
     });
   });
 
-  it("throws on a landed subject that isn't a column trait", () => {
-    expect(() =>
-      remainingAlterations({}, [{ table: "item", path: "name" }]),
-    ).toThrow("column trait");
+  it("removes a landed Table trait, keeping the Table's columns", () => {
+    const remaining = remainingAlterations(
+      {
+        tables: {
+          item: { name: "Stock", columns: { note: { header: "Remark" } } },
+        },
+      },
+      [{ table: "item", path: "name" }],
+    );
+    expect(remaining).toEqual({
+      tables: { item: { columns: { note: { header: "Remark" } } } },
+    });
+  });
+
+  it("throws on a landed subject that isn't a Table or column trait", () => {
     expect(() => remainingAlterations({}, [{ tab: "itemTab" }])).toThrow(
-      "column trait",
+      "Table or column trait",
     );
   });
 });

@@ -6,7 +6,7 @@ import {
 } from "./SyncPlanner/wideAlterations";
 import type { SyncSubject } from "./syncRunResult";
 
-// The alterations still pending once `landed` went out; the refuser lets only a column's trait through, so any other subject is a bug.
+// The alterations still pending once `landed` went out; the refuser lets only a Table's or a column's trait through, so any other subject is a bug.
 export function remainingAlterations(
   alterations: WideAlterations,
   landed: SyncSubject[],
@@ -24,16 +24,18 @@ export function remainingAlterations(
 }
 
 function landedTraitKey(subject: SyncSubject): string {
-  if (!("table" in subject) || !subject.column || !subject.path) {
+  if (!("table" in subject) || !subject.path) {
     throw new Error(
-      `A landed subject must be a column trait: ${JSON.stringify(subject)}`,
+      `A landed subject must be a Table or column trait: ${JSON.stringify(subject)}`,
     );
   }
+  if (!subject.column) return traitKey(subject.table, subject.path);
   return traitKey(subject.table, subject.column, subject.path);
 }
 
-function traitKey(table: string, column: string, trait: string): string {
-  return JSON.stringify([table, column, trait]);
+// A Table's trait is [table, trait]; a column's is [table, column, trait].
+function traitKey(...parts: string[]): string {
+  return JSON.stringify(parts);
 }
 
 function keepIfNotEmpty(key: string, record: object): [string, object][] {
@@ -61,7 +63,9 @@ function remainingTableEntry(
 ): WideTableEntry {
   return Object.fromEntries(
     Object.entries(entry).flatMap(([key, value]) => {
-      if (key !== "columns") return [[key, value]];
+      if (key !== "columns") {
+        return landedKeys.has(traitKey(tableName, key)) ? [] : [[key, value]];
+      }
       return keepIfNotEmpty(
         key,
         remainingColumns(tableName, entry.columns, landedKeys),

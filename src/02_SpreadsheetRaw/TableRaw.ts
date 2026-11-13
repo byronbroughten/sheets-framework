@@ -111,6 +111,13 @@ export class TableRaw extends TableCommonRaw {
     this._updateWorkingTableName(tableId, name);
     return this;
   }
+  updateHeader(columnId: string, header: string): this {
+    this.headRow("header").updateValue(
+      this.columnResolver.colIndexOf(columnId),
+      header,
+    );
+    return this;
+  }
   get workingRowIndexesWithHead(): number[] {
     const indexes = Array.from(this.rowStates.keys());
     return Arr.sortAscending(indexes);

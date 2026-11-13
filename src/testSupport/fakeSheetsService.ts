@@ -179,6 +179,8 @@ export interface FakeSheetsServiceOptions {
   isDryRun?: boolean;
   /** Returns every Table on `getByDataFilter`, not only those a filter's range overlaps as Sheets does. */
   isEveryTableInFilteredFetch?: boolean;
+  /** Edits the fake spreadsheet after each replayed batch update, standing in for Sheets keeping a value other than the one sent. */
+  afterEachBatchUpdate?: (spreadsheet: FakeSpreadsheet) => void;
 }
 
 export interface FakeSheetsService {
@@ -415,7 +417,9 @@ export function stubSheetsService(
       ): BatchUpdateResponse => {
         sentBatchCount++;
         if (options.isDryRun) return {};
-        return replayBatch(spreadsheet, resource.requests ?? []);
+        const response = replayBatch(spreadsheet, resource.requests ?? []);
+        options.afterEachBatchUpdate?.(spreadsheet);
+        return response;
       },
     },
   };

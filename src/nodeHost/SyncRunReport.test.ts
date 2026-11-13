@@ -582,7 +582,7 @@ describe("SyncRunReport's refusals before the read", () => {
     refusals: [
       { kind: "noSuchTable", entry: "tables", name: "vendor" },
       { kind: "noSuchTable", entry: "tabs", name: "vendors" },
-      { kind: "notSendableYet", table: "item", path: "name.header" },
+      { kind: "notSendableYet", table: "item", path: "name.formula" },
     ],
   }).join("\n");
 
@@ -597,9 +597,9 @@ describe("SyncRunReport's refusals before the read", () => {
   });
 
   it("names the Table and the trait it can't send yet", () => {
-    expect(text).toContain("REFUSED 3 · item › name.header");
+    expect(text).toContain("REFUSED 3 · item › name.formula");
     expect(text).toContain(
-      "  sync can't send name.header yet: for now it sends only a column's emptyValueAllowed.",
+      "  sync can't send name.formula yet: for now it sends only a Table's name and a column's header, emptyValueAllowed.",
     );
   });
 });

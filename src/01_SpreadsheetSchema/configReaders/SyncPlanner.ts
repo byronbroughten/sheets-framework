@@ -48,6 +48,8 @@ export interface SyncPlannerResult extends Pick<
   forcedTraits: ForcedTrait[];
   // What the regenerated configs record if the plan's sends land.
   configTraits: TraitReadings;
+  // The plan's sends by address, for the run to queue; empty when stopped.
+  sentTraits: IntendedTrait[];
 }
 
 interface TableTraitAddress {
@@ -75,7 +77,18 @@ interface IntendedValue {
   value: TraitValue;
 }
 
-type IntendedTrait = TraitAddress & IntendedValue;
+export type IntendedTrait = TraitAddress & IntendedValue;
+
+// The traits a send writes to the sheet, so the run refetches after sending one.
+export const sheetTraits = {
+  table: new Set<string>(["name"]),
+  column: new Set<string>(["header"]),
+} as const;
+
+export function isSheetTrait(intended: IntendedTrait): boolean {
+  if (intended.kind === "tab") return false;
+  return sheetTraits[intended.kind].has(intended.trait);
+}
 
 interface HeldBackValue {
   intended: IntendedTrait;
@@ -168,6 +181,7 @@ export class SyncPlanner {
       }
     });
     const isStopped = stops.length > 0;
+    const sentIfUnstopped = isStopped ? [] : sentTraits;
     const forcedNotHeld = new Set(
       forced.map((trait) => addressKey({ kind: "column", ...trait })),
     );
@@ -187,9 +201,10 @@ export class SyncPlanner {
       forcedTraits: forced,
       configTraits: configTraitsOf({
         live,
-        sent: isStopped ? [] : sentTraits,
+        sent: sentIfUnstopped,
         heldBack: heldBackTraits,
       }),
+      sentTraits: sentIfUnstopped,
     };
   }
   private _forcedTraitFor(intended: IntendedTrait): ForcedTrait | undefined {

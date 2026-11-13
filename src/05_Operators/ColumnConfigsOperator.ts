@@ -12,11 +12,14 @@ import {
   type ColumnConfigStored,
   makeImportLine,
 } from "../01_SpreadsheetSchema/configReaders/makeConfigs";
-import type {
-  PlanProps,
-  TableReading,
-  TraitReadings,
+import {
+  type IntendedTrait,
+  isSheetTrait,
+  type PlanProps,
+  type TableReading,
+  type TraitReadings,
 } from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
+import { tableConfigsByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { type ValueName } from "../01_SpreadsheetSchema/configReaders/valueSchemas";
 import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
 import type {
@@ -177,13 +180,18 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
     this.columnConfigSync.syncedToSpreadsheet = true;
     return this;
   }
-  // emptyValueAllowed isn't a sheet trait, so live carries the previous configs and only a deleted column can stop.
-  emptyValueAllowedReadings(): PlanProps {
+  // emptyValueAllowed isn't a sheet trait, so its live side carries the previous configs and only a deleted column can stop it.
+  traitReadings(): PlanProps {
     const live = this._namedColumnIdentities().reduce<TraitReadings["tables"]>(
-      (tables, { tableKey, columnName, previousEmptyValueAllowed }) => {
-        const reading = tables[tableKey] ?? { traits: {}, columns: {} };
+      (tables, identity) => {
+        const { tableId, tableKey, columnName } = identity;
+        const reading = tables[tableKey] ?? {
+          traits: { name: this.ss.raw.table(tableId).name },
+          columns: {},
+        };
         reading.columns[columnName] = {
-          emptyValueAllowed: previousEmptyValueAllowed,
+          header: this._describedColumn(identity).header,
+          emptyValueAllowed: identity.previousEmptyValueAllowed,
         };
         tables[tableKey] = reading;
         return tables;
@@ -191,9 +199,26 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
       {},
     );
     return {
-      previous: { tables: previousEmptyValueAllowedTables(), tabs: {} },
+      previous: { tables: previousTraitTables(), tabs: {} },
       live: { tables: live, tabs: {} },
     };
+  }
+  // Queues each sent column header, addressed by the previous names the readings use.
+  updateHeaders(sent: IntendedTrait[]): this {
+    const identities = this._namedColumnIdentities();
+    for (const intended of sent) {
+      if (intended.kind !== "column" || !isSheetTrait(intended)) continue;
+      const { table: tableKey, column } = intended;
+      const { tableId, columnId } = Val.assert(
+        identities.find(
+          (identity) =>
+            identity.tableKey === tableKey && identity.columnName === column,
+        ),
+        `live column ${tableKey}.${column}`,
+      );
+      this.ss.raw.table(tableId).updateHeader(columnId, String(intended.value));
+    }
+    return this;
   }
   recordEmptyValueAllowed(configTraits: TraitReadings): this {
     const byIds = this.columnConfigSync.emptyValueAllowedByIds;
@@ -423,14 +448,16 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
   }
 }
 
-function previousEmptyValueAllowedTables(): TraitReadings["tables"] {
+function previousTraitTables(): TraitReadings["tables"] {
+  const tableConfigs = tableConfigsByName();
   return Object.entries(columnConfigsByName()).reduce<TraitReadings["tables"]>(
     (tables, [tableKey, columns]) => {
+      const tableName = tableConfigs[tableKey]?.tableName;
       tables[tableKey] = {
-        traits: {},
+        traits: tableName === undefined ? {} : { name: tableName },
         columns: Object.entries(columns).reduce<TableReading["columns"]>(
-          (byName, [columnName, { emptyValueAllowed }]) => {
-            byName[columnName] = { emptyValueAllowed };
+          (byName, [columnName, { header, emptyValueAllowed }]) => {
+            byName[columnName] = { header, emptyValueAllowed };
             return byName;
           },
           {},

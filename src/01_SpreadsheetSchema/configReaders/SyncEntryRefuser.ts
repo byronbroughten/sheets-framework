@@ -1,4 +1,5 @@
 import type { IdNameMapGeneric } from "./idNameMapTypes";
+import { sheetTraits } from "./SyncPlanner";
 import {
   entriesOf,
   type WideAlterations,
@@ -15,8 +16,11 @@ export interface SyncEntryRefuserProps {
 
 type NotSendableYet = Extract<SyncRefusal, { kind: "notSendableYet" }>;
 
-// Only a column's emptyValueAllowed can be sent so far; each later trait ticket takes its trait off this refusal.
-export const sendableColumnTraits = new Set<string>(["emptyValueAllowed"]);
+// Only these traits can be sent so far; each later trait ticket takes its trait off this refusal.
+export const sendableTraits = {
+  table: new Set<string>(sheetTraits.table),
+  column: new Set<string>([...sheetTraits.column, "emptyValueAllowed"]),
+} as const;
 
 // Pure: refuses what can't be planned from intended state and the previous ID-name map alone, so before any read.
 export class SyncEntryRefuser {
@@ -95,7 +99,9 @@ function tableTraitRefusals(
 ): SyncRefusal[] {
   const { columns, ...traits } = entry;
   return [
-    ...definedKeys(traits).map((trait) => notSendableYet(table, trait)),
+    ...definedKeys(traits)
+      .filter((trait) => !sendableTraits.table.has(trait))
+      .map((trait) => notSendableYet(table, trait)),
     ...entriesOf(columns).flatMap(([column, columnEntry]) =>
       columnTraitRefusals(table, column, columnEntry),
     ),
@@ -108,7 +114,7 @@ function columnTraitRefusals(
   entry: WideColumnEntry,
 ): SyncRefusal[] {
   return definedKeys(entry)
-    .filter((trait) => !sendableColumnTraits.has(trait))
+    .filter((trait) => !sendableTraits.column.has(trait))
     .map((trait) => notSendableYet(table, `${column}.${trait}`));
 }
 
