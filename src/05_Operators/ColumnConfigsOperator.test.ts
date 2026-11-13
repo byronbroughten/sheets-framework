@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister";
 import type { ColumnConfigStored } from "../01_SpreadsheetSchema/configReaders/makeConfigs";
+import type { TableReading } from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
 import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {
@@ -219,8 +220,8 @@ describe("ColumnConfigsOperator.newColumnConfigs / toFileSource", () => {
   });
 });
 
-describe("ColumnConfigsOperator.emptyValueAllowedReadings", () => {
-  it("reads each column's trait from the previous configs on both sides, by previous names", () => {
+describe("ColumnConfigsOperator.traitReadings", () => {
+  it("reads emptyValueAllowed from the previous configs on both sides and header and name from each side, by previous names", () => {
     stubSheetsService({
       sheets: [
         {
@@ -238,19 +239,27 @@ describe("ColumnConfigsOperator.emptyValueAllowedReadings", () => {
         },
       ],
     });
-    const expectedColumns = Object.fromEntries(
-      Object.entries(columnConfigs.item).map(
-        ([columnName, { emptyValueAllowed }]) => [
-          columnName,
-          { emptyValueAllowed },
-        ],
-      ),
-    );
+    function expectedColumns(headerSuffix: string): TableReading["columns"] {
+      return Object.fromEntries(
+        Object.entries(columnConfigs.item).map(
+          ([columnName, { header, emptyValueAllowed }]) => [
+            columnName,
+            { header: `${header}${headerSuffix}`, emptyValueAllowed },
+          ],
+        ),
+      );
+    }
 
-    const { previous, live } = syncedOperator().emptyValueAllowedReadings();
+    const { previous, live } = syncedOperator().traitReadings();
 
-    expect(previous.tables.item?.columns).toEqual(expectedColumns);
-    expect(live.tables.item?.columns).toEqual(expectedColumns);
+    expect(previous.tables.item).toEqual({
+      traits: { name: getTableTraitByName("item", "tableName") },
+      columns: expectedColumns(""),
+    });
+    expect(live.tables.item).toEqual({
+      traits: { name: "Widget" },
+      columns: expectedColumns(" Renamed"),
+    });
     expect(Object.keys(live.tables)).toEqual(["item"]);
   });
 
@@ -266,10 +275,10 @@ describe("ColumnConfigsOperator.emptyValueAllowedReadings", () => {
       ],
     });
 
-    const { live } = syncedOperator().emptyValueAllowedReadings();
+    const { live } = syncedOperator().traitReadings();
 
     expect(live.tables.item?.columns).toEqual({
-      brandNew: { emptyValueAllowed: false },
+      brandNew: { header: "Brand New", emptyValueAllowed: false },
     });
   });
 });

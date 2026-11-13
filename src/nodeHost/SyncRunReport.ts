@@ -1,4 +1,4 @@
-import { sendableColumnTraits } from "../01_SpreadsheetSchema/configReaders/SyncEntryRefuser";
+import { sendableTraits } from "../01_SpreadsheetSchema/configReaders/SyncEntryRefuser";
 import type {
   SyncCheck,
   SyncConfigs,
@@ -401,7 +401,7 @@ function tableRefusalText(
 ): string[] {
   if (refusal.kind === "notSendableYet") {
     return [
-      `sync can't send ${refusal.path} yet: for now it sends only a column's ${[...sendableColumnTraits].join(", ")}.`,
+      `sync can't send ${refusal.path} yet: for now it sends only a Table's ${[...sendableTraits.table].join(", ")} and a column's ${[...sendableTraits.column].join(", ")}.`,
       "Take this entry out, then rerun.",
     ];
   }

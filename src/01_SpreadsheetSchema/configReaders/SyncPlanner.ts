@@ -48,6 +48,8 @@ export interface SyncPlannerResult extends Pick<
   forcedTraits: ForcedTrait[];
   // What the regenerated configs record if the plan's sends land.
   configTraits: TraitReadings;
+  // The plan's sends by address, for the run to queue; empty when stopped.
+  sentTraits: IntendedTrait[];
 }
 
 interface TableTraitAddress {
@@ -75,7 +77,7 @@ interface IntendedValue {
   value: TraitValue;
 }
 
-type IntendedTrait = TraitAddress & IntendedValue;
+export type IntendedTrait = TraitAddress & IntendedValue;
 
 interface HeldBackValue {
   intended: IntendedTrait;
@@ -190,6 +192,7 @@ export class SyncPlanner {
         sent: isStopped ? [] : sentTraits,
         heldBack: heldBackTraits,
       }),
+      sentTraits: isStopped ? [] : sentTraits,
     };
   }
   private _forcedTraitFor(intended: IntendedTrait): ForcedTrait | undefined {
