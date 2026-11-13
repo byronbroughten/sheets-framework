@@ -491,7 +491,6 @@ function conflictBlock(conflict: SyncConflict, number: number): string[] {
 const forceNeeds =
   "Needs the developer's yes for this trait; the yes covers one run.";
 
-// Force's flag is never printed: an agent looks it up only after the developer's yes.
 function waysOut(conflict: SyncConflict): [string, string][] {
   const { yours, live } = conflict;
   const adopt: [string, string] = [
@@ -505,7 +504,10 @@ function waysOut(conflict: SyncConflict): [string, string][] {
   if (!isForceable(conflict)) return [adopt, ask];
   return [
     adopt,
-    ["force", `Send ${yours} over the sheet's ${live}. ${forceNeeds}`],
+    [
+      "force",
+      `Send ${yours} over the sheet's ${live}. ${forceNeeds} ${forceFlag(conflict)}`,
+    ],
     ask,
   ];
 }
@@ -513,7 +515,16 @@ function waysOut(conflict: SyncConflict): [string, string][] {
 // --force addresses <table>/<column>/<trait>, so a Table's or tab's own trait, or a deleted column's, has no force to offer.
 function isForceable({ subject, isColumnGone }: SyncConflict): boolean {
   if (isColumnGone === true) return false;
-  return "column" in subject && subject.column !== undefined;
+  return (
+    "column" in subject &&
+    subject.column !== undefined &&
+    subject.path !== undefined
+  );
+}
+
+function forceFlag({ subject }: SyncConflict): string {
+  if (!("column" in subject)) throw new Error("A forceable stop has a column.");
+  return `Flag: --force ${subject.table}/${subject.column}/${subject.path}`;
 }
 
 function landedLine(item: SyncLandedItem): string {

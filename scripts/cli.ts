@@ -5,8 +5,10 @@ import { fileURLToPath } from "node:url";
 import { loadSheetsConfig } from "./sheetsConfig.ts";
 
 const usage = `Usage: sheets-framework <command> [args]
-  sync [--send]        plan alterations.ts against the live sheet and refresh
-                       the generated files (send the plan with --send)
+  sync [--send] [--force <table>/<column>/<trait>]
+                       plan alterations.ts against the live sheet and refresh
+                       the generated files (send the plan with --send; --force
+                       sends one stopped trait for this run only)
   configs-diff         summarise how the generated files differ from HEAD; read-only
   chore [name] [--send] [--json]
                        dry-run a chore (or apply it with --send); no name lists them

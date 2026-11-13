@@ -39,6 +39,7 @@ import {
   idNameMapPath,
   loadIntendedState,
   loadPreviousIdNameMap,
+  parseForcedTraits,
 } from "./sync.ts";
 
 const devGeneratedDir = fileURLToPath(
@@ -312,6 +313,33 @@ describe("appConfigsText", () => {
 
   it("registers the sibling ID-name map's type", () => {
     expect(text).toContain('import type { IdNameMap } from "./idNameMap";');
+  });
+});
+
+describe("parseForcedTraits", () => {
+  it("reads each --force as one table, column and trait", () => {
+    expect(
+      parseForcedTraits([
+        "--send",
+        "--force",
+        "item/name/header",
+        "--force",
+        "item/count/columnType",
+      ]),
+    ).toEqual([
+      { table: "item", column: "name", trait: "header" },
+      { table: "item", column: "count", trait: "columnType" },
+    ]);
+  });
+
+  it("forces nothing without the flag", () => {
+    expect(parseForcedTraits(["--send"])).toEqual([]);
+  });
+
+  it("rejects an address that isn't table/column/trait", () => {
+    expect(() => parseForcedTraits(["--force", "item/name"])).toThrow(
+      '--force takes <table>/<column>/<trait>, got "item/name".',
+    );
   });
 });
 

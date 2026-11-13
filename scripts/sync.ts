@@ -5,7 +5,10 @@ import { basename, dirname, join } from "node:path";
 
 import type { IdNameMapGeneric } from "../src/01_SpreadsheetSchema/configReaders/idNameMapTypes.ts";
 import type { PendingAlterations } from "../src/01_SpreadsheetSchema/configReaders/intendedState.ts";
-import type { SyncRunResult } from "../src/01_SpreadsheetSchema/configReaders/syncRunResult.ts";
+import type {
+  ForcedTrait,
+  SyncRunResult,
+} from "../src/01_SpreadsheetSchema/configReaders/syncRunResult.ts";
 import { alterationsFileSource } from "../src/05_Operators/configFileSource.ts";
 import { parseIdNameMapFileSource } from "../src/05_Operators/parseIdNameMapFileSource.ts";
 import type {
@@ -28,18 +31,25 @@ import type { SheetsConfig } from "./sheetsConfig.ts";
 interface ConfigFilesGeneratorProps {
   sheetsConfig: SheetsConfig;
   isSending: boolean;
+  forcedTraits: ForcedTrait[];
 }
 
 export class ConfigFilesGenerator {
   readonly sheetsConfig: SheetsConfig;
   readonly isSending: boolean;
+  readonly forcedTraits: ForcedTrait[];
   readonly path: Record<
     ConfigFile | "appConfigs" | "idNameMap" | "alterations",
     string
   >;
-  constructor({ sheetsConfig, isSending }: ConfigFilesGeneratorProps) {
+  constructor({
+    sheetsConfig,
+    isSending,
+    forcedTraits,
+  }: ConfigFilesGeneratorProps) {
     this.sheetsConfig = sheetsConfig;
     this.isSending = isSending;
+    this.forcedTraits = forcedTraits;
     const { generatedDir } = sheetsConfig;
     this.path = {
       tableConfigs: configFilePath(generatedDir, "tableConfigs"),
@@ -63,6 +73,7 @@ export class ConfigFilesGenerator {
     return new ConfigFilesGenerator({
       sheetsConfig,
       isSending: argv.includes("--send"),
+      forcedTraits: parseForcedTraits(argv),
     });
   }
   async run(): Promise<void> {
@@ -111,6 +122,7 @@ export class ConfigFilesGenerator {
       isSending: this.isSending,
       intendedState,
       previousIdNameMap,
+      forcedTraits: this.forcedTraits,
       frame: {
         target: basename(this.sheetsConfig.dir),
         command: "npm run sync",
@@ -155,6 +167,21 @@ export class ConfigFilesGenerator {
     });
     return status === 0;
   }
+}
+
+// Each `--force <table>/<column>/<trait>`, for this run only: nothing carries it to the next.
+export function parseForcedTraits(argv: string[]): ForcedTrait[] {
+  return argv.flatMap((arg, index): ForcedTrait[] => {
+    if (arg !== "--force") return [];
+    const address = argv[index + 1] ?? "";
+    const [table, column, trait, ...rest] = address.split("/");
+    if (!table || !column || !trait || rest.length > 0) {
+      throw new Error(
+        `--force takes <table>/<column>/<trait>, got "${address}".`,
+      );
+    }
+    return [{ table, column, trait }];
+  });
 }
 
 function labelled(text: string): string {

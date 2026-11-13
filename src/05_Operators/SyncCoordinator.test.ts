@@ -4,7 +4,10 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister";
 import type { IdNameMapGeneric } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
 import type { PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState";
-import type { SyncRunFrame } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
+import type {
+  ForcedTrait,
+  SyncRunFrame,
+} from "../01_SpreadsheetSchema/configReaders/syncRunResult";
 import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
@@ -156,13 +159,19 @@ function previousItemMap(): IdNameMapGeneric {
 interface RunOptions {
   isSending: boolean;
   alterations?: PendingAlterations;
+  forcedTraits?: ForcedTrait[];
 }
 
-function runItem({ isSending, alterations = {} }: RunOptions): SyncRun {
+function runItem({
+  isSending,
+  alterations = {},
+  forcedTraits = [],
+}: RunOptions): SyncRun {
   return SyncCoordinator.init().run({
     isSending,
     intendedState: { alterations },
     previousIdNameMap: previousItemMap(),
+    forcedTraits,
     frame,
   });
 }
@@ -173,6 +182,7 @@ function runWithNoAlterations(coordinator = SyncCoordinator.init()): SyncRun {
     isSending: true,
     intendedState: { alterations: {} },
     previousIdNameMap: { tables: {}, tabs: {} },
+    forcedTraits: [],
     frame,
   });
 }
@@ -408,6 +418,7 @@ describe("SyncCoordinator.run API access", () => {
       isSending,
       intendedState: { alterations },
       previousIdNameMap: previousMapWithNotes(),
+      forcedTraits: [],
       frame,
     });
   }
@@ -657,6 +668,61 @@ describe("SyncCoordinator.run typed trait changes", () => {
   });
 });
 
+describe("SyncCoordinator.run force", () => {
+  const rename: PendingAlterations = {
+    tables: { item: { columns: { optionalNote: { header: "Mine" } } } },
+  };
+  const forcedTraits = [
+    { table: "item", column: "optionalNote", trait: "header" },
+  ];
+  // A person renamed the column on the sheet after the last sync.
+  const personRenamed = {
+    item: {
+      columns: {
+        optionalNote: { ...itemColumns.optionalNote, header: "Theirs" },
+      },
+    },
+  };
+
+  it("stops on a trait both sides changed, without the flag", () => {
+    seedFixture(personRenamed);
+
+    const { result } = runItem({ isSending: true, alterations: rename });
+
+    expect(result).toMatchObject({
+      outcome: { kind: "stopped" },
+      forcedTraits: [],
+    });
+  });
+
+  it("sends a forced trait over the sheet's value and holds it, for that run only", () => {
+    seedFixture(personRenamed);
+
+    const forced = runItem({
+      isSending: true,
+      alterations: rename,
+      forcedTraits,
+    });
+
+    expect(forced.result).toMatchObject({
+      outcome: { kind: "sent", summary: "1 alteration landed" },
+      stops: [],
+      forcedTraits,
+      landed: [
+        {
+          subject: { table: "item", column: "optionalNote", path: "header" },
+          what: "set to Mine, over the sheet's Theirs",
+        },
+      ],
+    });
+    expect(forced.files?.alterations).toBeDefined();
+
+    seedFixture(personRenamed);
+    const next = runItem({ isSending: true, alterations: rename });
+    expect(next.result).toMatchObject({ outcome: { kind: "stopped" } });
+  });
+});
+
 describe("SyncCoordinator.run renames", () => {
   // A typed column on every Item column, so a test sees the types survive the rename.
   const itemTypes = { 0: "TEXT", 1: "DOUBLE", 2: "TEXT", 3: "TEXT" };
@@ -873,6 +939,7 @@ describe("SyncCoordinator.run tab traits", () => {
       isSending: true,
       intendedState: { alterations },
       previousIdNameMap,
+      forcedTraits: [],
       frame,
     });
   }

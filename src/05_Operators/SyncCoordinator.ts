@@ -16,6 +16,7 @@ import {
   type TraitReadings,
 } from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
 import type {
+  ForcedTrait,
   SyncRunFrame,
   SyncRunResult,
   SyncSubject,
@@ -64,6 +65,8 @@ export interface SyncRunProps {
   intendedState: SyncIntendedState;
   previousIdNameMap: IdNameMapGeneric;
   frame: SyncRunFrame;
+  // Each --force flag of this run alone; never read from a file.
+  forcedTraits: ForcedTrait[];
 }
 
 interface Regeneration {
@@ -137,7 +140,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     const planner = SyncPlanner.init({
       alterations,
       tabsByTable: tabsByTable(props.previousIdNameMap),
-      forcedTraits: [],
+      forcedTraits: props.forcedTraits,
     });
     const refusals = [
       ...SyncEntryRefuser.init({
