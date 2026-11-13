@@ -15,7 +15,7 @@ import {
 import {
   type IntendedTrait,
   isSheetTrait,
-  type PlanProps,
+  type PlanReadings,
   type TableReading,
   type TraitReadings,
 } from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
@@ -142,7 +142,10 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
     }
   }
   fetchHeadRows(): this {
-    this.tableIdsApiAccesses.forEach((tableId) => {
+    return this.fetchHeadRowsOf([...this.tableIdsApiAccesses]);
+  }
+  fetchHeadRowsOf(tableIds: string[]): this {
+    for (const tableId of tableIds) {
       const table = this.ss.raw.table(tableId);
       // hasIdColumn samples this row after API access is known.
       table.headRow("header").gatherFetchFull();
@@ -150,7 +153,7 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
       table.headRow("action").gatherFetchFull();
       table.headRow("groupHeading1").gatherFetchFull();
       table.topRow.gatherFetchFull();
-    });
+    }
     this.ss.identified.fetchAllGathered(true);
     return this;
   }
@@ -181,7 +184,7 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
     return this;
   }
   // emptyValueAllowed isn't a sheet trait, so its live side carries the previous configs and only a deleted column can stop it.
-  traitReadings(): PlanProps {
+  traitReadings(): PlanReadings {
     const live = this._namedColumnIdentities().reduce<TraitReadings["tables"]>(
       (tables, identity) => {
         const { tableId, tableKey, columnName } = identity;

@@ -1,3 +1,8 @@
+import {
+  type ApiAccessChanges,
+  apiAccessChanges,
+  withApiAccessReadings,
+} from "../01_SpreadsheetSchema/configReaders/apiAccessChanges";
 import { columnConfigsByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
 import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister";
 import type { IdNameMapGeneric } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
@@ -65,6 +70,12 @@ interface Regeneration {
   files: ConfigRegeneration;
   changes: SyncTypedTraitChange[];
   notes: string[];
+}
+
+interface RefetchProps {
+  configTraits: TraitReadings;
+  sent: SyncSubject[];
+  accessChanges: ApiAccessChanges;
 }
 
 // No files on a refused run: the run writes every file or none.
@@ -139,11 +150,20 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     if (refusals.length > 0) {
       return { result: resultBuilder.refused(refusals) };
     }
+    const accessChanges = apiAccessChanges({
+      alterations,
+      idNameMap: props.previousIdNameMap,
+    });
     this._readLive();
     // The ID-prefix guard runs before the column-ID write it guards.
     this.tableConfigOperator.validateIdPrefixesUnchanged();
     const readings = this._traitReadings();
-    const planned = planner.plan(readings);
+    const planned = planner.plan({
+      ...withApiAccessReadings(readings, props.previousIdNameMap),
+      headRowStops: this.tableConfigOperator.grantHeadRowStops(
+        accessChanges.grants,
+      ),
+    });
     // The gate's holds go here, between the plan and the apply.
     const isApplying = props.isSending && !planned.isStopped;
     // An unstopped dry run records the live readings: configTraits carry sends it won't make.
@@ -152,6 +172,8 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         ? planned.configTraits
         : readings.live,
     );
+    // Grants join only on an unstopped send, so a dry run never records a Table with no column IDs.
+    if (isApplying) this._applyApiAccessChanges(accessChanges);
     // Column IDs only on an unstopped send: one minted by any other run would reach the configs but never the sheet.
     if (isApplying) {
       this.columnConfigOperator
@@ -166,10 +188,11 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     // A fresh read, since Raw's state has no reset; only a sent sheet trait changes what it would read.
     const regeneration =
       isApplying && planned.sentTraits.some(isSheetTrait)
-        ? SyncCoordinator.init()._refetchedRegeneration(
-            planned.configTraits,
+        ? SyncCoordinator.init()._refetchedRegeneration({
+            configTraits: planned.configTraits,
             sent,
-          )
+            accessChanges,
+          })
         : this._regeneration(notes, sent);
     const { files, changes } = regeneration;
     // The row-ID fill goes here: its own send, planned from the fresh configs.
@@ -191,10 +214,13 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     };
   }
   // The untyped-column notes come from the refetch, since a rename changes the headers and Table names they cite.
-  private _refetchedRegeneration(
-    configTraits: TraitReadings,
-    sent: SyncSubject[],
-  ): Regeneration {
+  private _refetchedRegeneration({
+    configTraits,
+    sent,
+    accessChanges,
+  }: RefetchProps): Regeneration {
+    // Recorded before the read, so its head-row fetch covers granted Tables and skips revoked ones.
+    this.tableConfigOperator.recordApiAccessChanges(accessChanges);
     this._readLive();
     this.columnConfigOperator.recordEmptyValueAllowed(configTraits);
     return this._regeneration(this._recordUntypedColumns(), sent);
@@ -227,6 +253,14 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     this.tableConfigOperator.validateHeadRowsClear();
     this.tableConfigOperator.validateHeadersInZone();
     this.columnConfigOperator.fetchHeadRows();
+  }
+  private _applyApiAccessChanges(accessChanges: ApiAccessChanges): void {
+    this.tableConfigOperator.recordApiAccessChanges(accessChanges);
+    if (accessChanges.grants.length === 0) return;
+    this.tableConfigOperator.validateHeadRowsClear();
+    this.columnConfigOperator.fetchHeadRowsOf(
+      accessChanges.grants.map(({ tableId }) => tableId),
+    );
   }
   private _recordUntypedColumns(): string[] {
     const untypedColumnsSummary = this.columnConfigOperator

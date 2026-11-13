@@ -599,7 +599,7 @@ describe("SyncRunReport's refusals before the read", () => {
   it("names the Table and the trait it can't send yet", () => {
     expect(text).toContain("REFUSED 3 · item › name.formula");
     expect(text).toContain(
-      "  sync can't send name.formula yet: for now it sends only a Table's name, a column's header, emptyValueAllowed and a tab's title, color, before, frozenRows, frozenColumns, hidden.",
+      "  sync can't send name.formula yet: for now it sends only a Table's name, letApiAccess, a column's header, emptyValueAllowed and a tab's title, color, before, frozenRows, frozenColumns, hidden.",
     );
   });
 });
@@ -659,7 +659,7 @@ describe("SyncRunReport, case F: three refusals, then a head-row stop", () => {
     ...appDryRun,
     outcome: { kind: "refused" },
     refusals: [
-      { kind: "noApiAccess", table: "vendor", path: "newColumns" },
+      { kind: "besideGrant", table: "vendor", path: "newColumns" },
       {
         kind: "noSuchRule",
         table: "occCharge",
@@ -700,6 +700,16 @@ describe("SyncRunReport, case F: three refusals, then a head-row stop", () => {
     expect(refusedText).toContain(
       "  Granting access takes its own run: keep letApiAccess: true on vendor, take this entry out, and run sync.\n  Other Tables' entries may share that run.",
     );
+  });
+
+  it("says to grant first for an entry on a Table without API access", () => {
+    const text = render({
+      ...appDryRun,
+      outcome: { kind: "refused" },
+      refusals: [{ kind: "noApiAccess", table: "vendor", path: "name" }],
+    }).join("\n");
+    expect(text).toContain("REFUSED 1 · vendor › name");
+    expect(text).toContain("grant `letApiAccess` first.");
   });
 
   it("lists the Table's current rule handles under no such rule", () => {
