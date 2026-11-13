@@ -47,7 +47,7 @@ export interface SyncPlannerProps {
   forcedTraits: ForcedTrait[];
 }
 
-interface PlanProps {
+export interface PlanProps {
   previous: TraitReadings;
   live: TraitReadings;
 }

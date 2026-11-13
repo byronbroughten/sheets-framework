@@ -6,11 +6,16 @@ import {
   type BraceConfigs,
   BraceFormula,
 } from "../01_SpreadsheetSchema/configReaders/BraceFormula";
+import { columnConfigsByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
 import {
   type ColumnConfigsGeneric,
   type ColumnConfigStored,
   makeImportLine,
 } from "../01_SpreadsheetSchema/configReaders/makeConfigs";
+import type {
+  PlanProps,
+  TraitReadings,
+} from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
 import { type ValueName } from "../01_SpreadsheetSchema/configReaders/valueSchemas";
 import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
 import type {
@@ -39,6 +44,15 @@ interface ColumnIdentity {
   tableId: string;
   columnId: string;
 }
+
+interface NamedColumnIdentity extends ColumnIdentity {
+  table: string;
+  column: string;
+}
+
+type TableColumnTraits = NonNullable<
+  TraitReadings["tables"][string]
+>["columns"];
 
 export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
   static init(): ColumnConfigsOperator {
@@ -139,11 +153,83 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
     this.ss.identified.fetchAllGathered(true);
     return this;
   }
-  syncToSpreadsheet(): this {
-    this._addMissingColumnIds();
+  addMissingColumnIds(): this {
+    let idsAdded = 0;
+    const idPrefixesByTableId = this.tableConfigOperator.idPrefixesByTableId();
+    this.tableIdsApiAccesses.forEach((tableId) => {
+      const idPrefix = idPrefixesByTableId.assertIdPrefix(tableId);
+      // Raw, not TableIdentified: a Table here may predate its generated schema.
+      const table = this.ss.raw.table(tableId);
+      const colIndexes = table.columnResolver.colIndexesWithoutColumnId;
+      colIndexes.forEach((colIndex) => {
+        table
+          .headRow("columnId")
+          .updateValue(colIndex, dimensionIds.col(idPrefix));
+      });
+      idsAdded += colIndexes.length;
+    });
+    Logger.log(
+      `ensureColumnIds: prepared to add ${idsAdded} missing column ID(s)`,
+    );
+    return this;
+  }
+  recordUntypedColumns(): this {
     this._recordUntypedColumns();
     this._logUntypedColumns();
     this.columnConfigSync.syncedToSpreadsheet = true;
+    return this;
+  }
+  // emptyValueAllowed isn't a sheet trait, so live carries the previous configs and only a deleted column can stop.
+  emptyValueAllowedReadings(): PlanProps {
+    const previous = Object.entries(columnConfigsByName()).reduce<
+      TraitReadings["tables"]
+    >((tables, [tableKey, columns]) => {
+      tables[tableKey] = {
+        traits: {},
+        columns: Object.entries(columns).reduce<TableColumnTraits>(
+          (byName, [columnName, { emptyValueAllowed }]) => {
+            byName[columnName] = { emptyValueAllowed };
+            return byName;
+          },
+          {},
+        ),
+      };
+      return tables;
+    }, {});
+    const live = this._namedColumnIdentities().reduce<TraitReadings["tables"]>(
+      (tables, { tableId, columnId, table, column }) => {
+        const reading = tables[table] ?? { traits: {}, columns: {} };
+        reading.columns[column] = {
+          emptyValueAllowed: new PreviousColumnConfigs(
+            tableId,
+          ).emptyValueAllowed(columnId),
+        };
+        tables[table] = reading;
+        return tables;
+      },
+      {},
+    );
+    return {
+      previous: { tables: previous, tabs: {} },
+      live: { tables: live, tabs: {} },
+    };
+  }
+  recordEmptyValueAllowed(configTraits: TraitReadings): this {
+    const byIds = this.columnConfigSync.emptyValueAllowedByIds;
+    byIds.clear();
+    for (const {
+      tableId,
+      columnId,
+      table,
+      column,
+    } of this._namedColumnIdentities()) {
+      const value =
+        configTraits.tables[table]?.columns[column]?.emptyValueAllowed;
+      if (typeof value !== "boolean") continue;
+      const byColumnId = byIds.get(tableId) ?? new Map<string, boolean>();
+      byColumnId.set(columnId, value);
+      byIds.set(tableId, byColumnId);
+    }
     return this;
   }
   // Undefined, not "", so a fully typed spreadsheet still reports "Succeeded".
@@ -183,25 +269,22 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
     });
     return names;
   }
-  private _addMissingColumnIds(): this {
-    let idsAdded = 0;
-    const idPrefixesByTableId = this.tableConfigOperator.idPrefixesByTableId();
-    this.tableIdsApiAccesses.forEach((tableId) => {
-      const idPrefix = idPrefixesByTableId.assertIdPrefix(tableId);
-      // Raw, not TableIdentified: a Table here may predate its generated schema.
-      const table = this.ss.raw.table(tableId);
-      const colIndexes = table.columnResolver.colIndexesWithoutColumnId;
-      colIndexes.forEach((colIndex) => {
-        table
-          .headRow("columnId")
-          .updateValue(colIndex, dimensionIds.col(idPrefix));
-      });
-      idsAdded += colIndexes.length;
+  // Keyed by previous names through the IDs, so a rename keeps an alteration's target (ADR 0035).
+  private _namedColumnIdentities(): NamedColumnIdentity[] {
+    const tableKeysByTableId = this.tableConfigOperator.tableKeysByTableId();
+    return this._columnIdentities().map((identity) => {
+      const previous = new PreviousColumnConfigs(identity.tableId);
+      return {
+        ...identity,
+        table: Val.assert(
+          previous.tableKey ?? tableKeysByTableId.get(identity.tableId),
+          "API-access Table key",
+        ),
+        column:
+          previous.columnName(identity.columnId) ??
+          Str.sentenceToCamelCase(this._describedColumn(identity).header),
+      };
     });
-    Logger.log(
-      `ensureColumnIds: prepared to add ${idsAdded} missing column ID(s)`,
-    );
-    return this;
   }
   // Per Table, the previous configs' order first, so a quiet run leaves the generated files unchanged.
   private _columnIdentities(): ColumnIdentity[] {
@@ -284,9 +367,11 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
         header,
         valueName: valueName as ValueName,
         isFormula: describedColumn.isFormula,
-        emptyValueAllowed: new PreviousColumnConfigs(tableId).emptyValueAllowed(
-          columnId,
-        ),
+        emptyValueAllowed:
+          this.columnConfigSync.emptyValueAllowedByIds
+            .get(tableId)
+            ?.get(columnId) ??
+          new PreviousColumnConfigs(tableId).emptyValueAllowed(columnId),
         customDefaultValue: null,
         formula: describedColumn.topFormula ?? null,
         columnType: {
