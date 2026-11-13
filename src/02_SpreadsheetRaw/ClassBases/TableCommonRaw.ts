@@ -18,8 +18,10 @@ import { emptyStateRaw } from "../ClassTypes/emptyStateRaw";
 import type {
   AppendTableRows,
   CellFill,
+  ChangeTableColumns,
   ColumnFill,
   InsertTableEndColumns,
+  TableColumnChangeOperation,
   TablePropertiesRaw,
   TableWriteProps,
   TableWriteQueueRaw,
@@ -27,6 +29,16 @@ import type {
 } from "../ClassTypes/StateRaw";
 import type { SpreadsheetRaw } from "../SpreadsheetRaw";
 import { originOf, TableBaseRaw, tableOnSheetLabel } from "./TableBaseRaw";
+
+export const columnCountChange = {
+  insertRange: 1,
+  deleteRange: -1,
+} as const satisfies Record<TableColumnChangeOperation["kind"], 1 | -1>;
+
+interface SignedColumnBand {
+  range: BoundedGridRange;
+  sign: 1 | -1;
+}
 
 // Not on TableBaseRaw: the row and column base classes hang off that.
 export abstract class TableCommonRaw extends TableBaseRaw {
@@ -125,18 +137,18 @@ export abstract class TableCommonRaw extends TableBaseRaw {
     this.shiftRowsDown(-rowCount);
   }
   columnShiftFrom(inserts: InsertTableEndColumns[]): number {
-    const properties = this.tableProperties;
-    if (properties === undefined) return 0;
-    return inserts
-      .filter(({ newColumns }) => newColumns.sheetId === this.sheetGid)
-      .filter(({ newColumns }) =>
-        isPushedRightBy(newColumns, headAndTableRange(properties)),
-      )
-      .reduce(
-        (columnCount, { newColumns }) =>
-          columnCount + newColumns.endColumnIndex - newColumns.startColumnIndex,
-        0,
-      );
+    return this._columnShiftFromBands(
+      inserts.map(({ newColumns }) => ({ range: newColumns, sign: 1 })),
+    );
+  }
+  // Negative when the deletes outnumber the inserts; a Table's own changes leave its start alone.
+  columnShiftFromChanges(changes: ChangeTableColumns[]): number {
+    return this._columnShiftFromBands(
+      changes
+        .filter(({ tableId }) => tableId !== this.tableId)
+        .flatMap(({ operations }) => operations)
+        .map(({ kind, range }) => ({ range, sign: columnCountChange[kind] })),
+    );
   }
   // Google sees a Table's range but not its head rows, so it lets this split through.
   isSplitBy(band: BoundedGridRange): boolean {
@@ -244,6 +256,19 @@ export abstract class TableCommonRaw extends TableBaseRaw {
       case "insertTableEndColumn":
         writes.insertTableEndColumnCount++;
         break;
+      case "insertColumn":
+        writes.columnChanges.push({
+          kind: "insertColumn",
+          colIndex: props.colIndex,
+          headCells: props.headCells,
+        });
+        break;
+      case "deleteColumn":
+        writes.columnChanges.push({
+          kind: "deleteColumn",
+          colIndex: props.colIndex,
+        });
+        break;
       case "fillColumn": {
         const fill = Obj.strictOmit(props, "action");
         this._eraseCellFieldsUnder(fill);
@@ -267,7 +292,7 @@ export abstract class TableCommonRaw extends TableBaseRaw {
         break;
       default:
         throw new Error(
-          `Invalid action: ${(props as TableWriteProps).action}. Must be one of "sort", "insertTableEndColumn", "fillColumn", "findReplace", "updateColumnType", "addCheckboxValidation", "addConditionalFormatRule" or "addEditProtection".`,
+          `Invalid action: ${(props as TableWriteProps).action}. Must be one of "sort", "insertTableEndColumn", "insertColumn", "deleteColumn", "fillColumn", "findReplace", "updateColumnType", "addCheckboxValidation", "addConditionalFormatRule" or "addEditProtection".`,
         );
     }
     return this;
@@ -297,6 +322,20 @@ export abstract class TableCommonRaw extends TableBaseRaw {
     const properties = this.tableProperties;
     if (properties === undefined) return undefined;
     return { ...properties, sheetId: this.sheetGid };
+  }
+  private _columnShiftFromBands(bands: SignedColumnBand[]): number {
+    const properties = this.tableProperties;
+    if (properties === undefined) return 0;
+    return bands
+      .filter(({ range }) => range.sheetId === this.sheetGid)
+      .filter(({ range }) =>
+        isPushedRightBy(range, headAndTableRange(properties)),
+      )
+      .reduce(
+        (columnCount, { range, sign }) =>
+          columnCount + sign * (range.endColumnIndex - range.startColumnIndex),
+        0,
+      );
   }
   private _knownTableProperties(): TablePropertiesRaw {
     const properties = this.tableProperties;
