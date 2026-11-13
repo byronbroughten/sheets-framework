@@ -73,7 +73,7 @@ export class ConfigFilesGenerator {
       appConfigs: join(generatedDir, "appConfigs.ts"),
       idNameMap: idNameMapPath(generatedDir),
       alterations: alterationsPath(generatedDir),
-      heldFile: heldFilePath(sheetsConfig.dir),
+      heldFile: syncHeldFile.path(sheetsConfig.dir),
     };
   }
   static init(
@@ -154,7 +154,7 @@ export class ConfigFilesGenerator {
     if (!this.isSending || this.confirmToken === undefined) return undefined;
     return {
       token: this.confirmToken,
-      flushes: readHeldFlushes(this.path.heldFile),
+      flushes: syncHeldFile.readFlushes(this.path.heldFile),
     };
   }
 
@@ -167,11 +167,7 @@ export class ConfigFilesGenerator {
     if (flushes.every((items) => items.length === 0)) return result;
     const { heldGroups } = await import("../src/nodeHost/heldGroups.ts");
     const { heldFile } = this.path;
-    mkdirSync(dirname(heldFile), { recursive: true });
-    writeFileSync(
-      heldFile,
-      `${JSON.stringify({ target: result.target, token, flushes }, null, 2)}\n`,
-    );
+    syncHeldFile.write(heldFile, { target: result.target, token, flushes });
     return {
       ...result,
       held: {
@@ -245,25 +241,39 @@ export function parseConfirmToken(argv: string[]): string | undefined {
   return token;
 }
 
-// In the package's .probe/, beside the probe's output, since it holds live cell values and is never committed.
-export function heldFilePath(packageDir: string): string {
-  return join(packageDir, ".probe", "sync-held.json");
+interface HeldFileContents {
+  target: string;
+  token: string;
+  flushes: HeldItem[][];
 }
 
-// The dry run's flushes from its held file; undefined when the file is missing or isn't a held list.
-export function readHeldFlushes(path: string): HeldItem[][] | undefined {
-  if (!existsSync(path)) return undefined;
-  try {
-    const { flushes } = JSON.parse(readFileSync(path, "utf8"));
-    if (!Array.isArray(flushes) || !flushes.every(Array.isArray)) {
+// The dry run's held list on disk, which a send with --confirm reads back.
+export const syncHeldFile = {
+  // In the package's .probe/, beside the probe's output, since it holds live cell values and is never committed.
+  path(packageDir: string): string {
+    return join(packageDir, ".probe", "sync-held.json");
+  },
+  write(path: string, contents: HeldFileContents): void {
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, `${JSON.stringify(contents, null, 2)}\n`);
+  },
+  // Undefined when the file is missing or isn't a held list; the gate compares each entry with the flush it judges.
+  readFlushes(path: string): unknown[][] | undefined {
+    if (!existsSync(path)) return undefined;
+    try {
+      const { flushes }: { flushes?: unknown } = JSON.parse(
+        readFileSync(path, "utf8"),
+      );
+      if (!Array.isArray(flushes)) return undefined;
+      if (!flushes.every((flush): flush is unknown[] => Array.isArray(flush))) {
+        return undefined;
+      }
+      return flushes;
+    } catch {
       return undefined;
     }
-    // The gate compares each entry with the flush it judges, so an edited item reads as mismatched.
-    return flushes as HeldItem[][];
-  } catch {
-    return undefined;
-  }
-}
+  },
+};
 
 function labelled(text: string): string {
   return `sync: ${text}`;

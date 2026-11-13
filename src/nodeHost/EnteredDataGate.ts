@@ -14,9 +14,10 @@ export interface HeldList {
 }
 
 // The token a send was given, and the dry run's flushes loaded back from its held file; undefined flushes when that file was missing or unreadable.
+// Unknown items, since the gate only hashes and compares them, so an edited file reads as mismatched.
 export interface ConfirmedList {
   token: string;
-  flushes: HeldItem[][] | undefined;
+  flushes: unknown[][] | undefined;
 }
 
 export interface EnteredDataGateProps {
@@ -99,7 +100,7 @@ export class EnteredDataGate {
       });
     }
   }
-  private _tokenFor(flushes: HeldItem[][]): string {
+  private _tokenFor(flushes: unknown[][]): string {
     return this.hash(JSON.stringify({ target: this.target, flushes }));
   }
 }

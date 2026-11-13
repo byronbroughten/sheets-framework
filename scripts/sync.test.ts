@@ -45,13 +45,12 @@ import {
   alterationsText,
   appConfigsText,
   ConfigFilesGenerator,
-  heldFilePath,
   idNameMapPath,
   loadIntendedState,
   loadPreviousIdNameMap,
   parseConfirmToken,
   parseForcedTraits,
-  readHeldFlushes,
+  syncHeldFile,
 } from "./sync.ts";
 
 const devGeneratedDir = fileURLToPath(
@@ -390,7 +389,7 @@ function enteredDataItem(rowIndex: number, column = "notes"): HeldItem {
 describe("the held file", () => {
   const heldDir = mkdtempSync(join(tmpdir(), "sync-held-"));
   const heldSheetsConfig: SheetsConfig = { ...runSheetsConfig, dir: heldDir };
-  const heldFile = heldFilePath(heldDir);
+  const heldFile = syncHeldFile.path(heldDir);
   const notesItems = Array.from({ length: 23 }, (_, rowIndex) =>
     enteredDataItem(rowIndex),
   );
@@ -485,9 +484,9 @@ describe("the held file", () => {
     });
     mkdirSync(dirname(heldFile), { recursive: true });
     writeFileSync(heldFile, "{ not json");
-    expect(readHeldFlushes(heldFile)).toBeUndefined();
+    expect(syncHeldFile.readFlushes(heldFile)).toBeUndefined();
     writeFileSync(heldFile, JSON.stringify({ flushes: "none" }));
-    expect(readHeldFlushes(heldFile)).toBeUndefined();
+    expect(syncHeldFile.readFlushes(heldFile)).toBeUndefined();
   });
 
   it("isn't read by a send without --confirm or by a dry run", () => {

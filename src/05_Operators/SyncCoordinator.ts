@@ -187,7 +187,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         ? planned.configTraits
         : readings.live,
     );
-    // Grants join only on an unstopped send, so a dry run never records a Table with no column IDs.
+    // Grants join here only on an unstopped send; a dry run applies them after its files are built, so its configs never record a Table with no column IDs.
     // Column IDs only on an unstopped send: one minted by any other run would reach the configs but never the sheet.
     if (isApplying) this._applyPlan(accessChanges, planned.sentTraits);
     const notes = this._recordUntypedColumns();

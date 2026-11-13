@@ -1,3 +1,5 @@
+import { Val } from "@byronbroughten/utils/val";
+
 import type { SyncHeldGroup } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
 import type {
   HeldCell,
@@ -6,6 +8,11 @@ import type {
 } from "./FlushClassifier/flushClassifierTypes";
 
 type CellItem = Extract<HeldItem, { kind: "enteredData" | "unreadCell" }>;
+type OtherItem = Exclude<HeldItem, CellItem>;
+type OtherItemOf<KN extends OtherItem["kind"]> = Extract<
+  OtherItem,
+  { kind: KN }
+>;
 
 // The report lists this many cells of a group; the held file lists every one.
 const listedCellLimit = 20;
@@ -37,10 +44,18 @@ function isCellItem(item: HeldItem): item is CellItem {
   return item.kind === "enteredData" || item.kind === "unreadCell";
 }
 
+const cellGroupWhat: Record<
+  CellItem["kind"],
+  (cells: number, cellWord: string) => string
+> = {
+  enteredData: (cells, cellWord) =>
+    `the send overwrites or deletes entered data in ${cells} ${cellWord}:`,
+  unreadCell: (cells, cellWord) =>
+    `the send writes ${cells} ${cellWord} no read covered, so they may hold entered data:`,
+};
+
 function cellGroup(items: CellItem[]): SyncHeldGroup {
-  const [first] = items;
-  if (first === undefined) throw new Error("A held cell group has no cells.");
-  const { cell, kind } = first;
+  const { cell, kind } = Val.assert(items[0], "held cell group's first cell");
   const cells = items.length;
   const cellWord = cells === 1 ? "cell" : "cells";
   const listed = items.slice(0, listedCellLimit).map(cellLine);
@@ -52,17 +67,9 @@ function cellGroup(items: CellItem[]): SyncHeldGroup {
           `… and ${unlisted} more in ${cell.column}, counted, not listed`,
         ]
       : listed;
-  if (kind === "enteredData") {
-    return {
-      ...cellSubject(cell),
-      what: `the send overwrites or deletes entered data in ${cells} ${cellWord}:`,
-      cells,
-      lines,
-    };
-  }
   return {
     ...cellSubject(cell),
-    what: `the send writes ${cells} ${cellWord} no read covered, so they may hold entered data:`,
+    what: cellGroupWhat[kind](cells, cellWord),
     cells,
     lines,
   };
@@ -94,36 +101,37 @@ function rowLabel(row: HeldRow): string {
   return `row ${row.sheetRow}${name}`;
 }
 
-function otherGroup(item: Exclude<HeldItem, CellItem>): SyncHeldGroup {
-  if (item.kind === "dropdownReset") {
-    return {
-      subject: { table: item.table },
-      what: 'dropdown style reset (dropdownStyleReset: "ask")',
-      lines: [],
-    };
-  }
-  if (item.kind === "forcedTrait") {
-    const { table, column, trait } = item.trait;
-    return {
-      subject: { table, column, path: trait },
-      what: "sent over the live value by --force",
-      lines: [],
-    };
-  }
-  if (item.kind === "findReplace") {
-    return {
-      what: `a find-and-replace of "${item.find}" with "${item.replacement}", which can reach entered data anywhere`,
-      lines: [],
-    };
-  }
-  if (item.kind === "unmeasured") {
-    return {
-      what: `a ${item.verb} request the gate couldn't measure: ${item.detail}`,
-      lines: [],
-    };
-  }
-  return {
-    what: `a ${item.verb} request the gate can't judge`,
+const otherGroupByKind: {
+  [KN in OtherItem["kind"]]: (item: OtherItemOf<KN>) => SyncHeldGroup;
+} = {
+  dropdownReset: ({ table }) => ({
+    subject: { table },
+    what: 'dropdown style reset (dropdownStyleReset: "ask")',
     lines: [],
-  };
+  }),
+  forcedTrait: ({ trait: { table, column, trait } }) => ({
+    subject: { table, column, path: trait },
+    what: "sent over the live value by --force",
+    lines: [],
+  }),
+  findReplace: ({ find, replacement }) => ({
+    what: `a find-and-replace of "${find}" with "${replacement}", which can reach entered data anywhere`,
+    lines: [],
+  }),
+  unmeasured: ({ verb, detail }) => ({
+    what: `a ${verb} request the gate couldn't measure: ${detail}`,
+    lines: [],
+  }),
+  unclassified: ({ verb }) => ({
+    what: `a ${verb} request the gate can't judge`,
+    lines: [],
+  }),
+};
+
+function otherGroup<KN extends OtherItem["kind"]>(
+  item: OtherItemOf<KN> & { kind: KN },
+): SyncHeldGroup {
+  const build: (item: OtherItemOf<KN>) => SyncHeldGroup =
+    otherGroupByKind[item.kind];
+  return build(item);
 }
