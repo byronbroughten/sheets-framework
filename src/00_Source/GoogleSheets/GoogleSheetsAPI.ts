@@ -205,9 +205,10 @@ export class GoogleSheetsAPI implements RawSource {
     return new GoogleSheetsAPI(props);
   }
   static forAppsScript(): GoogleSheetsAPI {
+    const spreadsheetId = AppsScript.boundSpreadsheetId();
     return GoogleSheetsAPI.init({
       sheets: Val.assert(Sheets, "Sheets (enable the Advanced Sheets Service)"),
-      spreadsheetId: AppsScript.boundSpreadsheetId(),
+      spreadsheetId,
       host: "appsScript",
     });
   }
