@@ -182,6 +182,9 @@ export const requestJudgements: {
       tracker.addTable(add.table.tableId);
     }
   },
+  deleteTable(remove, judge): void {
+    judge.deleteTable(remove.tableId ?? "");
+  },
   updateSheetProperties(update, judge): void {
     if (fieldMask.masks(update.fields, "gridProperties")) {
       judge.holdUnmeasured(

@@ -17,6 +17,7 @@ export const emptyStateRaw = {
     return {
       addSheet: [],
       addTable: [],
+      deleteTable: [],
       appendTableRows: [],
       fillCell: [],
       deleteTableRows: [],
@@ -52,6 +53,7 @@ export const emptyStateRaw = {
       checkboxCells: [],
       conditionalFormatRules: [],
       editProtections: [],
+      isDeleted: false,
     };
   },
   rowWrites(): RowWrites {

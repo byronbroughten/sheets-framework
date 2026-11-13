@@ -48,9 +48,14 @@ declare namespace GoogleAppsScript {
         table?: Table;
       }
 
+      export interface DeleteTableRequest {
+        tableId?: string;
+      }
+
       // Merge into the global Schema.Request interface
       export interface Request {
         addTable?: AddTableRequest;
+        deleteTable?: DeleteTableRequest;
         appendCells?: AppendCellsRequest;
         updateTable?: UpdateTableRequest;
       }

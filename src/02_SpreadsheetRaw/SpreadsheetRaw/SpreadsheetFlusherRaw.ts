@@ -194,6 +194,8 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
       ...queued.addConditionalFormatRule,
       ...queued.deleteProtectedRange,
       ...queued.addProtectedRange,
+      // Gathered against the layout before the row deletes, like the rules above.
+      ...queued.deleteTable,
       ...this._deleteOperationsDescending(),
       ...queued.sortTable,
       // Outside the ordering rules the queue was built around, so last.

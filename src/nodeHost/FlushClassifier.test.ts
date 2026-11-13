@@ -240,6 +240,49 @@ describe("FlushClassifier.heldItems", () => {
       ]);
     });
 
+    it("holds a deleteTable per entered cell of the read Table range as deleted, and frees its formulas", () => {
+      const held = heldItems([{ deleteTable: { tableId: "tbl-pay" } }]);
+      const deleted = (before: string) => ({ kind: "delete", before });
+      const depositRowId = { sheetRow: depositRow + 1, nameValue: "Deposit" };
+      expect(cellChanges(held)).toEqual([
+        {
+          requestIndex: 0,
+          column: "Name",
+          row: rentId,
+          change: deleted('"Rent"'),
+        },
+        {
+          requestIndex: 0,
+          column: "ID",
+          row: rentId,
+          change: deleted('"pay-0001"'),
+        },
+        {
+          requestIndex: 0,
+          column: "Amount",
+          row: rentId,
+          change: deleted("1200"),
+        },
+        {
+          requestIndex: 0,
+          column: "Name",
+          row: depositRowId,
+          change: deleted('"Deposit"'),
+        },
+      ]);
+    });
+
+    it("frees a write after a deleteTable into a cell it blanked", () => {
+      const held = heldItems([
+        { deleteTable: { tableId: "tbl-pay" } },
+        writeCell(rentRow, amount, { numberValue: 1 }),
+      ]);
+      expect(held.filter((item) => item.kind !== "enteredData")).toEqual([]);
+      expect(
+        cellChanges(held).map((change) => change.requestIndex),
+      ).not.toContain(1);
+    });
+
     it("holds a repeatCell over an entered value and frees the empty cells it also covers", () => {
       const held = heldItems([
         {
@@ -473,6 +516,33 @@ describe("FlushClassifier.heldItems", () => {
           },
         },
       ]);
+    });
+
+    it("holds a deleteTable of a Table no read fetched as unmeasured", () => {
+      expect(heldItems([{ deleteTable: { tableId: "tbl-gone" } }])).toEqual([
+        expect.objectContaining({
+          kind: "unmeasured",
+          requestIndex: 0,
+          verb: "deleteTable",
+        }),
+      ]);
+    });
+
+    it("frees a deleteTable of a Table the same flush added", () => {
+      expect(
+        heldItems([
+          {
+            addTable: {
+              table: {
+                tableId: "tbl-new",
+                name: "New",
+                range: rowRange(10, 12),
+              },
+            },
+          },
+          { deleteTable: { tableId: "tbl-new" } },
+        ]),
+      ).toEqual([]);
     });
 
     it("holds a write into a range an earlier sort reordered as unmeasured", () => {

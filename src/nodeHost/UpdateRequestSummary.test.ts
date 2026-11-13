@@ -444,6 +444,12 @@ describe("UpdateRequestSummary.lines", () => {
     );
   });
 
+  it("names the tableId of a deleted Table", () => {
+    expect(onlyLine({ deleteTable: { tableId: "tbl-0a1b2c3d4e" } })).toBe(
+      "deleteTable tbl-0a1b2c3d4e delete Table",
+    );
+  });
+
   it("renders a request the framework does not model as its own verb and JSON", () => {
     const line = onlyLine({ deleteSheet: { sheetId: unknownGid } });
 

@@ -37,6 +37,26 @@ export const tableReplays = {
     sheet.tables.push(tableState);
     return {};
   },
+  // Measured live: the cells above the header stay, and so does a rule reaching past the Table.
+  deleteTable(
+    spreadsheet: FakeSpreadsheet,
+    request: GoogleAppsScript.Sheets.Schema.DeleteTableRequest,
+  ): Response {
+    const { sheet, table } = fakeSpreadsheet.table(
+      spreadsheet,
+      request.tableId,
+    );
+    sheet.tables = sheet.tables.filter((each) => each !== table);
+    fakeGrid.forEachCell(table, (rowIndex, colIndex) => {
+      fakeGrid.setCell(sheet, rowIndex, colIndex, null);
+    });
+    if (sheet.conditionalFormats !== undefined) {
+      sheet.conditionalFormats = sheet.conditionalFormats.filter(
+        (rule) => !isWhollyOver(rule, table),
+      );
+    }
+    return {};
+  },
   // Measured live: a field mask replaces only its fields.
   updateTable(
     spreadsheet: FakeSpreadsheet,
@@ -95,6 +115,24 @@ function replaceColumnProperties(
     );
     if (values.length > 0) columnValidationValues[colIndex] = values;
   });
+}
+
+// An open bound reaches the sheet's edge, so a rule with one is never wholly over a Table.
+function isWhollyOver(
+  rule: GoogleAppsScript.Sheets.Schema.ConditionalFormatRule,
+  table: FakeTableState,
+): boolean {
+  return (rule.ranges ?? []).every(
+    (range) =>
+      range.startRowIndex !== undefined &&
+      range.startColumnIndex !== undefined &&
+      range.endRowIndex !== undefined &&
+      range.endColumnIndex !== undefined &&
+      table.startRowIndex <= range.startRowIndex &&
+      range.endRowIndex <= table.endRowIndex &&
+      table.startColumnIndex <= range.startColumnIndex &&
+      range.endColumnIndex <= table.endColumnIndex,
+  );
 }
 
 function validateColumn(column: TableColumnProperties): void {
