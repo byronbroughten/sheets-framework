@@ -1,4 +1,5 @@
 import { hasApiAccess } from "./apiAccessChanges";
+import { BraceFormula } from "./BraceFormula";
 import type { IdNameMapGeneric } from "./idNameMapTypes";
 import { sheetTraits, tabTraits } from "./SyncPlanner";
 import {
@@ -59,13 +60,21 @@ export class SyncEntryRefuser {
         return [mapTable.name];
       }),
     );
+    const columnNamesByTable = new Map(
+      mapTables.map(({ name, columns }) => [name, Object.keys(columns ?? {})]),
+    );
     return entryRefusals({
       entry: "tables",
       mapNames: mapTables.map(({ name }) => name),
       entries: entriesOf(this.alterations.tables),
       traitRefusals: (table, entry) => {
-        if (apiAccessNames.has(table)) return tableTraitRefusals(table, entry);
-        return noApiAccessRefusals(table, entry);
+        if (!apiAccessNames.has(table)) {
+          return noApiAccessRefusals(table, entry);
+        }
+        return [
+          ...tableTraitRefusals(table, entry),
+          ...braceRefusals({ table, entry, columnNamesByTable }),
+        ];
       },
     });
   }
@@ -104,6 +113,44 @@ function entryRefusals<EN extends object>({
   return entries.flatMap(([name, traits]) => {
     if (!names.has(name)) return [noSuchTable(entry, name)];
     return traitRefusals(name, traits);
+  });
+}
+
+interface BraceRefusalsProps {
+  table: string;
+  entry: WideTableEntry;
+  columnNamesByTable: Map<string, string[]>;
+}
+
+function braceRefusals({
+  table,
+  entry,
+  columnNamesByTable,
+}: BraceRefusalsProps): SyncRefusal[] {
+  return entriesOf(entry.columns).flatMap(([column, { formula }]) => {
+    if (formula === undefined) return [];
+    const path = `${column}.formula`;
+    const malformed = BraceFormula.malformedBraces({ formula }).map(
+      (brace): SyncRefusal => ({ kind: "malformedBrace", table, path, brace }),
+    );
+    const unknown = BraceFormula.columnsNamed({
+      tableKey: table,
+      formula,
+    }).flatMap(({ brace, tableKey, columnName }): SyncRefusal[] => {
+      const columnNames = columnNamesByTable.get(tableKey);
+      if (columnNames?.includes(columnName)) return [];
+      return [
+        {
+          kind: "unknownBrace",
+          table,
+          path,
+          brace,
+          braceTable: tableKey,
+          columns: columnNames,
+        },
+      ];
+    });
+    return [...malformed, ...unknown];
   });
 }
 

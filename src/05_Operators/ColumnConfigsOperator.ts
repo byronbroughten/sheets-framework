@@ -14,7 +14,6 @@ import {
 } from "../01_SpreadsheetSchema/configReaders/makeConfigs";
 import {
   type IntendedTrait,
-  isSheetTrait,
   type PlanReadings,
   type TableReading,
   type TraitReadings,
@@ -53,6 +52,10 @@ interface NamedColumnIdentity extends ColumnIdentity {
   tableKey: string;
   columnName: string;
   previousEmptyValueAllowed: boolean;
+}
+
+interface SentColumnTrait extends NamedColumnIdentity {
+  value: IntendedTrait["value"];
 }
 
 export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
@@ -185,6 +188,7 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
   }
   // emptyValueAllowed isn't a sheet trait, so its live side carries the previous configs and only a deleted column can stop it.
   traitReadings(): PlanReadings {
+    const configs = installedBraceConfigs();
     const live = this._namedColumnIdentities().reduce<TraitReadings["tables"]>(
       (tables, identity) => {
         const { tableId, tableKey, columnName } = identity;
@@ -192,9 +196,14 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
           traits: { name: this.ss.raw.table(tableId).name },
           columns: {},
         };
+        const { header, topFormula } = this._describedColumn(identity);
         reading.columns[columnName] = {
-          header: this._describedColumn(identity).header,
+          header,
           emptyValueAllowed: identity.previousEmptyValueAllowed,
+          // In brace form against the previous configs, the names an alteration's formula uses.
+          formula:
+            bracedFormula({ configs, tableKey, formula: topFormula }) ??
+            undefined,
         };
         tables[tableKey] = reading;
         return tables;
@@ -208,20 +217,48 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
   }
   // Queues each sent column header, addressed by the previous names the readings use.
   updateHeaders(sent: IntendedTrait[]): this {
+    for (const { tableId, columnId, value } of this._sentColumnTraits(
+      sent,
+      "header",
+    )) {
+      this.ss.raw.table(tableId).updateHeader(columnId, String(value));
+    }
+    return this;
+  }
+  // Fills every body row with one formula; a Table copies a uniform column formula into the rows it grows by.
+  updateFormulas(sent: IntendedTrait[]): this {
+    const configs = namesAtColumnFill(sent);
+    for (const { tableId, columnId, tableKey, value } of this._sentColumnTraits(
+      sent,
+      "formula",
+    )) {
+      const table = this.ss.raw.table(tableId);
+      table.column(table.columnResolver.colIndexOf(columnId)).updateAllFormulas(
+        BraceFormula.compileForCell({
+          configs,
+          tableKey,
+          formula: String(value),
+        }),
+      );
+    }
+    return this;
+  }
+  private _sentColumnTraits(
+    sent: IntendedTrait[],
+    trait: "header" | "formula",
+  ): SentColumnTrait[] {
     const identities = this._namedColumnIdentities();
-    for (const intended of sent) {
-      if (intended.kind !== "column" || !isSheetTrait(intended)) continue;
-      const { table: tableKey, column } = intended;
-      const { tableId, columnId } = Val.assert(
+    return sent.flatMap((intended) => {
+      if (intended.kind !== "column" || intended.trait !== trait) return [];
+      const { table: tableKey, column, value } = intended;
+      const identity = Val.assert(
         identities.find(
-          (identity) =>
-            identity.tableKey === tableKey && identity.columnName === column,
+          (named) => named.tableKey === tableKey && named.columnName === column,
         ),
         `live column ${tableKey}.${column}`,
       );
-      this.ss.raw.table(tableId).updateHeader(columnId, String(intended.value));
-    }
-    return this;
+      return [{ ...identity, value }];
+    });
   }
   recordEmptyValueAllowed(configTraits: TraitReadings): this {
     const byIds = this.columnConfigSync.emptyValueAllowedByIds;
@@ -459,8 +496,12 @@ function previousTraitTables(): TraitReadings["tables"] {
       tables[tableKey] = {
         traits: tableName === undefined ? {} : { name: tableName },
         columns: Object.entries(columns).reduce<TableReading["columns"]>(
-          (byName, [columnName, { header, emptyValueAllowed }]) => {
-            byName[columnName] = { header, emptyValueAllowed };
+          (byName, [columnName, { header, emptyValueAllowed, formula }]) => {
+            byName[columnName] = {
+              header,
+              emptyValueAllowed,
+              formula: formula ?? undefined,
+            };
             return byName;
           },
           {},
@@ -470,6 +511,13 @@ function previousTraitTables(): TraitReadings["tables"] {
     },
     {},
   );
+}
+
+function installedBraceConfigs(): BraceConfigs {
+  return {
+    tableConfigs: tableConfigsByName(),
+    columnConfigs: columnConfigsByName(),
+  };
 }
 
 function bracedFormula({
@@ -483,6 +531,25 @@ function bracedFormula({
 }): ColumnConfigStored["formula"] {
   if (formula === undefined || formula === null) return formula;
   return BraceFormula.decompile({ configs, tableKey, formula });
+}
+
+// The names on the sheet when a column fill lands: Table renames go out before column fills and header writes after (docs/architecture/flush-order.md).
+function namesAtColumnFill(sent: IntendedTrait[]): BraceConfigs {
+  const { tableConfigs, columnConfigs } = installedBraceConfigs();
+  const renamed = sent.reduce<BraceConfigs["tableConfigs"]>(
+    (byKey, intended) => {
+      if (intended.kind !== "table" || intended.trait !== "name") return byKey;
+      const tableConfig = byKey[intended.table];
+      if (tableConfig === undefined) return byKey;
+      byKey[intended.table] = {
+        ...tableConfig,
+        tableName: String(intended.value),
+      };
+      return byKey;
+    },
+    { ...tableConfigs },
+  );
+  return { tableConfigs: renamed, columnConfigs };
 }
 
 function valueSourceName({

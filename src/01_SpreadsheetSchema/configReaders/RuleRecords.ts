@@ -288,7 +288,6 @@ function braceCondition({
 }: BraceConditionProps): BooleanCondition | undefined {
   if (condition.type !== "CUSTOM_FORMULA") return condition;
   const formula = BraceFormula.decompileForRule({
-    tableKey: table.tableKey,
     layout: table.layout,
     formula: condition.formula,
     isOneColumn,
