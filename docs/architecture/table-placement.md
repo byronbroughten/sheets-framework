@@ -35,7 +35,7 @@ The zone costs the used cells it covers, not its depth ([finding Tables](./findi
 
 ## Generation refuses a Table outside the zone
 
-A regen checks each Table in the live sheet, in `SyncCoordinator._syncColumnIds`, right after the head-row overlap check below and before anything is flushed or a config file is returned (`SpreadsheetTableValidatorRaw.validateHeadersInZone`). Every Table outside the zone goes into one throw, naming it. So the configs never record a Table that every run would stop on.
+A regen checks each Table in the live sheet, in `SyncCoordinator._readLive`, right after the head-row overlap check below and before anything is flushed or a config file is returned (`SpreadsheetTableValidatorRaw.validateHeadersInZone`). Every Table outside the zone goes into one throw, naming it. So the configs never record a Table that every run would stop on.
 
 Generation itself skips the run's placement check (`isRegeneratingConfigs` on Identified's state, set by `SyncCoordinator.init`), since that check judges the Tables against the very configs it replaces. Otherwise a recorded Table moved out of the zone would stop generation with the run's message and could never be dropped from the configs.
 
@@ -43,7 +43,7 @@ Generation itself skips the run's placement check (`isRegeneratingConfigs` on Id
 
 Google refuses one Table's range over another's, but it can't see head rows, so it accepts a managed Table whose head rows sit on another Table. Head-row writes would then land in the other Table's cells. Nothing the framework does creates that overlap: growth, row deletes and the column insert move a neighbour together with its head rows. Only the operator's arrangement can, and every change to a managed Table's layout passes through a regen.
 
-So a regen checks it, in `SyncCoordinator._syncColumnIds`, before anything is flushed or a config file is returned. Each Table on the live sheet has its head rows compared with the range of every other Table on its sheet, managed or not. The comparison uses geometry alone and reads no cells. A managed Table's head rows on another managed Table's head rows also sit on that Table's range, since a range starts at its header row, so one message covers both. Every overlap goes into one throw, naming the Table, its head rows' 1-based rows and the Table under them.
+So a regen checks it, in `SyncCoordinator._readLive`, before anything is flushed or a config file is returned. Each Table on the live sheet has its head rows compared with the range of every other Table on its sheet, managed or not. The comparison uses geometry alone and reads no cells. A managed Table's head rows on another managed Table's head rows also sit on that Table's range, since a range starts at its header row, so one message covers both. Every overlap goes into one throw, naming the Table, its head rows' 1-based rows and the Table under them.
 
 The head rows' extent runs from `tableLayout`'s largest offset down to just above the header (`headRows.topIndex`, `TableOrigin.topHeadSheetRowIndex`). The column insert's shift and split check uses the same extent.
 

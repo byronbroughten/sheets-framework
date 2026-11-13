@@ -245,9 +245,11 @@ function coveredColumnNames(
     if (rangeOffsets === undefined) return undefined;
     rangeOffsets.forEach((offset) => offsets.add(offset));
   }
-  return table.layout.columnNamesLeftToRight.filter((_, offset) =>
+  const columnNames = table.layout.columnNamesLeftToRight.filter((_, offset) =>
     offsets.has(offset),
   );
+  if (columnNames.includes(undefined)) return undefined;
+  return columnNames.filter((columnName) => columnName !== undefined);
 }
 
 // Undefined unless the range starts on the first body row and stays within the Table.

@@ -56,7 +56,8 @@ interface Brace {
 
 export interface RuleLayout {
   headerTopLeft: { rowIndex: SheetRowIndex; colIndex: SheetColIndex };
-  columnNamesLeftToRight: readonly string[];
+  // Undefined at a column with no ID yet, which a run that mints none leaves out of the configs.
+  columnNamesLeftToRight: readonly (string | undefined)[];
 }
 
 interface LiveTable {
@@ -118,6 +119,7 @@ export const BraceFormula = {
   }: RuleDecompileProps): string | undefined {
     const columnNamesByLetter = layout.columnNamesLeftToRight.reduce(
       (byLetter, columnName, offset) => {
+        if (columnName === undefined) return byLetter;
         const colIndex = SheetIndex.col(layout.headerTopLeft.colIndex + offset);
         byLetter.set(schema.columnLetter(colIndex), columnName);
         return byLetter;

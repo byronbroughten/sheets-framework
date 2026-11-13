@@ -1,7 +1,9 @@
 // `sheets-framework gen-configs`: regenerates the package's generated files from its live Tables and previous configs, on the Node host.
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
+
+import { Val } from "@byronbroughten/utils/val";
 
 import { alterationsFileSource } from "../src/05_Operators/configFileSource.ts";
 import type { ConfigRegeneration } from "../src/05_Operators/SyncCoordinator.ts";
@@ -15,6 +17,11 @@ import {
   startNodeHost,
 } from "./nodeHost.ts";
 import type { SheetsConfig } from "./sheetsConfig.ts";
+
+interface GeneratedFiles {
+  files: ConfigRegeneration;
+  untypedColumnsSummary: string | undefined;
+}
 
 class ConfigFilesGenerator {
   readonly sheetsConfig: SheetsConfig;
@@ -40,6 +47,7 @@ class ConfigFilesGenerator {
     return new ConfigFilesGenerator({ sheetsConfig });
   }
   async run(): Promise<void> {
+    const { files, untypedColumnsSummary } = await this._generate();
     const {
       tableConfigs,
       tabConfigs,
@@ -48,8 +56,7 @@ class ConfigFilesGenerator {
       columnConfigs,
       valueConfigs,
       idNameMap,
-      untypedColumnsSummary,
-    } = await this._generate();
+    } = files;
 
     // Write nothing until every config and the ID-name map are confirmed good; a subset would go stale.
     mkdirSync(this.sheetsConfig.generatedDir, { recursive: true });
@@ -90,7 +97,7 @@ class ConfigFilesGenerator {
     console.log(`Created ${path}`);
   }
 
-  async _generate(): Promise<ConfigRegeneration> {
+  async _generate(): Promise<GeneratedFiles> {
     // The previous configs say which Tables have API access; a package with no generated files yet borrows the framework's.
     // No app endpoints: they may name columns the configs being regenerated don't have yet.
     await startNodeHost({
@@ -102,7 +109,22 @@ class ConfigFilesGenerator {
     });
     const { SyncCoordinator } =
       await import("../src/05_Operators/SyncCoordinator.ts");
-    return SyncCoordinator.init().generateConfigFiles();
+    // A send with empty intended state, so nothing can be refused, until the script that loads alterations.ts lands.
+    const { result, files } = SyncCoordinator.init().run({
+      isSending: true,
+      intendedState: { alterations: {} },
+      previousIdNameMap: { tables: {}, tabs: {} },
+      frame: {
+        target: basename(this.sheetsConfig.dir),
+        command: "npm run gen:configs",
+        generatedDir: this.sheetsConfig.generatedDir,
+        alterationsPath: alterationsPath(this.sheetsConfig.generatedDir),
+      },
+    });
+    return {
+      files: Val.assert(files, "the regen's files"),
+      untypedColumnsSummary: result.configs.notes[0],
+    };
   }
 
   _runTsc(): boolean {
