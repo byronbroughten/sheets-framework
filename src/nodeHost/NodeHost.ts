@@ -1,4 +1,5 @@
 import {
+  type GoogleBatchUpdateResponse,
   type GoogleRequest,
   GoogleSheetsAPI,
   type SheetsHttpTransport,
@@ -10,6 +11,10 @@ import {
 } from "../01_SpreadsheetSchema/configReaders/configRegister";
 import type { Endpoints } from "../06_API/Endpoints";
 import { installEndpoints } from "../06_API/feedbackColumnIds";
+import {
+  EnteredDataGate,
+  type EnteredDataGateBinding,
+} from "./EnteredDataGate";
 import { UpdateRequestSummary } from "./UpdateRequestSummary";
 
 export interface NodeHostProps {
@@ -20,6 +25,8 @@ export interface NodeHostProps {
   transport: SheetsHttpTransport;
   isDryRun: boolean;
   log: (message: string) => void;
+  // Only sync passes one; a chore's flushes go unclassified.
+  enteredDataGate?: EnteredDataGateBinding;
 }
 
 // The framework's second host — Sheets only, in Node. See docs/how-it-runs/node-host.md.
@@ -28,6 +35,7 @@ export class NodeHost {
   private endpoints: Endpoints;
   readonly spreadsheetId: string;
   readonly isDryRun: boolean;
+  readonly enteredDataGate: EnteredDataGate | undefined;
   private transport: SheetsHttpTransport;
   private log: (message: string) => void;
   private sentRequests: GoogleRequest[];
@@ -36,6 +44,7 @@ export class NodeHost {
     this.endpoints = props.endpoints ?? {};
     this.spreadsheetId = props.spreadsheetId;
     this.isDryRun = props.isDryRun;
+    this.enteredDataGate = gateFor(props);
     this.transport = props.transport;
     this.log = props.log;
     this.sentRequests = [];
@@ -47,8 +56,8 @@ export class NodeHost {
     return GoogleSheetsAPI.initHttp({
       spreadsheetId: this.spreadsheetId,
       transport: this.transport,
-      isDryRun: this.isDryRun,
-      reportRequests: (requests) => this.sentRequests.push(...requests),
+      reportRead: (read) => this.enteredDataGate?.recordRead(read),
+      gateFlush: (requests, send) => this._gateFlush(requests, send),
     });
   }
   // Every request the run produced, sent or withheld by the dry run.
@@ -63,4 +72,23 @@ export class NodeHost {
     installRawSource(this.googleSheetsAPI);
     return this;
   }
+  private _gateFlush(
+    requests: GoogleRequest[],
+    send: () => GoogleBatchUpdateResponse,
+  ): GoogleBatchUpdateResponse {
+    this.sentRequests.push(...requests);
+    if (this.enteredDataGate !== undefined) {
+      return this.enteredDataGate.passFlush(requests, send);
+    }
+    if (this.isDryRun) return {};
+    return send();
+  }
+}
+
+function gateFor({
+  enteredDataGate,
+  isDryRun,
+}: NodeHostProps): EnteredDataGate | undefined {
+  if (enteredDataGate === undefined) return undefined;
+  return EnteredDataGate.init({ ...enteredDataGate, isDryRun });
 }

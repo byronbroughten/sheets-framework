@@ -14,6 +14,7 @@ import {
   googleRawRequest,
   type GoogleRequest,
   GoogleSheetsAPI,
+  type SheetsHttpRead,
   type SheetsHttpRequest,
 } from "./GoogleSheetsAPI";
 
@@ -1652,14 +1653,31 @@ describe("GoogleSheetsAPI HTTP transport", () => {
       sheets: [],
     }));
     const reported: GoogleRequest[] = [];
+    const reads: SheetsHttpRead[] = [];
     const api = GoogleSheetsAPI.initHttp({
       spreadsheetId,
       transport,
-      isDryRun: props.isDryRun ?? false,
-      reportRequests: (requests) => reported.push(...requests),
+      reportRead: (read) => reads.push(read),
+      gateFlush: (requests, send) => {
+        reported.push(...requests);
+        return props.isDryRun ? {} : send();
+      },
     });
-    return { api, transport, reported };
+    return { api, transport, reported, reads };
   }
+
+  it("reports each read with the grid ranges it asked for, none for a plain get", () => {
+    const { api, reads } = seedApi();
+    const gridRange = { sheetId: 111, startRowIndex: 0, endRowIndex: 4 };
+
+    api.fetchSheetProperties();
+    api.fetchGrid([gridRange], { includeProgrammaticFacts: false });
+
+    expect(reads).toEqual([
+      { gridRanges: [], spreadsheet: { spreadsheetId, sheets: [] } },
+      { gridRanges: [gridRange], spreadsheet: { spreadsheetId, sheets: [] } },
+    ]);
+  });
 
   it("sends one GET for sheet properties, carrying the field mask", () => {
     const { api, transport } = seedApi();

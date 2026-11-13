@@ -1,5 +1,6 @@
 // Starts the framework's second host. See docs/how-it-runs/node-host.md.
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, join } from "node:path";
@@ -13,6 +14,7 @@ import type {
   ConfigSetBase,
 } from "../src/01_SpreadsheetSchema/configReaders/configRegister.ts";
 import type { Endpoints } from "../src/06_API/Endpoints.ts";
+import type { EnteredDataGateBinding } from "../src/nodeHost/EnteredDataGate.ts";
 import type { NodeHost } from "../src/nodeHost/NodeHost.ts";
 import type { SheetsConfig } from "./sheetsConfig.ts";
 
@@ -178,16 +180,21 @@ function fetchSync(request: FetchRequest): FetchResponse {
   };
 }
 
+// The gate's terms but its hash, which the Node half supplies.
+type EnteredDataGateTerms = Omit<EnteredDataGateBinding, "hash">;
+
 export async function startNodeHost({
   isDryRun,
   sheetsConfig,
   configs,
   endpoints,
+  enteredDataGate,
 }: {
   isDryRun: boolean;
   sheetsConfig: SheetsConfig;
   configs: Configs;
   endpoints?: Endpoints;
+  enteredDataGate?: EnteredDataGateTerms;
 }): Promise<NodeHost> {
   const { NodeHost } = await import("../src/nodeHost/NodeHost.ts");
   const transport = SheetsTransport.init();
@@ -198,7 +205,18 @@ export async function startNodeHost({
     transport: (request) => transport.send(request),
     isDryRun,
     log: (message) => console.log(`  log: ${message}`),
+    enteredDataGate: hashedGate(enteredDataGate),
   }).ensureGlobals();
+}
+
+function hashedGate(
+  terms: EnteredDataGateTerms | undefined,
+): EnteredDataGateBinding | undefined {
+  if (terms === undefined) return undefined;
+  return {
+    ...terms,
+    hash: (input) => createHash("sha256").update(input).digest("hex"),
+  };
 }
 
 // The generated files in the package's generatedDir, as the package's entry passes them to the framework.

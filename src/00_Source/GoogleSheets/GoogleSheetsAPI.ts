@@ -60,12 +60,14 @@ export type ModeledRequest = {
   [RV in ModeledRequestVerb]: Required<Pick<GoogleRequest, RV>>;
 }[ModeledRequestVerb];
 
+export type GoogleBatchUpdateResponse =
+  GoogleAppsScript.Sheets.Schema.BatchUpdateSpreadsheetResponse;
+
 type GoogleSpreadsheet = GoogleAppsScript.Sheets.Schema.Spreadsheet;
 type GoogleSheet = GoogleAppsScript.Sheets.Schema.Sheet;
+type GoogleGridRange = GoogleAppsScript.Sheets.Schema.GridRange;
 type BatchUpdateRequest =
   GoogleAppsScript.Sheets.Schema.BatchUpdateSpreadsheetRequest;
-type BatchUpdateResponse =
-  GoogleAppsScript.Sheets.Schema.BatchUpdateSpreadsheetResponse;
 type GetByDataFilterRequest =
   GoogleAppsScript.Sheets.Schema.GetSpreadsheetByDataFilterRequest;
 
@@ -117,11 +119,21 @@ export interface SheetsHttpRequest {
 
 export type SheetsHttpTransport = (request: SheetsHttpRequest) => unknown;
 
+export interface SheetsHttpRead {
+  // Google trims trailing empty rows and cells from a reply, so what a read covers comes from the ranges it asked for.
+  gridRanges: GoogleGridRange[];
+  spreadsheet: GoogleSpreadsheet;
+}
+
 export interface GoogleSheetsAPIHttpProps {
   spreadsheetId: string;
   transport: SheetsHttpTransport;
-  isDryRun: boolean;
-  reportRequests: (requests: GoogleRequest[]) => void;
+  reportRead: (read: SheetsHttpRead) => void;
+  // Sends the flush by calling send, or withholds it by not calling it.
+  gateFlush: (
+    requests: GoogleRequest[],
+    send: () => GoogleBatchUpdateResponse,
+  ) => GoogleBatchUpdateResponse;
 }
 
 export interface SheetsAdvancedTransport {
@@ -135,7 +147,7 @@ export interface SheetsAdvancedTransport {
     batchUpdate: (
       resource: BatchUpdateRequest,
       spreadsheetId: string,
-    ) => BatchUpdateResponse;
+    ) => GoogleBatchUpdateResponse;
   };
 }
 
@@ -290,29 +302,37 @@ function httpSheetsTransport(
   }
   return {
     Spreadsheets: {
-      get: (spreadsheetId, optionalArgs) =>
-        send<GoogleSpreadsheet>({
+      get: (spreadsheetId, optionalArgs) => {
+        const spreadsheet = send<GoogleSpreadsheet>({
           method: "GET",
           url: url(spreadsheetId, "", optionalArgs?.fields),
           body: null,
-        }),
-      getByDataFilter: (resource, spreadsheetId, optionalArgs) =>
-        send<GoogleSpreadsheet>({
+        });
+        props.reportRead({ gridRanges: [], spreadsheet });
+        return spreadsheet;
+      },
+      getByDataFilter: (resource, spreadsheetId, optionalArgs) => {
+        const spreadsheet = send<GoogleSpreadsheet>({
           method: "POST",
           url: url(spreadsheetId, ":getByDataFilter", optionalArgs?.fields),
           body: JSON.stringify(resource),
-        }),
-      batchUpdate: (resource, spreadsheetId) => {
-        props.reportRequests(resource.requests ?? []);
-        if (props.isDryRun) {
-          return {};
-        }
-        return send<BatchUpdateResponse>({
-          method: "POST",
-          url: url(spreadsheetId, ":batchUpdate"),
-          body: JSON.stringify(resource),
         });
+        props.reportRead({
+          gridRanges: (resource.dataFilters ?? []).flatMap(({ gridRange }) =>
+            gridRange === undefined ? [] : [gridRange],
+          ),
+          spreadsheet,
+        });
+        return spreadsheet;
       },
+      batchUpdate: (resource, spreadsheetId) =>
+        props.gateFlush(resource.requests ?? [], () =>
+          send<GoogleBatchUpdateResponse>({
+            method: "POST",
+            url: url(spreadsheetId, ":batchUpdate"),
+            body: JSON.stringify(resource),
+          }),
+        ),
     },
   };
 }
