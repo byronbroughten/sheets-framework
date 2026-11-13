@@ -7,7 +7,10 @@ import { beforeAll, describe, expect, it } from "vitest";
 
 import { appConfigs } from "../dev/generated/appConfigs.ts";
 import type { IdNameMapGeneric } from "../src/01_SpreadsheetSchema/configReaders/idNameMapTypes.ts";
-import { columnIdsByName } from "../src/05_Operators/configFileSource.ts";
+import {
+  alterationsFileSource,
+  columnIdsByName,
+} from "../src/05_Operators/configFileSource.ts";
 import { parseIdNameMapFileSource } from "../src/testSupport/parseIdNameMapFileSource.ts";
 import {
   alterationsPath,
@@ -114,14 +117,8 @@ describe("alterationsPath", () => {
 });
 
 describe("alterationsText", () => {
-  it("holds an empty makePendingAlterations call from the framework's entry", () => {
-    const text = alterationsText();
-    expect(text).toContain(
-      'import { makePendingAlterations } from "@byronbroughten/sheets-framework";',
-    );
-    expect(text).toContain(
-      "export const pendingAlterations = makePendingAlterations({});",
-    );
+  it("is the empty alterations file source", () => {
+    expect(alterationsText()).toBe(alterationsFileSource({}));
   });
 
   it("matches the dev package's own alterations.ts", () => {

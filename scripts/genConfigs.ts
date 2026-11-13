@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
+import { alterationsFileSource } from "../src/05_Operators/configFileSource.ts";
 import type { ConfigRegeneration } from "../src/05_Operators/SyncCoordinator.ts";
 import { readConfigsDiff } from "./configsDiff.ts";
 import {
@@ -133,10 +134,7 @@ export function alterationsPath(generatedDir: string): string {
 }
 
 export function alterationsText(): string {
-  return `import { makePendingAlterations } from "@byronbroughten/sheets-framework";
-
-export const pendingAlterations = makePendingAlterations({});
-`;
+  return alterationsFileSource({});
 }
 
 export function appConfigsText(): string {
