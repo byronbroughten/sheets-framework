@@ -34,9 +34,12 @@ export interface SyncPlannerProps {
   forcedTraits: ForcedTrait[];
 }
 
-export interface PlanProps {
+export interface PlanReadings {
   previous: TraitReadings;
   live: TraitReadings;
+}
+
+export interface PlanProps extends PlanReadings {
   // Stops found reading the sheet, outside the comparison, that still stop every send.
   headRowStops?: SyncHeadRowsStop[];
 }

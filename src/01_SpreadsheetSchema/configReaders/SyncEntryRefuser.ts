@@ -1,3 +1,4 @@
+import { hasApiAccess } from "./apiAccessChanges";
 import type { IdNameMapGeneric } from "./idNameMapTypes";
 import {
   entriesOf,
@@ -15,9 +16,18 @@ export interface SyncEntryRefuserProps {
 
 type NotSendableYet = Extract<SyncRefusal, { kind: "notSendableYet" }>;
 
-// Only a column's emptyValueAllowed can be sent so far; each later trait ticket takes its trait off this refusal.
-export const sendableColumnTraits = new Set<string>(["emptyValueAllowed"]);
-const sendableTableTraits = new Set<string>(["letApiAccess"]);
+// Only these traits can be sent so far; each later trait ticket takes its trait off this refusal.
+export const sendableTraits = {
+  table: new Set<string>(["letApiAccess"]),
+  column: new Set<string>(["emptyValueAllowed"]),
+} as const;
+
+interface TraitPath {
+  level: keyof typeof sendableTraits;
+  trait: string;
+  // The trait as a refusal names it: `column.trait` for a column's.
+  path: string;
+}
 
 // Pure: refuses what can't be planned from intended state and the previous ID-name map alone, so before any read.
 export class SyncEntryRefuser {
@@ -42,9 +52,9 @@ export class SyncEntryRefuser {
     const mapTables = Object.values(this.idNameMap.tables);
     // No type-level check that an entry names a Table with API access, for type-check cost; reconsider if the typing budget or the ID-name map's typing is revisited.
     const apiAccessNames = new Set(
-      mapTables.flatMap(({ name, columns }) => {
-        if (columns === undefined) return [];
-        return [name];
+      mapTables.flatMap((mapTable) => {
+        if (!hasApiAccess(mapTable)) return [];
+        return [mapTable.name];
       }),
     );
     return entryRefusals({
@@ -105,15 +115,9 @@ function tableTraitRefusals(
   table: string,
   entry: WideTableEntry,
 ): SyncRefusal[] {
-  const { columns, ...traits } = entry;
-  return [
-    ...definedKeys(traits)
-      .filter((trait) => !sendableTableTraits.has(trait))
-      .map((trait) => notSendableYet(table, trait)),
-    ...entriesOf(columns).flatMap(([column, columnEntry]) =>
-      columnTraitRefusals(table, column, columnEntry),
-    ),
-  ];
+  return traitPaths(entry)
+    .filter(({ level, trait }) => !sendableTraits[level].has(trait))
+    .map(({ path }) => notSendableYet(table, path));
 }
 
 // A grant takes its own run, since a column entry needs the column IDs the grant writes.
@@ -121,25 +125,31 @@ function noApiAccessRefusals(
   table: string,
   entry: WideTableEntry,
 ): SyncRefusal[] {
-  const { columns, letApiAccess, ...traits } = entry;
-  const kind = letApiAccess === true ? "besideGrant" : "noApiAccess";
-  const paths = [
-    ...definedKeys(traits),
-    ...entriesOf(columns).flatMap(([column, columnEntry]) =>
-      definedKeys(columnEntry).map((trait) => `${column}.${trait}`),
-    ),
-  ];
-  return paths.map((path) => ({ kind, table, path }));
+  const kind = entry.letApiAccess === true ? "besideGrant" : "noApiAccess";
+  return traitPaths(entry)
+    .filter(({ path }) => path !== "letApiAccess")
+    .map(({ path }) => ({ kind, table, path }));
 }
 
-function columnTraitRefusals(
-  table: string,
-  column: string,
-  entry: WideColumnEntry,
-): SyncRefusal[] {
-  return definedKeys(entry)
-    .filter((trait) => !sendableColumnTraits.has(trait))
-    .map((trait) => notSendableYet(table, `${column}.${trait}`));
+function traitPaths({ columns, ...traits }: WideTableEntry): TraitPath[] {
+  return [
+    ...definedKeys(traits).map((trait): TraitPath => ({
+      level: "table",
+      trait,
+      path: trait,
+    })),
+    ...entriesOf(columns).flatMap(([column, columnEntry]) =>
+      columnTraitPaths(column, columnEntry),
+    ),
+  ];
+}
+
+function columnTraitPaths(column: string, entry: WideColumnEntry): TraitPath[] {
+  return definedKeys(entry).map((trait) => ({
+    level: "column",
+    trait,
+    path: `${column}.${trait}`,
+  }));
 }
 
 function definedKeys(entry: object): string[] {

@@ -41,21 +41,18 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
   }
   // The previous configs' order, then this run's grants, so a quiet run leaves the generated files unchanged.
   tableIdsApiAccesses(): string[] {
-    const { grantedTableIds, revokedTableIds } =
-      this.configSyncState.apiAccessSync;
-    return [...tableConfigsByTableId().keys(), ...grantedTableIds].filter(
+    const { grants, revokedTableIds } = this.configSyncState.apiAccessSync;
+    const revoked = new Set(revokedTableIds);
+    return [
+      ...tableConfigsByTableId().keys(),
+      ...grants.map(({ tableId }) => tableId),
+    ].filter(
       (tableId) =>
-        !revokedTableIds.has(tableId) && this.ss.raw.tableIdIsActive(tableId),
+        !revoked.has(tableId) && this.ss.raw.tableIdIsActive(tableId),
     );
   }
-  recordApiAccessChanges({ grants, revokedTableIds }: ApiAccessChanges): this {
-    const { apiAccessSync } = this.configSyncState;
-    for (const { tableId } of grants) {
-      apiAccessSync.grantedTableIds.add(tableId);
-    }
-    for (const tableId of revokedTableIds) {
-      apiAccessSync.revokedTableIds.add(tableId);
-    }
+  recordApiAccessChanges(changes: ApiAccessChanges): this {
+    this.configSyncState.apiAccessSync = changes;
     return this;
   }
   // A grant writes head rows above the header, so its header must sit where they fit.

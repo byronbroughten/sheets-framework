@@ -13,7 +13,7 @@ import {
   makeImportLine,
 } from "../01_SpreadsheetSchema/configReaders/makeConfigs";
 import type {
-  PlanProps,
+  PlanReadings,
   TableReading,
   TraitReadings,
 } from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
@@ -181,7 +181,7 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
     return this;
   }
   // emptyValueAllowed isn't a sheet trait, so live carries the previous configs and only a deleted column can stop.
-  emptyValueAllowedReadings(): PlanProps {
+  emptyValueAllowedReadings(): PlanReadings {
     const live = this._namedColumnIdentities().reduce<TraitReadings["tables"]>(
       (tables, { tableKey, columnName, previousEmptyValueAllowed }) => {
         const reading = tables[tableKey] ?? { traits: {}, columns: {} };

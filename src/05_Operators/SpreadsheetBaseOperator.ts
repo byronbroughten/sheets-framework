@@ -1,3 +1,4 @@
+import type { ApiAccessChanges } from "../01_SpreadsheetSchema/configReaders/apiAccessChanges";
 import type { TableColumnReference } from "../02_SpreadsheetRaw/ColumnProfileRaw";
 import {
   SpreadsheetBaseNamed,
@@ -25,7 +26,7 @@ export interface ConfigSyncState {
   };
   valueConfigSync: { valueSources: ValueSource[] };
   // This run's grants and revokes, set only once they are sure to be sent.
-  apiAccessSync: { grantedTableIds: Set<string>; revokedTableIds: Set<string> };
+  apiAccessSync: ApiAccessChanges;
 }
 
 export interface OperatorProps extends SpreadsheetNamedProps {
@@ -52,7 +53,7 @@ export class SpreadsheetBaseOperator extends SpreadsheetBaseNamed {
         emptyValueAllowedByIds: new Map(),
       },
       valueConfigSync: { valueSources: [] },
-      apiAccessSync: { grantedTableIds: new Set(), revokedTableIds: new Set() },
+      apiAccessSync: { grants: [], revokedTableIds: [] },
     };
   }
   static initOperatorProps(): OperatorProps {

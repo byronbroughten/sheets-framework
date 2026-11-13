@@ -1,4 +1,4 @@
-import { sendableColumnTraits } from "../01_SpreadsheetSchema/configReaders/SyncEntryRefuser";
+import { sendableTraits } from "../01_SpreadsheetSchema/configReaders/SyncEntryRefuser";
 import type {
   SyncCheck,
   SyncConfigs,
@@ -401,7 +401,7 @@ function tableRefusalText(
 ): string[] {
   if (refusal.kind === "notSendableYet") {
     return [
-      `sync can't send ${refusal.path} yet: for now it sends only a column's ${[...sendableColumnTraits].join(", ")}.`,
+      `sync can't send ${refusal.path} yet: for now it sends only a Table's ${[...sendableTraits.table].join(", ")} and a column's ${[...sendableTraits.column].join(", ")}.`,
       "Take this entry out, then rerun.",
     ];
   }
@@ -409,17 +409,19 @@ function tableRefusalText(
   if (refusal.kind === "noApiAccess") {
     return [
       `${table} has no API access, so sync has nothing to compare it against: grant \`letApiAccess\` first.`,
-      `Granting access takes its own run: take this entry out, put letApiAccess: true on ${table}, and run sync.`,
-      "Other Tables' entries may share that run.",
-      `Put this entry back in a later run, once ${table}'s columns are in idNameMap.ts.`,
+      ...grantRunLines(
+        table,
+        `take this entry out, put letApiAccess: true on ${table}`,
+      ),
     ];
   }
   if (refusal.kind === "besideGrant") {
     return [
       `${table} has no API access yet, so sync has nothing to compare its columns against.`,
-      `Granting access takes its own run: keep letApiAccess: true on ${table}, take this entry out, and run sync.`,
-      "Other Tables' entries may share that run.",
-      `Put this entry back in a later run, once ${table}'s columns are in idNameMap.ts.`,
+      ...grantRunLines(
+        table,
+        `keep letApiAccess: true on ${table}, take this entry out`,
+      ),
     ];
   }
   if (refusal.kind === "noSuchRule") {
@@ -431,6 +433,14 @@ function tableRefusalText(
   }
   return [
     `${refusal.brace} names no column of ${table}. Its columns: ${refusal.columns.join(", ")}.`,
+  ];
+}
+
+function grantRunLines(table: string, steps: string): string[] {
+  return [
+    `Granting access takes its own run: ${steps}, and run sync.`,
+    "Other Tables' entries may share that run.",
+    `Put this entry back in a later run, once ${table}'s columns are in idNameMap.ts.`,
   ];
 }
 

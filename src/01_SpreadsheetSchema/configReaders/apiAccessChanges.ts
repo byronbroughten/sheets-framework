@@ -1,5 +1,5 @@
 import type { IdNameMapGeneric } from "./idNameMapTypes";
-import type { PlanProps, TableReading, TraitReadings } from "./SyncPlanner";
+import type { PlanReadings, TableReading, TraitReadings } from "./SyncPlanner";
 import { entriesOf, type WideAlterations } from "./SyncPlanner/wideAlterations";
 
 export interface ApiAccessGrant {
@@ -16,8 +16,15 @@ export interface ApiAccessChanges {
 
 interface ApiAccessChangesProps {
   alterations: WideAlterations;
-  // The previous one: a Table has API access when it lists columns.
+  // The previous one, since API access is read from it.
   idNameMap: IdNameMapGeneric;
+}
+
+// A map Table has API access when it lists columns.
+export function hasApiAccess(
+  mapTable: IdNameMapGeneric["tables"][string],
+): boolean {
+  return mapTable.columns !== undefined;
 }
 
 export function apiAccessChanges({
@@ -34,11 +41,10 @@ export function apiAccessChanges({
     (changes, [table, { letApiAccess }]) => {
       const tableId = tableIdsByName.get(table);
       if (tableId === undefined || letApiAccess === undefined) return changes;
-      const hasApiAccess = idNameMap.tables[tableId]?.columns !== undefined;
-      if (letApiAccess && !hasApiAccess) {
-        changes.grants.push({ tableId, table });
-      }
-      if (!letApiAccess && hasApiAccess) changes.revokedTableIds.push(tableId);
+      const mapTable = idNameMap.tables[tableId];
+      const isGranted = mapTable !== undefined && hasApiAccess(mapTable);
+      if (letApiAccess && !isGranted) changes.grants.push({ tableId, table });
+      if (!letApiAccess && isGranted) changes.revokedTableIds.push(tableId);
       return changes;
     },
     { grants: [], revokedTableIds: [] },
@@ -47,11 +53,10 @@ export function apiAccessChanges({
 
 // API access isn't a sheet trait, so live carries the previous map and a grant or revoke never stops.
 export function withApiAccessReadings(
-  readings: PlanProps,
+  readings: PlanReadings,
   idNameMap: IdNameMapGeneric,
-): PlanProps {
+): PlanReadings {
   return {
-    ...readings,
     previous: withApiAccess(readings.previous, idNameMap),
     live: withApiAccess(readings.live, idNameMap),
   };
@@ -64,11 +69,14 @@ function withApiAccess(
   const tables = Object.values(idNameMap.tables).reduce<
     TraitReadings["tables"]
   >(
-    (byName, { name, columns }) => {
-      const reading: TableReading = byName[name] ?? { traits: {}, columns: {} };
-      byName[name] = {
+    (byName, mapTable) => {
+      const reading: TableReading = byName[mapTable.name] ?? {
+        traits: {},
+        columns: {},
+      };
+      byName[mapTable.name] = {
         ...reading,
-        traits: { ...reading.traits, letApiAccess: columns !== undefined },
+        traits: { ...reading.traits, letApiAccess: hasApiAccess(mapTable) },
       };
       return byName;
     },

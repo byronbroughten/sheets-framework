@@ -29,16 +29,13 @@ function landedTraitKey(subject: SyncSubject): string {
       `A landed subject must be a Table's or column's trait: ${JSON.stringify(subject)}`,
     );
   }
+  if (!subject.column) return traitKey(subject.table, subject.path);
   return traitKey(subject.table, subject.column, subject.path);
 }
 
-// No column for a Table's own trait.
-function traitKey(
-  table: string,
-  column: string | undefined,
-  trait: string,
-): string {
-  return JSON.stringify([table, column ?? null, trait]);
+// A Table's trait is [table, trait]; a column's is [table, column, trait].
+function traitKey(...parts: string[]): string {
+  return JSON.stringify(parts);
 }
 
 function keepIfNotEmpty(key: string, record: object): [string, object][] {
@@ -66,7 +63,7 @@ function remainingTableEntry(
 ): WideTableEntry {
   return Object.fromEntries(
     Object.entries(entry).flatMap(([key, value]) => {
-      if (landedKeys.has(traitKey(tableName, undefined, key))) return [];
+      if (landedKeys.has(traitKey(tableName, key))) return [];
       if (key !== "columns") return [[key, value]];
       return keepIfNotEmpty(
         key,

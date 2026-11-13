@@ -4,7 +4,7 @@ Part of [generated data](../generated-data.md). Table Config lists every Google 
 
 ## The Table Config sheet
 
-**Table Config has one row per Google Table in the spreadsheet: `Table ID | Table name | Sheet title | Let api access`.** `TableConfigsOperator` (`05_Operators`) owns it. Table ID is the row's identity. Table name and Sheet title are readable identity for a human. Let api access is the only declared column, and nothing reads it. The regen neither reads nor writes this sheet ([config sheets](./config-sync.md)); API access is a Table's presence in the previous `tableConfigs`. A tab with two Tables gets two rows, and a tab with no Table gets none.
+**Table Config has one row per Google Table in the spreadsheet: `Table ID | Table name | Sheet title | Let api access`.** `TableConfigsOperator` (`05_Operators`) owns it. Table ID is the row's identity. Table name and Sheet title are readable identity for a human. Let api access is the only declared column, and nothing reads it. The regen neither reads nor writes this sheet ([config sheets](./config-sync.md)); API access is a Table's presence in the previous `tableConfigs`, until a `letApiAccess` alteration changes it ([granting and revoking](#granting-and-revoking-api-access)). A tab with two Tables gets two rows, and a tab with no Table gets none.
 
 ## How `tableConfigs` is generated
 
