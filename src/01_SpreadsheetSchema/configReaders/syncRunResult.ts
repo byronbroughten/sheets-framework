@@ -33,7 +33,7 @@ export interface SyncRunCommon {
   stops: SyncStop[];
   plan: SyncPlanItem[];
   // The stops this run's --force turned into sends; the entered-data gate holds each.
-  forcedTraits?: ForcedTrait[];
+  forcedTraits: ForcedTrait[];
   notices: SyncNotice[];
   configs: SyncConfigs;
 }

@@ -30,6 +30,7 @@ const appDryRun = {
   refusals: [],
   stops: [],
   plan: [],
+  forcedTraits: [],
   notices: [],
   configs: noConfigChanges,
 } as const satisfies Omit<SyncDryRunResult, "outcome">;
