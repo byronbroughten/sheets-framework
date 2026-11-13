@@ -819,10 +819,14 @@ describe("SyncCoordinator.run renames", () => {
     });
   });
 
-  // Off until #288, the didn't-land check, turns it back on.
-  it.skip("reports a trait Sheets kept another value for under Didn't land, the configs taking that value and the entry staying pending", () => {
+  it("reports a trait Sheets kept another value for under Didn't land, the configs taking that value and the entry staying pending", () => {
     const service = stubSheetsService({
-      sheets: [itemSheet({ columnTypes: itemTypes })],
+      sheets: [
+        itemSheet({
+          columnTypes: itemTypes,
+          name: getTableTraitByName("item", "tableName"),
+        }),
+      ],
       afterEachBatchUpdate(spreadsheet) {
         const table = Val.assert(spreadsheet.sheets[0]?.tables[0], "Item");
         table.name = "Item";

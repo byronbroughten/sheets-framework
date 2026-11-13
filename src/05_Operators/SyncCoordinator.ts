@@ -5,6 +5,10 @@ import {
 } from "../01_SpreadsheetSchema/configReaders/apiAccessChanges";
 import { columnConfigsByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
 import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister";
+import {
+  didntLandOf,
+  hasLanded,
+} from "../01_SpreadsheetSchema/configReaders/didntLand";
 import type { IdNameMapGeneric } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
 import type { PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState";
 import { remainingAlterations } from "../01_SpreadsheetSchema/configReaders/remainingAlterations";
@@ -13,12 +17,14 @@ import {
   isSheetTrait,
   type PlanProps,
   SyncPlanner,
+  type SyncPlannerResult,
   type TraitReadings,
 } from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
 import type {
   ForcedTrait,
   SyncRunFrame,
   SyncRunResult,
+  SyncSendLine,
   SyncSubject,
   SyncTypedTraitChange,
 } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
@@ -73,10 +79,12 @@ interface Regeneration {
   files: ConfigRegeneration;
   changes: SyncTypedTraitChange[];
   notes: string[];
+  didntLand: SyncSendLine[];
 }
 
 interface RefetchProps {
   configTraits: TraitReadings;
+  plan: SyncPlannerResult;
   sent: SyncSubject[];
   accessChanges: ApiAccessChanges;
 }
@@ -193,18 +201,17 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       isApplying && planned.sentTraits.some(isSheetTrait)
         ? SyncCoordinator.init()._refetchedRegeneration({
             configTraits: planned.configTraits,
+            plan: planned,
             sent,
             accessChanges,
           })
         : this._regeneration(notes, sent);
-    const { files, changes } = regeneration;
+    const { files, changes, didntLand } = regeneration;
+    const landed = sent.filter(hasLanded(didntLand));
     // The row-ID fill goes here: its own send, planned from the fresh configs.
-    if (isApplying && planned.plan.length > 0) {
+    if (landed.length > 0) {
       files.alterations = alterationsFileSource(
-        remainingAlterations(
-          alterations,
-          planned.plan.map(({ subject }) => subject),
-        ),
+        remainingAlterations(alterations, landed),
       );
     }
     return {
@@ -212,6 +219,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         planned,
         notes: regeneration.notes,
         typedTraitChanges: changes,
+        didntLand,
       }),
       files,
     };
@@ -219,6 +227,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
   // The untyped-column notes come from the refetch, since a rename changes the headers and Table names they cite.
   private _refetchedRegeneration({
     configTraits,
+    plan,
     sent,
     accessChanges,
   }: RefetchProps): Regeneration {
@@ -226,9 +235,18 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     this.tableConfigOperator.recordApiAccessChanges(accessChanges);
     this._readLive();
     this.columnConfigOperator.recordEmptyValueAllowed(configTraits);
-    return this._regeneration(this._recordUntypedColumns(), sent);
+    const didntLand = didntLandOf({
+      sentTraits: plan.sentTraits,
+      plan: plan.plan,
+      live: this._traitReadings().live,
+    });
+    return this._regeneration(this._recordUntypedColumns(), sent, didntLand);
   }
-  private _regeneration(notes: string[], sent: SyncSubject[]): Regeneration {
+  private _regeneration(
+    notes: string[],
+    sent: SyncSubject[],
+    didntLand: SyncSendLine[] = [],
+  ): Regeneration {
     this.valueConfigOperator.fetchAfterColumnConfigSynced();
     const changes = typedTraitChanges({
       previous: {
@@ -241,7 +259,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       },
       sent,
     });
-    return { files: this._configFiles(), changes, notes };
+    return { files: this._configFiles(), changes, notes, didntLand };
   }
   private _traitReadings(): PlanProps {
     const { previous, live } = this.columnConfigOperator.traitReadings();
