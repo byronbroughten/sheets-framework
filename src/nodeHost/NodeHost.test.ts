@@ -124,8 +124,15 @@ describe("NodeHost.ensureGlobals", () => {
   });
 });
 
-// The Payments Table on its own sheet: header at index 0, Rent at 1, an empty row at 2, columns A to C.
-const payments = { gid: 7, rentRow: 1, emptyRow: 2, endRow: 4, endCol: 3 };
+// The Payments Table on its own sheet: header at index 0, Rent at 1, an empty row at 2, a Total formula at 3, columns A to C.
+const payments = {
+  gid: 7,
+  rentRow: 1,
+  emptyRow: 2,
+  totalRow: 3,
+  endRow: 4,
+  endCol: 3,
+};
 const paymentsAmountCol = 2;
 const gateTarget = "app:spreadsheet-under-test";
 
@@ -167,13 +174,27 @@ function paymentsSheet(rows?: GoogleCellData[][]) {
   };
 }
 
+// The Node host's mask gives a non-formula cell an empty userEnteredValue.
 function text(stringValue: string): GoogleCellData {
-  return { effectiveValue: { stringValue } };
+  return { effectiveValue: { stringValue }, userEnteredValue: {} };
+}
+
+function amount(numberValue: number): GoogleCellData {
+  return { effectiveValue: { numberValue }, userEnteredValue: {} };
 }
 
 const paymentsRows: GoogleCellData[][] = [
   [text("Name"), text("ID"), text("Amount")],
-  [text("Rent"), text("pay-0001"), { effectiveValue: { numberValue: 1200 } }],
+  [text("Rent"), text("pay-0001"), amount(1200)],
+  [],
+  [
+    text("Total"),
+    text("pay-0002"),
+    {
+      effectiveValue: { numberValue: 1200 },
+      userEnteredValue: { formulaValue: "=SUM(C2:C3)" },
+    },
+  ],
 ];
 
 // Properties alone on a get; the grid on a getByDataFilter; an empty reply to a batchUpdate.
@@ -239,16 +260,26 @@ function flushRequests(api: GoogleSheetsAPI, requests: GoogleRequest[]): void {
 }
 
 function writeAmount(rowIndex: number, numberValue: number): GoogleRequest {
+  return writeAmounts(rowIndex, [numberValue]);
+}
+
+// Amounts down the Amount column, one row each from startRowIndex.
+function writeAmounts(
+  startRowIndex: number,
+  numberValues: number[],
+): GoogleRequest {
   return {
     updateCells: {
       range: {
         sheetId: payments.gid,
-        startRowIndex: rowIndex,
-        endRowIndex: rowIndex + 1,
+        startRowIndex,
+        endRowIndex: startRowIndex + numberValues.length,
         startColumnIndex: paymentsAmountCol,
         endColumnIndex: paymentsAmountCol + 1,
       },
-      rows: [{ values: [{ userEnteredValue: { numberValue } }] }],
+      rows: numberValues.map((numberValue) => ({
+        values: [{ userEnteredValue: { numberValue } }],
+      })),
       fields: "userEnteredValue",
     },
   };
@@ -314,8 +345,43 @@ describe("NodeHost with an entered-data gate", () => {
       request: writeAmount(payments.rentRow, 900),
       kinds: ["enteredData"],
     },
+    {
+      label: "frees an overwrite of a formula cell",
+      request: writeAmount(payments.totalRow, 900),
+      kinds: [],
+    },
   ])("$label", ({ request, kinds }) => {
     expect(heldKinds(dryRunHeldList([[request]]))).toEqual([kinds]);
+  });
+
+  it("holds only the entered cell of a write spanning entered, empty and formula cells", () => {
+    const heldList = dryRunHeldList([
+      [writeAmounts(payments.rentRow, [900, 5, 900])],
+    ]);
+
+    expect(heldList.flushes).toEqual([
+      [
+        expect.objectContaining({
+          kind: "enteredData",
+          cell: expect.objectContaining({
+            row: { rowId: "pay-0001" },
+          }),
+        }),
+      ],
+    ]);
+  });
+
+  it("asks each grid read for every cell's formula", () => {
+    const { api, transport } = seedGatedHost({ isDryRun: true });
+
+    readPayments(api);
+
+    const [read] = transport.mock.calls.filter(([request]) =>
+      request.url.includes(":getByDataFilter"),
+    );
+    expect(decodeURIComponent(read?.[0].url ?? "")).toContain(
+      "rowData(values(effectiveValue,userEnteredValue(formulaValue)))",
+    );
   });
 
   it("keeps a free flush's empty list, so each flush's items sit at its index", () => {

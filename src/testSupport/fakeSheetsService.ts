@@ -3,6 +3,7 @@ import { Obj } from "@byronbroughten/utils/obj";
 import {
   GoogleSheetsAPI,
   type ModeledRequestVerb,
+  type SheetsAdvancedTransport,
 } from "../00_Source/GoogleSheets/GoogleSheetsAPI";
 import { installRawSource } from "../00_Source/RawSource/RawSource";
 import { cellReplays } from "./fakeSheetsService/cellReplays";
@@ -194,6 +195,8 @@ export interface FakeSheetsService {
   getByDataFilterCalls: object[];
   /** The params of every `Sheets.Spreadsheets.get` call, in call order. */
   getCalls: { fields?: string }[];
+  /** The fake Sheets service itself, for a read under a field mask the installed adapter doesn't send. */
+  sheets: SheetsAdvancedTransport;
 }
 
 /**
@@ -211,7 +214,11 @@ export function buildGridRows(
   ]);
 }
 
-function fakeCellToGoogleCellData(cell: FakeCell): GoogleCellData {
+// Like Google: under userEnteredValue(formulaValue), a non-formula value comes back as {}; observed: docs/sheets-behaviour.md#reading-formula-text-beside-effective-values.
+function fakeCellToGoogleCellData(
+  cell: FakeCell,
+  isFormulaOnlyMask: boolean,
+): GoogleCellData {
   if (cell === null) {
     return {};
   }
@@ -224,6 +231,8 @@ function fakeCellToGoogleCellData(cell: FakeCell): GoogleCellData {
     data.userEnteredValue = {
       formulaValue: rich.formula ?? formulaText(rich.value),
     };
+  } else if (isFormulaOnlyMask && rich.value !== null) {
+    data.userEnteredValue = {};
   }
   if (rich.numberFormatType) {
     data.effectiveFormat = {
@@ -260,11 +269,10 @@ function fakeValueToExtendedValue(
   return { boolValue: value };
 }
 
-function fakeRowsToGoogleSheetData({
-  rows,
-  rowsWithNoGridData = [],
-  rowsWithNoGridBlock = [],
-}: FakeSheetState): GoogleAppsScript.Sheets.Schema.Sheet["data"] | undefined {
+function fakeRowsToGoogleSheetData(
+  { rows, rowsWithNoGridData = [], rowsWithNoGridBlock = [] }: FakeSheetState,
+  isFormulaOnlyMask: boolean,
+): GoogleAppsScript.Sheets.Schema.Sheet["data"] | undefined {
   if (rows.length === 0) {
     return undefined;
   }
@@ -312,7 +320,7 @@ function fakeRowsToGoogleSheetData({
       values: Array.from(
         { length: columnCount },
         (_, colIndex): GoogleCellData =>
-          fakeCellToGoogleCellData(row[colIndex] ?? null),
+          fakeCellToGoogleCellData(row[colIndex] ?? null, isFormulaOnlyMask),
       ),
     });
   });
@@ -356,6 +364,8 @@ export function stubSheetsService(
       fields.includes("gridProperties(rowCount,columnCount");
     const includeTabProperties =
       fields === undefined || fields.includes("hidden,tabColorStyle");
+    const isFormulaOnlyMask =
+      fields?.includes("userEnteredValue(formulaValue)") ?? false;
     return {
       ...(includeTimeZone ? { properties: { timeZone } } : {}),
       sheets: spreadsheet.sheets.map(
@@ -383,7 +393,7 @@ export function stubSheetsService(
                 }
               : {}),
           },
-          data: fakeRowsToGoogleSheetData(s),
+          data: fakeRowsToGoogleSheetData(s, isFormulaOnlyMask),
           tables: googleTables(s),
           ...(includeConditionalFormats && s.conditionalFormats?.length
             ? { conditionalFormats: s.conditionalFormats }
@@ -436,6 +446,7 @@ export function stubSheetsService(
     grid: gridView.build(spreadsheet),
     getByDataFilterCalls,
     getCalls,
+    sheets: service,
   };
 }
 

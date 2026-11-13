@@ -1140,6 +1140,16 @@ describe("GoogleSheetsAPI time zone read", () => {
     });
   });
 
+  it("leaves each cell's formula out of the Apps Script host's plain grid read", () => {
+    const { api, getByDataFilterFields } = recordingSheets();
+
+    api.fetchGrid([{ sheetId: 1 }], { includeProgrammaticFacts: false });
+
+    expect(getByDataFilterFields[0]).toContain(
+      "rowData(values(effectiveValue)))",
+    );
+  });
+
   it("maps the payload's time zone onto the snapshot", () => {
     const { api } = recordingSheets({
       properties: { timeZone: "Europe/Paris" },

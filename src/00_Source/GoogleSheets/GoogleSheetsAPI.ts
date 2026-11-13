@@ -102,14 +102,40 @@ const fieldMasks = {
     "tables(tableId,name,range,columnProperties(columnIndex,columnName,columnType,dataValidationRule(condition(type,values(userEnteredValue)))))," +
     "data(startColumn,startRow,columnMetadata,rowData(values(effectiveValue,userEnteredValue,effectiveFormat(numberFormat(type)),dataValidation(condition(type)))))" +
     ")",
-  gridWithoutProgrammaticFacts:
+  gridWithoutProgrammaticFacts: plainGridMask("effectiveValue"),
+  // A non-formula cell comes back as userEnteredValue {}; observed: docs/sheets-behaviour.md#reading-formula-text-beside-effective-values.
+  gridWithFormulas: plainGridMask(
+    "effectiveValue,userEnteredValue(formulaValue)",
+  ),
+} as const;
+
+function plainGridMask(cellFields: string): string {
+  return (
     `${timeZoneMask},` +
     "sheets(" +
     `${sheetPropertiesMask},` +
     "tables(tableId,name,range,columnProperties(columnIndex,columnType))," +
-    "data(startColumn,startRow,columnMetadata,rowData(values(effectiveValue)))" +
-    ")",
-} as const;
+    `data(startColumn,startRow,columnMetadata,rowData(values(${cellFields})))` +
+    ")"
+  );
+}
+
+interface GridMasks {
+  withProgrammaticFacts: string;
+  withoutProgrammaticFacts: string;
+}
+
+// The Node host's gate judges entered data per cell, so its default read carries each cell's formula.
+const gridMasksByHost: Record<"appsScript" | "nodeHost", GridMasks> = {
+  appsScript: {
+    withProgrammaticFacts: fieldMasks.gridWithProgrammaticFacts,
+    withoutProgrammaticFacts: fieldMasks.gridWithoutProgrammaticFacts,
+  },
+  nodeHost: {
+    withProgrammaticFacts: fieldMasks.gridWithProgrammaticFacts,
+    withoutProgrammaticFacts: fieldMasks.gridWithFormulas,
+  },
+};
 
 export interface SheetsHttpRequest {
   method: "GET" | "POST";
@@ -163,15 +189,25 @@ export interface SheetsAdvancedTransport {
 export class GoogleSheetsAPI implements RawSource {
   private sheets: SheetsAdvancedTransport;
   private spreadsheetId: string;
-  constructor(sheets: SheetsAdvancedTransport, spreadsheetId: string) {
+  private gridMasks: GridMasks;
+  constructor(
+    sheets: SheetsAdvancedTransport,
+    spreadsheetId: string,
+    gridMasks: GridMasks,
+  ) {
     this.sheets = sheets;
     this.spreadsheetId = spreadsheetId;
+    this.gridMasks = gridMasks;
   }
   static init(
     sheets: SheetsAdvancedTransport,
     spreadsheetId: string,
   ): GoogleSheetsAPI {
-    return new GoogleSheetsAPI(sheets, spreadsheetId);
+    return new GoogleSheetsAPI(
+      sheets,
+      spreadsheetId,
+      gridMasksByHost.appsScript,
+    );
   }
   static forAppsScript(): GoogleSheetsAPI {
     const spreadsheetId = AppsScript.boundSpreadsheetId();
@@ -181,9 +217,10 @@ export class GoogleSheetsAPI implements RawSource {
     );
   }
   static initHttp(props: GoogleSheetsAPIHttpProps): GoogleSheetsAPI {
-    return GoogleSheetsAPI.init(
+    return new GoogleSheetsAPI(
       httpSheetsTransport(props),
       props.spreadsheetId,
+      gridMasksByHost.nodeHost,
     );
   }
   fetchSheetProperties(
@@ -215,7 +252,7 @@ export class GoogleSheetsAPI implements RawSource {
         },
         this.spreadsheetId,
         {
-          fields: gridFields(options),
+          fields: this._gridFields(options),
         },
       ),
     );
@@ -259,6 +296,11 @@ export class GoogleSheetsAPI implements RawSource {
   // The Sheets service has no toast, so this needs the Apps Script host; only an endpoint run toasts.
   toast(message: string): void {
     AppsScript.toast(message);
+  }
+  private _gridFields(options: GridFetchOptions): string {
+    return options.includeProgrammaticFacts
+      ? this.gridMasks.withProgrammaticFacts
+      : this.gridMasks.withoutProgrammaticFacts;
   }
   private _fetchSheets(fields: string): GoogleSheet[] {
     return Val.assert(
@@ -335,12 +377,6 @@ function httpSheetsTransport(
         ),
     },
   };
-}
-
-function gridFields(options: GridFetchOptions): string {
-  return options.includeProgrammaticFacts
-    ? fieldMasks.gridWithProgrammaticFacts
-    : fieldMasks.gridWithoutProgrammaticFacts;
 }
 
 function localOperationToGoogleRequests(
