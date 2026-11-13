@@ -63,26 +63,30 @@ function columnChanges({
   before,
   after,
 }: ColumnChangesProps): SyncTypedTraitChange[] {
-  const traits = [
-    {
-      trait: "columnType",
-      from: before.config.columnType.type ?? "untyped",
-      to: after.config.columnType.type ?? "untyped",
-    },
-    {
-      trait: "valueName",
-      from: before.config.valueName,
-      to: after.config.valueName,
-    },
-    { trait: "options", from: optionsOf(before), to: optionsOf(after) },
-  ];
-  const [columnType, valueName, options] = traits;
+  const columnType = {
+    trait: "columnType",
+    from: columnTypeOf(before),
+    to: columnTypeOf(after),
+  };
   // A column type change usually renames the value too, so one line says it.
   const reported =
-    columnType.from === columnType.to ? [valueName, options] : [columnType];
+    columnType.from === columnType.to
+      ? [
+          {
+            trait: "valueName",
+            from: before.config.valueName,
+            to: after.config.valueName,
+          },
+          { trait: "options", from: optionsOf(before), to: optionsOf(after) },
+        ]
+      : [columnType];
   return reported
     .filter(({ from, to }) => from !== to)
     .map((traitChange) => ({ table, column, ...traitChange }));
+}
+
+function columnTypeOf({ config }: ColumnSide): string {
+  return config.columnType?.type ?? "untyped";
 }
 
 function previousColumn(
