@@ -408,6 +408,14 @@ function tableRefusalText(
   const { table } = refusal;
   if (refusal.kind === "noApiAccess") {
     return [
+      `${table} has no API access, so sync has nothing to compare it against: grant \`letApiAccess\` first.`,
+      `Granting access takes its own run: take this entry out, put letApiAccess: true on ${table}, and run sync.`,
+      "Other Tables' entries may share that run.",
+      `Put this entry back in a later run, once ${table}'s columns are in idNameMap.ts.`,
+    ];
+  }
+  if (refusal.kind === "besideGrant") {
+    return [
       `${table} has no API access yet, so sync has nothing to compare its columns against.`,
       `Granting access takes its own run: keep letApiAccess: true on ${table}, take this entry out, and run sync.`,
       "Other Tables' entries may share that run.",

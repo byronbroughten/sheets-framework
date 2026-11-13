@@ -1,13 +1,19 @@
 import { Val } from "@byronbroughten/utils/val";
 
+import type {
+  ApiAccessChanges,
+  ApiAccessGrant,
+} from "../01_SpreadsheetSchema/configReaders/apiAccessChanges";
 import {
   makeImportLine,
   type TableConfigsBase,
 } from "../01_SpreadsheetSchema/configReaders/makeConfigs";
+import type { SyncHeadRowsStop } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
 import {
   configRetiredIdPrefixes,
   tableConfigsByTableId,
 } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
+import { headerZone } from "../01_SpreadsheetSchema/headerZone";
 import {
   idPrefixes,
   IdPrefixesByTableId,
@@ -33,11 +39,41 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
   get ss(): SpreadsheetNamed {
     return new SpreadsheetNamed(this.spreadsheetNamedProps);
   }
-  // The previous configs' order, so a quiet run leaves the generated files unchanged.
+  // The previous configs' order, then this run's grants, so a quiet run leaves the generated files unchanged.
   tableIdsApiAccesses(): string[] {
-    return [...tableConfigsByTableId().keys()].filter((tableId) =>
-      this.ss.raw.tableIdIsActive(tableId),
+    const { grantedTableIds, revokedTableIds } =
+      this.configSyncState.apiAccessSync;
+    return [...tableConfigsByTableId().keys(), ...grantedTableIds].filter(
+      (tableId) =>
+        !revokedTableIds.has(tableId) && this.ss.raw.tableIdIsActive(tableId),
     );
+  }
+  recordApiAccessChanges({ grants, revokedTableIds }: ApiAccessChanges): this {
+    const { apiAccessSync } = this.configSyncState;
+    for (const { tableId } of grants) {
+      apiAccessSync.grantedTableIds.add(tableId);
+    }
+    for (const tableId of revokedTableIds) {
+      apiAccessSync.revokedTableIds.add(tableId);
+    }
+    return this;
+  }
+  // A grant writes head rows above the header, so its header must sit where they fit.
+  grantHeadRowStops(grants: ApiAccessGrant[]): SyncHeadRowsStop[] {
+    const { raw } = this.ss;
+    return grants.flatMap(({ tableId, table }): SyncHeadRowsStop[] => {
+      if (!raw.tableIdIsActive(tableId)) return [];
+      const { startRowIndex, sheetGid } = raw.table(tableId);
+      if (headerZone.holdsHeaderRow(startRowIndex)) return [];
+      return [
+        {
+          kind: "headRows",
+          table,
+          tab: raw.sheet(sheetGid).title,
+          headerRow: startRowIndex + 1,
+        },
+      ];
+    });
   }
   validateHeadRowsClear(): void {
     this.ss.raw.validateHeadRowsClear(this.tableIdsApiAccesses());

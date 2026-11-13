@@ -5,6 +5,7 @@ import { entriesOf, type WideAlterations } from "./SyncPlanner/wideAlterations";
 import type {
   ForcedTrait,
   SyncConflict,
+  SyncHeadRowsStop,
   SyncHeldBackTrait,
   SyncPlanItem,
   SyncRefusal,
@@ -36,6 +37,8 @@ export interface SyncPlannerProps {
 export interface PlanProps {
   previous: TraitReadings;
   live: TraitReadings;
+  // Stops found reading the sheet, outside the comparison, that still stop every send.
+  headRowStops?: SyncHeadRowsStop[];
 }
 
 export interface SyncPlannerResult extends Pick<
@@ -131,7 +134,7 @@ export class SyncPlanner {
   get refusals(): SyncRefusal[] {
     return this._deletionRefuser.refusals;
   }
-  plan({ previous, live }: PlanProps): SyncPlannerResult {
+  plan({ previous, live, headRowStops = [] }: PlanProps): SyncPlannerResult {
     const stops: SyncConflict[] = [];
     const sends: SyncPlanItem[] = [];
     const forced: ForcedTrait[] = [];
@@ -167,7 +170,7 @@ export class SyncPlanner {
         heldBack.push({ intended, agreed: stop.agreed });
       }
     });
-    const isStopped = stops.length > 0;
+    const isStopped = stops.length + headRowStops.length > 0;
     const forcedNotHeld = new Set(
       forced.map((trait) => addressKey({ kind: "column", ...trait })),
     );
@@ -175,7 +178,7 @@ export class SyncPlanner {
       ({ intended }) => isStopped || !forcedNotHeld.has(addressKey(intended)),
     );
     return {
-      stops,
+      stops: [...headRowStops, ...stops],
       isStopped,
       plan: sends,
       configs: {

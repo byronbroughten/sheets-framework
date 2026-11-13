@@ -24,6 +24,8 @@ export interface ConfigSyncState {
     emptyValueAllowedByIds: EmptyValueAllowedByIds;
   };
   valueConfigSync: { valueSources: ValueSource[] };
+  // This run's grants and revokes, set only once they are sure to be sent.
+  apiAccessSync: { grantedTableIds: Set<string>; revokedTableIds: Set<string> };
 }
 
 export interface OperatorProps extends SpreadsheetNamedProps {
@@ -50,6 +52,7 @@ export class SpreadsheetBaseOperator extends SpreadsheetBaseNamed {
         emptyValueAllowedByIds: new Map(),
       },
       valueConfigSync: { valueSources: [] },
+      apiAccessSync: { grantedTableIds: new Set(), revokedTableIds: new Set() },
     };
   }
   static initOperatorProps(): OperatorProps {

@@ -1,3 +1,8 @@
+import {
+  type ApiAccessChanges,
+  apiAccessChanges,
+  withApiAccessReadings,
+} from "../01_SpreadsheetSchema/configReaders/apiAccessChanges";
 import { columnConfigsByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
 import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister";
 import type { IdNameMapGeneric } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
@@ -126,11 +131,20 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     if (refusals.length > 0) {
       return { result: resultBuilder.refused(refusals) };
     }
+    const accessChanges = apiAccessChanges({
+      alterations,
+      idNameMap: props.previousIdNameMap,
+    });
     this._readLive();
     // The ID-prefix guard runs before the column-ID write it guards.
     this.tableConfigOperator.validateIdPrefixesUnchanged();
     const readings = this.columnConfigOperator.emptyValueAllowedReadings();
-    const planned = planner.plan(readings);
+    const planned = planner.plan({
+      ...withApiAccessReadings(readings, props.previousIdNameMap),
+      headRowStops: this.tableConfigOperator.grantHeadRowStops(
+        accessChanges.grants,
+      ),
+    });
     // The gate's holds go here, between the plan and the apply.
     const isApplying = props.isSending && !planned.isStopped;
     // An unstopped dry run records the live readings: configTraits carry sends it won't make.
@@ -139,6 +153,8 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         ? planned.configTraits
         : readings.live,
     );
+    // Grants join only on an unstopped send, so a dry run never records a Table with no column IDs.
+    if (isApplying) this._applyApiAccessChanges(accessChanges);
     // Column IDs only on an unstopped send: one minted by any other run would reach the configs but never the sheet.
     if (isApplying) this.columnConfigOperator.addMissingColumnIds();
     const notes = this._recordUntypedColumns();
@@ -175,6 +191,14 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     this.tableConfigOperator.validateHeadRowsClear();
     this.tableConfigOperator.validateHeadersInZone();
     this.columnConfigOperator.fetchHeadRows();
+  }
+  private _applyApiAccessChanges(accessChanges: ApiAccessChanges): void {
+    this.tableConfigOperator.recordApiAccessChanges(accessChanges);
+    if (accessChanges.grants.length === 0) return;
+    this.tableConfigOperator.validateHeadRowsClear();
+    this.columnConfigOperator.fetchHeadRowsOf(
+      accessChanges.grants.map(({ tableId }) => tableId),
+    );
   }
   private _recordUntypedColumns(): string[] {
     const untypedColumnsSummary = this.columnConfigOperator

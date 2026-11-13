@@ -139,7 +139,10 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
     }
   }
   fetchHeadRows(): this {
-    this.tableIdsApiAccesses.forEach((tableId) => {
+    return this.fetchHeadRowsOf([...this.tableIdsApiAccesses]);
+  }
+  fetchHeadRowsOf(tableIds: string[]): this {
+    for (const tableId of tableIds) {
       const table = this.ss.raw.table(tableId);
       // hasIdColumn samples this row after API access is known.
       table.headRow("header").gatherFetchFull();
@@ -147,7 +150,7 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
       table.headRow("action").gatherFetchFull();
       table.headRow("groupHeading1").gatherFetchFull();
       table.topRow.gatherFetchFull();
-    });
+    }
     this.ss.identified.fetchAllGathered(true);
     return this;
   }

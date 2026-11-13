@@ -49,16 +49,6 @@ describe("SyncEntryRefuser, a Table or tab that no longer exists", () => {
     ).toEqual([{ kind: "noSuchTable", entry: "tabs", name: "vendors" }]);
   });
 
-  it("accepts a Table with no API access, which only the map holds", () => {
-    expect(
-      refusals({
-        alterations: {
-          tables: { log: { columns: { x: { emptyValueAllowed: true } } } },
-        },
-      }),
-    ).toEqual([]);
-  });
-
   it("names only the missing Table for an entry with other traits too", () => {
     expect(
       refusals({
@@ -131,22 +121,20 @@ describe("SyncEntryRefuser, traits not sendable yet", () => {
           tables: {
             item: {
               name: "thing",
-              letApiAccess: true,
+              deleted: true,
               newColumns: [{ header: "New" }],
               conditionalFormats: { add: [] },
               columns: { count: { deleted: true } },
             },
-            log: { deleted: true },
           },
         },
       }),
     ).toEqual([
       { kind: "notSendableYet", table: "item", path: "name" },
-      { kind: "notSendableYet", table: "item", path: "letApiAccess" },
+      { kind: "notSendableYet", table: "item", path: "deleted" },
       { kind: "notSendableYet", table: "item", path: "newColumns" },
       { kind: "notSendableYet", table: "item", path: "conditionalFormats" },
       { kind: "notSendableYet", table: "item", path: "count.deleted" },
-      { kind: "notSendableYet", table: "log", path: "deleted" },
     ]);
   });
 
@@ -179,5 +167,56 @@ describe("SyncEntryRefuser, traits not sendable yet", () => {
 
   it("refuses nothing for no intended state", () => {
     expect(refusals({})).toEqual([]);
+  });
+});
+
+describe("SyncEntryRefuser, API access", () => {
+  it("lets a grant and a revoke through", () => {
+    expect(
+      refusals({
+        alterations: {
+          tables: {
+            log: { letApiAccess: true },
+            item: { letApiAccess: false },
+          },
+        },
+      }),
+    ).toEqual([]);
+  });
+
+  it("refuses every entry on a Table without API access, other than a grant", () => {
+    expect(
+      refusals({
+        alterations: {
+          tables: {
+            log: {
+              name: "journal",
+              columns: { x: { emptyValueAllowed: true } },
+            },
+          },
+        },
+      }),
+    ).toEqual([
+      { kind: "noApiAccess", table: "log", path: "name" },
+      { kind: "noApiAccess", table: "log", path: "x.emptyValueAllowed" },
+    ]);
+  });
+
+  it("refuses any other entry on a Table being granted, and allows other Tables' entries beside it", () => {
+    expect(
+      refusals({
+        alterations: {
+          tables: {
+            log: {
+              letApiAccess: true,
+              columns: { x: { emptyValueAllowed: true } },
+            },
+            item: { columns: { name: { emptyValueAllowed: true } } },
+          },
+        },
+      }),
+    ).toEqual([
+      { kind: "besideGrant", table: "log", path: "x.emptyValueAllowed" },
+    ]);
   });
 });

@@ -94,12 +94,28 @@ describe("remainingAlterations", () => {
     });
   });
 
-  it("throws on a landed subject that isn't a column trait", () => {
-    expect(() =>
-      remainingAlterations({}, [{ table: "item", path: "name" }]),
-    ).toThrow("column trait");
+  it("removes a landed Table trait, and the entry once it is empty", () => {
+    const alterations = remainingAlterations(
+      {
+        tables: {
+          item: { letApiAccess: true },
+          log: { letApiAccess: false, name: "journal" },
+        },
+      },
+      [
+        { table: "item", path: "letApiAccess" },
+        { table: "log", path: "letApiAccess" },
+      ],
+    );
+    expect(alterations).toEqual({ tables: { log: { name: "journal" } } });
+  });
+
+  it("throws on a landed subject that isn't a Table's or column's trait", () => {
+    expect(() => remainingAlterations({}, [{ table: "item" }])).toThrow(
+      "column's trait",
+    );
     expect(() => remainingAlterations({}, [{ tab: "itemTab" }])).toThrow(
-      "column trait",
+      "column's trait",
     );
   });
 });
