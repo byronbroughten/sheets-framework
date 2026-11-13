@@ -42,6 +42,7 @@ beforeEach(() => {
 interface ItemSheetOptions {
   columns?: Record<string, FakeTableColumn>; // Replaces a configured column by name, or adds one after them.
   startRowIndex?: number;
+  columnTypes?: Record<number, string>; // By absolute column index.
 }
 
 // The dev Item Table as the previous configs record it, so every run starts quiet.
@@ -59,6 +60,7 @@ function itemSheet(options: ItemSheetOptions = {}): FakeSheetProperties {
     columnNames: Object.keys(sheetColumns),
     bodyRows: [{}],
     startRowIndex: options.startRowIndex,
+    columnTypes: options.columnTypes,
   });
 }
 
@@ -204,13 +206,13 @@ function emptyValueAllowedOf(
   return JSON.parse(Val.assert(match?.[1], "emitted emptyValueAllowed"));
 }
 
-describe("SyncCoordinator.run", () => {
-  const optionalNoteAlteration: PendingAlterations = {
-    tables: {
-      item: { columns: { optionalNote: { emptyValueAllowed: false } } },
-    },
-  };
+const optionalNoteAlteration: PendingAlterations = {
+  tables: {
+    item: { columns: { optionalNote: { emptyValueAllowed: false } } },
+  },
+};
 
+describe("SyncCoordinator.run", () => {
   it("lands an emptyValueAllowed alteration in the configs, writing nothing to the sheet, and removes it from alterations.ts", () => {
     const { batchUpdateCount } = seedFixture();
 
@@ -371,6 +373,46 @@ describe("SyncCoordinator.run", () => {
       outcome: { kind: "refused" },
       refusals: [{ kind: "noSuchTable", entry: "tables", name: "noSuchTable" }],
     });
+  });
+});
+
+describe("SyncCoordinator.run typed trait changes", () => {
+  // Item's requiredCount is the second column, recorded as DOUBLE.
+  const itemTypes = { 0: "TEXT", 1: "DOUBLE", 2: "TEXT", 3: "TEXT" };
+
+  it("lists nothing on a quiet run", () => {
+    seedFixture({ item: { columnTypes: itemTypes } });
+
+    const { result } = runItem({ isSending: false });
+
+    expect(result.configs.typedTraitChanges).toEqual([]);
+  });
+
+  it("lists a person's column type change with from and to", () => {
+    seedFixture({ item: { columnTypes: { ...itemTypes, 1: "CURRENCY" } } });
+
+    const { result } = runItem({ isSending: false });
+
+    expect(result.configs.typedTraitChanges).toEqual([
+      {
+        table: "item",
+        column: "requiredCount",
+        trait: "columnType",
+        from: "DOUBLE",
+        to: "CURRENCY",
+      },
+    ]);
+  });
+
+  it("doesn't list a sent alteration", () => {
+    seedFixture({ item: { columnTypes: itemTypes } });
+
+    const { result } = runItem({
+      isSending: true,
+      alterations: optionalNoteAlteration,
+    });
+
+    expect(result.configs.typedTraitChanges).toEqual([]);
   });
 });
 

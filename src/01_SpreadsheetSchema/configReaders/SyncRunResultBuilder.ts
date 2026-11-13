@@ -8,6 +8,7 @@ import type {
   SyncRunResult,
   SyncSendOutcome,
   SyncSendResult,
+  SyncTypedTraitChange,
 } from "./syncRunResult";
 
 export interface SyncRunResultBuilderProps {
@@ -18,12 +19,14 @@ export interface SyncRunResultBuilderProps {
 export interface SyncRunPlanned {
   planned: SyncPlannerResult;
   notes: string[];
+  typedTraitChanges: SyncTypedTraitChange[];
 }
 
 interface SyncRunCommonProps {
   refusals: SyncRefusal[];
   planned?: SyncPlannerResult;
   notes: string[];
+  typedTraitChanges: SyncTypedTraitChange[];
 }
 
 // Builds one run's SyncRunResult from its mode and frame; the fields later tickets fill stay empty.
@@ -38,11 +41,16 @@ export class SyncRunResultBuilder {
     return new SyncRunResultBuilder(props);
   }
   refused(refusals: SyncRefusal[]): SyncRunResult {
-    const common = this._common({ refusals, notes: [] });
+    const common = this._common({ refusals, notes: [], typedTraitChanges: [] });
     return this._unsent(common, { kind: "refused" });
   }
-  ran({ planned, notes }: SyncRunPlanned): SyncRunResult {
-    const common = this._common({ refusals: [], planned, notes });
+  ran({ planned, notes, typedTraitChanges }: SyncRunPlanned): SyncRunResult {
+    const common = this._common({
+      refusals: [],
+      planned,
+      notes,
+      typedTraitChanges,
+    });
     if (planned.isStopped) return this._unsent(common, { kind: "stopped" });
     if (!this.isSending) return dryRunResult(common, { kind: "ready" });
     return {
@@ -61,6 +69,7 @@ export class SyncRunResultBuilder {
     refusals,
     planned,
     notes,
+    typedTraitChanges,
   }: SyncRunCommonProps): SyncRunCommon {
     return {
       ...this.frame,
@@ -74,7 +83,7 @@ export class SyncRunResultBuilder {
         renamed: [],
         namesMoved: [],
         rewrites: [],
-        typedTraitChanges: [],
+        typedTraitChanges,
         notes,
       },
     };

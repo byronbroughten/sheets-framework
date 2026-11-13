@@ -1,3 +1,5 @@
+import { columnConfigsByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
+import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister";
 import type { IdNameMapGeneric } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
 import type { PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState";
 import { remainingAlterations } from "../01_SpreadsheetSchema/configReaders/remainingAlterations";
@@ -8,6 +10,7 @@ import type {
   SyncRunResult,
 } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
 import { SyncRunResultBuilder } from "../01_SpreadsheetSchema/configReaders/SyncRunResultBuilder";
+import { typedTraitChanges } from "../01_SpreadsheetSchema/configReaders/typedTraitChanges";
 import {
   SpreadsheetBaseNamed,
   type SpreadsheetNamedProps,
@@ -141,6 +144,17 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     const notes = this._recordUntypedColumns();
     if (isApplying) this.ss.batchUpdateGSheets();
     this.valueConfigOperator.fetchAfterColumnConfigSynced();
+    const changes = typedTraitChanges({
+      previous: {
+        columnConfigs: columnConfigsByName(),
+        valueConfigs: installedConfigs().valueConfigs,
+      },
+      regenerated: {
+        columnConfigs: this.columnConfigOperator.newColumnConfigs(),
+        valueConfigs: this.valueConfigOperator.newValueConfigs(),
+      },
+      sent: isApplying ? planned.plan.map(({ subject }) => subject) : [],
+    });
     const files = this._configFiles();
     // The row-ID fill goes here: its own send, planned from the fresh configs.
     if (isApplying && planned.plan.length > 0) {
@@ -151,7 +165,10 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         ),
       );
     }
-    return { result: resultBuilder.ran({ planned, notes }), files };
+    return {
+      result: resultBuilder.ran({ planned, notes, typedTraitChanges: changes }),
+      files,
+    };
   }
   private _readLive(): void {
     this.ss.fetchAllSheetProperties({ includeConditionalFormats: true });
