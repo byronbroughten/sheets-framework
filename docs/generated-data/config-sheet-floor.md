@@ -16,7 +16,7 @@ A deleted Spreadsheet Config, Table Config or Column Config tab is created at it
 
 ## A regeneration refuses a changed floor identity
 
-A floor tab's GID, Table ID and ID prefix and a floor column's column ID are its identity, so `gen:configs` compares each with the previous generated files before writing them and refuses, naming what changed and what it was, when one differs; a floor tab or column absent from the previous files is skipped, and a non-floor sheet's changed ID prefix is still only reported.
+A floor tab's GID, Table ID and ID prefix and a floor column's column ID are its identity, so `sync` compares each with the previous generated files before writing them and refuses, naming what changed and what it was, when one differs; a floor tab or column absent from the previous files is skipped, and a non-floor sheet's changed ID prefix is still only reported.
 
 ## A regeneration refuses a floor entry that differs from the seed
 

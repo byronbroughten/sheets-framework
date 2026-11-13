@@ -29,7 +29,7 @@ Per column, `columnId`/`valueName`/`header`/`isFormula`/`emptyValueAllowed` are 
 
 ## `isFormula` is sampled
 
-**`isFormula` is *sampled* — read off the described column's top data-row cell at emit time (`column.profile.isFormula`), not declared, and not stored on Column Config** — so it can flip between regenerations if someone edits that cell. Fine as data; treat it with care as a *type* axis, since a routine `gen:configs` run can then change which columns satisfy a constraint, and the resulting error surfaces far from the spreadsheet edit that caused it.
+**`isFormula` is *sampled* — read off the described column's top data-row cell at emit time (`column.profile.isFormula`), not declared, and not stored on Column Config** — so it can flip between regenerations if someone edits that cell. Fine as data; treat it with care as a *type* axis, since a routine `sync` run can then change which columns satisfy a constraint, and the resulting error surfaces far from the spreadsheet edit that caused it.
 
 ## A boolean trait keeps its literal type
 
@@ -55,7 +55,7 @@ The sync resolves it in six steps, first match winning: the ID column is always 
 
 ## The untyped-columns summary
 
-Because a column left on Automatic with no mapped format and no Insert > Checkbox declares nothing, the sample is still doing real work: **the sync counts every column whose value name it had to guess and returns a one-line summary**, naming how many Tables they span; the per-Table breakdown goes to the log. The regen never fails over an untyped column — a send also writes missing column IDs, and a throw would discard that. The summary rides back in the run's result as a note in `configs.notes`, and `npm run gen:configs` prints every note in its report's Configs section. **The agent must report that count**, per `gen:configs`' standing permission in the byro-repo root's `docs/targets-and-gates.md`.
+Because a column left on Automatic with no mapped format and no Insert > Checkbox declares nothing, the sample is still doing real work: **the sync counts every column whose value name it had to guess and returns a one-line summary**, naming how many Tables they span; the per-Table breakdown goes to the log. The regen never fails over an untyped column — a send also writes missing column IDs, and a throw would discard that. The summary rides back in the run's result as a note in `configs.notes`, and `npm run sync` prints every note in its report's Configs section. **The agent must report that count**, per `app:gen:configs`' standing permission in the byro-repo root's `docs/targets-and-gates.md`.
 
 ## The generated entry never says which step decided it
 

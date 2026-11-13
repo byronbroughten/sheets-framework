@@ -4,31 +4,233 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { Str } from "@byronbroughten/utils/str";
-import { beforeAll, describe, expect, it } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 
 import { appConfigs } from "../dev/generated/appConfigs.ts";
 import type { IdNameMapGeneric } from "../src/01_SpreadsheetSchema/configReaders/idNameMapTypes.ts";
+import type {
+  SyncDryRunResult,
+  SyncRunResult,
+  SyncSendResult,
+} from "../src/01_SpreadsheetSchema/configReaders/syncRunResult.ts";
 import {
   alterationsFileSource,
   columnIdsByName,
 } from "../src/05_Operators/configFileSource.ts";
 import { parseIdNameMapFileSource } from "../src/05_Operators/parseIdNameMapFileSource.ts";
+import type {
+  ConfigRegeneration,
+  SyncRun,
+} from "../src/05_Operators/SyncCoordinator.ts";
+import type { SheetsConfig } from "./sheetsConfig.ts";
 import {
   alterationsPath,
   alterationsText,
   appConfigsText,
+  ConfigFilesGenerator,
   idNameMapPath,
   loadIntendedState,
   loadPreviousIdNameMap,
-} from "./genConfigs.ts";
+} from "./sync.ts";
 
 const devGeneratedDir = fileURLToPath(
   new URL("../dev/generated", import.meta.url),
 );
 const devIdNameMapPath = idNameMapPath(devGeneratedDir);
 const devAlterationsPath = alterationsPath(devGeneratedDir);
-const missingFilesDir = mkdtempSync(join(tmpdir(), "gen-configs-"));
-const fixtureAlterationsDir = mkdtempSync(join(tmpdir(), "gen-configs-"));
+const missingFilesDir = mkdtempSync(join(tmpdir(), "sync-"));
+const fixtureAlterationsDir = mkdtempSync(join(tmpdir(), "sync-"));
+
+// The diff shells out to git, which the exit code doesn't depend on.
+vi.mock("./configsDiff.ts", () => ({ readConfigsDiff: () => [] }));
+
+const runDir = mkdtempSync(join(tmpdir(), "sync-"));
+const runSheetsConfig: SheetsConfig = {
+  path: join(runDir, "sheets.config.json"),
+  dir: runDir,
+  spreadsheetId: "unused",
+  generatedDir: join(runDir, "generated"),
+  choreHomes: [],
+  endpointModule: undefined,
+};
+
+const regeneratedFiles: ConfigRegeneration = {
+  tableConfigs: "",
+  tabConfigs: "",
+  conditionalFormatConfigs: "",
+  retiredIdPrefixes: "",
+  columnConfigs: "",
+  valueConfigs: "",
+  idNameMap: "",
+};
+
+const dryRunResult = {
+  mode: "dry run",
+  target: "dev",
+  command: "npm run sync",
+  generatedDir: "dev/generated/",
+  alterationsPath: "dev/alterations.ts",
+  checks: [],
+  refusals: [],
+  stops: [],
+  plan: [],
+  notices: [],
+  configs: {
+    heldBack: [],
+    renamed: [],
+    namesMoved: [],
+    rewrites: [],
+    typedTraitChanges: [],
+    notes: [],
+  },
+} as const satisfies Omit<SyncDryRunResult, "outcome">;
+
+const sendResult = {
+  ...dryRunResult,
+  mode: "send",
+  landed: [],
+  notSent: [],
+  didntLand: [],
+} as const satisfies Omit<SyncSendResult, "outcome">;
+
+interface ScriptRun {
+  run: SyncRun;
+  isTscPassing?: boolean;
+}
+
+// Runs the script past its live read: only the Node host's sync and the package's tsc are stood in for.
+async function exitCodeOf({
+  run,
+  isTscPassing = true,
+}: ScriptRun): Promise<number | string | null | undefined> {
+  const generator = ConfigFilesGenerator.init(runSheetsConfig, []);
+  vi.spyOn(generator, "_sync").mockResolvedValue(run);
+  vi.spyOn(generator, "_runTsc").mockReturnValue(isTscPassing);
+  await generator.run();
+  return process.exitCode;
+}
+
+describe("the sync script's exit code", () => {
+  beforeEach(() => {
+    vi.spyOn(console, "log").mockImplementation(() => undefined);
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+  });
+  afterEach(() => {
+    process.exitCode = undefined;
+    vi.restoreAllMocks();
+  });
+
+  it("is 0 for a dry run that is ready", async () => {
+    const result: SyncRunResult = {
+      ...dryRunResult,
+      outcome: { kind: "ready" },
+    };
+    expect(await exitCodeOf({ run: { result, files: regeneratedFiles } })).toBe(
+      0,
+    );
+  });
+
+  it("is 0 for a ready dry run with held items", async () => {
+    const held = { groups: [], fullListPath: "held.txt", token: "abc" };
+    const result: SyncRunResult = {
+      ...dryRunResult,
+      outcome: { kind: "ready" },
+      held,
+    };
+    expect(await exitCodeOf({ run: { result, files: regeneratedFiles } })).toBe(
+      0,
+    );
+  });
+
+  it("is 0 for a send where everything landed", async () => {
+    const result: SyncRunResult = {
+      ...sendResult,
+      outcome: { kind: "sent", summary: "1 sent" },
+    };
+    expect(await exitCodeOf({ run: { result, files: regeneratedFiles } })).toBe(
+      0,
+    );
+  });
+
+  it("is 1 for a stopped run, dry or sent", async () => {
+    const dryRun: SyncRunResult = {
+      ...dryRunResult,
+      outcome: { kind: "stopped" },
+    };
+    const send: SyncRunResult = { ...sendResult, outcome: { kind: "stopped" } };
+    expect(
+      await exitCodeOf({ run: { result: dryRun, files: regeneratedFiles } }),
+    ).toBe(1);
+    expect(
+      await exitCodeOf({ run: { result: send, files: regeneratedFiles } }),
+    ).toBe(1);
+  });
+
+  it("is 1 for a refused run, which writes no files", async () => {
+    const result: SyncRunResult = {
+      ...dryRunResult,
+      outcome: { kind: "refused" },
+    };
+    expect(await exitCodeOf({ run: { result } })).toBe(1);
+  });
+
+  it("is 1 for a send with an item that didn't land", async () => {
+    const result: SyncRunResult = {
+      ...sendResult,
+      outcome: { kind: "sent", summary: "0 sent" },
+      didntLand: [{ subject: { table: "item" }, what: "rename" }],
+    };
+    expect(await exitCodeOf({ run: { result, files: regeneratedFiles } })).toBe(
+      1,
+    );
+  });
+
+  it("is 1 for a send a held flush stopped before any flush landed", async () => {
+    const result: SyncRunResult = {
+      ...sendResult,
+      outcome: { kind: "stoppedBeforeSending", heldBy: "uncovered" },
+    };
+    expect(await exitCodeOf({ run: { result, files: regeneratedFiles } })).toBe(
+      1,
+    );
+  });
+
+  it("is 1 for a send a held flush stopped partway", async () => {
+    const result: SyncRunResult = {
+      ...sendResult,
+      outcome: {
+        kind: "stoppedPartway",
+        landedFlushes: 1,
+        flushCount: 2,
+        heldBy: "mismatched",
+      },
+    };
+    expect(await exitCodeOf({ run: { result, files: regeneratedFiles } })).toBe(
+      1,
+    );
+  });
+
+  it("is 1 when the package's tsc fails after a ready run", async () => {
+    const result: SyncRunResult = {
+      ...dryRunResult,
+      outcome: { kind: "ready" },
+    };
+    expect(
+      await exitCodeOf({
+        run: { result, files: regeneratedFiles },
+        isTscPassing: false,
+      }),
+    ).toBe(1);
+  });
+});
 
 describe("the dev package's generated files", () => {
   const { tableConfigs, columnConfigs } = appConfigs;

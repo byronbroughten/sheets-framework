@@ -296,7 +296,7 @@ function valueSection(name: string, changes: string[]): Section {
 export function runConfigsDiff(sheetsConfig: SheetsConfig): void {
   if (!hasPackageConfigs(sheetsConfig)) {
     throw new Error(
-      `configs:diff: no generated config files in ${sheetsConfig.generatedDir}; run gen:configs first.`,
+      `configs:diff: no generated config files in ${sheetsConfig.generatedDir}; run sync first.`,
     );
   }
   console.log(readConfigsDiff(sheetsConfig).join("\n"));

@@ -1329,7 +1329,7 @@ describe("SpreadsheetIdentified.fetchAllGathered, the placement check", () => {
       gatherEveryZone(ssi);
 
       expect(() => ssi.fetchAllGathered()).toThrowError(
-        /^1 managed Table\(s\) .*"Layout" \(gid \d+\) has no Table "layoutRight" with its header row on row 4 — move it back, or regenerate the configs with sheets-framework gen-configs if it is gone$/,
+        /^1 managed Table\(s\) .*"Layout" \(gid \d+\) has no Table "layoutRight" with its header row on row 4 — move it back, or regenerate the configs with sheets-framework sync if it is gone$/,
       );
       expect(batchUpdateCount()).toBe(0);
     });
@@ -1349,7 +1349,7 @@ describe("SpreadsheetIdentified.fetchAllGathered, the placement check", () => {
       gatherEveryZone(ssi);
 
       expect(() => ssi.fetchAllGathered()).toThrowError(
-        /^1 managed Table\(s\) .*"Layout" \(gid \d+\) needs its own "lyr" column IDs, and only those, in row 1 — move the Table back, or regenerate the configs with sheets-framework gen-configs$/,
+        /^1 managed Table\(s\) .*"Layout" \(gid \d+\) needs its own "lyr" column IDs, and only those, in row 1 — move the Table back, or regenerate the configs with sheets-framework sync$/,
       );
       expect(batchUpdateCount()).toBe(0);
     });
@@ -1390,7 +1390,7 @@ describe("SpreadsheetIdentified.batchUpdateGSheets, a column insert, which uses 
       .appendColumn({ columnId: "c:lyl:new", header: "New" });
 
     expect(() => ssi.batchUpdateGSheets()).toThrowError(
-      /^Inserting a column at the end of Table "layoutLeft" on sheet "Layout" needs every managed Table on that sheet in place\. 1 managed Table\(s\) .*has no Table "layoutRight" with its header row on row 4 — move it back, or regenerate the configs with sheets-framework gen-configs if it is gone$/,
+      /^Inserting a column at the end of Table "layoutLeft" on sheet "Layout" needs every managed Table on that sheet in place\. 1 managed Table\(s\) .*has no Table "layoutRight" with its header row on row 4 — move it back, or regenerate the configs with sheets-framework sync if it is gone$/,
     );
     expect(batchUpdateCount()).toBe(0);
   });
