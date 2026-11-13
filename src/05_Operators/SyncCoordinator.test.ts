@@ -612,9 +612,9 @@ describe("SyncCoordinator.run tab traits", () => {
     title: "Test",
   };
 
-  const notesTabSheet: FakeSheetProperties = {
+  const layoutTabSheet: FakeSheetProperties = {
     sheetId: 604825147,
-    title: "Notes",
+    title: "Layout",
   };
 
   function runTabs(
@@ -689,15 +689,15 @@ describe("SyncCoordinator.run tab traits", () => {
   });
 
   it("moves two tabs in one run, the second counted from where the first left the tabs", () => {
-    const extraTabs = [testTabSheet, notesTabSheet];
+    const extraTabs = [testTabSheet, layoutTabSheet];
     const service = seedFixture({ extraSheets: extraTabs });
 
     runTabs(
-      { tabs: { notes: { before: "item" }, test: { before: "item" } } },
+      { tabs: { layout: { before: "item" }, test: { before: "item" } } },
       extraTabs,
     );
 
-    expect(service.grid.sheetTitles()).toEqual(["Notes", "Test", "Item"]);
+    expect(service.grid.sheetTitles()).toEqual(["Layout", "Test", "Item"]);
   });
 
   it("skips a before the live order already satisfies", () => {
