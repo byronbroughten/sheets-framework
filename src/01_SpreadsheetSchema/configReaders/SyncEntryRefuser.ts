@@ -60,6 +60,9 @@ export class SyncEntryRefuser {
         return [mapTable.name];
       }),
     );
+    const columnNamesByTable = new Map(
+      mapTables.map(({ name, columns }) => [name, Object.keys(columns ?? {})]),
+    );
     return entryRefusals({
       entry: "tables",
       mapNames: mapTables.map(({ name }) => name),
@@ -70,39 +73,9 @@ export class SyncEntryRefuser {
         }
         return [
           ...tableTraitRefusals(table, entry),
-          ...this._braceRefusals(table, entry),
+          ...braceRefusals({ table, entry, columnNamesByTable }),
         ];
       },
-    });
-  }
-  private _braceRefusals(
-    table: string,
-    { columns }: WideTableEntry,
-  ): SyncRefusal[] {
-    const columnNamesByTable = new Map(
-      Object.values(this.idNameMap.tables).map(({ name, columns }) => [
-        name,
-        Object.keys(columns ?? {}),
-      ]),
-    );
-    return entriesOf(columns).flatMap(([column, { formula }]) => {
-      if (formula === undefined) return [];
-      return BraceFormula.columnsNamed({ tableKey: table, formula }).flatMap(
-        ({ brace, tableKey, columnName }): SyncRefusal[] => {
-          const columnNames = columnNamesByTable.get(tableKey);
-          if (columnNames?.includes(columnName)) return [];
-          return [
-            {
-              kind: "unknownBrace",
-              table,
-              path: `${column}.formula`,
-              brace,
-              braceTable: tableKey,
-              columns: columnNames,
-            },
-          ];
-        },
-      );
     });
   }
   private get _tabRefusals(): SyncRefusal[] {
@@ -140,6 +113,44 @@ function entryRefusals<EN extends object>({
   return entries.flatMap(([name, traits]) => {
     if (!names.has(name)) return [noSuchTable(entry, name)];
     return traitRefusals(name, traits);
+  });
+}
+
+interface BraceRefusalsProps {
+  table: string;
+  entry: WideTableEntry;
+  columnNamesByTable: Map<string, string[]>;
+}
+
+function braceRefusals({
+  table,
+  entry,
+  columnNamesByTable,
+}: BraceRefusalsProps): SyncRefusal[] {
+  return entriesOf(entry.columns).flatMap(([column, { formula }]) => {
+    if (formula === undefined) return [];
+    const path = `${column}.formula`;
+    const malformed = BraceFormula.malformedBraces({ formula }).map(
+      (brace): SyncRefusal => ({ kind: "malformedBrace", table, path, brace }),
+    );
+    const unknown = BraceFormula.columnsNamed({
+      tableKey: table,
+      formula,
+    }).flatMap(({ brace, tableKey, columnName }): SyncRefusal[] => {
+      const columnNames = columnNamesByTable.get(tableKey);
+      if (columnNames?.includes(columnName)) return [];
+      return [
+        {
+          kind: "unknownBrace",
+          table,
+          path,
+          brace,
+          braceTable: tableKey,
+          columns: columnNames,
+        },
+      ];
+    });
+    return [...malformed, ...unknown];
   });
 }
 

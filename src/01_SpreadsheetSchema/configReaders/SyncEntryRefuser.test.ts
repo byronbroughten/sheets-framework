@@ -217,6 +217,17 @@ describe("SyncEntryRefuser, a formula's braces", () => {
     ]);
   });
 
+  it("refuses a misplaced @, which reads as no brace", () => {
+    expect(formulaRefusals("=${@item[name]}")).toEqual([
+      {
+        kind: "malformedBrace",
+        table: "item",
+        path: "count.formula",
+        brace: "${@item[name]}",
+      },
+    ]);
+  });
+
   it("refuses a brace naming a column of a Table without API access, whose map entry holds none", () => {
     expect(formulaRefusals("=${log[when]}")).toEqual([
       {

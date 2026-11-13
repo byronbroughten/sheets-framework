@@ -269,6 +269,16 @@ describe("BraceFormula.decompileForRule", () => {
   });
 });
 
+describe("BraceFormula.malformedBraces", () => {
+  it("names each ${…} that reads as no brace, outside string literals", () => {
+    expect(
+      BraceFormula.malformedBraces({
+        formula: '=${@vendor[cost]}+${@price}+${unit[@rent]}+${@@x}&"${@a[b]}"',
+      }),
+    ).toEqual(["${@vendor[cost]}", "${@@x}"]);
+  });
+});
+
 describe("BraceFormula.columnsNamed", () => {
   it("names the column of every brace form, its own Table's and another's", () => {
     expect(

@@ -201,7 +201,9 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
           header,
           emptyValueAllowed: identity.previousEmptyValueAllowed,
           // In brace form against the previous configs, the names an alteration's formula uses.
-          formula: liveFormula(configs, tableKey, topFormula),
+          formula:
+            bracedFormula({ configs, tableKey, formula: topFormula }) ??
+            undefined,
         };
         tables[tableKey] = reading;
         return tables;
@@ -225,7 +227,7 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
   }
   // Fills every body row with one formula; a Table copies a uniform column formula into the rows it grows by.
   updateFormulas(sent: IntendedTrait[]): this {
-    const configs = installedBraceConfigs();
+    const configs = namesAtColumnFill(sent);
     for (const { tableId, columnId, tableKey, value } of this._sentColumnTraits(
       sent,
       "formula",
@@ -531,13 +533,23 @@ function bracedFormula({
   return BraceFormula.decompile({ configs, tableKey, formula });
 }
 
-function liveFormula(
-  configs: BraceConfigs,
-  tableKey: string,
-  topFormula: string | undefined,
-): string | undefined {
-  if (topFormula === undefined) return undefined;
-  return BraceFormula.decompile({ configs, tableKey, formula: topFormula });
+// The names on the sheet when a column fill lands: Table renames go out before column fills and header writes after (docs/architecture/flush-order.md).
+function namesAtColumnFill(sent: IntendedTrait[]): BraceConfigs {
+  const { tableConfigs, columnConfigs } = installedBraceConfigs();
+  const renamed = sent.reduce<BraceConfigs["tableConfigs"]>(
+    (byKey, intended) => {
+      if (intended.kind !== "table" || intended.trait !== "name") return byKey;
+      const tableConfig = byKey[intended.table];
+      if (tableConfig === undefined) return byKey;
+      byKey[intended.table] = {
+        ...tableConfig,
+        tableName: String(intended.value),
+      };
+      return byKey;
+    },
+    { ...tableConfigs },
+  );
+  return { tableConfigs: renamed, columnConfigs };
 }
 
 function valueSourceName({

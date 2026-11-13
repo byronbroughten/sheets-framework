@@ -746,6 +746,25 @@ describe("SyncRunReport, case F: three refusals, then a head-row stop", () => {
     );
   });
 
+  it("says a misplaced @ isn't a brace, with the four forms", () => {
+    const text = render({
+      ...appDryRun,
+      outcome: { kind: "refused" },
+      refusals: [
+        {
+          kind: "malformedBrace",
+          table: "occCharge",
+          path: "amount.formula",
+          brace: "${@vendor[cost]}",
+        },
+      ],
+    }).join("\n");
+    expect(text).toContain("REFUSED 1 · occCharge › amount.formula");
+    expect(text).toContain(
+      "${@vendor[cost]} isn't a brace: write ${@column} or ${table[@column]} for this row, ${column} or ${table[column]} for the whole column.",
+    );
+  });
+
   it("stops when a grant's Table can't take head rows on row 4", () => {
     expect(resultLine(stopped)).toBe(
       "STOPPED: 1 Table can't take head rows. Nothing was sent, and nothing will be until it is resolved.",

@@ -159,26 +159,26 @@ export const BraceFormula = {
     return decompiled;
   },
   columnsNamed({ tableKey, formula }: FormulaText): NamedColumn[] {
-    return [...formula.matchAll(bracePattern())].flatMap(
-      ([text, literal, firstAt, first, secondAt, second]) => {
-        const brace = braceOf(tableKey, {
-          text,
-          literal,
-          firstAt,
-          first,
-          secondAt,
-          second,
-        });
-        if (brace === undefined) return [];
-        return [
-          {
-            brace: brace.text,
-            tableKey: brace.tableKey,
-            columnName: brace.columnName,
-          },
-        ];
-      },
-    );
+    return [...formula.matchAll(bracePattern())].flatMap((groups) => {
+      const brace = braceOf(tableKey, braceMatchOf(groups));
+      if (brace === undefined) return [];
+      return [
+        {
+          brace: brace.text,
+          tableKey: brace.tableKey,
+          columnName: brace.columnName,
+        },
+      ];
+    });
+  },
+  // Each `${…}` outside a string literal that reads as no brace, such as `${@table[column]}`, so a run can refuse it rather than paste it.
+  malformedBraces({ formula }: Pick<FormulaText, "formula">): string[] {
+    return [...formula.matchAll(bracePattern())].flatMap((groups) => {
+      const match = braceMatchOf(groups);
+      if (match.literal !== undefined) return [];
+      if (braceOf("", match) !== undefined) return [];
+      return [match.text];
+    });
   },
   // A reference to no configured column stays as Sheets wrote it.
   decompile({ configs, tableKey, formula }: BraceFormulaProps): string {
@@ -206,59 +206,46 @@ export const BraceFormula = {
             singleHeader,
           );
           if (column === undefined) return match;
-          return braceText(tableKey, column, true);
+          return braceText({ ownTableKey: tableKey, column, isThisRow: true });
         }
         const column = configuredColumn(liveTables, table, header);
         if (column === undefined) return match;
-        return braceText(tableKey, column, false);
+        return braceText({ ownTableKey: tableKey, column, isThisRow: false });
       },
     );
   },
 };
 
+interface BraceTextProps {
+  ownTableKey: string;
+  column: ConfiguredColumn;
+  isThisRow: boolean;
+}
+
 // Bare for the formula's own Table, qualified for another's.
-function braceText(
-  ownTableKey: string,
-  { tableKey, columnName }: ConfiguredColumn,
-  isThisRow: boolean,
-): string {
-  const column = isThisRow ? `@${columnName}` : columnName;
-  if (tableKey === ownTableKey) return `\${${column}}`;
-  return `\${${tableKey}[${column}]}`;
+function braceText({ ownTableKey, column, isThisRow }: BraceTextProps): string {
+  const { tableKey, columnName } = column;
+  const columnText = isThisRow ? `@${columnName}` : columnName;
+  if (tableKey === ownTableKey) return `\${${columnText}}`;
+  return `\${${tableKey}[${columnText}]}`;
 }
 
 function replaceBraces(
   { tableKey, formula }: FormulaText,
   replace: (brace: Brace) => string,
 ): string {
-  return formula.replace(
-    bracePattern(),
-    (
-      text: string,
-      literal: string | undefined,
-      firstAt: string | undefined,
-      first: string | undefined,
-      secondAt: string | undefined,
-      second: string | undefined,
-    ) => {
-      const brace = braceOf(tableKey, {
-        text,
-        literal,
-        firstAt,
-        first,
-        secondAt,
-        second,
-      });
-      if (brace === undefined) return text;
-      return replace(brace);
-    },
-  );
+  return formula.replace(bracePattern(), (...groups: unknown[]) => {
+    const match = braceMatchOf(groups);
+    const brace = braceOf(tableKey, match);
+    if (brace === undefined) return match.text;
+    return replace(brace);
+  });
 }
 
-// A string literal is matched first and kept, so a brace inside one stays text.
+// A string literal is matched first and kept, so a brace inside one stays text; any other `${…}` falls to the last group.
 function bracePattern(): RegExp {
   return new RegExp(
-    `(${formulaPatterns.stringLiteral})|${formulaPatterns.brace}`,
+    `(${formulaPatterns.stringLiteral})|${formulaPatterns.brace}|(\\$\\{[^{}"]*\\})`,
     "g",
   );
 }
@@ -270,14 +257,33 @@ interface BraceMatch {
   first: string | undefined;
   secondAt: string | undefined;
   second: string | undefined;
+  // A `${…}` the brace pattern didn't read.
+  unread: string | undefined;
 }
 
-// Undefined for a string literal, which isn't a brace, and for `@` before a Table key, which marks no column.
+// Takes bracePattern's groups in order, from a replace callback's arguments or a matchAll result.
+function braceMatchOf(groups: ArrayLike<unknown>): BraceMatch {
+  const [text, literal, firstAt, first, secondAt, second, unread] = Array.from(
+    groups,
+  ).map((group) => (typeof group === "string" ? group : undefined));
+  return {
+    text: text ?? "",
+    literal,
+    firstAt,
+    first,
+    secondAt,
+    second,
+    unread,
+  };
+}
+
+// Undefined for a string literal, which isn't a brace, for an unread `${…}`, and for `@` before a Table key, which marks no column.
 function braceOf(
   tableKey: string,
-  { text, literal, firstAt, first, secondAt, second }: BraceMatch,
+  { text, literal, firstAt, first, secondAt, second, unread }: BraceMatch,
 ): Brace | undefined {
-  if (literal !== undefined || first === undefined) return undefined;
+  if (literal !== undefined || unread !== undefined) return undefined;
+  if (first === undefined) return undefined;
   const isFirstAt = firstAt === "@";
   if (second === undefined) {
     return { text, tableKey, columnName: first, isThisRow: isFirstAt };

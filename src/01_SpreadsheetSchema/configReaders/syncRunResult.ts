@@ -164,6 +164,8 @@ export type SyncRefusal =
       braceTable: string;
       columns: string[] | undefined;
     }
+  // A `${…}` in a formula that reads as no brace, such as `@` before a Table key.
+  | { kind: "malformedBrace"; table: string; path: string; brace: string }
   | {
       kind: "touchesDeletion";
       deleted: SyncSubject;
