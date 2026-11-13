@@ -22,6 +22,7 @@ import {
   type FakeSheetsServiceOptions,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
+import { fakeSpreadsheet } from "../testSupport/fakeSheetsService/fakeSpreadsheet";
 import {
   type FakeBodyRow,
   type FakeTableColumn,
@@ -188,6 +189,77 @@ function runItem({
     forcedTraits,
     frame,
   });
+}
+
+const noteColIndex = Object.keys(itemColumns).indexOf("optionalNote");
+
+// The note sits below the top row, which sync's head-row read already covers.
+const bodyRowsWithNote: FakeBodyRow<string>[] = [
+  { id: itemRowId },
+  { id: "r:itm:second", optionalNote: "kept" },
+];
+
+interface ItemAtFlush {
+  // Each Table column a read covered on its own; the head-row reads span every column.
+  colIndexesRead: number[];
+  note: unknown;
+}
+
+interface ItemAtFlushProps {
+  isSending: boolean;
+  isHostWithholding?: boolean;
+  alterations: PendingAlterations;
+  columns?: ItemSheetOptions["columns"];
+}
+
+// What the run had read of Item, and held of its note, as each flush went out.
+function itemAtEachFlush({
+  alterations,
+  columns,
+  ...props
+}: ItemAtFlushProps): ItemAtFlush[] {
+  const running: { coordinator?: SyncCoordinator } = {};
+  const atFlush: ItemAtFlush[] = [];
+  const service = stubSheetsService({
+    sheets: [itemSheet({ columns, bodyRows: bodyRowsWithNote })],
+    isDryRun: !props.isSending,
+    beforeEachBatchUpdate: () => {
+      atFlush.push({
+        colIndexesRead: itemColIndexesRead(service),
+        note: Val.assert(running.coordinator, "the running coordinator")
+          .ss.raw.table("item")
+          .row(1)
+          .cell(noteColIndex)
+          .valueOrEmpty(),
+      });
+    },
+  });
+  running.coordinator = SyncCoordinator.init();
+  running.coordinator.run({
+    ...props,
+    intendedState: { alterations },
+    previousIdNameMap: previousItemMap(),
+    forcedTraits: [],
+    frame,
+  });
+  return atFlush;
+}
+
+function itemColIndexesRead(service: FakeSheetsService): number[] {
+  const colIndexes = new Set<number>();
+  for (const resource of service.getByDataFilterCalls) {
+    const { dataFilters = [] } = resource as {
+      dataFilters?: { gridRange?: GridRange }[];
+    };
+    for (const { gridRange } of dataFilters) {
+      if (gridRange?.sheetId !== itemGid) continue;
+      const { startColumnIndex, endColumnIndex } = gridRange;
+      if (startColumnIndex === undefined) continue;
+      if (endColumnIndex !== startColumnIndex + 1) continue;
+      colIndexes.add(startColumnIndex - expectedSheetLayout.startTableColIndex);
+    }
+  }
+  return [...colIndexes].sort((a, b) => a - b);
 }
 
 // A send with empty intended state, so each run is the regen alone.
@@ -520,79 +592,30 @@ describe("SyncCoordinator.run entered-data gate", () => {
     const deleteOptionalNote: PendingAlterations = {
       tables: { item: { columns: { optionalNote: { deleted: true } } } },
     };
-    const noteColIndex = Object.keys(itemColumns).indexOf("optionalNote");
-
-    interface NoteAtFlush {
-      isNoteColumnRead: boolean;
-      note: unknown;
-    }
-
-    // One column's own range, from any row; the head-row reads span every column.
-    function readsNoteColumn(service: FakeSheetsService): boolean {
-      return service.getByDataFilterCalls.some((resource) =>
-        (
-          (resource as { dataFilters?: { gridRange?: GridRange }[] })
-            .dataFilters ?? []
-        ).some(
-          ({ gridRange }) =>
-            gridRange?.sheetId === itemGid &&
-            gridRange.startColumnIndex === noteColIndex &&
-            gridRange.endColumnIndex === noteColIndex + 1,
-        ),
-      );
-    }
-
-    // The note sits below the top row, which sync's head-row read already covers.
-    function heldNoteBeforeFlush(props: {
-      isSending: boolean;
-      isHostWithholding?: boolean;
-    }): NoteAtFlush[] {
-      const running: { coordinator?: SyncCoordinator } = {};
-      const heldAtFlush: NoteAtFlush[] = [];
-      const service = stubSheetsService({
-        sheets: [
-          itemSheet({
-            columns: extraColumn,
-            bodyRows: [
-              { id: itemRowId },
-              { id: "r:itm:second", optionalNote: "kept" },
-            ],
-          }),
-        ],
-        isDryRun: !props.isSending,
-        beforeEachBatchUpdate: () => {
-          heldAtFlush.push({
-            isNoteColumnRead: readsNoteColumn(service),
-            note: Val.assert(running.coordinator, "the running coordinator")
-              .ss.raw.table("item")
-              .row(1)
-              .cell(noteColIndex)
-              .valueOrEmpty(),
-          });
-        },
-      });
-      running.coordinator = SyncCoordinator.init();
-      running.coordinator.run({
+    function noteAtFirstFlush(
+      props: Pick<ItemAtFlushProps, "isSending" | "isHostWithholding">,
+    ): ItemAtFlush | undefined {
+      return itemAtEachFlush({
         ...props,
-        intendedState: { alterations: deleteOptionalNote },
-        previousIdNameMap: previousItemMap(),
-        forcedTraits: [],
-        frame,
-      });
-      return heldAtFlush;
+        alterations: deleteOptionalNote,
+        columns: extraColumn,
+      })[0];
     }
 
     it("reads the column before a send's flush, holding the cell a person entered", () => {
-      expect(heldNoteBeforeFlush({ isSending: true })[0]).toEqual({
-        isNoteColumnRead: true,
+      expect(noteAtFirstFlush({ isSending: true })).toEqual({
+        colIndexesRead: expect.arrayContaining([noteColIndex]),
         note: "kept",
       });
     });
 
     it("reads the column before a withheld dry run's flush", () => {
       expect(
-        heldNoteBeforeFlush({ isSending: false, isHostWithholding: true })[0],
-      ).toEqual({ isNoteColumnRead: true, note: "kept" });
+        noteAtFirstFlush({ isSending: false, isHostWithholding: true }),
+      ).toEqual({
+        colIndexesRead: expect.arrayContaining([noteColIndex]),
+        note: "kept",
+      });
     });
   });
 
@@ -636,14 +659,7 @@ describe("SyncCoordinator.run column deletion", () => {
   });
 
   it("deletes the column on a send, from its column ID down, and drops it from the configs, the ID-name map and alterations.ts", () => {
-    const service = seedFixture({
-      item: {
-        bodyRows: [
-          { id: itemRowId },
-          { id: "r:itm:second", optionalNote: "kept" },
-        ],
-      },
-    });
+    const service = seedFixture({ item: { bodyRows: bodyRowsWithNote } });
     const before = itemSheetRows(service);
     const { colIdRowIndex, tableHeaderRowIndex } = expectedSheetLayout;
 
@@ -706,18 +722,9 @@ describe("SyncCoordinator.run Table deletion", () => {
   };
   const itemSubject = { table: "item", path: "deleted" };
   const itemPrefix = getTableTraitByName("item", "idPrefix");
-  const noteColIndex = Object.keys(itemColumns).indexOf("optionalNote");
-
-  function seedWithNote(): FakeSheetsService {
-    return seedFixture({
-      item: {
-        bodyRows: [
-          { id: itemRowId },
-          { id: "r:itm:second", optionalNote: "kept" },
-        ],
-      },
-    });
-  }
+  const everyItemColIndex = Object.keys(itemColumns).map(
+    (_, colIndex) => colIndex,
+  );
 
   function retiredPrefixesOf(files: ConfigRegeneration): unknown {
     const match = files.retiredIdPrefixes.match(
@@ -741,7 +748,7 @@ describe("SyncCoordinator.run Table deletion", () => {
   });
 
   it("deletes the Table on a send, leaving its tab, and drops it from the configs, the ID-name map and alterations.ts, retiring its prefix", () => {
-    const service = seedWithNote();
+    const service = seedFixture({ item: { bodyRows: bodyRowsWithNote } });
 
     const { result, files } = runItem({
       isSending: true,
@@ -773,52 +780,48 @@ describe("SyncCoordinator.run Table deletion", () => {
     });
   });
 
-  // A body cell below the top row, which sync's head-row read already covers.
-  function heldNoteBeforeFlush(props: {
-    isSending: boolean;
-    isHostWithholding?: boolean;
-  }): unknown[] {
-    const running: { coordinator?: SyncCoordinator } = {};
-    const heldAtFlush: unknown[] = [];
+  it("reports a deletion the refetch still shows the Table for under Didn't land, the entry staying pending", () => {
     stubSheetsService({
-      sheets: [
-        itemSheet({
-          bodyRows: [
-            { id: itemRowId },
-            { id: "r:itm:second", optionalNote: "kept" },
-          ],
-        }),
-      ],
-      isDryRun: !props.isSending,
-      beforeEachBatchUpdate: () => {
-        heldAtFlush.push(
-          Val.assert(running.coordinator, "the running coordinator")
-            .ss.raw.table("item")
-            .row(1)
-            .cell(noteColIndex)
-            .valueOrEmpty(),
-        );
+      sheets: [itemSheet()],
+      afterEachBatchUpdate(spreadsheet) {
+        spreadsheet.sheets = fakeSpreadsheet.init([itemSheet()]).sheets;
       },
     });
-    running.coordinator = SyncCoordinator.init();
-    running.coordinator.run({
-      ...props,
-      intendedState: { alterations: deleteItem },
-      previousIdNameMap: previousItemMap(),
-      forcedTraits: [],
-      frame,
-    });
-    return heldAtFlush;
-  }
 
-  it("reads the whole body before the send's flush, holding the cell a person entered", () => {
-    expect(heldNoteBeforeFlush({ isSending: true })[0]).toBe("kept");
+    const { result, files } = runItem({
+      isSending: true,
+      alterations: deleteItem,
+    });
+
+    const emitted = Val.assert(files, "emitted files");
+    expect(emitted.tableConfigs).toContain('"item"');
+    expect(emitted.alterations).toBeUndefined();
+    expect(result).toMatchObject({
+      outcome: { kind: "sent", summary: "nothing landed; 1 didn't land" },
+      landed: [],
+      didntLand: [
+        { subject: itemSubject, what: "delete the Table; Sheets kept false" },
+      ],
+    });
   });
 
-  it("reads the whole body before a withheld dry run's flush", () => {
+  function itemAtFirstFlush(
+    props: Pick<ItemAtFlushProps, "isSending" | "isHostWithholding">,
+  ): ItemAtFlush | undefined {
+    return itemAtEachFlush({ ...props, alterations: deleteItem })[0];
+  }
+
+  it("reads every column of the body before the send's flush, holding the cell a person entered", () => {
+    expect(itemAtFirstFlush({ isSending: true })).toEqual({
+      colIndexesRead: everyItemColIndex,
+      note: "kept",
+    });
+  });
+
+  it("reads every column of the body before a withheld dry run's flush", () => {
     expect(
-      heldNoteBeforeFlush({ isSending: false, isHostWithholding: true })[0],
-    ).toBe("kept");
+      itemAtFirstFlush({ isSending: false, isHostWithholding: true }),
+    ).toEqual({ colIndexesRead: everyItemColIndex, note: "kept" });
   });
 
   it("refuses a deletion of a Table without API access as noApiAccess", () => {
@@ -1605,7 +1608,6 @@ describe("SyncCoordinator.run tab traits", () => {
 describe("SyncCoordinator.run Fill Row IDs", () => {
   const itemColumnNames = Object.keys(itemColumns);
   const idColIndex = itemColumnNames.indexOf("id");
-  const noteColIndex = itemColumnNames.indexOf("optionalNote");
 
   function itemCell(grid: FakeSheetsService["grid"], sheetRowIndex: number) {
     const row = grid.sheet(itemGid).values()[sheetRowIndex] ?? [];

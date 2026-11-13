@@ -5,15 +5,19 @@ import {
   type ApiAccessGrant,
   hasApiAccess,
 } from "../01_SpreadsheetSchema/configReaders/apiAccessChanges";
-import type {
-  ColumnReference,
-  IdNameMapGeneric,
+import {
+  type ColumnReference,
+  type IdNameMapGeneric,
+  mapTablesByLiveness,
 } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
 import {
   makeImportLine,
   type TableConfigsBase,
 } from "../01_SpreadsheetSchema/configReaders/makeConfigs";
-import type { IntendedTrait } from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
+import {
+  type IntendedTrait,
+  isTableDeletion,
+} from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
 import type {
   SyncHeadRowsStop,
   SyncNotice,
@@ -115,13 +119,13 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
   }
   // Read before any send, so a Table this run deletes is still live and only a person's deletion shows.
   goneTableNotices(previousIdNameMap: IdNameMapGeneric): SyncNotice[] {
-    return Object.entries(previousIdNameMap.tables).flatMap(
-      ([tableId, mapTable]): SyncNotice[] => {
-        if (!hasApiAccess(mapTable)) return [];
-        if (this.ss.raw.tableIdIsActive(tableId)) return [];
-        return [{ kind: "tableGone", table: mapTable.name }];
-      },
+    const { gone } = mapTablesByLiveness(
+      previousIdNameMap,
+      new Set(this.ss.raw.activeTableIds),
     );
+    return gone
+      .filter(hasApiAccess)
+      .map(({ name }): SyncNotice => ({ kind: "tableGone", table: name }));
   }
   // A Table gone since the last run retires its prefix before this run mints any.
   private _retiredOrGoneIdPrefixes(): Set<string> {
@@ -210,7 +214,7 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
   }
   deleteTables(sent: IntendedTrait[]): this {
     for (const intended of sent) {
-      if (intended.kind !== "table" || intended.trait !== "deleted") continue;
+      if (!isTableDeletion(intended)) continue;
       this._previousTable(intended.table).queueDelete();
     }
     return this;

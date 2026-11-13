@@ -1,4 +1,9 @@
-import { type IdNameMapGeneric, tableIdsByName } from "./idNameMapTypes";
+import {
+  type IdNameMapGeneric,
+  type IdNameMapTable,
+  mapTablesByLiveness,
+  tableIdsByName,
+} from "./idNameMapTypes";
 import type { PlanReadings, TableReading, TraitReadings } from "./SyncPlanner";
 import { entriesOf, type WideAlterations } from "./SyncPlanner/wideAlterations";
 
@@ -21,9 +26,7 @@ interface ApiAccessChangesProps {
 }
 
 // A map Table has API access when it lists columns.
-export function hasApiAccess(
-  mapTable: IdNameMapGeneric["tables"][string],
-): boolean {
+export function hasApiAccess(mapTable: IdNameMapTable): boolean {
   return mapTable.columns !== undefined;
 }
 
@@ -48,29 +51,29 @@ export function apiAccessChanges({
 
 interface ApiAccessReadingsProps {
   readings: PlanReadings;
-  // The previous one, since API access is read from it.
-  idNameMap: IdNameMapGeneric;
+  previousIdNameMap: IdNameMapGeneric;
   liveTableIds: ReadonlySet<string>;
 }
 
 // API access isn't a sheet trait, so live carries the previous map and a grant or revoke never stops; a Table a person deleted stays out of live.
 export function withApiAccessReadings({
   readings,
-  idNameMap,
+  previousIdNameMap,
   liveTableIds,
 }: ApiAccessReadingsProps): PlanReadings {
-  const liveMapTables = Object.entries(idNameMap.tables).flatMap(
-    ([tableId, mapTable]) => (liveTableIds.has(tableId) ? [mapTable] : []),
-  );
+  const { live } = mapTablesByLiveness(previousIdNameMap, liveTableIds);
   return {
-    previous: withApiAccess(readings.previous, Object.values(idNameMap.tables)),
-    live: withApiAccess(readings.live, liveMapTables),
+    previous: withApiAccess(
+      readings.previous,
+      Object.values(previousIdNameMap.tables),
+    ),
+    live: withApiAccess(readings.live, live),
   };
 }
 
 function withApiAccess(
   readings: TraitReadings,
-  mapTables: IdNameMapGeneric["tables"][string][],
+  mapTables: IdNameMapTable[],
 ): TraitReadings {
   const tables = mapTables.reduce<TraitReadings["tables"]>(
     (byName, mapTable) => {

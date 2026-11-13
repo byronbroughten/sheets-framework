@@ -203,7 +203,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     const planned = planner.plan({
       ...withApiAccessReadings({
         readings,
-        idNameMap: props.previousIdNameMap,
+        previousIdNameMap: props.previousIdNameMap,
         liveTableIds: new Set(this.ss.raw.activeTableIds),
       }),
       headRowStops: this.tableConfigOperator.grantHeadRowStops(

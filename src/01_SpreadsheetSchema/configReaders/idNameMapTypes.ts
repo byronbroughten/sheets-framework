@@ -18,6 +18,26 @@ export interface ColumnReference {
   columnId: string;
 }
 
+export interface MapTablesByLiveness {
+  live: IdNameMapTable[];
+  gone: IdNameMapTable[];
+}
+
+// The map's Tables split by whether the sheet still holds them.
+export function mapTablesByLiveness(
+  { tables }: IdNameMapGeneric,
+  liveTableIds: ReadonlySet<string>,
+): MapTablesByLiveness {
+  return Object.entries(tables).reduce<MapTablesByLiveness>(
+    (split, [tableId, mapTable]) => {
+      if (liveTableIds.has(tableId)) split.live.push(mapTable);
+      else split.gone.push(mapTable);
+      return split;
+    },
+    { live: [], gone: [] },
+  );
+}
+
 // Each Table's ID by the codebase name alterations.ts keys it by.
 export function tableIdsByName({
   tables,
