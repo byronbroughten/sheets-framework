@@ -1,3 +1,4 @@
+import { hasLanded } from "./didntLand";
 import type { SyncPlannerResult } from "./SyncPlanner";
 import type {
   SyncDryRunOutcome,
@@ -61,12 +62,8 @@ export class SyncRunResultBuilder {
     });
     if (planned.isStopped) return this._unsent(common, { kind: "stopped" });
     if (!this.isSending) return dryRunResult(common, { kind: "ready" });
-    const didntLandKeys = new Set(
-      didntLand.map(({ subject }) => JSON.stringify(subject)),
-    );
-    const landed = planned.plan.filter(
-      ({ subject }) => !didntLandKeys.has(JSON.stringify(subject)),
-    );
+    const isLanded = hasLanded(didntLand);
+    const landed = planned.plan.filter(({ subject }) => isLanded(subject));
     return {
       ...sendResult(common, {
         kind: "sent",

@@ -5,7 +5,10 @@ import {
 } from "../01_SpreadsheetSchema/configReaders/apiAccessChanges";
 import { columnConfigsByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
 import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister";
-import { didntLandOf } from "../01_SpreadsheetSchema/configReaders/didntLand";
+import {
+  didntLandOf,
+  hasLanded,
+} from "../01_SpreadsheetSchema/configReaders/didntLand";
 import type { IdNameMapGeneric } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
 import type { PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState";
 import { remainingAlterations } from "../01_SpreadsheetSchema/configReaders/remainingAlterations";
@@ -204,12 +207,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
           })
         : this._regeneration(notes, sent);
     const { files, changes, didntLand } = regeneration;
-    const didntLandKeys = new Set(
-      didntLand.map(({ subject }) => JSON.stringify(subject)),
-    );
-    const landed = sent.filter(
-      (subject) => !didntLandKeys.has(JSON.stringify(subject)),
-    );
+    const landed = sent.filter(hasLanded(didntLand));
     // The row-ID fill goes here: its own send, planned from the fresh configs.
     if (landed.length > 0) {
       files.alterations = alterationsFileSource(
