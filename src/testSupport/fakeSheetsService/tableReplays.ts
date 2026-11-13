@@ -37,7 +37,7 @@ export const tableReplays = {
     sheet.tables.push(tableState);
     return {};
   },
-  // Measured live: the cells above the header stay, and so does a rule reaching past the Table.
+  // Measured live: the cells above the header stay and rules wholly over the Table go; a rule reaching past it was never probed.
   deleteTable(
     spreadsheet: FakeSpreadsheet,
     request: GoogleAppsScript.Sheets.Schema.DeleteTableRequest,

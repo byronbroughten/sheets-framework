@@ -266,7 +266,7 @@ export abstract class TableCommonRaw extends TableBaseRaw {
         writes.editProtections.push(Obj.strictOmit(props, "action"));
         break;
       case "deleteTable":
-        writes.isDeleted = true;
+        writes.deletesTable = true;
         break;
       default:
         throw new Error(

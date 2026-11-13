@@ -525,10 +525,10 @@ export class TableRaw extends TableCommonRaw {
     writes.editProtections.forEach((protection) => {
       this.gatherEditProtectionOperation(protection);
     });
-    if (writes.isDeleted) this.gatherDeleteTableOperation();
+    if (writes.deletesTable) this._gatherDeleteTableOperation();
   }
   // Before the row deletes, which are sent after it, so the head rows are where it measures them.
-  gatherDeleteTableOperation(): void {
+  private _gatherDeleteTableOperation(): void {
     this.writeOperations.deleteTable.push({
       kind: "deleteTable",
       tableId: this.tableId,

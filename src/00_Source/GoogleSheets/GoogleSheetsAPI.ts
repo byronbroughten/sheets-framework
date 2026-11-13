@@ -530,7 +530,7 @@ function modeledOperationToGoogleRequests(
         },
         columnPropertiesRequest(operation.tableId, operation.columnProperties),
       ];
-    // No rows, so the head-row cells blank and their checkboxes lose validation; observed: docs/sheets-behaviour.md#creating-and-updating-tables.
+    // deleteTable leaves the head rows, so an updateCells with no rows clears their values and validation; observed: docs/sheets-behaviour.md#creating-and-updating-tables.
     case "deleteTable":
       return [
         { deleteTable: { tableId: operation.tableId } },

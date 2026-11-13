@@ -53,7 +53,7 @@ export const emptyStateRaw = {
       checkboxCells: [],
       conditionalFormatRules: [],
       editProtections: [],
-      isDeleted: false,
+      deletesTable: false,
     };
   },
   rowWrites(): RowWrites {

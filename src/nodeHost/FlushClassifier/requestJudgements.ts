@@ -183,7 +183,11 @@ export const requestJudgements: {
     }
   },
   deleteTable(remove, judge): void {
-    judge.deleteTable(remove.tableId ?? "");
+    if (remove.tableId === undefined) {
+      judge.holdUnmeasured("a Table delete without a tableId");
+      return;
+    }
+    judge.deleteTable(remove.tableId);
   },
   updateSheetProperties(update, judge): void {
     if (fieldMask.masks(update.fields, "gridProperties")) {

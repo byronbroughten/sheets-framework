@@ -245,7 +245,7 @@ export interface TableWrites {
   checkboxCells: TableCell[];
   conditionalFormatRules: TableConditionalFormatRule[];
   editProtections: TableEditProtection[];
-  isDeleted: boolean;
+  deletesTable: boolean;
 }
 // Table-relative until gathering; an absent bound stays open, and an absent start row is the sheet's top.
 export interface TableGridRange {
