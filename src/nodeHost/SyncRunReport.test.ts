@@ -597,7 +597,7 @@ describe("SyncRunReport's refusals before the read", () => {
   });
 
   it("names the Table and the trait it can't send yet", () => {
-    expect(text).toContain("REFUSED 2 · item › name.header");
+    expect(text).toContain("REFUSED 3 · item › name.header");
     expect(text).toContain(
       "  sync can't send name.header yet: for now it sends only a column's emptyValueAllowed.",
     );
