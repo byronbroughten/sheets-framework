@@ -5,6 +5,8 @@ import {
 } from "../04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
 
 export type UntypedHeadersByTableName = Map<string, string[]>;
+// Table ID, then column ID.
+export type EmptyValueAllowedByIds = Map<string, Map<string, boolean>>;
 
 export interface SourceColumn {
   tableId: string;
@@ -19,6 +21,7 @@ export interface ConfigSyncState {
   columnConfigSync: {
     syncedToSpreadsheet: boolean;
     untypedHeadersByTableName: UntypedHeadersByTableName;
+    emptyValueAllowedByIds: EmptyValueAllowedByIds;
   };
   valueConfigSync: { valueSources: ValueSource[] };
 }
@@ -44,6 +47,7 @@ export class SpreadsheetBaseOperator extends SpreadsheetBaseNamed {
       columnConfigSync: {
         syncedToSpreadsheet: false,
         untypedHeadersByTableName: new Map(),
+        emptyValueAllowedByIds: new Map(),
       },
       valueConfigSync: { valueSources: [] },
     };

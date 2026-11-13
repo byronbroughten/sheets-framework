@@ -23,7 +23,7 @@ import type {
 export type TraitValue = string | number | boolean | ColumnTypeBaseline;
 type TraitRecord = Record<string, TraitValue | undefined>;
 
-interface TableReading {
+export interface TableReading {
   traits: TraitRecord;
   columns: Record<string, TraitRecord | undefined>;
 }
@@ -47,7 +47,7 @@ export interface SyncPlannerProps {
   forcedTraits: ForcedTrait[];
 }
 
-interface PlanProps {
+export interface PlanProps {
   previous: TraitReadings;
   live: TraitReadings;
 }

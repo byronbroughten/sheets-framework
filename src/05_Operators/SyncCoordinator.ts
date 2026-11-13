@@ -95,7 +95,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     this.tableConfigOperator.validateHeadersInZone();
     this.columnConfigOperator.fetchHeadRows();
     this.tableConfigOperator.validateIdPrefixesUnchanged();
-    this.columnConfigOperator.syncToSpreadsheet();
+    this.columnConfigOperator.addMissingColumnIds().recordUntypedColumns();
   }
   private _idNameMap(): IdNameMapGeneric {
     return { tables: this._idNameMapTables(), tabs: this._idNameMapTabs() };

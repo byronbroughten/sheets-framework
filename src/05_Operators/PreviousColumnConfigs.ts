@@ -4,17 +4,26 @@ import { tableConfigsByTableId } from "../01_SpreadsheetSchema/configReaders/tab
 
 // One Table's columns as the previous configs hold them; a Table new to them has none.
 export class PreviousColumnConfigs {
+  readonly tableKey: string | undefined;
   readonly columnConfigs: ColumnConfigStored[];
+  private readonly columnConfigsByName: Record<string, ColumnConfigStored>;
   constructor(tableId: string) {
-    const tableKey = tableConfigsByTableId().get(tableId)?.tableKey;
-    if (tableKey === undefined) {
-      this.columnConfigs = [];
-      return;
+    this.tableKey = tableConfigsByTableId().get(tableId)?.tableKey;
+    if (this.tableKey === undefined) {
+      this.columnConfigsByName = {};
+    } else {
+      this.columnConfigsByName = columnConfigsByName()[this.tableKey] ?? {};
     }
-    this.columnConfigs = Object.values(columnConfigsByName()[tableKey] ?? {});
+    this.columnConfigs = Object.values(this.columnConfigsByName);
   }
   get columnIds(): string[] {
     return this.columnConfigs.map(({ columnId }) => columnId);
+  }
+  // Through the ID, so a renamed header keeps its previous name (ADR 0035).
+  columnName(columnId: string): string | undefined {
+    return Object.entries(this.columnConfigsByName).find(
+      ([, columnConfig]) => columnConfig.columnId === columnId,
+    )?.[0];
   }
   // A column new to the configs is required until a later run's configs say otherwise.
   emptyValueAllowed(columnId: string): boolean {

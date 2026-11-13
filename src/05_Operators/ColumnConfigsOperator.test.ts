@@ -2,6 +2,7 @@ import type { StrictOmit } from "@byronbroughten/utils/obj";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister";
+import type { ColumnConfigStored } from "../01_SpreadsheetSchema/configReaders/makeConfigs";
 import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {
@@ -28,7 +29,7 @@ function syncedOperator(): ColumnConfigsOperator {
   const operator = ColumnConfigsOperator.init();
   operator.ss.fetchAllSheetProperties();
   operator.fetchHeadRows();
-  operator.syncToSpreadsheet();
+  operator.addMissingColumnIds().recordUntypedColumns();
   return operator;
 }
 
@@ -127,41 +128,73 @@ describe("ColumnConfigsOperator.newColumnConfigs / toFileSource", () => {
     }
   });
 
-  it("carries each column's empty-value-allowed trait forward from the previous configs, and requires a new column", () => {
+  describe("empty value allowed", () => {
+    type EmptyValueAllowedTrait = Pick<
+      ColumnConfigStored,
+      "columnId" | "emptyValueAllowed"
+    >;
+    function traitOf({
+      columnId,
+      emptyValueAllowed,
+    }: EmptyValueAllowedTrait): EmptyValueAllowedTrait {
+      return { columnId, emptyValueAllowed };
+    }
     const previousColumns = Object.values(columnConfigs.item);
-    stubSheetsService({
-      sheets: [
-        {
-          sheetId: itemSheetGid,
-          title: "Item",
-          rows: buildGridRows({
-            0: [
-              ...previousColumns.map(({ columnId }) => columnId),
-              "c:itm:new",
-            ],
-            3: [...previousColumns.map(({ header }) => header), "Brand New"],
-          }),
-          table: { tableId: itemTableId, name: "Item", endRowIndex: 5 },
-        },
-      ],
+    const previousTraits = previousColumns.map(traitOf);
+
+    function stubItemWithNewColumn(): void {
+      stubSheetsService({
+        sheets: [
+          {
+            sheetId: itemSheetGid,
+            title: "Item",
+            rows: buildGridRows({
+              0: [
+                ...previousColumns.map(({ columnId }) => columnId),
+                "c:itm:new",
+              ],
+              3: [...previousColumns.map(({ header }) => header), "Brand New"],
+            }),
+            table: { tableId: itemTableId, name: "Item", endRowIndex: 5 },
+          },
+        ],
+      });
+    }
+
+    function emittedTraits(
+      operator: ColumnConfigsOperator,
+    ): EmptyValueAllowedTrait[] {
+      return Object.values(operator.newColumnConfigs().item ?? {}).map(traitOf);
+    }
+
+    it("carries each column's trait forward from the previous configs, and requires a new column", () => {
+      stubItemWithNewColumn();
+
+      expect(emittedTraits(syncedOperator())).toEqual([
+        ...previousTraits,
+        { columnId: "c:itm:new", emptyValueAllowed: false },
+      ]);
     });
 
-    const emitted = Object.values(
-      syncedOperator().newColumnConfigs().item ?? {},
-    );
+    it("takes a recorded trait first, falling back to the previous configs for the rest", () => {
+      stubItemWithNewColumn();
+      const operator = syncedOperator();
 
-    expect(
-      emitted.map(({ columnId, emptyValueAllowed }) => ({
-        columnId,
-        emptyValueAllowed,
-      })),
-    ).toEqual([
-      ...previousColumns.map(({ columnId, emptyValueAllowed }) => ({
-        columnId,
-        emptyValueAllowed,
-      })),
-      { columnId: "c:itm:new", emptyValueAllowed: false },
-    ]);
+      operator.recordEmptyValueAllowed({
+        tables: {
+          item: {
+            traits: {},
+            columns: { brandNew: { emptyValueAllowed: true } },
+          },
+        },
+        tabs: {},
+      });
+
+      expect(emittedTraits(operator)).toEqual([
+        ...previousTraits,
+        { columnId: "c:itm:new", emptyValueAllowed: true },
+      ]);
+    });
   });
 
   it("throws when two headers in the same Table camelCase to the same column name", () => {
@@ -183,6 +216,61 @@ describe("ColumnConfigsOperator.newColumnConfigs / toFileSource", () => {
     expect(() => syncedOperator().newColumnConfigs()).toThrow(
       /duplicate column name "unitPrice"/,
     );
+  });
+});
+
+describe("ColumnConfigsOperator.emptyValueAllowedReadings", () => {
+  it("reads each column's trait from the previous configs on both sides, by previous names", () => {
+    stubSheetsService({
+      sheets: [
+        {
+          sheetId: itemSheetGid,
+          title: "Widget",
+          rows: buildGridRows({
+            0: Object.values(columnConfigs.item).map(
+              ({ columnId }) => columnId,
+            ),
+            3: Object.values(columnConfigs.item).map(
+              ({ header }) => `${header} Renamed`,
+            ),
+          }),
+          table: { tableId: itemTableId, name: "Widget", endRowIndex: 5 },
+        },
+      ],
+    });
+    const expectedColumns = Object.fromEntries(
+      Object.entries(columnConfigs.item).map(
+        ([columnName, { emptyValueAllowed }]) => [
+          columnName,
+          { emptyValueAllowed },
+        ],
+      ),
+    );
+
+    const { previous, live } = syncedOperator().emptyValueAllowedReadings();
+
+    expect(previous.tables.item?.columns).toEqual(expectedColumns);
+    expect(live.tables.item?.columns).toEqual(expectedColumns);
+    expect(Object.keys(live.tables)).toEqual(["item"]);
+  });
+
+  it("names a column new to the configs by its header, and requires it", () => {
+    stubSheetsService({
+      sheets: [
+        {
+          sheetId: itemSheetGid,
+          title: "Item",
+          rows: buildGridRows({ 0: ["c:itm:new"], 3: ["Brand New"] }),
+          table: { tableId: itemTableId, name: "Item", endRowIndex: 5 },
+        },
+      ],
+    });
+
+    const { live } = syncedOperator().emptyValueAllowedReadings();
+
+    expect(live.tables.item?.columns).toEqual({
+      brandNew: { emptyValueAllowed: false },
+    });
   });
 });
 
@@ -294,7 +382,7 @@ function syncBlankSheetUnderTest(
   });
 }
 
-describe("ColumnConfigsOperator.syncToSpreadsheet -> declared column types", () => {
+describe("ColumnConfigsOperator.recordUntypedColumns -> declared column types", () => {
   it("maps every declared column type to its value name", () => {
     const operator = syncColumnsUnderTest({
       headers: [
@@ -599,7 +687,7 @@ describe("ColumnConfigsOperator.syncToSpreadsheet -> declared column types", () 
   });
 });
 
-describe("ColumnConfigsOperator.syncToSpreadsheet -> a sheet whose only data row is blank", () => {
+describe("ColumnConfigsOperator.recordUntypedColumns -> a sheet whose only data row is blank", () => {
   it("completes the sync and emits every column", () => {
     const operator = syncBlankSheetUnderTest({
       headers: ["Supplier Name", "Amount"],
@@ -659,7 +747,7 @@ describe("ColumnConfigsOperator.syncToSpreadsheet -> a sheet whose only data row
   });
 });
 
-describe("ColumnConfigsOperator.syncToSpreadsheet -> _addMissingColumnIds", () => {
+describe("ColumnConfigsOperator.addMissingColumnIds", () => {
   it("adds a missing column ID, under the previous configs' prefix, only on a Table the configs grant", () => {
     stubSheetsService({
       sheets: [
