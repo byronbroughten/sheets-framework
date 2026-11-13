@@ -700,6 +700,199 @@ describe("SyncCoordinator.run column deletion", () => {
   });
 });
 
+describe("SyncCoordinator.run Table deletion", () => {
+  const deleteItem: PendingAlterations = {
+    tables: { item: { deleted: true } },
+  };
+  const itemSubject = { table: "item", path: "deleted" };
+  const itemPrefix = getTableTraitByName("item", "idPrefix");
+  const noteColIndex = Object.keys(itemColumns).indexOf("optionalNote");
+
+  function seedWithNote(): FakeSheetsService {
+    return seedFixture({
+      item: {
+        bodyRows: [
+          { id: itemRowId },
+          { id: "r:itm:second", optionalNote: "kept" },
+        ],
+      },
+    });
+  }
+
+  function retiredPrefixesOf(files: ConfigRegeneration): unknown {
+    const match = files.retiredIdPrefixes.match(
+      /makeRetiredIdPrefixes\((.*)\);/,
+    );
+    return JSON.parse(Val.assert(match?.[1], "emitted retired prefixes"));
+  }
+
+  it("plans a deletion on a dry run, sending nothing", () => {
+    const service = seedFixture();
+
+    const { result } = runItem({ isSending: false, alterations: deleteItem });
+
+    expect(service.batchUpdateCount()).toBe(0);
+    expect(result).toMatchObject({
+      mode: "dry run",
+      outcome: { kind: "ready" },
+      refusals: [],
+      plan: [{ subject: itemSubject, what: "delete the Table" }],
+    });
+  });
+
+  it("deletes the Table on a send, leaving its tab, and drops it from the configs, the ID-name map and alterations.ts, retiring its prefix", () => {
+    const service = seedWithNote();
+
+    const { result, files } = runItem({
+      isSending: true,
+      alterations: deleteItem,
+    });
+
+    const emitted = Val.assert(files, "emitted files");
+    const sheet = service.grid.sheet(itemGid);
+    expect(sheet.tables).toEqual([]);
+    expect(sheet.title).toBe("Item");
+    expect(
+      sheet
+        .values()
+        .flat()
+        .filter((cell) => cell !== "" && cell !== null),
+    ).toEqual([]);
+    expect(emitted.tableConfigs).not.toContain('"item"');
+    expect(emitted.columnConfigs).not.toContain('"item"');
+    expect(
+      parseIdNameMapFileSource(emitted.idNameMap).tables,
+    ).not.toHaveProperty("item");
+    expect(retiredPrefixesOf(emitted)).toContain(itemPrefix);
+    expect(emitted.alterations).toContain("makePendingAlterations({})");
+    expect(result).toMatchObject({
+      mode: "send",
+      outcome: { kind: "sent" },
+      landed: [{ kind: "send", subject: itemSubject }],
+      didntLand: [],
+    });
+  });
+
+  // A body cell below the top row, which sync's head-row read already covers.
+  function heldNoteBeforeFlush(props: {
+    isSending: boolean;
+    isHostWithholding?: boolean;
+  }): unknown[] {
+    const running: { coordinator?: SyncCoordinator } = {};
+    const heldAtFlush: unknown[] = [];
+    stubSheetsService({
+      sheets: [
+        itemSheet({
+          bodyRows: [
+            { id: itemRowId },
+            { id: "r:itm:second", optionalNote: "kept" },
+          ],
+        }),
+      ],
+      isDryRun: !props.isSending,
+      beforeEachBatchUpdate: () => {
+        heldAtFlush.push(
+          Val.assert(running.coordinator, "the running coordinator")
+            .ss.raw.table("item")
+            .row(1)
+            .cell(noteColIndex)
+            .valueOrEmpty(),
+        );
+      },
+    });
+    running.coordinator = SyncCoordinator.init();
+    running.coordinator.run({
+      ...props,
+      intendedState: { alterations: deleteItem },
+      previousIdNameMap: previousItemMap(),
+      forcedTraits: [],
+      frame,
+    });
+    return heldAtFlush;
+  }
+
+  it("reads the whole body before the send's flush, holding the cell a person entered", () => {
+    expect(heldNoteBeforeFlush({ isSending: true })[0]).toBe("kept");
+  });
+
+  it("reads the whole body before a withheld dry run's flush", () => {
+    expect(
+      heldNoteBeforeFlush({ isSending: false, isHostWithholding: true })[0],
+    ).toBe("kept");
+  });
+
+  it("refuses a deletion of a Table without API access as noApiAccess", () => {
+    seedFixture({ extraSheets: [notesSheet()] });
+
+    const { result } = SyncCoordinator.init().run({
+      isSending: true,
+      intendedState: {
+        alterations: {
+          tables: { deskNotes: { deleted: true } },
+        } as PendingAlterations,
+      },
+      previousIdNameMap: {
+        tables: {
+          ...previousItemMap().tables,
+          notes: { name: "deskNotes", sheetGid: notesGid },
+        },
+        tabs: previousItemMap().tabs,
+      },
+      forcedTraits: [],
+      frame,
+    });
+
+    expect(result).toMatchObject({
+      outcome: { kind: "refused" },
+      refusals: [{ kind: "noApiAccess", table: "deskNotes", path: "deleted" }],
+    });
+  });
+
+  describe("a Table a person deleted", () => {
+    function seedWithItemGone(): FakeSheetsService {
+      return stubSheetsService({
+        sheets: [{ sheetId: itemGid, title: "Item", rows: buildGridRows({}) }],
+      });
+    }
+
+    it("leaves the configs with no conflict, retiring its prefix and naming it in a notice", () => {
+      seedWithItemGone();
+
+      const { result, files } = runItem({ isSending: true });
+
+      const emitted = Val.assert(files, "emitted files");
+      expect(emitted.tableConfigs).not.toContain('"item"');
+      expect(retiredPrefixesOf(emitted)).toContain(itemPrefix);
+      expect(result).toMatchObject({
+        outcome: { kind: "sent" },
+        stops: [],
+        notices: [{ kind: "tableGone", table: "item" }],
+      });
+    });
+
+    it("plans nothing for an entry deleting it, and the next run refuses that entry", () => {
+      seedWithItemGone();
+
+      const first = runItem({ isSending: true, alterations: deleteItem });
+      const next = SyncCoordinator.init().run({
+        isSending: true,
+        intendedState: { alterations: deleteItem },
+        previousIdNameMap: parseIdNameMapFileSource(
+          Val.assert(first.files, "first run's files").idNameMap,
+        ),
+        forcedTraits: [],
+        frame,
+      });
+
+      expect(first.result).toMatchObject({ stops: [], plan: [] });
+      expect(next.result).toMatchObject({
+        outcome: { kind: "refused" },
+        refusals: [{ kind: "noSuchTable", entry: "tables", name: "item" }],
+      });
+    });
+  });
+});
+
 describe("SyncCoordinator.run API access", () => {
   function notesSheetAt(startRowIndex?: number): FakeSheetProperties {
     return fakeTableSheet.build({

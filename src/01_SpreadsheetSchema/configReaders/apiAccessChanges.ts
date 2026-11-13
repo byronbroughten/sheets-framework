@@ -46,24 +46,33 @@ export function apiAccessChanges({
   );
 }
 
-// API access isn't a sheet trait, so live carries the previous map and a grant or revoke never stops.
-export function withApiAccessReadings(
-  readings: PlanReadings,
-  idNameMap: IdNameMapGeneric,
-): PlanReadings {
+interface ApiAccessReadingsProps {
+  readings: PlanReadings;
+  // The previous one, since API access is read from it.
+  idNameMap: IdNameMapGeneric;
+  liveTableIds: ReadonlySet<string>;
+}
+
+// API access isn't a sheet trait, so live carries the previous map and a grant or revoke never stops; a Table a person deleted stays out of live.
+export function withApiAccessReadings({
+  readings,
+  idNameMap,
+  liveTableIds,
+}: ApiAccessReadingsProps): PlanReadings {
+  const liveMapTables = Object.entries(idNameMap.tables).flatMap(
+    ([tableId, mapTable]) => (liveTableIds.has(tableId) ? [mapTable] : []),
+  );
   return {
-    previous: withApiAccess(readings.previous, idNameMap),
-    live: withApiAccess(readings.live, idNameMap),
+    previous: withApiAccess(readings.previous, Object.values(idNameMap.tables)),
+    live: withApiAccess(readings.live, liveMapTables),
   };
 }
 
 function withApiAccess(
   readings: TraitReadings,
-  idNameMap: IdNameMapGeneric,
+  mapTables: IdNameMapGeneric["tables"][string][],
 ): TraitReadings {
-  const tables = Object.values(idNameMap.tables).reduce<
-    TraitReadings["tables"]
-  >(
+  const tables = mapTables.reduce<TraitReadings["tables"]>(
     (byName, mapTable) => {
       const reading: TableReading = byName[mapTable.name] ?? {
         traits: {},

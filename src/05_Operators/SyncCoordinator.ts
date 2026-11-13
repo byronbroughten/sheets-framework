@@ -195,10 +195,17 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     this.tableConfigOperator.validateIdPrefixesUnchanged();
     this.rowIdsOperator.validateIdPrefixes();
     const checkboxPlan = this.rowIdsOperator.checkboxPlan();
-    const notices = this.rowIdsOperator.idFirstNotices();
+    const notices = [
+      ...this.tableConfigOperator.goneTableNotices(props.previousIdNameMap),
+      ...this.rowIdsOperator.idFirstNotices(),
+    ];
     const readings = this._traitReadings();
     const planned = planner.plan({
-      ...withApiAccessReadings(readings, props.previousIdNameMap),
+      ...withApiAccessReadings({
+        readings,
+        idNameMap: props.previousIdNameMap,
+        liveTableIds: new Set(this.ss.raw.activeTableIds),
+      }),
       headRowStops: this.tableConfigOperator.grantHeadRowStops(
         accessChanges.grants,
       ),
@@ -348,7 +355,9 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       .addMissingColumnIds()
       .updateHeaders(sentTraits)
       .updateFormulas(sentTraits);
-    this.tableConfigOperator.updateTableNames(sentTraits);
+    this.tableConfigOperator
+      .updateTableNames(sentTraits)
+      .deleteTables(sentTraits);
     this.tabConfigOperator.updateTabTraits(sentTraits);
   }
   // The cells the host's entered-data gate judges; a Table or tab gone from the sheet has none to read.
