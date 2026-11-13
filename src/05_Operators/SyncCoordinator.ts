@@ -23,6 +23,7 @@ import {
 } from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
 import type {
   ForcedTrait,
+  SyncPlanItem,
   SyncRunFrame,
   SyncRunResult,
   SyncSendLine,
@@ -44,6 +45,7 @@ import {
   idNameMapFileSource,
 } from "./configFileSource";
 import { ConfigSheetFloor } from "./ConfigSheetFloor";
+import { RowIdsOperator } from "./RowIdsOperator";
 import { SpreadsheetBaseOperator } from "./SpreadsheetBaseOperator";
 import { TabConfigOperator } from "./TabConfigOperator";
 import { TableConfigsOperator } from "./TableConfigsOperator";
@@ -101,9 +103,10 @@ export interface SyncRun {
 /**
  * Runs sync: refuses what intended state alone can't plan, reads the live
  * Tables, plans the three-way comparison against the previous configs, sends
- * the plan and any missing column IDs in one flush on an unstopped --send,
- * refetches, then emits every generated config file, the ID-name map and the
- * remaining alterations, or none. A bare run sends nothing but still
+ * the plan, any missing column IDs and Fill Row IDs checkboxes in one flush
+ * on an unstopped --send, refetches, then emits every generated config file,
+ * the ID-name map and the remaining alterations, or none, and fills blank
+ * row IDs from the fresh configs as its own send. A bare run sends nothing but still
  * refreshes the configs from its read; on a host that withholds, it then
  * flushes the plan for the host's entered-data gate to judge. A send the
  * gate refuses writes no files. The run leaves the config tabs' rows
@@ -142,6 +145,9 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
   get valueConfigOperator(): ValueConfigsOperator {
     return new ValueConfigsOperator(this.operatorProps);
   }
+  get rowIdsOperator(): RowIdsOperator {
+    return new RowIdsOperator(this.operatorProps);
+  }
   get configSheetFloor(): ConfigSheetFloor {
     return new ConfigSheetFloor(this.spreadsheetNamedProps);
   }
@@ -173,6 +179,9 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     this._readLive();
     // The ID-prefix guard runs before the column-ID write it guards.
     this.tableConfigOperator.validateIdPrefixesUnchanged();
+    this.rowIdsOperator.validateIdPrefixes();
+    const checkboxPlan = this.rowIdsOperator.checkboxPlan();
+    const notices = this.rowIdsOperator.idFirstNotices();
     const readings = this._traitReadings();
     const planned = planner.plan({
       ...withApiAccessReadings(readings, props.previousIdNameMap),
@@ -195,20 +204,32 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       const refusal = this._flushUnlessHeld();
       // No files: column IDs already recorded would reach the configs but not the sheet.
       if (refusal !== undefined) {
-        return { result: resultBuilder.heldStopped(planned, refusal) };
+        return {
+          result: resultBuilder.heldStopped({
+            planned,
+            refusal,
+            rowIds: { plan: checkboxPlan, notices },
+          }),
+        };
       }
     }
     const sent = isApplying ? planned.plan.map(({ subject }) => subject) : [];
+    let refetched: SyncCoordinator | undefined;
+    let regeneration: Regeneration;
     // A fresh read, since Raw's state has no reset; only a sent sheet trait changes what it would read.
-    const regeneration =
-      isApplying && planned.sentTraits.some(isSheetTrait)
-        ? SyncCoordinator.init()._refetchedRegeneration({
-            configTraits: planned.configTraits,
-            plan: planned,
-            sent,
-            accessChanges,
-          })
-        : this._regeneration(notes, sent);
+    if (isApplying && planned.sentTraits.some(isSheetTrait)) {
+      refetched = SyncCoordinator.init();
+      regeneration = refetched._refetchedRegeneration({
+        configTraits: planned.configTraits,
+        plan: planned,
+        sent,
+        accessChanges,
+      });
+    } else {
+      regeneration = this._regeneration(notes, sent);
+    }
+    // The fill reads the configs the files came from.
+    const regenerator = refetched ?? this;
     const { files, changes, didntLand } = regeneration;
     // After the files are strings, so the host's gate judges what a send would write and the configs never see it.
     if (props.isHostWithholding && !props.isSending && !planned.isStopped) {
@@ -216,11 +237,16 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       this.ss.batchUpdateGSheets();
     }
     const landed = sent.filter(hasLanded(didntLand));
-    // The row-ID fill goes here: its own send, planned from the fresh configs.
     if (landed.length > 0) {
       files.alterations = alterationsFileSource(
         remainingAlterations(alterations, landed),
       );
+    }
+    let fillPlan: SyncPlanItem[];
+    if (isApplying) {
+      fillPlan = regenerator._fillBlankIds();
+    } else {
+      fillPlan = regenerator.rowIdsOperator.fillPlan();
     }
     return {
       result: resultBuilder.ran({
@@ -228,9 +254,16 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         notes: regeneration.notes,
         typedTraitChanges: changes,
         didntLand,
+        rowIds: { plan: [...checkboxPlan, ...fillPlan], notices },
       }),
       files,
     };
+  }
+  // Its own send after the regen, planned from the fresh configs; it writes only blank cells, so the entered-data gate holds nothing.
+  private _fillBlankIds(): SyncPlanItem[] {
+    const filled = this.rowIdsOperator.fillBlankIds();
+    this.ss.batchUpdateGSheets();
+    return filled;
   }
   // The untyped-column notes come from the refetch, since a rename changes the headers and Table names they cite.
   private _refetchedRegeneration({
@@ -287,6 +320,8 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     accessChanges: ApiAccessChanges,
     sentTraits: SyncPlannerResult["sentTraits"],
   ): void {
+    // Before the access changes, so it sends what the pre-send read planned.
+    this.rowIdsOperator.addCheckboxes();
     this._applyApiAccessChanges(accessChanges);
     this.columnConfigOperator.addMissingColumnIds().updateHeaders(sentTraits);
     this.tableConfigOperator.updateTableNames(sentTraits);

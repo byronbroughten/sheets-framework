@@ -1,22 +1,37 @@
 import type { HeldFlushRefusal } from "../../00_Source/RawSource/HeldFlushRefusal";
 import { hasLanded } from "./didntLand";
 import type { SyncPlannerResult } from "./SyncPlanner";
-import type {
-  SyncDryRunOutcome,
-  SyncDryRunResult,
-  SyncRefusal,
-  SyncRunCommon,
-  SyncRunFrame,
-  SyncRunResult,
-  SyncSendLine,
-  SyncSendOutcome,
-  SyncSendResult,
-  SyncTypedTraitChange,
+import {
+  fillRowIdsName,
+  type SyncDryRunOutcome,
+  type SyncDryRunResult,
+  type SyncNotice,
+  type SyncPlanItem,
+  type SyncRefusal,
+  type SyncRunCommon,
+  type SyncRunFrame,
+  type SyncRunResult,
+  type SyncSendLine,
+  type SyncSendOutcome,
+  type SyncSendResult,
+  type SyncTypedTraitChange,
 } from "./syncRunResult";
 
 export interface SyncRunResultBuilderProps {
   isSending: boolean;
   frame: SyncRunFrame;
+}
+
+// Fill Row IDs' checkbox and fill: sync's own sends, which no alteration asked for, and their notices.
+export interface SyncRunRowIds {
+  plan: SyncPlanItem[];
+  notices: SyncNotice[];
+}
+
+export interface SyncRunHeldStopped {
+  planned: SyncPlannerResult;
+  refusal: HeldFlushRefusal;
+  rowIds: SyncRunRowIds;
 }
 
 export interface SyncRunPlanned {
@@ -25,11 +40,13 @@ export interface SyncRunPlanned {
   typedTraitChanges: SyncTypedTraitChange[];
   // The sent traits the refetch shows Sheets kept another value for; they leave the landed list.
   didntLand: SyncSendLine[];
+  rowIds: SyncRunRowIds;
 }
 
 interface SyncRunCommonProps {
   refusals: SyncRefusal[];
   planned?: SyncPlannerResult;
+  rowIds?: SyncRunRowIds;
   notes: string[];
   typedTraitChanges: SyncTypedTraitChange[];
 }
@@ -54,21 +71,30 @@ export class SyncRunResultBuilder {
     notes,
     typedTraitChanges,
     didntLand,
+    rowIds,
   }: SyncRunPlanned): SyncRunResult {
     const common = this._common({
       refusals: [],
       planned,
+      rowIds,
       notes,
       typedTraitChanges,
     });
     if (planned.isStopped) return this._unsent(common, { kind: "stopped" });
     if (!this.isSending) return dryRunResult(common, { kind: "ready" });
     const isLanded = hasLanded(didntLand);
-    const landed = planned.plan.filter(({ subject }) => isLanded(subject));
+    const landed = [
+      ...planned.plan.filter(({ subject }) => isLanded(subject)),
+      ...rowIds.plan,
+    ];
     return {
       ...sendResult(common, {
         kind: "sent",
-        summary: sentSummary(planned.plan.length, didntLand.length),
+        summary: sentSummary({
+          sentCount: planned.plan.length,
+          didntLandCount: didntLand.length,
+          rowIdsSendCount: rowIds.plan.length,
+        }),
       }),
       landed: landed.map(({ subject, what }) => ({
         kind: "send",
@@ -79,13 +105,15 @@ export class SyncRunResultBuilder {
     };
   }
   // A send the host refused at a held flush; nothing after it was sent.
-  heldStopped(
-    planned: SyncPlannerResult,
-    { kind, landedFlushes, flushCount }: HeldFlushRefusal,
-  ): SyncRunResult {
+  heldStopped({
+    planned,
+    refusal: { kind, landedFlushes, flushCount },
+    rowIds,
+  }: SyncRunHeldStopped): SyncRunResult {
     const common = this._common({
       refusals: [],
       planned,
+      rowIds,
       notes: [],
       typedTraitChanges: [],
     });
@@ -102,6 +130,7 @@ export class SyncRunResultBuilder {
   private _common({
     refusals,
     planned,
+    rowIds,
     notes,
     typedTraitChanges,
   }: SyncRunCommonProps): SyncRunCommon {
@@ -110,9 +139,9 @@ export class SyncRunResultBuilder {
       checks: [],
       refusals,
       stops: planned?.stops ?? [],
-      plan: planned?.plan ?? [],
+      plan: [...(planned?.plan ?? []), ...(rowIds?.plan ?? [])],
       forcedTraits: planned?.forcedTraits ?? [],
-      notices: [],
+      notices: rowIds?.notices ?? [],
       configs: {
         heldBack: planned?.configs.heldBack ?? [],
         renamed: [],
@@ -131,6 +160,12 @@ export class SyncRunResultBuilder {
     if (this.isSending) return sendResult(common, outcome);
     return dryRunResult(common, outcome);
   }
+}
+
+interface SentCounts {
+  sentCount: number;
+  didntLandCount: number;
+  rowIdsSendCount: number;
 }
 
 function dryRunResult(
@@ -154,8 +189,22 @@ function sendResult(
   };
 }
 
-function sentSummary(sentCount: number, didntLandCount: number): string {
-  if (sentCount === 0) return "nothing to send";
+function sentSummary({
+  sentCount,
+  didntLandCount,
+  rowIdsSendCount,
+}: SentCounts): string {
+  const rowIdsSends = `${rowIdsSendCount} ${fillRowIdsName} ${rowIdsSendCount === 1 ? "send" : "sends"}`;
+  if (sentCount === 0) {
+    if (rowIdsSendCount === 0) return "nothing to send";
+    return rowIdsSends;
+  }
+  const alterations = alterationsSummary(sentCount, didntLandCount);
+  if (rowIdsSendCount === 0) return alterations;
+  return `${alterations}; ${rowIdsSends}`;
+}
+
+function alterationsSummary(sentCount: number, didntLandCount: number): string {
   const landedCount = sentCount - didntLandCount;
   const landed =
     landedCount === 0

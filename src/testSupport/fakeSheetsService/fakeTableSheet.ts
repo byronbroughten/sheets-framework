@@ -32,6 +32,7 @@ export interface FakeTableSheetProps<CN extends string>
   columnConfigs: Record<CN, FakeTableColumn>;
   columnNames: readonly CN[]; // Only these are on the sheet, so a fixture needn't list every configured column.
   bodyRows: readonly FakeBodyRow<CN>[];
+  actionRowCells?: FakeBodyRow<CN>; // The action-row cell above each named column; null when unset.
 }
 
 export const fakeTableSheet = {
@@ -41,6 +42,7 @@ export const fakeTableSheet = {
     columnConfigs,
     columnNames,
     bodyRows,
+    actionRowCells,
     startRowIndex,
     startColumnIndex,
     ...passThrough
@@ -51,6 +53,16 @@ export const fakeTableSheet = {
       sheetId,
       title,
       rows: buildGridRows({
+        ...(actionRowCells === undefined
+          ? {}
+          : {
+              [origin.headSheetRowIndex("action")]: fromFirstColumn(
+                origin,
+                columnNames.map(
+                  (columnName) => actionRowCells[columnName] ?? null,
+                ),
+              ),
+            }),
         [origin.headSheetRowIndex("columnId")]: fromFirstColumn(
           origin,
           columns.map((column) => column.columnId),

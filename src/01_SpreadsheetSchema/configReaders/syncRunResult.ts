@@ -234,6 +234,9 @@ export type SyncPlanEffect =
 export type SyncNotice =
   { kind: "idFirst"; table: string } | { kind: "text"; text: string };
 
+// The framework endpoint's name, in every plan, summary and notice line that cites it.
+export const fillRowIdsName = "Fill Row IDs";
+
 export interface SyncConfigs {
   heldBack: SyncHeldBackTrait[];
   renamed: SyncRename[];
