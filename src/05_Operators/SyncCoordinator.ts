@@ -91,6 +91,13 @@ interface Regeneration {
   didntLand: SyncSendLine[];
 }
 
+// What a plan's flush writes, and the cells read before it so the gate can judge them.
+interface AppliedPlan {
+  accessChanges: ApiAccessChanges;
+  sentTraits: SyncPlannerResult["sentTraits"];
+  reads: EnteredDataReads;
+}
+
 interface RefetchProps {
   configTraits: TraitReadings;
   plan: SyncPlannerResult;
@@ -202,17 +209,18 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         ? planned.configTraits
         : readings.live,
     );
-    const reads = enteredDataReads({
-      alterations,
+    const applied: AppliedPlan = {
+      accessChanges,
       sentTraits: planned.sentTraits,
-      idNameMap: props.previousIdNameMap,
-    });
+      reads: enteredDataReads({
+        alterations,
+        sentTraits: planned.sentTraits,
+        idNameMap: props.previousIdNameMap,
+      }),
+    };
     // Grants join here only on an unstopped send; a dry run applies them after its files are built, so its configs never record a Table with no column IDs.
     // Column IDs only on an unstopped send: one minted by any other run would reach the configs but never the sheet.
-    if (isApplying) {
-      this._readEnteredData(reads);
-      this._applyPlan(accessChanges, planned.sentTraits);
-    }
+    if (isApplying) this._applyPlan(applied);
     const notes = this._recordUntypedColumns();
     if (isApplying) {
       const refusal = this._flushUnlessHeld();
@@ -247,8 +255,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     const { files, changes, didntLand } = regeneration;
     // After the files are strings, so the host's gate judges what a send would write and the configs never see it.
     if (props.isHostWithholding && !props.isSending && !planned.isStopped) {
-      this._readEnteredData(reads);
-      this._applyPlan(accessChanges, planned.sentTraits);
+      this._applyPlan(applied);
       this.ss.batchUpdateGSheets();
     }
     const landed = sent.filter(hasLanded(didntLand));
@@ -331,6 +338,15 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     this.tableConfigOperator.validateHeadersInZone();
     this.columnConfigOperator.fetchHeadRows();
   }
+  private _applyPlan({ accessChanges, sentTraits, reads }: AppliedPlan): void {
+    this._readEnteredData(reads);
+    // Before the access changes, so it sends what the pre-send read planned.
+    this.rowIdsOperator.addCheckboxes();
+    this._applyApiAccessChanges(accessChanges);
+    this.columnConfigOperator.addMissingColumnIds().updateHeaders(sentTraits);
+    this.tableConfigOperator.updateTableNames(sentTraits);
+    this.tabConfigOperator.updateTabTraits(sentTraits);
+  }
   // The cells the host's entered-data gate judges; a Table or tab gone from the sheet has none to read.
   private _readEnteredData({
     tabGids,
@@ -355,17 +371,6 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       table.column(columnId).raw.gatherFetchFull();
     }
     identified.fetchAllGathered();
-  }
-  private _applyPlan(
-    accessChanges: ApiAccessChanges,
-    sentTraits: SyncPlannerResult["sentTraits"],
-  ): void {
-    // Before the access changes, so it sends what the pre-send read planned.
-    this.rowIdsOperator.addCheckboxes();
-    this._applyApiAccessChanges(accessChanges);
-    this.columnConfigOperator.addMissingColumnIds().updateHeaders(sentTraits);
-    this.tableConfigOperator.updateTableNames(sentTraits);
-    this.tabConfigOperator.updateTabTraits(sentTraits);
   }
   // The Node host's gate refuses a held flush by throwing; any other error goes on up.
   private _flushUnlessHeld(): HeldFlushRefusal | undefined {

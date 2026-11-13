@@ -550,7 +550,6 @@ describe("SyncCoordinator.run entered-data gate", () => {
       );
     }
 
-    // The ID-less Extra column gives the run a column ID to flush; the hook records the read as the flush begins.
     // The note sits below the top row, which sync's head-row read already covers.
     function heldNoteBeforeFlush(props: {
       isSending: boolean;

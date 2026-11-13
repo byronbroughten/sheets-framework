@@ -1,17 +1,16 @@
-import type { IdNameMapGeneric } from "./idNameMapTypes";
+import {
+  type ColumnReference,
+  type IdNameMapGeneric,
+  tableIdsByName,
+} from "./idNameMapTypes";
 import type { IntendedTrait } from "./SyncPlanner";
 import { entriesOf, type WideAlterations } from "./SyncPlanner/wideAlterations";
-
-export interface EnteredDataColumn {
-  tableId: string;
-  columnId: string;
-}
 
 // What sync reads before its flush, so the entered-data gate can judge each cell a deletion or a formula would overwrite.
 export interface EnteredDataReads {
   tabGids: number[];
   tableIds: string[];
-  columns: EnteredDataColumn[];
+  columns: ColumnReference[];
 }
 
 interface EnteredDataReadsProps {
@@ -27,17 +26,12 @@ export function enteredDataReads({
   sentTraits,
   idNameMap,
 }: EnteredDataReadsProps): EnteredDataReads {
-  const tableIdsByName = new Map(
-    Object.entries(idNameMap.tables).map(([tableId, { name }]) => [
-      name,
-      tableId,
-    ]),
-  );
+  const tableIdsOfNames = tableIdsByName(idNameMap);
   function columnOf(
     table: string,
     column: string,
-  ): EnteredDataColumn | undefined {
-    const tableId = tableIdsByName.get(table);
+  ): ColumnReference | undefined {
+    const tableId = tableIdsOfNames.get(table);
     if (tableId === undefined) return undefined;
     const columnId = idNameMap.tables[tableId]?.columns?.[column];
     if (columnId === undefined) return undefined;
@@ -58,7 +52,7 @@ export function enteredDataReads({
   });
   const tableIds = tableEntries.flatMap(([table, entry]) => {
     if (entry.deleted !== true) return [];
-    const tableId = tableIdsByName.get(table);
+    const tableId = tableIdsOfNames.get(table);
     return tableId === undefined ? [] : [tableId];
   });
   const tabGidsByName = new Map(
