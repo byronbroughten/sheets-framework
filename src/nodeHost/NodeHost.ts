@@ -13,7 +13,8 @@ import type { Endpoints } from "../06_API/Endpoints";
 import { installEndpoints } from "../06_API/feedbackColumnIds";
 import {
   EnteredDataGate,
-  type EnteredDataGateBinding,
+  type EnteredDataGateProps,
+  type HeldList,
 } from "./EnteredDataGate";
 import { UpdateRequestSummary } from "./UpdateRequestSummary";
 
@@ -26,7 +27,7 @@ export interface NodeHostProps {
   isDryRun: boolean;
   log: (message: string) => void;
   // Only sync passes one; a chore's flushes go unclassified.
-  enteredDataGate?: EnteredDataGateBinding;
+  enteredDataGate?: EnteredDataGateProps;
 }
 
 // The framework's second host — Sheets only, in Node. See docs/how-it-runs/node-host.md.
@@ -35,7 +36,7 @@ export class NodeHost {
   private endpoints: Endpoints;
   readonly spreadsheetId: string;
   readonly isDryRun: boolean;
-  readonly enteredDataGate: EnteredDataGate | undefined;
+  private enteredDataGate: EnteredDataGate | undefined;
   private transport: SheetsHttpTransport;
   private log: (message: string) => void;
   private sentRequests: GoogleRequest[];
@@ -44,7 +45,7 @@ export class NodeHost {
     this.endpoints = props.endpoints ?? {};
     this.spreadsheetId = props.spreadsheetId;
     this.isDryRun = props.isDryRun;
-    this.enteredDataGate = gateFor(props);
+    this.enteredDataGate = gateFor(props.enteredDataGate);
     this.transport = props.transport;
     this.log = props.log;
     this.sentRequests = [];
@@ -56,13 +57,17 @@ export class NodeHost {
     return GoogleSheetsAPI.initHttp({
       spreadsheetId: this.spreadsheetId,
       transport: this.transport,
-      reportRead: (read) => this.enteredDataGate?.recordRead(read),
+      reportRead: (read) => this.enteredDataGate?.integrateRead(read),
       gateFlush: (requests, send) => this._gateFlush(requests, send),
     });
   }
   // Every request the run produced, sent or withheld by the dry run.
   get summary(): UpdateRequestSummary {
     return new UpdateRequestSummary({ requests: this.sentRequests });
+  }
+  // Every flush's held items and their token; undefined when the host has no gate.
+  get heldList(): HeldList | undefined {
+    return this.enteredDataGate?.heldList;
   }
   ensureGlobals(): this {
     const globals = globalThis as Record<string, unknown>;
@@ -77,18 +82,16 @@ export class NodeHost {
     send: () => GoogleBatchUpdateResponse,
   ): GoogleBatchUpdateResponse {
     this.sentRequests.push(...requests);
-    if (this.enteredDataGate !== undefined) {
-      return this.enteredDataGate.passFlush(requests, send);
-    }
+    this.enteredDataGate?.classify(requests);
     if (this.isDryRun) return {};
-    return send();
+    if (this.enteredDataGate === undefined) return send();
+    return this.enteredDataGate.flush(send);
   }
 }
 
-function gateFor({
-  enteredDataGate,
-  isDryRun,
-}: NodeHostProps): EnteredDataGate | undefined {
-  if (enteredDataGate === undefined) return undefined;
-  return EnteredDataGate.init({ ...enteredDataGate, isDryRun });
+function gateFor(
+  props: EnteredDataGateProps | undefined,
+): EnteredDataGate | undefined {
+  if (props === undefined) return undefined;
+  return EnteredDataGate.init(props);
 }

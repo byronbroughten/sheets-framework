@@ -14,7 +14,7 @@ import type {
   ConfigSetBase,
 } from "../src/01_SpreadsheetSchema/configReaders/configRegister.ts";
 import type { Endpoints } from "../src/06_API/Endpoints.ts";
-import type { EnteredDataGateBinding } from "../src/nodeHost/EnteredDataGate.ts";
+import type { EnteredDataGateProps } from "../src/nodeHost/EnteredDataGate.ts";
 import type { NodeHost } from "../src/nodeHost/NodeHost.ts";
 import type { SheetsConfig } from "./sheetsConfig.ts";
 
@@ -181,7 +181,7 @@ function fetchSync(request: FetchRequest): FetchResponse {
 }
 
 // The gate's terms but its hash, which the Node half supplies.
-type EnteredDataGateTerms = Omit<EnteredDataGateBinding, "hash">;
+type EnteredDataGateTerms = Omit<EnteredDataGateProps, "hash">;
 
 export async function startNodeHost({
   isDryRun,
@@ -211,7 +211,7 @@ export async function startNodeHost({
 
 function hashedGate(
   terms: EnteredDataGateTerms | undefined,
-): EnteredDataGateBinding | undefined {
+): EnteredDataGateProps | undefined {
   if (terms === undefined) return undefined;
   return {
     ...terms,

@@ -190,10 +190,14 @@ function gateTransport() {
 interface GatedHostCase {
   isDryRun: boolean;
   target?: string;
-  confirm?: HeldList;
+  confirmedList?: HeldList;
 }
 
-function seedGatedHost({ isDryRun, target, confirm }: GatedHostCase) {
+interface SendCase extends Omit<GatedHostCase, "isDryRun"> {
+  flushes: GoogleRequest[][];
+}
+
+function seedGatedHost({ isDryRun, target, confirmedList }: GatedHostCase) {
   const transport = gateTransport();
   const host = NodeHost.init({
     configs: installedConfigs(),
@@ -203,7 +207,7 @@ function seedGatedHost({ isDryRun, target, confirm }: GatedHostCase) {
     log: vi.fn(),
     enteredDataGate: {
       target: target ?? gateTarget,
-      confirm,
+      confirmedList,
       hash: (input) => `hash(${input})`,
     },
   });
@@ -273,18 +277,14 @@ function dryRunHeldList(flushes: GoogleRequest[][], target?: string): HeldList {
   const { host, api } = seedGatedHost({ isDryRun: true, target });
   readPayments(api);
   for (const requests of flushes) flushRequests(api, requests);
-  return Val.assert(host.enteredDataGate?.heldList, "heldList");
+  return Val.assert(host.heldList, "heldList");
 }
 
-function sendFlushes(
-  flushes: GoogleRequest[][],
-  confirm: HeldList | undefined,
-  target?: string,
-) {
+function sendFlushes({ flushes, confirmedList, target }: SendCase) {
   const { host, api, transport } = seedGatedHost({
     isDryRun: false,
     target,
-    confirm,
+    confirmedList,
   });
   readPayments(api);
   let refusal: unknown;
@@ -339,7 +339,7 @@ describe("NodeHost with an entered-data gate", () => {
 
     flushRequests(api, [writeAmount(payments.emptyRow, 5)]);
 
-    expect(heldKinds(host.enteredDataGate?.heldList)).toEqual([["unreadCell"]]);
+    expect(heldKinds(host.heldList)).toEqual([["unreadCell"]]);
   });
 
   it("withholds every flush on a dry run, free ones included, and still reports them", () => {
@@ -367,41 +367,54 @@ describe("NodeHost with an entered-data gate", () => {
   });
 
   it("sends a free flush with no token", () => {
-    const { refusal, posts } = sendFlushes([[appendRows]], undefined);
+    const { refusal, posts } = sendFlushes({ flushes: [[appendRows]] });
 
     expect(refusal).toBeUndefined();
     expect(posts).toHaveLength(1);
   });
 
   it("refuses a held flush as uncovered when no token is given, and sends nothing", () => {
-    const { refusal, posts } = sendFlushes(
-      [[writeAmount(payments.rentRow, 900)]],
-      undefined,
-    );
+    const { refusal, posts } = sendFlushes({
+      flushes: [[writeAmount(payments.rentRow, 900)]],
+    });
 
     expect(refusal).toBeInstanceOf(HeldFlushRefusal);
-    expect(refusal).toMatchObject({ kind: "uncovered", landedFlushes: 0 });
+    expect(refusal).toMatchObject({
+      kind: "uncovered",
+      landedFlushes: 0,
+      flushCount: undefined,
+    });
     expect(posts).toEqual([]);
   });
 
   it("sends a held flush the dry run's token and list cover", () => {
     const flushes = [[appendRows], [writeAmount(payments.rentRow, 900)]];
 
-    const { refusal, posts } = sendFlushes(flushes, dryRunHeldList(flushes));
+    const { refusal, posts } = sendFlushes({
+      flushes,
+      confirmedList: dryRunHeldList(flushes),
+    });
 
     expect(refusal).toBeUndefined();
     expect(posts).toHaveLength(2);
   });
 
-  it("refuses as mismatched when the list's entry for the flush differs from its items", () => {
-    const covered = dryRunHeldList([[writeAmount(payments.rentRow, 900)]]);
+  it("refuses as mismatched when the list's entry for the flush differs from its items, counting the list's flushes", () => {
+    const covered = dryRunHeldList([
+      [writeAmount(payments.rentRow, 900)],
+      [appendRows],
+    ]);
 
-    const { refusal, posts } = sendFlushes(
-      [[writeAmount(payments.rentRow, 800)]],
-      covered,
-    );
+    const { refusal, posts } = sendFlushes({
+      flushes: [[writeAmount(payments.rentRow, 800)]],
+      confirmedList: covered,
+    });
 
-    expect(refusal).toMatchObject({ kind: "mismatched", landedFlushes: 0 });
+    expect(refusal).toMatchObject({
+      kind: "mismatched",
+      landedFlushes: 0,
+      flushCount: 2,
+    });
     expect(posts).toEqual([]);
   });
 
@@ -410,7 +423,7 @@ describe("NodeHost with an entered-data gate", () => {
     const covered = dryRunHeldList([[writeAmount(payments.rentRow, 900)]]);
     const edited = { ...covered, flushes: dryRunHeldList(flushes).flushes };
 
-    const { refusal } = sendFlushes(flushes, edited);
+    const { refusal } = sendFlushes({ flushes, confirmedList: edited });
 
     expect(refusal).toMatchObject({ kind: "mismatched" });
   });
@@ -418,19 +431,22 @@ describe("NodeHost with an entered-data gate", () => {
   it("refuses as mismatched when the token was made for another target", () => {
     const flushes = [[writeAmount(payments.rentRow, 900)]];
 
-    const { refusal } = sendFlushes(
+    const { refusal } = sendFlushes({
       flushes,
-      dryRunHeldList(flushes, "app:another-spreadsheet"),
-    );
+      confirmedList: dryRunHeldList(flushes, "app:another-spreadsheet"),
+    });
 
     expect(refusal).toMatchObject({ kind: "mismatched" });
   });
 
   it("refuses partway with the earlier flushes landed and counted", () => {
-    const { refusal, posts } = sendFlushes(
-      [[appendRows], [appendRows], [writeAmount(payments.rentRow, 900)]],
-      undefined,
-    );
+    const { refusal, posts } = sendFlushes({
+      flushes: [
+        [appendRows],
+        [appendRows],
+        [writeAmount(payments.rentRow, 900)],
+      ],
+    });
 
     expect(refusal).toMatchObject({ kind: "uncovered", landedFlushes: 2 });
     expect(posts).toHaveLength(2);
@@ -441,7 +457,7 @@ describe("NodeHost with an entered-data gate", () => {
 
     writeOneCell();
 
-    expect(host.enteredDataGate).toBeUndefined();
+    expect(host.heldList).toBeUndefined();
     expect(
       transport.mock.calls.filter(([request]) => request.method === "POST"),
     ).toHaveLength(1);
