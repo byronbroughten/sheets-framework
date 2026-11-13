@@ -188,6 +188,7 @@ export type LocalWriteOperation =
   | AddProtectedRangeOperation
   | DeleteProtectedRangeOperation
   | RenameSheetOperation
+  | UpdateTabPropertiesOperation
   | RenameTableOperation
   | SetTableColumnPropertiesOperation
   | AddCheckboxValidationOperation
@@ -323,6 +324,13 @@ export interface RenameSheetOperation {
   kind: "renameSheet";
   sheetId: number;
   title: string;
+}
+
+// Each property present is sent, and only those; `index` counts before the move, as Google does.
+export interface UpdateTabPropertiesOperation {
+  kind: "updateTabProperties";
+  sheetId: number;
+  properties: Partial<SheetTabProperties> & { index?: number };
 }
 
 export interface RenameTableOperation {

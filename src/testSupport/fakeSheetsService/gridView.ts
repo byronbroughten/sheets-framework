@@ -27,6 +27,7 @@ export interface FakeSheetView {
   tables: GoogleAppsScript.Sheets.Schema.Table[];
   protectedRanges: GoogleAppsScript.Sheets.Schema.ProtectedRange[];
   conditionalFormats: GoogleAppsScript.Sheets.Schema.ConditionalFormatRule[];
+  tabProperties: FakeTabProperties;
   cell(rowIndex: number, colIndex: number): FakeCell;
   // A rectangle of cells, `null` where empty; with no range, row 0 and column 0 to the last cell holding anything.
   rows(range?: FakeGridRange): FakeCell[][];
@@ -34,6 +35,13 @@ export interface FakeSheetView {
   // The sheet's one Table's body, counted from its first body row and first column; with no range, to the Table's end or the last cell holding anything.
   bodyRows(range?: FakeGridRange): FakeCell[][];
   bodyValues(range?: FakeGridRange): FakeCellValue[][];
+}
+
+export interface FakeTabProperties {
+  hidden: boolean;
+  tabColorStyle: GoogleAppsScript.Sheets.Schema.ColorStyle | undefined;
+  frozenRowCount: number;
+  frozenColumnCount: number;
 }
 
 export interface FakeGridView {
@@ -89,6 +97,12 @@ function sheetView(state: FakeSheetState): FakeSheetView {
     tables: fakeTables.googleTables(sheet) ?? [],
     protectedRanges: sheet.protectedRanges ?? [],
     conditionalFormats: sheet.conditionalFormats ?? [],
+    tabProperties: {
+      hidden: sheet.hidden ?? false,
+      tabColorStyle: sheet.tabColorStyle,
+      frozenRowCount: sheet.frozenRowCount ?? 0,
+      frozenColumnCount: sheet.frozenColumnCount ?? 0,
+    },
     cell(rowIndex, colIndex) {
       return fakeGrid.cell(sheet, rowIndex, colIndex);
     },

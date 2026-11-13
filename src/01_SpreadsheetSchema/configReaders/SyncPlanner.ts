@@ -153,11 +153,17 @@ export class SyncPlanner {
     this._alterationDeclarations.forEach((intended) => {
       const sides = comparedSides(intended, previous, live);
       if (sides === undefined) return;
-      const stop = stopOf(intended, sides);
       function send(what: string): void {
         sends.push({ subject: subjectOf(intended), what, effects: [] });
         sentTraits.push(intended);
       }
+      if (isOrderTrait(intended)) {
+        if (!isSameValue(intended.value, sides.live)) {
+          send(`set to ${valueText(intended.value)}`);
+        }
+        return;
+      }
+      const stop = stopOf(intended, sides);
       if (stop === undefined) {
         if (sendsIntended(intended.value, sides)) {
           send(`set to ${valueText(intended.value)}`);
@@ -241,6 +247,7 @@ export class SyncPlanner {
         pickTraits(entry, [
           "title",
           "color",
+          "before",
           "frozenRows",
           "frozenColumns",
           "hidden",
@@ -265,6 +272,11 @@ function pickTraits<EN extends object, KY extends keyof EN & string>(
     if (value === undefined) return [];
     return [{ trait, value }];
   });
+}
+
+// Order is never in the configs, so live alone decides it: sent unless live already has it.
+function isOrderTrait(intended: IntendedTrait): boolean {
+  return intended.kind === "tab" && intended.trait === "before";
 }
 
 function addressKey(address: TraitAddress): string {

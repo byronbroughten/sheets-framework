@@ -93,6 +93,33 @@ export class SheetRaw extends SheetBaseRaw {
     this.sheetState.working.title = title;
     return this;
   }
+  updateTabProperties(properties: Partial<SheetTabProperties>): this {
+    this.writeOperations.updateTabProperties.push({
+      kind: "updateTabProperties",
+      sheetId: this.sheetGid,
+      properties,
+    });
+    this.sheetState.working.tabProperties = {
+      ...this.tabProperties,
+      ...properties,
+    };
+    return this;
+  }
+  // Google counts the index before the move, so the target's own index lands this tab just before it.
+  moveBefore(target: SheetRaw): this {
+    this.writeOperations.updateTabProperties.push({
+      kind: "updateTabProperties",
+      sheetId: this.sheetGid,
+      properties: { index: target.index },
+    });
+    return this;
+  }
+  // Raw keeps the sheets in the order the first fetch gave them, which is the tab order.
+  get index(): number {
+    return Array.from(this.spreadsheetStateRaw.sheets.keys()).indexOf(
+      this.sheetGid,
+    );
+  }
   get rowCount(): number {
     return Val.assert(
       this.sheetState.working.rowCount,

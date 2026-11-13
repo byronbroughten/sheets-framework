@@ -599,7 +599,7 @@ describe("SyncRunReport's refusals before the read", () => {
   it("names the Table and the trait it can't send yet", () => {
     expect(text).toContain("REFUSED 3 · item › name.formula");
     expect(text).toContain(
-      "  sync can't send name.formula yet: for now it sends only a Table's name and a column's header, emptyValueAllowed.",
+      "  sync can't send name.formula yet: for now it sends only a Table's name, a column's header, emptyValueAllowed and a tab's title, color, before, frozenRows, frozenColumns, hidden.",
     );
   });
 });

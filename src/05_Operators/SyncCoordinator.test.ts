@@ -604,6 +604,112 @@ describe("SyncCoordinator.run renames", () => {
   });
 });
 
+describe("SyncCoordinator.run tab traits", () => {
+  // The dev Test tab, with no Table, in the previous map beside Item.
+  const testTabGid = 604825146;
+  const testTabSheet: FakeSheetProperties = {
+    sheetId: testTabGid,
+    title: "Test",
+  };
+
+  function runTabs(alterations: PendingAlterations): SyncRun {
+    const previousIdNameMap = previousItemMap();
+    previousIdNameMap.tabs[String(testTabGid)] = {
+      name: "test",
+      title: "Test",
+      tableIds: [],
+    };
+    return SyncCoordinator.init().run({
+      isSending: true,
+      intendedState: { alterations },
+      previousIdNameMap,
+      frame,
+    });
+  }
+
+  it("sets a tab's colour, frozen counts and hidden, and the configs record them", () => {
+    const service = seedFixture();
+
+    const { result, files } = runTabs({
+      tabs: {
+        item: {
+          color: "#ff0000",
+          frozenRows: 2,
+          frozenColumns: 1,
+          hidden: true,
+        },
+      },
+    });
+
+    expect(service.grid.sheet(itemGid).tabProperties).toEqual({
+      hidden: true,
+      tabColorStyle: { rgbColor: { red: 1, green: 0, blue: 0 } },
+      frozenRowCount: 2,
+      frozenColumnCount: 1,
+    });
+    expect(Val.assert(files, "emitted files").tabConfigs).toContain(
+      '"item": { "sheetGid": 1100001, "title": "Item", "color": "#ff0000", "hidden": true, "frozenRows": 2, "frozenColumns": 1 }',
+    );
+    expect(result).toMatchObject({
+      outcome: { kind: "sent", summary: "4 alterations landed" },
+    });
+  });
+
+  it("retitles a tab, and the ID-name map follows the new title", () => {
+    const service = seedFixture();
+
+    const { files } = runTabs({ tabs: { item: { title: "Stock" } } });
+
+    expect(service.grid.sheet(itemGid).title).toBe("Stock");
+    expect(
+      parseIdNameMapFileSource(Val.assert(files, "emitted files").idNameMap)
+        .tabs[String(itemGid)],
+    ).toMatchObject({ name: "stock", title: "Stock" });
+  });
+
+  it("moves a tab before another", () => {
+    const service = seedFixture({ extraSheets: [testTabSheet] });
+
+    const { result } = runTabs({ tabs: { test: { before: "item" } } });
+
+    expect(service.grid.sheetTitles()).toEqual(["Test", "Item"]);
+    expect(result).toMatchObject({
+      landed: [{ subject: { tab: "test", path: "before" } }],
+    });
+  });
+
+  it("skips a before the live order already satisfies", () => {
+    const service = seedFixture({ extraSheets: [testTabSheet] });
+
+    const { result } = runTabs({ tabs: { item: { before: "test" } } });
+
+    expect(service.batchUpdateCount()).toBe(0);
+    expect(service.grid.sheetTitles()).toEqual(["Item", "Test"]);
+    expect(result).toMatchObject({ landed: [] });
+  });
+
+  it("stops on a person's tab edit since the last sync, sending nothing", () => {
+    const service = stubSheetsService({
+      sheets: [{ ...itemSheet(), frozenRowCount: 3 }],
+    });
+
+    const { result } = runTabs({ tabs: { item: { frozenRows: 2 } } });
+
+    expect(service.batchUpdateCount()).toBe(0);
+    expect(service.grid.sheet(itemGid).tabProperties.frozenRowCount).toBe(3);
+    expect(result).toMatchObject({
+      stops: [
+        {
+          subject: { tab: "item", path: "frozenRows" },
+          label: "both changed",
+          agreed: "0",
+          live: "3",
+        },
+      ],
+    });
+  });
+});
+
 describe("SyncCoordinator send with no alterations", () => {
   it("returns every file's source together, reflecting the synced state", () => {
     seedFixture();

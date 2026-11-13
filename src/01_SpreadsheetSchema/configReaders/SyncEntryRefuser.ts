@@ -20,6 +20,14 @@ type NotSendableYet = Extract<SyncRefusal, { kind: "notSendableYet" }>;
 export const sendableTraits = {
   table: new Set<string>(sheetTraits.table),
   column: new Set<string>([...sheetTraits.column, "emptyValueAllowed"]),
+  tab: new Set<string>([
+    "title",
+    "color",
+    "before",
+    "frozenRows",
+    "frozenColumns",
+    "hidden",
+  ]),
 } as const;
 
 // Pure: refuses what can't be planned from intended state and the previous ID-name map alone, so before any read.
@@ -55,7 +63,9 @@ export class SyncEntryRefuser {
       mapNames: Object.values(this.idNameMap.tabs).map(({ name }) => name),
       entries: entriesOf(this.alterations.tabs),
       traitRefusals: (tab, entry) =>
-        definedKeys(entry).map((trait) => notSendableYet(tab, trait)),
+        definedKeys(entry)
+          .filter((trait) => !sendableTraits.tab.has(trait))
+          .map((trait) => notSendableYet(tab, trait)),
     });
   }
   private get _newTabRefusals(): SyncRefusal[] {

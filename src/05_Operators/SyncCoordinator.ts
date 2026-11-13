@@ -6,6 +6,7 @@ import { remainingAlterations } from "../01_SpreadsheetSchema/configReaders/rema
 import { SyncEntryRefuser } from "../01_SpreadsheetSchema/configReaders/SyncEntryRefuser";
 import {
   isSheetTrait,
+  type PlanProps,
   SyncPlanner,
   type TraitReadings,
 } from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
@@ -141,7 +142,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     this._readLive();
     // The ID-prefix guard runs before the column-ID write it guards.
     this.tableConfigOperator.validateIdPrefixesUnchanged();
-    const readings = this.columnConfigOperator.traitReadings();
+    const readings = this._traitReadings();
     const planned = planner.plan(readings);
     // The gate's holds go here, between the plan and the apply.
     const isApplying = props.isSending && !planned.isStopped;
@@ -157,6 +158,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         .addMissingColumnIds()
         .updateHeaders(planned.sentTraits);
       this.tableConfigOperator.updateTableNames(planned.sentTraits);
+      this.tabConfigOperator.updateTabTraits(planned.sentTraits);
     }
     const notes = this._recordUntypedColumns();
     if (isApplying) this.ss.batchUpdateGSheets();
@@ -211,6 +213,14 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       sent,
     });
     return { files: this._configFiles(), changes, notes };
+  }
+  private _traitReadings(): PlanProps {
+    const { previous, live } = this.columnConfigOperator.traitReadings();
+    const tabs = this.tabConfigOperator.traitReadings();
+    return {
+      previous: { ...previous, tabs: tabs.previous },
+      live: { ...live, tabs: tabs.live },
+    };
   }
   private _readLive(): void {
     this.ss.fetchAllSheetProperties({ includeConditionalFormats: true });

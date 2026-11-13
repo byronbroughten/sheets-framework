@@ -13,10 +13,12 @@ import type {
   SpreadsheetSnapshot,
   TableColumnPropertiesAdd,
   TableColumnPropertiesUpdate,
+  UpdateTabPropertiesOperation,
 } from "../RawSource/RawSource";
 import { AppsScript } from "./AppsScript";
 import { cellDataRequests } from "./GoogleSheetsAPI/cellData";
 import { googleConditionalFormatRule } from "./GoogleSheetsAPI/conditionalFormats";
+import { googleColor } from "./GoogleSheetsAPI/googleColor";
 import { googleGrid } from "./GoogleSheetsAPI/gridSnapshots";
 import { googleProtectedRange } from "./GoogleSheetsAPI/protectedRanges";
 
@@ -487,6 +489,8 @@ function modeledOperationToGoogleRequests(
           },
         },
       ];
+    case "updateTabProperties":
+      return [tabPropertiesRequest(operation)];
     case "renameTable":
       return [
         {
@@ -519,6 +523,50 @@ function modeledOperationToGoogleRequests(
       );
     }
   }
+}
+
+// The field mask names only what the operation carries, so an absent property is left alone.
+function tabPropertiesRequest({
+  sheetId,
+  properties,
+}: UpdateTabPropertiesOperation): ModeledRequest {
+  const { color, hidden, frozenRows, frozenColumns, index } = properties;
+  const fields = [
+    ...(color !== undefined ? ["tabColorStyle"] : []),
+    ...(hidden !== undefined ? ["hidden"] : []),
+    ...(frozenRows !== undefined ? ["gridProperties.frozenRowCount"] : []),
+    ...(frozenColumns !== undefined
+      ? ["gridProperties.frozenColumnCount"]
+      : []),
+    ...(index !== undefined ? ["index"] : []),
+  ];
+  const hasGridProperties =
+    frozenRows !== undefined || frozenColumns !== undefined;
+  return {
+    updateSheetProperties: {
+      properties: {
+        sheetId,
+        ...(color !== undefined
+          ? { tabColorStyle: googleColor.fromTabColor(color) }
+          : {}),
+        ...(hidden !== undefined ? { hidden } : {}),
+        ...(hasGridProperties
+          ? {
+              gridProperties: {
+                ...(frozenRows !== undefined
+                  ? { frozenRowCount: frozenRows }
+                  : {}),
+                ...(frozenColumns !== undefined
+                  ? { frozenColumnCount: frozenColumns }
+                  : {}),
+              },
+            }
+          : {}),
+        ...(index !== undefined ? { index } : {}),
+      },
+      fields: fields.join(","),
+    },
+  };
 }
 
 function columnPropertiesRequest(

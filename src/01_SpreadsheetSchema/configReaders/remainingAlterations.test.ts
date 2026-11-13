@@ -108,9 +108,9 @@ describe("remainingAlterations", () => {
     });
   });
 
-  it("throws on a landed subject that isn't a Table or column trait", () => {
+  it("throws on a landed subject that isn't a Table, column or tab trait", () => {
     expect(() => remainingAlterations({}, [{ tab: "itemTab" }])).toThrow(
-      "Table or column trait",
+      "Table, column or tab trait",
     );
   });
 });
