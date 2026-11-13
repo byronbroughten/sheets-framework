@@ -6,6 +6,7 @@ import type {
   SyncRunCommon,
   SyncRunFrame,
   SyncRunResult,
+  SyncSendLine,
   SyncSendOutcome,
   SyncSendResult,
   SyncTypedTraitChange,
@@ -20,6 +21,8 @@ export interface SyncRunPlanned {
   planned: SyncPlannerResult;
   notes: string[];
   typedTraitChanges: SyncTypedTraitChange[];
+  // The sent traits the refetch shows Sheets kept another value for; they leave the landed list.
+  didntLand: SyncSendLine[];
 }
 
 interface SyncRunCommonProps {
@@ -44,7 +47,12 @@ export class SyncRunResultBuilder {
     const common = this._common({ refusals, notes: [], typedTraitChanges: [] });
     return this._unsent(common, { kind: "refused" });
   }
-  ran({ planned, notes, typedTraitChanges }: SyncRunPlanned): SyncRunResult {
+  ran({
+    planned,
+    notes,
+    typedTraitChanges,
+    didntLand,
+  }: SyncRunPlanned): SyncRunResult {
     const common = this._common({
       refusals: [],
       planned,
@@ -53,16 +61,23 @@ export class SyncRunResultBuilder {
     });
     if (planned.isStopped) return this._unsent(common, { kind: "stopped" });
     if (!this.isSending) return dryRunResult(common, { kind: "ready" });
+    const didntLandKeys = new Set(
+      didntLand.map(({ subject }) => JSON.stringify(subject)),
+    );
+    const landed = planned.plan.filter(
+      ({ subject }) => !didntLandKeys.has(JSON.stringify(subject)),
+    );
     return {
       ...sendResult(common, {
         kind: "sent",
-        summary: sentSummary(planned.plan.length),
+        summary: sentSummary(planned.plan.length, didntLand.length),
       }),
-      landed: planned.plan.map(({ subject, what }) => ({
+      landed: landed.map(({ subject, what }) => ({
         kind: "send",
         subject,
         what,
       })),
+      didntLand,
     };
   }
   private _common({
@@ -120,8 +135,13 @@ function sendResult(
   };
 }
 
-function sentSummary(landedCount: number): string {
-  if (landedCount === 0) return "nothing to send";
-  if (landedCount === 1) return "1 alteration landed";
-  return `${landedCount} alterations landed`;
+function sentSummary(sentCount: number, didntLandCount: number): string {
+  if (sentCount === 0) return "nothing to send";
+  const landedCount = sentCount - didntLandCount;
+  const landed =
+    landedCount === 0
+      ? "nothing landed"
+      : `${landedCount} ${landedCount === 1 ? "alteration" : "alterations"} landed`;
+  if (didntLandCount === 0) return landed;
+  return `${landed}; ${didntLandCount} didn't land`;
 }

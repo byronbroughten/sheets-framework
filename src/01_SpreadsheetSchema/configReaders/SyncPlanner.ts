@@ -377,7 +377,7 @@ function conflictOf(stop: StopContext): SyncConflict {
   return conflict;
 }
 
-function subjectOf(address: TraitAddress): SyncSubject {
+export function subjectOf(address: TraitAddress): SyncSubject {
   if (address.kind === "tab") return { tab: address.tab, path: address.trait };
   if (address.kind === "table") {
     return { table: address.table, path: address.trait };
@@ -387,7 +387,7 @@ function subjectOf(address: TraitAddress): SyncSubject {
 }
 
 // Both comparison and display, so a column type's key order can't read as a change.
-function valueText(value: TraitValue | undefined): string {
+export function valueText(value: TraitValue | undefined): string {
   if (value === undefined) return absentText;
   if (typeof value !== "object") return String(value);
   const type = value.type ?? "AUTOMATIC";
@@ -395,7 +395,7 @@ function valueText(value: TraitValue | undefined): string {
   return `${type} ${value.rule.condition} [${value.rule.values.join(", ")}]`;
 }
 
-function isSameValue(
+export function isSameValue(
   first: TraitValue | undefined,
   second: TraitValue | undefined,
 ): boolean {

@@ -12,7 +12,7 @@ A refused run writes no file. Every other run writes every config file, the ID-n
 
 ## sync's exit codes
 
-The run exits 1 when it stopped, was refused, held a flush that stopped a send (before any flush landed or partway), or sent with an item that didn't land; and when the package's `npm run tsc` fails afterward. It exits 0 otherwise: a ready dry run, held items included, or a send where everything landed. `syncExitCode` in `scripts/sync.ts` decides it.
+The run exits 1 when it stopped, was refused, held a flush that stopped a send (before any flush landed or partway), or sent with an item that didn't land (a sent header or Table name Sheets kept another value for); and when the package's `npm run tsc` fails afterward. It exits 0 otherwise: a ready dry run, held items included, or a send where everything landed. `syncExitCode` in `scripts/sync.ts` decides it.
 
 ## What configs-diff prints
 
