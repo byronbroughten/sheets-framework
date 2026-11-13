@@ -76,6 +76,27 @@ export const sheetReplays = {
         sheet.columnCount =
           properties.gridProperties?.columnCount ?? sheet.columnCount;
       },
+      // From Google's updateSheetProperties reference; #256's live run records the dev sheet's answer.
+      tabColorStyle() {
+        sheet.tabColorStyle = properties.tabColorStyle;
+      },
+      hidden() {
+        sheet.hidden = properties.hidden ?? false;
+      },
+      "gridProperties.frozenRowCount"() {
+        sheet.frozenRowCount = properties.gridProperties?.frozenRowCount ?? 0;
+      },
+      "gridProperties.frozenColumnCount"() {
+        sheet.frozenColumnCount =
+          properties.gridProperties?.frozenColumnCount ?? 0;
+      },
+      // Counted before the move: S1 goes ahead of S2 at index 2, not 1.
+      index() {
+        const from = spreadsheet.sheets.indexOf(sheet);
+        const to = properties.index ?? from;
+        spreadsheet.sheets.splice(from, 1);
+        spreadsheet.sheets.splice(to > from ? to - 1 : to, 0, sheet);
+      },
     });
     return {};
   },

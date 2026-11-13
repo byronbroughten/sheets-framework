@@ -16,6 +16,7 @@ import type {
   SheetSnapshot,
   SheetTabProperties,
   TableSnapshot,
+  UpdateTabPropertiesOperation,
 } from "../00_Source/RawSource/RawSource";
 import {
   type SheetColIndex,
@@ -92,6 +93,47 @@ export class SheetRaw extends SheetBaseRaw {
     });
     this.sheetState.working.title = title;
     return this;
+  }
+  updateTabProperties(properties: Partial<SheetTabProperties>): this {
+    this._queueTabProperties(properties);
+    this.sheetState.working.tabProperties = {
+      ...this.tabProperties,
+      ...properties,
+    };
+    return this;
+  }
+  // Google counts the index before the move, so the target's own index lands this tab just before it.
+  moveBefore(target: SheetRaw): this {
+    this._queueTabProperties({ index: target.index });
+    this._placeBefore(target.sheetGid);
+    return this;
+  }
+  private _queueTabProperties(
+    properties: UpdateTabPropertiesOperation["properties"],
+  ): void {
+    this.writeOperations.updateTabProperties.push({
+      kind: "updateTabProperties",
+      sheetId: this.sheetGid,
+      properties,
+    });
+  }
+  // So a later move in the same batch counts from where this one leaves the tabs.
+  private _placeBefore(targetGid: number): void {
+    const { sheets } = this.spreadsheetStateRaw;
+    const sheetState = this.sheetState;
+    const others = Array.from(sheets).filter(
+      ([sheetGid]) => sheetGid !== this.sheetGid,
+    );
+    const targetAt = others.findIndex(([sheetGid]) => sheetGid === targetGid);
+    others.splice(targetAt, 0, [this.sheetGid, sheetState]);
+    sheets.clear();
+    for (const [sheetGid, state] of others) sheets.set(sheetGid, state);
+  }
+  // Raw keeps the sheets in tab order: the first fetch's, then each queued move's.
+  get index(): number {
+    return Array.from(this.spreadsheetStateRaw.sheets.keys()).indexOf(
+      this.sheetGid,
+    );
   }
   get rowCount(): number {
     return Val.assert(

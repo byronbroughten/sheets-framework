@@ -401,7 +401,7 @@ function tableRefusalText(
 ): string[] {
   if (refusal.kind === "notSendableYet") {
     return [
-      `sync can't send ${refusal.path} yet: for now it sends only a Table's ${[...sendableTraits.table].join(", ")} and a column's ${[...sendableTraits.column].join(", ")}.`,
+      `sync can't send ${refusal.path} yet: for now it sends only a Table's ${[...sendableTraits.table].join(", ")}, a column's ${[...sendableTraits.column].join(", ")} and a tab's ${[...sendableTraits.tab].join(", ")}.`,
       "Take this entry out, then rerun.",
     ];
   }

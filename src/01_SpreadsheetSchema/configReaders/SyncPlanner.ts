@@ -85,7 +85,17 @@ interface IntendedValue {
 
 export type IntendedTrait = TraitAddress & IntendedValue;
 
-// The traits a send writes to the sheet, so the run refetches after sending one.
+// The traits a tab entry sets.
+export const tabTraits = [
+  "title",
+  "color",
+  "before",
+  "frozenRows",
+  "frozenColumns",
+  "hidden",
+] as const;
+
+// The sent traits Raw's working view doesn't carry, so the run refetches after sending one; a tab's land in the working view.
 export const sheetTraits = {
   table: new Set<string>(["name"]),
   column: new Set<string>(["header"]),
@@ -159,11 +169,17 @@ export class SyncPlanner {
     this._alterationDeclarations.forEach((intended) => {
       const sides = comparedSides(intended, previous, live);
       if (sides === undefined) return;
-      const stop = stopOf(intended, sides);
       function send(what: string): void {
         sends.push({ subject: subjectOf(intended), what, effects: [] });
         sentTraits.push(intended);
       }
+      if (isOrderTrait(intended)) {
+        if (!isSameValue(intended.value, sides.live)) {
+          send(`set to ${valueText(intended.value)}`);
+        }
+        return;
+      }
+      const stop = stopOf(intended, sides);
       if (stop === undefined) {
         if (sendsIntended(intended.value, sides)) {
           send(`set to ${valueText(intended.value)}`);
@@ -242,17 +258,15 @@ export class SyncPlanner {
         ),
       ],
     );
-    const tabTraits = entriesOf(this.alterations.tabs).flatMap(
+    const tabDeclarations = entriesOf(this.alterations.tabs).flatMap(
       ([tab, entry]): IntendedTrait[] =>
-        pickTraits(entry, [
-          "title",
-          "color",
-          "frozenRows",
-          "frozenColumns",
-          "hidden",
-        ]).map((trait) => ({ kind: "tab", tab, ...trait })),
+        pickTraits(entry, tabTraits).map((trait) => ({
+          kind: "tab",
+          tab,
+          ...trait,
+        })),
     );
-    return [...tableTraits, ...tabTraits];
+    return [...tableTraits, ...tabDeclarations];
   }
 }
 
@@ -264,13 +278,18 @@ interface ComparedSides {
 
 function pickTraits<EN extends object, KY extends keyof EN & string>(
   entry: EN,
-  traits: KY[],
+  traits: readonly KY[],
 ): { trait: string; value: TraitValue }[] {
   return traits.flatMap((trait) => {
     const value = entry[trait] as TraitValue | undefined;
     if (value === undefined) return [];
     return [{ trait, value }];
   });
+}
+
+// Order is never in the configs, so live alone decides it: sent unless live already has it.
+function isOrderTrait(intended: IntendedTrait): boolean {
+  return intended.kind === "tab" && intended.trait === "before";
 }
 
 function addressKey(address: TraitAddress): string {

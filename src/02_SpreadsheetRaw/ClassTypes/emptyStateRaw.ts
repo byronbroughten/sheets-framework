@@ -29,6 +29,7 @@ export const emptyStateRaw = {
       deleteProtectedRange: [],
       addProtectedRange: [],
       renameSheet: [],
+      updateTabProperties: [],
       renameTable: [],
       setTableColumnProperties: [],
       addCheckboxValidation: [],

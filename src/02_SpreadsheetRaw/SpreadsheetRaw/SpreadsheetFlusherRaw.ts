@@ -175,6 +175,7 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
       ...queued.addSheet,
       ...queued.addTable,
       ...queued.renameSheet,
+      ...queued.updateTabProperties,
       ...queued.renameTable,
       // First among column writes, so a header write in the same batch renames the column rather than being reverted.
       ...queued.setTableColumnProperties,

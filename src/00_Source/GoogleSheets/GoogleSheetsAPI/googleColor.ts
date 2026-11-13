@@ -47,6 +47,14 @@ export const googleColor = {
     if (style?.rgbColor === undefined) return undefined;
     return rgbChannelsHex(style.rgbColor);
   },
+  fromTabColor(color: TabColor): GoogleColorStyle {
+    const themeColor = themeColorNames.find((known) => known === color);
+    if (themeColor !== undefined) return { themeColor };
+    const [red, green, blue] = [1, 3, 5].map(
+      (start) => parseInt(color.slice(start, start + 2), 16) / 255,
+    );
+    return { rgbColor: { red, green, blue } };
+  },
 };
 
 function themeColorName(themeColor: string): ThemeColorName {

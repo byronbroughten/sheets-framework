@@ -138,15 +138,24 @@ describe("SyncEntryRefuser, traits not sendable yet", () => {
     ]);
   });
 
-  it("refuses a tab's traits, naming the tab", () => {
+  it("lets a tab's traits through, refusing only its new Tables", () => {
     expect(
       refusals({
-        alterations: { tabs: { items: { title: "Things", frozenRows: 2 } } },
+        alterations: {
+          tabs: {
+            items: {
+              title: "Things",
+              color: "#ff0000",
+              before: "items",
+              frozenRows: 2,
+              frozenColumns: 1,
+              hidden: true,
+              newTables: [],
+            },
+          },
+        },
       }),
-    ).toEqual([
-      { kind: "notSendableYet", table: "items", path: "title" },
-      { kind: "notSendableYet", table: "items", path: "frozenRows" },
-    ]);
+    ).toEqual([{ kind: "notSendableYet", table: "items", path: "newTables" }]);
   });
 
   it("refuses a new tab, named by its title", () => {

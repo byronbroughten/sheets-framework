@@ -13,10 +13,12 @@ import type {
   SpreadsheetSnapshot,
   TableColumnPropertiesAdd,
   TableColumnPropertiesUpdate,
+  UpdateTabPropertiesOperation,
 } from "../RawSource/RawSource";
 import { AppsScript } from "./AppsScript";
 import { cellDataRequests } from "./GoogleSheetsAPI/cellData";
 import { googleConditionalFormatRule } from "./GoogleSheetsAPI/conditionalFormats";
+import { googleColor } from "./GoogleSheetsAPI/googleColor";
 import { googleGrid } from "./GoogleSheetsAPI/gridSnapshots";
 import { googleProtectedRange } from "./GoogleSheetsAPI/protectedRanges";
 
@@ -487,6 +489,8 @@ function modeledOperationToGoogleRequests(
           },
         },
       ];
+    case "updateTabProperties":
+      return [tabPropertiesRequest(operation)];
     case "renameTable":
       return [
         {
@@ -519,6 +523,43 @@ function modeledOperationToGoogleRequests(
       );
     }
   }
+}
+
+type TabProperty = keyof UpdateTabPropertiesOperation["properties"];
+
+// The field each tab property sets; the mask names only what the operation carries, so an absent property is left alone.
+const tabPropertyMasks: [TabProperty, string][] = [
+  ["color", "tabColorStyle"],
+  ["hidden", "hidden"],
+  ["frozenRows", "gridProperties.frozenRowCount"],
+  ["frozenColumns", "gridProperties.frozenColumnCount"],
+  ["index", "index"],
+];
+
+function tabPropertiesRequest({
+  sheetId,
+  properties,
+}: UpdateTabPropertiesOperation): ModeledRequest {
+  const { color, hidden, frozenRows, frozenColumns, index } = properties;
+  const fields = tabPropertyMasks.flatMap(([property, mask]) =>
+    properties[property] === undefined ? [] : [mask],
+  );
+  return {
+    updateSheetProperties: {
+      properties: {
+        sheetId,
+        tabColorStyle:
+          color === undefined ? undefined : googleColor.fromTabColor(color),
+        hidden,
+        gridProperties: {
+          frozenRowCount: frozenRows,
+          frozenColumnCount: frozenColumns,
+        },
+        index,
+      },
+      fields: fields.join(","),
+    },
+  };
 }
 
 function columnPropertiesRequest(

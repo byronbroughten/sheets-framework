@@ -1,6 +1,6 @@
 import { hasApiAccess } from "./apiAccessChanges";
 import type { IdNameMapGeneric } from "./idNameMapTypes";
-import { sheetTraits } from "./SyncPlanner";
+import { sheetTraits, tabTraits } from "./SyncPlanner";
 import {
   entriesOf,
   type WideAlterations,
@@ -21,6 +21,7 @@ type NotSendableYet = Extract<SyncRefusal, { kind: "notSendableYet" }>;
 export const sendableTraits = {
   table: new Set<string>([...sheetTraits.table, "letApiAccess"]),
   column: new Set<string>([...sheetTraits.column, "emptyValueAllowed"]),
+  tab: new Set<string>(tabTraits),
 } as const;
 
 interface TraitPath {
@@ -74,7 +75,9 @@ export class SyncEntryRefuser {
       mapNames: Object.values(this.idNameMap.tabs).map(({ name }) => name),
       entries: entriesOf(this.alterations.tabs),
       traitRefusals: (tab, entry) =>
-        definedKeys(entry).map((trait) => notSendableYet(tab, trait)),
+        definedKeys(entry)
+          .filter((trait) => !sendableTraits.tab.has(trait))
+          .map((trait) => notSendableYet(tab, trait)),
     });
   }
   private get _newTabRefusals(): SyncRefusal[] {
