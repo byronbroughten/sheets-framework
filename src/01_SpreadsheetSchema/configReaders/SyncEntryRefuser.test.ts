@@ -114,7 +114,17 @@ describe("SyncEntryRefuser, traits not sendable yet", () => {
     ]);
   });
 
-  it("refuses a Table's own traits but its name, and a column's deletion", () => {
+  it("lets a column's deletion through", () => {
+    expect(
+      refusals({
+        alterations: {
+          tables: { item: { columns: { count: { deleted: true } } } },
+        },
+      }),
+    ).toEqual([]);
+  });
+
+  it("refuses a Table's own traits but its name", () => {
     expect(
       refusals({
         alterations: {
@@ -124,7 +134,6 @@ describe("SyncEntryRefuser, traits not sendable yet", () => {
               deleted: true,
               newColumns: [{ header: "New" }],
               conditionalFormats: { add: [] },
-              columns: { count: { deleted: true } },
             },
           },
         },
@@ -133,7 +142,6 @@ describe("SyncEntryRefuser, traits not sendable yet", () => {
       { kind: "notSendableYet", table: "item", path: "deleted" },
       { kind: "notSendableYet", table: "item", path: "newColumns" },
       { kind: "notSendableYet", table: "item", path: "conditionalFormats" },
-      { kind: "notSendableYet", table: "item", path: "count.deleted" },
     ]);
   });
 

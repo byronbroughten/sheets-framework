@@ -53,5 +53,8 @@ function keptValue(
   if (intended.kind === "tab") return live.tabs[intended.tab]?.[intended.trait];
   const table = live.tables[intended.table];
   if (intended.kind === "table") return table?.traits[intended.trait];
-  return table?.columns[intended.column]?.[intended.trait];
+  const column = table?.columns[intended.column];
+  // A deletion keeps no trait on the sheet: it landed when the column is gone.
+  if (intended.trait === "deleted") return column === undefined;
+  return column?.[intended.trait];
 }

@@ -243,9 +243,21 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
     }
     return this;
   }
+  // Rightmost first on each Table, so a delete's index isn't moved by the ones queued before it.
+  deleteColumns(sent: IntendedTrait[]): this {
+    const deletions = this._sentColumnTraits(sent, "deleted").map(
+      ({ tableId, columnId }) => {
+        const table = this.ss.raw.table(tableId);
+        return { table, colIndex: table.columnResolver.colIndexOf(columnId) };
+      },
+    );
+    deletions.sort((first, second) => second.colIndex - first.colIndex);
+    for (const { table, colIndex } of deletions) table.deleteColumn(colIndex);
+    return this;
+  }
   private _sentColumnTraits(
     sent: IntendedTrait[],
-    trait: "header" | "formula",
+    trait: "header" | "formula" | "deleted",
   ): SentColumnTrait[] {
     const identities = this._namedColumnIdentities();
     return sent.flatMap((intended) => {
