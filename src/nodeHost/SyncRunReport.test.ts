@@ -596,7 +596,7 @@ describe("SyncRunReport's refusals before the read", () => {
   it("names the Table and the trait it can't send yet", () => {
     expect(text).toContain("REFUSED 3 · item › name.columnType");
     expect(text).toContain(
-      "  sync can't send name.columnType yet: for now it sends only a Table's name, letApiAccess, a column's header, formula, deleted, emptyValueAllowed and a tab's title, color, before, frozenRows, frozenColumns, hidden.",
+      "  sync can't send name.columnType yet: for now it sends only a Table's name, deleted, letApiAccess, a column's header, formula, deleted, emptyValueAllowed and a tab's title, color, before, frozenRows, frozenColumns, hidden.",
     );
   });
 });
@@ -861,6 +861,21 @@ describe("SyncRunReport, a send refused at its first flush", () => {
 
   it("points to the dry run", () => {
     expect(text).toContain("Rerun the dry run: npm run app:sync");
+  });
+});
+
+describe("SyncRunReport, a Table a person deleted", () => {
+  const lines = render({
+    ...appSend,
+    outcome: { kind: "sent", summary: "nothing to send" },
+    notices: [{ kind: "tableGone", table: "occPayment" }],
+  });
+
+  it("names the Table under Notices, saying the configs dropped it", () => {
+    expect(sections(lines)).toContain("Notices");
+    expect(lines).toContain(
+      "occPayment: a person deleted this Table from the sheet, so sync dropped it from the configs and retired its ID prefix.",
+    );
   });
 });
 

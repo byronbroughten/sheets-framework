@@ -1,19 +1,27 @@
 import { Val } from "@byronbroughten/utils/val";
 
-import type {
-  ApiAccessChanges,
-  ApiAccessGrant,
+import {
+  type ApiAccessChanges,
+  type ApiAccessGrant,
+  hasApiAccess,
 } from "../01_SpreadsheetSchema/configReaders/apiAccessChanges";
-import type { ColumnReference } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
+import {
+  type ColumnReference,
+  type IdNameMapGeneric,
+  mapTablesByLiveness,
+} from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
 import {
   makeImportLine,
   type TableConfigsBase,
 } from "../01_SpreadsheetSchema/configReaders/makeConfigs";
 import {
   type IntendedTrait,
-  isSheetTrait,
+  isTableDeletion,
 } from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
-import type { SyncHeadRowsStop } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
+import type {
+  SyncHeadRowsStop,
+  SyncNotice,
+} from "../01_SpreadsheetSchema/configReaders/syncRunResult";
 import {
   configRetiredIdPrefixes,
   tableConfigsByName,
@@ -109,6 +117,16 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
     }
     return new IdPrefixesByTableId(assigned);
   }
+  // Read before any send, so a Table this run deletes is still live and only a person's deletion shows.
+  goneTableNotices(previousIdNameMap: IdNameMapGeneric): SyncNotice[] {
+    const { gone } = mapTablesByLiveness(
+      previousIdNameMap,
+      new Set(this.ss.raw.activeTableIds),
+    );
+    return gone
+      .filter(hasApiAccess)
+      .map(({ name }): SyncNotice => ({ kind: "tableGone", table: name }));
+  }
   // A Table gone since the last run retires its prefix before this run mints any.
   private _retiredOrGoneIdPrefixes(): Set<string> {
     return idPrefixes.retiredOrGone({
@@ -187,14 +205,26 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
   // A renamed Table is addressed by its previous key, which the refuser guarantees the previous configs hold.
   updateTableNames(sent: IntendedTrait[]): this {
     for (const intended of sent) {
-      if (intended.kind !== "table" || !isSheetTrait(intended)) continue;
-      const { tableId } = Val.assert(
-        tableConfigsByName()[intended.table],
-        `previous Table ${intended.table}`,
+      if (intended.kind !== "table" || intended.trait !== "name") continue;
+      this._previousTable(intended.table).updateTableName(
+        String(intended.value),
       );
-      this.ss.raw.table(tableId).updateTableName(String(intended.value));
     }
     return this;
+  }
+  deleteTables(sent: IntendedTrait[]): this {
+    for (const intended of sent) {
+      if (intended.kind !== "table" || !isTableDeletion(intended)) continue;
+      this._previousTable(intended.table).queueDelete();
+    }
+    return this;
+  }
+  private _previousTable(tableKey: string): TableRaw {
+    const { tableId } = Val.assert(
+      tableConfigsByName()[tableKey],
+      `previous Table ${tableKey}`,
+    );
+    return this.ss.raw.table(tableId);
   }
   tableKeysByTableId(): Map<string, string> {
     const map = new Map<string, string>();
