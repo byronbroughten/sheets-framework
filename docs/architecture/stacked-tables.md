@@ -6,7 +6,7 @@ Growth, a column insert and a row delete each move the other Tables on their she
 
 ## Every coordinate converts against the layout before it
 
-**Every sheet coordinate is converted at gathering against the layout the earlier operations in the same batch leave.** Three operations move other Tables: growth pushes the Tables below whose columns overlap down, a column insert pushes the Tables to the right whose rows overlap right, and a row delete pulls the Tables below whose columns overlap up. Each shift is measured against the layout before its operation and only then applied to the stored bounds (`SpreadsheetFlusherRaw._measuredShifts`), so no shift sees another.
+**Every sheet coordinate is converted at gathering against the layout the earlier operations in the same batch leave.** Three operations move other Tables: growth pushes the Tables below whose columns overlap down, a column insert pushes the Tables to the right whose rows overlap right (a column delete pulls them left), and a row delete pulls the Tables below whose columns overlap up. Each shift is measured against the layout before its operation and only then applied to the stored bounds (`SpreadsheetFlusherRaw._measuredShifts`), so no shift sees another.
 
 ## Growth pushes the Tables below down
 
@@ -18,7 +18,7 @@ Growth, a column insert and a row delete each move the other Tables on their she
 
 ## A column insert pushes the Tables to its right
 
-**A column insert pushes the Tables to its right the same way, after growth's shift.** The flusher gathers every Table's column inserts against the layout growth leaves, then shifts right, by the inserted count, each Table whose first column sits at or past an insert's first column and whose head rows plus Table range overlap its band (`TableCommonRaw.columnShiftFrom`, `SpreadsheetFlusherRaw._shiftTablesRightOfColumnInserts`). Inserts go out rightmost Table first within a sheet, so none moves a Table whose insert is still to come. The rest of the batch is gathered after both shifts, so a write to a pushed-right Table lands at its new columns.
+**A column insert pushes the Tables to its right the same way, after growth's shift.** The flusher gathers every Table's column inserts against the layout growth leaves, then shifts right, by the inserted count, each Table whose first column sits at or past an insert's first column and whose head rows plus Table range overlap its band (`TableCommonRaw.columnShiftFrom`, `SpreadsheetFlusherRaw._shiftTablesRightOfColumnInserts`). Inserts go out rightmost Table first within a sheet, so none moves a Table whose insert is still to come. The rest of the batch is gathered after both shifts, so a write to a pushed-right Table lands at its new columns. Column changes inside a Table are gathered next, against the layout the Table-end inserts leave, and shift the Tables to their right by the net change, left for more deletes than inserts (`TableCommonRaw.columnShiftFromChanges`, `SpreadsheetFlusherRaw._shiftTablesRightOfColumnChanges`); they go out rightmost Table first too ([column changes](./table-columns.md#column-inserts-inside-a-table-and-column-deletes)).
 
 ## A column insert refuses to split a neighbour from its head rows
 

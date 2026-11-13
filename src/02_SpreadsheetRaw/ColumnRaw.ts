@@ -27,7 +27,7 @@ import { CellRaw, validateFormulaString } from "./CellRaw";
 import { ColumnBaseRaw } from "./ClassBases/ColumnBaseRaw";
 import type {
   CellFill,
-  TableEndColumnHeadCells,
+  NewColumnHeadCells,
   TableGridRange,
 } from "./ClassTypes/StateRaw";
 import { ColumnProfileRaw } from "./ColumnProfileRaw";
@@ -178,12 +178,12 @@ export class ColumnRaw<
     });
     return this;
   }
-  // Called only by the Table's appendColumn, on the column it just queued.
+  // Called only by the Table's column inserts, on the column each just made.
   _initHeadCells({
     columnId,
     header,
     groupHeading1,
-  }: TableEndColumnHeadCells): this {
+  }: NewColumnHeadCells): this {
     this.headCell("columnId").updateValue(columnId);
     this.headCell("header").updateValue(header);
     if (groupHeading1 !== undefined) {

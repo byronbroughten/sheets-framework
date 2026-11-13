@@ -14,6 +14,7 @@ import type {
   AddTableOperation,
   BoundedGridRange,
   CopyPasteOperation,
+  DeleteRangeOperation,
   FillCellOperation,
   FindReplaceScope,
   FindReplaceTerms,
@@ -69,6 +70,7 @@ export type WriteOperations = {
 } & {
   appendTableRows: AppendTableRows[];
   insertTableEndColumns: InsertTableEndColumns[];
+  changeTableColumns: ChangeTableColumns[];
 };
 
 // One Table's growth, expanded at gathering; the flusher sends a sheet's growths bottom-up.
@@ -92,6 +94,18 @@ export interface InsertTableEndColumns {
 
 export type TableColumnInsertOperation =
   InsertRangeOperation | UpdateTableRangeOperation;
+
+// One Table's column inserts and deletes inside it, in queue order; the flusher sends a sheet's Tables right to left.
+export interface ChangeTableColumns {
+  tableId: string;
+  sheetId: number;
+  // In the layout before any of the batch's column changes.
+  startColumnIndex: SheetColIndex;
+  operations: TableColumnChangeOperation[];
+}
+
+export type TableColumnChangeOperation =
+  InsertRangeOperation | DeleteRangeOperation;
 
 export type SheetsStateRaw = Map<SheetId, SheetStateRaw>;
 
@@ -229,15 +243,21 @@ export interface CellFill<VN extends CellValueName = CellValueName> {
   formula?: string;
   backgroundColor?: RgbColor;
 }
-// The head cells a Table-end column insert writes.
-export interface TableEndColumnHeadCells {
+// The head cells a column insert writes.
+export interface NewColumnHeadCells {
   columnId: string;
   header: string;
   groupHeading1?: string;
 }
+// Its index is in the layout the Table's earlier queued changes leave.
+export type TableColumnChange =
+  | { kind: "insertColumn"; colIndex: ColIndex; headCells: NewColumnHeadCells }
+  | { kind: "deleteColumn"; colIndex: ColIndex };
 export interface TableWrites {
   sort: SortParameters | undefined;
   insertTableEndColumnCount: number;
+  // Sent in queue order, so each index is read after the changes before it.
+  columnChanges: TableColumnChange[];
   fillColumns: ColumnFill[];
   findReplaces: TableFindReplace[];
   // Gathered into the Table's one setTableColumnProperties.
@@ -301,6 +321,12 @@ export type AddedSheetCell = Required<
 export interface TableWritePropsObj {
   sort: TableWriteSortProps;
   insertTableEndColumn: { action: "insertTableEndColumn" };
+  insertColumn: {
+    action: "insertColumn";
+    colIndex: ColIndex;
+    headCells: NewColumnHeadCells;
+  };
+  deleteColumn: { action: "deleteColumn"; colIndex: ColIndex };
   fillColumn: { action: "fillColumn" } & ColumnFill;
   findReplace: { action: "findReplace" } & TableFindReplace;
   updateColumnType: {

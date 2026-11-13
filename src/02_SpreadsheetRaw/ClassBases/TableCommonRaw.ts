@@ -18,6 +18,7 @@ import { emptyStateRaw } from "../ClassTypes/emptyStateRaw";
 import type {
   AppendTableRows,
   CellFill,
+  ChangeTableColumns,
   ColumnFill,
   InsertTableEndColumns,
   TablePropertiesRaw,
@@ -138,6 +139,25 @@ export abstract class TableCommonRaw extends TableBaseRaw {
         0,
       );
   }
+  // Negative when the deletes outnumber the inserts; a Table's own changes leave its start alone.
+  columnShiftFromChanges(changes: ChangeTableColumns[]): number {
+    const properties = this.tableProperties;
+    if (properties === undefined) return 0;
+    return changes
+      .filter(
+        ({ tableId, sheetId }) =>
+          tableId !== this.tableId && sheetId === this.sheetGid,
+      )
+      .flatMap(({ operations }) => operations)
+      .filter(({ range }) =>
+        isPushedRightBy(range, headAndTableRange(properties)),
+      )
+      .reduce((columnCount, { kind, range }) => {
+        const width = range.endColumnIndex - range.startColumnIndex;
+        if (kind === "insertRange") return columnCount + width;
+        return columnCount - width;
+      }, 0);
+  }
   // Google sees a Table's range but not its head rows, so it lets this split through.
   isSplitBy(band: BoundedGridRange): boolean {
     const properties = this.tableProperties;
@@ -244,6 +264,19 @@ export abstract class TableCommonRaw extends TableBaseRaw {
       case "insertTableEndColumn":
         writes.insertTableEndColumnCount++;
         break;
+      case "insertColumn":
+        writes.columnChanges.push({
+          kind: "insertColumn",
+          colIndex: props.colIndex,
+          headCells: props.headCells,
+        });
+        break;
+      case "deleteColumn":
+        writes.columnChanges.push({
+          kind: "deleteColumn",
+          colIndex: props.colIndex,
+        });
+        break;
       case "fillColumn": {
         const fill = Obj.strictOmit(props, "action");
         this._eraseCellFieldsUnder(fill);
@@ -267,7 +300,7 @@ export abstract class TableCommonRaw extends TableBaseRaw {
         break;
       default:
         throw new Error(
-          `Invalid action: ${(props as TableWriteProps).action}. Must be one of "sort", "insertTableEndColumn", "fillColumn", "findReplace", "updateColumnType", "addCheckboxValidation", "addConditionalFormatRule" or "addEditProtection".`,
+          `Invalid action: ${(props as TableWriteProps).action}. Must be one of "sort", "insertTableEndColumn", "insertColumn", "deleteColumn", "fillColumn", "findReplace", "updateColumnType", "addCheckboxValidation", "addConditionalFormatRule" or "addEditProtection".`,
         );
     }
     return this;
