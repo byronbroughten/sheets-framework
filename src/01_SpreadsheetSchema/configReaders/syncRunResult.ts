@@ -140,7 +140,10 @@ export type SyncCheck =
   | { kind: "runNotice"; text: string };
 
 export type SyncRefusal =
+  // An entry on a Table without API access that this run doesn't grant it.
   | { kind: "noApiAccess"; table: string; path: string }
+  // Any other entry on a Table this run grants API access.
+  | { kind: "besideGrant"; table: string; path: string }
   // A `tables` or `tabs` entry naming one the previous ID-name map doesn't hold.
   | { kind: "noSuchTable"; entry: "tables" | "tabs"; name: string }
   // `table` names the tab for a tab's trait; `path` is the trait's, with its column in front for a column's.
