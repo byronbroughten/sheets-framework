@@ -1,6 +1,13 @@
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { Str } from "@byronbroughten/utils/str";
@@ -30,6 +37,8 @@ import type {
   ConfigRegeneration,
   SyncRun,
 } from "../src/05_Operators/SyncCoordinator.ts";
+import type { HeldItem } from "../src/nodeHost/FlushClassifier/flushClassifierTypes.ts";
+import { SyncRunReport } from "../src/nodeHost/SyncRunReport.ts";
 import type { SheetsConfig } from "./sheetsConfig.ts";
 import {
   alterationsPath,
@@ -39,7 +48,9 @@ import {
   idNameMapPath,
   loadIntendedState,
   loadPreviousIdNameMap,
+  parseConfirmToken,
   parseForcedTraits,
+  syncHeldFile,
 } from "./sync.ts";
 
 const devGeneratedDir = fileURLToPath(
@@ -341,6 +352,193 @@ describe("parseForcedTraits", () => {
     expect(() => parseForcedTraits(["--force", "item/name"])).toThrow(
       '--force takes <table>/<column>/<trait>, got "item/name".',
     );
+  });
+});
+
+describe("parseConfirmToken", () => {
+  it("reads the token after --confirm", () => {
+    expect(parseConfirmToken(["--send", "--confirm", "7f3a9c"])).toBe("7f3a9c");
+  });
+
+  it("is undefined without the flag", () => {
+    expect(parseConfirmToken(["--send"])).toBeUndefined();
+  });
+
+  it("rejects --confirm with no token", () => {
+    expect(() => parseConfirmToken(["--send", "--confirm"])).toThrow(
+      "--confirm takes the token the dry run printed.",
+    );
+  });
+});
+
+function enteredDataItem(rowIndex: number, column = "notes"): HeldItem {
+  return {
+    kind: "enteredData",
+    requestIndex: 0,
+    verb: "updateCells",
+    cell: {
+      sheetGid: 7,
+      table: "item",
+      column,
+      row: { rowId: `itm-${rowIndex}` },
+    },
+    change: { kind: "overwrite", before: `note ${rowIndex}`, after: "=1" },
+  };
+}
+
+describe("the held file", () => {
+  const heldDir = mkdtempSync(join(tmpdir(), "sync-held-"));
+  const heldSheetsConfig: SheetsConfig = { ...runSheetsConfig, dir: heldDir };
+  const heldFile = syncHeldFile.path(heldDir);
+  const notesItems = Array.from({ length: 23 }, (_, rowIndex) =>
+    enteredDataItem(rowIndex),
+  );
+  const flushes = [[], [...notesItems, enteredDataItem(0, "title")]];
+
+  function generator(argv: string[]): ConfigFilesGenerator {
+    return ConfigFilesGenerator.init(heldSheetsConfig, argv);
+  }
+
+  beforeEach(() => {
+    rmSync(join(heldDir, ".probe"), { recursive: true, force: true });
+  });
+
+  it("sits in the package's .probe", () => {
+    expect(heldFile).toBe(join(heldDir, ".probe", "sync-held.json"));
+  });
+
+  it("gets every held item and its value from a dry run, with the token", async () => {
+    await generator([])._withHeld(
+      { ...dryRunResult, outcome: { kind: "ready" } },
+      { token: "7f3a9c", flushes },
+    );
+
+    expect(JSON.parse(readFileSync(heldFile, "utf8"))).toEqual({
+      target: "dev",
+      token: "7f3a9c",
+      flushes,
+    });
+  });
+
+  it("gives the dry run's report its held list, capped at 20 lines per column, and its path", async () => {
+    const result = await generator([])._withHeld(
+      { ...dryRunResult, outcome: { kind: "ready" } },
+      { token: "7f3a9c", flushes },
+    );
+
+    expect(result).toMatchObject({
+      held: {
+        token: "7f3a9c",
+        fullListPath: relative(process.cwd(), heldFile),
+      },
+    });
+    const text = SyncRunReport.init(result).text;
+    expect(text).toContain(
+      "== Held: 24 cells: 23 + 1, sent only with --confirm ==",
+    );
+    expect(text).toContain('  itm-19  "note 19"  → "=1"');
+    expect(text).not.toContain("itm-20");
+    expect(text).toContain("  … and 3 more in notes, counted, not listed");
+    expect(text).toContain(
+      `Full list, every cell with its value: ${relative(process.cwd(), heldFile)}`,
+    );
+    expect(text).toContain("Rerun with --send --confirm 7f3a9c to send these.");
+  });
+
+  it("is left alone by a dry run that holds nothing", async () => {
+    const result = await generator([])._withHeld(
+      { ...dryRunResult, outcome: { kind: "ready" } },
+      { token: "e3b0c4", flushes: [[], []] },
+    );
+
+    expect(result).not.toHaveProperty("held");
+    expect(existsSync(heldFile)).toBe(false);
+  });
+
+  it("is left alone by a send, which prints no held list", async () => {
+    const result = await generator(["--send"])._withHeld(
+      { ...sendResult, outcome: { kind: "sent", summary: "1 sent" } },
+      { token: "7f3a9c", flushes },
+    );
+
+    expect(result).not.toHaveProperty("held");
+    expect(existsSync(heldFile)).toBe(false);
+  });
+
+  it("is read back by a send with --confirm, and passed with the token", async () => {
+    await generator([])._withHeld(
+      { ...dryRunResult, outcome: { kind: "ready" } },
+      { token: "7f3a9c", flushes },
+    );
+
+    expect(
+      generator(["--send", "--confirm", "7f3a9c"])._confirmedList(),
+    ).toEqual({ token: "7f3a9c", flushes });
+  });
+
+  it("counts as mismatched when missing or unreadable", () => {
+    const send = generator(["--send", "--confirm", "7f3a9c"]);
+    expect(send._confirmedList()).toEqual({
+      token: "7f3a9c",
+      flushes: undefined,
+    });
+    mkdirSync(dirname(heldFile), { recursive: true });
+    writeFileSync(heldFile, "{ not json");
+    expect(syncHeldFile.readFlushes(heldFile)).toBeUndefined();
+    writeFileSync(heldFile, JSON.stringify({ flushes: "none" }));
+    expect(syncHeldFile.readFlushes(heldFile)).toBeUndefined();
+  });
+
+  it("isn't read by a send without --confirm or by a dry run", () => {
+    expect(generator(["--send"])._confirmedList()).toBeUndefined();
+    expect(generator(["--confirm", "7f3a9c"])._confirmedList()).toBeUndefined();
+  });
+});
+
+describe("a refused send's report", () => {
+  beforeEach(() => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+  });
+  afterEach(() => {
+    process.exitCode = undefined;
+    vi.restoreAllMocks();
+  });
+
+  async function printedReport(result: SyncRunResult): Promise<string> {
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    await exitCodeOf({ run: { result } });
+    return log.mock.calls.map(([line]) => String(line)).join("\n");
+  }
+
+  it("says only to rerun the dry run when refused before any flush landed", async () => {
+    const text = await printedReport({
+      ...sendResult,
+      outcome: { kind: "stoppedBeforeSending", heldBy: "uncovered" },
+    });
+
+    expect(text).toContain(
+      "STOPPED: the send was refused before any flush landed",
+    );
+    expect(text).toContain("Rerun the dry run: npm run sync");
+    expect(text).not.toContain("--confirm ");
+    expect(text).not.toContain("Wrote ");
+  });
+
+  it("reports the landed flush without a count when there was no held file", async () => {
+    const text = await printedReport({
+      ...sendResult,
+      outcome: {
+        kind: "stoppedPartway",
+        landedFlushes: 1,
+        heldBy: "mismatched",
+      },
+    });
+
+    expect(text).toContain(
+      "STOPPED PARTWAY: flush 1 landed; flush 2 was refused",
+    );
+    expect(text).toContain("Rerun the dry run: npm run sync");
+    expect(text).not.toContain("Wrote ");
   });
 });
 

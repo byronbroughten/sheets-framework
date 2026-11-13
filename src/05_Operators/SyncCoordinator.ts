@@ -1,3 +1,4 @@
+import { HeldFlushRefusal } from "../00_Source/RawSource/HeldFlushRefusal";
 import {
   type ApiAccessChanges,
   apiAccessChanges,
@@ -73,6 +74,8 @@ export interface SyncRunProps {
   frame: SyncRunFrame;
   // Each --force flag of this run alone; never read from a file.
   forcedTraits: ForcedTrait[];
+  // Set by the Node half, whose host withholds a dry run's flushes, so an unstopped dry run flushes for the gate to judge.
+  isHostWithholding?: boolean;
 }
 
 interface Regeneration {
@@ -101,7 +104,9 @@ export interface SyncRun {
  * the plan and any missing column IDs in one flush on an unstopped --send,
  * refetches, then emits every generated config file, the ID-name map and the
  * remaining alterations, or none. A bare run sends nothing but still
- * refreshes the configs from its read. The run leaves the config tabs' rows
+ * refreshes the configs from its read; on a host that withholds, it then
+ * flushes the plan for the host's entered-data gate to judge. A send the
+ * gate refuses writes no files. The run leaves the config tabs' rows
  * alone; ensureConfigSheetFloor still writes them for the floor chore.
  * Config maintenance is this Operator family, not Raw or Named.
  * docs/generated-data.md
@@ -175,7 +180,6 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         accessChanges.grants,
       ),
     });
-    // The gate's holds go here, between the plan and the apply.
     const isApplying = props.isSending && !planned.isStopped;
     // An unstopped dry run records the live readings: configTraits carry sends it won't make.
     this.columnConfigOperator.recordEmptyValueAllowed(
@@ -183,18 +187,17 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         ? planned.configTraits
         : readings.live,
     );
-    // Grants join only on an unstopped send, so a dry run never records a Table with no column IDs.
-    if (isApplying) this._applyApiAccessChanges(accessChanges);
+    // Grants join here only on an unstopped send; a dry run applies them after its files are built, so its configs never record a Table with no column IDs.
     // Column IDs only on an unstopped send: one minted by any other run would reach the configs but never the sheet.
-    if (isApplying) {
-      this.columnConfigOperator
-        .addMissingColumnIds()
-        .updateHeaders(planned.sentTraits);
-      this.tableConfigOperator.updateTableNames(planned.sentTraits);
-      this.tabConfigOperator.updateTabTraits(planned.sentTraits);
-    }
+    if (isApplying) this._applyPlan(accessChanges, planned.sentTraits);
     const notes = this._recordUntypedColumns();
-    if (isApplying) this.ss.batchUpdateGSheets();
+    if (isApplying) {
+      const refusal = this._flushUnlessHeld();
+      // No files: column IDs already recorded would reach the configs but not the sheet.
+      if (refusal !== undefined) {
+        return { result: resultBuilder.heldStopped(planned, refusal) };
+      }
+    }
     const sent = isApplying ? planned.plan.map(({ subject }) => subject) : [];
     // A fresh read, since Raw's state has no reset; only a sent sheet trait changes what it would read.
     const regeneration =
@@ -207,6 +210,11 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
           })
         : this._regeneration(notes, sent);
     const { files, changes, didntLand } = regeneration;
+    // After the files are strings, so the host's gate judges what a send would write and the configs never see it.
+    if (props.isHostWithholding && !props.isSending && !planned.isStopped) {
+      this._applyPlan(accessChanges, planned.sentTraits);
+      this.ss.batchUpdateGSheets();
+    }
     const landed = sent.filter(hasLanded(didntLand));
     // The row-ID fill goes here: its own send, planned from the fresh configs.
     if (landed.length > 0) {
@@ -274,6 +282,25 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     this.tableConfigOperator.validateHeadRowsClear();
     this.tableConfigOperator.validateHeadersInZone();
     this.columnConfigOperator.fetchHeadRows();
+  }
+  private _applyPlan(
+    accessChanges: ApiAccessChanges,
+    sentTraits: SyncPlannerResult["sentTraits"],
+  ): void {
+    this._applyApiAccessChanges(accessChanges);
+    this.columnConfigOperator.addMissingColumnIds().updateHeaders(sentTraits);
+    this.tableConfigOperator.updateTableNames(sentTraits);
+    this.tabConfigOperator.updateTabTraits(sentTraits);
+  }
+  // The Node host's gate refuses a held flush by throwing; any other error goes on up.
+  private _flushUnlessHeld(): HeldFlushRefusal | undefined {
+    try {
+      this.ss.batchUpdateGSheets();
+      return undefined;
+    } catch (error) {
+      if (error instanceof HeldFlushRefusal) return error;
+      throw error;
+    }
   }
   private _applyApiAccessChanges(accessChanges: ApiAccessChanges): void {
     this.tableConfigOperator.recordApiAccessChanges(accessChanges);

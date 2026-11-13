@@ -1,6 +1,6 @@
 # Hold entered-data loss at the Node host's adapter until a hash-bound confirm
 
-Before each flush, the Node host's adapter classifies every request, and a flush that would delete or overwrite **entered data**, or carries another held item (a forced property, a dropdown style reset under `"ask"`, `findReplace`, an unmeasured effect, an unclassified verb), is sent only when `--confirm <token>` covers it; the token is a hash of the target and the held list a dry run printed. So the framework promises that only a command holding `--confirm` can lose entered data, which a harness can gate on from the command text without knowing how the classification works, and the framework knows nothing about any agent or gate.
+Before each flush, the Node host's adapter classifies every request, and a flush that would delete or overwrite **entered data**, or carries another held item (a forced property, a dropdown style reset under `"ask"`, `findReplace`, an unmeasured effect, an unclassified verb), is sent only when `--confirm <token>` covers it; the token is a hash of the target and the held list a dry run printed. Only the dry run prints the held list and the token; a refused send says only "rerun the dry run", so the token a send needs always comes from a dry run against the sheet as it is. The framework promises that only a command holding `--confirm` can lose entered data, which a harness can gate on from the command text alone, and the framework knows nothing about any agent or gate.
 
 ## What it reads and what it skips
 

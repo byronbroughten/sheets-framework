@@ -306,9 +306,13 @@ function heldCount(held: SyncHeld): number {
   return held.groups.reduce((count, group) => count + (group.cells ?? 1), 0);
 }
 
-function flushSpan(landedFlushes: number, flushCount: number): string {
-  if (landedFlushes === 1) return `flush 1 of ${flushCount} landed`;
-  return `flushes 1 to ${landedFlushes} of ${flushCount} landed`;
+function flushSpan(
+  landedFlushes: number,
+  flushCount: number | undefined,
+): string {
+  const ofCount = flushCount === undefined ? "" : ` of ${flushCount}`;
+  if (landedFlushes === 1) return `flush 1${ofCount} landed`;
+  return `flushes 1 to ${landedFlushes}${ofCount} landed`;
 }
 
 const heldByReason: Record<SyncHeldBy, string> = {
@@ -552,7 +556,9 @@ function heldTitle(held: SyncHeld): string {
 }
 
 function heldGroupLines({ subject, what, lines }: SyncHeldGroup): string[] {
-  return [`${subjectLabel(subject)}  ${what}`, ...indent(2, lines)];
+  const heading =
+    subject === undefined ? what : `${subjectLabel(subject)}  ${what}`;
+  return [heading, ...indent(2, lines)];
 }
 
 function planLines(plan: SyncPlanItem[]): string[] {
