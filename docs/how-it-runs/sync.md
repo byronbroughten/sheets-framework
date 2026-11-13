@@ -1,6 +1,6 @@
 # sync and configs-diff
 
-**`sync` plans `alterations.ts` against the live sheet and the previous configs, refreshes the config files, and sends the plan only with `--send`; it exits non-zero when the run stops, refuses or doesn't land. `configs-diff` compares those files with `HEAD`, with no credential and no Sheets call.**
+**`sync` plans `alterations.ts` against the live sheet and the previous configs, refreshes the config files, and sends the plan only with `--send`; its exit code says whether the run did what it set out to ([exit codes](#syncs-exit-codes)). `configs-diff` compares those files with `HEAD`, with no credential and no Sheets call.**
 
 ## What a sync run does
 

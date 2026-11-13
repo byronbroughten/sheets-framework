@@ -6,8 +6,7 @@ import { loadSheetsConfig } from "./sheetsConfig.ts";
 
 const usage = `Usage: sheets-framework <command> [args]
   sync [--send]        plan alterations.ts against the live sheet and refresh
-                       the generated files (send the plan with --send); exits
-                       non-zero when the run stops, refuses or doesn't land
+                       the generated files (send the plan with --send)
   configs-diff         summarise how the generated files differ from HEAD; read-only
   chore [name] [--send] [--json]
                        dry-run a chore (or apply it with --send); no name lists them

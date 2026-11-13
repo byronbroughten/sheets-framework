@@ -30,7 +30,7 @@ interface ConfigFilesGeneratorProps {
   isSending: boolean;
 }
 
-class ConfigFilesGenerator {
+export class ConfigFilesGenerator {
   readonly sheetsConfig: SheetsConfig;
   readonly isSending: boolean;
   readonly path: Record<
@@ -76,7 +76,7 @@ class ConfigFilesGenerator {
       return;
     }
     this._write(files);
-    console.log("\nsync: changes against HEAD:");
+    console.log(`\n${labelled("changes against HEAD:")}`);
     console.log(readConfigsDiff(this.sheetsConfig).join("\n"));
     console.log(`\n${report}`);
 
@@ -85,9 +85,10 @@ class ConfigFilesGenerator {
     );
     if (!this._runTsc()) {
       reportTscFailure();
-      process.exit(1);
+      process.exitCode = 1;
+      return;
     }
-    console.log("sync: tsc passed.");
+    console.log(labelled("tsc passed."));
   }
 
   async _sync(): Promise<SyncRun> {
@@ -156,9 +157,13 @@ class ConfigFilesGenerator {
   }
 }
 
+function labelled(text: string): string {
+  return `sync: ${text}`;
+}
+
 function reportTscFailure(): void {
   console.error(
-    "\nsync: regeneration succeeded and every generated file was written," +
+    `\n${labelled("regeneration succeeded and every generated file was written, ")}` +
       "but this package's `npm run tsc` failed above. This usually means " +
       "hand-written references in this package still name a sheet or column " +
       "that no longer exists after this regeneration. Fix those references " +
@@ -229,7 +234,7 @@ declare module "@byronbroughten/sheets-framework" {
 }
 
 // Non-zero whenever something the run meant to do didn't happen, so an agent can branch on the exit code alone.
-export function syncExitCode(result: SyncRunResult): number {
+function syncExitCode(result: SyncRunResult): number {
   const { outcome } = result;
   if (outcome.kind === "ready" || outcome.kind === "sent") {
     if (result.mode === "send" && result.didntLand.length > 0) return 1;
