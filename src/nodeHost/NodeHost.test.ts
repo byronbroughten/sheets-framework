@@ -259,10 +259,6 @@ function flushRequests(api: GoogleSheetsAPI, requests: GoogleRequest[]): void {
   );
 }
 
-function writeAmount(rowIndex: number, numberValue: number): GoogleRequest {
-  return writeAmounts(rowIndex, [numberValue]);
-}
-
 // Amounts down the Amount column, one row each from startRowIndex.
 function writeAmounts(
   startRowIndex: number,
@@ -332,7 +328,7 @@ describe("NodeHost with an entered-data gate", () => {
     { label: "frees an append", request: appendRows, kinds: [] },
     {
       label: "frees a write into an empty cell a read covered",
-      request: writeAmount(payments.emptyRow, 5),
+      request: writeAmounts(payments.emptyRow, [5]),
       kinds: [],
     },
     {
@@ -342,12 +338,12 @@ describe("NodeHost with an entered-data gate", () => {
     },
     {
       label: "holds an overwrite of entered data",
-      request: writeAmount(payments.rentRow, 900),
+      request: writeAmounts(payments.rentRow, [900]),
       kinds: ["enteredData"],
     },
     {
       label: "frees an overwrite of a formula cell",
-      request: writeAmount(payments.totalRow, 900),
+      request: writeAmounts(payments.totalRow, [900]),
       kinds: [],
     },
   ])("$label", ({ request, kinds }) => {
@@ -394,7 +390,7 @@ describe("NodeHost with an entered-data gate", () => {
   it("judges a flush against the reads since the one before it, as the send will", () => {
     expect(
       heldKinds(
-        dryRunHeldList([[appendRows], [writeAmount(payments.emptyRow, 5)]]),
+        dryRunHeldList([[appendRows], [writeAmounts(payments.emptyRow, [5])]]),
       ),
     ).toEqual([[], ["unreadCell"]]);
   });
@@ -403,7 +399,7 @@ describe("NodeHost with an entered-data gate", () => {
     const { host, api } = seedGatedHost({ isDryRun: true });
     api.fetchSheetProperties();
 
-    flushRequests(api, [writeAmount(payments.emptyRow, 5)]);
+    flushRequests(api, [writeAmounts(payments.emptyRow, [5])]);
 
     expect(heldKinds(host.heldList)).toEqual([["unreadCell"]]);
   });
@@ -413,14 +409,14 @@ describe("NodeHost with an entered-data gate", () => {
     readPayments(api);
 
     flushRequests(api, [appendRows]);
-    flushRequests(api, [writeAmount(payments.rentRow, 900)]);
+    flushRequests(api, [writeAmounts(payments.rentRow, [900])]);
 
     expect(batchUpdatePosts(transport)).toEqual([]);
     expect(host.summary.count).toBe(2);
   });
 
   it("gives one token for one target and list, and another when either differs", () => {
-    const flushes = [[writeAmount(payments.rentRow, 900)]];
+    const flushes = [[writeAmounts(payments.rentRow, [900])]];
     const { token } = dryRunHeldList(flushes);
 
     expect(dryRunHeldList(flushes).token).toBe(token);
@@ -428,7 +424,7 @@ describe("NodeHost with an entered-data gate", () => {
       token,
     );
     expect(
-      dryRunHeldList([[writeAmount(payments.rentRow, 800)]]).token,
+      dryRunHeldList([[writeAmounts(payments.rentRow, [800])]]).token,
     ).not.toBe(token);
   });
 
@@ -441,7 +437,7 @@ describe("NodeHost with an entered-data gate", () => {
 
   it("refuses a held flush as uncovered when no token is given, and sends nothing", () => {
     const { refusal, posts } = sendFlushes({
-      flushes: [[writeAmount(payments.rentRow, 900)]],
+      flushes: [[writeAmounts(payments.rentRow, [900])]],
     });
 
     expect(refusal).toBeInstanceOf(HeldFlushRefusal);
@@ -454,7 +450,7 @@ describe("NodeHost with an entered-data gate", () => {
   });
 
   it("sends a held flush the dry run's token and list cover", () => {
-    const flushes = [[appendRows], [writeAmount(payments.rentRow, 900)]];
+    const flushes = [[appendRows], [writeAmounts(payments.rentRow, [900])]];
 
     const { refusal, posts } = sendFlushes({
       flushes,
@@ -467,12 +463,12 @@ describe("NodeHost with an entered-data gate", () => {
 
   it("refuses as mismatched when the list's entry for the flush differs from its items, counting the list's flushes", () => {
     const covered = dryRunHeldList([
-      [writeAmount(payments.rentRow, 900)],
+      [writeAmounts(payments.rentRow, [900])],
       [appendRows],
     ]);
 
     const { refusal, posts } = sendFlushes({
-      flushes: [[writeAmount(payments.rentRow, 800)]],
+      flushes: [[writeAmounts(payments.rentRow, [800])]],
       confirmedList: covered,
     });
 
@@ -485,8 +481,8 @@ describe("NodeHost with an entered-data gate", () => {
   });
 
   it("refuses as mismatched when the list was edited after the token was made", () => {
-    const flushes = [[writeAmount(payments.rentRow, 800)]];
-    const covered = dryRunHeldList([[writeAmount(payments.rentRow, 900)]]);
+    const flushes = [[writeAmounts(payments.rentRow, [800])]];
+    const covered = dryRunHeldList([[writeAmounts(payments.rentRow, [900])]]);
     const edited = { ...covered, flushes: dryRunHeldList(flushes).flushes };
 
     const { refusal } = sendFlushes({ flushes, confirmedList: edited });
@@ -495,7 +491,7 @@ describe("NodeHost with an entered-data gate", () => {
   });
 
   it("refuses as mismatched when the token was made for another target", () => {
-    const flushes = [[writeAmount(payments.rentRow, 900)]];
+    const flushes = [[writeAmounts(payments.rentRow, [900])]];
 
     const { refusal } = sendFlushes({
       flushes,
@@ -510,7 +506,7 @@ describe("NodeHost with an entered-data gate", () => {
       flushes: [
         [appendRows],
         [appendRows],
-        [writeAmount(payments.rentRow, 900)],
+        [writeAmounts(payments.rentRow, [900])],
       ],
     });
 

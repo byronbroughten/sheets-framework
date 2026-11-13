@@ -96,7 +96,7 @@ function recordingSheets(
     },
   };
   return {
-    api: GoogleSheetsAPI.init(sheets, spreadsheetId),
+    api: GoogleSheetsAPI.init({ sheets, spreadsheetId, host: "appsScript" }),
     batchUpdateCalls,
     getByDataFilterCalls,
     getByDataFilterFields,
@@ -1104,10 +1104,22 @@ describe("GoogleSheetsAPI.fetchSheetProperties conditional-format rules", () => 
   });
 });
 
+describe("GoogleSheetsAPI grid masks", () => {
+  it("leaves each cell's formula out of the Apps Script host's plain grid read", () => {
+    const { api, getByDataFilterFields } = recordingSheets();
+
+    api.fetchGrid([{ sheetId: 1 }], { includeProgrammaticFacts: false });
+
+    expect(getByDataFilterFields[0]).toContain(
+      "rowData(values(effectiveValue)))",
+    );
+  });
+});
+
 describe("GoogleSheetsAPI time zone read", () => {
   const timeZoneMask = "properties(timeZone)";
 
-  it("carries the spreadsheet's time zone in all three standing field masks", () => {
+  it("carries the spreadsheet's time zone in the sheet-properties mask and both Apps Script grid masks", () => {
     const { api, getCalls, getByDataFilterFields } = recordingSheets();
 
     api.fetchSheetProperties();
@@ -1121,7 +1133,7 @@ describe("GoogleSheetsAPI time zone read", () => {
     });
   });
 
-  it("asks for each sheet's row and column counts and each Table column's type in all three standing field masks", () => {
+  it("asks for each sheet's row and column counts and each Table column's type in the sheet-properties mask and both Apps Script grid masks", () => {
     const { api, getCalls, getByDataFilterFields } = recordingSheets();
 
     api.fetchSheetProperties();
@@ -1138,16 +1150,6 @@ describe("GoogleSheetsAPI time zone read", () => {
         /tables\(tableId,name,range,columnProperties\(columnIndex,[^)]*columnType/,
       );
     });
-  });
-
-  it("leaves each cell's formula out of the Apps Script host's plain grid read", () => {
-    const { api, getByDataFilterFields } = recordingSheets();
-
-    api.fetchGrid([{ sheetId: 1 }], { includeProgrammaticFacts: false });
-
-    expect(getByDataFilterFields[0]).toContain(
-      "rowData(values(effectiveValue)))",
-    );
   });
 
   it("maps the payload's time zone onto the snapshot", () => {

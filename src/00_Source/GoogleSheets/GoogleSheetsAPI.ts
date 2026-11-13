@@ -102,7 +102,7 @@ const fieldMasks = {
     "tables(tableId,name,range,columnProperties(columnIndex,columnName,columnType,dataValidationRule(condition(type,values(userEnteredValue)))))," +
     "data(startColumn,startRow,columnMetadata,rowData(values(effectiveValue,userEnteredValue,effectiveFormat(numberFormat(type)),dataValidation(condition(type)))))" +
     ")",
-  gridWithoutProgrammaticFacts: plainGridMask("effectiveValue"),
+  gridEffectiveValuesOnly: plainGridMask("effectiveValue"),
   // A non-formula cell comes back as userEnteredValue {}; observed: docs/sheets-behaviour.md#reading-formula-text-beside-effective-values.
   gridWithFormulas: plainGridMask(
     "effectiveValue,userEnteredValue(formulaValue)",
@@ -129,13 +129,19 @@ interface GridMasks {
 const gridMasksByHost: Record<"appsScript" | "nodeHost", GridMasks> = {
   appsScript: {
     withProgrammaticFacts: fieldMasks.gridWithProgrammaticFacts,
-    withoutProgrammaticFacts: fieldMasks.gridWithoutProgrammaticFacts,
+    withoutProgrammaticFacts: fieldMasks.gridEffectiveValuesOnly,
   },
   nodeHost: {
     withProgrammaticFacts: fieldMasks.gridWithProgrammaticFacts,
     withoutProgrammaticFacts: fieldMasks.gridWithFormulas,
   },
 };
+
+export interface GoogleSheetsAPIProps {
+  sheets: SheetsAdvancedTransport;
+  spreadsheetId: string;
+  host: keyof typeof gridMasksByHost;
+}
 
 export interface SheetsHttpRequest {
   method: "GET" | "POST";
@@ -190,38 +196,27 @@ export class GoogleSheetsAPI implements RawSource {
   private sheets: SheetsAdvancedTransport;
   private spreadsheetId: string;
   private gridMasks: GridMasks;
-  constructor(
-    sheets: SheetsAdvancedTransport,
-    spreadsheetId: string,
-    gridMasks: GridMasks,
-  ) {
+  constructor({ sheets, spreadsheetId, host }: GoogleSheetsAPIProps) {
     this.sheets = sheets;
     this.spreadsheetId = spreadsheetId;
-    this.gridMasks = gridMasks;
+    this.gridMasks = gridMasksByHost[host];
   }
-  static init(
-    sheets: SheetsAdvancedTransport,
-    spreadsheetId: string,
-  ): GoogleSheetsAPI {
-    return new GoogleSheetsAPI(
-      sheets,
-      spreadsheetId,
-      gridMasksByHost.appsScript,
-    );
+  static init(props: GoogleSheetsAPIProps): GoogleSheetsAPI {
+    return new GoogleSheetsAPI(props);
   }
   static forAppsScript(): GoogleSheetsAPI {
-    const spreadsheetId = AppsScript.boundSpreadsheetId();
-    return GoogleSheetsAPI.init(
-      Val.assert(Sheets, "Sheets (enable the Advanced Sheets Service)"),
-      spreadsheetId,
-    );
+    return GoogleSheetsAPI.init({
+      sheets: Val.assert(Sheets, "Sheets (enable the Advanced Sheets Service)"),
+      spreadsheetId: AppsScript.boundSpreadsheetId(),
+      host: "appsScript",
+    });
   }
   static initHttp(props: GoogleSheetsAPIHttpProps): GoogleSheetsAPI {
-    return new GoogleSheetsAPI(
-      httpSheetsTransport(props),
-      props.spreadsheetId,
-      gridMasksByHost.nodeHost,
-    );
+    return GoogleSheetsAPI.init({
+      sheets: httpSheetsTransport(props),
+      spreadsheetId: props.spreadsheetId,
+      host: "nodeHost",
+    });
   }
   fetchSheetProperties(
     options?: SheetPropertiesFetchOptions,
