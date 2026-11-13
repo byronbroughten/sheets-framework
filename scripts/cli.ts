@@ -5,7 +5,8 @@ import { fileURLToPath } from "node:url";
 import { loadSheetsConfig } from "./sheetsConfig.ts";
 
 const usage = `Usage: sheets-framework <command> [args]
-  gen-configs          regenerate the package's generated files from its config sheets
+  gen-configs [--send] run sync: plan alterations.ts against the live sheet and
+                       refresh the generated files (send the plan with --send)
   configs-diff         summarise how the generated files differ from HEAD; read-only
   chore [name] [--send] [--json]
                        dry-run a chore (or apply it with --send); no name lists them
@@ -20,7 +21,7 @@ const [command, ...argv] = process.argv.slice(2);
 switch (command) {
   case "gen-configs": {
     const { runGenConfigs } = await import("./genConfigs.ts");
-    await runGenConfigs(loadSheetsConfig());
+    await runGenConfigs(loadSheetsConfig(), argv);
     break;
   }
   case "configs-diff": {

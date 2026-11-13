@@ -1,4 +1,5 @@
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -11,12 +12,14 @@ import {
   alterationsFileSource,
   columnIdsByName,
 } from "../src/05_Operators/configFileSource.ts";
-import { parseIdNameMapFileSource } from "../src/testSupport/parseIdNameMapFileSource.ts";
+import { parseIdNameMapFileSource } from "../src/05_Operators/parseIdNameMapFileSource.ts";
 import {
   alterationsPath,
   alterationsText,
   appConfigsText,
   idNameMapPath,
+  loadIntendedState,
+  loadPreviousIdNameMap,
 } from "./genConfigs.ts";
 
 const devGeneratedDir = fileURLToPath(
@@ -24,6 +27,8 @@ const devGeneratedDir = fileURLToPath(
 );
 const devIdNameMapPath = idNameMapPath(devGeneratedDir);
 const devAlterationsPath = alterationsPath(devGeneratedDir);
+const missingFilesDir = mkdtempSync(join(tmpdir(), "gen-configs-"));
+const fixtureAlterationsDir = mkdtempSync(join(tmpdir(), "gen-configs-"));
 
 describe("the dev package's generated files", () => {
   const { tableConfigs, columnConfigs } = appConfigs;
@@ -113,6 +118,42 @@ describe("alterationsPath", () => {
     expect(alterationsPath(join("app", "src", "generated"))).toBe(
       join("app", "src", "alterations.ts"),
     );
+  });
+});
+
+describe("loadIntendedState", () => {
+  it("reads a missing alterations.ts as an empty one", async () => {
+    const generatedDir = join(missingFilesDir, "generated");
+    expect(await loadIntendedState(generatedDir)).toEqual({ alterations: {} });
+  });
+
+  it("takes the pending alterations alterations.ts exports", async () => {
+    const generatedDir = join(fixtureAlterationsDir, "generated");
+    writeFileSync(
+      alterationsPath(generatedDir),
+      "export const pendingAlterations = { tables: { item: { delete: true } } };\n",
+    );
+    expect(await loadIntendedState(generatedDir)).toEqual({
+      alterations: { tables: { item: { delete: true } } },
+    });
+  });
+});
+
+describe("loadPreviousIdNameMap", () => {
+  it("reads a missing ID-name map as an empty map", () => {
+    expect(loadPreviousIdNameMap(missingFilesDir)).toEqual({
+      tables: {},
+      tabs: {},
+    });
+  });
+
+  it("reads the ID-name map back from its source", () => {
+    const { tables } = loadPreviousIdNameMap(devGeneratedDir);
+    for (const [tableKey, { tableId }] of Object.entries(
+      appConfigs.tableConfigs,
+    )) {
+      expect(tables[tableId]?.name).toBe(tableKey);
+    }
   });
 });
 

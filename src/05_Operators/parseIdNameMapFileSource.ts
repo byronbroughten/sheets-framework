@@ -5,9 +5,9 @@ import type {
   IdNameMapTab,
   IdNameMapTable,
 } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
-import { idNameMapOpening } from "../05_Operators/configFileSource";
+import { idNameMapOpening } from "./configFileSource";
 
-// Reads a generated ID-name map back, for the tests that check what gen:configs emitted.
+// The map is a type with no runtime value, so gen:configs reads its previous one back from the source text.
 export function parseIdNameMapFileSource(source: string): IdNameMapGeneric {
   const openingIndex = source.indexOf(idNameMapOpening);
   if (openingIndex === -1) {

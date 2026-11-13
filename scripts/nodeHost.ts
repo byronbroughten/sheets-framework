@@ -236,9 +236,19 @@ async function importConfigIfPresent<CF extends ConfigFile>(
   generatedDir: string,
   base: CF,
 ): Promise<ConfigSetBase[CF] | undefined> {
-  const filePath = configFilePath(generatedDir, base);
-  if (!existsSync(filePath)) return undefined;
-  return (await import(pathToFileURL(filePath).href))[base];
+  return importExportIfPresent<ConfigSetBase[CF]>(
+    configFilePath(generatedDir, base),
+    base,
+  );
+}
+
+// One named export of a module that may not exist yet; undefined when the file is absent.
+export async function importExportIfPresent<MX>(
+  modulePath: string,
+  exportName: string,
+): Promise<MX | undefined> {
+  if (!existsSync(modulePath)) return undefined;
+  return (await import(pathToFileURL(modulePath).href))[exportName];
 }
 
 export function hasPackageConfigs({ generatedDir }: SheetsConfig): boolean {

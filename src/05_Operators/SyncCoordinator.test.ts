@@ -21,7 +21,7 @@ import {
   type FakeTableColumn,
   fakeTableSheet,
 } from "../testSupport/fakeSheetsService/fakeTableSheet";
-import { parseIdNameMapFileSource } from "../testSupport/parseIdNameMapFileSource";
+import { parseIdNameMapFileSource } from "./parseIdNameMapFileSource";
 import {
   type ConfigRegeneration,
   SyncCoordinator,
@@ -166,7 +166,7 @@ function runItem({ isSending, alterations = {} }: RunOptions): SyncRun {
   });
 }
 
-// A send with empty intended state, as gen:configs runs it, so each run is the regen alone.
+// A send with empty intended state, so each run is the regen alone.
 function runWithNoAlterations(coordinator = SyncCoordinator.init()): SyncRun {
   return coordinator.run({
     isSending: true,
