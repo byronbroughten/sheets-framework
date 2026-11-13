@@ -14,6 +14,7 @@ import {
 } from "../01_SpreadsheetSchema/configReaders/makeConfigs";
 import type {
   PlanProps,
+  TableReading,
   TraitReadings,
 } from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
 import { type ValueName } from "../01_SpreadsheetSchema/configReaders/valueSchemas";
@@ -46,13 +47,10 @@ interface ColumnIdentity {
 }
 
 interface NamedColumnIdentity extends ColumnIdentity {
-  table: string;
-  column: string;
+  tableKey: string;
+  columnName: string;
+  previousEmptyValueAllowed: boolean;
 }
-
-type TableColumnTraits = NonNullable<
-  TraitReadings["tables"][string]
->["columns"];
 
 export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
   static init(): ColumnConfigsOperator {
@@ -156,18 +154,18 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
   addMissingColumnIds(): this {
     let idsAdded = 0;
     const idPrefixesByTableId = this.tableConfigOperator.idPrefixesByTableId();
-    this.tableIdsApiAccesses.forEach((tableId) => {
+    for (const tableId of this.tableIdsApiAccesses) {
       const idPrefix = idPrefixesByTableId.assertIdPrefix(tableId);
       // Raw, not TableIdentified: a Table here may predate its generated schema.
       const table = this.ss.raw.table(tableId);
       const colIndexes = table.columnResolver.colIndexesWithoutColumnId;
-      colIndexes.forEach((colIndex) => {
+      for (const colIndex of colIndexes) {
         table
           .headRow("columnId")
           .updateValue(colIndex, dimensionIds.col(idPrefix));
-      });
+      }
       idsAdded += colIndexes.length;
-    });
+    }
     Logger.log(
       `ensureColumnIds: prepared to add ${idsAdded} missing column ID(s)`,
     );
@@ -181,36 +179,19 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
   }
   // emptyValueAllowed isn't a sheet trait, so live carries the previous configs and only a deleted column can stop.
   emptyValueAllowedReadings(): PlanProps {
-    const previous = Object.entries(columnConfigsByName()).reduce<
-      TraitReadings["tables"]
-    >((tables, [tableKey, columns]) => {
-      tables[tableKey] = {
-        traits: {},
-        columns: Object.entries(columns).reduce<TableColumnTraits>(
-          (byName, [columnName, { emptyValueAllowed }]) => {
-            byName[columnName] = { emptyValueAllowed };
-            return byName;
-          },
-          {},
-        ),
-      };
-      return tables;
-    }, {});
     const live = this._namedColumnIdentities().reduce<TraitReadings["tables"]>(
-      (tables, { tableId, columnId, table, column }) => {
-        const reading = tables[table] ?? { traits: {}, columns: {} };
-        reading.columns[column] = {
-          emptyValueAllowed: new PreviousColumnConfigs(
-            tableId,
-          ).emptyValueAllowed(columnId),
+      (tables, { tableKey, columnName, previousEmptyValueAllowed }) => {
+        const reading = tables[tableKey] ?? { traits: {}, columns: {} };
+        reading.columns[columnName] = {
+          emptyValueAllowed: previousEmptyValueAllowed,
         };
-        tables[table] = reading;
+        tables[tableKey] = reading;
         return tables;
       },
       {},
     );
     return {
-      previous: { tables: previous, tabs: {} },
+      previous: { tables: previousEmptyValueAllowedTables(), tabs: {} },
       live: { tables: live, tabs: {} },
     };
   }
@@ -220,11 +201,11 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
     for (const {
       tableId,
       columnId,
-      table,
-      column,
+      tableKey,
+      columnName,
     } of this._namedColumnIdentities()) {
       const value =
-        configTraits.tables[table]?.columns[column]?.emptyValueAllowed;
+        configTraits.tables[tableKey]?.columns[columnName]?.emptyValueAllowed;
       if (typeof value !== "boolean") continue;
       const byColumnId = byIds.get(tableId) ?? new Map<string, boolean>();
       byColumnId.set(columnId, value);
@@ -276,13 +257,16 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
       const previous = new PreviousColumnConfigs(identity.tableId);
       return {
         ...identity,
-        table: Val.assert(
+        tableKey: Val.assert(
           previous.tableKey ?? tableKeysByTableId.get(identity.tableId),
           "API-access Table key",
         ),
-        column:
+        columnName:
           previous.columnName(identity.columnId) ??
           Str.sentenceToCamelCase(this._describedColumn(identity).header),
+        previousEmptyValueAllowed: previous.emptyValueAllowed(
+          identity.columnId,
+        ),
       };
     });
   }
@@ -437,6 +421,25 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
       ``,
     ].join("\n");
   }
+}
+
+function previousEmptyValueAllowedTables(): TraitReadings["tables"] {
+  return Object.entries(columnConfigsByName()).reduce<TraitReadings["tables"]>(
+    (tables, [tableKey, columns]) => {
+      tables[tableKey] = {
+        traits: {},
+        columns: Object.entries(columns).reduce<TableReading["columns"]>(
+          (byName, [columnName, { emptyValueAllowed }]) => {
+            byName[columnName] = { emptyValueAllowed };
+            return byName;
+          },
+          {},
+        ),
+      };
+      return tables;
+    },
+    {},
+  );
 }
 
 function bracedFormula({

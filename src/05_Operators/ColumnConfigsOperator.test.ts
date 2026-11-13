@@ -2,6 +2,7 @@ import type { StrictOmit } from "@byronbroughten/utils/obj";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister";
+import type { ColumnConfigStored } from "../01_SpreadsheetSchema/configReaders/makeConfigs";
 import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {
@@ -128,10 +129,18 @@ describe("ColumnConfigsOperator.newColumnConfigs / toFileSource", () => {
   });
 
   describe("empty value allowed", () => {
+    type EmptyValueAllowedTrait = Pick<
+      ColumnConfigStored,
+      "columnId" | "emptyValueAllowed"
+    >;
+    function traitOf({
+      columnId,
+      emptyValueAllowed,
+    }: EmptyValueAllowedTrait): EmptyValueAllowedTrait {
+      return { columnId, emptyValueAllowed };
+    }
     const previousColumns = Object.values(columnConfigs.item);
-    const previousTraits = previousColumns.map(
-      ({ columnId, emptyValueAllowed }) => ({ columnId, emptyValueAllowed }),
-    );
+    const previousTraits = previousColumns.map(traitOf);
 
     function stubItemWithNewColumn(): void {
       stubSheetsService({
@@ -154,10 +163,8 @@ describe("ColumnConfigsOperator.newColumnConfigs / toFileSource", () => {
 
     function emittedTraits(
       operator: ColumnConfigsOperator,
-    ): { columnId: string; emptyValueAllowed: boolean }[] {
-      return Object.values(operator.newColumnConfigs().item ?? {}).map(
-        ({ columnId, emptyValueAllowed }) => ({ columnId, emptyValueAllowed }),
-      );
+    ): EmptyValueAllowedTrait[] {
+      return Object.values(operator.newColumnConfigs().item ?? {}).map(traitOf);
     }
 
     it("carries each column's trait forward from the previous configs, and requires a new column", () => {

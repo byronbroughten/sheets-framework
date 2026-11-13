@@ -5,17 +5,16 @@ import { tableConfigsByTableId } from "../01_SpreadsheetSchema/configReaders/tab
 // One Table's columns as the previous configs hold them; a Table new to them has none.
 export class PreviousColumnConfigs {
   readonly tableKey: string | undefined;
+  readonly columnConfigs: ColumnConfigStored[];
   private readonly columnConfigsByName: Record<string, ColumnConfigStored>;
   constructor(tableId: string) {
     this.tableKey = tableConfigsByTableId().get(tableId)?.tableKey;
     if (this.tableKey === undefined) {
       this.columnConfigsByName = {};
-      return;
+    } else {
+      this.columnConfigsByName = columnConfigsByName()[this.tableKey] ?? {};
     }
-    this.columnConfigsByName = columnConfigsByName()[this.tableKey] ?? {};
-  }
-  get columnConfigs(): ColumnConfigStored[] {
-    return Object.values(this.columnConfigsByName);
+    this.columnConfigs = Object.values(this.columnConfigsByName);
   }
   get columnIds(): string[] {
     return this.columnConfigs.map(({ columnId }) => columnId);
