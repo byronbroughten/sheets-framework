@@ -26,7 +26,7 @@ export interface NodeHostProps {
   transport: SheetsHttpTransport;
   isDryRun: boolean;
   log: (message: string) => void;
-  // Only sync passes one; a chore's flushes go unclassified.
+  // Sync and chores pass one; without it, every flush goes out unclassified.
   enteredDataGate?: EnteredDataGateProps;
 }
 

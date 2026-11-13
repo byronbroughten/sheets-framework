@@ -169,27 +169,21 @@ export class SyncRunReport {
       next: `sync wrote ${generatedDir} and ${alterationsPath}. Run npm run check, then commit them with your change.`,
     };
   }
-  private _stoppedBeforeSendingText({
-    heldBy,
-  }: SyncStoppedBeforeSendingOutcome): OutcomeText {
+  private _stoppedBeforeSendingText(
+    outcome: SyncStoppedBeforeSendingOutcome,
+  ): OutcomeText {
     return {
-      resultLine: `STOPPED: the send was refused before any flush landed, because ${heldByReason[heldBy]}. Nothing was sent.`,
+      resultLine: heldRefusalLine(outcome),
       planTitle: planTitles.send,
-      next: this._rerunDryRunLine,
+      next: rerunDryRunLine(this.result.command),
     };
   }
   private _stoppedPartwayText(outcome: SyncStoppedPartwayOutcome): OutcomeText {
-    const { landedFlushes, flushCount, heldBy } = outcome;
-    const refused = landedFlushes + 1;
-    const landed = flushSpan(landedFlushes, flushCount);
     return {
-      resultLine: `STOPPED PARTWAY: ${landed}; flush ${refused} was refused, because ${heldByReason[heldBy]}. Nothing after it was sent.`,
+      resultLine: heldRefusalLine(outcome),
       planTitle: planTitles.send,
-      next: this._rerunDryRunLine,
+      next: rerunDryRunLine(this.result.command),
     };
-  }
-  private get _rerunDryRunLine(): string {
-    return `Rerun the dry run: ${this.result.command}`;
   }
   private get _checkClause(): string {
     const { checks } = this.result;
@@ -216,13 +210,7 @@ export class SyncRunReport {
   private get _heldSection(): string[] {
     const { result } = this;
     if (result.mode === "send" || result.held === undefined) return [];
-    const { held } = result;
-    return section(heldTitle(held), [
-      ...held.groups.flatMap(heldGroupLines),
-      `Full list, every cell with its value: ${held.fullListPath}`,
-      `Token ${held.token}: binds this target and exactly this list.`,
-      `Rerun with --send --confirm ${held.token} to send these.`,
-    ]);
+    return heldSection(result.held);
   }
   // A refusal reads nothing, so there is nothing to refresh the configs from.
   private get _configsLines(): string[] {
@@ -241,6 +229,33 @@ export class SyncRunReport {
     }
     return ["Refreshed from the live sheet.", ...changes];
   }
+}
+
+// A dry run's held items, their full list's path and the token covering them; a chore's dry run prints it too.
+export function heldSection(held: SyncHeld): string[] {
+  return section(heldTitle(held), [
+    ...held.groups.flatMap(heldGroupLines),
+    `Full list, every cell with its value: ${held.fullListPath}`,
+    `Token ${held.token}: binds this target and exactly this list.`,
+    `Rerun with --send --confirm ${held.token} to send these.`,
+  ]);
+}
+
+// The result line of a send the gate refused, sync's or a chore's.
+export function heldRefusalLine(
+  outcome: SyncStoppedBeforeSendingOutcome | SyncStoppedPartwayOutcome,
+): string {
+  const reason = heldByReason[outcome.heldBy];
+  if (outcome.kind === "stoppedBeforeSending") {
+    return `STOPPED: the send was refused before any flush landed, because ${reason}. Nothing was sent.`;
+  }
+  const { landedFlushes, flushCount } = outcome;
+  const landed = flushSpan(landedFlushes, flushCount);
+  return `STOPPED PARTWAY: ${landed}; flush ${landedFlushes + 1} was refused, because ${reason}. Nothing after it was sent.`;
+}
+
+export function rerunDryRunLine(command: string): string {
+  return `Rerun the dry run: ${command}`;
 }
 
 function section(title: string, lines: string[]): string[] {

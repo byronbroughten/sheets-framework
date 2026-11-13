@@ -39,6 +39,7 @@ import type {
 } from "../src/05_Operators/SyncCoordinator.ts";
 import type { HeldItem } from "../src/nodeHost/FlushClassifier/flushClassifierTypes.ts";
 import { SyncRunReport } from "../src/nodeHost/SyncRunReport.ts";
+import { heldFile } from "./heldFile.ts";
 import type { SheetsConfig } from "./sheetsConfig.ts";
 import {
   alterationsPath,
@@ -48,9 +49,7 @@ import {
   idNameMapPath,
   loadIntendedState,
   loadPreviousIdNameMap,
-  parseConfirmToken,
   parseForcedTraits,
-  syncHeldFile,
 } from "./sync.ts";
 
 const devGeneratedDir = fileURLToPath(
@@ -355,22 +354,6 @@ describe("parseForcedTraits", () => {
   });
 });
 
-describe("parseConfirmToken", () => {
-  it("reads the token after --confirm", () => {
-    expect(parseConfirmToken(["--send", "--confirm", "7f3a9c"])).toBe("7f3a9c");
-  });
-
-  it("is undefined without the flag", () => {
-    expect(parseConfirmToken(["--send"])).toBeUndefined();
-  });
-
-  it("rejects --confirm with no token", () => {
-    expect(() => parseConfirmToken(["--send", "--confirm"])).toThrow(
-      "--confirm takes the token the dry run printed.",
-    );
-  });
-});
-
 function enteredDataItem(rowIndex: number, column = "notes"): HeldItem {
   return {
     kind: "enteredData",
@@ -389,7 +372,7 @@ function enteredDataItem(rowIndex: number, column = "notes"): HeldItem {
 describe("the held file", () => {
   const heldDir = mkdtempSync(join(tmpdir(), "sync-held-"));
   const heldSheetsConfig: SheetsConfig = { ...runSheetsConfig, dir: heldDir };
-  const heldFile = syncHeldFile.path(heldDir);
+  const heldFilePath = heldFile.path(heldDir, "sync");
   const notesItems = Array.from({ length: 23 }, (_, rowIndex) =>
     enteredDataItem(rowIndex),
   );
@@ -404,7 +387,7 @@ describe("the held file", () => {
   });
 
   it("sits in the package's .probe", () => {
-    expect(heldFile).toBe(join(heldDir, ".probe", "sync-held.json"));
+    expect(heldFilePath).toBe(join(heldDir, ".probe", "sync-held.json"));
   });
 
   it("gets every held item and its value from a dry run, with the token", async () => {
@@ -413,7 +396,7 @@ describe("the held file", () => {
       { token: "7f3a9c", flushes },
     );
 
-    expect(JSON.parse(readFileSync(heldFile, "utf8"))).toEqual({
+    expect(JSON.parse(readFileSync(heldFilePath, "utf8"))).toEqual({
       target: "dev",
       token: "7f3a9c",
       flushes,
@@ -429,7 +412,7 @@ describe("the held file", () => {
     expect(result).toMatchObject({
       held: {
         token: "7f3a9c",
-        fullListPath: relative(process.cwd(), heldFile),
+        fullListPath: relative(process.cwd(), heldFilePath),
       },
     });
     const text = SyncRunReport.init(result).text;
@@ -440,7 +423,7 @@ describe("the held file", () => {
     expect(text).not.toContain("itm-20");
     expect(text).toContain("  … and 3 more in notes, counted, not listed");
     expect(text).toContain(
-      `Full list, every cell with its value: ${relative(process.cwd(), heldFile)}`,
+      `Full list, every cell with its value: ${relative(process.cwd(), heldFilePath)}`,
     );
     expect(text).toContain("Rerun with --send --confirm 7f3a9c to send these.");
   });
@@ -452,7 +435,7 @@ describe("the held file", () => {
     );
 
     expect(result).not.toHaveProperty("held");
-    expect(existsSync(heldFile)).toBe(false);
+    expect(existsSync(heldFilePath)).toBe(false);
   });
 
   it("is left alone by a send, which prints no held list", async () => {
@@ -462,7 +445,7 @@ describe("the held file", () => {
     );
 
     expect(result).not.toHaveProperty("held");
-    expect(existsSync(heldFile)).toBe(false);
+    expect(existsSync(heldFilePath)).toBe(false);
   });
 
   it("is read back by a send with --confirm, and passed with the token", async () => {
@@ -482,11 +465,11 @@ describe("the held file", () => {
       token: "7f3a9c",
       flushes: undefined,
     });
-    mkdirSync(dirname(heldFile), { recursive: true });
-    writeFileSync(heldFile, "{ not json");
-    expect(syncHeldFile.readFlushes(heldFile)).toBeUndefined();
-    writeFileSync(heldFile, JSON.stringify({ flushes: "none" }));
-    expect(syncHeldFile.readFlushes(heldFile)).toBeUndefined();
+    mkdirSync(dirname(heldFilePath), { recursive: true });
+    writeFileSync(heldFilePath, "{ not json");
+    expect(heldFile.readFlushes(heldFilePath)).toBeUndefined();
+    writeFileSync(heldFilePath, JSON.stringify({ flushes: "none" }));
+    expect(heldFile.readFlushes(heldFilePath)).toBeUndefined();
   });
 
   it("isn't read by a send without --confirm or by a dry run", () => {
