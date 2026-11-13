@@ -34,7 +34,7 @@ import type { TableOrigin } from "../01_SpreadsheetSchema/TableOrigin";
 import { assertValueAndFormulaExclusive } from "./CellRaw";
 import type { RowCommonRaw } from "./ClassBases/RowCommonRaw";
 import { hasQueuedWrites, originOf } from "./ClassBases/TableBaseRaw";
-import { TableCommonRaw } from "./ClassBases/TableCommonRaw";
+import { columnCountChange, TableCommonRaw } from "./ClassBases/TableCommonRaw";
 import {
   type ColumnFill,
   type NewColumnHeadCells,
@@ -55,6 +55,14 @@ import { SheetRaw } from "./SheetRaw";
 import { SpreadsheetRaw } from "./SpreadsheetRaw";
 import { TableProfileRaw } from "./TableProfileRaw";
 import { TableColumnResolverRaw } from "./TableRaw/TableColumnResolverRaw";
+
+const columnChangeRequests = {
+  insertColumn: { kind: "insertRange", action: "Inserting a column inside" },
+  deleteColumn: { kind: "deleteRange", action: "Deleting a column of" },
+} as const satisfies Record<
+  TableColumnChange["kind"],
+  { kind: TableColumnChangeOperation["kind"]; action: string }
+>;
 
 /**
  * One Table's state by Table-relative index: rows, columns, pruning, queued
@@ -190,7 +198,7 @@ export class TableRaw extends TableCommonRaw {
   }
   // Strictly inside, so the band grows the Table with no range update; appendColumn adds at the end.
   insertColumn(colIndex: number, headCells: NewColumnHeadCells): this {
-    this.assertTableIsKnown();
+    this.assertRowIndexesNotStale();
     const columnCount = this._columnCountAfterChanges();
     if (
       !Number.isInteger(colIndex) ||
@@ -208,7 +216,7 @@ export class TableRaw extends TableCommonRaw {
     });
   }
   deleteColumn(colIndex: number): this {
-    this.assertTableIsKnown();
+    this.assertRowIndexesNotStale();
     const columnCount = this._columnCountAfterChanges();
     if (
       !Number.isInteger(colIndex) ||
@@ -227,10 +235,11 @@ export class TableRaw extends TableCommonRaw {
     return this.queueTableWrite({ action: "deleteColumn", colIndex });
   }
   private _columnCountAfterChanges(): number {
-    return this.writes.columnChanges.reduce((count, { kind }) => {
-      if (kind === "insertColumn") return count + 1;
-      return count - 1;
-    }, this.columnCount);
+    return this.writes.columnChanges.reduce(
+      (count, { kind }) =>
+        count + columnCountChange[columnChangeRequests[kind].kind],
+      this.columnCount,
+    );
   }
   row(rowIndex: number): RowRaw {
     return new RowRaw({
@@ -614,7 +623,7 @@ export class TableRaw extends TableCommonRaw {
     return splittingPhrase(this.columnInsertLabel, neighbourName);
   }
   get columnInsertLabel(): string {
-    return `Inserting a column at the end of Table "${this.name}" on sheet "${this.sheetTitle}"`;
+    return `Inserting a column at the end of ${this._namedTableOnSheet}`;
   }
   get hasQueuedColumnInsert(): boolean {
     return this.writes.insertTableEndColumnCount > 0;
@@ -623,15 +632,11 @@ export class TableRaw extends TableCommonRaw {
   gatherInsertTableEndColumnsOperation(): void {
     const insertCount = this.writes.insertTableEndColumnCount;
     if (insertCount === 0) return;
-    const origin = this.originAtGathering();
-    const { columnCount, dataRowCount } = this;
-    const newColumns: BoundedGridRange = {
-      sheetId: this.sheetGid,
-      startRowIndex: origin.topHeadSheetRowIndex,
-      endRowIndex: origin.sheetRowIndex(dataRowCount),
-      startColumnIndex: origin.sheetColIndex(columnCount),
-      endColumnIndex: origin.sheetColIndex(columnCount + insertCount),
-    };
+    const { columnCount } = this;
+    const newColumns = this._headAndBodyBand(
+      columnCount,
+      columnCount + insertCount,
+    );
     this._validateNoNeighbourSplitBy(newColumns, this.columnInsertLabel);
     this.sheet.queueGridColumnsThrough(newColumns.endColumnIndex);
     this.writeOperations.insertTableEndColumns.push({
@@ -695,47 +700,49 @@ export class TableRaw extends TableCommonRaw {
   private _columnChangeOperation(
     change: TableColumnChange,
   ): TableColumnChangeOperation {
-    const band = this._columnBand(change.colIndex);
-    if (change.kind === "insertColumn") {
-      this._validateNoNeighbourSplitBy(
-        band,
-        `Inserting a column inside Table "${this.name}" on sheet "${this.sheetTitle}"`,
-      );
-      this._shiftWorkingColumns(change.colIndex, 1);
-      this.growColumnCount(1);
-      this.column(change.colIndex)._initHeadCells(change.headCells);
-      return { kind: "insertRange", range: band, shiftDimension: "COLUMNS" };
-    }
+    const { colIndex } = change;
+    const { kind, action } = columnChangeRequests[change.kind];
+    const band = this._headAndBodyBand(colIndex, colIndex + 1);
     this._validateNoNeighbourSplitBy(
       band,
-      `Deleting a column of Table "${this.name}" on sheet "${this.sheetTitle}"`,
+      `${action} ${this._namedTableOnSheet}`,
     );
-    this._shiftWorkingColumns(change.colIndex, -1);
-    this.growColumnCount(-1);
-    return { kind: "deleteRange", range: band, shiftDimension: "COLUMNS" };
+    const shiftCount = columnCountChange[kind];
+    this._shiftWorkingColumns(colIndex, shiftCount);
+    this.growColumnCount(shiftCount);
+    if (change.kind === "insertColumn") {
+      this.column(colIndex)._initHeadCells(change.headCells);
+    }
+    return { kind, range: band, shiftDimension: "COLUMNS" };
   }
   // From the top head row down, so the head rows move with the Table.
-  private _columnBand(colIndex: number): BoundedGridRange {
+  private _headAndBodyBand(
+    startColIndex: number,
+    endColIndex: number,
+  ): BoundedGridRange {
     const origin = this.originAtGathering();
     return {
       sheetId: this.sheetGid,
       startRowIndex: origin.topHeadSheetRowIndex,
       endRowIndex: origin.sheetRowIndex(this.dataRowCount),
-      startColumnIndex: origin.sheetColIndex(colIndex),
-      endColumnIndex: origin.sheetColIndex(colIndex + 1),
+      startColumnIndex: origin.sheetColIndex(startColIndex),
+      endColumnIndex: origin.sheetColIndex(endColIndex),
     };
   }
-  // An insert opens an empty column at colIndex; a delete drops it. The columns after it move by shiftCount.
   private _shiftWorkingColumns(colIndex: number, shiftCount: 1 | -1): void {
-    for (const rowState of this.rowStates.values()) {
+    for (const [rowIndex, rowState] of this.rowStates) {
       const shifted = shiftedColumns(rowState, colIndex, shiftCount);
       if (shiftCount === 1) shifted.set(colIndex, { value: "" });
-      replaceMap(rowState, shifted);
+      this.rowStates.set(rowIndex, shifted);
     }
-    replaceMap(
+    this.tableState.working.columnStates = shiftedColumns(
       this.columnStates,
-      shiftedColumns(this.columnStates, colIndex, shiftCount),
+      colIndex,
+      shiftCount,
     );
+  }
+  private get _namedTableOnSheet(): string {
+    return `Table "${this.name}" on sheet "${this.sheetTitle}"`;
   }
   // Before the Table-end column inserts are counted, since growth is sent ahead of them.
   gatherAppendTableRowsOperation(): void {
@@ -1029,14 +1036,6 @@ function shiftedColumns<VL>(
     }
     return shifted;
   }, new Map<number, VL>());
-}
-
-function replaceMap<VL>(
-  target: Map<number, VL>,
-  source: Map<number, VL>,
-): void {
-  target.clear();
-  for (const [key, value] of source) target.set(key, value);
 }
 
 function columnRun(
