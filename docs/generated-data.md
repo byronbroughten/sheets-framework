@@ -1,6 +1,6 @@
 # Generated data
 
-Each package's `generatedDir` (the app's `src/generated/`, the framework's `dev/generated/`) holds the config files generated from the live spreadsheet, plus `appConfigs.ts`, which gathers them into one `appConfigs` const and registers it and the type-only ID-name map, `idNameMap.ts`, on `Register`. The hand-written `alterations.ts` beside the `generatedDir` is not generated: the regen creates it empty when missing, and rewrites it only to remove the alterations a send landed. The rules for regenerating and editing them are [`src/01_SpreadsheetSchema/AGENTS.md`](../src/01_SpreadsheetSchema/AGENTS.md)'s; what the command writes is [`how-it-runs/gen-configs.md`](./how-it-runs/gen-configs.md#what-gen-configs-writes)'s.
+Each package's `generatedDir` (the app's `src/generated/`, the framework's `dev/generated/`) holds the config files generated from the live spreadsheet, plus `appConfigs.ts`, which gathers them into one `appConfigs` const and registers it and the type-only ID-name map, `idNameMap.ts`, on `Register`. The hand-written `alterations.ts` beside the `generatedDir` is not generated. The rules for regenerating and editing them are [`src/01_SpreadsheetSchema/AGENTS.md`](../src/01_SpreadsheetSchema/AGENTS.md)'s; what the command writes is [`how-it-runs/gen-configs.md`](./how-it-runs/gen-configs.md#what-gen-configs-writes)'s.
 
 ## One file per generated constant and the floor
 

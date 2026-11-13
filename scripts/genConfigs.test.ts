@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -28,6 +28,7 @@ const devGeneratedDir = fileURLToPath(
 const devIdNameMapPath = idNameMapPath(devGeneratedDir);
 const devAlterationsPath = alterationsPath(devGeneratedDir);
 const missingFilesDir = mkdtempSync(join(tmpdir(), "gen-configs-"));
+const fixtureAlterationsDir = mkdtempSync(join(tmpdir(), "gen-configs-"));
 
 describe("the dev package's generated files", () => {
   const { tableConfigs, columnConfigs } = appConfigs;
@@ -127,8 +128,13 @@ describe("loadIntendedState", () => {
   });
 
   it("takes the pending alterations alterations.ts exports", async () => {
-    expect(await loadIntendedState(devGeneratedDir)).toEqual({
-      alterations: {},
+    const generatedDir = join(fixtureAlterationsDir, "generated");
+    writeFileSync(
+      alterationsPath(generatedDir),
+      "export const pendingAlterations = { tables: { item: { delete: true } } };\n",
+    );
+    expect(await loadIntendedState(generatedDir)).toEqual({
+      alterations: { tables: { item: { delete: true } } },
     });
   });
 });

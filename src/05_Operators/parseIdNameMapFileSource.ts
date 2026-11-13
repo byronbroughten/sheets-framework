@@ -7,7 +7,7 @@ import type {
 } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
 import { idNameMapOpening } from "./configFileSource";
 
-// The map is a type with no runtime value, so sync reads its previous one back from the source text.
+// The map is a type with no runtime value, so gen:configs reads its previous one back from the source text.
 export function parseIdNameMapFileSource(source: string): IdNameMapGeneric {
   const openingIndex = source.indexOf(idNameMapOpening);
   if (openingIndex === -1) {

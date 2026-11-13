@@ -2,11 +2,9 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
-import { pathToFileURL } from "node:url";
-
-import { Val } from "@byronbroughten/utils/val";
 
 import type { IdNameMapGeneric } from "../src/01_SpreadsheetSchema/configReaders/idNameMapTypes.ts";
+import type { PendingAlterations } from "../src/01_SpreadsheetSchema/configReaders/intendedState.ts";
 import { alterationsFileSource } from "../src/05_Operators/configFileSource.ts";
 import { parseIdNameMapFileSource } from "../src/05_Operators/parseIdNameMapFileSource.ts";
 import type {
@@ -19,6 +17,7 @@ import {
   type ConfigFile,
   configFilePath,
   hasPackageConfigs,
+  importExportIfPresent,
   loadFrameworkConfigs,
   loadPackageConfigs,
   startNodeHost,
@@ -118,11 +117,11 @@ class ConfigFilesGenerator {
     });
   }
 
-  // Called only with the whole set, so no subset of the files goes stale.
+  // Write nothing until every config and the ID-name map are confirmed good; a subset would go stale.
   _write(files: ConfigRegeneration): void {
     const { path } = this;
     mkdirSync(this.sheetsConfig.generatedDir, { recursive: true });
-    const written: [string, string][] = [
+    const writes: [string, string][] = [
       [path.tableConfigs, files.tableConfigs],
       [path.tabConfigs, files.tabConfigs],
       [path.conditionalFormatConfigs, files.conditionalFormatConfigs],
@@ -134,9 +133,9 @@ class ConfigFilesGenerator {
     ];
     // alterations.ts is rewritten only when the run returns it, so a run that landed nothing leaves its comments alone.
     if (files.alterations !== undefined) {
-      written.push([path.alterations, files.alterations]);
+      writes.push([path.alterations, files.alterations]);
     }
-    for (const [filePath, source] of written) {
+    for (const [filePath, source] of writes) {
       writeFileSync(filePath, source);
       console.log(`Wrote ${filePath}`);
     }
@@ -183,11 +182,11 @@ export async function loadIntendedState(
   generatedDir: string,
 ): Promise<SyncIntendedState> {
   const path = alterationsPath(generatedDir);
-  if (!existsSync(path)) return { alterations: {} };
-  const { pendingAlterations } = await import(pathToFileURL(path).href);
-  return {
-    alterations: Val.assert(pendingAlterations, `${path}'s pendingAlterations`),
-  };
+  const pendingAlterations = await importExportIfPresent<PendingAlterations>(
+    path,
+    "pendingAlterations",
+  );
+  return { alterations: pendingAlterations ?? {} };
 }
 
 // A package that has never synced has no map, so every Table is new to it.
