@@ -116,8 +116,8 @@ export interface SyncRun {
  * Tables, plans the three-way comparison against the previous configs, sends
  * the plan, any missing column IDs and Fill Row IDs checkboxes in one flush
  * on an unstopped --send, then its column deletions in a flush of their own,
- * refetches, then emits every generated config file,
- * the ID-name map and the remaining alterations, or none, and fills blank
+ * refetches, then emits every generated config file, the ID-name map and
+ * the remaining alterations, or none, and fills blank
  * row IDs from the fresh configs as its own send. A bare run sends nothing but still
  * refreshes the configs from its read; on a host that withholds, it then
  * flushes the plan for the host's entered-data gate to judge. Before either

@@ -1,5 +1,6 @@
 import {
   type IntendedTrait,
+  isColumnDeletion,
   isSameValue,
   isSheetTrait,
   subjectOf,
@@ -55,6 +56,6 @@ function keptValue(
   if (intended.kind === "table") return table?.traits[intended.trait];
   const column = table?.columns[intended.column];
   // A deletion keeps no trait on the sheet: it landed when the column is gone.
-  if (intended.trait === "deleted") return column === undefined;
+  if (isColumnDeletion(intended)) return column === undefined;
   return column?.[intended.trait];
 }

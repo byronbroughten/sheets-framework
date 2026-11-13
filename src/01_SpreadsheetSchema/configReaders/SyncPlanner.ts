@@ -299,7 +299,7 @@ function isOrderTrait(intended: IntendedTrait): boolean {
   return intended.kind === "tab" && intended.trait === "before";
 }
 
-function isColumnDeletion(address: TraitAddress): boolean {
+export function isColumnDeletion(address: TraitAddress): boolean {
   return address.kind === "column" && address.trait === "deleted";
 }
 
