@@ -1,5 +1,9 @@
 import type { IdNameMapGeneric } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
-import type { ColumnConfigsGeneric } from "../01_SpreadsheetSchema/configReaders/makeConfigs";
+import {
+  type ColumnConfigsGeneric,
+  makeImportLine,
+} from "../01_SpreadsheetSchema/configReaders/makeConfigs";
+import type { WideAlterations } from "../01_SpreadsheetSchema/configReaders/SyncPlanner/wideAlterations";
 
 function oneLineJsonObject(record: object): string {
   const fields = Object.entries(record).map(
@@ -24,6 +28,42 @@ export function oneLinePerLeafFileSource(
     return `  ${JSON.stringify(groupKey)}: {\n${lines.join(",\n")}\n  }`;
   });
   return `{\n${blocks.join(",\n")}\n}`;
+}
+
+function isPlainObject(value: unknown): value is object {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+// An object holding a plain object opens a block; any other value is one line.
+function alterationsValueSource(value: unknown, depth: number): string {
+  if (!isPlainObject(value)) {
+    return JSON.stringify(value);
+  }
+  const entries = Object.entries(value).filter(
+    ([, field]) => field !== undefined,
+  );
+  if (entries.length === 0) {
+    return "{}";
+  }
+  if (!entries.some(([, field]) => isPlainObject(field))) {
+    return oneLineJsonObject(Object.fromEntries(entries));
+  }
+  const indent = "  ".repeat(depth + 1);
+  const lines = entries.map(
+    ([key, field]) =>
+      `${indent}${JSON.stringify(key)}: ${alterationsValueSource(field, depth + 1)}`,
+  );
+  return `{\n${lines.join(",\n")}\n${"  ".repeat(depth)}}`;
+}
+
+export function alterationsFileSource(alterations: WideAlterations): string {
+  return [
+    "// sync rewrites this file: each alteration that lands is removed, and comments here won't survive a run.",
+    makeImportLine(["makePendingAlterations"]),
+    ``,
+    `export const pendingAlterations = makePendingAlterations(${alterationsValueSource(alterations, 0)});`,
+    ``,
+  ].join("\n");
 }
 
 export const idNameMapOpening = "export interface IdNameMap ";

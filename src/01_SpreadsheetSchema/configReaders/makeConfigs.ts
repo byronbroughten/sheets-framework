@@ -13,7 +13,8 @@ type ConfigMakerName =
   | "makeConditionalFormatConfigs"
   | "makeRetiredIdPrefixes"
   | "makeColumnConfigs"
-  | "makeValueConfigs";
+  | "makeValueConfigs"
+  | "makePendingAlterations";
 
 export function makeImportLine(
   configMakerNames: readonly ConfigMakerName[],
