@@ -62,7 +62,8 @@ export interface SyncStoppedPartwayOutcome {
   kind: "stoppedPartway";
   // At least 1: a send held at its first flush is stoppedBeforeSending, since nothing in it landed.
   landedFlushes: number;
-  flushCount: number;
+  // The dry run's flush count, from its held file; absent when the send had none to read.
+  flushCount?: number;
   heldBy: SyncHeldBy;
 }
 
@@ -199,7 +200,8 @@ export interface SyncHeld {
 }
 
 export interface SyncHeldGroup {
-  subject: SyncSubject;
+  // Absent for a held item no Table or tab names, such as a find-and-replace.
+  subject?: SyncSubject;
   what: string;
   // Entered-data cells this group holds; absent for a held item that isn't cells, such as a dropdown reset.
   cells?: number;

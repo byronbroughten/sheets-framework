@@ -59,7 +59,7 @@ Generated configs go in `src/generated` and chores are found in `src/chores` and
 
 | Command | Does |
 | --- | --- |
-| `sheets-framework sync [--send]` | Plans `alterations.ts` against the live sheet and regenerates the config files, `appConfigs.ts` and `idNameMap.ts`. **With `--send`, it writes the plan to the live spreadsheet.** |
+| `sheets-framework sync [--send [--confirm <token>]]` | Plans `alterations.ts` against the live sheet and regenerates the config files, `appConfigs.ts` and `idNameMap.ts`. **With `--send`, it writes the plan to the live spreadsheet**; a plan that would lose entered data needs the `--confirm` token its dry run printed. |
 | `sheets-framework chore [name] [--send] [--json]` | Lists the chores, dry-runs one (reads live, writes nothing, prints the requests), or applies it with `--send`. |
 | `sheets-framework probe --fields\|--filter\|--path …` | One read-only Sheets request; the full JSON goes to `.probe/last.json`. |
 | `sheets-framework setup-auth` | Mints the credential the Node host uses, from clasp's login. |

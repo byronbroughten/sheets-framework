@@ -13,10 +13,16 @@ export interface HeldList {
   flushes: HeldItem[][];
 }
 
+// The token a send was given, and the dry run's flushes loaded back from its held file; undefined flushes when that file was missing or unreadable.
+export interface ConfirmedList {
+  token: string;
+  flushes: HeldItem[][] | undefined;
+}
+
 export interface EnteredDataGateProps {
   target: string;
-  // The dry run's held list, loaded back with the token the send was given; undefined when it was given none.
-  confirmedList: HeldList | undefined;
+  // Undefined when the send was given no token.
+  confirmedList: ConfirmedList | undefined;
   // Injected by the Node half, since src/ takes no Node API.
   hash: (input: string) => string;
 }
@@ -24,7 +30,7 @@ export interface EnteredDataGateProps {
 // ADR 0034: holds each flush the classifier holds until a hash-bound token covers it; the host withholds a dry run's flushes.
 export class EnteredDataGate {
   private target: string;
-  private confirmedList: HeldList | undefined;
+  private confirmedList: ConfirmedList | undefined;
   private hash: (input: string) => string;
   private reads: SheetsHttpRead[];
   private flushes: HeldItem[][];
@@ -82,13 +88,14 @@ export class EnteredDataGate {
     }
     const { token, flushes } = this.confirmedList;
     const isCovered =
+      flushes !== undefined &&
       token === this._tokenFor(flushes) &&
       JSON.stringify(flushes[flushIndex]) === JSON.stringify(items);
     if (!isCovered) {
       throw new HeldFlushRefusal({
         kind: "mismatched",
         landedFlushes: this.landedFlushes,
-        flushCount: flushes.length,
+        flushCount: flushes?.length,
       });
     }
   }

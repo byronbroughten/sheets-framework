@@ -1,7 +1,7 @@
 // `sheets-framework sync`: runs sync on the Node host, planning against the live Tables and previous configs, and sending only with --send.
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { basename, dirname, join } from "node:path";
+import { basename, dirname, join, relative } from "node:path";
 
 import type { IdNameMapGeneric } from "../src/01_SpreadsheetSchema/configReaders/idNameMapTypes.ts";
 import type { PendingAlterations } from "../src/01_SpreadsheetSchema/configReaders/intendedState.ts";
@@ -16,6 +16,11 @@ import type {
   SyncIntendedState,
   SyncRun,
 } from "../src/05_Operators/SyncCoordinator.ts";
+import type {
+  ConfirmedList,
+  HeldList,
+} from "../src/nodeHost/EnteredDataGate.ts";
+import type { HeldItem } from "../src/nodeHost/FlushClassifier/flushClassifierTypes.ts";
 import { readConfigsDiff } from "./configsDiff.ts";
 import {
   type ConfigFile,
@@ -32,24 +37,28 @@ interface ConfigFilesGeneratorProps {
   sheetsConfig: SheetsConfig;
   isSending: boolean;
   forcedTraits: ForcedTrait[];
+  confirmToken?: string;
 }
 
 export class ConfigFilesGenerator {
   readonly sheetsConfig: SheetsConfig;
   readonly isSending: boolean;
   readonly forcedTraits: ForcedTrait[];
+  readonly confirmToken: string | undefined;
   readonly path: Record<
-    ConfigFile | "appConfigs" | "idNameMap" | "alterations",
+    ConfigFile | "appConfigs" | "idNameMap" | "alterations" | "heldFile",
     string
   >;
   constructor({
     sheetsConfig,
     isSending,
     forcedTraits,
+    confirmToken,
   }: ConfigFilesGeneratorProps) {
     this.sheetsConfig = sheetsConfig;
     this.isSending = isSending;
     this.forcedTraits = forcedTraits;
+    this.confirmToken = confirmToken;
     const { generatedDir } = sheetsConfig;
     this.path = {
       tableConfigs: configFilePath(generatedDir, "tableConfigs"),
@@ -64,6 +73,7 @@ export class ConfigFilesGenerator {
       appConfigs: join(generatedDir, "appConfigs.ts"),
       idNameMap: idNameMapPath(generatedDir),
       alterations: alterationsPath(generatedDir),
+      heldFile: heldFilePath(sheetsConfig.dir),
     };
   }
   static init(
@@ -74,6 +84,7 @@ export class ConfigFilesGenerator {
       sheetsConfig,
       isSending: argv.includes("--send"),
       forcedTraits: parseForcedTraits(argv),
+      confirmToken: parseConfirmToken(argv),
     });
   }
   async run(): Promise<void> {
@@ -104,32 +115,71 @@ export class ConfigFilesGenerator {
 
   async _sync(): Promise<SyncRun> {
     const { generatedDir } = this.sheetsConfig;
+    const target = basename(this.sheetsConfig.dir);
     // Loaded before the host starts, as the configs are, so a broken alterations.ts costs no setup.
     const intendedState = await loadIntendedState(generatedDir);
     const previousIdNameMap = loadPreviousIdNameMap(generatedDir);
     // The previous configs say which Tables have API access; a package with no generated files yet borrows the framework's.
     // No app endpoints: they may name columns the configs being regenerated don't have yet.
-    await startNodeHost({
+    const host = await startNodeHost({
       isDryRun: !this.isSending,
       sheetsConfig: this.sheetsConfig,
       configs: hasPackageConfigs(this.sheetsConfig)
         ? await loadPackageConfigs(this.sheetsConfig)
         : await loadFrameworkConfigs(),
+      enteredDataGate: { target, confirmedList: this._confirmedList() },
     });
     const { SyncCoordinator } =
       await import("../src/05_Operators/SyncCoordinator.ts");
-    return SyncCoordinator.init().run({
+    const run = SyncCoordinator.init().run({
       isSending: this.isSending,
       intendedState,
       previousIdNameMap,
       forcedTraits: this.forcedTraits,
       frame: {
-        target: basename(this.sheetsConfig.dir),
+        target,
         command: "npm run sync",
         generatedDir,
         alterationsPath: this.path.alterations,
       },
+      isHostWithholding: true,
     });
+    const { heldList } = host;
+    if (heldList === undefined) return run;
+    return { ...run, result: await this._withHeld(run.result, heldList) };
+  }
+
+  // A send's token, with the dry run's held list it covers; a missing or unreadable held file leaves the list undefined, so the gate counts it mismatched.
+  _confirmedList(): ConfirmedList | undefined {
+    if (!this.isSending || this.confirmToken === undefined) return undefined;
+    return {
+      token: this.confirmToken,
+      flushes: readHeldFlushes(this.path.heldFile),
+    };
+  }
+
+  // Only a dry run prints the held list and its token, and writes every held item with its value to the held file.
+  async _withHeld(
+    result: SyncRunResult,
+    { token, flushes }: HeldList,
+  ): Promise<SyncRunResult> {
+    if (result.mode !== "dry run") return result;
+    if (flushes.every((items) => items.length === 0)) return result;
+    const { heldGroups } = await import("../src/nodeHost/heldGroups.ts");
+    const { heldFile } = this.path;
+    mkdirSync(dirname(heldFile), { recursive: true });
+    writeFileSync(
+      heldFile,
+      `${JSON.stringify({ target: result.target, token, flushes }, null, 2)}\n`,
+    );
+    return {
+      ...result,
+      held: {
+        groups: heldGroups(flushes),
+        token,
+        fullListPath: relative(process.cwd(), heldFile),
+      },
+    };
   }
 
   // Write nothing until every config and the ID-name map are confirmed good; a subset would go stale.
@@ -182,6 +232,37 @@ export function parseForcedTraits(argv: string[]): ForcedTrait[] {
     }
     return [{ table, column, trait }];
   });
+}
+
+// The token after `--confirm`, which the dry run printed beside its held list.
+export function parseConfirmToken(argv: string[]): string | undefined {
+  const index = argv.indexOf("--confirm");
+  if (index === -1) return undefined;
+  const token = argv[index + 1];
+  if (token === undefined || token.startsWith("--")) {
+    throw new Error("--confirm takes the token the dry run printed.");
+  }
+  return token;
+}
+
+// In the package's .probe/, beside the probe's output, since it holds live cell values and is never committed.
+export function heldFilePath(packageDir: string): string {
+  return join(packageDir, ".probe", "sync-held.json");
+}
+
+// The dry run's flushes from its held file; undefined when the file is missing or isn't a held list.
+export function readHeldFlushes(path: string): HeldItem[][] | undefined {
+  if (!existsSync(path)) return undefined;
+  try {
+    const { flushes } = JSON.parse(readFileSync(path, "utf8"));
+    if (!Array.isArray(flushes) || !flushes.every(Array.isArray)) {
+      return undefined;
+    }
+    // The gate compares each entry with the flush it judges, so an edited item reads as mismatched.
+    return flushes as HeldItem[][];
+  } catch {
+    return undefined;
+  }
 }
 
 function labelled(text: string): string {

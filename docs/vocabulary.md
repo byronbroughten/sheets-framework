@@ -47,7 +47,7 @@ One line per term. The elaboration is one file away. Open a reasoning file only 
 - **An alteration is a trait `sync` applies once, then removes; its value is an intended value.** Claims, traits an endpoint or chore holds and a run compares, wait on [#286](https://github.com/byronbroughten/sheets-framework/issues/286).
 - **The ID-name map (`idNameMap.ts`) is the generated, type-only file pairing each Table and column ID with its name.**
 - **A rule handle is the readable key a conditional-format rule's record has in `conditionalFormatConfigs`, built from its content, never its position**: scope, condition and format, with `-2`, `-3` on a repeat.
-- **Entered data is a value in a Table data-row cell that isn't a formula; a held item is one a send holds back until `--confirm` covers it, and a send with none is free**; planned, not yet in code.
+- **Entered data is a value in a Table data-row cell that isn't a formula; a held item is one a send holds back until `--confirm` covers it, and a send with none is free**.
 
 ## The write queue
 
