@@ -169,7 +169,13 @@ export class TableIdentified extends TableCommonIdentified {
   // Appending past a blank row would leave it stranded above the data forever.
   private _rowToFillWithDefaults(): RowIdentified {
     if (this._isTopRowReusable()) return this.topRow;
-    return this.row(this.raw.appendDataRow().rowIndex);
+    return this.row(this.raw.appendDataRow(this._formulaColIndexes).rowIndex);
+  }
+  // A configured column the sheet doesn't have has no formula to copy.
+  private get _formulaColIndexes(): number[] {
+    return this.schema.formulaColumnIds
+      .filter((columnId) => this.columnResolver.hasColumnId(columnId))
+      .map((columnId) => this.columnResolver.raw.colIndexOf(columnId));
   }
   private _isTopRowReusable(): boolean {
     if (!this._isTopRowTheOnlyRow) return false;

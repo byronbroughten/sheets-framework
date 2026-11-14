@@ -141,6 +141,10 @@ export class SheetRaw extends SheetBaseRaw {
       `${this.label}'s row count`,
     );
   }
+  // The grid's size as fetched, before this flush's growth raised the working count.
+  get rowCountBeforeFlush(): number {
+    return this.rowCount - this.sheetState.writeQueue.appendedRowCount;
+  }
   get columnCount(): number {
     return Val.assert(
       this.sheetState.working.columnCount,

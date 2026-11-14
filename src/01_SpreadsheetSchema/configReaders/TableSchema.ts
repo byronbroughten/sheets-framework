@@ -96,6 +96,11 @@ export class TableSchema<
       return !getColumnTraitById(this.tableName, columnId, "isFormula");
     });
   }
+  get formulaColumnIds(): string[] {
+    return [...this.columnIds].filter((columnId) =>
+      getColumnTraitById(this.tableName, columnId, "isFormula"),
+    );
+  }
   // Goes by the columnId index, since by name would scan the Table.
   colNameByColumnId(columnId: string): ColumnName<TN> {
     return getColumnTraitById(

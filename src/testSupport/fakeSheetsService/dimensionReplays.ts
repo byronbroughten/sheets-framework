@@ -1,7 +1,11 @@
 import type { FakeCell, FakeCellValue } from "../fakeSheetsService";
 import { fakeCells } from "./fakeCells";
 import { type DimensionChange, fakeGrid } from "./fakeGrid";
-import { type FakeSpreadsheet, fakeSpreadsheet } from "./fakeSpreadsheet";
+import {
+  type FakeSheetState,
+  type FakeSpreadsheet,
+  fakeSpreadsheet,
+} from "./fakeSpreadsheet";
 
 type Response = GoogleAppsScript.Sheets.Schema.Response;
 type DimensionRange = GoogleAppsScript.Sheets.Schema.DimensionRange;
@@ -50,7 +54,10 @@ export const dimensionReplays = {
     const sheet = fakeSpreadsheet.sheet(spreadsheet, request.sheetId);
     const length = request.length ?? 0;
     if (request.dimension === "ROWS") {
-      sheet.rowCount += length;
+      // Measured before the grown Tables' formula cells, whose writes would raise the count themselves.
+      const grownRowCount = sheet.rowCount + length;
+      growTablesOnGridEdge(sheet, length);
+      sheet.rowCount = grownRowCount;
     } else if (request.dimension === "COLUMNS") {
       sheet.columnCount += length;
     } else {
@@ -155,6 +162,33 @@ export const dimensionReplays = {
     return {};
   },
 };
+
+// Measured live (sheets-framework#292), for one row: a Table ending on the grid's last row grows into it, its formulas filled.
+function growTablesOnGridEdge(sheet: FakeSheetState, length: number): void {
+  const edgeTables = sheet.tables.filter(
+    (table) => table.endRowIndex === sheet.rowCount,
+  );
+  for (const table of edgeTables) {
+    const lastRowIndex = table.endRowIndex - 1;
+    for (let offset = 1; offset <= length; offset++) {
+      for (
+        let colIndex = table.startColumnIndex;
+        colIndex < table.endColumnIndex;
+        colIndex++
+      ) {
+        const source = fakeGrid.cell(sheet, lastRowIndex, colIndex);
+        if (typeof source !== "object" || source?.isFormula !== true) continue;
+        fakeGrid.setCell(
+          sheet,
+          lastRowIndex + offset,
+          colIndex,
+          fakeCells.withValue(null, source.value, true),
+        );
+      }
+    }
+    table.endRowIndex += length;
+  }
+}
 
 function dimensionChange(range: DimensionRange | undefined): DimensionChange {
   const dimension = range?.dimension;

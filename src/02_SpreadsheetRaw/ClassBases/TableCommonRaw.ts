@@ -284,6 +284,11 @@ export abstract class TableCommonRaw extends TableBaseRaw {
       case "addCheckboxValidation":
         writes.checkboxCells.push(Obj.strictOmit(props, "action"));
         break;
+      case "copyAppendedFormulas":
+        for (const colIndex of props.colIndexes) {
+          writes.appendedFormulaColIndexes.add(colIndex);
+        }
+        break;
       case "addConditionalFormatRule":
         writes.conditionalFormatRules.push(Obj.strictOmit(props, "action"));
         break;
