@@ -12,6 +12,7 @@ import {
 import type { SheetRowIndex } from "../../00_Source/RawSource/SheetIndex";
 import { SpreadsheetBaseSchema } from "../SpreadsheetBaseSchema";
 import { BraceFormula, type RuleLayout } from "./BraceFormula";
+import type { SyncPlanEffect } from "./syncRunResult";
 
 const schema = new SpreadsheetBaseSchema();
 
@@ -27,6 +28,12 @@ export interface RuleRecordsTable {
   tableId: string;
   layout: RuleLayout;
   endRowIndex: SheetRowIndex;
+}
+
+export interface DeletedTableTab {
+  tabName: string;
+  rules: ConditionalFormatRule[];
+  table: RuleRecordsTable;
 }
 
 export interface RuleRecordFormat {
@@ -122,6 +129,31 @@ export const RuleRecords = {
       },
       { tables: {}, tabs: {} },
     );
+  },
+  // Nothing is sent for a partly-over rule: it stays on the sheet, so the plan only reports it.
+  deletionEffects({
+    tabName,
+    rules,
+    table,
+  }: DeletedTableTab): SyncPlanEffect[] {
+    const removed: TableRuleRecords = {};
+    const partlyOver: SyncPlanEffect[] = [];
+    for (const rule of rules) {
+      if (!rule.ranges.some((range) => touchesTable(range, table))) continue;
+      if (rule.ranges.every((range) => isInsideTable(range, table))) {
+        addRecord(removed, tableRecord(rule, table));
+        continue;
+      }
+      partlyOver.push({
+        kind: "rulePartlyOver",
+        tab: tabName,
+        range: rule.ranges.map((range) => schema.gridRangeA1(range)).join(","),
+        formula: ruleFormula(rule),
+      });
+    }
+    const handles = Object.keys(removed);
+    if (handles.length === 0) return partlyOver;
+    return [{ kind: "rulesRemoved", handles }, ...partlyOver];
   },
 };
 
@@ -344,4 +376,30 @@ function recordFormat({
       ? { foregroundColor: rgbChannelsHex(foregroundColor) }
       : {}),
   };
+}
+
+// The fake's deleteTable replay drops a rule by the same test: an open bound reaches past the Table.
+function isInsideTable(
+  {
+    startRowIndex,
+    endRowIndex,
+    startColumnIndex,
+    endColumnIndex,
+  }: GridRangeProps,
+  table: RuleRecordsTable,
+): boolean {
+  const { startCol, endCol } = tableColumnBounds(table);
+  if (endRowIndex === undefined || endColumnIndex === undefined) return false;
+  if (startColumnIndex === undefined) return false;
+  return (
+    table.layout.headerTopLeft.rowIndex <= startRowIndex &&
+    endRowIndex <= table.endRowIndex &&
+    startCol <= startColumnIndex &&
+    endColumnIndex <= endCol
+  );
+}
+
+function ruleFormula(rule: ConditionalFormatRule): string {
+  if (rule.kind === "unmodelable") return rule.rawContent;
+  return conditionText(rule.condition);
 }
