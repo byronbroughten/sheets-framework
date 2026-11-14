@@ -58,7 +58,6 @@ import {
   columnIdsByName,
   idNameMapFileSource,
 } from "./configFileSource";
-import { ConfigSheetFloor } from "./ConfigSheetFloor";
 import { RowIdsOperator } from "./RowIdsOperator";
 import { SpreadsheetBaseOperator } from "./SpreadsheetBaseOperator";
 import { TabConfigOperator } from "./TabConfigOperator";
@@ -139,8 +138,7 @@ export interface SyncRun {
  * flushes the plan for the host's entered-data gate to judge. Before either
  * flush it reads the cells a deletion or a formula would overwrite, so the
  * gate judges them rather than holding them unread. A send the
- * gate refuses writes no files. The run leaves the config tabs' rows
- * alone; ensureConfigSheetFloor still writes them for the floor chore.
+ * gate refuses writes no files.
  * Config maintenance is this Operator family, not Raw or Named.
  * docs/generated-data.md
  */
@@ -177,12 +175,6 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
   }
   get rowIdsOperator(): RowIdsOperator {
     return new RowIdsOperator(this.operatorProps);
-  }
-  get configSheetFloor(): ConfigSheetFloor {
-    return new ConfigSheetFloor(this.spreadsheetNamedProps);
-  }
-  ensureConfigSheetFloor(): string {
-    return this.configSheetFloor.ensure();
   }
   run(props: SyncRunProps): SyncRun {
     const { alterations } = props.intendedState;
