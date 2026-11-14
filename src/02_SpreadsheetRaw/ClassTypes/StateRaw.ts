@@ -33,6 +33,8 @@ import type {
   SheetColIndex,
   SheetRowIndex,
 } from "../../00_Source/RawSource/SheetIndex";
+import type { ColumnTypeBaseline } from "../../01_SpreadsheetSchema/columnBaseline";
+import type { IdPrefixFromTitleProps } from "../../01_SpreadsheetSchema/idPrefixes";
 
 export interface StateRaw {
   allSheetPropertiesAreFetched: boolean;
@@ -329,6 +331,37 @@ export type AddedSheetCell = Required<
   Pick<FillCellOperation, "sheetId" | "rowIndex" | "colIndex">
 > &
   ({ value: CellValue } | { formula: string });
+
+// A tab the same flush adds, or right of the rightmost Table on a tab already there, `gap` empty columns between.
+export type CreatedTablePlacement =
+  | { kind: "newTab"; sheetGid: number; title: string }
+  | { kind: "besideTables"; sheetGid: number; gap?: 0 | 1 };
+
+export interface CreatedTableColumn {
+  header: string;
+  columnId?: string;
+  columnType?: ColumnTypeBaseline;
+}
+
+// A fixed prefix, or the prefixes a prefix drawn from the Table's name must skip.
+export type CreatedTableIdPrefix =
+  string | Omit<IdPrefixFromTitleProps, "title">;
+
+export interface CreateTableProps {
+  name: string;
+  placement: CreatedTablePlacement;
+  idPrefix: CreatedTableIdPrefix;
+  columns: CreatedTableColumn[];
+  tableId?: string;
+  // Each row's values in column order; without any, the body is one empty row.
+  seedRows?: CellValue[][];
+}
+
+export interface CreatedTable {
+  tableId: string;
+  idPrefix: string;
+  columnIds: string[];
+}
 
 export interface TableWritePropsObj {
   sort: TableWriteSortProps;

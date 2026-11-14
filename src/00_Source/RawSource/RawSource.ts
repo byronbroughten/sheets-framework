@@ -227,10 +227,18 @@ export interface DeleteTableOperation {
   headRows: BoundedGridRange;
 }
 
+// Absent columnType leaves the column on Automatic.
 export interface TableColumnPropertiesAdd {
   columnIndex: number;
   columnName: string;
-  columnType: TableColumnType;
+  columnType?: string;
+  dataValidationRule?: TableColumnValidationRule;
+}
+
+// A dropdown column's rule: its condition type and the values it offers.
+export interface TableColumnValidationRule {
+  condition: string;
+  values: string[];
 }
 
 // Adds rows or columns past the grid's edge, so it can't split a Table (sheets-framework#59).
