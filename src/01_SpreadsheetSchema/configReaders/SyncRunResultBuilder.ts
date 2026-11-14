@@ -1,7 +1,7 @@
 import type { HeldFlushRefusal } from "../../00_Source/RawSource/HeldFlushRefusal";
 import { hasLanded } from "./didntLand";
 import { heldStoppedOutcome } from "./heldStoppedOutcome";
-import { newColumnsPath, type SyncPlannerResult } from "./SyncPlanner";
+import { newColumnLines, type SyncPlannerResult } from "./SyncPlanner";
 import {
   fillRowIdsName,
   type SyncCreatedColumn,
@@ -17,7 +17,6 @@ import {
   type SyncSendLine,
   type SyncSendOutcome,
   type SyncSendResult,
-  type SyncSubject,
   type SyncTypedTraitChange,
 } from "./syncRunResult";
 
@@ -93,7 +92,9 @@ export class SyncRunResultBuilder {
     const landed: SyncLandedItem[] = [
       ...planned.plan
         .filter(
-          ({ subject }) => isLanded(subject) && !isNewColumnsSubject(subject),
+          // Each new column lands as its created line, carrying the minted ID its plan line couldn't.
+          ({ subject }) =>
+            isLanded(subject) && !newColumnLines.isSubject(subject),
         )
         .map(landedSend),
       ...createdColumns,
@@ -166,11 +167,6 @@ interface SentCounts {
 
 function landedSend({ subject, what }: SyncSendLine): SyncLandedItem {
   return { kind: "send", subject, what };
-}
-
-// Each new column lands as its created line, carrying the minted ID its plan line couldn't.
-function isNewColumnsSubject(subject: SyncSubject): boolean {
-  return "table" in subject && subject.path === newColumnsPath;
 }
 
 function dryRunResult(

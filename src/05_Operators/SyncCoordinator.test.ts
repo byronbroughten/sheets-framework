@@ -837,6 +837,29 @@ describe("SyncCoordinator.run new columns", () => {
     expect(emptyValueAllowedOf(emitted, "ref")).toBe(true);
   });
 
+  it("throws before sending anything on an entry placed before the Table's first column", () => {
+    const service = seedFixture();
+    const [firstColumn] = Object.keys(itemColumns) as ItemColumnName[];
+    const firstName = Val.assert(firstColumn, "first column");
+
+    expect(() =>
+      runItem({
+        isSending: true,
+        alterations: {
+          tables: {
+            item: {
+              newColumns: [
+                { header: "Late fee" },
+                { header: "Ref", before: firstName },
+              ],
+            },
+          },
+        },
+      }),
+    ).toThrow(/its first column/);
+    expect(service.batchUpdateCount()).toBe(0);
+  });
+
   it("stops before sending on an entry whose header the Table already has, naming the column and its ID", () => {
     const service = seedFixture();
     const { header, columnId } = itemColumns.optionalNote;

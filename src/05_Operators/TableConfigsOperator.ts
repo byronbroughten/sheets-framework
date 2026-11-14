@@ -188,13 +188,18 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
   updateTableNames(sent: IntendedTrait[]): this {
     for (const intended of sent) {
       if (intended.kind !== "table" || !isSheetTrait(intended)) continue;
-      const { tableId } = Val.assert(
-        tableConfigsByName()[intended.table],
-        `previous Table ${intended.table}`,
-      );
-      this.ss.raw.table(tableId).updateTableName(String(intended.value));
+      this.ss.raw
+        .table(this.tableIdOf(intended.table))
+        .updateTableName(String(intended.value));
     }
     return this;
+  }
+  // By the previous configs' name, the one an alteration addresses a Table by.
+  tableIdOf(tableKey: string): string {
+    return Val.assert(
+      tableConfigsByName()[tableKey],
+      `previous Table ${tableKey}`,
+    ).tableId;
   }
   tableKeysByTableId(): Map<string, string> {
     const map = new Map<string, string>();

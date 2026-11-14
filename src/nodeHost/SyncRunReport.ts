@@ -6,6 +6,7 @@ import {
   type SyncConflict,
   type SyncDryRunOutcome,
   type SyncHeaderTakenStop,
+  type SyncHeadRowsStop,
   type SyncHeld,
   type SyncHeldBy,
   type SyncHeldGroup,
@@ -110,20 +111,13 @@ export class SyncRunReport {
   }
   private get _stoppedText(): OutcomeText {
     const { stops, command } = this.result;
-    const conflicts = stops.filter(({ kind }) => kind === "conflict").length;
-    const headRowStops = stops.filter(({ kind }) => kind === "headRows").length;
-    const headersTaken = stops.filter(
-      ({ kind }) => kind === "headerTaken",
-    ).length;
-    const why = [
-      ...(conflicts > 0 ? [counted(conflicts, "conflict", "conflicts")] : []),
-      ...(headRowStops > 0
-        ? [`${counted(headRowStops, "Table", "Tables")} can't take head rows`]
-        : []),
-      ...(headersTaken > 0
-        ? [`${counted(headersTaken, "new column", "new columns")} taken`]
-        : []),
-    ].join(" and ");
+    const why = stopKinds
+      .flatMap((kind) => {
+        const count = stops.filter((stop) => stop.kind === kind).length;
+        if (count === 0) return [];
+        return [stopWords[kind].reason(count)];
+      })
+      .join(" and ");
     const until = stops.length === 1 ? "it is resolved" : "they are resolved";
     return {
       resultLine: `STOPPED: ${why}${this._checkClause}. Nothing was sent, and nothing will be until ${until}.`,
@@ -334,8 +328,7 @@ function resolveLine(stops: SyncStop[], command: string): string {
   if (stops.length !== 1 || stop === undefined) {
     return `Resolve each stop above, then rerun ${command}.`;
   }
-  const name = stop.kind === "conflict" ? "conflict" : "stop";
-  return `Resolve ${name} 1, then rerun ${command}.`;
+  return `Resolve ${stopWords[stop.kind].name} 1, then rerun ${command}.`;
 }
 
 function checkLines(check: SyncCheck): string[] {
@@ -482,6 +475,45 @@ function ruleHandleLines(table: string, handles: string[]): string[] {
   return [`${table}'s rules now, by handle:`, ...indent(2, handles)];
 }
 
+type StopKind = SyncStop["kind"];
+
+type StopOf<SK extends StopKind> = Extract<SyncStop, { kind: SK }>;
+
+interface StopWords<SK extends StopKind> {
+  // What the resolve line calls one.
+  name: string;
+  // Why the run stopped, for the result line.
+  reason(count: number): string;
+  block(stop: StopOf<SK>, number: number): string[];
+}
+
+// The result line's order.
+const stopKinds: StopKind[] = ["conflict", "headRows", "headerTaken"];
+
+const stopWords: { [SK in StopKind]: StopWords<SK> } = {
+  conflict: {
+    name: "conflict",
+    reason(count) {
+      return counted(count, "conflict", "conflicts");
+    },
+    block: conflictBlock,
+  },
+  headRows: {
+    name: "stop",
+    reason(count) {
+      return `${counted(count, "Table", "Tables")} can't take head rows`;
+    },
+    block: headRowsBlock,
+  },
+  headerTaken: {
+    name: "stop",
+    reason(count) {
+      return `${counted(count, "new column", "new columns")} taken`;
+    },
+    block: headerTakenBlock,
+  },
+};
+
 function stopBlocks(stops: SyncStop[]): string[] {
   return stops.flatMap((stop, index) => [
     ...(index === 0 ? [] : [""]),
@@ -489,10 +521,18 @@ function stopBlocks(stops: SyncStop[]): string[] {
   ]);
 }
 
-function stopBlock(stop: SyncStop, number: number): string[] {
-  if (stop.kind === "conflict") return conflictBlock(stop, number);
-  if (stop.kind === "headerTaken") return headerTakenBlock(stop, number);
-  const { table, tab, headerRow } = stop;
+function stopBlock<SK extends StopKind>(
+  stop: StopOf<SK>,
+  number: number,
+): string[] {
+  const words: StopWords<SK> = stopWords[stop.kind];
+  return words.block(stop, number);
+}
+
+function headRowsBlock(
+  { table, tab, headerRow }: SyncHeadRowsStop,
+  number: number,
+): string[] {
   return [
     `STOP ${number} · ${table} › letApiAccess`,
     ...indent(2, [

@@ -1,6 +1,5 @@
-import { Str } from "@byronbroughten/utils/str";
-
 import type { ColumnTypeBaseline } from "../columnBaseline";
+import { columnNameOfHeader } from "./columnConfigsTypes";
 import type { PendingAlterations } from "./intendedState";
 import { DeletionRefuser } from "./SyncPlanner/DeletionRefuser";
 import { entriesOf, type WideAlterations } from "./SyncPlanner/wideAlterations";
@@ -118,22 +117,26 @@ export const sheetTraits = {
 // A deletion's one value, `true`, says nothing a plan line could show.
 const deletionWhat = "delete the column";
 
-// The subject path of every `newColumns` entry's plan line; landing one drops the whole list from alterations.ts.
-export const newColumnsPath = "newColumns";
-
-// Where a new column goes, as its plan line and its created line say it.
-export function newColumnPosition({ before }: PlannedNewColumn): string {
-  if (before === undefined) return "at the Table's end";
-  return `before ${before}`;
-}
-
-// A new column's plan line, and its didntLand line when the refetch can't find it.
-export function newColumnSendLine(newColumn: PlannedNewColumn): SyncSendLine {
-  return {
-    subject: { table: newColumn.table, path: newColumnsPath },
-    what: `create "${newColumn.header}" ${newColumnPosition(newColumn)}`,
-  };
-}
+// How a `newColumns` entry reads on the plan, landed and didntLand lists.
+export const newColumnLines = {
+  // Every entry's subject path; landing one drops the whole list from alterations.ts.
+  path: "newColumns",
+  // Where a new column goes, as its plan line and its created line say it.
+  position({ before }: PlannedNewColumn): string {
+    if (before === undefined) return "at the Table's end";
+    return `before ${before}`;
+  },
+  // Its plan line, and its didntLand line when the refetch can't find it.
+  sendLine(newColumn: PlannedNewColumn): SyncSendLine {
+    return {
+      subject: { table: newColumn.table, path: newColumnLines.path },
+      what: `create "${newColumn.header}" ${newColumnLines.position(newColumn)}`,
+    };
+  },
+  isSubject(subject: SyncSubject): boolean {
+    return "table" in subject && subject.path === newColumnLines.path;
+  },
+};
 
 export function isSheetTrait(intended: IntendedTrait): boolean {
   if (intended.kind === "tab") return false;
@@ -203,7 +206,7 @@ export class SyncPlanner {
           return [
             {
               table,
-              column: Str.sentenceToCamelCase(header),
+              column: columnNameOfHeader(header),
               header,
               ...(before === undefined ? {} : { before }),
               emptyValueAllowed: emptyValueAllowed ?? false,
@@ -263,7 +266,7 @@ export class SyncPlanner {
       ({ table }) => live.tables[table] !== undefined,
     );
     for (const newColumn of newColumns) {
-      sends.push({ ...newColumnSendLine(newColumn), effects: [] });
+      sends.push({ ...newColumnLines.sendLine(newColumn), effects: [] });
     }
     const isStopped = stops.length + sheetStops.length > 0;
     const sentIfUnstopped = isStopped ? [] : sentTraits;

@@ -20,8 +20,6 @@ import { remainingAlterations } from "../01_SpreadsheetSchema/configReaders/rema
 import { SyncEntryRefuser } from "../01_SpreadsheetSchema/configReaders/SyncEntryRefuser";
 import {
   isSheetTrait,
-  newColumnPosition,
-  newColumnSendLine,
   type PlanProps,
   SyncPlanner,
   type SyncPlannerResult,
@@ -112,11 +110,6 @@ interface RefetchProps {
   sent: SyncSubject[];
   accessChanges: ApiAccessChanges;
   newColumns: MintedNewColumn[];
-}
-
-interface ColumnsLanded {
-  createdColumns: SyncCreatedColumn[];
-  didntLand: SyncSendLine[];
 }
 
 // No files on a refused run: the run writes every file or none.
@@ -330,37 +323,12 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       live: this._traitReadings().live,
     });
     const notes = this._recordUntypedColumns();
-    const columns = this._columnsLanded(newColumns);
+    const columns = this.columnConfigOperator.landedColumns(newColumns);
     return {
       ...this._regeneration(notes, sent),
       didntLand: [...traitsDidntLand, ...columns.didntLand],
       createdColumns: columns.createdColumns,
     };
-  }
-  // Found by minted ID in the fresh configs, which name each column by its live header.
-  private _columnsLanded(newColumns: MintedNewColumn[]): ColumnsLanded {
-    const columnConfigs = this.columnConfigOperator.newColumnConfigs();
-    const landed: ColumnsLanded = { createdColumns: [], didntLand: [] };
-    for (const newColumn of newColumns) {
-      const found = Object.entries(columnConfigs[newColumn.table] ?? {}).find(
-        ([, config]) => config.columnId === newColumn.columnId,
-      );
-      if (found === undefined) {
-        landed.didntLand.push(newColumnSendLine(newColumn));
-        continue;
-      }
-      const [column, config] = found;
-      landed.createdColumns.push({
-        kind: "createdColumn",
-        table: newColumn.table,
-        header: config.header,
-        column,
-        columnId: newColumn.columnId,
-        columnType: config.columnType?.type ?? "AUTOMATIC",
-        position: newColumnPosition(newColumn),
-      });
-    }
-    return landed;
   }
   private _regeneration(notes: string[], sent: SyncSubject[]): Regeneration {
     this.valueConfigOperator.fetchAfterColumnConfigSynced();
@@ -453,7 +421,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
   // A column delete or mid-Table insert goes in a flush of its own on its Table, since the plan's other writes are indexed by the columns before it.
   private _flushPlan({ sentTraits, newColumns }: AppliedPlan): void {
     this.ss.batchUpdateGSheets();
-    this.columnConfigOperator.changeColumns(sentTraits, newColumns);
+    this.columnConfigOperator.updateDeletionsAndInserts(sentTraits, newColumns);
     this.ss.batchUpdateGSheets();
   }
   private _applyApiAccessChanges(accessChanges: ApiAccessChanges): void {

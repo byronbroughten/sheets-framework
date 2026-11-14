@@ -4,6 +4,7 @@ import {
   type KeyedMap,
   Obj,
 } from "@byronbroughten/utils/obj";
+import { Str } from "@byronbroughten/utils/str";
 import { Val } from "@byronbroughten/utils/val";
 
 import type {
@@ -24,6 +25,11 @@ export function columnConfigsByName(): ColumnConfigsGeneric {
 
 function columnConfigs(): ColumnConfigs {
   return installedConfigs().columnConfigs;
+}
+
+// The codebase name the regen gives a column for its header.
+export function columnNameOfHeader(header: string): string {
+  return Str.sentenceToCamelCase(header);
 }
 
 export type ColumnName<TN extends TableNameSimple = TableNameSimple> =
