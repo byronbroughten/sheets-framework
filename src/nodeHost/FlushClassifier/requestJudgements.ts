@@ -18,8 +18,8 @@ import { fieldMask } from "./requestJudgements/fieldMask";
 
 type DimensionRange = GoogleAppsScript.Sheets.Schema.DimensionRange;
 
-// cutPaste and moveDimension aren't built yet, but #219's column move sends cutPaste, so both are judged ahead of their builders.
-export type ClassifiedVerb = ModeledRequestVerb | "cutPaste" | "moveDimension";
+// moveDimension isn't built, but is judged ahead of any builder.
+export type ClassifiedVerb = ModeledRequestVerb | "moveDimension";
 
 type RequestJudgement<CV extends ClassifiedVerb> = (
   inner: NonNullable<GoogleRequest[CV]>,

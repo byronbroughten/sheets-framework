@@ -183,6 +183,24 @@ describe("UpdateRequestSummary.lines", () => {
     ).toBe("copyPaste item!A7:C8 6 cell(s) from item!A6:C6 PASTE_FORMAT");
   });
 
+  it("names a cut's source, cell count, destination cell and paste type", () => {
+    expect(
+      onlyLine({
+        cutPaste: {
+          source: {
+            sheetId: itemGid,
+            startRowIndex: 5,
+            endRowIndex: 7,
+            startColumnIndex: 3,
+            endColumnIndex: 5,
+          },
+          destination: { sheetId: itemGid, rowIndex: 5, columnIndex: 1 },
+          pasteType: "PASTE_NORMAL",
+        },
+      }),
+    ).toBe("cutPaste item!D6:E7 4 cell(s) to item!B6 PASTE_NORMAL");
+  });
+
   it("states a sort by its column and direction", () => {
     expect(
       onlyLine({

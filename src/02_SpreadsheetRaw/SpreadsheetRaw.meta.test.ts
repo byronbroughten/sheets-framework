@@ -507,6 +507,197 @@ describe("TableRaw.appendColumn, insertColumn and deleteColumn", () => {
     });
   });
 
+  describe("moveColumns", () => {
+    const lastBodyRow = topDataRowIndex + 1;
+    const belowRow = lastBodyRow + 1;
+    const tableBand = {
+      startRowIndex: colIdRowIndex,
+      endRowIndex: belowRow + 1,
+      endColumnIndex: 4,
+    };
+    const aaa = "c:lse:aaa";
+    const bbb = "c:lse:bbb";
+    const ccc = "c:lse:ccc";
+    const ddd = "c:lse:ddd";
+    function stubFourColumnTable() {
+      return stubSheetsService({
+        sheets: [
+          {
+            sheetId: 111,
+            title: "Records",
+            rows: buildGridRows({
+              [colIdRowIndex]: [aaa, bbb, ccc, ddd],
+              [tableHeaderRowIndex]: ["ID", "B", "C", "D"],
+              [topDataRowIndex]: ["r:lse:1", "b1", "c1", "d1"],
+              [lastBodyRow]: ["r:lse:2", "b2", "c2", "d2"],
+              [belowRow]: ["below", "below", "below", "below"],
+            }),
+            table: { endRowIndex: belowRow, endColumnIndex: 4 },
+          },
+        ],
+      });
+    }
+    function fetchedFourColumnRaw(): SpreadsheetRaw {
+      const raw = fetchedRaw();
+      raw.table(tableId111).topRow.gatherFetchFull();
+      raw.fetchAllGathered(true);
+      return raw;
+    }
+    // Each column from its column ID row down to the row below the Table.
+    const fixtureColumns = [
+      [aaa, null, null, "ID", "r:lse:1", "r:lse:2", "below"],
+      [bbb, null, null, "B", "b1", "b2", "below"],
+      [ccc, null, null, "C", "c1", "c2", "below"],
+      [ddd, null, null, "D", "d1", "d2", "below"],
+    ];
+    // The band with the fixture's columns in this order of their original indexes.
+    function bandInOrder(order: number[]) {
+      return fixtureColumns[0]?.map((_, rowIndex) =>
+        order.map((colIndex) => fixtureColumns[colIndex]?.[rowIndex]),
+      );
+    }
+
+    it("moves a middle column before a later one with its head rows and body, leaving the Table's range and the cells below it", () => {
+      const { grid } = stubFourColumnTable();
+
+      const raw = fetchedFourColumnRaw();
+      raw
+        .table(tableId111)
+        .moveColumns({ colIndex: 1, count: 1, beforeColIndex: 3 });
+      raw.batchUpdateGSheets();
+
+      expect(grid.sheet(111).values(tableBand)).toEqual(
+        bandInOrder([0, 2, 1, 3]),
+      );
+      expect(grid.sheet(111).tables[0]?.range?.endColumnIndex).toBe(4);
+      expect(tableColumnNames(grid)).toEqual(["ID", "C", "B", "D"]);
+    });
+
+    it("moves a block to before an earlier column, in one batch", () => {
+      const { grid, batchUpdateCount } = stubFourColumnTable();
+
+      const raw = fetchedFourColumnRaw();
+      raw
+        .table(tableId111)
+        .moveColumns({ colIndex: 2, count: 2, beforeColIndex: 1 });
+      raw.batchUpdateGSheets();
+
+      expect(grid.sheet(111).values(tableBand)).toEqual(
+        bandInOrder([0, 2, 3, 1]),
+      );
+      expect(tableColumnNames(grid)).toEqual(["ID", "C", "D", "B"]);
+      expect(batchUpdateCount()).toBe(1);
+    });
+
+    it("moves the Table's first column, so a block can be sent to the front by moving the columns before it", () => {
+      const { grid } = stubFourColumnTable();
+
+      const raw = fetchedFourColumnRaw();
+      raw
+        .table(tableId111)
+        .moveColumns({ colIndex: 0, count: 1, beforeColIndex: 3 });
+      raw.batchUpdateGSheets();
+
+      expect(grid.sheet(111).values(tableBand)).toEqual(
+        bandInOrder([1, 2, 0, 3]),
+      );
+      expect(tableColumnNames(grid)).toEqual(["B", "C", "ID", "D"]);
+    });
+
+    it("leaves the working view permuted, with the column count unchanged", () => {
+      stubFourColumnTable();
+
+      const raw = fetchedFourColumnRaw();
+      raw
+        .table(tableId111)
+        .moveColumns({ colIndex: 1, count: 1, beforeColIndex: 3 });
+      raw.batchUpdateGSheets();
+
+      const table = raw.table(tableId111);
+      expect(table.columnCount).toBe(4);
+      expect(
+        table.fullTableColIndexes.map((i) => table.topRow.valueOrEmpty(i)),
+      ).toEqual(["r:lse:1", "c1", "b1", "d1"]);
+      expect(table.columnResolver.colIndexOf(bbb)).toBe(2);
+      expect(table.columnResolver.colIndexOf(ccc)).toBe(1);
+    });
+
+    it("reads a later change's index in the layout the move leaves", () => {
+      const { grid } = stubFourColumnTable();
+
+      const raw = fetchedFourColumnRaw();
+      raw
+        .table(tableId111)
+        .moveColumns({ colIndex: 1, count: 1, beforeColIndex: 3 })
+        .deleteColumn(2);
+      raw.batchUpdateGSheets();
+
+      expect(tableColumnNames(grid)).toEqual(["ID", "C", "D"]);
+    });
+
+    it("counts a move as no change in columns, so a delete of the last column is still in range", () => {
+      stubFourColumnTable();
+      const raw = fetchedRaw();
+      raw
+        .table(tableId111)
+        .moveColumns({ colIndex: 1, count: 1, beforeColIndex: 3 });
+
+      expect(() => raw.table(tableId111).deleteColumn(3)).not.toThrow();
+      expect(() => raw.table(tableId111).deleteColumn(3)).toThrow(
+        /has no table column 3 to delete: it has 3 columns/,
+      );
+    });
+
+    it.each([
+      [
+        "a block past the Table's end",
+        { colIndex: 3, count: 2, beforeColIndex: 1 },
+      ],
+      ["an empty block", { colIndex: 1, count: 0, beforeColIndex: 3 }],
+      [
+        "a block before the Table",
+        { colIndex: -1, count: 1, beforeColIndex: 3 },
+      ],
+    ])("refuses %s", (_, span) => {
+      stubFourColumnTable();
+      const raw = fetchedRaw();
+
+      expect(() => raw.table(tableId111).moveColumns(span)).toThrow(
+        /to move: it has 4 columns/,
+      );
+    });
+
+    it.each([
+      ["the Table's first column", 0],
+      ["the Table's end", 4],
+    ])(
+      "refuses a destination at %s, which isn't strictly inside the Table",
+      (_, beforeColIndex) => {
+        stubFourColumnTable();
+        const raw = fetchedRaw();
+
+        expect(() =>
+          raw
+            .table(tableId111)
+            .moveColumns({ colIndex: 1, count: 1, beforeColIndex }),
+        ).toThrow(/strictly inside its 4 columns/);
+      },
+    );
+
+    it.each([
+      ["just before the block", { colIndex: 1, count: 1, beforeColIndex: 1 }],
+      ["just after the block", { colIndex: 1, count: 1, beforeColIndex: 2 }],
+      ["inside a wider block", { colIndex: 1, count: 2, beforeColIndex: 2 }],
+    ])("refuses a move to %s, which changes nothing", (_, span) => {
+      stubFourColumnTable();
+      const raw = fetchedRaw();
+
+      expect(() => raw.table(tableId111).moveColumns(span)).toThrow(
+        /already has its/,
+      );
+    });
+  });
+
   describe("beside other Tables", () => {
     const headerRow = tableHeaderRowIndex + 2;
     const columnIdRow = headerRow - 3;
@@ -870,6 +1061,39 @@ describe("TableRaw.appendColumn, insertColumn and deleteColumn", () => {
           expect(batchUpdateCount()).toBe(0);
         },
       );
+
+      it("refuses a move of columns when its gap's band would split a neighbour, sending nothing", () => {
+        const { batchUpdateCount } = stubSheetsService({
+          sheets: [
+            {
+              sheetId: 111,
+              title: "Records",
+              rows: buildGridRows({ [headerRow]: ["ID", "Name", "Code"] }),
+              tables: [
+                {
+                  ...left,
+                  endColumnIndex: 3,
+                  headRows: { 3: ["c:lft:a", "c:lft:b", "c:lft:c"] },
+                },
+                neighbour({
+                  startRowIndex: lastRow + 1,
+                  endRowIndex: lastRow + 3,
+                }),
+              ],
+            },
+          ],
+        });
+        const raw = SpreadsheetRaw.init();
+        raw.fetchAllSheetProperties();
+        raw
+          .table("left")
+          .moveColumns({ colIndex: 2, count: 1, beforeColIndex: 1 });
+
+        expect(() => raw.batchUpdateGSheets()).toThrow(
+          'Moving a column of Table "Left" on sheet "Records" would shift only part of Table "Right" with its head rows.',
+        );
+        expect(batchUpdateCount()).toBe(0);
+      });
 
       it("leaves a neighbour wholly below the band, head rows included, where it is", () => {
         const { grid } = stubLeftBeside(

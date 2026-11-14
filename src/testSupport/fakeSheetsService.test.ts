@@ -1229,6 +1229,139 @@ describe("stubSheetsService replays copyPaste of format and validation", () => {
   });
 });
 
+describe("stubSheetsService replays cutPaste as a whole-cell move", () => {
+  const cutBody = bandRange({
+    startRowIndex: 4,
+    endRowIndex: 6,
+    startColumnIndex: 0,
+    endColumnIndex: 3,
+  });
+  const intoColumn3 = { sheetId: bandGid, rowIndex: 4, columnIndex: 3 };
+
+  function cut(
+    overrides: Partial<GoogleAppsScript.Sheets.Schema.CutPasteRequest> = {},
+  ): Request {
+    return {
+      cutPaste: {
+        source: cutBody,
+        destination: intoColumn3,
+        pasteType: "PASTE_NORMAL",
+        ...overrides,
+      },
+    };
+  }
+
+  it("moves each cell whole, value, format and validation, and leaves the source empty", () => {
+    const { grid } = stubSheetsService({ sheets: [bandSheet()] });
+
+    send(cut());
+
+    expect(
+      grid
+        .sheet(bandGid)
+        .rows({ startRowIndex: 4, endRowIndex: 6, endColumnIndex: 6 }),
+    ).toEqual([
+      [null, null, null, 1, 2, 3],
+      [
+        null,
+        null,
+        null,
+        { value: 4, backgroundColor: modelGreen, numberFormatType: "CURRENCY" },
+        { value: 5, dataValidationConditionType: "BOOLEAN" },
+        6,
+      ],
+    ]);
+  });
+
+  it("carries a Table's column types and validation when the cut holds its whole rows", () => {
+    const sheet = bandSheet();
+    const { grid } = stubSheetsService({
+      sheets: [
+        {
+          ...sheet,
+          tables: (sheet.tables ?? []).map((table) => ({
+            ...table,
+            endColumnIndex: 6,
+            columnTypes: { 0: "BOOLEAN", 1: "DROPDOWN" },
+            columnValidationConditionTypes: { 1: "ONE_OF_LIST" },
+            columnValidationValues: { 1: ["x", "y"] },
+          })),
+        },
+      ],
+    });
+
+    send(
+      cut({
+        source: bandRange({
+          startRowIndex: 0,
+          endRowIndex: 6,
+          startColumnIndex: 0,
+          endColumnIndex: 2,
+        }),
+        destination: { sheetId: bandGid, rowIndex: 0, columnIndex: 3 },
+      }),
+    );
+
+    const columns = grid.sheet(bandGid).tables[0]?.columnProperties ?? [];
+    expect(columns.map((column) => column.columnType)).toEqual([
+      undefined,
+      undefined,
+      undefined,
+      "BOOLEAN",
+      "DROPDOWN",
+      undefined,
+    ]);
+    expect(columns[4]?.dataValidationRule?.condition).toEqual({
+      type: "ONE_OF_LIST",
+      values: [{ userEnteredValue: "x" }, { userEnteredValue: "y" }],
+    });
+    expect(columns[1]?.dataValidationRule).toBeUndefined();
+  });
+
+  it("throws naming a paste type it does not replay", () => {
+    stubSheetsService({ sheets: [bandSheet()] });
+
+    expect(() => send(cut({ pasteType: "PASTE_FORMAT" }))).toThrowError(
+      "The fake Sheets service does not replay cutPaste type PASTE_FORMAT.",
+    );
+  });
+
+  it("throws on a cut across sheets", () => {
+    stubSheetsService({ sheets: [bandSheet()] });
+
+    expect(() =>
+      send(cut({ destination: { ...intoColumn3, sheetId: bandGid + 1 } })),
+    ).toThrowError(
+      "The fake Sheets service does not replay cutPaste across sheets.",
+    );
+  });
+
+  it("throws on a destination overlapping its own source", () => {
+    stubSheetsService({ sheets: [bandSheet()] });
+
+    expect(() =>
+      send(cut({ destination: { ...intoColumn3, columnIndex: 2 } })),
+    ).toThrowError(
+      "The fake Sheets service does not replay a cutPaste onto its own source.",
+    );
+  });
+
+  it("throws on a source under a conditional-format rule", () => {
+    stubSheetsService({
+      sheets: [
+        {
+          ...bandSheet(),
+          conditionalFormats: [{ ranges: [cutBody] }],
+        },
+      ],
+    });
+
+    expect(() => send(cut())).toThrowError(
+      "The fake Sheets service does not replay a cutPaste under a conditional-format rule.",
+    );
+  });
+});
+
 const gadgetGid = 11;
 const gadgetColumnConfigs = {
   size: { columnId: "g:size", header: "Size" },

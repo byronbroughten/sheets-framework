@@ -14,6 +14,7 @@ import type {
   AddTableOperation,
   BoundedGridRange,
   CopyPasteOperation,
+  CutPasteOperation,
   DeleteRangeOperation,
   FillCellOperation,
   FindReplaceScope,
@@ -53,13 +54,14 @@ export interface SpreadsheetWriteQueueRaw {
   operations: WriteOperations;
 }
 
-// Built from a Table's growth, column insert or delete as the flush gathers it, so never queued itself.
+// Built from a Table's growth, column insert, delete or move as the flush gathers it, so never queued itself.
 type GatheredOnlyKind =
   | "appendDimension"
   | "insertRange"
   | "updateTableRange"
   | "deleteRange"
-  | "copyPaste";
+  | "copyPaste"
+  | "cutPaste";
 
 // A key equals its operation's kind, so the compiler rejects one that matches none.
 export type WriteOperations = {
@@ -105,7 +107,7 @@ export interface ChangeTableColumns {
 }
 
 export type TableColumnChangeOperation =
-  InsertRangeOperation | DeleteRangeOperation;
+  InsertRangeOperation | DeleteRangeOperation | CutPasteOperation;
 
 export type SheetsStateRaw = Map<SheetId, SheetStateRaw>;
 
@@ -252,7 +254,14 @@ export interface NewColumnHeadCells {
 // Its index is in the layout the Table's earlier queued changes leave.
 export type TableColumnChange =
   | { kind: "insertColumn"; colIndex: ColIndex; headCells: NewColumnHeadCells }
-  | { kind: "deleteColumn"; colIndex: ColIndex };
+  | { kind: "deleteColumn"; colIndex: ColIndex }
+  | ({ kind: "moveColumns" } & ColumnMoveSpan);
+// A block of count columns from colIndex, landing before beforeColIndex as the layout stands before the move.
+export interface ColumnMoveSpan {
+  colIndex: ColIndex;
+  count: number;
+  beforeColIndex: ColIndex;
+}
 export interface TableWrites {
   sort: SortParameters | undefined;
   insertTableEndColumnCount: number;
@@ -328,6 +337,7 @@ export interface TableWritePropsObj {
     headCells: NewColumnHeadCells;
   };
   deleteColumn: { action: "deleteColumn"; colIndex: ColIndex };
+  moveColumns: { action: "moveColumns" } & ColumnMoveSpan;
   fillColumn: { action: "fillColumn" } & ColumnFill;
   findReplace: { action: "findReplace" } & TableFindReplace;
   updateColumnType: {

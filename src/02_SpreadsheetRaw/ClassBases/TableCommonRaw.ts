@@ -33,7 +33,12 @@ import { originOf, TableBaseRaw, tableOnSheetLabel } from "./TableBaseRaw";
 export const columnCountChange = {
   insertRange: 1,
   deleteRange: -1,
-} as const satisfies Record<TableColumnChangeOperation["kind"], 1 | -1>;
+} as const satisfies Record<ColumnShiftingKind, 1 | -1>;
+
+type ColumnShiftingKind = Exclude<
+  TableColumnChangeOperation["kind"],
+  "cutPaste"
+>;
 
 interface SignedColumnBand {
   range: BoundedGridRange;
@@ -147,7 +152,11 @@ export abstract class TableCommonRaw extends TableBaseRaw {
       changes
         .filter(({ tableId }) => tableId !== this.tableId)
         .flatMap(({ operations }) => operations)
-        .map(({ kind, range }) => ({ range, sign: columnCountChange[kind] })),
+        .flatMap((operation): SignedColumnBand[] => {
+          if (operation.kind === "cutPaste") return [];
+          const { kind, range } = operation;
+          return [{ range, sign: columnCountChange[kind] }];
+        }),
     );
   }
   // Google sees a Table's range but not its head rows, so it lets this split through.
@@ -267,6 +276,12 @@ export abstract class TableCommonRaw extends TableBaseRaw {
         writes.columnChanges.push({
           kind: "deleteColumn",
           colIndex: props.colIndex,
+        });
+        break;
+      case "moveColumns":
+        writes.columnChanges.push({
+          ...Obj.strictOmit(props, "action"),
+          kind: "moveColumns",
         });
         break;
       case "fillColumn": {

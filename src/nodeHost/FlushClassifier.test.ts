@@ -712,6 +712,36 @@ describe("FlushClassifier.heldItems", () => {
       ).toEqual([]);
     });
 
+    it("frees a column move: an insert of the gap, a cut into it, and a delete of the vacated cells", () => {
+      const { id, amount } = payments.cols;
+      const band = (startCol: number) => ({
+        sheetId: gid,
+        startRowIndex: 0,
+        endRowIndex: payments.endRow,
+        startColumnIndex: startCol,
+        endColumnIndex: startCol + 1,
+      });
+
+      expect(
+        heldItems([
+          { insertRange: { range: band(id), shiftDimension: "COLUMNS" } },
+          {
+            cutPaste: {
+              source: band(amount + 1),
+              destination: { sheetId: gid, rowIndex: 0, columnIndex: id },
+              pasteType: "PASTE_NORMAL",
+            },
+          },
+          {
+            deleteRange: {
+              range: band(amount + 1),
+              shiftDimension: "COLUMNS",
+            },
+          },
+        ]),
+      ).toEqual([]);
+    });
+
     it("frees a moveDimension and a cutPaste into a gap", () => {
       expect(
         heldItems([

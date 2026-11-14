@@ -155,6 +155,16 @@ const requestBody: {
       copy?.pasteType ?? "",
     );
   },
+  cutPaste(
+    cut: GoogleAppsScript.Sheets.Schema.CutPasteRequest | undefined,
+  ): string {
+    return columns(
+      label.range(cut?.source),
+      `${rangeCellCount(cut?.source)} cell(s)`,
+      `to ${label.coordinate(cut?.destination)}`,
+      cut?.pasteType ?? "",
+    );
+  },
   insertDimension(
     insert: GoogleAppsScript.Sheets.Schema.InsertDimensionRequest | undefined,
   ): string {
@@ -413,6 +423,13 @@ const label = {
     const endColumn =
       endColumnIndex === undefined ? "" : colLetters(endColumnIndex - 1);
     return `${sheetLabel}!${startCell}:${endColumn}${endRowIndex ?? ""}`;
+  },
+  coordinate(
+    coordinate: GoogleAppsScript.Sheets.Schema.GridCoordinate | undefined,
+  ): string {
+    if (!coordinate) return "(no cell)";
+    const cell = `${colLetters(coordinate.columnIndex ?? 0)}${(coordinate.rowIndex ?? 0) + 1}`;
+    return `${label.sheet(coordinate.sheetId)}!${cell}`;
   },
   tableColumns(
     columnProperties:
