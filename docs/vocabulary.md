@@ -42,7 +42,6 @@ One line per term. The elaboration is one file away. Open a reasoning file only 
 
 - **Config is the data describing the spreadsheet's own structure, generated from the live sheet**, in each package's `generatedDir`.
 - **`xConfigs` is the whole map, `XConfig` is one entry's record, and a trait is one property of one record.** "Trait" never means a collection.
-- **The config-sheet floor is guaranteed, not data to fix**: the three config sheets' own entries always come out the same on regeneration.
 - **Intended state is what the repo says the sheet's structure will be, for the traits it names: its pending alterations**; typed (`PendingAlterations`) and read by `SyncPlanner`, which nothing runs yet.
 - **An alteration is a trait `sync` applies once, then removes; its value is an intended value.** Claims, traits an endpoint or chore holds and a run compares, wait on [#286](https://github.com/byronbroughten/sheets-framework/issues/286).
 - **The ID-name map (`idNameMap.ts`) is the generated, type-only file pairing each Table and column ID with its name.**
