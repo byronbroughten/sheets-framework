@@ -691,6 +691,9 @@ export class TableRaw extends TableCommonRaw {
   get hasQueuedColumnInsert(): boolean {
     return this.writes.insertTableEndColumnCount > 0;
   }
+  get hasQueuedColumnWrites(): boolean {
+    return this.hasQueuedColumnInsert || this.writes.columnChanges.length > 0;
+  }
   // From the top head row down, so the head rows move with the Table; the widen is what grows it.
   gatherInsertTableEndColumnsOperation(): void {
     const insertCount = this.writes.insertTableEndColumnCount;

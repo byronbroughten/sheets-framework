@@ -1,7 +1,6 @@
-export interface ColumnValidationRule {
-  condition: string;
-  values: string[];
-}
+import type { TableColumnValidationRule } from "../00_Source/RawSource/RawSource";
+
+export type ColumnValidationRule = TableColumnValidationRule;
 export interface ColumnTypeBaseline {
   // null: the column is left on Automatic.
   type: string | null;

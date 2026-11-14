@@ -573,6 +573,52 @@ describe("GoogleSheetsAPI write mapping", () => {
     ]);
   });
 
+  it("sends an added Table's dropdown column with its values as the column's validation rule", () => {
+    const { api, batchUpdateCalls } = recordingSheets();
+
+    api.flush([
+      {
+        ...addTableOperation,
+        columnProperties: [
+          {
+            columnIndex: 0,
+            columnName: "Status",
+            columnType: "DROPDOWN",
+            dataValidationRule: {
+              condition: "ONE_OF_LIST",
+              values: ["a", "b"],
+            },
+          },
+        ],
+      },
+    ]);
+
+    expect(batchUpdateCalls[0]?.requests?.[1]).toEqual({
+      updateTable: {
+        table: {
+          tableId: "tbl-0a1b2c3d4e",
+          columnProperties: [
+            {
+              columnIndex: 0,
+              columnName: "Status",
+              columnType: "DROPDOWN",
+              dataValidationRule: {
+                condition: {
+                  type: "ONE_OF_LIST",
+                  values: [
+                    { userEnteredValue: "a" },
+                    { userEnteredValue: "b" },
+                  ],
+                },
+              },
+            },
+          ],
+        },
+        fields: "columnProperties",
+      },
+    });
+  });
+
   it("maps a delete-Table operation onto a deleteTable, then a clear of its head-row cells' values and validation", () => {
     const { api, batchUpdateCalls } = recordingSheets();
     const headRows = {

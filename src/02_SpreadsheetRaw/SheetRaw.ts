@@ -287,6 +287,20 @@ export class SheetRaw extends SheetBaseRaw {
   get tableIds(): string[] {
     return tableIdsOnSheet(this.tablesStateRaw, this.sheetGid);
   }
+  get hasQueuedTableColumnWrites(): boolean {
+    return this.tableIds.some(
+      (tableId) => this.table(tableId).hasQueuedColumnWrites,
+    );
+  }
+  // The exclusive end column of the rightmost Table fetched onto the sheet; a queued column write moves it at the flush.
+  get rightmostTableEndColIndex(): number | undefined {
+    const ends = this.tableIds.map((tableId) => {
+      const table = this.table(tableId);
+      return table.startColumnIndex + table.columnCount;
+    });
+    if (ends.length === 0) return undefined;
+    return Math.max(...ends);
+  }
   // Row indexes only actually shift once the deletes have been sent, and a Table below the deleted rows shifts with them.
   markRowIndexesStale(): void {
     this.tableIds.forEach((tableId) =>

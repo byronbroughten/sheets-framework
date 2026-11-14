@@ -6,17 +6,24 @@ import type {
   OpaqueRawRequest,
   SheetPropertiesFetchOptions,
 } from "../00_Source/RawSource/RawSource";
+import { headRows } from "../01_SpreadsheetSchema/headRows";
 import { validateFormulaString } from "./CellRaw";
 import { SpreadsheetBaseRaw } from "./ClassBases/SpreadsheetBaseRaw";
 import { emptyStateRaw } from "./ClassTypes/emptyStateRaw";
 import type {
   AddedSheetCell,
   AddTableProps,
+  CreatedTable,
+  CreateTableProps,
   FindReplaceProps,
 } from "./ClassTypes/StateRaw";
 import { SheetRaw } from "./SheetRaw";
 import { SpreadsheetFetcherRaw } from "./SpreadsheetRaw/SpreadsheetFetcherRaw";
 import { SpreadsheetFlusherRaw } from "./SpreadsheetRaw/SpreadsheetFlusherRaw";
+import {
+  randomTableId,
+  SpreadsheetTableCreatorRaw,
+} from "./SpreadsheetRaw/SpreadsheetTableCreatorRaw";
 import { SpreadsheetTableValidatorRaw } from "./SpreadsheetRaw/SpreadsheetTableValidatorRaw";
 import { TableRaw } from "./TableRaw";
 
@@ -44,6 +51,9 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
   }
   private get tableValidator(): SpreadsheetTableValidatorRaw {
     return new SpreadsheetTableValidatorRaw(this.spreadsheetRawProps);
+  }
+  private get tableCreator(): SpreadsheetTableCreatorRaw {
+    return new SpreadsheetTableCreatorRaw(this.spreadsheetRawProps);
   }
   get timeZone(): string {
     return this.fetcher.ensureTimeZoneIsFetched();
@@ -144,12 +154,19 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
     });
     return this;
   }
+  // A Table with its ID, prefix, column IDs and body, on a tab this flush adds or beside the Tables on one already there.
+  createTable(props: CreateTableProps): CreatedTable {
+    return this.tableCreator.createTable(props);
+  }
   // A cell value on a tab this flush adds; an existing tab writes through CellRaw.
   gatherAddedSheetFillCellOperation(props: AddedSheetCell): this {
     this._validateAddSheetQueued(props.sheetId, "cell write");
-    if ("formula" in props) validateFormulaString(props.formula);
-    this.writeOperations.fillCell.push({ kind: "fillCell", ...props });
-    return this;
+    return this._gatherAddedFillCellOperation(props);
+  }
+  // A cell in a Table this flush adds, head rows included; it has no properties to reach it through CellRaw until fetched.
+  gatherAddedTableFillCellOperation(props: AddedSheetCell): this {
+    this._validateInAddedTable(props);
+    return this._gatherAddedFillCellOperation(props);
   }
   // A checkbox on a tab this flush adds; an existing tab goes through CellRaw.
   gatherAddedSheetCheckboxValidationOperation(range: BoundedGridRange): this {
@@ -196,13 +213,27 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
       `Added-sheet ${write} refused: no addSheet for GID ${sheetId} is queued in this flush.`,
     );
   }
-}
-
-function randomTableId(): string {
-  const hexDigitCount = 10;
-  let hexDigits = "";
-  for (let i = 0; i < hexDigitCount; i++) {
-    hexDigits += Math.floor(Math.random() * 16).toString(16);
+  private _gatherAddedFillCellOperation(props: AddedSheetCell): this {
+    if ("formula" in props) validateFormulaString(props.formula);
+    this.writeOperations.fillCell.push({ kind: "fillCell", ...props });
+    return this;
   }
-  return `tbl-${hexDigits}`;
+  private _validateInAddedTable({
+    sheetId,
+    rowIndex,
+    colIndex,
+  }: AddedSheetCell): void {
+    const added = this.writeOperations.addTable.some(
+      ({ range }) =>
+        range.sheetId === sheetId &&
+        range.startRowIndex - headRows.countAboveHeader <= rowIndex &&
+        rowIndex < range.endRowIndex &&
+        range.startColumnIndex <= colIndex &&
+        colIndex < range.endColumnIndex,
+    );
+    if (added) return;
+    throw new Error(
+      `Added-Table cell write refused: no addTable queued in this flush holds row ${rowIndex}, column ${colIndex} of GID ${sheetId}.`,
+    );
+  }
 }

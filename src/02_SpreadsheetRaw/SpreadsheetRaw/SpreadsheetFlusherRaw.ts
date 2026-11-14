@@ -182,15 +182,15 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
   private _sendWriteOperations(): void {
     const queued = this.writeOperations;
     const operations = [
-      // A Table can only be added to a tab this batch has created, so both go first.
+      // A new Table needs its tab and its grid in place first; added past the grid's edge, it fails.
       ...queued.addSheet,
+      ...this._appendDimensionOperations(),
       ...queued.addTable,
       ...queued.renameSheet,
       ...queued.updateTabProperties,
       ...queued.renameTable,
       // First among column writes, so a header write in the same batch renames the column rather than being reverted.
       ...queued.setTableColumnProperties,
-      ...this._appendDimensionOperations(),
       ...this._appendTableRowsOperationsBottomUp(),
       ...this._insertTableEndColumnsOperationsRightToLeft(),
       // After the Table-end inserts, whose layout each change's band was gathered in.

@@ -643,8 +643,25 @@ function columnPropertiesRequest(
 ): ModeledRequest {
   return {
     updateTable: {
-      table: { tableId, columnProperties },
+      table: { tableId, columnProperties: columnProperties.map(googleColumn) },
       fields: "columnProperties",
+    },
+  };
+}
+
+function googleColumn(
+  column: TableColumnPropertiesAdd,
+): GoogleAppsScript.Sheets.Schema.TableColumnProperties {
+  const { dataValidationRule, ...rest } = column;
+  if (dataValidationRule === undefined) return rest;
+  const { condition, values } = dataValidationRule;
+  return {
+    ...rest,
+    dataValidationRule: {
+      condition: {
+        type: condition,
+        values: values.map((userEnteredValue) => ({ userEnteredValue })),
+      },
     },
   };
 }
