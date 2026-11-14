@@ -1,5 +1,6 @@
 import { Val } from "@byronbroughten/utils/val";
 
+import { columnConfigsByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
 import {
   type ConditionalFormatConfigsBase,
   makeImportLine,
@@ -9,6 +10,7 @@ import {
   type RuleRecordsTab,
   type RuleRecordsTable,
 } from "../01_SpreadsheetSchema/configReaders/RuleRecords";
+import type { SyncPlanEffect } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
 import type { SheetRaw } from "../02_SpreadsheetRaw/SheetRaw";
 import type { TableRaw } from "../02_SpreadsheetRaw/TableRaw";
 import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
@@ -60,6 +62,19 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
       tables,
       rules: sheet.conditionalFormatRules(),
     };
+  }
+  // Named from the previous configs: apiTableColumnsByTableId holds only after the regen, which no longer has the Table.
+  deletionEffects(tableKey: string, tableId: string): SyncPlanEffect[] {
+    const columnConfigs = Val.assert(
+      columnConfigsByName()[tableKey],
+      `previous column configs of ${tableKey}`,
+    );
+    const { sheet } = this.ss.raw.table(tableId);
+    return RuleRecords.deletionEffects({
+      tabName: this.schema.titleToName(sheet.title),
+      rules: sheet.conditionalFormatRules(),
+      table: this._ruleRecordsTable(tableId, { tableKey, columnConfigs }),
+    });
   }
   private _ruleRecordsTable(
     tableId: string,

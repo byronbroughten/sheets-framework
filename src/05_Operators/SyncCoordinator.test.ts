@@ -1014,6 +1014,81 @@ describe("SyncCoordinator.run Table deletion", () => {
     ).toEqual({ colIndexesRead: everyItemColIndex, note: "kept" });
   });
 
+  describe("its conditional-format rules", () => {
+    const itemTable = Val.assert(itemSheet().tables?.[0], "the Item Table");
+    const firstColIndex = Val.assert(itemTable.startColumnIndex, "first col");
+    const headerRowIndex = Val.assert(itemTable.startRowIndex, "header row");
+    const endRowIndex = Val.assert(itemTable.endRowIndex, "end row");
+    const firstColumn = Val.assert(Object.keys(itemColumns)[0], "first column");
+
+    function trueRule(
+      endRow: number,
+    ): GoogleAppsScript.Sheets.Schema.ConditionalFormatRule {
+      return {
+        ranges: [
+          {
+            sheetId: itemGid,
+            startRowIndex: headerRowIndex + 1,
+            endRowIndex: endRow,
+            startColumnIndex: firstColIndex,
+            endColumnIndex: firstColIndex + 1,
+          },
+        ],
+        booleanRule: {
+          condition: {
+            type: "CUSTOM_FORMULA",
+            values: [{ userEnteredValue: "=TRUE" }],
+          },
+          format: { backgroundColor: { red: 1, green: 0, blue: 0 } },
+        },
+      };
+    }
+
+    function seedWithRules(): FakeSheetsService {
+      return stubSheetsService({
+        sheets: [
+          {
+            ...itemSheet(),
+            conditionalFormats: [
+              trueRule(endRowIndex),
+              trueRule(endRowIndex + 5),
+            ],
+          },
+        ],
+      });
+    }
+
+    it("plans the rule wholly over the Table as removed and reports the one running past it, which stays on the sheet", () => {
+      const service = seedWithRules();
+
+      const { result } = runItem({ isSending: true, alterations: deleteItem });
+
+      expect(result.plan).toEqual([
+        {
+          subject: itemSubject,
+          what: "delete the Table",
+          effects: [
+            {
+              kind: "rulesRemoved",
+              handles: [`${firstColumn} | =TRUE | background #ff0000`],
+            },
+            {
+              kind: "rulePartlyOver",
+              tab: "item",
+              range: "A5:A10",
+              formula: "=TRUE",
+            },
+          ],
+        },
+      ]);
+      expect(
+        service.grid
+          .sheet(itemGid)
+          .conditionalFormats?.map(({ ranges }) => ranges?.[0]?.endRowIndex),
+      ).toEqual([endRowIndex + 5]);
+    });
+  });
+
   it("refuses a deletion of a Table without API access as noApiAccess", () => {
     seedFixture({ extraSheets: [notesSheet()] });
 
