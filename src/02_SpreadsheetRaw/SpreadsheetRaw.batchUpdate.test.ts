@@ -4,6 +4,7 @@ import {
   installedRawSource,
   type LocalWriteOperation,
 } from "../00_Source/RawSource/RawSource";
+import { SheetIndex } from "../00_Source/RawSource/SheetIndex";
 import {
   buildGridRows,
   stubSheetsService,
@@ -34,6 +35,54 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
     raw.batchUpdateGSheets();
 
     expect(batchUpdateCount()).toBe(0);
+  });
+
+  it("replaces the conditional-format rule at the queued index in place on flush", () => {
+    const { grid } = stubSheetsService({
+      sheets: [
+        {
+          sheetId: 111,
+          title: "Records",
+          conditionalFormats: [
+            {
+              ranges: [
+                { sheetId: 111, startColumnIndex: 0, endColumnIndex: 1 },
+              ],
+            },
+            {
+              ranges: [
+                { sheetId: 111, startColumnIndex: 1, endColumnIndex: 2 },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    const raw = SpreadsheetRaw.init();
+    raw.sheet(111).updateConditionalFormatRule(1, {
+      kind: "boolean",
+      ranges: [
+        {
+          sheetId: 111,
+          startRowIndex: SheetIndex.row(2),
+          endRowIndex: SheetIndex.row(4),
+          startColumnIndex: SheetIndex.col(3),
+          endColumnIndex: SheetIndex.col(4),
+        },
+      ],
+      condition: { type: "CUSTOM_FORMULA", formula: "=$D3=TRUE" },
+      format: { backgroundColor: lightGreen },
+    });
+    raw.batchUpdateGSheets();
+
+    const rules = grid.sheet(111).conditionalFormats;
+    expect(rules.map(({ ranges }) => ranges?.[0]?.startColumnIndex)).toEqual([
+      0, 3,
+    ]);
+    expect(rules[1]?.booleanRule?.condition?.values).toEqual([
+      { userEnteredValue: "=$D3=TRUE" },
+    ]);
   });
 
   it("sends no batch update when there is nothing to save", () => {

@@ -13,6 +13,21 @@ export const ruleReplays = {
     sheet.conditionalFormats.splice(request.index ?? 0, 0, rule);
     return {};
   },
+  updateConditionalFormatRule(
+    spreadsheet: FakeSpreadsheet,
+    request: GoogleAppsScript.Sheets.Schema.UpdateConditionalFormatRuleRequest,
+  ): Response {
+    const sheet = fakeSpreadsheet.sheet(spreadsheet, request.sheetId);
+    const rules = sheet.conditionalFormats ?? [];
+    const index = request.index ?? 0;
+    if (index >= rules.length) {
+      throw new Error(
+        `updateConditionalFormatRule: sheet ${sheet.sheetId} has no rule at index ${index}.`,
+      );
+    }
+    rules[index] = request.rule ?? {};
+    return {};
+  },
   deleteConditionalFormatRule(
     spreadsheet: FakeSpreadsheet,
     request: GoogleAppsScript.Sheets.Schema.DeleteConditionalFormatRuleRequest,

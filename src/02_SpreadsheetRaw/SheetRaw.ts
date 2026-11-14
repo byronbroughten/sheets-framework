@@ -210,6 +210,13 @@ export class SheetRaw extends SheetBaseRaw {
       queuedOnTable,
     );
   }
+  updateConditionalFormatRule(
+    index: number,
+    rule: ModelableConditionalFormatRule,
+  ): this {
+    this.conditionalFormats.updateConditionalFormatRule(index, rule);
+    return this;
+  }
   removeConditionalFormatRulesAt(range: GridRangeProps): this {
     this.conditionalFormats.removeConditionalFormatRulesAt(range);
     return this;

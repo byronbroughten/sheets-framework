@@ -445,6 +445,59 @@ describe("GoogleSheetsAPI write mapping", () => {
     ).toEqual([{ userEnteredValue: "FALSE" }]);
   });
 
+  it("maps an update by sheet and index, converting the rule as an add does", () => {
+    const { api, batchUpdateCalls } = recordingSheets();
+
+    api.flush([
+      {
+        kind: "updateConditionalFormatRule",
+        sheetId: 111,
+        index: 2,
+        rule: {
+          kind: "boolean",
+          ranges: [
+            {
+              sheetId: 111,
+              startRowIndex: SheetIndex.row(4),
+              endRowIndex: SheetIndex.row(5),
+              startColumnIndex: SheetIndex.col(0),
+              endColumnIndex: SheetIndex.col(1),
+            },
+          ],
+          condition: { type: "CUSTOM_FORMULA", formula: "=$B5=FALSE" },
+          format: { backgroundColor: { red: 1 } },
+        },
+      },
+    ]);
+
+    expect(batchUpdateCalls[0]?.requests).toEqual([
+      {
+        updateConditionalFormatRule: {
+          sheetId: 111,
+          index: 2,
+          rule: {
+            ranges: [
+              {
+                sheetId: 111,
+                startRowIndex: 4,
+                endRowIndex: 5,
+                startColumnIndex: 0,
+                endColumnIndex: 1,
+              },
+            ],
+            booleanRule: {
+              condition: {
+                type: "CUSTOM_FORMULA",
+                values: [{ userEnteredValue: "=$B5=FALSE" }],
+              },
+              format: { backgroundColor: { red: 1 } },
+            },
+          },
+        },
+      },
+    ]);
+  });
+
   it("passes a custom formula through unchanged and maps a delete by sheet and index", () => {
     const { api, batchUpdateCalls } = recordingSheets();
 

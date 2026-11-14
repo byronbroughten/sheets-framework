@@ -46,6 +46,18 @@ export class SheetConditionalFormatsRaw extends SheetBaseRaw {
     });
     return rules;
   }
+  updateConditionalFormatRule(
+    index: number,
+    rule: ModelableConditionalFormatRule,
+  ): void {
+    this.assertConditionalFormatIndexesNotStale();
+    this.writeOperations.updateConditionalFormatRule.push({
+      kind: "updateConditionalFormatRule",
+      sheetId: this.sheetGid,
+      index,
+      rule,
+    });
+  }
   removeConditionalFormatRulesAt(range: GridRangeProps): void {
     this._removeRulesWhere(
       (rule) => rule.ranges.length === 1 && rangeEqual(range, rule.ranges[0]),
