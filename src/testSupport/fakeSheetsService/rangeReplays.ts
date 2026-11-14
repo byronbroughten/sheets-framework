@@ -139,18 +139,24 @@ export const rangeReplays = {
       );
     });
     for (const table of sheet.tables) {
-      moveTableColumnFacts(table, source, colOffset);
+      moveTableColumnFacts({ table, source, colOffset });
     }
     return {};
   },
 };
 
+interface TableColumnCut {
+  table: FakeTableState;
+  source: BoundedRange;
+  colOffset: number;
+}
+
 // Only a cut lifting a Table's whole columns was measured; it carries their column facts.
-function moveTableColumnFacts(
-  table: FakeTableState,
-  source: BoundedRange,
-  colOffset: number,
-): void {
+function moveTableColumnFacts({
+  table,
+  source,
+  colOffset,
+}: TableColumnCut): void {
   const holdsColumns =
     source.startRowIndex <= table.startRowIndex &&
     table.endRowIndex <= source.endRowIndex &&
