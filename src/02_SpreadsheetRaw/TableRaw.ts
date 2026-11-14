@@ -39,6 +39,7 @@ import { hasQueuedWrites, originOf } from "./ClassBases/TableBaseRaw";
 import { columnCountChange, TableCommonRaw } from "./ClassBases/TableCommonRaw";
 import {
   type ColumnFill,
+  type ColumnMoveSpan,
   type NewColumnHeadCells,
   type SortParameters,
   type TableCell,
@@ -61,10 +62,14 @@ import { TableColumnResolverRaw } from "./TableRaw/TableColumnResolverRaw";
 const columnChangeRequests = {
   insertColumn: { kind: "insertRange", action: "Inserting a column inside" },
   deleteColumn: { kind: "deleteRange", action: "Deleting a column of" },
+  moveColumns: { kind: "cutPaste", action: "Moving a column of" },
 } as const satisfies Record<
   TableColumnChange["kind"],
   { kind: TableColumnChangeOperation["kind"]; action: string }
 >;
+
+type ColumnCountChange = Exclude<TableColumnChange, { kind: "moveColumns" }>;
+type ColumnMove = Extract<TableColumnChange, { kind: "moveColumns" }>;
 
 /**
  * One Table's state by Table-relative index: rows, columns, pruning, queued
@@ -206,16 +211,10 @@ export class TableRaw extends TableCommonRaw {
   // Strictly inside, so the band grows the Table with no range update; appendColumn adds at the end.
   insertColumn(colIndex: number, headCells: NewColumnHeadCells): this {
     this.assertRowIndexesNotStale();
-    const columnCount = this._columnCountAfterChanges();
-    if (
-      !Number.isInteger(colIndex) ||
-      colIndex < 1 ||
-      colIndex >= columnCount
-    ) {
-      throw new Error(
-        `${this.tableLabel} can't take a column inserted at ${tableColumnLabel(colIndex)}: it must sit strictly inside its ${columnCount} columns, so from 1 to ${columnCount - 1}.`,
-      );
-    }
+    this._assertStrictlyInside(
+      colIndex,
+      `a column inserted at ${tableColumnLabel(colIndex)}`,
+    );
     return this.queueTableWrite({
       action: "insertColumn",
       colIndex,
@@ -240,6 +239,46 @@ export class TableRaw extends TableCommonRaw {
       );
     }
     return this.queueTableWrite({ action: "deleteColumn", colIndex });
+  }
+  // Lands strictly inside, like insertColumn: an insert at the Table's first column lands outside it (sheets-behaviour.md).
+  moveColumns({ colIndex, count, beforeColIndex }: ColumnMoveSpan): this {
+    this.assertRowIndexesNotStale();
+    const columnCount = this._columnCountAfterChanges();
+    const isBlockInside =
+      Number.isInteger(colIndex) &&
+      Number.isInteger(count) &&
+      count >= 1 &&
+      colIndex >= 0 &&
+      colIndex + count <= columnCount;
+    if (!isBlockInside) {
+      throw new Error(
+        `${this.tableLabel} has no ${count} column(s) from ${tableColumnLabel(colIndex)} to move: it has ${columnCount} columns.`,
+      );
+    }
+    this._assertStrictlyInside(
+      beforeColIndex,
+      `columns moved before ${tableColumnLabel(beforeColIndex)}`,
+    );
+    if (colIndex <= beforeColIndex && beforeColIndex <= colIndex + count) {
+      throw new Error(
+        `${this.tableLabel} already has its ${count} column(s) from ${tableColumnLabel(colIndex)} before ${tableColumnLabel(beforeColIndex)}.`,
+      );
+    }
+    return this.queueTableWrite({
+      action: "moveColumns",
+      colIndex,
+      count,
+      beforeColIndex,
+    });
+  }
+  private _assertStrictlyInside(colIndex: number, taken: string): void {
+    const columnCount = this._columnCountAfterChanges();
+    if (Number.isInteger(colIndex) && colIndex >= 1 && colIndex < columnCount) {
+      return;
+    }
+    throw new Error(
+      `${this.tableLabel} can't take ${taken}: it must sit strictly inside its ${columnCount} columns, so from 1 to ${columnCount - 1}.`,
+    );
   }
   private _columnCountAfterChanges(): number {
     return this.writes.columnChanges.reduce(
@@ -699,9 +738,12 @@ export class TableRaw extends TableCommonRaw {
     if (columnChanges.length === 0) return;
     this._assertColumnChangesAlone();
     const startColumnIndex = this.originAtGathering().sheetColIndex(0);
-    const operations = columnChanges.map((change) =>
-      this._columnChangeOperation(change),
-    );
+    const operations = columnChanges.flatMap((change) => {
+      if (change.kind === "moveColumns") {
+        return this._columnMoveOperations(change);
+      }
+      return [this._columnChangeOperation(change)];
+    });
     this.markColumnPropertiesStale();
     this.writeOperations.changeTableColumns.push({
       tableId: this.tableId,
@@ -722,7 +764,7 @@ export class TableRaw extends TableCommonRaw {
   }
   // Each change is read in the layout the ones before it leave, so the working view moves with it.
   private _columnChangeOperation(
-    change: TableColumnChange,
+    change: ColumnCountChange,
   ): TableColumnChangeOperation {
     const { colIndex } = change;
     const { kind, action } = columnChangeRequests[change.kind];
@@ -739,6 +781,37 @@ export class TableRaw extends TableCommonRaw {
     }
     return { kind, range: band, shiftDimension: "COLUMNS" };
   }
+  // Not moveDimension, which reorders a Table stacked in the same sheet columns (sheets-behaviour.md).
+  private _columnMoveOperations(
+    move: ColumnMove,
+  ): TableColumnChangeOperation[] {
+    const { colIndex, count, beforeColIndex } = move;
+    const gap = this._headAndBodyBand(beforeColIndex, beforeColIndex + count);
+    this._validateNoNeighbourSplitBy(
+      gap,
+      `${columnChangeRequests.moveColumns.action} ${this._namedTableOnSheet}`,
+    );
+    const colIndexAfterGap =
+      colIndex > beforeColIndex ? colIndex + count : colIndex;
+    const vacated = this._headAndBodyBand(
+      colIndexAfterGap,
+      colIndexAfterGap + count,
+    );
+    this._rekeyWorkingColumns((byColIndex) => movedColumns(byColIndex, move));
+    return [
+      { kind: "insertRange", range: gap, shiftDimension: "COLUMNS" },
+      {
+        kind: "cutPaste",
+        source: vacated,
+        destination: {
+          sheetId: gap.sheetId,
+          rowIndex: gap.startRowIndex,
+          columnIndex: gap.startColumnIndex,
+        },
+      },
+      { kind: "deleteRange", range: vacated, shiftDimension: "COLUMNS" },
+    ];
+  }
   // From the top head row down, so the head rows move with the Table.
   private _headAndBodyBand(
     startColIndex: number,
@@ -754,16 +827,21 @@ export class TableRaw extends TableCommonRaw {
     };
   }
   private _shiftWorkingColumns(colIndex: number, shiftCount: 1 | -1): void {
-    for (const [rowIndex, rowState] of this.rowStates) {
-      const shifted = shiftedColumns(rowState, colIndex, shiftCount);
-      if (shiftCount === 1) shifted.set(colIndex, { value: "" });
-      this.rowStates.set(rowIndex, shifted);
-    }
-    this.tableState.working.columnStates = shiftedColumns(
-      this.columnStates,
-      colIndex,
-      shiftCount,
+    this._rekeyWorkingColumns((byColIndex) =>
+      shiftedColumns(byColIndex, colIndex, shiftCount),
     );
+    if (shiftCount !== 1) return;
+    for (const rowState of this.rowStates.values()) {
+      rowState.set(colIndex, { value: "" });
+    }
+  }
+  private _rekeyWorkingColumns(
+    rekey: <VL>(byColIndex: Map<number, VL>) => Map<number, VL>,
+  ): void {
+    for (const [rowIndex, rowState] of this.rowStates) {
+      this.rowStates.set(rowIndex, rekey(rowState));
+    }
+    this.tableState.working.columnStates = rekey(this.columnStates);
   }
   private get _namedTableOnSheet(): string {
     return `Table "${this.name}" on sheet "${this.sheetTitle}"`;
@@ -1070,13 +1148,48 @@ function shiftedColumns<VL>(
   colIndex: number,
   shiftCount: 1 | -1,
 ): Map<number, VL> {
-  return Array.from(byColIndex).reduce((shifted, [index, value]) => {
-    if (index < colIndex) shifted.set(index, value);
-    else if (index > colIndex || shiftCount === 1) {
-      shifted.set(index + shiftCount, value);
-    }
-    return shifted;
+  return remappedColumns(byColIndex, (index) => {
+    if (index < colIndex) return index;
+    if (index > colIndex || shiftCount === 1) return index + shiftCount;
+    return undefined;
+  });
+}
+
+function movedColumns<VL>(
+  byColIndex: Map<number, VL>,
+  span: ColumnMoveSpan,
+): Map<number, VL> {
+  return remappedColumns(byColIndex, (index) => movedColIndex(index, span));
+}
+
+// A column the remap gives no index goes.
+function remappedColumns<VL>(
+  byColIndex: Map<number, VL>,
+  newColIndex: (index: number) => number | undefined,
+): Map<number, VL> {
+  return Array.from(byColIndex).reduce((remapped, [index, value]) => {
+    const remappedIndex = newColIndex(index);
+    if (remappedIndex !== undefined) remapped.set(remappedIndex, value);
+    return remapped;
   }, new Map<number, VL>());
+}
+
+// Where a column sits once the block has moved; the columns it passes close the gap.
+function movedColIndex(
+  index: number,
+  { colIndex, count, beforeColIndex }: ColumnMoveSpan,
+): number {
+  const isInBlock = colIndex <= index && index < colIndex + count;
+  if (beforeColIndex > colIndex) {
+    if (isInBlock) return index + beforeColIndex - colIndex - count;
+    if (colIndex + count <= index && index < beforeColIndex) {
+      return index - count;
+    }
+    return index;
+  }
+  if (isInBlock) return index - (colIndex - beforeColIndex);
+  if (beforeColIndex <= index && index < colIndex) return index + count;
+  return index;
 }
 
 type ColumnRun = [startColIndex: number, endColIndex: number];

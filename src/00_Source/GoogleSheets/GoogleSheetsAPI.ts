@@ -41,6 +41,7 @@ export type ModeledRequestVerb =
   | "insertRange"
   | "deleteRange"
   | "copyPaste"
+  | "cutPaste"
   | "findReplace"
   | "sortRange"
   | "addConditionalFormatRule"
@@ -432,6 +433,16 @@ function modeledOperationToGoogleRequests(
             destination: operation.destination,
             pasteType: operation.pasteType,
             pasteOrientation: "NORMAL",
+          },
+        },
+      ];
+    case "cutPaste":
+      return [
+        {
+          cutPaste: {
+            source: operation.source,
+            destination: operation.destination,
+            pasteType: "PASTE_NORMAL",
           },
         },
       ];

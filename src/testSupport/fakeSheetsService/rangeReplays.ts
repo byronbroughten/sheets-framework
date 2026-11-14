@@ -8,6 +8,7 @@ import {
   type FakeSheetState,
   type FakeSpreadsheet,
   fakeSpreadsheet,
+  type FakeTableState,
 } from "./fakeSpreadsheet";
 
 type Response = GoogleAppsScript.Sheets.Schema.Response;
@@ -101,7 +102,122 @@ export const rangeReplays = {
     }
     return {};
   },
+  // Measured live (sheets-framework#204): the whole cell moves, its Table column's type and rule with it, and the source is left empty.
+  cutPaste(
+    spreadsheet: FakeSpreadsheet,
+    request: GoogleAppsScript.Sheets.Schema.CutPasteRequest,
+  ): Response {
+    const pasteType = request.pasteType ?? "PASTE_NORMAL";
+    if (pasteType !== "PASTE_NORMAL") {
+      throw new Error(
+        `The fake Sheets service does not replay cutPaste type ${pasteType}.`,
+      );
+    }
+    const sheetId = request.source?.sheetId;
+    const coordinate = request.destination ?? {};
+    if (coordinate.sheetId !== sheetId) {
+      throw new Error(
+        "The fake Sheets service does not replay cutPaste across sheets.",
+      );
+    }
+    const sheet = fakeSpreadsheet.sheet(spreadsheet, sheetId);
+    const source = fakeGrid.rangeInGrid(sheet, request.source ?? {});
+    const rowOffset = (coordinate.rowIndex ?? 0) - source.startRowIndex;
+    const colOffset = (coordinate.columnIndex ?? 0) - source.startColumnIndex;
+    const destination = {
+      startRowIndex: source.startRowIndex + rowOffset,
+      endRowIndex: source.endRowIndex + rowOffset,
+      startColumnIndex: source.startColumnIndex + colOffset,
+      endColumnIndex: source.endColumnIndex + colOffset,
+    };
+    if (overlaps(source, destination)) {
+      throw new Error(
+        "The fake Sheets service does not replay a cutPaste onto its own source.",
+      );
+    }
+    validateNoRuleCut(sheet, source);
+    const lifted: FakeCell[][] = [];
+    fakeGrid.forEachCell(source, (rowIndex, colIndex) => {
+      const row = (lifted[rowIndex - source.startRowIndex] ??= []);
+      row.push(fakeGrid.cell(sheet, rowIndex, colIndex));
+      fakeGrid.setCell(sheet, rowIndex, colIndex, null);
+    });
+    fakeGrid.forEachCell(destination, (rowIndex, colIndex) => {
+      fakeGrid.setCell(
+        sheet,
+        rowIndex,
+        colIndex,
+        lifted[rowIndex - destination.startRowIndex]?.[
+          colIndex - destination.startColumnIndex
+        ] ?? null,
+      );
+    });
+    for (const table of sheet.tables) {
+      moveTableColumnFacts({ table, source, colOffset });
+    }
+    return {};
+  },
 };
+
+interface TableColumnCut {
+  table: FakeTableState;
+  source: BoundedRange;
+  colOffset: number;
+}
+
+// Only a cut lifting a Table's whole columns was measured; it carries their column facts.
+function moveTableColumnFacts({
+  table,
+  source,
+  colOffset,
+}: TableColumnCut): void {
+  const holdsColumns =
+    source.startRowIndex <= table.startRowIndex &&
+    table.endRowIndex <= source.endRowIndex &&
+    table.startColumnIndex <= source.startColumnIndex &&
+    source.endColumnIndex <= table.endColumnIndex;
+  if (!holdsColumns) return;
+  function isLifted(colIndex: number): boolean {
+    return (
+      source.startColumnIndex <= colIndex && colIndex < source.endColumnIndex
+    );
+  }
+  function moved<FT>(
+    byColumn: Record<number, FT> | undefined,
+  ): Record<number, FT> | undefined {
+    if (byColumn === undefined) return undefined;
+    const entries = Object.entries(byColumn).map(
+      ([key, fact]): [number, FT] => [Number(key), fact],
+    );
+    const kept = entries.filter(([colIndex]) => !isLifted(colIndex));
+    const carried = entries
+      .filter(([colIndex]) => isLifted(colIndex))
+      .map(([colIndex, fact]): [number, FT] => [colIndex + colOffset, fact]);
+    const carriedIndexes = new Set(carried.map(([colIndex]) => colIndex));
+    return Object.fromEntries([
+      ...kept.filter(([colIndex]) => !carriedIndexes.has(colIndex)),
+      ...carried,
+    ]);
+  }
+  table.columnTypes = moved(table.columnTypes);
+  table.columnValidationValues = moved(table.columnValidationValues);
+  table.columnValidationConditionTypes = moved(
+    table.columnValidationConditionTypes,
+  );
+}
+
+function validateNoRuleCut(sheet: FakeSheetState, source: BoundedRange): void {
+  const isCut = (sheet.conditionalFormats ?? []).some((rule) =>
+    (rule.ranges ?? []).some((range) =>
+      overlaps(fakeGrid.boundedRange(sheet, range), source),
+    ),
+  );
+  if (isCut) {
+    throw new Error(
+      "The fake Sheets service does not replay a cutPaste under a conditional-format rule.",
+    );
+  }
+}
 
 // Refuses a plain value or a cell reference rather than guess what Sheets would paste.
 function withPastedFormula(cell: FakeCell, source: FakeCell): FakeCell {

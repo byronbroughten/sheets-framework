@@ -17,6 +17,12 @@ export interface GridRangeProps {
 
 export type BoundedGridRange = Required<GridRangeProps>;
 
+export interface GridCoordinate {
+  sheetId: number;
+  rowIndex: SheetRowIndex;
+  columnIndex: SheetColIndex;
+}
+
 export interface WholeSheetGridRange {
   sheetId: number;
 }
@@ -179,6 +185,7 @@ export type LocalWriteOperation =
   | UpdateTableRangeOperation
   | DeleteRangeOperation
   | CopyPasteOperation
+  | CutPasteOperation
   | FillColumnOperation
   | FillCellOperation
   | FindReplaceOperation
@@ -263,6 +270,13 @@ export interface CopyPasteOperation {
   source: BoundedGridRange;
   destination: BoundedGridRange;
   pasteType: CopyPasteType;
+}
+
+// A PASTE_NORMAL cut moves the whole cell and leaves the source empty; observed: docs/sheets-behaviour.md#moving-columns-within-a-table.
+export interface CutPasteOperation {
+  kind: "cutPaste";
+  source: BoundedGridRange;
+  destination: GridCoordinate;
 }
 
 export interface FillColumnOperation {

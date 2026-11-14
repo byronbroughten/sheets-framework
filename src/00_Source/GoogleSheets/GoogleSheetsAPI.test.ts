@@ -725,6 +725,32 @@ describe("GoogleSheetsAPI Table-bounded write mapping", () => {
       },
     ]);
   });
+
+  it("maps a cut onto one PASTE_NORMAL cutPaste to the destination's top-left cell", () => {
+    const { api, batchUpdateCalls } = recordingSheets();
+
+    api.flush([
+      {
+        kind: "cutPaste",
+        source: tableBand,
+        destination: {
+          sheetId: 111,
+          rowIndex: SheetIndex.row(2),
+          columnIndex: SheetIndex.col(5),
+        },
+      },
+    ]);
+
+    expect(batchUpdateCalls[0]?.requests).toEqual([
+      {
+        cutPaste: {
+          source: tableBand,
+          destination: { sheetId: 111, rowIndex: 2, columnIndex: 5 },
+          pasteType: "PASTE_NORMAL",
+        },
+      },
+    ]);
+  });
 });
 
 describe("GoogleSheetsAPI payload mapping", () => {
