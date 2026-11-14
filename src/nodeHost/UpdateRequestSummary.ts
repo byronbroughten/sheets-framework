@@ -233,6 +233,20 @@ const requestBody: {
     const conditionType = add?.rule?.booleanRule?.condition?.type ?? "";
     return columns(label.range(range), "prepend", conditionType, "");
   },
+  updateConditionalFormatRule(
+    update:
+      | GoogleAppsScript.Sheets.Schema.UpdateConditionalFormatRuleRequest
+      | undefined,
+  ): string {
+    const range = update?.rule?.ranges?.[0];
+    const conditionType = update?.rule?.booleanRule?.condition?.type ?? "";
+    return columns(
+      label.range(range),
+      `index ${update?.index ?? ""}`,
+      conditionType,
+      "",
+    );
+  },
   deleteConditionalFormatRule(
     remove:
       | GoogleAppsScript.Sheets.Schema.DeleteConditionalFormatRuleRequest

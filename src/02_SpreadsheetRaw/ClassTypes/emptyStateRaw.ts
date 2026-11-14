@@ -28,6 +28,7 @@ export const emptyStateRaw = {
       findReplace: [],
       deleteConditionalFormatRule: [],
       addConditionalFormatRule: [],
+      updateConditionalFormatRule: [],
       deleteProtectedRange: [],
       addProtectedRange: [],
       renameSheet: [],

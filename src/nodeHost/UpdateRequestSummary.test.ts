@@ -320,6 +320,31 @@ describe("UpdateRequestSummary.lines", () => {
     ).toBe("addConditionalFormatRule item!A5:A11 prepend CUSTOM_FORMULA");
   });
 
+  it("names the range, index and condition of an updated conditional format rule", () => {
+    expect(
+      onlyLine({
+        updateConditionalFormatRule: {
+          sheetId: itemGid,
+          index: 2,
+          rule: {
+            ranges: [
+              {
+                sheetId: itemGid,
+                startRowIndex: 4,
+                endRowIndex: 11,
+                startColumnIndex: 0,
+                endColumnIndex: 1,
+              },
+            ],
+            booleanRule: {
+              condition: { type: "CUSTOM_FORMULA" },
+            },
+          },
+        },
+      }),
+    ).toBe("updateConditionalFormatRule item!A5:A11 index 2 CUSTOM_FORMULA");
+  });
+
   it("names the sheet and index of a deleted conditional format rule", () => {
     expect(
       onlyLine({

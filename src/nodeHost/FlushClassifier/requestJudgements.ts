@@ -165,6 +165,7 @@ export const requestJudgements: {
     if (sort.range) tracker.reorder(sort.range);
   },
   addConditionalFormatRule(): void {},
+  updateConditionalFormatRule(): void {},
   deleteConditionalFormatRule(): void {},
   addProtectedRange(): void {},
   deleteProtectedRange(): void {},

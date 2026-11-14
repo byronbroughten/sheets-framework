@@ -45,6 +45,7 @@ export type ModeledRequestVerb =
   | "findReplace"
   | "sortRange"
   | "addConditionalFormatRule"
+  | "updateConditionalFormatRule"
   | "deleteConditionalFormatRule"
   | "addProtectedRange"
   | "deleteProtectedRange"
@@ -480,6 +481,16 @@ function modeledOperationToGoogleRequests(
       return [
         {
           addConditionalFormatRule: {
+            index: operation.index,
+            rule: googleConditionalFormatRule.fromModelable(operation.rule),
+          },
+        },
+      ];
+    case "updateConditionalFormatRule":
+      return [
+        {
+          updateConditionalFormatRule: {
+            sheetId: operation.sheetId,
             index: operation.index,
             rule: googleConditionalFormatRule.fromModelable(operation.rule),
           },

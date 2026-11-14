@@ -192,6 +192,7 @@ export type LocalWriteOperation =
   | DeleteTableRowsOperation
   | SortTableOperation
   | AddConditionalFormatRuleOperation
+  | UpdateConditionalFormatRuleOperation
   | DeleteConditionalFormatRuleOperation
   | AddProtectedRangeOperation
   | DeleteProtectedRangeOperation
@@ -330,6 +331,13 @@ export interface SortTableOperation {
 
 export interface AddConditionalFormatRuleOperation {
   kind: "addConditionalFormatRule";
+  index: number;
+  rule: ModelableConditionalFormatRule;
+}
+
+export interface UpdateConditionalFormatRuleOperation {
+  kind: "updateConditionalFormatRule";
+  sheetId: number;
   index: number;
   rule: ModelableConditionalFormatRule;
 }

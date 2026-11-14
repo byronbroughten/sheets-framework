@@ -205,6 +205,7 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
       // Before the row deletes, which carry them up with the rows, since they were gathered against the layout before.
       ...this._deleteConditionalFormatOperationsDescending(),
       ...queued.addConditionalFormatRule,
+      ...queued.updateConditionalFormatRule,
       ...queued.deleteProtectedRange,
       ...queued.addProtectedRange,
       // Gathered against the layout before the row deletes, like the rules above.
