@@ -3,6 +3,7 @@ import {
   isColumnDeletion,
   isSameValue,
   isSheetTrait,
+  isTableDeletion,
   subjectOf,
   type TraitReadings,
   type TraitValue,
@@ -53,9 +54,10 @@ function keptValue(
 ): TraitValue | undefined {
   if (intended.kind === "tab") return live.tabs[intended.tab]?.[intended.trait];
   const table = live.tables[intended.table];
+  // A deletion keeps no trait on the sheet: it landed when its Table or column is gone.
+  if (isTableDeletion(intended)) return table === undefined;
   if (intended.kind === "table") return table?.traits[intended.trait];
   const column = table?.columns[intended.column];
-  // A deletion keeps no trait on the sheet: it landed when the column is gone.
   if (isColumnDeletion(intended)) return column === undefined;
   return column?.[intended.trait];
 }

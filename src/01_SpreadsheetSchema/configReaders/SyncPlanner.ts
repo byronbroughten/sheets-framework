@@ -110,12 +110,15 @@ export const tabTraits = [
 
 // The sent traits Raw's working view doesn't carry, so the run refetches after sending one; a tab's land in the working view.
 export const sheetTraits = {
-  table: new Set<string>(["name"]),
+  table: new Set<string>(["name", "deleted"]),
   column: new Set<string>(["header", "formula", "deleted"]),
 } as const;
 
 // A deletion's one value, `true`, says nothing a plan line could show.
-const deletionWhat = "delete the column";
+const deletionWhat = {
+  table: "delete the Table",
+  column: "delete the column",
+} as const;
 
 // How a `newColumns` entry reads on the plan, landed and didntLand lists.
 export const newColumnLines = {
@@ -235,11 +238,16 @@ export class SyncPlanner {
         }
         return;
       }
+      // comparedSides already left out a Table a person deleted, so a live Table is always deleted.
+      if (isTableDeletion(intended)) {
+        send(deletionWhat.table);
+        return;
+      }
       const stop = stopOf(intended, sides);
       if (stop === undefined) {
         if (!sendsIntended(intended.value, sides)) return;
         if (isColumnDeletion(intended)) {
-          send(deletionWhat);
+          send(deletionWhat.column);
         } else {
           send(`set to ${valueText(intended.value)}`);
         }
@@ -307,11 +315,13 @@ export class SyncPlanner {
   private get _alterationDeclarations(): IntendedTrait[] {
     const tableTraits = entriesOf(this.alterations.tables).flatMap(
       ([table, entry]): IntendedTrait[] => [
-        ...pickTraits(entry, ["name", "letApiAccess"]).map((trait) => ({
-          kind: "table" as const,
-          table,
-          ...trait,
-        })),
+        ...pickTraits(entry, ["name", "letApiAccess", "deleted"]).map(
+          (trait) => ({
+            kind: "table" as const,
+            table,
+            ...trait,
+          }),
+        ),
         ...entriesOf(entry.columns).flatMap(([column, columnEntry]) =>
           pickTraits(columnEntry, [
             "header",
@@ -364,6 +374,10 @@ function isOrderTrait(intended: IntendedTrait): boolean {
 
 export function isColumnDeletion(address: TraitAddress): boolean {
   return address.kind === "column" && address.trait === "deleted";
+}
+
+export function isTableDeletion(address: TraitAddress): boolean {
+  return address.kind === "table" && address.trait === "deleted";
 }
 
 function addressKey(address: TraitAddress): string {
@@ -530,6 +544,10 @@ function withTrait(
     };
   }
   const { table } = address;
+  if (isTableDeletion(address)) {
+    const { [table]: _deleted, ...tables } = readings.tables;
+    return { ...readings, tables };
+  }
   const tableReading = readings.tables[table] ?? { traits: {}, columns: {} };
   if (address.kind === "table") {
     return withTable(readings, table, {

@@ -1,4 +1,9 @@
-import { type IdNameMapGeneric, tableIdsByName } from "./idNameMapTypes";
+import {
+  type IdNameMapGeneric,
+  type IdNameMapTable,
+  mapTablesByLiveness,
+  tableIdsByName,
+} from "./idNameMapTypes";
 import type { PlanReadings, TableReading, TraitReadings } from "./SyncPlanner";
 import { entriesOf, type WideAlterations } from "./SyncPlanner/wideAlterations";
 
@@ -21,9 +26,7 @@ interface ApiAccessChangesProps {
 }
 
 // A map Table has API access when it lists columns.
-export function hasApiAccess(
-  mapTable: IdNameMapGeneric["tables"][string],
-): boolean {
+export function hasApiAccess(mapTable: IdNameMapTable): boolean {
   return mapTable.columns !== undefined;
 }
 
@@ -46,24 +49,33 @@ export function apiAccessChanges({
   );
 }
 
-// API access isn't a sheet trait, so live carries the previous map and a grant or revoke never stops.
-export function withApiAccessReadings(
-  readings: PlanReadings,
-  idNameMap: IdNameMapGeneric,
-): PlanReadings {
+interface ApiAccessReadingsProps {
+  readings: PlanReadings;
+  previousIdNameMap: IdNameMapGeneric;
+  liveTableIds: ReadonlySet<string>;
+}
+
+// API access isn't a sheet trait, so live carries the previous map and a grant or revoke never stops; a Table a person deleted stays out of live.
+export function withApiAccessReadings({
+  readings,
+  previousIdNameMap,
+  liveTableIds,
+}: ApiAccessReadingsProps): PlanReadings {
+  const { live } = mapTablesByLiveness(previousIdNameMap, liveTableIds);
   return {
-    previous: withApiAccess(readings.previous, idNameMap),
-    live: withApiAccess(readings.live, idNameMap),
+    previous: withApiAccess(
+      readings.previous,
+      Object.values(previousIdNameMap.tables),
+    ),
+    live: withApiAccess(readings.live, live),
   };
 }
 
 function withApiAccess(
   readings: TraitReadings,
-  idNameMap: IdNameMapGeneric,
+  mapTables: IdNameMapTable[],
 ): TraitReadings {
-  const tables = Object.values(idNameMap.tables).reduce<
-    TraitReadings["tables"]
-  >(
+  const tables = mapTables.reduce<TraitReadings["tables"]>(
     (byName, mapTable) => {
       const reading: TableReading = byName[mapTable.name] ?? {
         traits: {},

@@ -251,7 +251,10 @@ export type SyncPlanEffect =
   | { kind: "overwrites"; cells: number; blank: number };
 
 export type SyncNotice =
-  { kind: "idFirst"; table: string } | { kind: "text"; text: string };
+  | { kind: "idFirst"; table: string }
+  // A Table the previous configs hold that a person deleted from the sheet.
+  | { kind: "tableGone"; table: string }
+  | { kind: "text"; text: string };
 
 // The framework endpoint's name, in every plan, summary and notice line that cites it.
 export const fillRowIdsName = "Fill Row IDs";
