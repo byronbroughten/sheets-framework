@@ -317,6 +317,26 @@ describe("SpreadsheetRaw.createTable beside the Tables on an existing tab", () =
     ).toEqual([created.columnIds]);
   });
 
+  it("fetches every tab's properties first when none are fetched, so it measures every Table on the tab", () => {
+    const { grid } = stubTwoTables();
+    const raw = SpreadsheetRaw.init();
+
+    const created = raw.createTable({
+      name: "Payment Log",
+      placement: { kind: "besideTables", sheetGid: existingGid },
+      idPrefix: "pay",
+      columns: [{ header: "Payee" }],
+    });
+    raw.batchUpdateGSheets();
+
+    expect(
+      grid
+        .sheet(existingGid)
+        .tables.find(({ tableId }) => tableId === created.tableId)?.range
+        .startColumnIndex,
+    ).toBe(besideEnd);
+  });
+
   it("writes seed rows inside its own columns", () => {
     const { grid } = stubTwoTables();
     const raw = SpreadsheetRaw.init();

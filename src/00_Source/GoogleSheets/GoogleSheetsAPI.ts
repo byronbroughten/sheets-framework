@@ -649,7 +649,6 @@ function columnPropertiesRequest(
   };
 }
 
-// An update's properties are an add's without the rule, so one mapping serves both.
 function googleColumn(
   column: TableColumnPropertiesAdd,
 ): GoogleAppsScript.Sheets.Schema.TableColumnProperties {

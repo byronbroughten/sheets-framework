@@ -161,16 +161,12 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
   // A cell value on a tab this flush adds; an existing tab writes through CellRaw.
   gatherAddedSheetFillCellOperation(props: AddedSheetCell): this {
     this._validateAddSheetQueued(props.sheetId, "cell write");
-    if ("formula" in props) validateFormulaString(props.formula);
-    this.writeOperations.fillCell.push({ kind: "fillCell", ...props });
-    return this;
+    return this._gatherAddedFillCellOperation(props);
   }
   // A cell in a Table this flush adds, head rows included; it has no properties to reach it through CellRaw until fetched.
   gatherAddedTableFillCellOperation(props: AddedSheetCell): this {
     this._validateInAddedTable(props);
-    if ("formula" in props) validateFormulaString(props.formula);
-    this.writeOperations.fillCell.push({ kind: "fillCell", ...props });
-    return this;
+    return this._gatherAddedFillCellOperation(props);
   }
   // A checkbox on a tab this flush adds; an existing tab goes through CellRaw.
   gatherAddedSheetCheckboxValidationOperation(range: BoundedGridRange): this {
@@ -216,6 +212,11 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
     throw new Error(
       `Added-sheet ${write} refused: no addSheet for GID ${sheetId} is queued in this flush.`,
     );
+  }
+  private _gatherAddedFillCellOperation(props: AddedSheetCell): this {
+    if ("formula" in props) validateFormulaString(props.formula);
+    this.writeOperations.fillCell.push({ kind: "fillCell", ...props });
+    return this;
   }
   private _validateInAddedTable({
     sheetId,

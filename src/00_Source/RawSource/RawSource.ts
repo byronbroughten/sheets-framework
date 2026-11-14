@@ -227,7 +227,7 @@ export interface DeleteTableOperation {
   headRows: BoundedGridRange;
 }
 
-// Absent columnType leaves the column on Automatic.
+// Absent columnType leaves the column on Automatic; a string, since a type read from the sheet or its config resends unchanged.
 export interface TableColumnPropertiesAdd {
   columnIndex: number;
   columnName: string;
@@ -377,11 +377,10 @@ export interface SetTableColumnPropertiesOperation {
   columnProperties: TableColumnPropertiesUpdate[];
 }
 
-export interface TableColumnPropertiesUpdate {
-  columnIndex: number;
-  columnName: string;
-  columnType?: string;
-}
+export type TableColumnPropertiesUpdate = Omit<
+  TableColumnPropertiesAdd,
+  "dataValidationRule"
+>;
 
 export interface AddCheckboxValidationOperation {
   kind: "addCheckboxValidation";

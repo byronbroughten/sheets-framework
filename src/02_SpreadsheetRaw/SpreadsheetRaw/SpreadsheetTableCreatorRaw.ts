@@ -20,6 +20,16 @@ import { SpreadsheetRaw } from "../SpreadsheetRaw";
 // A created Table holds one empty body row unless it is seeded.
 const minBodyRowCount = 1;
 
+interface TableSize {
+  bodyRowCount: number;
+  columnCount: number;
+}
+
+type BesideTablesPlacement = Extract<
+  CreatedTablePlacement,
+  { kind: "besideTables" }
+>;
+
 export class SpreadsheetTableCreatorRaw extends SpreadsheetBaseRaw {
   get ss(): SpreadsheetRaw {
     return new SpreadsheetRaw(this.spreadsheetRawProps);
@@ -29,12 +39,12 @@ export class SpreadsheetTableCreatorRaw extends SpreadsheetBaseRaw {
     const { name, placement, columns, seedRows = [] } = props;
     validateSeedRows(name, columns.length, seedRows);
     const created = createdIds(props);
-    const origin = this._originFor(name, placement);
-    const endRowIndex = origin.sheetRowIndex(
-      Math.max(minBodyRowCount, seedRows.length),
-    );
-    const endColumnIndex = origin.sheetColIndex(columns.length);
-    this._ensureGridFor(placement, { endRowIndex, endColumnIndex });
+    const size = {
+      bodyRowCount: Math.max(minBodyRowCount, seedRows.length),
+      columnCount: columns.length,
+    };
+    const origin = this._queueGridFor(name, placement, size);
+    const { endRowIndex, endColumnIndex } = tableEnd(origin, size);
     this.ss.gatherAddTableOperation({
       tableId: created.tableId,
       name,
@@ -63,24 +73,36 @@ export class SpreadsheetTableCreatorRaw extends SpreadsheetBaseRaw {
     ]);
     return created;
   }
-  private _originFor(
+  // Returns where the Table starts, having queued a tab or grid that holds it.
+  private _queueGridFor(
     name: string,
     placement: CreatedTablePlacement,
+    size: TableSize,
   ): TableOrigin {
-    const expected = TableOrigin.expected();
-    if (placement.kind === "newTab") return expected;
-    const rightmostEnd = this._rightmostTableEnd(name, placement.sheetGid);
-    if (rightmostEnd === undefined) return expected;
-    return new TableOrigin({
-      headerRowIndex: expected.headerRowIndex,
-      startColIndex: SheetIndex.col(rightmostEnd + (placement.gap ?? 0)),
-    });
+    if (placement.kind === "newTab") {
+      const origin = TableOrigin.expected();
+      const end = tableEnd(origin, size);
+      this.ss.gatherAddSheetOperation({
+        sheetId: placement.sheetGid,
+        title: placement.title,
+        rowCount: end.endRowIndex,
+        columnCount: end.endColumnIndex,
+      });
+      return origin;
+    }
+    const origin = this._originBeside(name, placement);
+    const end = tableEnd(origin, size);
+    const sheet = this.ss.sheet(placement.sheetGid);
+    sheet.queueGridRowsThrough(end.endRowIndex);
+    sheet.queueGridColumnsThrough(end.endColumnIndex);
+    return origin;
   }
-  // A queued column write moves a Table's end at the flush, after this measures it.
-  private _rightmostTableEnd(
+  // Only a full properties fetch lists every Table on the tab; a grid fetch lists only those its ranges overlap.
+  private _originBeside(
     name: string,
-    sheetGid: number,
-  ): number | undefined {
+    { sheetGid, gap = 0 }: BesideTablesPlacement,
+  ): TableOrigin {
+    this.ss.ensureAllSheetPropertiesAreFetched();
     if (!this.ss.gidIsActive(sheetGid)) {
       throw new Error(
         `Table "${name}" can't be placed beside the Tables on GID ${sheetGid}: no fetched tab has it.`,
@@ -88,34 +110,18 @@ export class SpreadsheetTableCreatorRaw extends SpreadsheetBaseRaw {
     }
     const sheet = this.ss.sheet(sheetGid);
     sheet.assertRowIndexesNotStale();
-    const tables = sheet.tableIds.map((tableId) => sheet.table(tableId));
-    if (tables.some((table) => table.hasQueuedColumnWrites)) {
+    if (sheet.hasQueuedTableColumnWrites) {
       throw new Error(
         `Table "${name}" can't be placed on ${sheet.label} while a Table there has column changes queued: flush them first.`,
       );
     }
-    const ends = tables.map(
-      (table) => table.startColumnIndex + table.columnCount,
-    );
-    if (ends.length === 0) return undefined;
-    return Math.max(...ends);
-  }
-  private _ensureGridFor(
-    placement: CreatedTablePlacement,
-    end: { endRowIndex: SheetRowIndex; endColumnIndex: SheetColIndex },
-  ): void {
-    if (placement.kind === "newTab") {
-      this.ss.gatherAddSheetOperation({
-        sheetId: placement.sheetGid,
-        title: placement.title,
-        rowCount: end.endRowIndex,
-        columnCount: end.endColumnIndex,
-      });
-      return;
-    }
-    const sheet = this.ss.sheet(placement.sheetGid);
-    sheet.queueGridRowsThrough(end.endRowIndex);
-    sheet.queueGridColumnsThrough(end.endColumnIndex);
+    const expected = TableOrigin.expected();
+    const rightmostEnd = sheet.rightmostTableEndColIndex;
+    if (rightmostEnd === undefined) return expected;
+    return new TableOrigin({
+      headerRowIndex: expected.headerRowIndex,
+      startColIndex: SheetIndex.col(rightmostEnd + gap),
+    });
   }
   private _fillCells(
     sheetId: number,
@@ -174,6 +180,16 @@ function createdIds({
     columnIds: columns.map(
       ({ columnId }) => columnId ?? dimensionIds.col(idPrefix),
     ),
+  };
+}
+
+function tableEnd(
+  origin: TableOrigin,
+  { bodyRowCount, columnCount }: TableSize,
+): { endRowIndex: SheetRowIndex; endColumnIndex: SheetColIndex } {
+  return {
+    endRowIndex: origin.sheetRowIndex(bodyRowCount),
+    endColumnIndex: origin.sheetColIndex(columnCount),
   };
 }
 
