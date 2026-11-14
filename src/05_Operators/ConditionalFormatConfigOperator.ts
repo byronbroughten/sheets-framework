@@ -1,5 +1,6 @@
 import { Val } from "@byronbroughten/utils/val";
 
+import { columnConfigsByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
 import {
   type ConditionalFormatConfigsBase,
   makeImportLine,
@@ -9,6 +10,7 @@ import {
   type RuleRecordsTab,
   type RuleRecordsTable,
 } from "../01_SpreadsheetSchema/configReaders/RuleRecords";
+import type { SyncPlanEffect } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
 import type { SheetRaw } from "../02_SpreadsheetRaw/SheetRaw";
 import type { TableRaw } from "../02_SpreadsheetRaw/TableRaw";
 import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
@@ -22,6 +24,12 @@ import {
   tablesAndTabsFileSource,
 } from "./configFileSource";
 import { SpreadsheetBaseOperator } from "./SpreadsheetBaseOperator";
+
+// A Table a plan deletes: its codebase name and its ID.
+export interface DeletedTable {
+  table: string;
+  tableId: string;
+}
 
 // Reads the rules the regen's plain property get brought into Raw, so it costs no round trip of its own.
 export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
@@ -60,6 +68,22 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
       tables,
       rules: sheet.conditionalFormatRules(),
     };
+  }
+  // Named from the previous configs: apiTableColumnsByTableId holds only after the regen, which no longer has the Table.
+  deletionEffects({
+    table: tableKey,
+    tableId,
+  }: DeletedTable): SyncPlanEffect[] {
+    const columnConfigs = Val.assert(
+      columnConfigsByName()[tableKey],
+      `previous column configs of ${tableKey}`,
+    );
+    const { sheet } = this.ss.raw.table(tableId);
+    return RuleRecords.deletionEffects({
+      tabName: this.schema.titleToName(sheet.title),
+      rules: sheet.conditionalFormatRules(),
+      table: this._ruleRecordsTable(tableId, { tableKey, columnConfigs }),
+    });
   }
   private _ruleRecordsTable(
     tableId: string,

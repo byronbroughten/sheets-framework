@@ -474,6 +474,12 @@ export function subjectOf(address: TraitAddress): SyncSubject {
   return { table, column, path: trait };
 }
 
+export function deletedTableOf(subject: SyncSubject): string | undefined {
+  if (!("table" in subject) || subject.column !== undefined) return undefined;
+  if (subject.path !== "deleted") return undefined;
+  return subject.table;
+}
+
 // Both comparison and display, so a column type's key order can't read as a change.
 export function valueText(value: TraitValue | undefined): string {
   if (value === undefined) return absentText;

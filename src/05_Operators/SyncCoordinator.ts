@@ -1,3 +1,5 @@
+import { Val } from "@byronbroughten/utils/val";
+
 import { HeldFlushRefusal } from "../00_Source/RawSource/HeldFlushRefusal";
 import {
   type ApiAccessChanges,
@@ -14,11 +16,15 @@ import {
   type EnteredDataReads,
   enteredDataReads,
 } from "../01_SpreadsheetSchema/configReaders/enteredDataReads";
-import type { IdNameMapGeneric } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
+import {
+  type IdNameMapGeneric,
+  tableIdsByName,
+} from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
 import type { PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState";
 import { remainingAlterations } from "../01_SpreadsheetSchema/configReaders/remainingAlterations";
 import { SyncEntryRefuser } from "../01_SpreadsheetSchema/configReaders/SyncEntryRefuser";
 import {
+  deletedTableOf,
   isSheetTrait,
   type PlanProps,
   SyncPlanner,
@@ -210,17 +216,20 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       ...this.rowIdsOperator.idFirstNotices(),
     ];
     const readings = this._traitReadings();
-    const planned = planner.plan({
-      ...withApiAccessReadings({
-        readings,
-        previousIdNameMap: props.previousIdNameMap,
-        liveTableIds: new Set(this.ss.raw.activeTableIds),
+    const planned = this._withDeletionEffects(
+      planner.plan({
+        ...withApiAccessReadings({
+          readings,
+          previousIdNameMap: props.previousIdNameMap,
+          liveTableIds: new Set(this.ss.raw.activeTableIds),
+        }),
+        sheetStops: [
+          ...this.tableConfigOperator.grantHeadRowStops(accessChanges.grants),
+          ...this.columnConfigOperator.headerTakenStops(planner.newColumns),
+        ],
       }),
-      sheetStops: [
-        ...this.tableConfigOperator.grantHeadRowStops(accessChanges.grants),
-        ...this.columnConfigOperator.headerTakenStops(planner.newColumns),
-      ],
-    });
+      props.previousIdNameMap,
+    );
     const isApplying = props.isSending && !planned.isStopped;
     // An unstopped dry run records the live readings: configTraits carry sends it won't make.
     this.columnConfigOperator.recordEmptyValueAllowed(
@@ -305,6 +314,25 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       }),
       files,
     };
+  }
+  // A pure planner can't read the rules a deleted Table takes with it, so the run fills them in from its live read.
+  private _withDeletionEffects(
+    planned: SyncPlannerResult,
+    previousIdNameMap: IdNameMapGeneric,
+  ): SyncPlannerResult {
+    const tableIds = tableIdsByName(previousIdNameMap);
+    const plan = planned.plan.map((item) => {
+      const table = deletedTableOf(item.subject);
+      if (table === undefined) return item;
+      // The entry refuser and the planner already hold the Table to the map and the live sheet.
+      const tableId = Val.assert(tableIds.get(table), `Table ID of ${table}`);
+      const ruleEffects = this.conditionalFormatConfigOperator.deletionEffects({
+        table,
+        tableId,
+      });
+      return { ...item, effects: [...item.effects, ...ruleEffects] };
+    });
+    return { ...planned, plan };
   }
   // Its own send after the regen, planned from the fresh configs; it writes only blank cells, so the entered-data gate holds nothing.
   private _fillBlankIds(): SyncPlanItem[] {
