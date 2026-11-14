@@ -15,10 +15,16 @@ type Response = GoogleAppsScript.Sheets.Schema.Response;
 type GridRange = GoogleAppsScript.Sheets.Schema.GridRange;
 
 // Measured live (sheets-framework#61): a format paste carries no cell validation, and a validation paste no format.
-const pastedFacts: Record<CopyPasteType, readonly PastedFact[]> = {
+const pastedFacts: Record<
+  Exclude<CopyPasteType, "PASTE_FORMULA">,
+  readonly PastedFact[]
+> = {
   PASTE_FORMAT: ["backgroundColor", "numberFormatType"],
   PASTE_DATA_VALIDATION: ["dataValidationConditionType"],
 };
+
+// The fake keeps a formula's text, so it can't shift a relative reference as Sheets would.
+const cellReference = /\$?[A-Z]{1,3}\$?\d+/;
 
 export const rangeReplays = {
   insertRange(
@@ -49,7 +55,7 @@ export const rangeReplays = {
     request: GoogleAppsScript.Sheets.Schema.CopyPasteRequest,
   ): Response {
     const pasteType = request.pasteType ?? "PASTE_NORMAL";
-    if (!Obj.isKey(pastedFacts, pasteType)) {
+    if (pasteType !== "PASTE_FORMULA" && !Obj.isKey(pastedFacts, pasteType)) {
       throw new Error(
         `The fake Sheets service does not replay copyPaste type ${pasteType}.`,
       );
@@ -59,7 +65,6 @@ export const rangeReplays = {
         `The fake Sheets service does not replay copyPaste orientation ${request.pasteOrientation}.`,
       );
     }
-    const facts = pastedFacts[pasteType];
     const sheetId = request.source?.sheetId;
     if (request.destination?.sheetId !== sheetId) {
       throw new Error(
@@ -79,9 +84,16 @@ export const rangeReplays = {
         source.startColumnIndex +
           ((colIndex - destination.startColumnIndex) % sourceWidth),
       );
-      fakeGrid.updateCell(sheet, rowIndex, colIndex, (cell) =>
-        fakeCells.withPastedFacts(cell, sourceCell, facts),
-      );
+      fakeGrid.updateCell(sheet, rowIndex, colIndex, (cell) => {
+        if (pasteType === "PASTE_FORMULA") {
+          return withPastedFormula(cell, sourceCell);
+        }
+        return fakeCells.withPastedFacts(
+          cell,
+          sourceCell,
+          pastedFacts[pasteType],
+        );
+      });
     });
     if (pasteType === "PASTE_FORMAT") {
       extendConditionalFormats(sheet, source, destination);
@@ -203,6 +215,23 @@ function validateNoRuleCut(sheet: FakeSheetState, source: BoundedRange): void {
       "The fake Sheets service does not replay a cutPaste under a conditional-format rule.",
     );
   }
+}
+
+// Refuses a plain value or a cell reference rather than guess what Sheets would paste.
+function withPastedFormula(cell: FakeCell, source: FakeCell): FakeCell {
+  const formula = fakeCells.value(source);
+  const isFormula = typeof source === "object" && source?.isFormula === true;
+  if (!isFormula || typeof formula !== "string") {
+    throw new Error(
+      "The fake Sheets service does not replay a formula paste from a cell holding no formula.",
+    );
+  }
+  if (cellReference.test(formula)) {
+    throw new Error(
+      `The fake Sheets service does not replay a formula paste of ${formula}, which holds a cell reference.`,
+    );
+  }
+  return fakeCells.withValue(cell, formula, true);
 }
 
 function bandChange(

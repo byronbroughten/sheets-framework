@@ -1198,6 +1198,81 @@ describe("Named formula references", () => {
   });
 });
 
+describe("Appending to a Table with a formula column", () => {
+  const rowFormula = { value: "=ROW()", isFormula: true } as const;
+  // A grid row below the Table gives it room; without one it ends on the grid's last row.
+  function stubComputedWithFormulas({ hasRowBelow }: { hasRowBelow: boolean }) {
+    const tableRows = {
+      0: computedColumnIdRow,
+      4: [10, rowFormula],
+      5: [20, rowFormula],
+    };
+    return stubSheetsService({
+      sheets: [
+        {
+          sheetId: computedGid,
+          title: "Computed",
+          rows: buildGridRows(
+            hasRowBelow ? { ...tableRows, 6: [] } : tableRows,
+          ),
+          table: { endRowIndex: 6 },
+        },
+      ],
+    });
+  }
+  function appendTwoRows(): void {
+    const ss = SpreadsheetNamed.init();
+    ss.fetchAllSheetProperties();
+    ss.table("computed").appendRowWithVals({ amount: 30 });
+    ss.table("computed").appendRowWithVals({ amount: 40 });
+    ss.batchUpdateGSheets();
+  }
+  function grownLayout(grid: FakeSheetsService["grid"]) {
+    const sheet = grid.sheet(computedGid);
+    const tableEndRowIndex = sheet.tables[0]?.range?.endRowIndex;
+    return {
+      rowCount: sheet.rowCount,
+      tableEndRowIndex,
+      newRows: sheet.values({ startRowIndex: 6, endRowIndex: 8 }),
+      rowsBelowTable: sheet
+        .values({ startRowIndex: tableEndRowIndex })
+        .flat()
+        .filter((value) => value !== null),
+    };
+  }
+
+  // The blank row below is pushed down, and the grid grows only past it.
+  it("fills each new row's formulas, leaves nothing below the Table and grows the grid by no more than the appended rows when it has room below", () => {
+    const { grid } = stubComputedWithFormulas({ hasRowBelow: true });
+    appendTwoRows();
+
+    expect(grownLayout(grid)).toEqual({
+      rowCount: 8,
+      tableEndRowIndex: 8,
+      newRows: [
+        [30, "=ROW()"],
+        [40, "=ROW()"],
+      ],
+      rowsBelowTable: [],
+    });
+  });
+
+  it("fills each new row's formulas, leaves no stray row and grows the grid by the appended rows only when the Table ends on the grid's last row", () => {
+    const { grid } = stubComputedWithFormulas({ hasRowBelow: false });
+    appendTwoRows();
+
+    expect(grownLayout(grid)).toEqual({
+      rowCount: 8,
+      tableEndRowIndex: 8,
+      newRows: [
+        [30, "=ROW()"],
+        [40, "=ROW()"],
+      ],
+      rowsBelowTable: [],
+    });
+  });
+});
+
 describe("Named formula writes", () => {
   it("writes the formula into every Computed data row", () => {
     const { grid } = stubComputedForFormulaWrite();

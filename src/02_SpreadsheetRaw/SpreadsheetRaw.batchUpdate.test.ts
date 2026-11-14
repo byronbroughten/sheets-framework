@@ -1,5 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
+import {
+  installedRawSource,
+  type LocalWriteOperation,
+} from "../00_Source/RawSource/RawSource";
 import {
   buildGridRows,
   stubSheetsService,
@@ -251,9 +255,112 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
       expect(grid.sheet(111).cell(topDataRowIndex + 6, 0)).toBe("below");
     });
 
+    describe("formula columns", () => {
+      const formula = { value: "=1+1", isFormula: true } as const;
+      function stubFormulaTable({ hasRowBelow }: { hasRowBelow: boolean }) {
+        return stubSheetsService({
+          sheets: [
+            {
+              sheetId: 111,
+              title: "Records",
+              rows: buildGridRows({
+                [tableHeaderRowIndex]: ["ID", "A", "B", "Note", "C"],
+                [topDataRowIndex]: ["r1", formula, formula, "n1", formula],
+                ...(hasRowBelow ? { [topDataRowIndex + 1]: [] } : {}),
+              }),
+              table: { endRowIndex: topDataRowIndex + 1 },
+            },
+          ],
+        });
+      }
+      // The growth requests themselves are the contract here, since the fake can't show a paste it doesn't send.
+      function sentGrowthOperations(
+        appendCount: number,
+        formulaColIndexes: number[],
+      ): LocalWriteOperation[] {
+        const flush = vi.spyOn(installedRawSource(), "flush");
+        const raw = SpreadsheetRaw.init();
+        raw.fetchAllSheetProperties();
+        for (let count = 0; count < appendCount; count++) {
+          raw.table(tableId111).appendDataRow(formulaColIndexes);
+        }
+        raw.batchUpdateGSheets();
+        return (flush.mock.calls[0]?.[0] ?? []).filter(
+          (operation) =>
+            operation.kind === "insertRange" ||
+            (operation.kind === "copyPaste" &&
+              operation.pasteType === "PASTE_FORMULA"),
+        );
+      }
+      function rowsRange(
+        startRowIndex: number,
+        endRowIndex: number,
+        startColIndex: number,
+        endColIndex: number,
+      ) {
+        return {
+          sheetId: 111,
+          startRowIndex,
+          endRowIndex,
+          startColumnIndex: startTableColIndex + startColIndex,
+          endColumnIndex: startTableColIndex + endColIndex,
+        };
+      }
+      function formulaPaste(startColIndex: number, endColIndex: number) {
+        return {
+          kind: "copyPaste",
+          source: rowsRange(
+            topDataRowIndex,
+            topDataRowIndex + 1,
+            startColIndex,
+            endColIndex,
+          ),
+          destination: rowsRange(
+            topDataRowIndex + 1,
+            topDataRowIndex + 3,
+            startColIndex,
+            endColIndex,
+          ),
+          pasteType: "PASTE_FORMULA",
+        };
+      }
+
+      it("inserts the new rows and pastes formulas over each run of the named columns when the Table has room below", () => {
+        stubFormulaTable({ hasRowBelow: true });
+
+        expect(sentGrowthOperations(2, [1, 2, 4])).toEqual([
+          {
+            kind: "insertRange",
+            range: rowsRange(topDataRowIndex + 1, topDataRowIndex + 3, 0, 5),
+            shiftDimension: "ROWS",
+          },
+          formulaPaste(1, 3),
+          formulaPaste(4, 5),
+        ]);
+      });
+
+      it("sends no insert when the Table ends on the grid's last row, and still pastes its formulas", () => {
+        stubFormulaTable({ hasRowBelow: false });
+
+        expect(sentGrowthOperations(2, [1, 2, 4])).toEqual([
+          formulaPaste(1, 3),
+          formulaPaste(4, 5),
+        ]);
+      });
+
+      it("pastes no formula for an append that names no formula columns", () => {
+        stubFormulaTable({ hasRowBelow: true });
+
+        expect(sentGrowthOperations(1, [])).toEqual([
+          expect.objectContaining({ kind: "insertRange" }),
+        ]);
+      });
+    });
+
     const leftStart = startTableColIndex;
     const rightStart = startTableColIndex + 3;
-    function stubSideBySideTables() {
+    // A grid row below both Tables keeps them off the grid's edge, which Sheets grows every Table on.
+    function stubSideBySideTables({ hasRowBelow = false } = {}) {
       return stubSheetsService({
         sheets: [
           {
@@ -263,6 +370,7 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
               [tableHeaderRowIndex]: ["ID", "Name", "", "Code", "Qty"],
               [topDataRowIndex]: ["r1", "a", "loose", "c1", 5],
               [topDataRowIndex + 1]: ["r2", "b", "", "c2", 6],
+              ...(hasRowBelow ? { [topDataRowIndex + 2]: [] } : {}),
             }),
             tables: [
               {
@@ -289,7 +397,7 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
     }
 
     it("gives a side-by-side neighbour and the cells between no blank rows", () => {
-      const { grid } = stubSideBySideTables();
+      const { grid } = stubSideBySideTables({ hasRowBelow: true });
 
       const raw = SpreadsheetRaw.init();
       raw.fetchAllSheetProperties();

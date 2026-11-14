@@ -271,6 +271,8 @@ export interface TableWrites {
   findReplaces: TableFindReplace[];
   // Gathered into the Table's one setTableColumnProperties.
   columnTypes: Map<ColIndex, TableColumnType>;
+  // Raw can't tell a formula column, so an append's caller names the ones growth copies.
+  appendedFormulaColIndexes: Set<ColIndex>;
   checkboxCells: TableCell[];
   conditionalFormatRules: TableConditionalFormatRule[];
   editProtections: TableEditProtection[];
@@ -346,6 +348,10 @@ export interface TableWritePropsObj {
     columnType: TableColumnType;
   };
   addCheckboxValidation: { action: "addCheckboxValidation" } & TableCell;
+  copyAppendedFormulas: {
+    action: "copyAppendedFormulas";
+    colIndexes: readonly ColIndex[];
+  };
   addConditionalFormatRule: {
     action: "addConditionalFormatRule";
   } & TableConditionalFormatRule;

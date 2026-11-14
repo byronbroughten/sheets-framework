@@ -261,7 +261,8 @@ export interface DeleteRangeOperation {
   shiftDimension: GridDimension;
 }
 
-export type CopyPasteType = "PASTE_FORMAT" | "PASTE_DATA_VALIDATION";
+export type CopyPasteType =
+  "PASTE_FORMAT" | "PASTE_DATA_VALIDATION" | "PASTE_FORMULA";
 
 // One source row tiles over every destination row (sheets-framework#61).
 export interface CopyPasteOperation {
