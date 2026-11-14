@@ -273,7 +273,7 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
           ],
         });
       }
-      // The growth requests themselves are the contract here, since the fake can't show a paste it doesn't send.
+      // A test of the request mapping itself: the fake grows a Table on the grid's edge on appendDimension alone, so only the requests show the insert was dropped.
       function sentGrowthOperations(
         appendCount: number,
         formulaColIndexes: number[],

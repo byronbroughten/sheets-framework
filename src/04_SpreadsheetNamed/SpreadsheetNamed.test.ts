@@ -1241,36 +1241,27 @@ describe("Appending to a Table with a formula column", () => {
     };
   }
 
-  // The blank row below is pushed down, and the grid grows only past it.
-  it("fills each new row's formulas, leaves nothing below the Table and grows the grid by no more than the appended rows when it has room below", () => {
-    const { grid } = stubComputedWithFormulas({ hasRowBelow: true });
-    appendTwoRows();
+  // With room below, the blank row is pushed down and the grid grows only past it, so both end at 8 rows.
+  it.each([
+    ["it has room below", true],
+    ["it ends on the grid's last row", false],
+  ])(
+    "fills each new row's formulas, leaves nothing below the Table and grows the grid by no more than the appended rows when %s",
+    (_, hasRowBelow) => {
+      const { grid } = stubComputedWithFormulas({ hasRowBelow });
+      appendTwoRows();
 
-    expect(grownLayout(grid)).toEqual({
-      rowCount: 8,
-      tableEndRowIndex: 8,
-      newRows: [
-        [30, "=ROW()"],
-        [40, "=ROW()"],
-      ],
-      rowsBelowTable: [],
-    });
-  });
-
-  it("fills each new row's formulas, leaves no stray row and grows the grid by the appended rows only when the Table ends on the grid's last row", () => {
-    const { grid } = stubComputedWithFormulas({ hasRowBelow: false });
-    appendTwoRows();
-
-    expect(grownLayout(grid)).toEqual({
-      rowCount: 8,
-      tableEndRowIndex: 8,
-      newRows: [
-        [30, "=ROW()"],
-        [40, "=ROW()"],
-      ],
-      rowsBelowTable: [],
-    });
-  });
+      expect(grownLayout(grid)).toEqual({
+        rowCount: 8,
+        tableEndRowIndex: 8,
+        newRows: [
+          [30, "=ROW()"],
+          [40, "=ROW()"],
+        ],
+        rowsBelowTable: [],
+      });
+    },
+  );
 });
 
 describe("Named formula writes", () => {
