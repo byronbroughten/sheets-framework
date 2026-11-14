@@ -31,6 +31,7 @@ export function bodyRowCountOf(table: DevFixtureTable): number {
   return Math.max(...table.columns.map((column) => column.values.length));
 }
 
+// Second, since sync gives a Table whose ID column is first the idFirst notice.
 function withIdColumn(table: DevFixtureTable): DevFixtureTable {
   const rowCount = bodyRowCountOf(table);
   const idColumn: DevFixtureColumn = {

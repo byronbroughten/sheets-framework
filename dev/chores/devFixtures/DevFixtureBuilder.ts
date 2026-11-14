@@ -31,20 +31,25 @@ export class DevFixtureBuilder extends SpreadsheetBaseNamed {
     const missing = devFixtureSheets.filter(
       (fixture) => !this.ss.raw.gidIsActive(fixture.sheetGid),
     );
-    for (const fixture of missing) {
-      this._addFixtureSheet(fixture);
-    }
+    const unplanned = missing.flatMap((fixture) =>
+      this._addFixtureSheet(fixture),
+    );
     this.ss.batchUpdateGSheets();
     if (missing.length === 0) {
       return "Every fixture tab already exists; no Tables were planned.";
     }
-    return `Created ${missing.map((fixture) => fixture.title).join(", ")}.`;
+    const created = `Created ${missing.map((fixture) => fixture.title).join(", ")}.`;
+    if (unplanned.length === 0) return created;
+    return `${created} Not planned, as their tab wasn't sent (a dry run): ${unplanned.join(", ")}.`;
   }
-  private _addFixtureSheet(fixture: DevFixtureSheet): void {
+  // Returns the names of the Tables it couldn't place.
+  private _addFixtureSheet(fixture: DevFixtureSheet): string[] {
     const { sheetGid, title, tables } = fixture;
     for (const [tableIndex, table] of tables.entries()) {
       if (tableIndex === 0) {
-        this._addFixtureTable(table, { kind: "newTab", sheetGid, title });
+        this.ss.raw.createTable(
+          createTablePropsOf(table, { kind: "newTab", sheetGid, title }),
+        );
         this._addFirstTableExtras(sheetGid, table);
         continue;
       }
@@ -52,18 +57,18 @@ export class DevFixtureBuilder extends SpreadsheetBaseNamed {
       // Placing beside reads the tab's Tables, so the tab and the Tables before must be sent first.
       this.ss.batchUpdateGSheets();
       this.ss.fetchAllSheetProperties();
-      this._addFixtureTable(table, {
-        kind: "besideTables",
-        sheetGid,
-        gap: besideGap,
-      });
+      if (!this.ss.raw.gidIsActive(sheetGid)) {
+        return tables.slice(tableIndex).map(({ tableName }) => tableName);
+      }
+      this.ss.raw.createTable(
+        createTablePropsOf(table, {
+          kind: "besideTables",
+          sheetGid,
+          gap: besideGap,
+        }),
+      );
     }
-  }
-  private _addFixtureTable(
-    table: DevFixtureTable,
-    placement: CreatedTablePlacement,
-  ): void {
-    this.ss.raw.createTable(createTablePropsOf(table, placement));
+    return [];
   }
   // Formulas and the entry checkbox need the Table's origin, which only a tab's first Table knows before the flush.
   private _addFirstTableExtras(sheetGid: number, table: DevFixtureTable): void {
