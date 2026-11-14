@@ -1,28 +1,22 @@
-import type {
-  SheetColIndex,
-  SheetRowIndex,
-} from "../../../src/00_Source/RawSource/SheetIndex";
-import { getTableTraitByName } from "../../../src/01_SpreadsheetSchema/configReaders/tableConfigsTypes";
+import type { CellValue } from "../../../src/00_Source/CellValues/cellValues";
 import { dimensionIds } from "../../../src/01_SpreadsheetSchema/dimensionIds";
 import { headRows } from "../../../src/01_SpreadsheetSchema/headRows";
-import type { TableOrigin } from "../../../src/01_SpreadsheetSchema/TableOrigin";
+import { TableOrigin } from "../../../src/01_SpreadsheetSchema/TableOrigin";
+import type {
+  CreatedTablePlacement,
+  CreateTableProps,
+} from "../../../src/02_SpreadsheetRaw/ClassTypes/StateRaw";
 import { SpreadsheetBaseNamed } from "../../../src/04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
 import { SpreadsheetNamed } from "../../../src/04_SpreadsheetNamed/SpreadsheetNamed";
 import {
   bodyRowCountOf,
-  type DevFixtureColumn,
   type DevFixtureSheet,
   devFixtureSheets,
   type DevFixtureTable,
 } from "./devFixtureSheets";
 
-interface FixtureColumnSeed {
-  sheetId: number;
-  origin: TableOrigin;
-  colIndex: SheetColIndex;
-  column: DevFixtureColumn;
-  rowCount: number;
-}
+// Each tab's first Table opens it at the expected origin; the rest sit one blank column right of the Table before.
+const besideGap = 1;
 
 // A tab that exists is left alone; rebuild one by deleting it and rerunning (docs/how-it-runs/dev-project.md).
 export class DevFixtureBuilder extends SpreadsheetBaseNamed {
@@ -34,112 +28,64 @@ export class DevFixtureBuilder extends SpreadsheetBaseNamed {
   }
   ensureFixtures(): string {
     this.ss.fetchAllSheetProperties();
-    this._validateConfigFloorPresent();
-    this.ss
-      .table("tableConfig")
-      .prepFetchColumnsFull("tableId", "letApiAccess");
-    this.ss
-      .table("columnConfig")
-      .prepFetchColumnsFull("tableId", "columnId", "emptyValueAllowed");
-    this.ss.fetchAllPrepped({ skipFetchingProperties: true });
     const missing = devFixtureSheets.filter(
       (fixture) => !this.ss.raw.gidIsActive(fixture.sheetGid),
     );
-    missing.forEach((fixture) => this._addFixtureSheet(fixture));
-    devFixtureSheets.forEach((fixture) => {
-      fixture.tables.forEach((table) => {
-        this._ensureLetApiAccess(fixture.title, table);
-        this._ensureEmptyValueAllowed(table);
-      });
-    });
+    for (const fixture of missing) {
+      this._addFixtureSheet(fixture);
+    }
     this.ss.batchUpdateGSheets();
     if (missing.length === 0) {
-      return "Every fixture tab already exists; only the config ticks were checked.";
+      return "Every fixture tab already exists; no Tables were planned.";
     }
     return `Created ${missing.map((fixture) => fixture.title).join(", ")}.`;
   }
-  private _validateConfigFloorPresent(): void {
-    const missing = (["tableConfig", "columnConfig"] as const).filter(
-      (sheetName) =>
-        !this.ss.raw.gidIsActive(getTableTraitByName(sheetName, "sheetGid")),
-    );
-    if (missing.length > 0) {
-      throw new Error(
-        `No ${missing.join(" or ")} tab yet. Run \`npm run dev:gen:configs\` first to create the config floor.`,
-      );
+  private _addFixtureSheet(fixture: DevFixtureSheet): void {
+    const { sheetGid, title, tables } = fixture;
+    for (const [tableIndex, table] of tables.entries()) {
+      if (tableIndex === 0) {
+        this._addFixtureTable(table, { kind: "newTab", sheetGid, title });
+        this._addFirstTableExtras(sheetGid, table);
+        continue;
+      }
+      validateNoFirstTableExtras(table);
+      // Placing beside reads the tab's Tables, so the tab and the Tables before must be sent first.
+      this.ss.batchUpdateGSheets();
+      this.ss.fetchAllSheetProperties();
+      this._addFixtureTable(table, {
+        kind: "besideTables",
+        sheetGid,
+        gap: besideGap,
+      });
     }
   }
-  private _addFixtureSheet(fixture: DevFixtureSheet): void {
-    const { sheetGid, tables } = fixture;
-    this.ss.raw.gatherAddSheetOperation({
-      sheetId: sheetGid,
-      title: fixture.title,
-      rowCount: Math.max(...tables.map(endRowIndexOf)),
-      columnCount: Math.max(...tables.map(endColIndexOf)),
-    });
-    tables.forEach((table) => this._addFixtureTable(sheetGid, table));
+  private _addFixtureTable(
+    table: DevFixtureTable,
+    placement: CreatedTablePlacement,
+  ): void {
+    this.ss.raw.createTable(createTablePropsOf(table, placement));
   }
-  private _addFixtureTable(sheetGid: number, table: DevFixtureTable): void {
-    const { origin, columns } = table;
-    const rowCount = bodyRowCountOf(table);
-    this.ss.raw.gatherAddTableOperation({
-      // The live fixture Tables carry their name as their ID, so a rebuilt one matches its generated entry.
-      tableId: table.tableName,
-      name: table.tableName,
-      range: {
-        sheetId: sheetGid,
-        startRowIndex: origin.headerRowIndex,
-        endRowIndex: endRowIndexOf(table),
-        startColumnIndex: origin.startColIndex,
-        endColumnIndex: endColIndexOf(table),
-      },
-      columnProperties: columns.map((column, columnIndex) => ({
-        columnIndex,
-        columnName: column.header,
-        columnType: column.columnType,
-      })),
-    });
-    columns.forEach((column, columnIndex) => {
-      const colIndex = origin.sheetColIndex(columnIndex);
-      this.ss.raw.gatherAddedSheetFillCellOperation({
-        sheetId: sheetGid,
-        rowIndex: origin.headSheetRowIndex("columnId"),
-        colIndex,
-        value: dimensionIds.col(table.idPrefix, column.key),
-      });
-      this._seedColumnRows({
-        sheetId: sheetGid,
-        origin,
-        colIndex,
-        column,
-        rowCount,
-      });
-    });
-    this._addEntryCheckbox(sheetGid, table);
-  }
-  private _seedColumnRows({
-    sheetId,
-    origin,
-    colIndex,
-    column,
-    rowCount,
-  }: FixtureColumnSeed): void {
-    for (let rowIndex = 0; rowIndex < rowCount; rowIndex++) {
-      const position = {
-        sheetId,
-        rowIndex: origin.sheetRowIndex(rowIndex),
-        colIndex,
-      };
-      const { formula } = column;
-      const value = column.values[rowIndex];
-      if (formula !== undefined) {
-        this.ss.raw.gatherAddedSheetFillCellOperation({ ...position, formula });
-      } else if (value !== undefined && value !== "") {
-        this.ss.raw.gatherAddedSheetFillCellOperation({ ...position, value });
+  // Formulas and the entry checkbox need the Table's origin, which only a tab's first Table knows before the flush.
+  private _addFirstTableExtras(sheetGid: number, table: DevFixtureTable): void {
+    const origin = TableOrigin.expected();
+    for (const [columnIndex, { formula }] of table.columns.entries()) {
+      if (formula === undefined) continue;
+      for (let rowIndex = 0; rowIndex < bodyRowCountOf(table); rowIndex++) {
+        this.ss.raw.gatherAddedTableFillCellOperation({
+          sheetId: sheetGid,
+          rowIndex: origin.sheetRowIndex(rowIndex),
+          colIndex: origin.sheetColIndex(columnIndex),
+          formula,
+        });
       }
     }
+    this._addEntryCheckbox(sheetGid, origin, table);
   }
-  private _addEntryCheckbox(sheetGid: number, table: DevFixtureTable): void {
+  private _addEntryCheckbox(
+    sheetGid: number,
+    origin: TableOrigin,
+    table: DevFixtureTable,
+  ): void {
     const columnKey = table.entryCheckboxColumnKey;
     if (columnKey === undefined) return;
     const columnIndex = table.columns.findIndex(
@@ -148,7 +94,6 @@ export class DevFixtureBuilder extends SpreadsheetBaseNamed {
     if (columnIndex === -1) {
       throw new Error(`${table.tableName} has no "${columnKey}" column.`);
     }
-    const { origin } = table;
     const actionRowIndex = headRows.index("action");
     const rowIndex = origin.sheetRowIndex(actionRowIndex);
     const colIndex = origin.sheetColIndex(columnIndex);
@@ -167,51 +112,39 @@ export class DevFixtureBuilder extends SpreadsheetBaseNamed {
         endColumnIndex: origin.sheetColIndex(columnIndex + 1),
       });
   }
-  private _ensureLetApiAccess(
-    sheetTitle: string,
-    table: DevFixtureTable,
-  ): void {
-    const tableConfig = this.ss.table("tableConfig");
-    const [row] = tableConfig.rowsFiltered({ tableId: table.tableName });
-    if (row === undefined) {
-      tableConfig.appendRowWithVals({
-        tableId: table.tableName,
-        tableName: table.tableName,
-        sheetTitle,
-        letApiAccess: true,
-      });
-    } else if (row.valueOrEmpty("letApiAccess") !== true) {
-      row.cell("letApiAccess").updateValue(true);
-    }
-  }
-  private _ensureEmptyValueAllowed(table: DevFixtureTable): void {
-    const columnConfig = this.ss.table("columnConfig");
-    table.columns.forEach(({ key, header, emptyValueAllowed }) => {
-      if (emptyValueAllowed === undefined) return;
-      const columnId = dimensionIds.col(table.idPrefix, key);
-      const [row] = columnConfig.rowsFiltered({
-        tableId: table.tableName,
-        columnId,
-      });
-      if (row === undefined) {
-        columnConfig.appendRowWithVals({
-          tableId: table.tableName,
-          columnId,
-          tableName: table.tableName,
-          header,
-          emptyValueAllowed,
-        });
-      } else if (row.valueOrEmpty("emptyValueAllowed") !== emptyValueAllowed) {
-        row.cell("emptyValueAllowed").updateValue(emptyValueAllowed);
-      }
-    });
-  }
 }
 
-function endRowIndexOf(table: DevFixtureTable): SheetRowIndex {
-  return table.origin.sheetRowIndex(bodyRowCountOf(table));
+// The live fixture Tables carry their name as their ID, so a rebuilt one matches its generated entry and keeps API access.
+function createTablePropsOf(
+  table: DevFixtureTable,
+  placement: CreatedTablePlacement,
+): CreateTableProps {
+  const { tableName, idPrefix, columns } = table;
+  return {
+    name: tableName,
+    placement,
+    idPrefix,
+    tableId: tableName,
+    columns: columns.map(({ key, header, columnType }) => ({
+      header,
+      columnId: dimensionIds.col(idPrefix, key),
+      columnType: { type: columnType, rule: null },
+    })),
+    seedRows: seedRowsOf(table),
+  };
 }
 
-function endColIndexOf(table: DevFixtureTable): SheetColIndex {
-  return table.origin.sheetColIndex(table.columns.length);
+function seedRowsOf(table: DevFixtureTable): CellValue[][] {
+  return Array.from({ length: bodyRowCountOf(table) }, (_, rowIndex) =>
+    table.columns.map(({ values }) => values[rowIndex] ?? ""),
+  );
+}
+
+function validateNoFirstTableExtras(table: DevFixtureTable): void {
+  const hasFormula = table.columns.some(({ formula }) => formula !== undefined);
+  if (hasFormula || table.entryCheckboxColumnKey !== undefined) {
+    throw new Error(
+      `${table.tableName} isn't its tab's first Table, so it can't take a formula or an entry checkbox.`,
+    );
+  }
 }
