@@ -25,6 +25,12 @@ import {
 } from "./configFileSource";
 import { SpreadsheetBaseOperator } from "./SpreadsheetBaseOperator";
 
+// A Table a plan deletes: its codebase name and its ID.
+export interface DeletedTable {
+  table: string;
+  tableId: string;
+}
+
 // Reads the rules the regen's plain property get brought into Raw, so it costs no round trip of its own.
 export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
   static init(): ConditionalFormatConfigOperator {
@@ -64,7 +70,10 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
     };
   }
   // Named from the previous configs: apiTableColumnsByTableId holds only after the regen, which no longer has the Table.
-  deletionEffects(tableKey: string, tableId: string): SyncPlanEffect[] {
+  deletionEffects({
+    table: tableKey,
+    tableId,
+  }: DeletedTable): SyncPlanEffect[] {
     const columnConfigs = Val.assert(
       columnConfigsByName()[tableKey],
       `previous column configs of ${tableKey}`,

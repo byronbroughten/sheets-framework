@@ -1,3 +1,5 @@
+import { Val } from "@byronbroughten/utils/val";
+
 import { HeldFlushRefusal } from "../00_Source/RawSource/HeldFlushRefusal";
 import {
   type ApiAccessChanges,
@@ -22,6 +24,7 @@ import type { PendingAlterations } from "../01_SpreadsheetSchema/configReaders/i
 import { remainingAlterations } from "../01_SpreadsheetSchema/configReaders/remainingAlterations";
 import { SyncEntryRefuser } from "../01_SpreadsheetSchema/configReaders/SyncEntryRefuser";
 import {
+  deletedTableOf,
   isSheetTrait,
   type PlanProps,
   SyncPlanner,
@@ -318,16 +321,15 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     previousIdNameMap: IdNameMapGeneric,
   ): SyncPlannerResult {
     const tableIds = tableIdsByName(previousIdNameMap);
-    const liveTableIds = new Set(this.ss.raw.activeTableIds);
     const plan = planned.plan.map((item) => {
       const table = deletedTableOf(item.subject);
       if (table === undefined) return item;
-      const tableId = tableIds.get(table);
-      if (tableId === undefined || !liveTableIds.has(tableId)) return item;
-      const ruleEffects = this.conditionalFormatConfigOperator.deletionEffects(
+      // The entry refuser and the planner already hold the Table to the map and the live sheet.
+      const tableId = Val.assert(tableIds.get(table), `Table ID of ${table}`);
+      const ruleEffects = this.conditionalFormatConfigOperator.deletionEffects({
         table,
         tableId,
-      );
+      });
       return { ...item, effects: [...item.effects, ...ruleEffects] };
     });
     return { ...planned, plan };
@@ -543,11 +545,4 @@ function tabsByTable({
     },
     {},
   );
-}
-
-// The Table a plan item deletes, by the subject subjectOf gives a Table deletion.
-function deletedTableOf(subject: SyncSubject): string | undefined {
-  if (!("table" in subject) || subject.column !== undefined) return undefined;
-  if (subject.path !== "deleted") return undefined;
-  return subject.table;
 }

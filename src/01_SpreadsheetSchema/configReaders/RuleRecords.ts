@@ -30,8 +30,7 @@ export interface RuleRecordsTable {
   endRowIndex: SheetRowIndex;
 }
 
-// A Table a plan deletes, with the rules on its tab.
-export interface DeletedTableRules {
+export interface DeletedTableTab {
   tabName: string;
   rules: ConditionalFormatRule[];
   table: RuleRecordsTable;
@@ -136,7 +135,7 @@ export const RuleRecords = {
     tabName,
     rules,
     table,
-  }: DeletedTableRules): SyncPlanEffect[] {
+  }: DeletedTableTab): SyncPlanEffect[] {
     const removed: TableRuleRecords = {};
     const partlyOver: SyncPlanEffect[] = [];
     for (const rule of rules) {
