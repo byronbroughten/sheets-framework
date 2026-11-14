@@ -92,13 +92,13 @@ export class TableSchema<
     return getSheetColumnNames(this.tableName);
   }
   get nonFormulaColumnIds(): string[] {
-    return [...this.columnIds].filter((columnId) => {
-      return !getColumnTraitById(this.tableName, columnId, "isFormula");
-    });
+    return [...this.columnIds].filter(
+      (columnId) => !this._isFormulaColumn(columnId),
+    );
   }
   get formulaColumnIds(): string[] {
     return [...this.columnIds].filter((columnId) =>
-      getColumnTraitById(this.tableName, columnId, "isFormula"),
+      this._isFormulaColumn(columnId),
     );
   }
   // Goes by the columnId index, since by name would scan the Table.
@@ -147,5 +147,8 @@ export class TableSchema<
   }
   private get sheetSchemaProps(): TableSchemaProps<TN> {
     return { sheetGid: this.sheetGid, tableName: this.tableName };
+  }
+  private _isFormulaColumn(columnId: string): boolean {
+    return getColumnTraitById(this.tableName, columnId, "isFormula");
   }
 }

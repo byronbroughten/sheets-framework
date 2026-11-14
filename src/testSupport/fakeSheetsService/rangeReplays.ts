@@ -2,7 +2,7 @@ import { Obj } from "@byronbroughten/utils/obj";
 
 import type { CopyPasteType } from "../../00_Source/RawSource/RawSource";
 import type { FakeCell } from "../fakeSheetsService";
-import { fakeCells, type PastedFact } from "./fakeCells";
+import { fakeCells } from "./fakeCells";
 import { type BandChange, type BoundedRange, fakeGrid } from "./fakeGrid";
 import {
   type FakeSheetState,
@@ -13,13 +13,22 @@ import {
 type Response = GoogleAppsScript.Sheets.Schema.Response;
 type GridRange = GoogleAppsScript.Sheets.Schema.GridRange;
 
+type CellPaste = (cell: FakeCell, source: FakeCell) => FakeCell;
+
 // Measured live (sheets-framework#61): a format paste carries no cell validation, and a validation paste no format.
-const pastedFacts: Record<
-  Exclude<CopyPasteType, "PASTE_FORMULA">,
-  readonly PastedFact[]
-> = {
-  PASTE_FORMAT: ["backgroundColor", "numberFormatType"],
-  PASTE_DATA_VALIDATION: ["dataValidationConditionType"],
+const cellPastes: Record<CopyPasteType, CellPaste> = {
+  PASTE_FORMAT(cell, source) {
+    return fakeCells.withPastedFacts(cell, source, [
+      "backgroundColor",
+      "numberFormatType",
+    ]);
+  },
+  PASTE_DATA_VALIDATION(cell, source) {
+    return fakeCells.withPastedFacts(cell, source, [
+      "dataValidationConditionType",
+    ]);
+  },
+  PASTE_FORMULA: withPastedFormula,
 };
 
 // The fake keeps a formula's text, so it can't shift a relative reference as Sheets would.
@@ -54,7 +63,7 @@ export const rangeReplays = {
     request: GoogleAppsScript.Sheets.Schema.CopyPasteRequest,
   ): Response {
     const pasteType = request.pasteType ?? "PASTE_NORMAL";
-    if (pasteType !== "PASTE_FORMULA" && !Obj.isKey(pastedFacts, pasteType)) {
+    if (!Obj.isKey(cellPastes, pasteType)) {
       throw new Error(
         `The fake Sheets service does not replay copyPaste type ${pasteType}.`,
       );
@@ -83,16 +92,9 @@ export const rangeReplays = {
         source.startColumnIndex +
           ((colIndex - destination.startColumnIndex) % sourceWidth),
       );
-      fakeGrid.updateCell(sheet, rowIndex, colIndex, (cell) => {
-        if (pasteType === "PASTE_FORMULA") {
-          return withPastedFormula(cell, sourceCell);
-        }
-        return fakeCells.withPastedFacts(
-          cell,
-          sourceCell,
-          pastedFacts[pasteType],
-        );
-      });
+      fakeGrid.updateCell(sheet, rowIndex, colIndex, (cell) =>
+        cellPastes[pasteType](cell, sourceCell),
+      );
     });
     if (pasteType === "PASTE_FORMAT") {
       extendConditionalFormats(sheet, source, destination);
