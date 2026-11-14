@@ -1,11 +1,13 @@
 import type { HeldFlushRefusal } from "../../00_Source/RawSource/HeldFlushRefusal";
 import { hasLanded } from "./didntLand";
 import { heldStoppedOutcome } from "./heldStoppedOutcome";
-import type { SyncPlannerResult } from "./SyncPlanner";
+import { newColumnLines, type SyncPlannerResult } from "./SyncPlanner";
 import {
   fillRowIdsName,
+  type SyncCreatedColumn,
   type SyncDryRunOutcome,
   type SyncDryRunResult,
+  type SyncLandedItem,
   type SyncNotice,
   type SyncPlanItem,
   type SyncRefusal,
@@ -41,6 +43,8 @@ export interface SyncRunPlanned {
   typedTraitChanges: SyncTypedTraitChange[];
   // The sent traits the refetch shows Sheets kept another value for; they leave the landed list.
   didntLand: SyncSendLine[];
+  // The new columns the refetch found, in place of their plan lines on the landed list.
+  createdColumns: SyncCreatedColumn[];
   rowIds: SyncRunRowIds;
 }
 
@@ -72,6 +76,7 @@ export class SyncRunResultBuilder {
     notes,
     typedTraitChanges,
     didntLand,
+    createdColumns,
     rowIds,
   }: SyncRunPlanned): SyncRunResult {
     const common = this._common({
@@ -84,9 +89,16 @@ export class SyncRunResultBuilder {
     if (planned.isStopped) return this._unsent(common, { kind: "stopped" });
     if (!this.isSending) return dryRunResult(common, { kind: "ready" });
     const isLanded = hasLanded(didntLand);
-    const landed = [
-      ...planned.plan.filter(({ subject }) => isLanded(subject)),
-      ...rowIds.plan,
+    const landed: SyncLandedItem[] = [
+      ...planned.plan
+        .filter(
+          // Each new column lands as its created line, carrying the minted ID its plan line couldn't.
+          ({ subject }) =>
+            isLanded(subject) && !newColumnLines.isSubject(subject),
+        )
+        .map(landedSend),
+      ...createdColumns,
+      ...rowIds.plan.map(landedSend),
     ];
     return {
       ...sendResult(common, {
@@ -97,11 +109,7 @@ export class SyncRunResultBuilder {
           rowIdsSendCount: rowIds.plan.length,
         }),
       }),
-      landed: landed.map(({ subject, what }) => ({
-        kind: "send",
-        subject,
-        what,
-      })),
+      landed,
       didntLand,
     };
   }
@@ -155,6 +163,10 @@ interface SentCounts {
   sentCount: number;
   didntLandCount: number;
   rowIdsSendCount: number;
+}
+
+function landedSend({ subject, what }: SyncSendLine): SyncLandedItem {
+  return { kind: "send", subject, what };
 }
 
 function dryRunResult(

@@ -5,6 +5,8 @@ import {
   type SyncConfigs,
   type SyncConflict,
   type SyncDryRunOutcome,
+  type SyncHeaderTakenStop,
+  type SyncHeadRowsStop,
   type SyncHeld,
   type SyncHeldBy,
   type SyncHeldGroup,
@@ -109,14 +111,13 @@ export class SyncRunReport {
   }
   private get _stoppedText(): OutcomeText {
     const { stops, command } = this.result;
-    const conflicts = stops.filter(({ kind }) => kind === "conflict").length;
-    const headRowStops = stops.length - conflicts;
-    const why = [
-      ...(conflicts > 0 ? [counted(conflicts, "conflict", "conflicts")] : []),
-      ...(headRowStops > 0
-        ? [`${counted(headRowStops, "Table", "Tables")} can't take head rows`]
-        : []),
-    ].join(" and ");
+    const why = stopKinds
+      .flatMap((kind) => {
+        const count = stops.filter((stop) => stop.kind === kind).length;
+        if (count === 0) return [];
+        return [stopWords[kind].reason(count)];
+      })
+      .join(" and ");
     const until = stops.length === 1 ? "it is resolved" : "they are resolved";
     return {
       resultLine: `STOPPED: ${why}${this._checkClause}. Nothing was sent, and nothing will be until ${until}.`,
@@ -327,8 +328,7 @@ function resolveLine(stops: SyncStop[], command: string): string {
   if (stops.length !== 1 || stop === undefined) {
     return `Resolve each stop above, then rerun ${command}.`;
   }
-  const name = stop.kind === "conflict" ? "conflict" : "stop";
-  return `Resolve ${name} 1, then rerun ${command}.`;
+  return `Resolve ${stopWords[stop.kind].name} 1, then rerun ${command}.`;
 }
 
 function checkLines(check: SyncCheck): string[] {
@@ -475,6 +475,45 @@ function ruleHandleLines(table: string, handles: string[]): string[] {
   return [`${table}'s rules now, by handle:`, ...indent(2, handles)];
 }
 
+type StopKind = SyncStop["kind"];
+
+type StopOf<SK extends StopKind> = Extract<SyncStop, { kind: SK }>;
+
+interface StopWords<SK extends StopKind> {
+  // What the resolve line calls one.
+  name: string;
+  // Why the run stopped, for the result line.
+  reason(count: number): string;
+  block(stop: StopOf<SK>, number: number): string[];
+}
+
+// The result line's order.
+const stopKinds: StopKind[] = ["conflict", "headRows", "headerTaken"];
+
+const stopWords: { [SK in StopKind]: StopWords<SK> } = {
+  conflict: {
+    name: "conflict",
+    reason(count) {
+      return counted(count, "conflict", "conflicts");
+    },
+    block: conflictBlock,
+  },
+  headRows: {
+    name: "stop",
+    reason(count) {
+      return `${counted(count, "Table", "Tables")} can't take head rows`;
+    },
+    block: headRowsBlock,
+  },
+  headerTaken: {
+    name: "stop",
+    reason(count) {
+      return `${counted(count, "new column", "new columns")} taken`;
+    },
+    block: headerTakenBlock,
+  },
+};
+
 function stopBlocks(stops: SyncStop[]): string[] {
   return stops.flatMap((stop, index) => [
     ...(index === 0 ? [] : [""]),
@@ -482,14 +521,36 @@ function stopBlocks(stops: SyncStop[]): string[] {
   ]);
 }
 
-function stopBlock(stop: SyncStop, number: number): string[] {
-  if (stop.kind === "conflict") return conflictBlock(stop, number);
-  const { table, tab, headerRow } = stop;
+function stopBlock<SK extends StopKind>(
+  stop: StopOf<SK>,
+  number: number,
+): string[] {
+  const words: StopWords<SK> = stopWords[stop.kind];
+  return words.block(stop, number);
+}
+
+function headRowsBlock(
+  { table, tab, headerRow }: SyncHeadRowsStop,
+  number: number,
+): string[] {
   return [
     `STOP ${number} · ${table} › letApiAccess`,
     ...indent(2, [
       `${table}'s header row is on row ${headerRow} of its tab, ${tab}. A Table needs its header on row 4 to take head rows`,
       `(rows 1 to 3: column IDs, action row, heading). Move ${table} so its header sits on row 4, then rerun.`,
+      "The entry stays in alterations.ts.",
+    ]),
+  ];
+}
+
+function headerTakenBlock(
+  { table, header, column, columnId }: SyncHeaderTakenStop,
+  number: number,
+): string[] {
+  return [
+    `STOP ${number} · ${table} › newColumns`,
+    ...indent(2, [
+      `${table} already has a column headed "${header}": ${column}, ${columnId}.`,
       "The entry stays in alterations.ts.",
     ]),
   ];

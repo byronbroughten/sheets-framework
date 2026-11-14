@@ -1,4 +1,3 @@
-import { Str } from "@byronbroughten/utils/str";
 import { Val } from "@byronbroughten/utils/val";
 
 import { isFrameworkValueName } from "../00_Source/CellValues/frameworkValueSchemas";
@@ -6,7 +5,10 @@ import {
   type BraceConfigs,
   BraceFormula,
 } from "../01_SpreadsheetSchema/configReaders/BraceFormula";
-import { columnConfigsByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
+import {
+  columnConfigsByName,
+  columnNameOfHeader,
+} from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
 import {
   type ColumnConfigsGeneric,
   type ColumnConfigStored,
@@ -14,13 +16,21 @@ import {
 } from "../01_SpreadsheetSchema/configReaders/makeConfigs";
 import {
   type IntendedTrait,
+  newColumnLines,
+  type PlannedNewColumn,
   type PlanReadings,
   type TableReading,
   type TraitReadings,
 } from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
+import type {
+  SyncCreatedColumn,
+  SyncHeaderTakenStop,
+  SyncSendLine,
+} from "../01_SpreadsheetSchema/configReaders/syncRunResult";
 import { tableConfigsByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { type ValueName } from "../01_SpreadsheetSchema/configReaders/valueSchemas";
 import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
+import type { NewColumnHeadCells } from "../02_SpreadsheetRaw/ClassTypes/StateRaw";
 import type {
   ColumnProfileRaw,
   TableColumnReference,
@@ -56,6 +66,25 @@ interface NamedColumnIdentity extends ColumnIdentity {
 
 interface SentColumnTrait extends NamedColumnIdentity {
   value: IntendedTrait["value"];
+}
+
+export interface MintedNewColumn extends PlannedNewColumn {
+  tableId: string;
+  columnId: string;
+}
+
+export interface LandedColumns {
+  createdColumns: SyncCreatedColumn[];
+  didntLand: SyncSendLine[];
+}
+
+interface ColumnAt {
+  tableId: string;
+  colIndex: number;
+}
+
+interface ColumnInsert extends ColumnAt {
+  headCells: NewColumnHeadCells;
 }
 
 export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
@@ -243,17 +272,143 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
     }
     return this;
   }
+  // Matched by the name the regen would give the header, since two headers giving one name can't both be configured.
+  headerTakenStops(newColumns: PlannedNewColumn[]): SyncHeaderTakenStop[] {
+    const identities = this._namedColumnIdentities();
+    return newColumns.flatMap(({ table, column, header }) => {
+      const taken = identities.find(
+        (identity) =>
+          identity.tableKey === table &&
+          columnNameOfHeader(this._describedColumn(identity).header) === column,
+      );
+      if (taken === undefined) return [];
+      const { columnName, columnId } = taken;
+      return [
+        { kind: "headerTaken", table, header, column: columnName, columnId },
+      ];
+    });
+  }
+  // Minted before any queue, so a dry run's withheld flush and the report carry the same IDs.
+  mintColumnIds(newColumns: PlannedNewColumn[]): MintedNewColumn[] {
+    const idPrefixesByTableId = this.tableConfigOperator.idPrefixesByTableId();
+    return newColumns.map((newColumn) => {
+      const tableId = this.tableConfigOperator.tableIdOf(newColumn.table);
+      this._validateInsertable(tableId, newColumn);
+      const idPrefix = idPrefixesByTableId.assertIdPrefix(tableId);
+      return { ...newColumn, tableId, columnId: dimensionIds.col(idPrefix) };
+    });
+  }
+  // Before anything is queued, so the throw sends nothing.
+  private _validateInsertable(
+    tableId: string,
+    { table, header, before }: PlannedNewColumn,
+  ): void {
+    if (before === undefined) return;
+    if (this._colIndexOf(tableId, this._columnIdOf(table, before)) !== 0) {
+      return;
+    }
+    throw new Error(
+      `Table ${table} can't take "${header}" before ${before}, its first column: a column inserted there lands outside the Table.`,
+    );
+  }
+  // At the end, a new column shifts none of the plan's other writes, so it joins their flush.
+  appendColumns(minted: MintedNewColumn[]): this {
+    for (const { tableId, columnId, header, before } of minted) {
+      if (before !== undefined) continue;
+      this.ss.raw.table(tableId).appendColumn({ columnId, header });
+    }
+    return this;
+  }
+  // Found by minted ID in the fresh configs, which name each column by its live header.
+  landedColumns(minted: MintedNewColumn[]): LandedColumns {
+    const columnConfigs = this.newColumnConfigs();
+    const landed: LandedColumns = { createdColumns: [], didntLand: [] };
+    for (const newColumn of minted) {
+      const found = Object.entries(columnConfigs[newColumn.table] ?? {}).find(
+        ([, config]) => config.columnId === newColumn.columnId,
+      );
+      if (found === undefined) {
+        landed.didntLand.push(newColumnLines.sendLine(newColumn));
+        continue;
+      }
+      const [column, config] = found;
+      landed.createdColumns.push({
+        kind: "createdColumn",
+        table: newColumn.table,
+        header: config.header,
+        column,
+        columnId: newColumn.columnId,
+        columnType: config.columnType?.type ?? "AUTOMATIC",
+        position: newColumnLines.position(newColumn),
+      });
+    }
+    return landed;
+  }
   // Rightmost first on each Table, so a delete's index isn't moved by the ones queued before it.
-  deleteColumns(sent: IntendedTrait[]): this {
+  // Then the inserts, each at its index once those deletes land.
+  updateDeletionsAndInserts(
+    sent: IntendedTrait[],
+    minted: MintedNewColumn[],
+  ): this {
     const deletions = this._sentColumnTraits(sent, "deleted").map(
-      ({ tableId, columnId }) => {
-        const table = this.ss.raw.table(tableId);
-        return { table, colIndex: table.columnResolver.colIndexOf(columnId) };
-      },
+      ({ tableId, columnId }) => ({
+        tableId,
+        colIndex: this._colIndexOf(tableId, columnId),
+      }),
     );
     deletions.sort((first, second) => second.colIndex - first.colIndex);
-    for (const { table, colIndex } of deletions) table.deleteColumn(colIndex);
+    for (const { tableId, colIndex } of deletions) {
+      this.ss.raw.table(tableId).deleteColumn(colIndex);
+    }
+    for (const { tableId, colIndex, headCells } of this._inserts(
+      minted,
+      deletions,
+    )) {
+      this.ss.raw.table(tableId).insertColumn(colIndex, headCells);
+    }
     return this;
+  }
+  // Rightmost first, and two before one column in reverse entry order, so the entries land in the order written.
+  private _inserts(
+    minted: MintedNewColumn[],
+    deletions: ColumnAt[],
+  ): ColumnInsert[] {
+    const inserts = minted.flatMap(
+      ({ tableId, table, columnId, header, before }): ColumnInsert[] => {
+        if (before === undefined) return [];
+        const beforeIndex = this._colIndexOf(
+          tableId,
+          this._columnIdOf(table, before),
+        );
+        const deletedLeft = deletions.filter(
+          (deletion) =>
+            deletion.tableId === tableId && deletion.colIndex < beforeIndex,
+        ).length;
+        return [
+          {
+            tableId,
+            colIndex: beforeIndex - deletedLeft,
+            headCells: { columnId, header },
+          },
+        ];
+      },
+    );
+    return inserts
+      .reverse()
+      .sort((first, second) => second.colIndex - first.colIndex);
+  }
+  private _colIndexOf(tableId: string, columnId: string): number {
+    return this.ss.raw.table(tableId).columnResolver.colIndexOf(columnId);
+  }
+  // By previous names, as an alteration's `before` gives them.
+  private _columnIdOf(tableKey: string, columnName: string): string {
+    return Val.assert(
+      this._namedColumnIdentities().find(
+        (identity) =>
+          identity.tableKey === tableKey && identity.columnName === columnName,
+      ),
+      `live column ${tableKey}.${columnName}`,
+    ).columnId;
   }
   private _sentColumnTraits(
     sent: IntendedTrait[],
@@ -340,7 +495,7 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
         ),
         columnName:
           previous.columnName(identity.columnId) ??
-          Str.sentenceToCamelCase(this._describedColumn(identity).header),
+          columnNameOfHeader(this._describedColumn(identity).header),
         previousEmptyValueAllowed: previous.emptyValueAllowed(
           identity.columnId,
         ),
@@ -409,7 +564,7 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
         tableKeysByTableId.get(tableId),
         "API-access Table key",
       );
-      const columnName = Str.sentenceToCamelCase(header);
+      const columnName = columnNameOfHeader(header);
       if (!columnConfigs[tableKey]) {
         columnConfigs[tableKey] = {};
       }
@@ -571,7 +726,7 @@ function valueSourceName({
   tableKey: string;
   reference: TableColumnReference;
 }): string {
-  const headerName = Str.sentenceToCamelCase(reference.header);
+  const headerName = columnNameOfHeader(reference.header);
   const valueName =
     tableKey + headerName.charAt(0).toUpperCase() + headerName.slice(1);
   if (isFrameworkValueName(valueName)) {

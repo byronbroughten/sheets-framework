@@ -219,12 +219,15 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
     }
     return this;
   }
-  private _previousTable(tableKey: string): TableRaw {
-    const { tableId } = Val.assert(
+  // By the previous configs' name, the one an alteration addresses a Table by.
+  tableIdOf(tableKey: string): string {
+    return Val.assert(
       tableConfigsByName()[tableKey],
       `previous Table ${tableKey}`,
-    );
-    return this.ss.raw.table(tableId);
+    ).tableId;
+  }
+  private _previousTable(tableKey: string): TableRaw {
+    return this.ss.raw.table(this.tableIdOf(tableKey));
   }
   tableKeysByTableId(): Map<string, string> {
     const map = new Map<string, string>();

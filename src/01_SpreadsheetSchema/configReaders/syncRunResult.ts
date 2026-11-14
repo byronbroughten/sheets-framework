@@ -179,7 +179,10 @@ export interface ForcedTrait {
   trait: string;
 }
 
-export type SyncStop = SyncConflict | SyncHeadRowsStop;
+export type SyncStop = SyncConflict | SyncSheetStop;
+
+// A stop found reading the sheet, outside the three-way comparison.
+export type SyncSheetStop = SyncHeadRowsStop | SyncHeaderTakenStop;
 
 export interface SyncConflict {
   kind: "conflict";
@@ -198,6 +201,15 @@ export interface SyncHeadRowsStop {
   table: string;
   tab: string;
   headerRow: number;
+}
+
+// A `newColumns` entry whose header names a column the Table already has: `column` and `columnId` are that column's.
+export interface SyncHeaderTakenStop {
+  kind: "headerTaken";
+  table: string;
+  header: string;
+  column: string;
+  columnId: string;
 }
 
 export interface SyncHeld {
