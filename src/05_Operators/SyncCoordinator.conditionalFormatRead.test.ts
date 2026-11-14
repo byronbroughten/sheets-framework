@@ -10,10 +10,11 @@ import { fakeTableSheet } from "../testSupport/fakeSheetsService/fakeTableSheet"
 import { SyncCoordinator } from "./SyncCoordinator";
 import {
   columnsByHeader,
-  type GridRange,
   seedFixture,
   sendWithNoAlterations,
 } from "./syncCoordinatorTestSupport";
+
+type GridRange = GoogleAppsScript.Sheets.Schema.GridRange;
 
 beforeEach(() => {
   stubLogger();

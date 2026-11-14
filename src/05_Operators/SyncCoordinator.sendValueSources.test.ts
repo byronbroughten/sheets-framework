@@ -16,11 +16,12 @@ import {
 import { type ConfigRegeneration, SyncCoordinator } from "./SyncCoordinator";
 import {
   columnsByHeader,
-  type GridRange,
   runWithNoAlterations,
   seedFixture,
   sendWithNoAlterations,
 } from "./syncCoordinatorTestSupport";
+
+type GridRange = GoogleAppsScript.Sheets.Schema.GridRange;
 
 beforeEach(() => {
   stubLogger();
