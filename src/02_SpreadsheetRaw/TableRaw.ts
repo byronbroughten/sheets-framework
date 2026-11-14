@@ -17,10 +17,12 @@ import type {
 import type {
   BoundedGridRange,
   CopyPasteOperation,
+  CopyPasteType,
   FindReplaceTerms,
   GridBlockSnapshot,
   GridCellSnapshot,
   GridRangeProps,
+  InsertRangeOperation,
   TableColumnPropertiesUpdate,
   TableColumnSnapshot,
 } from "../00_Source/RawSource/RawSource";
@@ -778,12 +780,18 @@ export class TableRaw extends TableCommonRaw {
       startRowIndex: modelRow.endRowIndex,
       endRowIndex: SheetIndex.row(modelRow.endRowIndex + appendedRowCount),
     };
+    // The appendDimension sent first already grows a Table ending on the grid's last row; an insert would push that row out of it.
+    const endsOnGridEdge =
+      newRows.startRowIndex === this.sheet.rowCountBeforeFlush;
     this.sheet.queueGridRowsThrough(newRows.endRowIndex);
+    const insert: InsertRangeOperation[] = endsOnGridEdge
+      ? []
+      : [{ kind: "insertRange", range: newRows, shiftDimension: "ROWS" }];
     this.writeOperations.appendTableRows.push({
       tableId: this.tableId,
       newRows,
       operations: [
-        { kind: "insertRange", range: newRows, shiftDimension: "ROWS" },
+        ...insert,
         {
           kind: "updateTableRange",
           tableId: this.tableId,
@@ -795,13 +803,17 @@ export class TableRaw extends TableCommonRaw {
           destination: newRows,
           pasteType: "PASTE_FORMAT",
         },
-        ...this._untypedColumnRuns().map(
-          ([startColIndex, endColIndex]): CopyPasteOperation => ({
-            kind: "copyPaste",
-            source: columnRun(modelRow, startColIndex, endColIndex),
-            destination: columnRun(newRows, startColIndex, endColIndex),
-            pasteType: "PASTE_DATA_VALIDATION",
-          }),
+        ...columnRunCopies(
+          modelRow,
+          newRows,
+          this._untypedColumnRuns(),
+          "PASTE_DATA_VALIDATION",
+        ),
+        ...columnRunCopies(
+          modelRow,
+          newRows,
+          this._appendedFormulaColumnRuns(),
+          "PASTE_FORMULA",
         ),
       ],
     });
@@ -813,20 +825,21 @@ export class TableRaw extends TableCommonRaw {
     );
   }
   // A typed column's validation is the Table's own, so only Automatic columns get theirs copied.
-  private _untypedColumnRuns(): [number, number][] {
+  private _untypedColumnRuns(): ColumnRun[] {
     const columnTypes = this._columnTypesAfterFlush();
-    return this.fullTableColIndexes.reduce<[number, number][]>(
-      (runs, colIndex) => {
-        if (columnTypes.get(colIndex) !== undefined) return runs;
-        const lastRun = runs.at(-1);
-        if (lastRun !== undefined && lastRun[1] === colIndex) {
-          lastRun[1] = colIndex + 1;
-        } else {
-          runs.push([colIndex, colIndex + 1]);
-        }
-        return runs;
-      },
-      [],
+    return columnRuns(
+      this.fullTableColIndexes.filter(
+        (colIndex) => columnTypes.get(colIndex) === undefined,
+      ),
+    );
+  }
+  // Only the named columns, so the paste never reaches a plain value the append left unwritten.
+  private _appendedFormulaColumnRuns(): ColumnRun[] {
+    const { appendedFormulaColIndexes } = this.writes;
+    return columnRuns(
+      this.fullTableColIndexes.filter((colIndex) =>
+        appendedFormulaColIndexes.has(colIndex),
+      ),
     );
   }
   // A column type queued this flush is sent before growth, so it is the one the new rows meet.
@@ -1023,8 +1036,14 @@ export class TableRaw extends TableCommonRaw {
       this._sheetEditProtection(protection, origin),
     );
   }
-  appendDataRow(): RowRaw {
-    return this.row(this.dataRowCount).append();
+  // Growth copies the named formula columns from the model row; Raw can't tell which they are.
+  appendDataRow(formulaColIndexes: readonly number[] = []): RowRaw {
+    const row = this.row(this.dataRowCount).append();
+    this.queueTableWrite({
+      action: "copyAppendedFormulas",
+      colIndexes: formulaColIndexes,
+    });
+    return row;
   }
   appendDataRowValues(colValues: Map<number, CellValue>): RowRaw {
     const row = this.appendDataRow();
@@ -1058,6 +1077,35 @@ function shiftedColumns<VL>(
     }
     return shifted;
   }, new Map<number, VL>());
+}
+
+type ColumnRun = [startColIndex: number, endColIndex: number];
+
+// Ascending indexes, so each run of neighbours becomes one range.
+function columnRuns(colIndexes: number[]): ColumnRun[] {
+  return colIndexes.reduce<ColumnRun[]>((runs, colIndex) => {
+    const lastRun = runs.at(-1);
+    if (lastRun !== undefined && lastRun[1] === colIndex) {
+      lastRun[1] = colIndex + 1;
+    } else {
+      runs.push([colIndex, colIndex + 1]);
+    }
+    return runs;
+  }, []);
+}
+
+function columnRunCopies(
+  source: BoundedGridRange,
+  destination: BoundedGridRange,
+  runs: ColumnRun[],
+  pasteType: CopyPasteType,
+): CopyPasteOperation[] {
+  return runs.map(([startColIndex, endColIndex]) => ({
+    kind: "copyPaste",
+    source: columnRun(source, startColIndex, endColIndex),
+    destination: columnRun(destination, startColIndex, endColIndex),
+    pasteType,
+  }));
 }
 
 function columnRun(

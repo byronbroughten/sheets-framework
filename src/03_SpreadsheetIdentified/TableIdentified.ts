@@ -48,11 +48,8 @@ export class TableIdentified extends TableCommonIdentified {
   get rowIndexesFullWithData(): number[] {
     return this._withoutBlankRows(this.raw.rowIndexesFull);
   }
-  // A configured column the sheet doesn't have holds nothing to read, clear, or default.
   get nonFormulaColumnIds(): string[] {
-    return this.schema.nonFormulaColumnIds.filter((columnId) =>
-      this.columnResolver.hasColumnId(columnId),
-    );
+    return this._columnIdsOnSheet(this.schema.nonFormulaColumnIds);
   }
   // Feedback columns only report on a row, so a row holding nothing else is still blank.
   get blankTestColumnIds(): string[] {
@@ -169,7 +166,18 @@ export class TableIdentified extends TableCommonIdentified {
   // Appending past a blank row would leave it stranded above the data forever.
   private _rowToFillWithDefaults(): RowIdentified {
     if (this._isTopRowReusable()) return this.topRow;
-    return this.row(this.raw.appendDataRow().rowIndex);
+    return this.row(this.raw.appendDataRow(this._formulaColIndexes).rowIndex);
+  }
+  private get _formulaColIndexes(): number[] {
+    return this._columnIdsOnSheet(this.schema.formulaColumnIds).map(
+      (columnId) => this.columnResolver.colIndexOf(columnId),
+    );
+  }
+  // A configured column the sheet doesn't have holds nothing to read, clear, default or copy.
+  private _columnIdsOnSheet(columnIds: string[]): string[] {
+    return columnIds.filter((columnId) =>
+      this.columnResolver.hasColumnId(columnId),
+    );
   }
   private _isTopRowReusable(): boolean {
     if (!this._isTopRowTheOnlyRow) return false;

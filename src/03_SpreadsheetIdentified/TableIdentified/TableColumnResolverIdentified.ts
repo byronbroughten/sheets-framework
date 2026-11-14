@@ -13,6 +13,9 @@ export class TableColumnResolverIdentified extends TableCommonIdentified {
   hasColumnId(columnId: string): boolean {
     return this.raw.hasColumnId(columnId);
   }
+  colIndexOf(columnId: string): number {
+    return this.raw.colIndexOf(columnId);
+  }
   columnIdAt(colIndex: number): string {
     return this.raw.columnIdAt(colIndex);
   }

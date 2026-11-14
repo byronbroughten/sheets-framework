@@ -52,6 +52,7 @@ export const emptyStateRaw = {
       fillColumns: [],
       findReplaces: [],
       columnTypes: new Map(),
+      appendedFormulaColIndexes: new Set(),
       checkboxCells: [],
       conditionalFormatRules: [],
       editProtections: [],
