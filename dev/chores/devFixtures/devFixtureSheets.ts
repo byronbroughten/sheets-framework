@@ -1,15 +1,12 @@
 import type { CellValue } from "../../../src/00_Source/CellValues/cellValues";
 import type { TableColumnType } from "../../../src/00_Source/RawSource/RawSource";
-import { SheetIndex } from "../../../src/00_Source/RawSource/SheetIndex";
 import { dimensionIds } from "../../../src/01_SpreadsheetSchema/dimensionIds";
 import { tableLayout } from "../../../src/01_SpreadsheetSchema/tableLayout";
-import { TableOrigin } from "../../../src/01_SpreadsheetSchema/TableOrigin";
 
 export interface DevFixtureColumn {
   key: string;
   header: string;
   columnType: TableColumnType;
-  emptyValueAllowed?: boolean;
   values: CellValue[];
   formula?: string;
 }
@@ -17,7 +14,6 @@ export interface DevFixtureColumn {
 export interface DevFixtureTable {
   tableName: string;
   idPrefix: string;
-  origin: TableOrigin;
   entryCheckboxColumnKey?: string;
   columns: DevFixtureColumn[];
 }
@@ -35,6 +31,7 @@ export function bodyRowCountOf(table: DevFixtureTable): number {
   return Math.max(...table.columns.map((column) => column.values.length));
 }
 
+// Second, since sync gives a Table whose ID column is first the idFirst notice.
 function withIdColumn(table: DevFixtureTable): DevFixtureTable {
   const rowCount = bodyRowCountOf(table);
   const idColumn: DevFixtureColumn = {
@@ -45,7 +42,11 @@ function withIdColumn(table: DevFixtureTable): DevFixtureTable {
       dimensionIds.row(table.idPrefix, String(index + 1)),
     ),
   };
-  return { ...table, columns: [idColumn, ...table.columns] };
+  const [firstColumn, ...rest] = table.columns;
+  if (firstColumn === undefined) {
+    throw new Error(`${table.tableName} has no columns.`);
+  }
+  return { ...table, columns: [firstColumn, idColumn, ...rest] };
 }
 
 function entryAmountColumns(
@@ -67,8 +68,6 @@ function nameColumn(values: string[]): DevFixtureColumn {
   };
 }
 
-const expectedOrigin = TableOrigin.expected();
-
 export const devFixtureSheets: readonly DevFixtureSheet[] = [
   {
     sheetGid: 1100001,
@@ -77,21 +76,18 @@ export const devFixtureSheets: readonly DevFixtureSheet[] = [
       withIdColumn({
         tableName: "item",
         idPrefix: "itm",
-        origin: expectedOrigin,
         columns: [
           nameColumn(["Alpha", "Beta", "Gamma"]),
           {
             key: "optionalNote",
             header: "Optional note",
             columnType: "TEXT",
-            emptyValueAllowed: true,
             values: ["", "A note", ""],
           },
           {
             key: "requiredCount",
             header: "Required count",
             columnType: "DOUBLE",
-            emptyValueAllowed: false,
             values: [1, 2, 3],
           },
         ],
@@ -105,7 +101,6 @@ export const devFixtureSheets: readonly DevFixtureSheet[] = [
       withIdColumn({
         tableName: "valueTypes",
         idPrefix: "vty",
-        origin: expectedOrigin,
         columns: [
           {
             key: "stringValue",
@@ -148,7 +143,6 @@ export const devFixtureSheets: readonly DevFixtureSheet[] = [
       {
         tableName: "log",
         idPrefix: "log",
-        origin: expectedOrigin,
         columns: entryAmountColumns(["First entry", "Second entry"], [10, 20]),
       },
     ],
@@ -160,7 +154,6 @@ export const devFixtureSheets: readonly DevFixtureSheet[] = [
       {
         tableName: "computed",
         idPrefix: "cmp",
-        origin: expectedOrigin,
         columns: [
           {
             key: "amount",
@@ -186,7 +179,6 @@ export const devFixtureSheets: readonly DevFixtureSheet[] = [
       withIdColumn({
         tableName: "runItem",
         idPrefix: "rit",
-        origin: expectedOrigin,
         entryCheckboxColumnKey: "result",
         columns: [
           nameColumn(["First", "Second", "Third"]),
@@ -225,20 +217,17 @@ export const devFixtureSheets: readonly DevFixtureSheet[] = [
       withIdColumn({
         tableName: "dates",
         idPrefix: "dat",
-        origin: expectedOrigin,
         columns: [
           {
             key: "requiredDate",
             header: "Required date",
             columnType: "DATE",
-            emptyValueAllowed: false,
             values: [46000, 46001],
           },
           {
             key: "optionalDate",
             header: "Optional date",
             columnType: "DATE",
-            emptyValueAllowed: true,
             values: ["", 46002],
           },
         ],
@@ -253,7 +242,6 @@ export const devFixtureSheets: readonly DevFixtureSheet[] = [
       {
         tableName: "layoutLeft",
         idPrefix: "lyl",
-        origin: expectedOrigin,
         columns: entryAmountColumns(
           ["Left one", "Left two", "Left three"],
           [1, 2, 3],
@@ -262,10 +250,6 @@ export const devFixtureSheets: readonly DevFixtureSheet[] = [
       {
         tableName: "layoutRight",
         idPrefix: "lyr",
-        origin: new TableOrigin({
-          headerRowIndex: SheetIndex.row(3),
-          startColIndex: SheetIndex.col(3),
-        }),
         columns: entryAmountColumns(["Right one", "Right two"], [10, 20]),
       },
     ],
