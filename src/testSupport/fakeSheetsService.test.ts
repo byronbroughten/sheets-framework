@@ -1185,6 +1185,203 @@ describe("stubSheetsService replays Table-bounded inserts and deletes", () => {
   });
 });
 
+const measuredGid = 217;
+
+// Mirrors the live probes (sheets-framework#217, Scratch217E to G): Table at A4:E7 under four rules.
+function measuredRuleSheet(): FakeSheetProperties {
+  return {
+    sheetId: measuredGid,
+    title: "Rules217",
+    rows: buildGridRows({ 6: [1, 2, 3, 4, 5] }),
+    tables: [
+      {
+        tableId: "m",
+        name: "M",
+        startRowIndex: 3,
+        startColumnIndex: 0,
+        endRowIndex: 7,
+        endColumnIndex: 5,
+        headRows: { 0: ["One", "Two", "Three", "Four", "Five"] },
+      },
+    ],
+    conditionalFormats: [
+      formulaRule("A5:E7", '=$C5="x"'),
+      formulaRule("D5:D7", "=D5>0"),
+      formulaRule("B4:B7", "=LEN(B4)>5"),
+      formulaRule("E5:E7", "=D5>2"),
+    ],
+  };
+}
+
+// Takes a one-letter-column A1 range, enough for these fixtures.
+function measuredRange(a1: string): GoogleAppsScript.Sheets.Schema.GridRange {
+  const match = /^([A-Z])(\d+):([A-Z])(\d+)$/.exec(a1);
+  const [, startCol = "A", startRow = "1", endCol = "A", endRow = "1"] =
+    match ?? [];
+  return {
+    sheetId: measuredGid,
+    startRowIndex: Number(startRow) - 1,
+    endRowIndex: Number(endRow),
+    startColumnIndex: startCol.charCodeAt(0) - 65,
+    endColumnIndex: endCol.charCodeAt(0) - 64,
+  };
+}
+
+function formulaRule(
+  a1: string,
+  formula: string,
+): GoogleAppsScript.Sheets.Schema.ConditionalFormatRule {
+  return {
+    ranges: [measuredRange(a1)],
+    booleanRule: {
+      condition: {
+        type: "CUSTOM_FORMULA",
+        values: [{ userEnteredValue: formula }],
+      },
+      format: {},
+    },
+  };
+}
+
+function measuredBandColumns(
+  startColumnIndex: number,
+): GoogleAppsScript.Sheets.Schema.GridRange {
+  return {
+    sheetId: measuredGid,
+    startRowIndex: 0,
+    endRowIndex: 7,
+    startColumnIndex,
+    endColumnIndex: startColumnIndex + 1,
+  };
+}
+
+function measuredRules(
+  grid: FakeGridView,
+): GoogleAppsScript.Sheets.Schema.ConditionalFormatRule[] {
+  return grid.sheet(measuredGid).conditionalFormats;
+}
+
+describe("stubSheetsService replays rules under Table-bounded column inserts and deletes as measured", () => {
+  it("grows a whole-row rule, moves the rules right of the insert with their references, and leaves an anchored reference as written", () => {
+    const { grid } = stubSheetsService({ sheets: [measuredRuleSheet()] });
+
+    send({
+      insertRange: {
+        range: measuredBandColumns(2),
+        shiftDimension: "COLUMNS",
+      },
+    });
+
+    expect(measuredRules(grid)).toEqual([
+      formulaRule("A5:F7", '=$C5="x"'),
+      formulaRule("E5:E7", "=E5>0"),
+      formulaRule("B4:B7", "=LEN(B4)>5"),
+      formulaRule("F5:F7", "=E5>2"),
+    ]);
+  });
+
+  it("removes a rule over only the deleted column, keeps a whole-row rule's range, and leaves a reference to the deleted column as written", () => {
+    const { grid } = stubSheetsService({ sheets: [measuredRuleSheet()] });
+
+    send({
+      deleteRange: {
+        range: measuredBandColumns(3),
+        shiftDimension: "COLUMNS",
+      },
+    });
+
+    expect(measuredRules(grid)).toEqual([
+      formulaRule("A5:E7", '=$C5="x"'),
+      formulaRule("B4:B7", "=LEN(B4)>5"),
+      formulaRule("D5:D7", "=D5>2"),
+    ]);
+  });
+
+  it("moves a relative reference right of a delete left, and leaves an anchored reference to the deleted column as written", () => {
+    const { grid } = stubSheetsService({ sheets: [measuredRuleSheet()] });
+
+    send({
+      deleteRange: {
+        range: measuredBandColumns(2),
+        shiftDimension: "COLUMNS",
+      },
+    });
+
+    expect(measuredRules(grid)).toEqual([
+      formulaRule("A5:E7", '=$C5="x"'),
+      formulaRule("C5:C7", "=C5>0"),
+      formulaRule("B4:B7", "=LEN(B4)>5"),
+      formulaRule("D5:D7", "=C5>2"),
+    ]);
+  });
+
+  it("throws naming a rule spanning a column change without spanning a whole Table", () => {
+    stubSheetsService({
+      sheets: [
+        {
+          ...measuredRuleSheet(),
+          conditionalFormats: [formulaRule("B5:D7", "=$B5>0")],
+        },
+      ],
+    });
+
+    expect(() =>
+      send({
+        insertRange: {
+          range: measuredBandColumns(2),
+          shiftDimension: "COLUMNS",
+        },
+      }),
+    ).toThrowError(
+      "The fake Sheets service does not replay a column change inside a conditional-format rule over part of a Table (B5:D7).",
+    );
+  });
+
+  it("throws naming an anchored reference in a rule a column change moves", () => {
+    stubSheetsService({
+      sheets: [
+        {
+          ...measuredRuleSheet(),
+          conditionalFormats: [formulaRule("D5:D7", "=$D5>0")],
+        },
+      ],
+    });
+
+    expect(() =>
+      send({
+        insertRange: {
+          range: measuredBandColumns(2),
+          shiftDimension: "COLUMNS",
+        },
+      }),
+    ).toThrowError(
+      "The fake Sheets service does not replay a column change under the reference $D5 in a conditional-format rule over D5:D7.",
+    );
+  });
+
+  it("throws naming a rule part of whose columns a delete takes", () => {
+    stubSheetsService({
+      sheets: [
+        {
+          ...measuredRuleSheet(),
+          conditionalFormats: [formulaRule("D5:E7", "=D5>0")],
+        },
+      ],
+    });
+
+    expect(() =>
+      send({
+        deleteRange: {
+          range: measuredBandColumns(3),
+          shiftDimension: "COLUMNS",
+        },
+      }),
+    ).toThrowError(
+      "The fake Sheets service does not replay a column delete over part of a conditional-format rule (D5:E7).",
+    );
+  });
+});
+
 describe("stubSheetsService replays copyPaste of format and validation", () => {
   const modelRow = bandRange({
     startRowIndex: 5,
