@@ -173,6 +173,8 @@ export type SyncRefusal =
       deleted: SyncSubject;
       deletedAt: string;
       touchedBy: string;
+      // Set when touchedBy deletes this Table or one of its columns, which the tab's deletion already takes.
+      takenTable?: string;
     };
 
 export interface ForcedTrait {
@@ -263,9 +265,21 @@ export type SyncPlanEffect =
 
 export type SyncNotice =
   | { kind: "idFirst"; table: string }
-  // A Table the previous configs hold that a person deleted from the sheet.
-  | { kind: "tableGone"; table: string }
+  | SyncTableGoneNotice
+  | SyncTabGoneNotice
   | { kind: "text"; text: string };
+
+// A Table the previous configs hold that a person deleted from the sheet.
+export interface SyncTableGoneNotice {
+  kind: "tableGone";
+  table: string;
+}
+
+// A tab the previous ID-name map holds that a person deleted from the sheet.
+export interface SyncTabGoneNotice {
+  kind: "tabGone";
+  tab: string;
+}
 
 // The framework endpoint's name, in every plan, summary and notice line that cites it.
 export const fillRowIdsName = "Fill Row IDs";

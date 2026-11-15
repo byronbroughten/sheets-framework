@@ -45,11 +45,14 @@ import type {
   ForcedTrait,
   SyncCreatedColumn,
   SyncFlushStoppedOutcome,
+  SyncNotice,
   SyncPlanItem,
   SyncRunFrame,
   SyncRunResult,
   SyncSendLine,
   SyncSubject,
+  SyncTabGoneNotice,
+  SyncTableGoneNotice,
   SyncTypedTraitChange,
 } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
 import { SyncRunResultBuilder } from "../01_SpreadsheetSchema/configReaders/SyncRunResultBuilder";
@@ -207,9 +210,10 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
   }
   run(props: SyncRunProps): SyncRun {
     const { alterations } = props.intendedState;
+    const tabOfTable = tabsByTable(props.previousIdNameMap);
     const planner = SyncPlanner.init({
       alterations,
-      tabsByTable: tabsByTable(props.previousIdNameMap),
+      tabsByTable: tabOfTable,
       forcedTraits: props.forcedTraits,
     });
     const refusals = [
@@ -233,7 +237,15 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     this.rowIdsOperator.validateIdPrefixes();
     const checkboxPlan = this.rowIdsOperator.checkboxPlan();
     const notices = [
-      ...this.tableConfigOperator.goneTableNotices(props.previousIdNameMap),
+      ...goneNotices({
+        tabsGone: this.tabConfigOperator.goneTabNotices(
+          props.previousIdNameMap,
+        ),
+        tablesGone: this.tableConfigOperator.goneTableNotices(
+          props.previousIdNameMap,
+        ),
+        tabsByTable: tabOfTable,
+      }),
       ...this.rowIdsOperator.idFirstNotices(),
     ];
     const readings = this._traitReadings();
@@ -616,4 +628,30 @@ function tabsByTable({
     },
     {},
   );
+}
+
+interface GoneNoticesProps {
+  tabsGone: SyncTabGoneNotice[];
+  tablesGone: SyncTableGoneNotice[];
+  tabsByTable: Record<string, string | undefined>;
+}
+
+// Each gone tab's line comes just before its own Tables' lines, then the Tables gone from a live tab.
+function goneNotices({
+  tabsGone,
+  tablesGone,
+  tabsByTable,
+}: GoneNoticesProps): SyncNotice[] {
+  const goneTabs = new Set(tabsGone.map(({ tab }) => tab));
+  const fromLiveTabs = tablesGone.filter(({ table }) => {
+    const tab = tabsByTable[table];
+    return tab === undefined || !goneTabs.has(tab);
+  });
+  return [
+    ...tabsGone.flatMap((tabGone) => [
+      tabGone,
+      ...tablesGone.filter(({ table }) => tabsByTable[table] === tabGone.tab),
+    ]),
+    ...fromLiveTabs,
+  ];
 }

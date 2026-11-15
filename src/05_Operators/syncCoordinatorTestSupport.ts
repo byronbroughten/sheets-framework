@@ -290,6 +290,11 @@ export function emptyValueAllowedOf(
   return JSON.parse(Val.assert(match?.[1], "emitted emptyValueAllowed"));
 }
 
+export function retiredPrefixesOf(files: ConfigRegeneration): unknown {
+  const match = files.retiredIdPrefixes.match(/makeRetiredIdPrefixes\((.*)\);/);
+  return JSON.parse(Val.assert(match?.[1], "emitted retired prefixes"));
+}
+
 export const optionalNoteAlteration: PendingAlterations = {
   tables: {
     item: { columns: { optionalNote: { emptyValueAllowed: false } } },

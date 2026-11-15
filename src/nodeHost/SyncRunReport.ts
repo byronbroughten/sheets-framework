@@ -383,11 +383,14 @@ interface RefusalWords {
 
 function refusalWords(refusal: SyncRefusal): RefusalWords {
   if (refusal.kind === "touchesDeletion") {
-    const { deleted, deletedAt, touchedBy } = refusal;
+    const { deleted, deletedAt, touchedBy, takenTable } = refusal;
     return {
       heading: subjectLabel(deleted),
       lines: [
         `${deletedAt} deletes ${subjectLabel(deleted)}, and ${touchedBy} touches it in the same run.`,
+        ...(takenTable === undefined
+          ? []
+          : [`The tab's deletion already takes the Table ${takenTable}.`]),
         "Take one of the two out, then rerun.",
       ],
     };
@@ -724,6 +727,9 @@ function effectLine(effect: SyncPlanEffect): string {
 
 function noticeLine(notice: SyncNotice): string {
   if (notice.kind === "text") return notice.text;
+  if (notice.kind === "tabGone") {
+    return `${notice.tab}: a person deleted this tab from the sheet, so sync dropped it from the configs.`;
+  }
   const { table } = notice;
   if (notice.kind === "tableGone") {
     return `${table}: a person deleted this Table from the sheet, so sync dropped it from the configs and retired its ID prefix.`;

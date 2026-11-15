@@ -22,6 +22,7 @@ interface Deletion {
 interface Touch {
   targets: string[];
   touchedBy: string;
+  takenTable?: string;
 }
 
 // Refuses a deletion beside another entry touching what it deletes, naming both.
@@ -35,7 +36,7 @@ export class DeletionRefuser {
   get refusals(): SyncRefusal[] {
     const touches = this._alterationTouches;
     return this._deletions.flatMap((deletion) =>
-      touches.flatMap(({ targets, touchedBy }) => {
+      touches.flatMap(({ targets, touchedBy, takenTable }) => {
         if (!targets.includes(deletion.target)) return [];
         return [
           {
@@ -43,6 +44,7 @@ export class DeletionRefuser {
             deleted: deletion.subject,
             deletedAt: deletion.deletedAt,
             touchedBy,
+            ...(takenTable === undefined ? {} : { takenTable }),
           },
         ];
       }),
@@ -113,8 +115,8 @@ export class DeletionRefuser {
     return [...tableTouches, ...tabTouches, ...newTabTouches];
   }
   private _tableEntryTouches(table: string, entry: WideTableEntry): Touch[] {
-    if (entry.deleted === true) return [];
     const at = `tables.${table}`;
+    if (entry.deleted === true) return this._takenTableTouches(table, at);
     return [
       { targets: this._tableTargets(table), touchedBy: at },
       ...entriesOf(entry.columns).flatMap(([column, columnEntry]) =>
@@ -135,12 +137,18 @@ export class DeletionRefuser {
     column: string,
     entry: WideColumnEntry,
   ): Touch[] {
-    if (entry.deleted === true) return [];
     const at = `tables.${table}.columns.${column}`;
+    if (entry.deleted === true) return this._takenTableTouches(table, at);
     return [
       { targets: this._columnTargets(table, column), touchedBy: at },
       ...this._placedColumnTouches(table, entry, at),
     ];
+  }
+  // A Table or column deletion touches only its tab, whose deletion already takes the Table.
+  private _takenTableTouches(table: string, touchedBy: string): Touch[] {
+    const targets = this._tabTargets(table);
+    if (targets.length === 0) return [];
+    return [{ targets, touchedBy, takenTable: table }];
   }
   private _placedColumnTouches(
     table: string,
@@ -218,8 +226,11 @@ export class DeletionRefuser {
     return [columnTarget(table, column), ...this._tableTargets(table)];
   }
   private _tableTargets(table: string): string[] {
+    return [tableTarget(table), ...this._tabTargets(table)];
+  }
+  private _tabTargets(table: string): string[] {
     const tab = this.tabsByTable[table];
-    return [tableTarget(table), ...(tab === undefined ? [] : [tabTarget(tab)])];
+    return tab === undefined ? [] : [tabTarget(tab)];
   }
 }
 
