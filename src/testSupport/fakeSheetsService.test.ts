@@ -9,6 +9,7 @@ import {
   type FakeTable,
   stubSheetsService,
 } from "./fakeSheetsService";
+import { a1Notation } from "./fakeSheetsService/a1Notation";
 import type { BoundedRange } from "./fakeSheetsService/fakeGrid";
 import type { FakeTablePlacement } from "./fakeSheetsService/fakeTables";
 import { fakeTableSheet } from "./fakeSheetsService/fakeTableSheet";
@@ -1213,17 +1214,16 @@ function measuredRuleSheet(): FakeSheetProperties {
   };
 }
 
-// Takes a one-letter-column A1 range, enough for these fixtures.
 function measuredRange(a1: string): GoogleAppsScript.Sheets.Schema.GridRange {
-  const match = /^([A-Z])(\d+):([A-Z])(\d+)$/.exec(a1);
+  const match = /^([A-Z]+)(\d+):([A-Z]+)(\d+)$/.exec(a1);
   const [, startCol = "A", startRow = "1", endCol = "A", endRow = "1"] =
     match ?? [];
   return {
     sheetId: measuredGid,
     startRowIndex: Number(startRow) - 1,
     endRowIndex: Number(endRow),
-    startColumnIndex: startCol.charCodeAt(0) - 65,
-    endColumnIndex: endCol.charCodeAt(0) - 64,
+    startColumnIndex: a1Notation.columnIndex(startCol),
+    endColumnIndex: a1Notation.columnIndex(endCol) + 1,
   };
 }
 
@@ -1358,6 +1358,35 @@ describe("stubSheetsService replays rules under Table-bounded column inserts and
       "The fake Sheets service does not replay a column change under the reference $D5 in a conditional-format rule over D5:D7.",
     );
   });
+
+  it.each([
+    ["=COUNTIF(D:D,D5)>1", "D:D"],
+    ["=COUNTIF(5:5,D5)>1", "5:5"],
+    ["=Other!D5>1", "!"],
+  ])(
+    "throws naming an unmeasured reference shape in %s",
+    (formula, reference) => {
+      stubSheetsService({
+        sheets: [
+          {
+            ...measuredRuleSheet(),
+            conditionalFormats: [formulaRule("D5:D7", formula)],
+          },
+        ],
+      });
+
+      expect(() =>
+        send({
+          insertRange: {
+            range: measuredBandColumns(2),
+            shiftDimension: "COLUMNS",
+          },
+        }),
+      ).toThrowError(
+        `The fake Sheets service does not replay a column change under the reference ${reference} in a conditional-format rule over D5:D7.`,
+      );
+    },
+  );
 
   it("throws naming a rule part of whose columns a delete takes", () => {
     stubSheetsService({

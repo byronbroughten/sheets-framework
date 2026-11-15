@@ -1,17 +1,22 @@
-import { a1Columns } from "./a1Columns";
+import { a1Notation } from "./a1Notation";
 import type { BandChange, DimensionShift } from "./fakeGrid";
+import { unreplayed } from "./unreplayed";
 
 type ConditionalFormatRule =
   GoogleAppsScript.Sheets.Schema.ConditionalFormatRule;
 type GridRange = GoogleAppsScript.Sheets.Schema.GridRange;
 
-export interface BandColumnRuleShift {
-  rule: ConditionalFormatRule;
-  // The rule's one range, held whole across the band's rows.
-  range: GridRange;
+// A band change and where it moves each index.
+export interface BandShift {
   change: BandChange;
   kind: "insert" | "remove";
   shift: DimensionShift;
+}
+
+export interface BandColumnRuleShift extends BandShift {
+  rule: ConditionalFormatRule;
+  // The rule's one range, held whole across the band's rows.
+  range: GridRange;
   // The columns of each Table the band holds, before the change.
   tableColumnSpans: [number, number][];
 }
@@ -23,10 +28,13 @@ interface PlacedRule extends BandColumnRuleShift {
   placement: RulePlacement;
 }
 
-// A cell reference outside a string literal, never a function name such as LOG10(.
-const cellReference =
-  /(?<![A-Za-z0-9_.])(\$?)([A-Z]{1,3})(\$?\d+)(?![A-Za-z0-9_(])/g;
+export const ruleOwner = "conditional-format rule";
+
+const cellReferences = new RegExp(a1Notation.cellReference, "g");
 const stringLiteral = /("(?:[^"]|"")*")/;
+// A whole-column (D:D) or whole-row (5:5) range, or a reference qualified by a sheet name.
+const unmeasuredReference =
+  /(?<![A-Za-z0-9_])\$?[A-Z]{1,3}:\$?[A-Z]{1,3}(?![0-9A-Za-z_(])|(?<![A-Za-z0-9_])\$?\d+:\$?\d+|!/;
 
 // Measured live (sheets-framework#217, Scratch217E to G); any other shape throws rather than guess.
 export const bandColumnRules = {
@@ -35,7 +43,7 @@ export const bandColumnRules = {
     const { startColumnIndex, endColumnIndex } = range;
     if (startColumnIndex === undefined || endColumnIndex === undefined) {
       throw unreplayed(
-        "a column change under a conditional-format rule with no column bound",
+        `a column change under a ${ruleOwner} with no column bound`,
       );
     }
     if (endColumnIndex <= change.startIndex) {
@@ -49,7 +57,7 @@ export const bandColumnRules = {
     if (movedStart === undefined && movedLast === undefined) return [];
     if (movedStart === undefined || movedLast === undefined) {
       throw unreplayed(
-        `a column delete over part of a conditional-format rule (${rangeA1(range)})`,
+        `a column delete over part of a ${ruleOwner} (${a1Notation.range(range)})`,
       );
     }
     const moved = withFormulasShifted({ ...ruleShift, placement: "moved" });
@@ -80,7 +88,7 @@ function spanningRule(
   );
   if (!isOverWholeTable) {
     throw unreplayed(
-      `a column change inside a conditional-format rule over part of a Table (${rangeA1(range)})`,
+      `a column change inside a ${ruleOwner} over part of a Table (${a1Notation.range(range)})`,
     );
   }
   const spanning = withFormulasShifted({ ...ruleShift, placement: "spanning" });
@@ -108,39 +116,49 @@ function withFormulasShifted(placed: PlacedRule): ConditionalFormatRule {
 
 // Measured: an $-anchored column stays as written; a relative one moves with its column unless deleted.
 function shiftedFormula(formula: string, placed: PlacedRule): string {
-  const { change, shift, placement, range } = placed;
   return formula
     .split(stringLiteral)
     .map((part, index) => {
       if (index % 2 === 1) return part;
+      const unmeasured = unmeasuredReference.exec(part);
+      if (unmeasured !== null) {
+        throw unreplayedReference(unmeasured[0], placed);
+      }
       return part.replace(
-        cellReference,
-        (reference, anchor: string, letters: string, row: string) => {
-          const colIndex = a1Columns.index(letters);
-          if (colIndex < change.startIndex) return reference;
-          const isAnchoredInSpanning =
-            anchor === "$" && placement === "spanning";
-          if (isAnchoredInSpanning) return reference;
-          if (anchor === "$" || placement !== "moved") {
-            throw unreplayed(
-              `a column change under the reference ${reference} in a conditional-format rule over ${rangeA1(range)}`,
-            );
-          }
-          const movedIndex = shift.index(colIndex);
-          if (movedIndex === undefined) return reference;
-          return `${a1Columns.letters(movedIndex)}${row}`;
-        },
+        cellReferences,
+        (reference, anchor: string, letters: string, row: string) =>
+          shiftedReference({ reference, anchor, letters, row }, placed),
       );
     })
     .join("");
 }
 
-function rangeA1(range: GridRange): string {
-  const startColumn = a1Columns.letters(range.startColumnIndex ?? 0);
-  const lastColumn = a1Columns.letters((range.endColumnIndex ?? 1) - 1);
-  return `${startColumn}${(range.startRowIndex ?? 0) + 1}:${lastColumn}${range.endRowIndex ?? ""}`;
+interface CellReference {
+  reference: string;
+  anchor: string;
+  letters: string;
+  row: string;
 }
 
-function unreplayed(what: string): Error {
-  return new Error(`The fake Sheets service does not replay ${what}.`);
+function shiftedReference(
+  { reference, anchor, letters, row }: CellReference,
+  placed: PlacedRule,
+): string {
+  const { change, shift, placement } = placed;
+  const colIndex = a1Notation.columnIndex(letters);
+  if (colIndex < change.startIndex) return reference;
+  const isAnchoredInSpanning = anchor === "$" && placement === "spanning";
+  if (isAnchoredInSpanning) return reference;
+  if (anchor === "$" || placement !== "moved") {
+    throw unreplayedReference(reference, placed);
+  }
+  const movedIndex = shift.index(colIndex);
+  if (movedIndex === undefined) return reference;
+  return `${a1Notation.columnLetters(movedIndex)}${row}`;
+}
+
+function unreplayedReference(reference: string, { range }: PlacedRule): Error {
+  return unreplayed(
+    `a column change under the reference ${reference} in a ${ruleOwner} over ${a1Notation.range(range)}`,
+  );
 }
