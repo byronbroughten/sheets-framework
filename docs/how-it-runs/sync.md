@@ -6,9 +6,11 @@
 
 `sheets-framework sync` (`npm run sync` in a package) runs `SyncCoordinator.run` with the pending alterations in `alterations.ts` as intended state and the previous `idNameMap.ts` as the map its entries are checked against; a missing `alterations.ts` is an empty one and a missing map an empty map. A bare run reads the live sheet, plans, and refreshes the configs from what it read, but sends nothing. `--send` sends the plan as well, any missing column IDs to business sheets' header rows, and a Fill Row IDs checkbox into each empty action-row cell above an ID column, in one flush; a non-empty cell there is left alone. After the regen it fills every blank ID cell, planned from the fresh configs, as its own send; that is the only row data `sync` writes. A Table with an ID column but no ID prefix stops the run before any send, and a Table whose ID is its first column gets the `idFirst` notice, since the Table name chip hides its checkbox. Either way, it prints the run's result through `SyncRunReport`.
 
-## sync's entered-data gate and --confirm
+## Adding columns with newColumns
 
-**`newColumns` is sendable, and `sync` mints each new column's ID.** An entry takes only `header`, `before` and `emptyValueAllowed`; `formula` and `columnType` are refused as not sendable yet, since they need a write after the insert (`sendableTraits.newColumn`). A header the Table already has stops the run as a `STOP n · <table> › newColumns` block naming the existing column and its ID, and the landed line reads `<table>: created "<header>" as <name>, <id>.`.
+**`newColumns` is sendable, and `sync` mints each new column's ID.** An entry takes only `header`, `before` and `emptyValueAllowed`; `formula` and `columnType` are refused as not sendable yet, since they need a write after the insert (`sendableTraits.newColumn`).
+
+## sync's entered-data gate and --confirm
 
 **A formula alteration is sent by `--send`**: its brace text ([forms](../architecture/cell-writes.md)) is compiled to live Table references and filled into every body row through `pasteData`, by `ColumnConfigsOperator.updateFormulas`. `SyncEntryRefuser` refuses a malformed brace before any send.
 

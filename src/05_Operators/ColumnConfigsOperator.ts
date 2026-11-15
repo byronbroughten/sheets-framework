@@ -338,8 +338,6 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
         header: config.header,
         column,
         columnId: newColumn.columnId,
-        columnType: config.columnType?.type ?? "AUTOMATIC",
-        position: newColumnLines.position(newColumn),
       });
     }
     return landed;

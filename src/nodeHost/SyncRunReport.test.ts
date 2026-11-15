@@ -843,8 +843,6 @@ describe("SyncRunReport, case G: a send stopped partway", () => {
         header: "Late fee",
         column: "lateFee",
         columnId: "c:och:Q8x1mZp",
-        columnType: "CURRENCY",
-        position: "at the Table's end",
       },
     ],
     notSent: [
@@ -958,8 +956,6 @@ describe("SyncRunReport, case H: a clean send", () => {
         header: "Receipt no.",
         column: "receiptNo",
         columnId: "c:opy:Xw3nB7d",
-        columnType: "TEXT",
-        position: "at the Table's end",
       },
     ],
     plan: [

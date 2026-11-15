@@ -125,7 +125,6 @@ describe("SyncCoordinator.run new columns", () => {
           header: "Late fee",
           column: "lateFee",
           columnId,
-          position: "at the Table's end",
         },
       ],
     });
