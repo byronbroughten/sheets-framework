@@ -144,7 +144,7 @@ Write-ups sourced from Google's docs live on `research/*` branches, listed by `g
 
 ### Reading conditional formats
 
-- Observed: A gradient rule added with gworkspace's `manage_conditional_formatting` over `Item!D5:D8`, the `item` Table's `Required count` body, header row 4, read back from a REST API v4 plain `spreadsheets.get` with range `D5:D7` and a `gradientRule` of `minpoint` and `maxpoint`, each holding `color`, `type` and `colorStyle.rgbColor`; two `dev:gen:configs` runs in a row recorded it as one unmodelable record with the same handle, and a pending `conditionalFormats.remove` of that handle sent by `dev:gen:configs -- --send` landed, the refetch holding no rule on the Item tab; dev spreadsheet; 2026-11-14; [#278](https://github.com/byronbroughten/sheets-framework/issues/278).
+- Observed: A gradient rule added with gworkspace's `manage_conditional_formatting` over `Item!D5:D8`, one row past the `item` Table's `Required count` body at `D5:D7`, read back from a REST API v4 plain `spreadsheets.get` with range `D5:D7` and a `gradientRule` of `minpoint` and `maxpoint`, each holding `color`, `type` and `colorStyle.rgbColor`, and a second get minutes later returned the same range and the same rule JSON; dev spreadsheet, read by `dev:gen:configs`; 2026-11-14; [#278](https://github.com/byronbroughten/sheets-framework/issues/278).
 - Observed: A REST API v4 plain `spreadsheets.get` whose fields mask asked for each sheet's properties, its Tables and its `conditionalFormats` in one `sheets(...)` returned the rules beside the properties, 43 boolean rules over 11 tabs; `Scratch217` tabs on the dev spreadsheet, read by `dev:gen:configs`; 2026-11-09; [resolution on #264](https://github.com/byronbroughten/sheets-framework/issues/264#issuecomment-6757052221).
 - Observed: A REST API v4 `getByDataFilter` returned no `conditionalFormats` for sheets holding rules, and a plain `spreadsheets.get` with the fields mask `sheets(properties(sheetId),conditionalFormats)` returned them; live spreadsheet, the sheets not recorded; 2026-09-16; [recorded in 62abd855](https://github.com/byronbroughten/byro-repo/commit/62abd85537ae0110cd80e3311e00c2aa298f9eb0), [recorded in 613de032](https://github.com/byronbroughten/byro-repo/commit/613de032e7a8310dd19277de344f51caca4e4ce2).
 - Observed: A REST API v4 read of conditional-format rules returned each colour as a `*ColorStyle` (`backgroundColorStyle`, `foregroundColorStyle`) beside the plain colour field; live spreadsheet, the sheets not recorded; 2026-09-16; [recorded in 62abd855](https://github.com/byronbroughten/byro-repo/commit/62abd85537ae0110cd80e3311e00c2aa298f9eb0), [recorded in 613de032](https://github.com/byronbroughten/byro-repo/commit/613de032e7a8310dd19277de344f51caca4e4ce2).
@@ -168,6 +168,10 @@ Write-ups sourced from Google's docs live on `research/*` branches, listed by `g
 ### Checkbox cells
 
 - Observed: `Add Property Expense`'s one body row held an explicit `FALSE` in a just-added checkbox column and nothing anywhere else; live spreadsheet, a Table, how the column was added and the read's surface not recorded; 2026-09-11; [recorded in 4e93f46f](https://github.com/byronbroughten/byro-repo/commit/4e93f46f392780ef5fc25ecd87364776269f4ef2).
+
+### Deleting conditional formats
+
+- Observed: A REST API v4 `batchUpdate` `deleteConditionalFormatRule` at the fetched index of a gradient rule over `Item!D5:D7`, the Item tab's one rule, deleted it, and a plain `spreadsheets.get` after the flush returned no rule on the tab; dev spreadsheet, sent by `dev:gen:configs -- --send`; 2026-11-14; [#278](https://github.com/byronbroughten/sheets-framework/issues/278).
 
 ## Protections
 
