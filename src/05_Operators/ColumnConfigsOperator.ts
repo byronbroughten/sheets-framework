@@ -309,6 +309,7 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
         table.startColumnIndex + this._colIndexOf(tableId, columnId),
       );
       const bodyRows = this.schema.gridRangeA1({
+        sheetId: table.sheetGid,
         startRowIndex: SheetIndex.row(table.startRowIndex + 1),
         endRowIndex: table.endRowIndex,
         startColumnIndex: colIndex,
