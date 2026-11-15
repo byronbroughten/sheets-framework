@@ -30,5 +30,5 @@ Named in [How does the gate tell a data-preserving gen:configs or chore send fro
 
 - **Entered data**: a non-empty value in a Table data-row cell that isn't a formula, judged cell by cell. Head-row cells never count, even when a person typed them: their content is in the configs, so git is their undo and a person's edit there is a three-way conflict.
   - Not "business data": the dev spreadsheet's fixture Tables hold none, and the rule covers them. Not "user data": it reads as the person running the command. Not "typed data": the glossary's **Untyped** is about column types. Not "Table data": a Table starts on its header row, so that would include headers.
-- **Held**: a send's item that waits for `--confirm <token>`: deleting or overwriting entered data, a forced property, a dropdown style reset under `"ask"`, and anything not classified. A send with no held item is **free**.
+- **Held**: a send's item that waits for `--confirm <token>`: deleting or overwriting entered data, a deleted tab's every non-blank cell outside its Tables and their head rows (formulas included), a forced property, a dropdown style reset under `"ask"`, and anything not classified. A send with no held item is **free**.
   - Not "destructive": a forced property and a dropdown style reset are held but lose no data. Not "gated": that is the tier gate's word, in byro-repo.
