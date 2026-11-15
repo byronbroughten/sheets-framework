@@ -45,10 +45,10 @@ export type SyncSendOutcome =
   | { kind: "stopped" }
   | { kind: "refused" }
   | SyncSentOutcome
-  | SyncHeldStoppedOutcome;
+  | SyncFlushStoppedOutcome;
 
-// A send the entered-data gate refused at a held flush.
-export type SyncHeldStoppedOutcome =
+// A send stopped at a flush the entered-data gate held or Google refused.
+export type SyncFlushStoppedOutcome =
   SyncStoppedBeforeSendingOutcome | SyncStoppedPartwayOutcome;
 
 export interface SyncSentOutcome {
@@ -56,19 +56,24 @@ export interface SyncSentOutcome {
   summary: string;
 }
 
-export interface SyncStoppedBeforeSendingOutcome {
+export type SyncStoppedBeforeSendingOutcome = {
   kind: "stoppedBeforeSending";
-  heldBy: SyncHeldBy;
-}
+} & SyncStopCause;
 
-export interface SyncStoppedPartwayOutcome {
+export type SyncStoppedPartwayOutcome = {
   kind: "stoppedPartway";
-  // At least 1: a send held at its first flush is stoppedBeforeSending, since nothing in it landed.
+} & SyncLandedFlushes &
+  SyncStopCause;
+
+export interface SyncLandedFlushes {
+  // At least 1 on a partway stop: a send stopped at its first flush is stoppedBeforeSending, since nothing in it landed.
   landedFlushes: number;
   // The dry run's flush count, from its held file; absent when the send had none to read.
   flushCount?: number;
-  heldBy: SyncHeldBy;
 }
+
+// The gate held the flush, or Google refused its batch whole, in the reworded text that names the Tables.
+export type SyncStopCause = { heldBy: SyncHeldBy } | { googleRefusal: string };
 
 // "uncovered": the send had no --confirm; "mismatched": the sheet or plan changed since the dry run.
 export type SyncHeldBy = "uncovered" | "mismatched";

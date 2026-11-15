@@ -235,9 +235,10 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
       if (!(error instanceof PartialTableRefusal)) throw error;
       throw this._rewordedRefusal(error);
     }
+    if (operations.length > 0) this.spreadsheetStateRaw.landedFlushCount += 1;
   }
   // Google names neither Table, so the Table refused is the one the operation was gathered for.
-  private _rewordedRefusal(refusal: PartialTableRefusal): Error {
+  private _rewordedRefusal(refusal: PartialTableRefusal): PartialTableRefusal {
     const { operation } = refusal;
     if (operation.kind !== "insertRange") return refusal;
     const split = this._fetchTableSplitBy(operation);
@@ -247,18 +248,37 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
     );
     if (growth !== undefined) {
       const grown = this.ss.table(growth.tableId);
-      return new Error(
+      return new PartialTableRefusal(
         `Growing Table "${grown.name}" on sheet "${grown.sheetTitle}" would insert cells over part of Table "${split.name}" below it. Make the lower Table, "${split.name}", no wider than "${grown.name}", or move it.`,
+        operation,
       );
     }
-    const insert = this.writeOperations.insertTableEndColumns.find(
-      ({ operations }) => operations.includes(operation),
-    );
-    if (insert === undefined) return refusal;
+    const splitting = this._columnWriteSplitting(operation, split.name);
+    if (splitting === undefined) return refusal;
     const { startRowIndex, endRowIndex } = operation.range;
-    return new Error(
-      `${this.ss.table(insert.tableId).columnInsertSplitting(split.name)}. Move "${split.name}" so that it sits entirely within rows ${startRowIndex + 1}–${endRowIndex}, or entirely outside them.`,
+    return new PartialTableRefusal(
+      `${splitting}. Move "${split.name}" so that it sits entirely within rows ${startRowIndex + 1}–${endRowIndex}, or entirely outside them.`,
+      operation,
     );
+  }
+  private _columnWriteSplitting(
+    insert: InsertRangeOperation,
+    splitName: string,
+  ): string | undefined {
+    const { insertTableEndColumns, changeTableColumns } = this.writeOperations;
+    const endInsert = insertTableEndColumns.find(({ operations }) =>
+      operations.includes(insert),
+    );
+    if (endInsert !== undefined) {
+      return this.ss.table(endInsert.tableId).columnInsertSplitting(splitName);
+    }
+    const change = changeTableColumns.find(({ operations }) =>
+      operations.includes(insert),
+    );
+    if (change === undefined) return undefined;
+    return this.ss
+      .table(change.tableId)
+      .columnChangeSplitting(change, insert, splitName);
   }
   // Refused whole, so the live layout is from before this batch's growth, which a column insert is measured after.
   private _fetchTableSplitBy(

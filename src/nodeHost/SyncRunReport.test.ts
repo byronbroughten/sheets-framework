@@ -883,6 +883,41 @@ describe("SyncRunReport, case G: a send stopped partway", () => {
   });
 });
 
+describe("SyncRunReport, a send Google refused partway", () => {
+  const googleRefusal =
+    'Moving columns in Table "occCharge" on sheet "Charges" would split Table "beside" beside it. Move "beside" so that it sits entirely within rows 1–4, or entirely outside them.';
+  const lines = render({
+    ...appSend,
+    outcome: { kind: "stoppedPartway", landedFlushes: 1, googleRefusal },
+    landed: [],
+    notSent: [],
+    configs: noConfigChanges,
+  });
+
+  it("says the earlier flush landed and Google applied none of the refused one", () => {
+    expect(resultLine(lines)).toBe(
+      `STOPPED PARTWAY: flush 1 landed; flush 2 was refused: Google refused its batch and applied none of it. ${googleRefusal} Nothing after it was sent.`,
+    );
+  });
+});
+
+describe("SyncRunReport, a send Google refused at its first flush", () => {
+  const googleRefusal = 'Table "beside" would be split.';
+  const lines = render({
+    ...appSend,
+    outcome: { kind: "stoppedBeforeSending", googleRefusal },
+    landed: [],
+    notSent: [],
+    configs: noConfigChanges,
+  });
+
+  it("says nothing was sent", () => {
+    expect(resultLine(lines)).toBe(
+      `STOPPED: the send was refused before any flush landed: Google refused its batch and applied none of it. ${googleRefusal} Nothing was sent.`,
+    );
+  });
+});
+
 describe("SyncRunReport, a send refused at its first flush", () => {
   const lines = render({
     ...appSend,
