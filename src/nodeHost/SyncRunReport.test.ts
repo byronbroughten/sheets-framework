@@ -561,6 +561,13 @@ describe("SyncRunReport's intended-state refusals", () => {
         deletedAt: "tabs.log",
         touchedBy: "tabs.item.before",
       },
+      {
+        kind: "touchesDeletion",
+        deleted: { tab: "log" },
+        deletedAt: "tabs.log",
+        touchedBy: "tables.logEntry",
+        takenTable: "logEntry",
+      },
     ],
   }).join("\n");
 
@@ -569,6 +576,13 @@ describe("SyncRunReport's intended-state refusals", () => {
     expect(text).toContain(
       "tabs.log deletes tab log, and tabs.item.before touches it in the same run.",
     );
+  });
+
+  it("says a tab's deletion already takes a Table another entry deletes", () => {
+    expect(text).toContain(
+      "tabs.log deletes tab log, and tables.logEntry touches it in the same run.\n  The tab's deletion already takes the Table logEntry.",
+    );
+    expect(text.match(/already takes/g)).toHaveLength(1);
   });
 });
 
@@ -955,6 +969,26 @@ describe("SyncRunReport, a Table a person deleted", () => {
   it("names the Table under Notices, saying the configs dropped it", () => {
     expect(sections(lines)).toContain("Notices");
     expect(lines).toContain(
+      "occPayment: a person deleted this Table from the sheet, so sync dropped it from the configs and retired its ID prefix.",
+    );
+  });
+});
+
+describe("SyncRunReport, a tab a person deleted", () => {
+  const lines = render({
+    ...appSend,
+    outcome: { kind: "sent", summary: "nothing to send" },
+    notices: [
+      { kind: "tabGone", tab: "payments" },
+      { kind: "tableGone", table: "occPayment" },
+    ],
+  });
+
+  it("names the tab under Notices, beside its Table's line", () => {
+    const tabLine =
+      "payments: a person deleted this tab from the sheet, so sync dropped it from the configs.";
+    expect(lines).toContain(tabLine);
+    expect(lines[lines.indexOf(tabLine) + 1]).toBe(
       "occPayment: a person deleted this Table from the sheet, so sync dropped it from the configs and retired its ID prefix.",
     );
   });

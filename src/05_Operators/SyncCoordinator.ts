@@ -233,6 +233,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     this.rowIdsOperator.validateIdPrefixes();
     const checkboxPlan = this.rowIdsOperator.checkboxPlan();
     const notices = [
+      ...this.tabConfigOperator.goneTabNotices(props.previousIdNameMap),
       ...this.tableConfigOperator.goneTableNotices(props.previousIdNameMap),
       ...this.rowIdsOperator.idFirstNotices(),
     ];
