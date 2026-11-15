@@ -189,7 +189,6 @@ function isWholeTab(range: GoogleGridRange, sheetGid: number): boolean {
   );
 }
 
-// The header row and the head rows above it, over the Table's columns.
 function headRowsRange(table: GoogleTable): GoogleGridRange {
   const range = table.range ?? {};
   const headerRowIndex = range.startRowIndex ?? 0;

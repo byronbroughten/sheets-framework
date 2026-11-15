@@ -324,6 +324,32 @@ describe("FlushClassifier.heldItems", () => {
       ]);
     });
 
+    it("holds a Table's body data inside the head rows of a Table stacked below it", () => {
+      const stacked = ledgerUsedGridRead();
+      const [sheet] = stacked.spreadsheet.sheets ?? [];
+      sheet?.tables?.push({
+        tableId: "tbl-notes",
+        name: "Notes",
+        range: {
+          sheetId: ledgerGid,
+          startRowIndex: 6,
+          endRowIndex: 7,
+          startColumnIndex: 0,
+          endColumnIndex: 2,
+        },
+      });
+      const held = deletedCells(
+        heldItems([{ deleteSheet: { sheetId: ledgerGid } }], {
+          reads: [stacked],
+        }),
+      ).filter(({ table }) => table === "Ledger");
+      expect(held.map(({ before }) => before)).toEqual([
+        '"Rent"',
+        "1200",
+        '"Fee"',
+      ]);
+    });
+
     it("holds each held cell as a deleteSheet delete", () => {
       const [first] = ledgerDeleteHeldItems();
       expect(first).toMatchObject({

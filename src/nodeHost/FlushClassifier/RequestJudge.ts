@@ -77,7 +77,9 @@ export class RequestJudge {
     return this;
   }
   delete(cells: GridCell[]): this {
-    cells.forEach((cell) => this._judge(cell, deletedAfter));
+    for (const cell of cells) {
+      this._judge(cell, deletedAfter);
+    }
     return this;
   }
   // Every held cell on the tab, which only a read of its whole used grid can show.
@@ -148,17 +150,18 @@ export class RequestJudge {
     if (read.kind === "outsideTables") return;
     this._holdEnteredData({ origin, read, after });
   }
-  // A Table's body cell is judged as deleteTable judges it; any other non-blank cell, a formula included, is held.
+  // A Table's body cell is judged as deleteTable judges it, even inside another Table's head rows; any other non-blank cell, a formula included, is held.
   private _judgeTabCell(cell: GridCell): void {
     const origin = this._readOrigin(cell);
-    if (origin === undefined || this.reads.isInHeadRows(origin)) return;
+    if (origin === undefined) return;
     const read = this.reads.cellAt(origin);
-    if (read.kind === "outsideTables") {
-      const value = this.reads.valueAt(origin);
-      this._holdChange({ origin, read: value, after: deletedAfter });
+    if (read.kind !== "outsideTables") {
+      this._holdEnteredData({ origin, read, after: deletedAfter });
       return;
     }
-    this._holdEnteredData({ origin, read, after: deletedAfter });
+    if (this.reads.isInHeadRows(origin)) return;
+    const value = this.reads.valueAt(origin);
+    this._holdChange({ origin, read: value, after: deletedAfter });
   }
   // The read cell a cell holds; undefined when the flush made it, or a sort hid which.
   private _readOrigin(cell: GridCell): GridCell | undefined {
