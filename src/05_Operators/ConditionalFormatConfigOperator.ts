@@ -126,9 +126,9 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
           rowIndex: table.startRowIndex,
           colIndex: table.startColumnIndex,
         },
+        endRowIndex: table.endRowIndex,
         columnNamesLeftToRight,
       },
-      endRowIndex: table.endRowIndex,
     };
   }
   // A handle a person changed since the last sync names no rule now; deleting by a guess could take the wrong one.

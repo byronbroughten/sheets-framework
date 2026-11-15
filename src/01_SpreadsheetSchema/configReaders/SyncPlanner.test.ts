@@ -429,7 +429,7 @@ describe("SyncPlanner.refusals", () => {
                   add: [
                     {
                       columns: ["name"],
-                      condition: { type: "NOT_BLANK" },
+                      condition: { type: "TEXT_EQ", values: ["done"] },
                       format: { bold: true },
                     },
                   ],

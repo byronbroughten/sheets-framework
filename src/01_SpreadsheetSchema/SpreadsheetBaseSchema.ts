@@ -13,6 +13,12 @@ import {
 import { headRows } from "./headRows";
 import { tableLayout } from "./tableLayout";
 
+interface AnchoredColumnProps {
+  colIndex: SheetColIndex;
+  firstRowIndex: SheetRowIndex;
+  lastRowIndex: SheetRowIndex;
+}
+
 export class SpreadsheetBaseSchema {
   combineNames<SA extends string, SB extends string>(
     name1: SA,
@@ -44,9 +50,13 @@ export class SpreadsheetBaseSchema {
   anchoredA1(colIndex: SheetColIndex, rowIndex: SheetRowIndex): string {
     return `$${this.columnLetter(colIndex)}${rowIndex + 1}`;
   }
-  openColumnA1(colIndex: SheetColIndex, rowIndex: SheetRowIndex): string {
+  anchoredColumnA1({
+    colIndex,
+    firstRowIndex,
+    lastRowIndex,
+  }: AnchoredColumnProps): string {
     const letter = this.columnLetter(colIndex);
-    return `$${letter}$${rowIndex + 1}:$${letter}`;
+    return `$${letter}$${firstRowIndex + 1}:$${letter}$${lastRowIndex + 1}`;
   }
   // An absent bound is open, so it is left off the A1 text.
   gridRangeA1({
