@@ -1,8 +1,8 @@
-import type { CellValue } from "../../CellValues/cellValues";
 import {
   type BooleanCondition,
   type ConditionalFormat,
   type ConditionalFormatRule,
+  conditionLiteral,
   isModelledConditionType,
   type ModelableConditionalFormatRule,
   type ModelledConditionType,
@@ -116,20 +116,6 @@ const googleCellFormat = {
         ? { foregroundColor: googleColor.toRgbChannels(foregroundColor) }
         : {}),
     };
-  },
-};
-
-const conditionLiteral = {
-  fromCellValue(value: CellValue): string {
-    if (value === true) return "TRUE";
-    if (value === false) return "FALSE";
-    return String(value);
-  },
-  toCellValue(text: string): CellValue {
-    if (text === "TRUE") return true;
-    if (text === "FALSE") return false;
-    if (text !== "" && Number(text).toString() === text) return Number(text);
-    return text;
   },
 };
 

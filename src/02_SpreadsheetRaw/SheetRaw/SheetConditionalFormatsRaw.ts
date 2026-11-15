@@ -51,6 +51,19 @@ export class SheetConditionalFormatsRaw extends SheetBaseRaw {
     rule: ModelableConditionalFormatRule,
   ): void {
     this.assertConditionalFormatIndexesNotStale();
+    this._queueRuleUpdate(index, rule);
+  }
+  // No stale check: the caller already took off the deletes an earlier flush sent, so the index is the one at send time.
+  updateConditionalFormatRuleReindexed(
+    index: number,
+    rule: ModelableConditionalFormatRule,
+  ): void {
+    this._queueRuleUpdate(index, rule);
+  }
+  private _queueRuleUpdate(
+    index: number,
+    rule: ModelableConditionalFormatRule,
+  ): void {
     this.writeOperations.updateConditionalFormatRule.push({
       kind: "updateConditionalFormatRule",
       sheetId: this.sheetGid,

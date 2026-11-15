@@ -68,6 +68,7 @@ import {
   type PlannedColumnMove,
 } from "./ColumnConfigsOperator";
 import {
+  type CompiledRuleReplacement,
   ConditionalFormatConfigOperator,
   type IndexedRuleRemoval,
 } from "./ConditionalFormatConfigOperator";
@@ -128,6 +129,7 @@ interface AppliedPlan {
   newColumns: MintedNewColumn[];
   columnMoves: PlannedColumnMove[];
   ruleRemovals: IndexedRuleRemoval[];
+  ruleReplacements: CompiledRuleReplacement[];
   reads: EnteredDataReads;
 }
 
@@ -139,6 +141,7 @@ interface RefetchProps {
   accessChanges: ApiAccessChanges;
   newColumns: MintedNewColumn[];
   ruleRemovals: IndexedRuleRemoval[];
+  ruleReplacements: CompiledRuleReplacement[];
 }
 
 interface RegenerationProps {
@@ -261,6 +264,10 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
           ...this.columnConfigOperator.headerTakenStops(planner.newColumns),
           ...this.conditionalFormatConfigOperator.noSuchRuleStops(
             planner.ruleRemovals,
+            planner.ruleReplacements,
+          ),
+          ...this.conditionalFormatConfigOperator.unmodelableReplaceStops(
+            planner.ruleReplacements,
           ),
         ],
       }),
@@ -276,6 +283,10 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     const newColumns = this.columnConfigOperator.mintColumnIds(
       planned.newColumns,
     );
+    const ruleRemovals =
+      this.conditionalFormatConfigOperator.indexedRuleRemovals(
+        planned.ruleRemovals,
+      );
     const applied: AppliedPlan = {
       accessChanges,
       sentTraits: planned.sentTraits,
@@ -284,9 +295,14 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         planned.sentTraits,
         newColumns,
       ),
-      ruleRemovals: this.conditionalFormatConfigOperator.indexedRuleRemovals(
-        planned.ruleRemovals,
-      ),
+      ruleRemovals,
+      ruleReplacements:
+        this.conditionalFormatConfigOperator.compiledRuleReplacements({
+          replacements: planned.ruleReplacements,
+          removals: ruleRemovals,
+          sentTraits: planned.sentTraits,
+          newColumns,
+        }),
       reads: enteredDataReads({
         alterations,
         sentTraits: planned.sentTraits,
@@ -323,7 +339,8 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       isApplying &&
       (planned.sentTraits.some(isSheetTrait) ||
         applied.newColumns.length > 0 ||
-        applied.ruleRemovals.length > 0)
+        applied.ruleRemovals.length > 0 ||
+        applied.ruleReplacements.length > 0)
     ) {
       refetched = SyncCoordinator.init();
       regeneration = refetched._refetchedRegeneration({
@@ -334,6 +351,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         accessChanges,
         newColumns: applied.newColumns,
         ruleRemovals: applied.ruleRemovals,
+        ruleReplacements: applied.ruleReplacements,
       });
     } else {
       regeneration = this._regeneration({ notes, sent, previous });
@@ -409,6 +427,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     accessChanges,
     newColumns,
     ruleRemovals,
+    ruleReplacements,
   }: RefetchProps): Regeneration {
     // Recorded before the read, so its head-row fetch covers granted Tables and skips revoked ones.
     this.tableConfigOperator.recordApiAccessChanges(accessChanges);
@@ -421,8 +440,12 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     });
     const notes = this._recordUntypedColumns();
     const columns = this.columnConfigOperator.landedColumns(newColumns);
-    const rulesDidntLand =
-      this.conditionalFormatConfigOperator.removalsDidntLand(ruleRemovals);
+    const rulesDidntLand = [
+      ...this.conditionalFormatConfigOperator.removalsDidntLand(ruleRemovals),
+      ...this.conditionalFormatConfigOperator.replacementsDidntLand(
+        ruleReplacements,
+      ),
+    ];
     return {
       ...this._regeneration({ notes, sent, previous }),
       didntLand: [...traitsDidntLand, ...columns.didntLand, ...rulesDidntLand],
@@ -532,14 +555,16 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       throw error;
     }
   }
-  // Column deletes and inserts, then moves, each flush alone: every later write is indexed by the layout the one before leaves.
+  // Column deletes and inserts with the replaced rules compiled against the layout they leave, then moves, each flush alone: every later write is indexed by the layout the one before leaves.
   private _flushPlan({
     sentTraits,
     newColumns,
+    ruleReplacements,
     columnMoves,
   }: AppliedPlan): void {
     this.ss.batchUpdateGSheets();
     this.columnConfigOperator.updateDeletionsAndInserts(sentTraits, newColumns);
+    this.conditionalFormatConfigOperator.replaceRules(ruleReplacements);
     this.ss.batchUpdateGSheets();
     this.columnConfigOperator.moveColumns(columnMoves);
     this.ss.batchUpdateGSheets();
