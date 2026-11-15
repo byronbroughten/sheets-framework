@@ -763,6 +763,37 @@ describe("SyncRunReport, case F: two refusals, then a head-row stop", () => {
   });
 });
 
+describe("SyncRunReport's header-taken stop", () => {
+  const stopped = render({
+    ...appDryRun,
+    outcome: { kind: "stopped" },
+    stops: [
+      { kind: "headRows", table: "vendor", tab: "Vendors", headerRow: 6 },
+      {
+        kind: "headerTaken",
+        table: "occCharge",
+        header: "Late fee",
+        column: "lateFee",
+        columnId: "c:och:Q8x1mZp",
+      },
+    ],
+  });
+  const stoppedText = stopped.join("\n");
+
+  it("names the header, the existing column and its ID", () => {
+    expect(stoppedText).toContain(
+      'STOP 2 · occCharge › newColumns\n  occCharge already has a column headed "Late fee": lateFee, c:och:Q8x1mZp.',
+    );
+  });
+
+  it("counts it as a stop beside a head-row stop", () => {
+    expect(resultLine(stopped)).toBe(
+      "STOPPED: 1 Table can't take head rows and 1 new column taken. Nothing was sent, and nothing will be until they are resolved.",
+    );
+    expect(stoppedText).toContain("Resolve each stop above, then rerun");
+  });
+});
+
 describe("SyncRunReport's no-such-rule stop", () => {
   const ruleHandle = "occCharge·all·=${void}=TRUE·bg#eeeeee";
   const lines = render({
@@ -812,8 +843,6 @@ describe("SyncRunReport, case G: a send stopped partway", () => {
         header: "Late fee",
         column: "lateFee",
         columnId: "c:och:Q8x1mZp",
-        columnType: "CURRENCY",
-        position: "at the Table's end",
       },
     ],
     notSent: [
@@ -842,7 +871,7 @@ describe("SyncRunReport, case G: a send stopped partway", () => {
 
   it("prints a created column's codebase name and ID", () => {
     expect(text).toContain(
-      'occCharge: created column "Late fee" as lateFee, c:och:Q8x1mZp, CURRENCY, at the Table\'s end.',
+      'occCharge: created "Late fee" as lateFee, c:och:Q8x1mZp.',
     );
     expect(text).toContain("occCharge › notes: the formula alteration.");
     expect(text).not.toContain("alterations.ts is now empty.");
@@ -927,8 +956,6 @@ describe("SyncRunReport, case H: a clean send", () => {
         header: "Receipt no.",
         column: "receiptNo",
         columnId: "c:opy:Xw3nB7d",
-        columnType: "TEXT",
-        position: "at the Table's end",
       },
     ],
     plan: [
@@ -987,7 +1014,7 @@ describe("SyncRunReport, case H: a clean send", () => {
 
   it("says alterations.ts is empty once everything landed", () => {
     expect(text).toContain(
-      'occPayment: created column "Receipt no." as receiptNo, c:opy:Xw3nB7d, TEXT, at the Table\'s end.\nalterations.ts is now empty.',
+      'occPayment: created "Receipt no." as receiptNo, c:opy:Xw3nB7d.\nalterations.ts is now empty.',
     );
   });
 

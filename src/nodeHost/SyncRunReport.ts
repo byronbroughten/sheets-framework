@@ -639,8 +639,8 @@ function forceFlagOf({
 
 function landedLine(item: SyncLandedItem): string {
   if (item.kind === "send") return sendLine(item);
-  const { table, header, column, columnId, columnType, position } = item;
-  return `${table}: created column "${header}" as ${column}, ${columnId}, ${columnType}, ${position}.`;
+  const { table, header, column, columnId } = item;
+  return `${table}: created "${header}" as ${column}, ${columnId}.`;
 }
 
 function sendLine({ subject, what }: SyncSendLine): string {

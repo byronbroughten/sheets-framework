@@ -113,8 +113,6 @@ export interface SyncCreatedColumn {
   header: string;
   column: string;
   columnId: string;
-  columnType: string;
-  position: string;
 }
 
 export interface SyncOutsideReference {
