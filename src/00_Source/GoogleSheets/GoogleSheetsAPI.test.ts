@@ -698,7 +698,9 @@ describe("GoogleSheetsAPI write mapping", () => {
   it("maps a delete-sheet operation onto a deleteSheet of its GID", () => {
     const { api, batchUpdateCalls } = recordingSheets();
 
-    api.flush([{ kind: "deleteSheet", sheetId: 555 }]);
+    api.flush([
+      { kind: "deleteSheet", sheetId: 555, tableIds: ["tbl-0a1b2c3d4e"] },
+    ]);
 
     expect(batchUpdateCalls[0]?.requests).toEqual([
       { deleteSheet: { sheetId: 555 } },

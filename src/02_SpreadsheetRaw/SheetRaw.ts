@@ -96,12 +96,24 @@ export class SheetRaw extends SheetBaseRaw {
   }
   // Out of the working view at once, so the tab and its Tables refuse any write queued after.
   queueDelete(): this {
+    this._assertNoTableWritesQueued();
     this.writeOperations.deleteSheet.push({
       kind: "deleteSheet",
       sheetId: this.sheetGid,
+      tableIds: this.tableIds,
     });
     this._dropFromWorkingView();
     return this;
+  }
+  // A queued write must never vanish with its Table, as when one goes absent on a re-fetch.
+  private _assertNoTableWritesQueued(): void {
+    const isQueued = this.tableStates.some(({ writeQueue }) =>
+      hasQueuedWrites(writeQueue),
+    );
+    if (!isQueued) return;
+    throw new Error(
+      `Delete refused: a Table on ${this.label} has queued writes, which the deleted tab would lose; flush or discard them first.`,
+    );
   }
   private _dropFromWorkingView(): void {
     for (const tableId of this.tableIds) this.tablesStateRaw.delete(tableId);

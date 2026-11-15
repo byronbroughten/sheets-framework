@@ -223,7 +223,19 @@ describe("SheetRaw.queueDelete", () => {
     );
     expect(() =>
       raw.table(tableId111).row(0).cell(1).updateValue("lost"),
-    ).toThrow(tableId111);
+    ).toThrow("Sheet GID 111 is queued for deletion in this flush");
+  });
+
+  it("refuses the delete while a Table on the tab has queued writes", () => {
+    stubTwoTabs();
+
+    const raw = SpreadsheetRaw.init();
+    raw.fetchAllSheetProperties();
+    raw.table(tableId111).row(0).cell(1).updateValue("pending");
+
+    expect(() => raw.sheet(111).queueDelete()).toThrow(
+      'a Table on "Records" (gid 111) has queued writes',
+    );
   });
 });
 
