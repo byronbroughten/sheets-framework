@@ -12,6 +12,7 @@ import {
   type SyncHeldGroup,
   type SyncHeldStoppedOutcome,
   type SyncLandedItem,
+  type SyncNoSuchRuleStop,
   type SyncNotice,
   type SyncOutsideReferenceEffect,
   type SyncPlanEffect,
@@ -429,13 +430,6 @@ function tableRefusalText(
       ),
     ];
   }
-  if (refusal.kind === "noSuchRule") {
-    return [
-      `No such rule: no rule on ${table} has this handle now. A person changed the rule after the last sync`,
-      "(a handle comes from its columns, formula, condition and format). Adopt by removing the entry.",
-      ...ruleHandleLines(table, refusal.handles),
-    ];
-  }
   if (refusal.kind === "malformedBrace") {
     return [
       `${refusal.brace} isn't a brace: write \${@column} or \${table[@column]} for this row, \${column} or \${table[column]} for the whole column.`,
@@ -488,7 +482,12 @@ interface StopWords<SK extends StopKind> {
 }
 
 // The result line's order.
-const stopKinds: StopKind[] = ["conflict", "headRows", "headerTaken"];
+const stopKinds: StopKind[] = [
+  "conflict",
+  "headRows",
+  "headerTaken",
+  "noSuchRule",
+];
 
 const stopWords: { [SK in StopKind]: StopWords<SK> } = {
   conflict: {
@@ -512,7 +511,17 @@ const stopWords: { [SK in StopKind]: StopWords<SK> } = {
     },
     block: headerTakenBlock,
   },
+  noSuchRule: {
+    name: "stop",
+    reason(count) {
+      return `${counted(count, "rule", "rules")} to remove not found`;
+    },
+    block: noSuchRuleBlock,
+  },
 };
+
+// The one phrase for a stop's entry left pending.
+const entryStaysText = "The entry stays in alterations.ts.";
 
 function stopBlocks(stops: SyncStop[]): string[] {
   return stops.flatMap((stop, index) => [
@@ -538,7 +547,7 @@ function headRowsBlock(
     ...indent(2, [
       `${table}'s header row is on row ${headerRow} of its tab, ${tab}. A Table needs its header on row 4 to take head rows`,
       `(rows 1 to 3: column IDs, action row, heading). Move ${table} so its header sits on row 4, then rerun.`,
-      "The entry stays in alterations.ts.",
+      entryStaysText,
     ]),
   ];
 }
@@ -551,7 +560,23 @@ function headerTakenBlock(
     `STOP ${number} · ${table} › newColumns`,
     ...indent(2, [
       `${table} already has a column headed "${header}": ${column}, ${columnId}.`,
-      "The entry stays in alterations.ts.",
+      entryStaysText,
+    ]),
+  ];
+}
+
+function noSuchRuleBlock(
+  { table, path, handles }: SyncNoSuchRuleStop,
+  number: number,
+): string[] {
+  return [
+    `STOP ${number} · ${table} › ${path}`,
+    ...indent(2, [
+      "no such rule: adopt by removing the entry.",
+      `No rule on ${table} has this handle now: a person changed the rule after the last sync`,
+      "(a handle comes from its columns, formula, condition and format).",
+      ...ruleHandleLines(table, handles),
+      entryStaysText,
     ]),
   ];
 }

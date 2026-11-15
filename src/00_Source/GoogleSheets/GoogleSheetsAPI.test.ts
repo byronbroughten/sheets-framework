@@ -450,6 +450,59 @@ describe("GoogleSheetsAPI write mapping", () => {
     ).toEqual([{ userEnteredValue: "FALSE" }]);
   });
 
+  it("maps an update by sheet and index, converting the rule as an add does", () => {
+    const { api, batchUpdateCalls } = recordingSheets();
+
+    api.flush([
+      {
+        kind: "updateConditionalFormatRule",
+        sheetId: 111,
+        index: 2,
+        rule: {
+          kind: "boolean",
+          ranges: [
+            {
+              sheetId: 111,
+              startRowIndex: SheetIndex.row(4),
+              endRowIndex: SheetIndex.row(5),
+              startColumnIndex: SheetIndex.col(0),
+              endColumnIndex: SheetIndex.col(1),
+            },
+          ],
+          condition: { type: "CUSTOM_FORMULA", formula: "=$B5=FALSE" },
+          format: { backgroundColor: { red: 1 } },
+        },
+      },
+    ]);
+
+    expect(batchUpdateCalls[0]?.requests).toEqual([
+      {
+        updateConditionalFormatRule: {
+          sheetId: 111,
+          index: 2,
+          rule: {
+            ranges: [
+              {
+                sheetId: 111,
+                startRowIndex: 4,
+                endRowIndex: 5,
+                startColumnIndex: 0,
+                endColumnIndex: 1,
+              },
+            ],
+            booleanRule: {
+              condition: {
+                type: "CUSTOM_FORMULA",
+                values: [{ userEnteredValue: "=$B5=FALSE" }],
+              },
+              format: { backgroundColor: { red: 1 } },
+            },
+          },
+        },
+      },
+    ]);
+  });
+
   it("passes a custom formula through unchanged and maps a delete by sheet and index", () => {
     const { api, batchUpdateCalls } = recordingSheets();
 
@@ -578,6 +631,52 @@ describe("GoogleSheetsAPI write mapping", () => {
     ]);
   });
 
+  it("sends an added Table's dropdown column with its values as the column's validation rule", () => {
+    const { api, batchUpdateCalls } = recordingSheets();
+
+    api.flush([
+      {
+        ...addTableOperation,
+        columnProperties: [
+          {
+            columnIndex: 0,
+            columnName: "Status",
+            columnType: "DROPDOWN",
+            dataValidationRule: {
+              condition: "ONE_OF_LIST",
+              values: ["a", "b"],
+            },
+          },
+        ],
+      },
+    ]);
+
+    expect(batchUpdateCalls[0]?.requests?.[1]).toEqual({
+      updateTable: {
+        table: {
+          tableId: "tbl-0a1b2c3d4e",
+          columnProperties: [
+            {
+              columnIndex: 0,
+              columnName: "Status",
+              columnType: "DROPDOWN",
+              dataValidationRule: {
+                condition: {
+                  type: "ONE_OF_LIST",
+                  values: [
+                    { userEnteredValue: "a" },
+                    { userEnteredValue: "b" },
+                  ],
+                },
+              },
+            },
+          ],
+        },
+        fields: "columnProperties",
+      },
+    });
+  });
+
   it("maps a delete-Table operation onto a deleteTable, then a clear of its head-row cells' values and validation", () => {
     const { api, batchUpdateCalls } = recordingSheets();
     const headRows = {
@@ -598,6 +697,18 @@ describe("GoogleSheetsAPI write mapping", () => {
           fields: "userEnteredValue,dataValidation",
         },
       },
+    ]);
+  });
+
+  it("maps a delete-sheet operation onto a deleteSheet of its GID", () => {
+    const { api, batchUpdateCalls } = recordingSheets();
+
+    api.flush([
+      { kind: "deleteSheet", sheetId: 555, tableIds: ["tbl-0a1b2c3d4e"] },
+    ]);
+
+    expect(batchUpdateCalls[0]?.requests).toEqual([
+      { deleteSheet: { sheetId: 555 } },
     ]);
   });
 

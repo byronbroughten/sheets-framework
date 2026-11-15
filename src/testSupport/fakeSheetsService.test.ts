@@ -482,6 +482,60 @@ describe("stubSheetsService replays deleteTable as the live API does", () => {
   });
 });
 
+const ruleGid = 111;
+
+describe("stubSheetsService replays updateConditionalFormatRule", () => {
+  function stubRules() {
+    return stubSheetsService({
+      sheets: [
+        {
+          sheetId: ruleGid,
+          title: "Rules",
+          conditionalFormats: [
+            { ranges: [{ sheetId: ruleGid, startColumnIndex: 0 }] },
+            { ranges: [{ sheetId: ruleGid, startColumnIndex: 1 }] },
+          ],
+        },
+      ],
+    });
+  }
+
+  it("replaces the rule at the index and leaves the others", () => {
+    const { grid } = stubRules();
+
+    send({
+      updateConditionalFormatRule: {
+        sheetId: ruleGid,
+        index: 1,
+        rule: { ranges: [{ sheetId: ruleGid, startColumnIndex: 5 }] },
+      },
+    });
+
+    expect(
+      grid.sheet(ruleGid).conditionalFormats.map((rule) => rule.ranges),
+    ).toEqual([
+      [{ sheetId: ruleGid, startColumnIndex: 0 }],
+      [{ sheetId: ruleGid, startColumnIndex: 5 }],
+    ]);
+  });
+
+  it("throws on an index past the sheet's last rule", () => {
+    stubRules();
+
+    expect(() =>
+      send({
+        updateConditionalFormatRule: {
+          sheetId: ruleGid,
+          index: 2,
+          rule: { ranges: [] },
+        },
+      }),
+    ).toThrow(
+      `updateConditionalFormatRule: sheet ${ruleGid} has no rule at index 2.`,
+    );
+  });
+});
+
 describe("stubSheetsService replays tabs", () => {
   it("adds, renames and deletes a tab, and a later read sees it", () => {
     const { grid } = stubSheetsService({ sheets: [widgetSheet()] });

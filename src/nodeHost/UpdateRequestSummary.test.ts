@@ -320,6 +320,31 @@ describe("UpdateRequestSummary.lines", () => {
     ).toBe("addConditionalFormatRule item!A5:A11 prepend CUSTOM_FORMULA");
   });
 
+  it("names the range, index and condition of an updated conditional format rule", () => {
+    expect(
+      onlyLine({
+        updateConditionalFormatRule: {
+          sheetId: itemGid,
+          index: 2,
+          rule: {
+            ranges: [
+              {
+                sheetId: itemGid,
+                startRowIndex: 4,
+                endRowIndex: 11,
+                startColumnIndex: 0,
+                endColumnIndex: 1,
+              },
+            ],
+            booleanRule: {
+              condition: { type: "CUSTOM_FORMULA" },
+            },
+          },
+        },
+      }),
+    ).toBe("updateConditionalFormatRule item!A5:A11 index 2 CUSTOM_FORMULA");
+  });
+
   it("names the sheet and index of a deleted conditional format rule", () => {
     expect(
       onlyLine({
@@ -468,12 +493,19 @@ describe("UpdateRequestSummary.lines", () => {
     );
   });
 
-  it("renders a request the framework does not model as its own verb and JSON", () => {
-    const line = onlyLine({ deleteSheet: { sheetId: unknownGid } });
+  it("names the tab a deleteSheet deletes", () => {
+    expect(onlyLine({ deleteSheet: { sheetId: unknownGid } })).toBe(
+      `deleteSheet gid ${unknownGid} delete tab`,
+    );
+  });
 
-    expect(line).toContain("deleteSheet");
-    expect(line).toContain(`gid ${unknownGid}`);
-    expect(line).toContain(`"sheetId":${unknownGid}`);
+  it("renders a request the framework does not model as its own verb and JSON", () => {
+    const line = onlyLine({
+      duplicateSheet: { sourceSheetId: unknownGid },
+    });
+
+    expect(line).toContain("duplicateSheet");
+    expect(line).toContain(`"sourceSheetId":${unknownGid}`);
   });
 
   it("is empty when nothing was queued", () => {

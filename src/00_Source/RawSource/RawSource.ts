@@ -178,6 +178,7 @@ export interface GridCellSnapshot {
 
 export type LocalWriteOperation =
   | AddSheetOperation
+  | DeleteSheetOperation
   | AddTableOperation
   | DeleteTableOperation
   | AppendDimensionOperation
@@ -192,6 +193,7 @@ export type LocalWriteOperation =
   | DeleteTableRowsOperation
   | SortTableOperation
   | AddConditionalFormatRuleOperation
+  | UpdateConditionalFormatRuleOperation
   | DeleteConditionalFormatRuleOperation
   | AddProtectedRangeOperation
   | DeleteProtectedRangeOperation
@@ -211,6 +213,13 @@ export interface AddSheetOperation {
   columnCount: number;
 }
 
+// tableIds are the tab's Tables, so a later reach by tableId alone names the deletion; never sent.
+export interface DeleteSheetOperation {
+  kind: "deleteSheet";
+  sheetId: number;
+  tableIds: string[];
+}
+
 // Google's own tableId arrives only in the reply, too late for the same-batch updateTable (sheets-framework#59).
 export interface AddTableOperation {
   kind: "addTable";
@@ -227,10 +236,18 @@ export interface DeleteTableOperation {
   headRows: BoundedGridRange;
 }
 
+// Absent columnType leaves the column on Automatic; a string, since a type read from the sheet or its config resends unchanged.
 export interface TableColumnPropertiesAdd {
   columnIndex: number;
   columnName: string;
-  columnType: TableColumnType;
+  columnType?: string;
+  dataValidationRule?: TableColumnValidationRule;
+}
+
+// A dropdown column's rule: its condition type and the values it offers.
+export interface TableColumnValidationRule {
+  condition: string;
+  values: string[];
 }
 
 // Adds rows or columns past the grid's edge, so it can't split a Table (sheets-framework#59).
@@ -326,6 +343,13 @@ export interface AddConditionalFormatRuleOperation {
   rule: ModelableConditionalFormatRule;
 }
 
+export interface UpdateConditionalFormatRuleOperation {
+  kind: "updateConditionalFormatRule";
+  sheetId: number;
+  index: number;
+  rule: ModelableConditionalFormatRule;
+}
+
 export interface DeleteConditionalFormatRuleOperation {
   kind: "deleteConditionalFormatRule";
   sheetId: number;
@@ -369,17 +393,8 @@ export interface SetTableColumnPropertiesOperation {
   columnProperties: TableColumnPropertiesUpdate[];
 }
 
-export interface TableColumnPropertiesUpdate {
-  columnIndex: number;
-  columnName: string;
-  columnType?: string;
-  dataValidationRule?: TableColumnValidationRule;
-}
-
-export interface TableColumnValidationRule {
-  conditionType: string;
-  values: string[];
-}
+// The same shape as an add, since a dropdown sent without its rule is refused.
+export type TableColumnPropertiesUpdate = TableColumnPropertiesAdd;
 
 // The app's setting for a columnProperties send, which resets every dropdown's style and colours; "ask" holds or refuses it.
 export type DropdownStyleReset = "ask" | "allow";

@@ -16,6 +16,7 @@ export const emptyStateRaw = {
   writeOperations(): WriteOperations {
     return {
       addSheet: [],
+      deleteSheet: [],
       addTable: [],
       deleteTable: [],
       appendTableRows: [],
@@ -28,6 +29,7 @@ export const emptyStateRaw = {
       findReplace: [],
       deleteConditionalFormatRule: [],
       addConditionalFormatRule: [],
+      updateConditionalFormatRule: [],
       deleteProtectedRange: [],
       addProtectedRange: [],
       renameSheet: [],

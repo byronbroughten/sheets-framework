@@ -1,3 +1,4 @@
+import { ruleRemovalLines } from "./SyncPlanner";
 import {
   entriesOf,
   type WideAlterations,
@@ -6,7 +7,7 @@ import {
 } from "./SyncPlanner/wideAlterations";
 import type { SyncSubject } from "./syncRunResult";
 
-// The alterations still pending once `landed` went out; the refuser lets only a Table's, a column's or a tab's trait through, so any other subject is a bug.
+// The alterations still pending once `landed` went out; the refuser lets only a Table's, a column's or a tab's trait, or a rule removal, through, so any other subject is a bug.
 export function remainingAlterations(
   alterations: WideAlterations,
   landed: SyncSubject[],
@@ -81,15 +82,45 @@ function remainingTableEntry(
 ): WideTableEntry {
   return Object.fromEntries(
     Object.entries(entry).flatMap(([key, value]) => {
-      if (key !== "columns") {
-        return landedKeys.has(traitKey(tableName, key)) ? [] : [[key, value]];
+      if (key === "columns") {
+        return keepIfNotEmpty(
+          key,
+          remainingColumns(tableName, entry.columns, landedKeys),
+        );
       }
-      return keepIfNotEmpty(
-        key,
-        remainingColumns(tableName, entry.columns, landedKeys),
-      );
+      if (key === "conditionalFormats") {
+        return keepIfNotEmpty(
+          key,
+          remainingRuleOperations(
+            tableName,
+            entry.conditionalFormats,
+            landedKeys,
+          ),
+        );
+      }
+      return landedKeys.has(traitKey(tableName, key)) ? [] : [[key, value]];
     }),
   );
+}
+
+// A removal lands one handle at a time, so only the landed handles leave its list.
+function remainingRuleOperations(
+  tableName: string,
+  formats: WideTableEntry["conditionalFormats"],
+  landedKeys: Set<string>,
+): NonNullable<WideTableEntry["conditionalFormats"]> {
+  const { remove, ...others } = formats ?? {};
+  const remaining = (remove ?? []).filter(
+    (handle) =>
+      !landedKeys.has(
+        traitKey(
+          tableName,
+          ruleRemovalLines.path({ table: tableName, handle }),
+        ),
+      ),
+  );
+  if (remaining.length === 0) return others;
+  return { ...others, remove: remaining };
 }
 
 function remainingColumns(

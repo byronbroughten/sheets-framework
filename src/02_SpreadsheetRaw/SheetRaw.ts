@@ -94,6 +94,35 @@ export class SheetRaw extends SheetBaseRaw {
     this.sheetState.working.title = title;
     return this;
   }
+  // Out of the working view at once, so the tab and its Tables refuse any write queued after.
+  queueDelete(): this {
+    this._assertNoTableWritesQueued();
+    this.writeOperations.deleteSheet.push({
+      kind: "deleteSheet",
+      sheetId: this.sheetGid,
+      tableIds: this.tableIds,
+    });
+    this._dropFromWorkingView();
+    return this;
+  }
+  // A queued write must never vanish with its Table, as when one goes absent on a re-fetch.
+  private _assertNoTableWritesQueued(): void {
+    const isQueued = this.tableStates.some(({ writeQueue }) =>
+      hasQueuedWrites(writeQueue),
+    );
+    if (!isQueued) return;
+    throw new Error(
+      `Delete refused: a Table on ${this.label} has queued writes, which the deleted tab would lose; flush or discard them first.`,
+    );
+  }
+  private _dropFromWorkingView(): void {
+    for (const tableId of this.tableIds) this.tablesStateRaw.delete(tableId);
+    this.sheetsStateRaw.delete(this.sheetGid);
+    const { fetchQueue } = this.spreadsheetStateRaw;
+    fetchQueue.gridRanges = fetchQueue.gridRanges.filter(
+      ({ sheetId }) => sheetId !== this.sheetGid,
+    );
+  }
   updateTabProperties(properties: Partial<SheetTabProperties>): this {
     this._queueTabProperties(properties);
     this.sheetState.working.tabProperties = {
@@ -210,12 +239,23 @@ export class SheetRaw extends SheetBaseRaw {
       queuedOnTable,
     );
   }
+  updateConditionalFormatRule(
+    index: number,
+    rule: ModelableConditionalFormatRule,
+  ): this {
+    this.conditionalFormats.updateConditionalFormatRule(index, rule);
+    return this;
+  }
   removeConditionalFormatRulesAt(range: GridRangeProps): this {
     this.conditionalFormats.removeConditionalFormatRulesAt(range);
     return this;
   }
   removeConditionalFormatRule(rule: ConditionalFormatRule): this {
     this.conditionalFormats.removeConditionalFormatRule(rule);
+    return this;
+  }
+  removeConditionalFormatRuleByIndex(index: number): this {
+    this.conditionalFormats.removeConditionalFormatRuleByIndex(index);
     return this;
   }
   markConditionalFormatIndexesStale(): void {
@@ -286,6 +326,20 @@ export class SheetRaw extends SheetBaseRaw {
   // Every Table fetched onto the sheet, managed or not.
   get tableIds(): string[] {
     return tableIdsOnSheet(this.tablesStateRaw, this.sheetGid);
+  }
+  get hasQueuedTableColumnWrites(): boolean {
+    return this.tableIds.some(
+      (tableId) => this.table(tableId).hasQueuedColumnWrites,
+    );
+  }
+  // The exclusive end column of the rightmost Table fetched onto the sheet; a queued column write moves it at the flush.
+  get rightmostTableEndColIndex(): number | undefined {
+    const ends = this.tableIds.map((tableId) => {
+      const table = this.table(tableId);
+      return table.startColumnIndex + table.columnCount;
+    });
+    if (ends.length === 0) return undefined;
+    return Math.max(...ends);
   }
   // Row indexes only actually shift once the deletes have been sent, and a Table below the deleted rows shifts with them.
   markRowIndexesStale(): void {

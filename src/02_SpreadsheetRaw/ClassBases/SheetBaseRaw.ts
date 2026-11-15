@@ -16,6 +16,7 @@ export class SheetBaseRaw extends SpreadsheetBaseRaw {
   constructor({ sheetGid, ...props }: SheetRawProps) {
     super(props);
     this.sheetGid = sheetGid;
+    this._assertSheetNotQueuedForDelete();
   }
   get sheetRawProps(): SheetRawProps {
     return { ...this.spreadsheetRawProps, sheetGid: this.sheetGid };
@@ -24,6 +25,13 @@ export class SheetBaseRaw extends SpreadsheetBaseRaw {
     return Val.assert(
       this.sheetsStateRaw.get(this.sheetGid),
       `sheetState for sheetGid ${this.sheetGid}`,
+    );
+  }
+  // A write reaching the tab would be sent before its deleteSheet, then lost with it.
+  private _assertSheetNotQueuedForDelete(): void {
+    if (!this.sheetIsQueuedForDelete(this.sheetGid)) return;
+    throw new Error(
+      `Sheet GID ${this.sheetGid} is queued for deletion in this flush; nothing more may be queued on it or its Tables.`,
     );
   }
   protected _ensureSheetState(): void {

@@ -489,8 +489,21 @@ describe("FlushClassifier.heldItems", () => {
     });
 
     it("holds a request verb with no classification", () => {
+      expect(
+        heldItems([{ mergeCells: { range: cellRange(rentRow, amount) } }]),
+      ).toEqual([
+        { kind: "unclassified", requestIndex: 0, verb: "mergeCells" },
+      ]);
+    });
+
+    it("holds every deleteSheet as unmeasured, naming the tab", () => {
       expect(heldItems([{ deleteSheet: { sheetId: gid } }])).toEqual([
-        { kind: "unclassified", requestIndex: 0, verb: "deleteSheet" },
+        {
+          kind: "unmeasured",
+          requestIndex: 0,
+          verb: "deleteSheet",
+          detail: `tab gid ${gid}, deleted with every Table on it`,
+        },
       ]);
     });
 
@@ -666,6 +679,20 @@ describe("FlushClassifier.heldItems", () => {
         heldItems([
           writeCell(0, name, { stringValue: "c:pay:label" }),
           writeCell(payments.headerRow, amount, { stringValue: "Sum" }),
+        ]),
+      ).toEqual([]);
+    });
+
+    it("frees a conditional-format rule update", () => {
+      expect(
+        heldItems([
+          {
+            updateConditionalFormatRule: {
+              sheetId: gid,
+              index: 0,
+              rule: { ranges: [rowRange(1, 3)] },
+            },
+          },
         ]),
       ).toEqual([]);
     });

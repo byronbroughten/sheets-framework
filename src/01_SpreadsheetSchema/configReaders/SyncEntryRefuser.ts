@@ -20,7 +20,12 @@ type NotSendableYet = Extract<SyncRefusal, { kind: "notSendableYet" }>;
 
 // Only these traits can be sent so far; each later trait ticket takes its trait off this refusal.
 export const sendableTraits = {
-  table: new Set<string>([...sheetTraits.table, "letApiAccess", "newColumns"]),
+  table: new Set<string>([
+    ...sheetTraits.table,
+    "letApiAccess",
+    "newColumns",
+    "conditionalFormats.remove",
+  ]),
   column: new Set<string>([...sheetTraits.column, "emptyValueAllowed"]),
   // A new column's own traits: a formula or column type would need a write after the insert.
   newColumn: new Set<string>(["header", "before", "emptyValueAllowed"]),
@@ -194,17 +199,25 @@ function noApiAccessRefusals(
     .map(({ path }) => ({ kind, table, path }));
 }
 
-function traitPaths({ columns, ...traits }: WideTableEntry): TraitPath[] {
+function traitPaths({
+  columns,
+  conditionalFormats,
+  ...traits
+}: WideTableEntry): TraitPath[] {
   return [
-    ...definedKeys(traits).map((trait): TraitPath => ({
-      level: "table",
-      trait,
-      path: trait,
-    })),
+    ...definedKeys(traits).map(tableTraitPath),
+    // Each rule operation is its own trait, since sync sends some before others.
+    ...definedKeys(conditionalFormats ?? {}).map((operation) =>
+      tableTraitPath(`conditionalFormats.${operation}`),
+    ),
     ...entriesOf(columns).flatMap(([column, columnEntry]) =>
       columnTraitPaths(column, columnEntry),
     ),
   ];
+}
+
+function tableTraitPath(trait: string): TraitPath {
+  return { level: "table", trait, path: trait };
 }
 
 function columnTraitPaths(column: string, entry: WideColumnEntry): TraitPath[] {

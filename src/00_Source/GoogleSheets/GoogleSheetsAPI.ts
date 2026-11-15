@@ -49,10 +49,12 @@ export type ModeledRequestVerb =
   | "findReplace"
   | "sortRange"
   | "addConditionalFormatRule"
+  | "updateConditionalFormatRule"
   | "deleteConditionalFormatRule"
   | "addProtectedRange"
   | "deleteProtectedRange"
   | "addSheet"
+  | "deleteSheet"
   | "addTable"
   | "deleteTable"
   | "updateSheetProperties"
@@ -497,6 +499,16 @@ function modeledOperationToGoogleRequests(
           },
         },
       ];
+    case "updateConditionalFormatRule":
+      return [
+        {
+          updateConditionalFormatRule: {
+            sheetId: operation.sheetId,
+            index: operation.index,
+            rule: googleConditionalFormatRule.fromModelable(operation.rule),
+          },
+        },
+      ];
     case "deleteConditionalFormatRule":
       return [
         {
@@ -539,6 +551,8 @@ function modeledOperationToGoogleRequests(
           },
         },
       ];
+    case "deleteSheet":
+      return [{ deleteSheet: { sheetId: operation.sheetId } }];
     // Google writes addTable's own column names three columns right of the Table; observed: docs/sheets-behaviour.md#creating-and-updating-tables.
     case "addTable":
       return [
@@ -655,26 +669,24 @@ function columnPropertiesRequest(
 ): ModeledRequest {
   return {
     updateTable: {
-      table: {
-        tableId,
-        columnProperties: columnProperties.map(toGoogleColumnProperties),
-      },
+      table: { tableId, columnProperties: columnProperties.map(googleColumn) },
       fields: "columnProperties",
     },
   };
 }
 
-function toGoogleColumnProperties({
-  dataValidationRule,
-  ...column
-}: TableColumnPropertiesUpdate): GoogleColumnProperties {
-  if (dataValidationRule === undefined) return column;
-  const { conditionType, values } = dataValidationRule;
+// A rule with no values sends none, as the Table fetch reads one back.
+function googleColumn(
+  column: TableColumnPropertiesAdd,
+): GoogleColumnProperties {
+  const { dataValidationRule, ...rest } = column;
+  if (dataValidationRule === undefined) return rest;
+  const { condition, values } = dataValidationRule;
   return {
-    ...column,
+    ...rest,
     dataValidationRule: {
       condition: {
-        type: conditionType,
+        type: condition,
         ...(values.length > 0
           ? { values: values.map((userEnteredValue) => ({ userEnteredValue })) }
           : {}),

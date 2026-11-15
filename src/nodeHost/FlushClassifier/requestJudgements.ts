@@ -165,6 +165,7 @@ export const requestJudgements: {
     if (sort.range) tracker.reorder(sort.range);
   },
   addConditionalFormatRule(): void {},
+  updateConditionalFormatRule(): void {},
   deleteConditionalFormatRule(): void {},
   addProtectedRange(): void {},
   deleteProtectedRange(): void {},
@@ -176,6 +177,12 @@ export const requestJudgements: {
       rowCount: properties.gridProperties?.rowCount ?? 1000,
       columnCount: properties.gridProperties?.columnCount ?? 26,
     });
+  },
+  // Held whole until the classifier judges what a tab delete takes with it (sheets-framework#314).
+  deleteSheet(remove, judge): void {
+    judge.holdUnmeasured(
+      `tab gid ${remove.sheetId ?? 0}, deleted with every Table on it`,
+    );
   },
   addTable(add, _judge, tracker): void {
     if (add.table?.tableId !== undefined) {
