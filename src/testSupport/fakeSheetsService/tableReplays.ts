@@ -39,7 +39,7 @@ export const tableReplays = {
     sheet.tables.push(tableState);
     return {};
   },
-  // Measured live: the cells above the header stay and rules wholly over the Table go; a rule reaching past it was never probed. An outside formula's `name[header]` becomes the A1 range of the column's old body rows (not #REF!).
+  // Measured live: the cells above the header stay and rules wholly over the Table go; a rule reaching past it was never probed. An outside formula's `name[header]` becomes the A1 range of the column's old body rows (not #REF!); quoting a sheet title that isn't a plain identifier was never probed, and any other reference form throws.
   deleteTable(
     spreadsheet: FakeSpreadsheet,
     request: GoogleAppsScript.Sheets.Schema.DeleteTableRequest,
@@ -91,24 +91,34 @@ function rewriteReferencesToRanges(
   const sheetPrefix = /^[A-Za-z_]\w*$/.test(sheet.title)
     ? sheet.title
     : `'${sheet.title.replaceAll("'", "''")}'`;
-  const rangesByReference = new Map<string, string>();
+  const rangesByHeader = new Map<string, string>();
   for (let col = table.startColumnIndex; col < table.endColumnIndex; col++) {
     const header = fakeCells.value(
       fakeGrid.cell(sheet, table.startRowIndex, col),
     );
     const letters = a1Notation.columnLetters(col);
-    rangesByReference.set(
-      `${table.name}[${header}]`,
+    rangesByHeader.set(
+      String(header),
       `${sheetPrefix}!$${letters}$${table.startRowIndex + 2}:$${letters}$${table.endRowIndex}`,
     );
   }
+  const name = table.name.replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const reference = new RegExp(`(?<![\\w.])${name}\\[([^\\]]*)\\]`, "g");
+  const anyReference = new RegExp(`(?<![\\w.])${name}\\[`);
   for (const each of spreadsheet.sheets) {
     each.rows.forEach((row, rowIndex) => {
       row.forEach((cell, colIndex) => {
         if (typeof cell !== "object" || cell?.isFormula !== true) return;
-        let rewritten = String(cell.value);
-        for (const [reference, range] of rangesByReference) {
-          rewritten = rewritten.replaceAll(reference, range);
+        // The Table's own cells are blanked next, so what they read doesn't matter.
+        if (each === sheet && isInTable(table, rowIndex, colIndex)) return;
+        const rewritten = String(cell.value).replace(
+          reference,
+          (whole, header: string) => rangesByHeader.get(header) ?? whole,
+        );
+        if (anyReference.test(rewritten)) {
+          throw new Error(
+            `The fake Sheets service does not replay deleteTable for a formula reading Table "${table.name}" in a form other than name[header]: ${cell.value}`,
+          );
         }
         if (rewritten === cell.value) return;
         fakeGrid.setCell(each, rowIndex, colIndex, {
@@ -119,6 +129,19 @@ function rewriteReferencesToRanges(
       });
     });
   }
+}
+
+function isInTable(
+  table: FakeTableState,
+  rowIndex: number,
+  colIndex: number,
+): boolean {
+  return (
+    rowIndex >= table.startRowIndex &&
+    rowIndex < table.endRowIndex &&
+    colIndex >= table.startColumnIndex &&
+    colIndex < table.endColumnIndex
+  );
 }
 
 // Measured live: the sent list replaces the Table's, so an unsent column keeps its header but loses its type.
