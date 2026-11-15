@@ -181,10 +181,10 @@ export class ChoreRunner {
   }
   async _reportRefusal(refusal: HeldFlushRefusal): Promise<void> {
     const { heldStoppedOutcome } =
-      await import("../src/01_SpreadsheetSchema/configReaders/heldStoppedOutcome.ts");
-    const { heldRefusalLine, rerunDryRunLine } =
+      await import("../src/01_SpreadsheetSchema/configReaders/flushStoppedOutcome.ts");
+    const { flushStoppedLine, rerunDryRunLine } =
       await import("../src/nodeHost/SyncRunReport.ts");
-    console.log(`\n${heldRefusalLine(heldStoppedOutcome(refusal))}`);
+    console.log(`\n${flushStoppedLine(heldStoppedOutcome(refusal))}`);
     console.log(rerunDryRunLine(`npm run chore ${this.choreName}`));
     process.exitCode = 1;
   }

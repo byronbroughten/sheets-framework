@@ -261,7 +261,6 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
       operation,
     );
   }
-  // An end-column insert, or a column change's insert: an inside insert's, or a move's gap, the one a cutPaste follows.
   private _columnWriteSplitting(
     insert: InsertRangeOperation,
     splitName: string,
@@ -277,13 +276,9 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
       operations.includes(insert),
     );
     if (change === undefined) return undefined;
-    const { operations } = change;
-    const next = operations[operations.indexOf(insert) + 1];
-    const changeKind =
-      next?.kind === "cutPaste" ? "moveColumns" : "insertColumn";
     return this.ss
       .table(change.tableId)
-      .columnChangeSplitting(changeKind, splitName);
+      .columnChangeSplitting(change, insert, splitName);
   }
   // Refused whole, so the live layout is from before this batch's growth, which a column insert is measured after.
   private _fetchTableSplitBy(

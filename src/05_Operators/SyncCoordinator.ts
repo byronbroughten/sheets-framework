@@ -24,7 +24,7 @@ import {
 import {
   heldStoppedOutcome,
   refusedStoppedOutcome,
-} from "../01_SpreadsheetSchema/configReaders/heldStoppedOutcome";
+} from "../01_SpreadsheetSchema/configReaders/flushStoppedOutcome";
 import {
   type IdNameMapGeneric,
   tableIdsByName,
@@ -44,7 +44,7 @@ import {
 import type {
   ForcedTrait,
   SyncCreatedColumn,
-  SyncHeldStoppedOutcome,
+  SyncFlushStoppedOutcome,
   SyncPlanItem,
   SyncRunFrame,
   SyncRunResult,
@@ -290,7 +290,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       // No files: column IDs already recorded would reach the configs but not the sheet.
       if (stopped !== undefined) {
         return {
-          result: resultBuilder.heldStopped({
+          result: resultBuilder.flushStopped({
             planned,
             outcome: stopped,
             rowIds: { plan: checkboxPlan, notices },
@@ -505,7 +505,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
   // The Node host's gate refuses a held flush by throwing, as Google refuses a batch over part of a Table; any other error goes on up.
   private _flushUnlessStopped(
     applied: AppliedPlan,
-  ): SyncHeldStoppedOutcome | undefined {
+  ): SyncFlushStoppedOutcome | undefined {
     try {
       this._flushPlan(applied);
       return undefined;

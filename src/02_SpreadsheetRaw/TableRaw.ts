@@ -39,6 +39,7 @@ import type { RowCommonRaw } from "./ClassBases/RowCommonRaw";
 import { hasQueuedWrites, originOf } from "./ClassBases/TableBaseRaw";
 import { columnCountChange, TableCommonRaw } from "./ClassBases/TableCommonRaw";
 import {
+  type ChangeTableColumns,
   type ColumnFill,
   type ColumnMoveSpan,
   type NewColumnHeadCells,
@@ -686,15 +687,16 @@ export class TableRaw extends TableCommonRaw {
   columnInsertSplitting(neighbourName: string): string {
     return splittingPhrase(this.columnInsertLabel, neighbourName);
   }
-  // The changes that send an insertRange, the one refusal the flusher rewords.
+  // A move's gap is the insert its cutPaste follows, as _columnMoveOperations orders them.
   columnChangeSplitting(
-    changeKind: "insertColumn" | "moveColumns",
+    { operations }: ChangeTableColumns,
+    insert: InsertRangeOperation,
     neighbourName: string,
   ): string {
-    return splittingPhrase(
-      `${columnChangeRequests[changeKind].action} ${this._namedTableOnSheet}`,
-      neighbourName,
-    );
+    const next = operations[operations.indexOf(insert) + 1];
+    const changeKind =
+      next?.kind === "cutPaste" ? "moveColumns" : "insertColumn";
+    return splittingPhrase(this._columnChangeLabel(changeKind), neighbourName);
   }
   get columnInsertLabel(): string {
     return `Inserting a column at the end of ${this._namedTableOnSheet}`;
@@ -781,11 +783,11 @@ export class TableRaw extends TableCommonRaw {
     change: ColumnCountChange,
   ): TableColumnChangeOperation {
     const { colIndex } = change;
-    const { kind, action } = columnChangeRequests[change.kind];
+    const { kind } = columnChangeRequests[change.kind];
     const band = this._headAndBodyBand(colIndex, colIndex + 1);
     this._validateNoNeighbourSplitBy(
       band,
-      `${action} ${this._namedTableOnSheet}`,
+      this._columnChangeLabel(change.kind),
     );
     const shiftCount = columnCountChange[kind];
     this._shiftWorkingColumns(colIndex, shiftCount);
@@ -803,7 +805,7 @@ export class TableRaw extends TableCommonRaw {
     const gap = this._headAndBodyBand(beforeColIndex, beforeColIndex + count);
     this._validateNoNeighbourSplitBy(
       gap,
-      `${columnChangeRequests.moveColumns.action} ${this._namedTableOnSheet}`,
+      this._columnChangeLabel("moveColumns"),
     );
     // An insert running past the grid's edge is clipped to it (sheets-behaviour.md), losing a cut column.
     this.sheet.queueGridColumnsThrough(gap.endColumnIndex);
@@ -861,6 +863,9 @@ export class TableRaw extends TableCommonRaw {
   }
   private get _namedTableOnSheet(): string {
     return `Table "${this.name}" on sheet "${this.sheetTitle}"`;
+  }
+  private _columnChangeLabel(changeKind: TableColumnChange["kind"]): string {
+    return `${columnChangeRequests[changeKind].action} ${this._namedTableOnSheet}`;
   }
   // Before the Table-end column inserts are counted, since growth is sent ahead of them.
   gatherAppendTableRowsOperation(): void {

@@ -6,7 +6,7 @@ import {
   type SyncCreatedColumn,
   type SyncDryRunOutcome,
   type SyncDryRunResult,
-  type SyncHeldStoppedOutcome,
+  type SyncFlushStoppedOutcome,
   type SyncLandedItem,
   type SyncNotice,
   type SyncPlanItem,
@@ -32,9 +32,9 @@ export interface SyncRunRowIds {
   notices: SyncNotice[];
 }
 
-export interface SyncRunHeldStopped {
+export interface SyncRunFlushStopped {
   planned: SyncPlannerResult;
-  outcome: SyncHeldStoppedOutcome;
+  outcome: SyncFlushStoppedOutcome;
   rowIds: SyncRunRowIds;
 }
 
@@ -120,7 +120,11 @@ export class SyncRunResultBuilder {
     };
   }
   // A send the host held or Google refused at a flush; nothing after it was sent.
-  heldStopped({ planned, outcome, rowIds }: SyncRunHeldStopped): SyncRunResult {
+  flushStopped({
+    planned,
+    outcome,
+    rowIds,
+  }: SyncRunFlushStopped): SyncRunResult {
     const common = this._common({
       refusals: [],
       planned,

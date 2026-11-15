@@ -5,12 +5,12 @@ import {
   type SyncConfigs,
   type SyncConflict,
   type SyncDryRunOutcome,
+  type SyncFlushStoppedOutcome,
   type SyncHeaderTakenStop,
   type SyncHeadRowsStop,
   type SyncHeld,
   type SyncHeldBy,
   type SyncHeldGroup,
-  type SyncHeldStoppedOutcome,
   type SyncLandedItem,
   type SyncNoSuchRuleStop,
   type SyncNotice,
@@ -109,7 +109,7 @@ export class SyncRunReport {
     if (outcome.kind === "stopped") return this._stoppedText;
     if (outcome.kind === "refused") return this._refusedText;
     if (outcome.kind === "sent") return this._sentText(outcome);
-    return this._heldStoppedText(outcome);
+    return this._flushStoppedText(outcome);
   }
   private get _stoppedText(): OutcomeText {
     const { stops, command } = this.result;
@@ -168,9 +168,9 @@ export class SyncRunReport {
       next: `sync wrote ${generatedDir} and ${alterationsPath}. Run npm run check, then commit them with your change.`,
     };
   }
-  private _heldStoppedText(outcome: SyncHeldStoppedOutcome): OutcomeText {
+  private _flushStoppedText(outcome: SyncFlushStoppedOutcome): OutcomeText {
     return {
-      resultLine: heldRefusalLine(outcome),
+      resultLine: flushStoppedLine(outcome),
       planTitle: planTitles.send,
       next: rerunDryRunLine(this.result.command),
     };
@@ -232,7 +232,7 @@ export function heldSection(held: SyncHeld): string[] {
 }
 
 // The result line of a send the gate or Google refused, sync's or a chore's.
-export function heldRefusalLine(outcome: SyncHeldStoppedOutcome): string {
+export function flushStoppedLine(outcome: SyncFlushStoppedOutcome): string {
   const refused = refusedWords(outcome);
   if (outcome.kind === "stoppedBeforeSending") {
     return `STOPPED: the send was refused before any flush landed${refused} Nothing was sent.`;
