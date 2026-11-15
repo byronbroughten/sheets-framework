@@ -6,4 +6,5 @@
 - **`makeValueConfigs` keeps its `const` type parameter.** Without it every dropdown column's value type widens to `string`, silently.
 - **Leave `customDefaultValue` at its default**: regeneration always emits it there, and no config column declares it.
 - **Don't change `tableLayout.idDelimiter`**: every column ID already minted, the floor's included, would stop parsing.
+- **After a `sync` whose report lists a name that now points at another column, reread `idNameMap.ts` before writing another `alterations.ts` entry**: a name read before it may name the other column now.
 - Mechanics: [`docs/generated-data.md`](../../docs/generated-data.md).

@@ -164,6 +164,16 @@ describe("BraceFormula.decompile", () => {
     ).toBe('=Other[Thing]&Items[Gone]&"Items[Count]"&${@count}');
   });
 
+  it("leaves a brace as it is, even one spelled like a live reference", () => {
+    expect(
+      BraceFormula.decompile({
+        configs,
+        tableKey: "item",
+        formula: "=${Items[Count]}&${unit[@rent]}",
+      }),
+    ).toBe("=${Items[Count]}&${unit[@rent]}");
+  });
+
   it("gives back the brace form that compiled to the live text", () => {
     const formula =
       "=IF(${@count}>0, ${@price}/COUNTA(${unit[rent]}), ${unit[@rent]}+SUM(${count}))";
@@ -175,6 +185,56 @@ describe("BraceFormula.decompile", () => {
     expect(
       BraceFormula.decompile({ configs, tableKey: "item", formula: compiled }),
     ).toBe(formula);
+  });
+});
+
+describe("BraceFormula.decompileColumnType", () => {
+  function decompiledDropdown(condition: string, values: string[]) {
+    return BraceFormula.decompileColumnType({
+      configs,
+      tableKey: "item",
+      columnType: { type: "DROPDOWN", rule: { condition, values } },
+    });
+  }
+
+  it("leaves a list dropdown's items as they are, even one spelled like a reference", () => {
+    expect(decompiledDropdown("ONE_OF_LIST", ["Paid", "Items[Count]"])).toEqual(
+      {
+        type: "DROPDOWN",
+        rule: { condition: "ONE_OF_LIST", values: ["Paid", "Items[Count]"] },
+      },
+    );
+  });
+
+  it("puts a value naming a Table column in brace form, qualified for another Table, and keeps one already braced", () => {
+    const braced = {
+      type: "DROPDOWN",
+      rule: { condition: "ONE_OF_RANGE", values: ["=${unit[rent]}"] },
+    };
+    expect(decompiledDropdown("ONE_OF_RANGE", ["=Unit_list[Rent]"])).toEqual(
+      braced,
+    );
+    expect(decompiledDropdown("ONE_OF_RANGE", ["=${unit[rent]}"])).toEqual(
+      braced,
+    );
+  });
+
+  it("gives back a column type with no rule, or none, as it is", () => {
+    const currency = { type: "CURRENCY", rule: null };
+    expect(
+      BraceFormula.decompileColumnType({
+        configs,
+        tableKey: "item",
+        columnType: currency,
+      }),
+    ).toBe(currency);
+    expect(
+      BraceFormula.decompileColumnType({
+        configs,
+        tableKey: "item",
+        columnType: undefined,
+      }),
+    ).toBeUndefined();
   });
 });
 

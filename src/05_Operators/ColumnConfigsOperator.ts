@@ -14,12 +14,12 @@ import {
   type ColumnConfigStored,
   makeImportLine,
 } from "../01_SpreadsheetSchema/configReaders/makeConfigs";
+import { previousTraitTables } from "../01_SpreadsheetSchema/configReaders/previousTraitTables";
 import {
   type IntendedTrait,
   newColumnLines,
   type PlannedNewColumn,
   type PlanReadings,
-  type TableReading,
   type TraitReadings,
 } from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
 import type {
@@ -30,7 +30,10 @@ import type {
 import { tableConfigsByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { type ValueName } from "../01_SpreadsheetSchema/configReaders/valueSchemas";
 import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
-import type { NewColumnHeadCells } from "../02_SpreadsheetRaw/ClassTypes/StateRaw";
+import type {
+  ColumnMoveSpan,
+  NewColumnHeadCells,
+} from "../02_SpreadsheetRaw/ClassTypes/StateRaw";
 import type {
   ColumnProfileRaw,
   TableColumnReference,
@@ -46,6 +49,7 @@ import {
   type UntypedHeadersByTableName,
   type ValueSource,
 } from "./SpreadsheetBaseOperator";
+import { TableColumnOrder } from "./TableColumnOrder";
 import { TableConfigsOperator } from "./TableConfigsOperator";
 
 export interface ApiTableColumns {
@@ -85,6 +89,18 @@ interface ColumnAt {
 
 interface ColumnInsert extends ColumnAt {
   headCells: NewColumnHeadCells;
+}
+
+// Indexed in the layout the run's column deletions and inserts leave.
+export interface PlannedColumnMove extends ColumnMoveSpan {
+  tableId: string;
+}
+
+interface ColumnOrderProps {
+  tableId: string;
+  tableKey: string;
+  deleted: Set<string>;
+  minted: MintedNewColumn[];
 }
 
 export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
@@ -216,16 +232,26 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
     return this;
   }
   // emptyValueAllowed isn't a sheet trait, so its live side carries the previous configs and only a deleted column can stop it.
+  // `before` is read live only, as a tab's is: order is never in the configs, so it can't conflict.
   traitReadings(): PlanReadings {
     const configs = installedBraceConfigs();
-    const live = this._namedColumnIdentities().reduce<TraitReadings["tables"]>(
+    const liveConfigs = this._liveBraceConfigs(configs);
+    const identities = this._namedColumnIdentities();
+    const namesByColumnId = new Map(
+      identities.map(({ columnId, columnName }) => [columnId, columnName]),
+    );
+    const live = identities.reduce<TraitReadings["tables"]>(
       (tables, identity) => {
-        const { tableId, tableKey, columnName } = identity;
+        const { tableId, tableKey, columnId, columnName } = identity;
         const reading = tables[tableKey] ?? {
           traits: { name: this.ss.raw.table(tableId).name },
           columns: {},
         };
-        const { header, topFormula } = this._describedColumn(identity);
+        const { header, topFormula, columnType, validationRule } =
+          this._describedColumn(identity);
+        const next = this._columnOrder(tableId, tableKey).columnIdAfter(
+          columnId,
+        );
         reading.columns[columnName] = {
           header,
           emptyValueAllowed: identity.previousEmptyValueAllowed,
@@ -233,6 +259,16 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
           formula:
             bracedFormula({ configs, tableKey, formula: topFormula }) ??
             undefined,
+          // Against live names under previous keys, so a person renaming a Table a rule names reads as no change.
+          columnType: BraceFormula.decompileColumnType({
+            configs: liveConfigs,
+            tableKey,
+            columnType: {
+              type: columnType ?? null,
+              rule: validationRule ?? null,
+            },
+          }),
+          before: next === undefined ? undefined : namesByColumnId.get(next),
         };
         tables[tableKey] = reading;
         return tables;
@@ -240,9 +276,41 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
       {},
     );
     return {
-      previous: { tables: previousTraitTables(), tabs: {} },
+      previous: { tables: previousTraitTables(configs), tabs: {} },
       live: { tables: live, tabs: {} },
     };
+  }
+  // The previous configs with each API-access Table's live name and each live column's header.
+  private _liveBraceConfigs({
+    tableConfigs,
+    columnConfigs,
+  }: BraceConfigs): BraceConfigs {
+    const apiTableIds = this.tableIdsApiAccesses;
+    return Object.entries(tableConfigs).reduce<BraceConfigs>(
+      (live, [tableKey, tableConfig]) => {
+        const previousColumns = columnConfigs[tableKey] ?? {};
+        if (!apiTableIds.has(tableConfig.tableId)) {
+          live.tableConfigs[tableKey] = tableConfig;
+          live.columnConfigs[tableKey] = previousColumns;
+          return live;
+        }
+        const table = this.ss.raw.table(tableConfig.tableId);
+        const liveColumnIds = new Set(table.profile.columnIds);
+        live.tableConfigs[tableKey] = { ...tableConfig, tableName: table.name };
+        live.columnConfigs[tableKey] = Object.entries(previousColumns).reduce<
+          BraceConfigs["columnConfigs"][string]
+        >((byName, [columnName, columnConfig]) => {
+          if (!liveColumnIds.has(columnConfig.columnId)) return byName;
+          byName[columnName] = {
+            ...columnConfig,
+            header: table.profile.columnById(columnConfig.columnId).header,
+          };
+          return byName;
+        }, {});
+        return live;
+      },
+      { tableConfigs: {}, columnConfigs: {} },
+    );
   }
   // Queues each sent column header, addressed by the previous names the readings use.
   updateHeaders(sent: IntendedTrait[]): this {
@@ -395,6 +463,77 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
       .reverse()
       .sort((first, second) => second.colIndex - first.colIndex);
   }
+  // Before any queue, so a throw sends nothing; each move is indexed in the layout the run's deletions, inserts and earlier moves leave.
+  planColumnMoves(
+    sent: IntendedTrait[],
+    minted: MintedNewColumn[],
+  ): PlannedColumnMove[] {
+    const deleted = new Set(
+      this._sentColumnTraits(sent, "deleted").map(({ columnId }) => columnId),
+    );
+    const orders = new Map<string, TableColumnOrder>();
+    return this._sentColumnTraits(sent, "before").flatMap(
+      ({
+        tableId,
+        tableKey,
+        columnId,
+        columnName,
+        value,
+      }): PlannedColumnMove[] => {
+        const order =
+          orders.get(tableId) ??
+          this._columnOrderAfterChanges({ tableId, tableKey, deleted, minted });
+        orders.set(tableId, order);
+        const before = String(value);
+        const span = order.moveSpan({
+          columnId,
+          beforeColumnId: this._columnIdOf(tableKey, before),
+          column: columnName,
+          before,
+        });
+        if (span === undefined) return [];
+        order.move(span);
+        return [{ tableId, ...span }];
+      },
+    );
+  }
+  // Queued once the run's deletions and inserts have flushed, since their indexes are the layout those leave.
+  moveColumns(moves: PlannedColumnMove[]): this {
+    for (const { tableId, ...span } of moves) {
+      this.ss.raw.table(tableId).moveColumns(span);
+    }
+    return this;
+  }
+  // As updateDeletionsAndInserts and appendColumns leave the Table: each insert before its column in entry order, each append at the end.
+  private _columnOrderAfterChanges({
+    tableId,
+    tableKey,
+    deleted,
+    minted,
+  }: ColumnOrderProps): TableColumnOrder {
+    const order = this._columnOrder(tableId, tableKey).without(deleted);
+    for (const {
+      tableId: mintedTableId,
+      table: key,
+      columnId,
+      before,
+    } of minted) {
+      if (mintedTableId !== tableId) continue;
+      let beforeColumnId: string | undefined;
+      if (before !== undefined) beforeColumnId = this._columnIdOf(key, before);
+      order.insert(columnId, beforeColumnId);
+    }
+    return order;
+  }
+  private _columnOrder(tableId: string, tableKey: string): TableColumnOrder {
+    const table = this.ss.raw.table(tableId);
+    return new TableColumnOrder(
+      tableKey,
+      table.fullTableColIndexes.map((colIndex) =>
+        table.columnResolver.columnIdAt(colIndex),
+      ),
+    );
+  }
   private _colIndexOf(tableId: string, columnId: string): number {
     return this.ss.raw.table(tableId).columnResolver.colIndexOf(columnId);
   }
@@ -410,7 +549,7 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
   }
   private _sentColumnTraits(
     sent: IntendedTrait[],
-    trait: "header" | "formula" | "deleted",
+    trait: "header" | "formula" | "deleted" | "before",
   ): SentColumnTrait[] {
     const identities = this._namedColumnIdentities();
     return sent.flatMap((intended) => {
@@ -596,7 +735,7 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
         groupHeading1: describedColumn.groupHeading1 || null,
       };
     }
-    return this._withFormulasInBraceForm(columnConfigs);
+    return this._inBraceForm(columnConfigs);
   }
   apiTableColumnsByTableId(): Map<string, ApiTableColumns> {
     const byTableId = this.identifiedApiTableColumnsByTableId();
@@ -620,7 +759,7 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
     }, new Map<string, ApiTableColumns>());
   }
   // A second pass, because a brace names a column by the name this run gives it.
-  private _withFormulasInBraceForm(
+  private _inBraceForm(
     columnConfigs: ColumnConfigsGeneric,
   ): ColumnConfigsGeneric {
     const configs = {
@@ -638,6 +777,11 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
               configs,
               tableKey,
               formula: columnConfig.formula,
+            }),
+            columnType: BraceFormula.decompileColumnType({
+              configs,
+              tableKey,
+              columnType: columnConfig.columnType,
             }),
           };
           return bracedTable;
@@ -657,31 +801,6 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
       ``,
     ].join("\n");
   }
-}
-
-function previousTraitTables(): TraitReadings["tables"] {
-  const tableConfigs = tableConfigsByName();
-  return Object.entries(columnConfigsByName()).reduce<TraitReadings["tables"]>(
-    (tables, [tableKey, columns]) => {
-      const tableName = tableConfigs[tableKey]?.tableName;
-      tables[tableKey] = {
-        traits: tableName === undefined ? {} : { name: tableName },
-        columns: Object.entries(columns).reduce<TableReading["columns"]>(
-          (byName, [columnName, { header, emptyValueAllowed, formula }]) => {
-            byName[columnName] = {
-              header,
-              emptyValueAllowed,
-              formula: formula ?? undefined,
-            };
-            return byName;
-          },
-          {},
-        ),
-      };
-      return tables;
-    },
-    {},
-  );
 }
 
 function installedBraceConfigs(): BraceConfigs {

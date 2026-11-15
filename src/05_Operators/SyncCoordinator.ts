@@ -1,6 +1,7 @@
 import { Val } from "@byronbroughten/utils/val";
 
 import { HeldFlushRefusal } from "../00_Source/RawSource/HeldFlushRefusal";
+import { PartialTableRefusal } from "../00_Source/RawSource/PartialTableRefusal";
 import {
   type ApiAccessChanges,
   apiAccessChanges,
@@ -8,6 +9,10 @@ import {
 } from "../01_SpreadsheetSchema/configReaders/apiAccessChanges";
 import { columnConfigsByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
 import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister";
+import type {
+  ConfigSnapshot,
+  ConfigSnapshots,
+} from "../01_SpreadsheetSchema/configReaders/configSnapshots";
 import {
   didntLandOf,
   hasLanded,
@@ -17,12 +22,17 @@ import {
   enteredDataReads,
 } from "../01_SpreadsheetSchema/configReaders/enteredDataReads";
 import {
+  heldStoppedOutcome,
+  refusedStoppedOutcome,
+} from "../01_SpreadsheetSchema/configReaders/flushStoppedOutcome";
+import {
   type IdNameMapGeneric,
   tableIdsByName,
 } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
 import type { PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState";
 import { remainingAlterations } from "../01_SpreadsheetSchema/configReaders/remainingAlterations";
 import { SyncEntryRefuser } from "../01_SpreadsheetSchema/configReaders/SyncEntryRefuser";
+import { SyncNameRewriter } from "../01_SpreadsheetSchema/configReaders/SyncNameRewriter";
 import {
   deletedTableOf,
   isSheetTrait,
@@ -34,11 +44,15 @@ import {
 import type {
   ForcedTrait,
   SyncCreatedColumn,
+  SyncFlushStoppedOutcome,
+  SyncNotice,
   SyncPlanItem,
   SyncRunFrame,
   SyncRunResult,
   SyncSendLine,
   SyncSubject,
+  SyncTabGoneNotice,
+  SyncTableGoneNotice,
   SyncTypedTraitChange,
 } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
 import { SyncRunResultBuilder } from "../01_SpreadsheetSchema/configReaders/SyncRunResultBuilder";
@@ -51,6 +65,7 @@ import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
 import {
   ColumnConfigsOperator,
   type MintedNewColumn,
+  type PlannedColumnMove,
 } from "./ColumnConfigsOperator";
 import {
   type CompiledRuleReplacement,
@@ -99,6 +114,8 @@ export interface SyncRunProps {
 
 interface Regeneration {
   files: ConfigRegeneration;
+  // The configs the files record, beside the ones the run started from.
+  configs: ConfigSnapshots;
   changes: SyncTypedTraitChange[];
   notes: string[];
   didntLand: SyncSendLine[];
@@ -110,6 +127,7 @@ interface AppliedPlan {
   accessChanges: ApiAccessChanges;
   sentTraits: SyncPlannerResult["sentTraits"];
   newColumns: MintedNewColumn[];
+  columnMoves: PlannedColumnMove[];
   ruleRemovals: IndexedRuleRemoval[];
   ruleReplacements: CompiledRuleReplacement[];
   reads: EnteredDataReads;
@@ -119,10 +137,17 @@ interface RefetchProps {
   configTraits: TraitReadings;
   plan: SyncPlannerResult;
   sent: SyncSubject[];
+  previous: ConfigSnapshot;
   accessChanges: ApiAccessChanges;
   newColumns: MintedNewColumn[];
   ruleRemovals: IndexedRuleRemoval[];
   ruleReplacements: CompiledRuleReplacement[];
+}
+
+interface RegenerationProps {
+  notes: string[];
+  sent: SyncSubject[];
+  previous: ConfigSnapshot;
 }
 
 // No files on a refused run: the run writes every file or none.
@@ -141,7 +166,9 @@ export interface SyncRun {
  * placed before another in a flush of their own,
  * refetches, then emits every generated config file, the ID-name map and
  * the remaining alterations, or none, and fills blank
- * row IDs from the fresh configs as its own send. A bare run sends nothing but still
+ * row IDs from the fresh configs as its own send. Every run that refreshes the
+ * ID-name map rewrites the pending entries naming a renamed Table, column or
+ * tab, a bare or stopped run included. A bare run sends nothing but still
  * refreshes the configs from its read; on a host that withholds, it then
  * flushes the plan for the host's entered-data gate to judge. Before either
  * flush it reads the cells a deletion or a formula would overwrite, so the
@@ -186,9 +213,10 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
   }
   run(props: SyncRunProps): SyncRun {
     const { alterations } = props.intendedState;
+    const tabOfTable = tabsByTable(props.previousIdNameMap);
     const planner = SyncPlanner.init({
       alterations,
-      tabsByTable: tabsByTable(props.previousIdNameMap),
+      tabsByTable: tabOfTable,
       forcedTraits: props.forcedTraits,
     });
     const refusals = [
@@ -212,7 +240,15 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     this.rowIdsOperator.validateIdPrefixes();
     const checkboxPlan = this.rowIdsOperator.checkboxPlan();
     const notices = [
-      ...this.tableConfigOperator.goneTableNotices(props.previousIdNameMap),
+      ...goneNotices({
+        tabsGone: this.tabConfigOperator.goneTabNotices(
+          props.previousIdNameMap,
+        ),
+        tablesGone: this.tableConfigOperator.goneTableNotices(
+          props.previousIdNameMap,
+        ),
+        tabsByTable: tabOfTable,
+      }),
       ...this.rowIdsOperator.idFirstNotices(),
     ];
     const readings = this._traitReadings();
@@ -255,6 +291,10 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       accessChanges,
       sentTraits: planned.sentTraits,
       newColumns,
+      columnMoves: this.columnConfigOperator.planColumnMoves(
+        planned.sentTraits,
+        newColumns,
+      ),
       ruleRemovals,
       ruleReplacements:
         this.conditionalFormatConfigOperator.compiledRuleReplacements({
@@ -274,19 +314,24 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     if (isApplying) this._applyPlan(applied);
     const notes = this._recordUntypedColumns();
     if (isApplying) {
-      const refusal = this._flushUnlessHeld(applied);
+      const stopped = this._flushUnlessStopped(applied);
       // No files: column IDs already recorded would reach the configs but not the sheet.
-      if (refusal !== undefined) {
+      if (stopped !== undefined) {
         return {
-          result: resultBuilder.heldStopped({
+          result: resultBuilder.flushStopped({
             planned,
-            refusal,
+            outcome: stopped,
             rowIds: { plan: checkboxPlan, notices },
           }),
         };
       }
     }
     const sent = isApplying ? planned.plan.map(({ subject }) => subject) : [];
+    const previous: ConfigSnapshot = {
+      idNameMap: props.previousIdNameMap,
+      columnConfigs: columnConfigsByName(),
+      valueConfigs: installedConfigs().valueConfigs,
+    };
     let refetched: SyncCoordinator | undefined;
     let regeneration: Regeneration;
     // A fresh read, since Raw's state has no reset; only a sent sheet trait, a new column or a removed rule changes what it would read.
@@ -302,13 +347,14 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         configTraits: planned.configTraits,
         plan: planned,
         sent,
+        previous,
         accessChanges,
         newColumns: applied.newColumns,
         ruleRemovals: applied.ruleRemovals,
         ruleReplacements: applied.ruleReplacements,
       });
     } else {
-      regeneration = this._regeneration(notes, sent);
+      regeneration = this._regeneration({ notes, sent, previous });
     }
     // The fill reads the configs the files came from.
     const regenerator = refetched ?? this;
@@ -319,10 +365,14 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       this._flushPlan(applied);
     }
     const landed = sent.filter(hasLanded(didntLand));
-    if (landed.length > 0) {
-      files.alterations = alterationsFileSource(
-        remainingAlterations(alterations, landed),
-      );
+    const nameRewriter = SyncNameRewriter.init({
+      alterations: remainingAlterations(alterations, landed),
+      configs: regeneration.configs,
+      sent,
+      landed,
+    });
+    if (landed.length > 0 || nameRewriter.rewrites.length > 0) {
+      files.alterations = alterationsFileSource(nameRewriter.alterations);
     }
     let fillPlan: SyncPlanItem[];
     if (isApplying) {
@@ -338,6 +388,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         didntLand,
         createdColumns,
         rowIds: { plan: [...checkboxPlan, ...fillPlan], notices },
+        nameRewriter,
       }),
       files,
     };
@@ -372,6 +423,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     configTraits,
     plan,
     sent,
+    previous,
     accessChanges,
     newColumns,
     ruleRemovals,
@@ -395,27 +447,29 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       ),
     ];
     return {
-      ...this._regeneration(notes, sent),
+      ...this._regeneration({ notes, sent, previous }),
       didntLand: [...traitsDidntLand, ...columns.didntLand, ...rulesDidntLand],
       createdColumns: columns.createdColumns,
     };
   }
-  private _regeneration(notes: string[], sent: SyncSubject[]): Regeneration {
+  private _regeneration({
+    notes,
+    sent,
+    previous,
+  }: RegenerationProps): Regeneration {
     this.valueConfigOperator.fetchAfterColumnConfigSynced();
-    const changes = typedTraitChanges({
-      previous: {
-        columnConfigs: columnConfigsByName(),
-        valueConfigs: installedConfigs().valueConfigs,
-      },
+    const configs: ConfigSnapshots = {
+      previous,
       regenerated: {
+        idNameMap: this._idNameMap(),
         columnConfigs: this.columnConfigOperator.newColumnConfigs(),
         valueConfigs: this.valueConfigOperator.newValueConfigs(),
       },
-      sent,
-    });
+    };
     return {
-      files: this._configFiles(),
-      changes,
+      files: this._configFiles(configs.regenerated.idNameMap),
+      configs,
+      changes: typedTraitChanges({ ...configs, sent }),
       notes,
       didntLand: [],
       createdColumns: [],
@@ -483,26 +537,36 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     }
     identified.fetchAllGathered();
   }
-  // The Node host's gate refuses a held flush by throwing; any other error goes on up.
-  private _flushUnlessHeld(applied: AppliedPlan): HeldFlushRefusal | undefined {
+  // The Node host's gate refuses a held flush by throwing, as Google refuses a batch over part of a Table; any other error goes on up.
+  private _flushUnlessStopped(
+    applied: AppliedPlan,
+  ): SyncFlushStoppedOutcome | undefined {
     try {
       this._flushPlan(applied);
       return undefined;
     } catch (error) {
-      if (error instanceof HeldFlushRefusal) return error;
+      if (error instanceof HeldFlushRefusal) return heldStoppedOutcome(error);
+      if (error instanceof PartialTableRefusal) {
+        return refusedStoppedOutcome(
+          this.ss.raw.landedFlushCount,
+          error.message,
+        );
+      }
       throw error;
     }
   }
-  // A column delete or mid-Table insert goes in a flush of its own on its Table, since the plan's other writes are indexed by the columns before it.
-  // A replaced rule goes after them, since it is compiled against the layout they leave.
+  // Column deletes and inserts with the replaced rules compiled against the layout they leave, then moves, each flush alone: every later write is indexed by the layout the one before leaves.
   private _flushPlan({
     sentTraits,
     newColumns,
     ruleReplacements,
+    columnMoves,
   }: AppliedPlan): void {
     this.ss.batchUpdateGSheets();
     this.columnConfigOperator.updateDeletionsAndInserts(sentTraits, newColumns);
     this.conditionalFormatConfigOperator.replaceRules(ruleReplacements);
+    this.ss.batchUpdateGSheets();
+    this.columnConfigOperator.moveColumns(columnMoves);
     this.ss.batchUpdateGSheets();
   }
   private _applyApiAccessChanges(accessChanges: ApiAccessChanges): void {
@@ -520,7 +584,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     if (untypedColumnsSummary === undefined) return [];
     return [untypedColumnsSummary];
   }
-  private _configFiles(): ConfigRegeneration {
+  private _configFiles(idNameMap: IdNameMapGeneric): ConfigRegeneration {
     return {
       tableConfigs: this.tableConfigOperator.toFileSource(),
       tabConfigs: this.tabConfigOperator.toFileSource(),
@@ -529,7 +593,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       retiredIdPrefixes: this.tableConfigOperator.retiredIdPrefixesFileSource(),
       columnConfigs: this.columnConfigOperator.toFileSource(),
       valueConfigs: this.valueConfigOperator.toFileSource(),
-      idNameMap: idNameMapFileSource(this._idNameMap()),
+      idNameMap: idNameMapFileSource(idNameMap),
     };
   }
   private _idNameMap(): IdNameMapGeneric {
@@ -589,4 +653,30 @@ function tabsByTable({
     },
     {},
   );
+}
+
+interface GoneNoticesProps {
+  tabsGone: SyncTabGoneNotice[];
+  tablesGone: SyncTableGoneNotice[];
+  tabsByTable: Record<string, string | undefined>;
+}
+
+// Each gone tab's line comes just before its own Tables' lines, then the Tables gone from a live tab.
+function goneNotices({
+  tabsGone,
+  tablesGone,
+  tabsByTable,
+}: GoneNoticesProps): SyncNotice[] {
+  const goneTabs = new Set(tabsGone.map(({ tab }) => tab));
+  const fromLiveTabs = tablesGone.filter(({ table }) => {
+    const tab = tabsByTable[table];
+    return tab === undefined || !goneTabs.has(tab);
+  });
+  return [
+    ...tabsGone.flatMap((tabGone) => [
+      tabGone,
+      ...tablesGone.filter(({ table }) => tabsByTable[table] === tabGone.tab),
+    ]),
+    ...fromLiveTabs,
+  ];
 }

@@ -221,7 +221,7 @@ describe("ColumnConfigsOperator.newColumnConfigs / toFileSource", () => {
 });
 
 describe("ColumnConfigsOperator.traitReadings", () => {
-  it("reads emptyValueAllowed from the previous configs on both sides and header and name from each side, by previous names", () => {
+  it("reads emptyValueAllowed from the previous configs on both sides and header, column type and name from each side, by previous names", () => {
     stubSheetsService({
       sheets: [
         {
@@ -239,14 +239,32 @@ describe("ColumnConfigsOperator.traitReadings", () => {
         },
       ],
     });
-    function expectedColumns(headerSuffix: string): TableReading["columns"] {
+    // The live fixture sets no column types, so each live column reads Automatic.
+    function expectedColumns(isLive: boolean): TableReading["columns"] {
       return Object.fromEntries(
         Object.entries(columnConfigs.item).map(
-          ([columnName, { header, emptyValueAllowed }]) => [
+          ([columnName, { header, emptyValueAllowed, columnType }]) => [
             columnName,
-            { header: `${header}${headerSuffix}`, emptyValueAllowed },
+            {
+              header: isLive ? `${header} Renamed` : header,
+              emptyValueAllowed,
+              columnType: isLive ? { type: null, rule: null } : columnType,
+            },
           ],
         ),
+      );
+    }
+
+    // Live reads each column's before as the next column on the sheet; the last has none.
+    function withLiveOrder(
+      columns: TableReading["columns"],
+    ): TableReading["columns"] {
+      const names = Object.keys(columns);
+      return Object.fromEntries(
+        Object.entries(columns).map(([columnName, reading], index) => [
+          columnName,
+          { ...reading, before: names[index + 1] },
+        ]),
       );
     }
 
@@ -254,11 +272,11 @@ describe("ColumnConfigsOperator.traitReadings", () => {
 
     expect(previous.tables.item).toEqual({
       traits: { name: getTableTraitByName("item", "tableName") },
-      columns: expectedColumns(""),
+      columns: expectedColumns(false),
     });
     expect(live.tables.item).toEqual({
       traits: { name: "Widget" },
-      columns: expectedColumns(" Renamed"),
+      columns: withLiveOrder(expectedColumns(true)),
     });
     expect(Object.keys(live.tables)).toEqual(["item"]);
   });
@@ -278,7 +296,11 @@ describe("ColumnConfigsOperator.traitReadings", () => {
     const { live } = syncedOperator().traitReadings();
 
     expect(live.tables.item?.columns).toEqual({
-      brandNew: { header: "Brand New", emptyValueAllowed: false },
+      brandNew: {
+        header: "Brand New",
+        emptyValueAllowed: false,
+        columnType: { type: null, rule: null },
+      },
     });
   });
 });

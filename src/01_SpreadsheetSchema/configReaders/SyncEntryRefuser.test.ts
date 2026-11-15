@@ -102,7 +102,7 @@ describe("SyncEntryRefuser, traits not sendable yet", () => {
             item: {
               columns: {
                 name: { columnType: { type: "TEXT", rule: null } },
-                count: { formula: "=1", before: "name" },
+                count: { emptyValueAllowed: true },
               },
             },
           },
@@ -110,8 +110,17 @@ describe("SyncEntryRefuser, traits not sendable yet", () => {
       }),
     ).toEqual([
       { kind: "notSendableYet", table: "item", path: "name.columnType" },
-      { kind: "notSendableYet", table: "item", path: "count.before" },
     ]);
+  });
+
+  it("lets a column's before through", () => {
+    expect(
+      refusals({
+        alterations: {
+          tables: { item: { columns: { count: { before: "name" } } } },
+        },
+      }),
+    ).toEqual([]);
   });
 
   it("lets a column's deletion through", () => {

@@ -5,6 +5,7 @@ import type {
   ExtendedValue,
   FlushRead,
   GoogleCellData,
+  GoogleGridRange,
   GridCell,
   GridSize,
   HeldCell,
@@ -52,6 +53,19 @@ export class RunReads {
       return { kind: "outsideTables" };
     }
     return this.valueAt(cell);
+  }
+  // A read of the whole tab, as fetchSheetUsedGrid asks for, leaves out only blank cells.
+  hasUsedGrid(sheetGid: number): boolean {
+    return (
+      this.sheetTables.has(sheetGid) &&
+      this.latestFirst.some(({ gridRanges }) =>
+        gridRanges.some((range) => isWholeTab(range, sheetGid)),
+      )
+    );
+  }
+  isInHeadRows(cell: GridCell): boolean {
+    const tables = this.sheetTables.get(cell.sheetGid)?.tables ?? [];
+    return tables.some((table) => Grid.isInRange(headRowsRange(table), cell));
   }
   valueAt(cell: GridCell): ReadValue {
     const data = this._cellData(cell);
@@ -163,6 +177,26 @@ function bodyTableAt(
       Grid.isInRange(range, cell) && cell.rowIndex > (range.startRowIndex ?? 0)
     );
   });
+}
+
+function isWholeTab(range: GoogleGridRange, sheetGid: number): boolean {
+  return (
+    (range.sheetId ?? 0) === sheetGid &&
+    range.startRowIndex === undefined &&
+    range.endRowIndex === undefined &&
+    range.startColumnIndex === undefined &&
+    range.endColumnIndex === undefined
+  );
+}
+
+function headRowsRange(table: GoogleTable): GoogleGridRange {
+  const range = table.range ?? {};
+  const headerRowIndex = range.startRowIndex ?? 0;
+  return {
+    ...range,
+    startRowIndex: headerRowIndex - (tableLayout.headerZoneDepth - 1),
+    endRowIndex: headerRowIndex + 1,
+  };
 }
 
 function tableColIndexes(table: GoogleTable): number[] {

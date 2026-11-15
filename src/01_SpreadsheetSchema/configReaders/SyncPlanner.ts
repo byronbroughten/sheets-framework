@@ -132,7 +132,7 @@ export const tabTraits = [
 // The sent traits Raw's working view doesn't carry, so the run refetches after sending one; a tab's land in the working view.
 export const sheetTraits = {
   table: new Set<string>(["name", "deleted"]),
-  column: new Set<string>(["header", "formula", "deleted"]),
+  column: new Set<string>(["header", "formula", "before", "deleted"]),
 } as const;
 
 // A deletion's one value, `true`, says nothing a plan line could show.
@@ -415,6 +415,7 @@ export class SyncPlanner {
             "header",
             "columnType",
             "formula",
+            "before",
             "emptyValueAllowed",
             "deleted",
           ]).map((trait) => ({
@@ -457,7 +458,7 @@ function pickTraits<EN extends object, KY extends keyof EN & string>(
 
 // Order is never in the configs, so live alone decides it: sent unless live already has it.
 function isOrderTrait(intended: IntendedTrait): boolean {
-  return intended.kind === "tab" && intended.trait === "before";
+  return intended.kind !== "table" && intended.trait === "before";
 }
 
 export function isColumnDeletion(address: TraitAddress): boolean {
