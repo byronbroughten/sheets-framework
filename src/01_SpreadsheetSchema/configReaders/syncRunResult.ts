@@ -110,14 +110,26 @@ export interface SyncSendLine {
 }
 
 export type SyncLandedItem =
-  ({ kind: "send" } & SyncSendLine) | SyncCreatedColumn;
+  ({ kind: "send" } & SyncSendLine) | SyncCreatedColumn | SyncCreatedTable;
 
-export interface SyncCreatedColumn {
-  kind: "createdColumn";
+// A `newTabs` or `newTables` Table as the refetch found it, by the codebase name its name gives.
+export interface SyncCreatedTable {
+  kind: "createdTable";
   table: string;
+  tab: string;
+  tableId: string;
+  columns: SyncCreatedTableColumn[];
+}
+
+export interface SyncCreatedTableColumn {
   header: string;
   column: string;
   columnId: string;
+}
+
+export interface SyncCreatedColumn extends SyncCreatedTableColumn {
+  kind: "createdColumn";
+  table: string;
 }
 
 export interface SyncOutsideReference {
@@ -190,7 +202,26 @@ export type SyncSheetStop =
   | SyncHeadRowsStop
   | SyncHeaderTakenStop
   | SyncNoSuchRuleStop
-  | SyncUnmodelableRuleStop;
+  | SyncUnmodelableRuleStop
+  | SyncNewTableStop;
+
+export type SyncNewTableStop = SyncTableNameTakenStop | SyncTabTitleTakenStop;
+
+// A new Table whose name gives the codebase name a live Table's does: `existing` and `tableId` are that Table's.
+export interface SyncTableNameTakenStop {
+  kind: "tableNameTaken";
+  name: string;
+  existing: string;
+  tableId: string;
+}
+
+// A `newTabs` title giving the codebase name a live tab's does: `existing` and `gid` are that tab's.
+export interface SyncTabTitleTakenStop {
+  kind: "tabTitleTaken";
+  title: string;
+  existing: string;
+  gid: number;
+}
 
 export interface SyncConflict {
   kind: "conflict";

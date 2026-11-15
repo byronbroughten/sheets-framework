@@ -4,6 +4,8 @@ import {
   type SyncCheck,
   type SyncConfigs,
   type SyncConflict,
+  type SyncCreatedTable,
+  type SyncCreatedTableColumn,
   type SyncDryRunOutcome,
   type SyncFlushStoppedOutcome,
   type SyncHeaderTakenStop,
@@ -25,6 +27,8 @@ import {
   type SyncStop,
   type SyncStopCause,
   type SyncSubject,
+  type SyncTableNameTakenStop,
+  type SyncTabTitleTakenStop,
   type SyncUnmodelableRuleStop,
 } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
 
@@ -497,6 +501,8 @@ const stopKinds: StopKind[] = [
   "conflict",
   "headRows",
   "headerTaken",
+  "tableNameTaken",
+  "tabTitleTaken",
   "noSuchRule",
   "unmodelableRule",
 ];
@@ -522,6 +528,20 @@ const stopWords: { [SK in StopKind]: StopWords<SK> } = {
       return `${counted(count, "new column", "new columns")} taken`;
     },
     block: headerTakenBlock,
+  },
+  tableNameTaken: {
+    name: "stop",
+    reason(count) {
+      return `${counted(count, "new Table name", "new Table names")} taken`;
+    },
+    block: tableNameTakenBlock,
+  },
+  tabTitleTaken: {
+    name: "stop",
+    reason(count) {
+      return `${counted(count, "new tab title", "new tab titles")} taken`;
+    },
+    block: tabTitleTakenBlock,
   },
   noSuchRule: {
     name: "stop",
@@ -579,6 +599,32 @@ function headerTakenBlock(
     `STOP ${number} · ${table} › newColumns`,
     ...indent(2, [
       `${table} already has a column headed "${header}": ${column}, ${columnId}.`,
+      entryStaysText,
+    ]),
+  ];
+}
+
+function tableNameTakenBlock(
+  { name, existing, tableId }: SyncTableNameTakenStop,
+  number: number,
+): string[] {
+  return [
+    `STOP ${number} · new Table "${name}"`,
+    ...indent(2, [
+      `A Table already gives its name's codebase name: "${existing}", ${tableId}.`,
+      entryStaysText,
+    ]),
+  ];
+}
+
+function tabTitleTakenBlock(
+  { title, existing, gid }: SyncTabTitleTakenStop,
+  number: number,
+): string[] {
+  return [
+    `STOP ${number} · new tab "${title}"`,
+    ...indent(2, [
+      `A tab already gives its title's codebase name: "${existing}", GID ${gid}.`,
       entryStaysText,
     ]),
   ];
@@ -672,8 +718,27 @@ function forceFlagOf({
 
 function landedLine(item: SyncLandedItem): string {
   if (item.kind === "send") return sendLine(item);
+  if (item.kind === "createdTable") return createdTableLine(item);
   const { table, header, column, columnId } = item;
-  return `${table}: created "${header}" as ${column}, ${columnId}.`;
+  return `${table}: ${createdColumnText({ header, column, columnId })}.`;
+}
+
+function createdColumnText({
+  header,
+  column,
+  columnId,
+}: SyncCreatedTableColumn): string {
+  return `created "${header}" as ${column}, ${columnId}`;
+}
+
+function createdTableLine({
+  table,
+  tab,
+  tableId,
+  columns,
+}: SyncCreatedTable): string {
+  const columnTexts = columns.map(createdColumnText).join("; ");
+  return `${tab}: created Table ${table}, ${tableId}; ${columnTexts}.`;
 }
 
 function sendLine({ subject, what }: SyncSendLine): string {

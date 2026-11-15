@@ -183,7 +183,7 @@ describe("SyncEntryRefuser, traits not sendable yet", () => {
     ]);
   });
 
-  it("lets a tab's traits through, refusing only its new Tables", () => {
+  it("lets a tab's traits and new Tables through", () => {
     expect(
       refusals({
         alterations: {
@@ -195,28 +195,123 @@ describe("SyncEntryRefuser, traits not sendable yet", () => {
               frozenRows: 2,
               frozenColumns: 1,
               hidden: true,
-              newTables: [],
+              newTables: [
+                {
+                  name: "Extra",
+                  columns: [{ header: "Note", emptyValueAllowed: true }],
+                  gap: 1,
+                },
+              ],
             },
           },
         },
       }),
-    ).toEqual([{ kind: "notSendableYet", table: "items", path: "newTables" }]);
+    ).toEqual([]);
   });
 
-  it("refuses a new tab, named by its title", () => {
+  it("refuses a new Table's column formula and type and its rules, by the tab's path", () => {
     expect(
       refusals({
-        alterations: { newTabs: [{ title: "Vendors", tables: [] }] },
+        alterations: {
+          tabs: {
+            items: {
+              newTables: [
+                {
+                  name: "Extra",
+                  columns: [
+                    { header: "Note" },
+                    {
+                      header: "Count",
+                      formula: "=1",
+                      columnType: { type: "NUMBER", rule: null },
+                    },
+                  ],
+                  conditionalFormats: {
+                    add: [
+                      {
+                        columns: "all",
+                        condition: { type: "NOT_BLANK" },
+                        format: {},
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        },
       }),
-    ).toEqual([{ kind: "notSendableYet", table: "Vendors", path: "newTabs" }]);
+    ).toEqual([
+      {
+        kind: "notSendableYet",
+        table: "items",
+        path: "newTables[0].conditionalFormats.add",
+      },
+      {
+        kind: "notSendableYet",
+        table: "items",
+        path: "newTables[0].columns[1].formula",
+      },
+      {
+        kind: "notSendableYet",
+        table: "items",
+        path: "newTables[0].columns[1].columnType",
+      },
+    ]);
   });
 
-  it("refuses two untitled new tabs once", () => {
+  it("lets a new tab's title and Tables through, refusing its other traits by its title", () => {
     expect(
       refusals({
-        alterations: { newTabs: [{ tables: [] }, { tables: [] }] },
+        alterations: {
+          newTabs: [
+            {
+              title: "Vendors",
+              color: "#ff0000",
+              tables: [
+                {
+                  name: "Vendor",
+                  columns: [
+                    { header: "Name" },
+                    { header: "Rate", formula: "=1" },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
       }),
-    ).toEqual([{ kind: "notSendableYet", table: "newTabs", path: "newTabs" }]);
+    ).toEqual([
+      { kind: "notSendableYet", table: "Vendors", path: "newTabs[0].color" },
+      {
+        kind: "notSendableYet",
+        table: "Vendors",
+        path: "newTabs[0].tables[0].columns[1].formula",
+      },
+    ]);
+  });
+
+  it("refuses every new Table on a tab after its first, and a new tab with none", () => {
+    const table = { name: "Extra", columns: [{ header: "Note" }] };
+    expect(
+      refusals({
+        alterations: {
+          tabs: { items: { newTables: [table, table] } },
+          newTabs: [
+            { title: "Vendors", tables: [table, table] },
+            { title: "Empty", tables: [] },
+          ],
+        },
+      }),
+    ).toEqual([
+      { kind: "notSendableYet", table: "items", path: "newTables[1]" },
+      {
+        kind: "notSendableYet",
+        table: "Vendors",
+        path: "newTabs[0].tables[1]",
+      },
+      { kind: "notSendableYet", table: "Empty", path: "newTabs[1].tables" },
+    ]);
   });
 
   it("refuses nothing for no intended state", () => {

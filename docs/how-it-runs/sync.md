@@ -10,6 +10,10 @@
 
 **`newColumns` is sendable, and `sync` mints each new column's ID.** An entry takes only `header`, `before` and `emptyValueAllowed`; `formula` and `columnType` are refused as not sendable yet, since they need a write after the insert (`sendableTraits.newColumn`).
 
+## Creating Tables with newTabs and newTables
+
+**`newTabs` and a tab's `newTables` are sendable, one new Table per tab per run, and `sync` mints each new Table's ID, ID prefix and column IDs.** A new tab goes by `addSheet` with only its title; its other traits are refused as not sendable yet, as are a new Table's column `formula` and `columnType` and its `conditionalFormats`. The Tables are created last, in their own flush, and a new Table whose name a live Table has, or a new tab whose title is taken, stops the run before any send (`TableConfigsOperator.newTableStops`).
+
 ## Moving a column with before
 
 **A column entry's `before` is sendable: `sync` moves the column to before the named one, unless live already has that order**, through `TableRaw.moveColumns` after the run's column deletions and inserts have flushed (`ColumnConfigsOperator.planColumnMoves`). Live's reading of a column's `before` is the next column on the sheet, and the configs never record it. A move to the first position goes as the columns before it moving right, since an insert at a Table's first column lands outside it ([observed](../sheets-behaviour.md#moving-columns-within-a-table)); moving the last column to the front is unmeasured, so it is refused before anything is sent.

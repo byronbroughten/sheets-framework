@@ -1,9 +1,14 @@
 import { hasLanded } from "./didntLand";
 import type { SyncNameRewriter } from "./SyncNameRewriter";
-import { newColumnLines, type SyncPlannerResult } from "./SyncPlanner";
+import {
+  newColumnLines,
+  newTableLines,
+  type SyncPlannerResult,
+} from "./SyncPlanner";
 import {
   fillRowIdsName,
   type SyncCreatedColumn,
+  type SyncCreatedTable,
   type SyncDryRunOutcome,
   type SyncDryRunResult,
   type SyncFlushStoppedOutcome,
@@ -46,6 +51,8 @@ export interface SyncRunPlanned {
   didntLand: SyncSendLine[];
   // The new columns the refetch found, in place of their plan lines on the landed list.
   createdColumns: SyncCreatedColumn[];
+  // The new Tables the refetch found, in place of their plan lines on the landed list.
+  createdTables: SyncCreatedTable[];
   rowIds: SyncRunRowIds;
   nameRewriter: SyncNameRewriter;
 }
@@ -81,6 +88,7 @@ export class SyncRunResultBuilder {
     typedTraitChanges,
     didntLand,
     createdColumns,
+    createdTables,
     rowIds,
     nameRewriter,
   }: SyncRunPlanned): SyncRunResult {
@@ -98,12 +106,15 @@ export class SyncRunResultBuilder {
     const landed: SyncLandedItem[] = [
       ...planned.plan
         .filter(
-          // Each new column lands as its created line, carrying the minted ID its plan line couldn't.
+          // Each new column or Table lands as its created line, carrying the minted IDs its plan line couldn't.
           ({ subject }) =>
-            isLanded(subject) && !newColumnLines.isSubject(subject),
+            isLanded(subject) &&
+            !newColumnLines.isSubject(subject) &&
+            !newTableLines.isSubject(subject),
         )
         .map(landedSend),
       ...createdColumns,
+      ...createdTables,
       ...rowIds.plan.map(landedSend),
     ];
     return {

@@ -17,9 +17,13 @@ import {
 import {
   type IntendedTrait,
   isTableDeletion,
+  type PlannedNewTable,
+  type PlannedNewTableColumn,
+  type PlannedNewTablePlacement,
 } from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
 import type {
   SyncHeadRowsStop,
+  SyncNewTableStop,
   SyncTableGoneNotice,
 } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
 import {
@@ -27,17 +31,32 @@ import {
   tableConfigsByName,
   tableConfigsByTableId,
 } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
+import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
 import { headerZone } from "../01_SpreadsheetSchema/headerZone";
 import {
   idPrefixes,
   IdPrefixesByTableId,
   type IdPrefixLabel,
 } from "../01_SpreadsheetSchema/idPrefixes";
+import type { CreatedTablePlacement } from "../02_SpreadsheetRaw/ClassTypes/StateRaw";
+import type { SheetRaw } from "../02_SpreadsheetRaw/SheetRaw";
+import {
+  randomSheetGid,
+  randomTableId,
+} from "../02_SpreadsheetRaw/SpreadsheetRaw/SpreadsheetTableCreatorRaw";
 import type { TableRaw } from "../02_SpreadsheetRaw/TableRaw";
 import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
 import { oneLinePerEntryFileSource } from "./configFileSource";
 import { validateIdPrefixesUnchanged } from "./idPrefixGuard";
 import { SpreadsheetBaseOperator } from "./SpreadsheetBaseOperator";
+
+// A planned new Table with the IDs the run settled for it, its tab's GID in its created placement.
+export interface MintedNewTable extends PlannedNewTable {
+  tableId: string;
+  createdPlacement: CreatedTablePlacement;
+  idPrefix: string;
+  columns: (PlannedNewTableColumn & { columnId: string })[];
+}
 
 export class TableConfigsOperator extends SpreadsheetBaseOperator {
   static init(): TableConfigsOperator {
@@ -80,6 +99,105 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
         },
       ];
     });
+  }
+  // Matched by the codebase name the regen would give, since two Tables or tabs giving one name can't both be configured.
+  newTableStops(newTables: PlannedNewTable[]): SyncNewTableStop[] {
+    const { raw } = this.ss;
+    const liveTables = raw.activeTableIds.map((tableId) => raw.table(tableId));
+    return newTables.flatMap(({ table, name, placement }) => {
+      const stops: SyncNewTableStop[] = [];
+      const takenTable = liveTables.find(
+        (live) => this.schema.titleToName(live.name) === table,
+      );
+      if (takenTable !== undefined) {
+        stops.push({
+          kind: "tableNameTaken",
+          name,
+          existing: takenTable.name,
+          tableId: takenTable.tableId,
+        });
+      }
+      if (placement.kind !== "newTab") return stops;
+      const { title } = placement;
+      const takenTab = this._liveTabByName(this.schema.titleToName(title));
+      if (takenTab !== undefined) {
+        stops.push({
+          kind: "tabTitleTaken",
+          title,
+          existing: takenTab.title,
+          gid: takenTab.sheetGid,
+        });
+      }
+      return stops;
+    });
+  }
+  // Minted before any queue, so a dry run's withheld flush and the report carry the same IDs.
+  mintNewTables(newTables: PlannedNewTable[]): MintedNewTable[] {
+    const prefixesInUse = new Set(this.idPrefixesByTableId().idPrefixes());
+    const retiredPrefixes = this._retiredOrGoneIdPrefixes();
+    const sheetGidsInUse = new Set(this.ss.raw.activeSheetGids);
+    return newTables.map((newTable) => {
+      const idPrefix = idPrefixes.fromTitle({
+        title: newTable.name,
+        prefixesInUse,
+        retiredPrefixes,
+      });
+      prefixesInUse.add(idPrefix);
+      const createdPlacement = this._createdPlacement(
+        newTable.placement,
+        sheetGidsInUse,
+      );
+      sheetGidsInUse.add(createdPlacement.sheetGid);
+      return {
+        ...newTable,
+        tableId: randomTableId(),
+        createdPlacement,
+        idPrefix,
+        columns: newTable.columns.map((column) => ({
+          ...column,
+          columnId: dimensionIds.col(idPrefix),
+        })),
+      };
+    });
+  }
+  private _createdPlacement(
+    placement: PlannedNewTablePlacement,
+    sheetGidsInUse: Set<number>,
+  ): CreatedTablePlacement {
+    if (placement.kind === "newTab") {
+      return {
+        kind: "newTab",
+        sheetGid: randomSheetGid(sheetGidsInUse),
+        title: placement.title,
+      };
+    }
+    const tab = Val.assert(
+      this._liveTabByName(placement.tab),
+      `live tab ${placement.tab}`,
+    );
+    return { kind: "besideTables", sheetGid: tab.sheetGid, gap: placement.gap };
+  }
+  private _liveTabByName(tab: string): SheetRaw | undefined {
+    const { raw } = this.ss;
+    return raw.activeSheetGids
+      .map((sheetGid) => raw.sheet(sheetGid))
+      .find((live) => this.schema.titleToName(live.title) === tab);
+  }
+  // Each through the shared creation path; the run flushes them after every column write, which a beside placement can't follow.
+  createTables(minted: MintedNewTable[]): this {
+    for (const newTable of minted) {
+      this.ss.raw.createTable({
+        name: newTable.name,
+        placement: newTable.createdPlacement,
+        idPrefix: newTable.idPrefix,
+        tableId: newTable.tableId,
+        columns: newTable.columns.map(({ header, columnId }) => ({
+          header,
+          columnId,
+        })),
+      });
+    }
+    return this;
   }
   validateHeadRowsClear(): void {
     this.ss.raw.validateHeadRowsClear(this.tableIdsApiAccesses());

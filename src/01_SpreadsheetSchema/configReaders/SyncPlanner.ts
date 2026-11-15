@@ -1,11 +1,13 @@
 import type { DropdownStyleReset } from "../../00_Source/RawSource/RawSource";
 import type { ColumnTypeBaseline } from "../columnBaseline";
+import { SpreadsheetBaseSchema } from "../SpreadsheetBaseSchema";
 import { columnNameOfHeader } from "./columnConfigsTypes";
 import type { PendingAlterations } from "./intendedState";
 import { DeletionRefuser } from "./SyncPlanner/DeletionRefuser";
 import {
   entriesOf,
   type WideAlterations,
+  type WideNewTable,
   type WideRule,
 } from "./SyncPlanner/wideAlterations";
 import type {
@@ -63,6 +65,26 @@ export interface PlannedNewColumn {
   emptyValueAllowed: boolean;
 }
 
+// A tab the run adds, or one already there by its codebase name, with `gap` empty columns right of its rightmost Table.
+export type PlannedNewTablePlacement =
+  | { kind: "newTab"; title: string }
+  | { kind: "besideTables"; tab: string; gap: 0 | 1 };
+
+// A new Table's column, named by the name the regen gives its header.
+export interface PlannedNewTableColumn {
+  header: string;
+  column: string;
+  emptyValueAllowed: boolean;
+}
+
+// One `newTabs` or `newTables` Table; `table` is the codebase name the regen gives its name.
+export interface PlannedNewTable {
+  table: string;
+  name: string;
+  placement: PlannedNewTablePlacement;
+  columns: PlannedNewTableColumn[];
+}
+
 // One `conditionalFormats.remove` handle, by its Table's codebase name.
 export interface PlannedRuleRemoval {
   table: string;
@@ -90,6 +112,8 @@ export interface SyncPlannerResult extends Pick<
   sentTraits: IntendedTrait[];
   // The columns the plan creates, for the run to queue; empty when stopped.
   newColumns: PlannedNewColumn[];
+  // The Tables the plan creates, for the run to queue; empty when stopped.
+  newTables: PlannedNewTable[];
   // The rules the plan removes, for the run to queue; empty when stopped.
   ruleRemovals: PlannedRuleRemoval[];
   // The rules the plan replaces, for the run to queue; empty when stopped.
@@ -169,6 +193,47 @@ export const newColumnLines = {
   },
   isSubject(subject: SyncSubject): boolean {
     return "table" in subject && subject.path === newColumnLines.path;
+  },
+};
+
+// How a `newTabs` or `newTables` entry reads on the plan, landed and didntLand lists.
+export const newTableLines = {
+  // A new tab's own line, whose landing drops its `newTabs` entry with its Tables'.
+  tabPath: "newTabs",
+  // Each Table's subject path on a new tab, apart from the tab's own line.
+  tableOnNewTabPath: "newTabs.tables",
+  // Every Table's subject path on a tab already there; landing one drops the tab's whole list.
+  besidePath: "newTables",
+  tabLine(title: string): SyncSendLine {
+    return {
+      subject: { tab: title, path: newTableLines.tabPath },
+      what: "create the tab",
+    };
+  },
+  // Its plan line, and its didntLand line when the refetch can't find it.
+  sendLine({ name, placement }: PlannedNewTable): SyncSendLine {
+    const what = `create Table "${name}"`;
+    if (placement.kind === "newTab") {
+      return {
+        subject: {
+          tab: placement.title,
+          path: newTableLines.tableOnNewTabPath,
+        },
+        what,
+      };
+    }
+    const gapText = placement.gap === 0 ? "" : ", one empty column between";
+    return {
+      subject: { tab: placement.tab, path: newTableLines.besidePath },
+      what: `${what} right of the tab's Tables${gapText}`,
+    };
+  },
+  isSubject(subject: SyncSubject): boolean {
+    if (!("tab" in subject)) return false;
+    return (
+      subject.path === newTableLines.tableOnNewTabPath ||
+      subject.path === newTableLines.besidePath
+    );
   },
 };
 
@@ -281,6 +346,26 @@ export class SyncPlanner {
       ),
     );
   }
+  // From intended state alone, so the run can check each name and title against the sheet before planning.
+  get newTables(): PlannedNewTable[] {
+    const onNewTabs = (this.alterations.newTabs ?? []).flatMap(
+      ({ title, tables }) =>
+        tables.map((newTable) =>
+          plannedNewTable(newTable, { kind: "newTab", title }),
+        ),
+    );
+    const besideTables = entriesOf(this.alterations.tabs).flatMap(
+      ([tab, { newTables = [] }]) =>
+        newTables.map((newTable) =>
+          plannedNewTable(newTable, {
+            kind: "besideTables",
+            tab,
+            gap: newTable.gap ?? 0,
+          }),
+        ),
+    );
+    return [...onNewTabs, ...besideTables];
+  }
   // From intended state alone, so the run can match each handle against the sheet's rules before planning.
   get ruleRemovals(): PlannedRuleRemoval[] {
     // A handle listed twice is one removal: a second delete at its index would take whichever rule moved into it.
@@ -359,6 +444,12 @@ export class SyncPlanner {
     for (const newColumn of newColumns) {
       sends.push({ ...newColumnLines.sendLine(newColumn), effects: [] });
     }
+    // A tab a person deleted has nowhere to put one.
+    const newTables = this.newTables.filter(
+      ({ placement }) =>
+        placement.kind === "newTab" || live.tabs[placement.tab] !== undefined,
+    );
+    sends.push(...newTableSends(newTables));
     // A Table a person deleted took its rules with it.
     const ruleRemovals = this.ruleRemovals.filter(
       ({ table }) => live.tables[table] !== undefined,
@@ -378,6 +469,7 @@ export class SyncPlanner {
     const isStopped = stops.length + sheetStops.length > 0;
     const sentIfUnstopped = isStopped ? [] : sentTraits;
     const newColumnsIfUnstopped = isStopped ? [] : newColumns;
+    const newTablesIfUnstopped = isStopped ? [] : newTables;
     const forcedNotHeld = new Set(
       forced.map((trait) => addressKey({ kind: "column", ...trait })),
     );
@@ -400,9 +492,11 @@ export class SyncPlanner {
         sent: sentIfUnstopped,
         heldBack: heldBackTraits,
         newColumns: newColumnsIfUnstopped,
+        newTables: newTablesIfUnstopped,
       }),
       sentTraits: sentIfUnstopped,
       newColumns: newColumnsIfUnstopped,
+      newTables: newTablesIfUnstopped,
       ruleRemovals: isStopped ? [] : ruleRemovals,
       ruleReplacements: isStopped ? [] : ruleReplacements,
     };
@@ -472,6 +566,37 @@ export class SyncPlanner {
     );
     return [...tableTraits, ...tabDeclarations];
   }
+}
+
+function plannedNewTable(
+  { name, columns }: WideNewTable,
+  placement: PlannedNewTablePlacement,
+): PlannedNewTable {
+  return {
+    table: new SpreadsheetBaseSchema().titleToName(name),
+    name,
+    placement,
+    columns: columns.map(({ header, emptyValueAllowed }) => ({
+      header,
+      column: columnNameOfHeader(header),
+      emptyValueAllowed: emptyValueAllowed ?? false,
+    })),
+  };
+}
+
+// A new tab's own line comes once, before its first Table's.
+function newTableSends(newTables: PlannedNewTable[]): SyncPlanItem[] {
+  const tabTitles = new Set<string>();
+  return newTables.flatMap((newTable) => {
+    const lines: SyncSendLine[] = [];
+    const { placement } = newTable;
+    if (placement.kind === "newTab" && !tabTitles.has(placement.title)) {
+      tabTitles.add(placement.title);
+      lines.push(newTableLines.tabLine(placement.title));
+    }
+    lines.push(newTableLines.sendLine(newTable));
+    return lines.map((line) => ({ ...line, effects: [] }));
+  });
 }
 
 interface ComparedSides {
@@ -629,6 +754,7 @@ interface ConfigTraitsProps {
   sent: IntendedTrait[];
   heldBack: HeldBackValue[];
   newColumns: PlannedNewColumn[];
+  newTables: PlannedNewTable[];
 }
 
 function configTraitsOf({
@@ -636,8 +762,15 @@ function configTraitsOf({
   sent,
   heldBack,
   newColumns,
+  newTables,
 }: ConfigTraitsProps): TraitReadings {
-  const created = newColumns.flatMap(
+  const createdColumns = [
+    ...newColumns,
+    ...newTables.flatMap(({ table, columns }) =>
+      columns.map((column) => ({ table, ...column })),
+    ),
+  ];
+  const created = createdColumns.flatMap(
     ({ table, column, header, emptyValueAllowed }) =>
       [
         { trait: "header", value: header },

@@ -1,4 +1,8 @@
-import { ruleRemovalLines, ruleReplacementLines } from "./SyncPlanner";
+import {
+  newTableLines,
+  ruleRemovalLines,
+  ruleReplacementLines,
+} from "./SyncPlanner";
 import {
   entriesOf,
   type WideAlterations,
@@ -7,7 +11,7 @@ import {
 } from "./SyncPlanner/wideAlterations";
 import type { SyncSubject } from "./syncRunResult";
 
-// The alterations still pending once `landed` went out; the refuser lets only a Table's, a column's or a tab's trait, or a rule removal or replacement, through, so any other subject is a bug.
+// The alterations still pending once `landed` went out; the refuser lets only a Table's, a column's or a tab's trait, a rule removal or replacement, or a created Table or tab through, so any other subject is a bug.
 export function remainingAlterations(
   alterations: WideAlterations,
   landed: SyncSubject[],
@@ -23,6 +27,12 @@ export function remainingAlterations(
       }
       if (key === "tabs") {
         return keepIfNotEmpty(key, remainingTabs(alterations.tabs, landedKeys));
+      }
+      if (key === "newTabs") {
+        return keepIfNotEmpty(
+          key,
+          remainingNewTabs(alterations.newTabs, landedKeys),
+        );
       }
       return [[key, value]];
     }),
@@ -59,6 +69,19 @@ function remainingTabs(
   landedKeys: Set<string>,
 ): Record<string, object> {
   return remainingEntries(tabs, landedKeys, tabKeyPrefix);
+}
+
+// A new tab leaves the list only once it and its Tables landed, so one that half-landed stops the next run on its taken title.
+function remainingNewTabs(
+  newTabs: WideAlterations["newTabs"],
+  landedKeys: Set<string>,
+): NonNullable<WideAlterations["newTabs"]> {
+  return (newTabs ?? []).filter(
+    ({ title }) =>
+      ![newTableLines.tabPath, newTableLines.tableOnNewTabPath].every((path) =>
+        landedKeys.has(traitKey(tabKeyPrefix, title, path)),
+      ),
+  );
 }
 
 function remainingTables(
