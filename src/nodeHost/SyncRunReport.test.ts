@@ -596,7 +596,7 @@ describe("SyncRunReport's refusals before the read", () => {
   it("names the Table and the trait it can't send yet", () => {
     expect(text).toContain("REFUSED 3 · item › name.columnType");
     expect(text).toContain(
-      "  sync can't send name.columnType yet: for now it sends only a Table's name, deleted, letApiAccess, newColumns, a column's header, formula, deleted, emptyValueAllowed and a tab's title, color, before, frozenRows, frozenColumns, hidden.",
+      "  sync can't send name.columnType yet: for now it sends only a Table's name, deleted, letApiAccess, newColumns, conditionalFormats.remove, a column's header, formula, deleted, emptyValueAllowed and a tab's title, color, before, frozenRows, frozenColumns, hidden.",
     );
   });
 });
@@ -650,22 +650,12 @@ describe("SyncRunReport's force way out", () => {
   });
 });
 
-describe("SyncRunReport, case F: three refusals, then a head-row stop", () => {
-  const ruleHandle = "occCharge·all·=${void}=TRUE·bg#eeeeee";
+describe("SyncRunReport, case F: two refusals, then a head-row stop", () => {
   const refused = render({
     ...appDryRun,
     outcome: { kind: "refused" },
     refusals: [
       { kind: "besideGrant", table: "vendor", path: "newColumns" },
-      {
-        kind: "noSuchRule",
-        table: "occCharge",
-        path: `conditionalFormats.replace["${ruleHandle}"]`,
-        handles: [
-          "occCharge·all·=${void}=TRUE·bg#f4cccc",
-          "occCharge·amount·NUMBER_LESS(0)·text#cc0000",
-        ],
-      },
       {
         kind: "unknownBrace",
         table: "occCharge",
@@ -688,7 +678,7 @@ describe("SyncRunReport, case F: three refusals, then a head-row stop", () => {
 
   it("refuses before reading, with no configs refresh", () => {
     expect(resultLine(refused)).toBe(
-      "REFUSED BEFORE READING: 3 entries can't be planned. Nothing was read or sent; alterations.ts is unchanged.",
+      "REFUSED BEFORE READING: 2 entries can't be planned. Nothing was read or sent; alterations.ts is unchanged.",
     );
     expect(sections(refused)).toEqual(["Refused", "Next"]);
   });
@@ -708,12 +698,6 @@ describe("SyncRunReport, case F: three refusals, then a head-row stop", () => {
     }).join("\n");
     expect(text).toContain("REFUSED 1 · vendor › name");
     expect(text).toContain("grant `letApiAccess` first.");
-  });
-
-  it("lists the Table's current rule handles under no such rule", () => {
-    expect(refusedText).toContain(
-      "Adopt by removing the entry.\n  occCharge's rules now, by handle:\n    occCharge·all·=${void}=TRUE·bg#f4cccc\n    occCharge·amount·NUMBER_LESS(0)·text#cc0000",
-    );
   });
 
   it("names a brace's Table columns", () => {
@@ -775,6 +759,39 @@ describe("SyncRunReport, case F: three refusals, then a head-row stop", () => {
     );
     expect(stoppedText).toContain(
       "Resolve stop 1, then rerun npm run app:sync.",
+    );
+  });
+});
+
+describe("SyncRunReport's no-such-rule stop", () => {
+  const ruleHandle = "occCharge·all·=${void}=TRUE·bg#eeeeee";
+  const lines = render({
+    ...appDryRun,
+    outcome: { kind: "stopped" },
+    stops: [
+      {
+        kind: "noSuchRule",
+        table: "occCharge",
+        path: `conditionalFormats.remove["${ruleHandle}"]`,
+        handles: [
+          "occCharge·all·=${void}=TRUE·bg#f4cccc",
+          "occCharge·amount·NUMBER_LESS(0)·text#cc0000",
+        ],
+      },
+    ],
+  });
+  const text = lines.join("\n");
+
+  it("renders under Stops, with the configs still refreshed", () => {
+    expect(sections(lines)).toEqual(["Stops", "Configs", "Next"]);
+  });
+
+  it("names the entry and lists the Table's current rule handles", () => {
+    expect(text).toContain(
+      `STOP 1 · occCharge › conditionalFormats.remove["${ruleHandle}"]\n  no such rule: adopt by removing the entry.`,
+    );
+    expect(text).toContain(
+      "  occCharge's rules now, by handle:\n    occCharge·all·=${void}=TRUE·bg#f4cccc\n    occCharge·amount·NUMBER_LESS(0)·text#cc0000\n  The entry stays in alterations.ts.",
     );
   });
 });

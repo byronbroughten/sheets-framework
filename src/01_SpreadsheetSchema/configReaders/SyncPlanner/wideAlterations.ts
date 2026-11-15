@@ -23,6 +23,7 @@ export interface WideTableEntry {
   newColumns?: WideColumnEntry[];
   conditionalFormats?: {
     add?: WideRule[];
+    remove?: string[];
     replace?: Record<string, WideRule | undefined>;
   };
 }

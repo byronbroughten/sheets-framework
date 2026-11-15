@@ -154,7 +154,6 @@ export type SyncRefusal =
   | { kind: "noSuchTable"; entry: "tables" | "tabs"; name: string }
   // `table` names the tab for a tab's trait; `path` is the trait's, with its column in front for a column's.
   | { kind: "notSendableYet"; table: string; path: string }
-  | { kind: "noSuchRule"; table: string; path: string; handles: string[] }
   // A brace naming a Table or column the previous ID-name map lacks; `columns` is braceTable's, undefined when the map holds no such Table.
   | {
       kind: "unknownBrace";
@@ -182,7 +181,8 @@ export interface ForcedTrait {
 export type SyncStop = SyncConflict | SyncSheetStop;
 
 // A stop found reading the sheet, outside the three-way comparison.
-export type SyncSheetStop = SyncHeadRowsStop | SyncHeaderTakenStop;
+export type SyncSheetStop =
+  SyncHeadRowsStop | SyncHeaderTakenStop | SyncNoSuchRuleStop;
 
 export interface SyncConflict {
   kind: "conflict";
@@ -210,6 +210,14 @@ export interface SyncHeaderTakenStop {
   header: string;
   column: string;
   columnId: string;
+}
+
+// A `conditionalFormats.remove` handle no rule on the Table has on this run's read; `handles` are the Table's rules' now.
+export interface SyncNoSuchRuleStop {
+  kind: "noSuchRule";
+  table: string;
+  path: string;
+  handles: string[];
 }
 
 export interface SyncHeld {

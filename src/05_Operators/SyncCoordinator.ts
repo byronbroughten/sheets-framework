@@ -26,6 +26,7 @@ import { SyncEntryRefuser } from "../01_SpreadsheetSchema/configReaders/SyncEntr
 import {
   deletedTableOf,
   isSheetTrait,
+  type PlannedRuleRemoval,
   type PlanProps,
   SyncPlanner,
   type SyncPlannerResult,
@@ -106,6 +107,7 @@ interface AppliedPlan {
   accessChanges: ApiAccessChanges;
   sentTraits: SyncPlannerResult["sentTraits"];
   newColumns: MintedNewColumn[];
+  ruleRemovals: PlannedRuleRemoval[];
   reads: EnteredDataReads;
 }
 
@@ -218,6 +220,9 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         sheetStops: [
           ...this.tableConfigOperator.grantHeadRowStops(accessChanges.grants),
           ...this.columnConfigOperator.headerTakenStops(planner.newColumns),
+          ...this.conditionalFormatConfigOperator.noSuchRuleStops(
+            planner.ruleRemovals,
+          ),
         ],
       }),
       props.previousIdNameMap,
@@ -233,6 +238,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       accessChanges,
       sentTraits: planned.sentTraits,
       newColumns: this.columnConfigOperator.mintColumnIds(planned.newColumns),
+      ruleRemovals: planned.ruleRemovals,
       reads: enteredDataReads({
         alterations,
         sentTraits: planned.sentTraits,
@@ -259,10 +265,12 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     const sent = isApplying ? planned.plan.map(({ subject }) => subject) : [];
     let refetched: SyncCoordinator | undefined;
     let regeneration: Regeneration;
-    // A fresh read, since Raw's state has no reset; only a sent sheet trait or a new column changes what it would read.
+    // A fresh read, since Raw's state has no reset; only a sent sheet trait, a new column or a removed rule changes what it would read.
     if (
       isApplying &&
-      (planned.sentTraits.some(isSheetTrait) || applied.newColumns.length > 0)
+      (planned.sentTraits.some(isSheetTrait) ||
+        applied.newColumns.length > 0 ||
+        applied.ruleRemovals.length > 0)
     ) {
       refetched = SyncCoordinator.init();
       regeneration = refetched._refetchedRegeneration({
@@ -351,9 +359,11 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     });
     const notes = this._recordUntypedColumns();
     const columns = this.columnConfigOperator.landedColumns(newColumns);
+    const rulesDidntLand =
+      this.conditionalFormatConfigOperator.removalsDidntLand(plan.ruleRemovals);
     return {
       ...this._regeneration(notes, sent),
-      didntLand: [...traitsDidntLand, ...columns.didntLand],
+      didntLand: [...traitsDidntLand, ...columns.didntLand, ...rulesDidntLand],
       createdColumns: columns.createdColumns,
     };
   }
@@ -396,9 +406,12 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     accessChanges,
     sentTraits,
     newColumns,
+    ruleRemovals,
     reads,
   }: AppliedPlan): void {
     this._readEnteredData(reads);
+    // Indexed by the pre-send read, before any write here can stale the sheet's rule indexes.
+    this.conditionalFormatConfigOperator.removeRules(ruleRemovals);
     // Before the access changes, so it sends what the pre-send read planned.
     this.rowIdsOperator.addCheckboxes();
     this._applyApiAccessChanges(accessChanges);

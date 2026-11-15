@@ -114,9 +114,7 @@ export const RuleRecords = {
     return tabs.reduce<RuleRecordSet>(
       (recordSet, tab) => {
         tab.rules.forEach((rule) => {
-          const table = tab.tables.find((candidate) =>
-            rule.ranges.some((range) => touchesTable(range, candidate)),
-          );
+          const table = ownerTable(rule, tab);
           if (table === undefined) {
             const group = (recordSet.tabs[tab.tabName] ??= {});
             addRecord(group, tabRecord(rule, tab.sheetGid));
@@ -129,6 +127,22 @@ export const RuleRecords = {
       },
       { tables: {}, tabs: {} },
     );
+  },
+  // Each handle build gives the Table's rules, with its rule's index on the tab, so a remove can name it.
+  ruleIndexesByHandle(
+    tab: RuleRecordsTab,
+    tableId: string,
+  ): Map<string, number> {
+    const indexes: Record<string, number> = {};
+    tab.rules.forEach((rule, index) => {
+      const table = ownerTable(rule, tab);
+      if (table?.tableId !== tableId) return;
+      addRecord(indexes, {
+        handle: tableRecord(rule, table).handle,
+        record: index,
+      });
+    });
+    return new Map(Object.entries(indexes));
   },
   // Nothing is sent for a partly-over rule: it stays on the sheet, so the plan only reports it.
   deletionEffects({
@@ -156,6 +170,16 @@ export const RuleRecords = {
     return [{ kind: "rulesRemoved", handles }, ...partlyOver];
   },
 };
+
+// The first of the tab's Tables the rule touches, as build files it.
+function ownerTable(
+  rule: ConditionalFormatRule,
+  tab: RuleRecordsTab,
+): RuleRecordsTable | undefined {
+  return tab.tables.find((candidate) =>
+    rule.ranges.some((range) => touchesTable(range, candidate)),
+  );
+}
 
 function touchesTable(range: GridRangeProps, table: RuleRecordsTable): boolean {
   const { startCol, endCol } = tableColumnBounds(table);

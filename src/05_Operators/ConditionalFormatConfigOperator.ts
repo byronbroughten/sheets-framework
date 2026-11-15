@@ -10,7 +10,15 @@ import {
   type RuleRecordsTab,
   type RuleRecordsTable,
 } from "../01_SpreadsheetSchema/configReaders/RuleRecords";
-import type { SyncPlanEffect } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
+import {
+  type PlannedRuleRemoval,
+  ruleRemovalLines,
+} from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
+import type {
+  SyncNoSuchRuleStop,
+  SyncPlanEffect,
+  SyncSendLine,
+} from "../01_SpreadsheetSchema/configReaders/syncRunResult";
 import type { SheetRaw } from "../02_SpreadsheetRaw/SheetRaw";
 import type { TableRaw } from "../02_SpreadsheetRaw/TableRaw";
 import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
@@ -24,6 +32,7 @@ import {
   tablesAndTabsFileSource,
 } from "./configFileSource";
 import { SpreadsheetBaseOperator } from "./SpreadsheetBaseOperator";
+import { TableConfigsOperator } from "./TableConfigsOperator";
 
 // A Table a plan deletes: its codebase name and its ID.
 export interface DeletedTable {
@@ -43,6 +52,9 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
   }
   get columnConfigOperator(): ColumnConfigsOperator {
     return new ColumnConfigsOperator(this.operatorProps);
+  }
+  get tableConfigOperator(): TableConfigsOperator {
+    return new TableConfigsOperator(this.operatorProps);
   }
   newConditionalFormatConfigs(): ConditionalFormatConfigsBase {
     const apiTableColumnsByTableId =
@@ -106,6 +118,76 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
       },
       endRowIndex: table.endRowIndex,
     };
+  }
+  // A handle a person changed since the last sync names no rule now; deleting by a guess could take the wrong one.
+  noSuchRuleStops(removals: PlannedRuleRemoval[]): SyncNoSuchRuleStop[] {
+    // Read before the send, apiTableColumnsByTableId can lack a Table whose column configs only the regen writes.
+    if (removals.length === 0) return [];
+    const apiTableColumnsByTableId =
+      this.columnConfigOperator.apiTableColumnsByTableId();
+    return removals.flatMap((removal): SyncNoSuchRuleStop[] => {
+      // A Table a person deleted took its rules with it, so the planner drops the entry.
+      const tableId = this.tableConfigOperator.tableIdOf(removal.table);
+      if (!this.ss.raw.tableIdIsActive(tableId)) return [];
+      const indexes = this._ruleIndexesByHandle(
+        removal.table,
+        apiTableColumnsByTableId,
+      );
+      if (indexes.has(removal.handle)) return [];
+      return [
+        {
+          kind: "noSuchRule",
+          table: removal.table,
+          path: ruleRemovalLines.path(removal),
+          handles: [...indexes.keys()],
+        },
+      ];
+    });
+  }
+  // Matched on the same read the stops were, so every handle names a rule.
+  removeRules(removals: PlannedRuleRemoval[]): this {
+    if (removals.length === 0) return this;
+    const apiTableColumnsByTableId =
+      this.columnConfigOperator.apiTableColumnsByTableId();
+    for (const removal of removals) {
+      const index = Val.assert(
+        this._ruleIndexesByHandle(removal.table, apiTableColumnsByTableId).get(
+          removal.handle,
+        ),
+        `rule ${removal.handle} on ${removal.table}`,
+      );
+      this._sheetOf(removal.table).removeConditionalFormatRuleByIndex(index);
+    }
+    return this;
+  }
+  // The removals whose handle the refetch still finds on their Table.
+  removalsDidntLand(removals: PlannedRuleRemoval[]): SyncSendLine[] {
+    if (removals.length === 0) return [];
+    const apiTableColumnsByTableId =
+      this.columnConfigOperator.apiTableColumnsByTableId();
+    return removals.flatMap((removal): SyncSendLine[] => {
+      const indexes = this._ruleIndexesByHandle(
+        removal.table,
+        apiTableColumnsByTableId,
+      );
+      if (!indexes.has(removal.handle)) return [];
+      const { subject, what } = ruleRemovalLines.sendLine(removal);
+      return [{ subject, what: `${what}; Sheets kept it` }];
+    });
+  }
+  // Named as the regen names them, so a handle matches the one the configs record.
+  private _ruleIndexesByHandle(
+    table: string,
+    apiTableColumnsByTableId: Map<string, ApiTableColumns>,
+  ): Map<string, number> {
+    const tableId = this.tableConfigOperator.tableIdOf(table);
+    return RuleRecords.ruleIndexesByHandle(
+      this._ruleRecordsTab(this._sheetOf(table), apiTableColumnsByTableId),
+      tableId,
+    );
+  }
+  private _sheetOf(table: string): SheetRaw {
+    return this.ss.raw.table(this.tableConfigOperator.tableIdOf(table)).sheet;
   }
   toFileSource(): string {
     return [

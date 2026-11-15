@@ -12,6 +12,7 @@ import {
   type SyncHeldGroup,
   type SyncHeldStoppedOutcome,
   type SyncLandedItem,
+  type SyncNoSuchRuleStop,
   type SyncNotice,
   type SyncOutsideReferenceEffect,
   type SyncPlanEffect,
@@ -429,13 +430,6 @@ function tableRefusalText(
       ),
     ];
   }
-  if (refusal.kind === "noSuchRule") {
-    return [
-      `No such rule: no rule on ${table} has this handle now. A person changed the rule after the last sync`,
-      "(a handle comes from its columns, formula, condition and format). Adopt by removing the entry.",
-      ...ruleHandleLines(table, refusal.handles),
-    ];
-  }
   if (refusal.kind === "malformedBrace") {
     return [
       `${refusal.brace} isn't a brace: write \${@column} or \${table[@column]} for this row, \${column} or \${table[column]} for the whole column.`,
@@ -488,7 +482,12 @@ interface StopWords<SK extends StopKind> {
 }
 
 // The result line's order.
-const stopKinds: StopKind[] = ["conflict", "headRows", "headerTaken"];
+const stopKinds: StopKind[] = [
+  "conflict",
+  "headRows",
+  "headerTaken",
+  "noSuchRule",
+];
 
 const stopWords: { [SK in StopKind]: StopWords<SK> } = {
   conflict: {
@@ -511,6 +510,13 @@ const stopWords: { [SK in StopKind]: StopWords<SK> } = {
       return `${counted(count, "new column", "new columns")} taken`;
     },
     block: headerTakenBlock,
+  },
+  noSuchRule: {
+    name: "stop",
+    reason(count) {
+      return `${counted(count, "rule", "rules")} to remove not found`;
+    },
+    block: noSuchRuleBlock,
   },
 };
 
@@ -551,6 +557,22 @@ function headerTakenBlock(
     `STOP ${number} · ${table} › newColumns`,
     ...indent(2, [
       `${table} already has a column headed "${header}": ${column}, ${columnId}.`,
+      "The entry stays in alterations.ts.",
+    ]),
+  ];
+}
+
+function noSuchRuleBlock(
+  { table, path, handles }: SyncNoSuchRuleStop,
+  number: number,
+): string[] {
+  return [
+    `STOP ${number} · ${table} › ${path}`,
+    ...indent(2, [
+      "no such rule: adopt by removing the entry.",
+      `No rule on ${table} has this handle now: a person changed the rule after the last sync`,
+      "(a handle comes from its columns, formula, condition and format).",
+      ...ruleHandleLines(table, handles),
       "The entry stays in alterations.ts.",
     ]),
   ];

@@ -55,6 +55,12 @@ export interface PlannedNewColumn {
   emptyValueAllowed: boolean;
 }
 
+// One `conditionalFormats.remove` handle, by its Table's codebase name.
+export interface PlannedRuleRemoval {
+  table: string;
+  handle: string;
+}
+
 export interface SyncPlannerResult extends Pick<
   SyncRunResult,
   "stops" | "plan"
@@ -69,6 +75,8 @@ export interface SyncPlannerResult extends Pick<
   sentTraits: IntendedTrait[];
   // The columns the plan creates, for the run to queue; empty when stopped.
   newColumns: PlannedNewColumn[];
+  // The rules the plan removes, for the run to queue; empty when stopped.
+  ruleRemovals: PlannedRuleRemoval[];
 }
 
 interface TableTraitAddress {
@@ -138,6 +146,19 @@ export const newColumnLines = {
   },
   isSubject(subject: SyncSubject): boolean {
     return "table" in subject && subject.path === newColumnLines.path;
+  },
+};
+
+// How a `conditionalFormats.remove` handle reads on the plan, stop, landed and didntLand lists.
+export const ruleRemovalLines = {
+  path({ handle }: PlannedRuleRemoval): string {
+    return `conditionalFormats.remove["${handle}"]`;
+  },
+  sendLine(removal: PlannedRuleRemoval): SyncSendLine {
+    return {
+      subject: { table: removal.table, path: ruleRemovalLines.path(removal) },
+      what: "remove the rule",
+    };
   },
 };
 
@@ -219,6 +240,15 @@ export class SyncPlanner {
       ),
     );
   }
+  // From intended state alone, so the run can match each handle against the sheet's rules before planning.
+  get ruleRemovals(): PlannedRuleRemoval[] {
+    return entriesOf(this.alterations.tables).flatMap(([table, entry]) =>
+      (entry.conditionalFormats?.remove ?? []).map((handle) => ({
+        table,
+        handle,
+      })),
+    );
+  }
   plan({ previous, live, sheetStops = [] }: PlanProps): SyncPlannerResult {
     const stops: SyncConflict[] = [];
     const sends: SyncPlanItem[] = [];
@@ -276,6 +306,13 @@ export class SyncPlanner {
     for (const newColumn of newColumns) {
       sends.push({ ...newColumnLines.sendLine(newColumn), effects: [] });
     }
+    // A Table a person deleted took its rules with it.
+    const ruleRemovals = this.ruleRemovals.filter(
+      ({ table }) => live.tables[table] !== undefined,
+    );
+    for (const removal of ruleRemovals) {
+      sends.push({ ...ruleRemovalLines.sendLine(removal), effects: [] });
+    }
     const isStopped = stops.length + sheetStops.length > 0;
     const sentIfUnstopped = isStopped ? [] : sentTraits;
     const newColumnsIfUnstopped = isStopped ? [] : newColumns;
@@ -304,6 +341,7 @@ export class SyncPlanner {
       }),
       sentTraits: sentIfUnstopped,
       newColumns: newColumnsIfUnstopped,
+      ruleRemovals: isStopped ? [] : ruleRemovals,
     };
   }
   private _forcedTraitFor(intended: IntendedTrait): ForcedTrait | undefined {
