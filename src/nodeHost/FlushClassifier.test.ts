@@ -188,7 +188,179 @@ function updateTable(
   };
 }
 
+const ledgerGid = 9;
+
+// The Ledger tab, read whole: its Table's header on row 4 (index 3) fills the header zone, columns A and B; a note in D1 and a sum in B8 sit outside it.
+const ledgerRows: GoogleCellData[][] = [
+  [text("c:led:name"), text("c:led:amount"), empty, text("Checked")],
+  [text("Money"), empty],
+  [empty, text("In")],
+  [text("Name"), text("Amount")],
+  [text("Rent"), number(1200)],
+  [text("Fee"), formula("=B5*0.1", 120)],
+  [],
+  [empty, formula("=SUM(B5:B6)", 1320)],
+];
+
+function ledgerUsedGridRead(): FlushRead {
+  return {
+    gridRanges: [{ sheetId: ledgerGid }],
+    spreadsheet: {
+      sheets: [
+        {
+          properties: {
+            sheetId: ledgerGid,
+            title: "Ledger",
+            gridProperties: { rowCount: 10, columnCount: 5 },
+          },
+          tables: [
+            {
+              tableId: "tbl-led",
+              name: "Ledger",
+              range: {
+                sheetId: ledgerGid,
+                startRowIndex: 3,
+                endRowIndex: 6,
+                startColumnIndex: 0,
+                endColumnIndex: 2,
+              },
+              columnProperties: [
+                { columnIndex: 0, columnName: "Name" },
+                { columnIndex: 1, columnName: "Amount", columnType: "DOUBLE" },
+              ],
+            },
+          ],
+          data: [
+            {
+              startRow: 0,
+              startColumn: 0,
+              rowData: ledgerRows.map((values) => ({ values })),
+            },
+          ],
+        },
+      ],
+    },
+  };
+}
+
+function ledgerDeleteHeldItems(): HeldItem[] {
+  return heldItems([{ deleteSheet: { sheetId: ledgerGid } }], {
+    reads: [ledgerUsedGridRead()],
+  });
+}
+
+// Each held cell of a deleted tab as its Table, column and row.
+function deletedCells(items: HeldItem[]) {
+  return items.flatMap((item) => {
+    if (item.kind !== "enteredData") return [];
+    const { table, column, row } = item.cell;
+    return [{ table, column, row, before: item.change.before }];
+  });
+}
+
 describe("FlushClassifier.heldItems", () => {
+  describe("tab deletion", () => {
+    it("holds each entered cell of a Table's body as deleted, and frees its formula", () => {
+      const held = deletedCells(ledgerDeleteHeldItems()).filter(
+        ({ table }) => table === "Ledger",
+      );
+      expect(held).toEqual([
+        {
+          table: "Ledger",
+          column: "Name",
+          row: { sheetRow: 5, nameValue: "Rent" },
+          before: '"Rent"',
+        },
+        {
+          table: "Ledger",
+          column: "Amount",
+          row: { sheetRow: 5, nameValue: "Rent" },
+          before: "1200",
+        },
+        {
+          table: "Ledger",
+          column: "Name",
+          row: { sheetRow: 6, nameValue: "Fee" },
+          before: '"Fee"',
+        },
+      ]);
+    });
+
+    it("holds a value and a formula outside any Table, by column letter and sheet row", () => {
+      const held = deletedCells(ledgerDeleteHeldItems()).filter(
+        ({ table }) => table === undefined,
+      );
+      expect(held).toEqual([
+        {
+          table: undefined,
+          column: "D",
+          row: { sheetRow: 1, nameValue: undefined },
+          before: '"Checked"',
+        },
+        {
+          table: undefined,
+          column: "B",
+          row: { sheetRow: 8, nameValue: undefined },
+          before: "=SUM(B5:B6)",
+        },
+      ]);
+    });
+
+    it("leaves the header row and the head rows above it unheld over the Table's columns", () => {
+      const held = ledgerDeleteHeldItems();
+      expect(held.every((item) => item.kind === "enteredData")).toBe(true);
+      expect(
+        deletedCells(held).filter(
+          ({ table, row }) =>
+            table === undefined && "sheetRow" in row && row.sheetRow <= 4,
+        ),
+      ).toEqual([
+        {
+          table: undefined,
+          column: "D",
+          row: { sheetRow: 1, nameValue: undefined },
+          before: '"Checked"',
+        },
+      ]);
+    });
+
+    it("holds each held cell as a deleteSheet delete", () => {
+      const [first] = ledgerDeleteHeldItems();
+      expect(first).toMatchObject({
+        kind: "enteredData",
+        requestIndex: 0,
+        verb: "deleteSheet",
+        cell: { sheetGid: ledgerGid },
+        change: { kind: "delete" },
+      });
+    });
+
+    it("frees a tab its used-grid read found blank", () => {
+      const blank = ledgerUsedGridRead();
+      const [sheet] = blank.spreadsheet.sheets ?? [];
+      if (sheet !== undefined) sheet.data = [];
+      expect(
+        heldItems([{ deleteSheet: { sheetId: ledgerGid } }], {
+          reads: [blank],
+        }),
+      ).toEqual([]);
+    });
+
+    it.each([
+      ["no read covered", 99],
+      ["only a bounded read covered", gid],
+    ])("holds a tab %s as unmeasured, naming the tab", (_case, sheetGid) => {
+      expect(heldItems([{ deleteSheet: { sheetId: sheetGid } }])).toEqual([
+        {
+          kind: "unmeasured",
+          requestIndex: 0,
+          verb: "deleteSheet",
+          detail: `tab gid ${sheetGid}, deleted with every Table on it`,
+        },
+      ]);
+    });
+  });
+
   describe("entered data", () => {
     it("holds an overwrite of an entered value, by Table, column and row ID, before → after", () => {
       expect(
@@ -493,17 +665,6 @@ describe("FlushClassifier.heldItems", () => {
         heldItems([{ mergeCells: { range: cellRange(rentRow, amount) } }]),
       ).toEqual([
         { kind: "unclassified", requestIndex: 0, verb: "mergeCells" },
-      ]);
-    });
-
-    it("holds every deleteSheet as unmeasured, naming the tab", () => {
-      expect(heldItems([{ deleteSheet: { sheetId: gid } }])).toEqual([
-        {
-          kind: "unmeasured",
-          requestIndex: 0,
-          verb: "deleteSheet",
-          detail: `tab gid ${gid}, deleted with every Table on it`,
-        },
       ]);
     });
 
