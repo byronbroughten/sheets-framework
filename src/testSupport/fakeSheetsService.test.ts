@@ -354,6 +354,50 @@ describe("stubSheetsService replays Table updates by their field mask", () => {
     ]);
   });
 
+  // Measured live with room below the Table: the rows it takes in stay blank, formula columns included.
+  it("extends a Table's range over blank rows without filling them, formula columns included", () => {
+    const { grid } = stubSheetsService({
+      sheets: [
+        {
+          ...widgetSheet(),
+          rows: buildGridRows({
+            0: ["h1", "h2", "h3"],
+            1: [1, "x", { value: 2, isFormula: true, formula: "=A2+1" }],
+            2: [2, "y", { value: 3, isFormula: true, formula: "=A3+1" }],
+            3: [3, "z", { value: 4, isFormula: true, formula: "=A4+1" }],
+          }),
+        },
+      ],
+    });
+
+    send({
+      updateTable: {
+        table: {
+          tableId: "fake-table-7",
+          range: {
+            sheetId: widgetGid,
+            startRowIndex: 0,
+            endRowIndex: 6,
+            startColumnIndex: 0,
+            endColumnIndex: 3,
+          },
+        },
+        fields: "range",
+      },
+    });
+
+    expect(grid.sheet(widgetGid).tables[0]?.range).toMatchObject({
+      startRowIndex: 0,
+      endRowIndex: 6,
+    });
+    expect(
+      grid.sheet(widgetGid).values({ startRowIndex: 4, endRowIndex: 6 }),
+    ).toEqual([
+      [null, null, null],
+      [null, null, null],
+    ]);
+  });
+
   it("throws naming a validation-rule field beyond the condition's type and values", () => {
     stubSheetsService({ sheets: [widgetSheet()] });
 
