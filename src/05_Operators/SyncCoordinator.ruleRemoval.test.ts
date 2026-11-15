@@ -123,6 +123,26 @@ describe("SyncCoordinator.run conditional-format rule removal", () => {
     expect(result).toMatchObject({ outcome: { kind: "sent" }, stops: [] });
   });
 
+  it("removes one of two equal rules, landing though the other takes its handle", () => {
+    const service = stubSheetsService({
+      sheets: [
+        {
+          ...itemSheet(),
+          conditionalFormats: [trueRule(0), trueRule(0), trueRule(1)],
+        },
+      ],
+    });
+
+    const { result, files } = runItem({
+      isSending: true,
+      alterations: removing([firstHandle, firstHandle]),
+    });
+
+    expect(rulesLeft(service)).toEqual([trueRule(0), trueRule(1)]);
+    expect(result).toMatchObject({ outcome: { kind: "sent" }, didntLand: [] });
+    expect(files?.alterations).toContain("makePendingAlterations({})");
+  });
+
   it("stops before any send on a handle no rule has now, listing the Table's handles and still refreshing the configs", () => {
     const service = seedWithRules();
     const changedHandle = `${firstColumn} | =FALSE | background #ff0000`;

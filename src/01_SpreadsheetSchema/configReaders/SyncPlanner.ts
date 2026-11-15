@@ -242,8 +242,9 @@ export class SyncPlanner {
   }
   // From intended state alone, so the run can match each handle against the sheet's rules before planning.
   get ruleRemovals(): PlannedRuleRemoval[] {
+    // A handle listed twice is one removal: a second delete at its index would take whichever rule moved into it.
     return entriesOf(this.alterations.tables).flatMap(([table, entry]) =>
-      (entry.conditionalFormats?.remove ?? []).map((handle) => ({
+      [...new Set(entry.conditionalFormats?.remove)].map((handle) => ({
         table,
         handle,
       })),

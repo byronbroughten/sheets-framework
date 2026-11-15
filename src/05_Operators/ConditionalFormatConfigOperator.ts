@@ -9,6 +9,7 @@ import {
   RuleRecords,
   type RuleRecordsTab,
   type RuleRecordsTable,
+  type TableRuleIndex,
 } from "../01_SpreadsheetSchema/configReaders/RuleRecords";
 import {
   type PlannedRuleRemoval,
@@ -38,6 +39,17 @@ import { TableConfigsOperator } from "./TableConfigsOperator";
 export interface DeletedTable {
   table: string;
   tableId: string;
+}
+
+// A removal matched on the pre-send read; `copiesLeft` is how many rules with its shared handle the send leaves on the Table.
+export interface IndexedRuleRemoval extends PlannedRuleRemoval, TableRuleIndex {
+  tableId: string;
+  copiesLeft: number;
+}
+
+interface TableRules {
+  tableId: string;
+  indexes: Map<string, TableRuleIndex>;
 }
 
 // Reads the rules the regen's plain property get brought into Raw, so it costs no round trip of its own.
@@ -121,73 +133,88 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
   }
   // A handle a person changed since the last sync names no rule now; deleting by a guess could take the wrong one.
   noSuchRuleStops(removals: PlannedRuleRemoval[]): SyncNoSuchRuleStop[] {
-    // Read before the send, apiTableColumnsByTableId can lack a Table whose column configs only the regen writes.
-    if (removals.length === 0) return [];
-    const apiTableColumnsByTableId =
-      this.columnConfigOperator.apiTableColumnsByTableId();
+    const rulesByTable = this._tableRulesByTable(removals);
     return removals.flatMap((removal): SyncNoSuchRuleStop[] => {
       // A Table a person deleted took its rules with it, so the planner drops the entry.
-      const tableId = this.tableConfigOperator.tableIdOf(removal.table);
-      if (!this.ss.raw.tableIdIsActive(tableId)) return [];
-      const indexes = this._ruleIndexesByHandle(
-        removal.table,
-        apiTableColumnsByTableId,
-      );
-      if (indexes.has(removal.handle)) return [];
+      const rules = rulesByTable.get(removal.table);
+      if (rules === undefined || rules.indexes.has(removal.handle)) return [];
       return [
         {
           kind: "noSuchRule",
           table: removal.table,
           path: ruleRemovalLines.path(removal),
-          handles: [...indexes.keys()],
+          handles: [...rules.indexes.keys()],
         },
       ];
     });
   }
-  // Matched on the same read the stops were, so every handle names a rule.
-  removeRules(removals: PlannedRuleRemoval[]): this {
-    if (removals.length === 0) return this;
-    const apiTableColumnsByTableId =
-      this.columnConfigOperator.apiTableColumnsByTableId();
-    for (const removal of removals) {
-      const index = Val.assert(
-        this._ruleIndexesByHandle(removal.table, apiTableColumnsByTableId).get(
-          removal.handle,
-        ),
+  // Indexed on the read the stops were matched on, so every handle names a rule.
+  indexedRuleRemovals(removals: PlannedRuleRemoval[]): IndexedRuleRemoval[] {
+    const rulesByTable = this._tableRulesByTable(removals);
+    return removals.map((removal) => {
+      const { tableId, indexes } = Val.assert(
+        rulesByTable.get(removal.table),
+        `rules of ${removal.table}`,
+      );
+      const { sharedHandle, index } = Val.assert(
+        indexes.get(removal.handle),
         `rule ${removal.handle} on ${removal.table}`,
       );
-      this._sheetOf(removal.table).removeConditionalFormatRuleByIndex(index);
+      const removedCopies = removals.filter(
+        (other) =>
+          other.table === removal.table &&
+          indexes.get(other.handle)?.sharedHandle === sharedHandle,
+      ).length;
+      return {
+        ...removal,
+        tableId,
+        index,
+        sharedHandle,
+        copiesLeft: copyCount(indexes, sharedHandle) - removedCopies,
+      };
+    });
+  }
+  removeRules(removals: IndexedRuleRemoval[]): this {
+    for (const { tableId, index } of removals) {
+      this.ss.raw
+        .table(tableId)
+        .sheet.removeConditionalFormatRuleByIndex(index);
     }
     return this;
   }
-  // The removals whose handle the refetch still finds on their Table.
-  removalsDidntLand(removals: PlannedRuleRemoval[]): SyncSendLine[] {
-    if (removals.length === 0) return [];
-    const apiTableColumnsByTableId =
-      this.columnConfigOperator.apiTableColumnsByTableId();
+  // By copies, not handle: removing one of two equal rules renames the other to the removed one's handle.
+  removalsDidntLand(removals: IndexedRuleRemoval[]): SyncSendLine[] {
+    const rulesByTable = this._tableRulesByTable(removals);
     return removals.flatMap((removal): SyncSendLine[] => {
-      const indexes = this._ruleIndexesByHandle(
-        removal.table,
-        apiTableColumnsByTableId,
-      );
-      if (!indexes.has(removal.handle)) return [];
+      const indexes = rulesByTable.get(removal.table)?.indexes ?? new Map();
+      if (copyCount(indexes, removal.sharedHandle) <= removal.copiesLeft) {
+        return [];
+      }
       const { subject, what } = ruleRemovalLines.sendLine(removal);
       return [{ subject, what: `${what}; Sheets kept it` }];
     });
   }
-  // Named as the regen names them, so a handle matches the one the configs record.
-  private _ruleIndexesByHandle(
-    table: string,
-    apiTableColumnsByTableId: Map<string, ApiTableColumns>,
-  ): Map<string, number> {
-    const tableId = this.tableConfigOperator.tableIdOf(table);
-    return RuleRecords.ruleIndexesByHandle(
-      this._ruleRecordsTab(this._sheetOf(table), apiTableColumnsByTableId),
-      tableId,
-    );
-  }
-  private _sheetOf(table: string): SheetRaw {
-    return this.ss.raw.table(this.tableConfigOperator.tableIdOf(table)).sheet;
+  // Named as the regen names them, so a handle matches the one the configs record; one tab walk per Table.
+  private _tableRulesByTable(
+    removals: PlannedRuleRemoval[],
+  ): Map<string, TableRules> {
+    const rulesByTable = new Map<string, TableRules>();
+    if (removals.length === 0) return rulesByTable;
+    const apiTableColumnsByTableId =
+      this.columnConfigOperator.identifiedApiTableColumnsByTableId();
+    for (const table of new Set(removals.map((removal) => removal.table))) {
+      const tableId = this.tableConfigOperator.tableIdOf(table);
+      if (!this.ss.raw.tableIdIsActive(tableId)) continue;
+      const tab = this._ruleRecordsTab(
+        this.ss.raw.table(tableId).sheet,
+        apiTableColumnsByTableId,
+      );
+      rulesByTable.set(table, {
+        tableId,
+        indexes: RuleRecords.ruleIndexesByHandle(tab, tableId),
+      });
+    }
+    return rulesByTable;
   }
   toFileSource(): string {
     return [
@@ -200,6 +227,15 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
       ``,
     ].join("\n");
   }
+}
+
+function copyCount(
+  indexes: Map<string, TableRuleIndex>,
+  sharedHandle: string,
+): number {
+  return [...indexes.values()].filter(
+    (rule) => rule.sharedHandle === sharedHandle,
+  ).length;
 }
 
 interface ColumnNameAtProps {

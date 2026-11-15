@@ -520,6 +520,9 @@ const stopWords: { [SK in StopKind]: StopWords<SK> } = {
   },
 };
 
+// The one phrase for a stop's entry left pending.
+const entryStaysText = "The entry stays in alterations.ts.";
+
 function stopBlocks(stops: SyncStop[]): string[] {
   return stops.flatMap((stop, index) => [
     ...(index === 0 ? [] : [""]),
@@ -544,7 +547,7 @@ function headRowsBlock(
     ...indent(2, [
       `${table}'s header row is on row ${headerRow} of its tab, ${tab}. A Table needs its header on row 4 to take head rows`,
       `(rows 1 to 3: column IDs, action row, heading). Move ${table} so its header sits on row 4, then rerun.`,
-      "The entry stays in alterations.ts.",
+      entryStaysText,
     ]),
   ];
 }
@@ -557,7 +560,7 @@ function headerTakenBlock(
     `STOP ${number} · ${table} › newColumns`,
     ...indent(2, [
       `${table} already has a column headed "${header}": ${column}, ${columnId}.`,
-      "The entry stays in alterations.ts.",
+      entryStaysText,
     ]),
   ];
 }
@@ -573,7 +576,7 @@ function noSuchRuleBlock(
       `No rule on ${table} has this handle now: a person changed the rule after the last sync`,
       "(a handle comes from its columns, formula, condition and format).",
       ...ruleHandleLines(table, handles),
-      "The entry stays in alterations.ts.",
+      entryStaysText,
     ]),
   ];
 }

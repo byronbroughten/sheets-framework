@@ -26,7 +26,6 @@ import { SyncEntryRefuser } from "../01_SpreadsheetSchema/configReaders/SyncEntr
 import {
   deletedTableOf,
   isSheetTrait,
-  type PlannedRuleRemoval,
   type PlanProps,
   SyncPlanner,
   type SyncPlannerResult,
@@ -53,7 +52,10 @@ import {
   ColumnConfigsOperator,
   type MintedNewColumn,
 } from "./ColumnConfigsOperator";
-import { ConditionalFormatConfigOperator } from "./ConditionalFormatConfigOperator";
+import {
+  ConditionalFormatConfigOperator,
+  type IndexedRuleRemoval,
+} from "./ConditionalFormatConfigOperator";
 import {
   alterationsFileSource,
   columnIdsByName,
@@ -107,7 +109,7 @@ interface AppliedPlan {
   accessChanges: ApiAccessChanges;
   sentTraits: SyncPlannerResult["sentTraits"];
   newColumns: MintedNewColumn[];
-  ruleRemovals: PlannedRuleRemoval[];
+  ruleRemovals: IndexedRuleRemoval[];
   reads: EnteredDataReads;
 }
 
@@ -117,6 +119,7 @@ interface RefetchProps {
   sent: SyncSubject[];
   accessChanges: ApiAccessChanges;
   newColumns: MintedNewColumn[];
+  ruleRemovals: IndexedRuleRemoval[];
 }
 
 // No files on a refused run: the run writes every file or none.
@@ -238,7 +241,9 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       accessChanges,
       sentTraits: planned.sentTraits,
       newColumns: this.columnConfigOperator.mintColumnIds(planned.newColumns),
-      ruleRemovals: planned.ruleRemovals,
+      ruleRemovals: this.conditionalFormatConfigOperator.indexedRuleRemovals(
+        planned.ruleRemovals,
+      ),
       reads: enteredDataReads({
         alterations,
         sentTraits: planned.sentTraits,
@@ -279,6 +284,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         sent,
         accessChanges,
         newColumns: applied.newColumns,
+        ruleRemovals: applied.ruleRemovals,
       });
     } else {
       regeneration = this._regeneration(notes, sent);
@@ -347,6 +353,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     sent,
     accessChanges,
     newColumns,
+    ruleRemovals,
   }: RefetchProps): Regeneration {
     // Recorded before the read, so its head-row fetch covers granted Tables and skips revoked ones.
     this.tableConfigOperator.recordApiAccessChanges(accessChanges);
@@ -360,7 +367,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     const notes = this._recordUntypedColumns();
     const columns = this.columnConfigOperator.landedColumns(newColumns);
     const rulesDidntLand =
-      this.conditionalFormatConfigOperator.removalsDidntLand(plan.ruleRemovals);
+      this.conditionalFormatConfigOperator.removalsDidntLand(ruleRemovals);
     return {
       ...this._regeneration(notes, sent),
       didntLand: [...traitsDidntLand, ...columns.didntLand, ...rulesDidntLand],

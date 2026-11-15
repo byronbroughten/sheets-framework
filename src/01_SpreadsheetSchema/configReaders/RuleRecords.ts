@@ -108,41 +108,63 @@ interface HandledRecord<RR> {
   record: RR;
 }
 
+// A Table rule's place in its tab's rule list; `sharedHandle` is its handle before any duplicate suffix, which every copy of the rule has.
+export interface TableRuleIndex {
+  sharedHandle: string;
+  index: number;
+}
+
+interface FiledRuleBase<RO, RR> {
+  owner: RO;
+  handle: string;
+  sharedHandle: string;
+  record: RR;
+  index: number;
+}
+
+type FiledRule =
+  | FiledRuleBase<
+      RuleRecordsTable,
+      TableRuleRecord | UnmodelableTableRuleRecord
+    >
+  | FiledRuleBase<undefined, TabRuleRecord | UnmodelableTabRuleRecord>;
+
 // A handle is readable content, not a hash: packages/utils has no hash function.
 export const RuleRecords = {
   build(tabs: RuleRecordsTab[]): RuleRecordSet {
     return tabs.reduce<RuleRecordSet>(
       (recordSet, tab) => {
-        tab.rules.forEach((rule) => {
-          const table = ownerTable(rule, tab);
-          if (table === undefined) {
-            const group = (recordSet.tabs[tab.tabName] ??= {});
-            addRecord(group, tabRecord(rule, tab.sheetGid));
-            return;
+        for (const filed of filedRules(tab)) {
+          if (filed.owner === undefined) {
+            (recordSet.tabs[tab.tabName] ??= {})[filed.handle] = filed.record;
+            continue;
           }
-          const group = (recordSet.tables[table.tableKey] ??= {});
-          addRecord(group, tableRecord(rule, table));
-        });
+          const group = (recordSet.tables[filed.owner.tableKey] ??= {});
+          group[filed.handle] = filed.record;
+        }
         return recordSet;
       },
       { tables: {}, tabs: {} },
     );
   },
-  // Each handle build gives the Table's rules, with its rule's index on the tab, so a remove can name it.
+  // Filed by build's walk, so a duplicate's suffix names the same rule here as in the configs.
   ruleIndexesByHandle(
     tab: RuleRecordsTab,
     tableId: string,
-  ): Map<string, number> {
-    const indexes: Record<string, number> = {};
-    tab.rules.forEach((rule, index) => {
-      const table = ownerTable(rule, tab);
-      if (table?.tableId !== tableId) return;
-      addRecord(indexes, {
-        handle: tableRecord(rule, table).handle,
-        record: index,
-      });
-    });
-    return new Map(Object.entries(indexes));
+  ): Map<string, TableRuleIndex> {
+    return new Map(
+      filedRules(tab).flatMap(
+        ({
+          owner,
+          handle,
+          sharedHandle,
+          index,
+        }): [string, TableRuleIndex][] => {
+          if (owner?.tableId !== tableId) return [];
+          return [[handle, { sharedHandle, index }]];
+        },
+      ),
+    );
   },
   // Nothing is sent for a partly-over rule: it stays on the sheet, so the plan only reports it.
   deletionEffects({
@@ -203,17 +225,49 @@ function tableColumnBounds(table: RuleRecordsTable): {
   };
 }
 
+// In the tab's rule order, each owner's duplicates suffixed as they come.
+function filedRules(tab: RuleRecordsTab): FiledRule[] {
+  const takenByOwner = new Map<RuleRecordsTable | undefined, Set<string>>();
+  return tab.rules.map((rule, index): FiledRule => {
+    const owner = ownerTable(rule, tab);
+    const taken = takenByOwner.get(owner) ?? new Set<string>();
+    takenByOwner.set(owner, taken);
+    if (owner === undefined) {
+      const { handle, record } = tabRecord(rule, tab.sheetGid);
+      const suffixed = takeHandle(taken, handle);
+      return { owner, handle: suffixed, sharedHandle: handle, record, index };
+    }
+    const { handle, record } = tableRecord(rule, owner);
+    const suffixed = takeHandle(taken, handle);
+    return { owner, handle: suffixed, sharedHandle: handle, record, index };
+  });
+}
+
+function takeHandle(taken: Set<string>, handle: string): string {
+  const suffixed = unusedHandle(handle, (candidate) => taken.has(candidate));
+  taken.add(suffixed);
+  return suffixed;
+}
+
 function addRecord<RR>(
   group: Record<string, RR>,
   { handle, record }: HandledRecord<RR>,
 ): void {
+  group[unusedHandle(handle, (candidate) => group[candidate] !== undefined)] =
+    record;
+}
+
+function unusedHandle(
+  handle: string,
+  isTaken: (candidate: string) => boolean,
+): string {
   let suffixed = handle;
   let repeat = 1;
-  while (group[suffixed] !== undefined) {
+  while (isTaken(suffixed)) {
     repeat += 1;
     suffixed = `${handle}-${repeat}`;
   }
-  group[suffixed] = record;
+  return suffixed;
 }
 
 function tabRecord(
