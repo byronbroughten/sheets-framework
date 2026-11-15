@@ -96,7 +96,12 @@ function recordingSheets(
     },
   };
   return {
-    api: GoogleSheetsAPI.init({ sheets, spreadsheetId, host: "appsScript" }),
+    api: GoogleSheetsAPI.init({
+      sheets,
+      spreadsheetId,
+      host: "appsScript",
+      refusesDropdownStyleReset: true,
+    }),
     batchUpdateCalls,
     getByDataFilterCalls,
     getByDataFilterFields,
@@ -1957,7 +1962,7 @@ describe("GoogleSheetsAPI spreadsheet binding", () => {
     stubScriptAndSpreadsheetApp({ spreadsheetId: null });
     vi.stubGlobal("Sheets", { Spreadsheets: {} });
 
-    expect(() => GoogleSheetsAPI.forAppsScript()).toThrowError(
+    expect(() => GoogleSheetsAPI.forAppsScript("ask")).toThrowError(
       "bind the Apps Script project to its spreadsheet",
     );
     vi.unstubAllGlobals();

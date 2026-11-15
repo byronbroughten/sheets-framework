@@ -724,6 +724,70 @@ describe("EndpointRun.run, a run that fails", () => {
   });
 });
 
+describe('EndpointRun.run, a column-type write refused under dropdownStyleReset: "ask"', () => {
+  function stubRunItemSheetWithDropdown() {
+    const dataRow = (rowIndex: number) => [
+      `r:rit:row${rowIndex}`,
+      false,
+      "",
+      "",
+    ];
+    return stubSheetsService({
+      sheets: [
+        {
+          sheetId: runItemGid,
+          title: "Run item",
+          rows: buildGridRows({
+            0: columnIds,
+            [actionRowIndex]: actionRowWithEntryTicked,
+            3: headers,
+            4: dataRow(4),
+            5: dataRow(5),
+          }),
+          table: {
+            endRowIndex: 6,
+            columnTypes: { [idColIndex]: "DROPDOWN" },
+            columnValidationValues: { [idColIndex]: ["a", "b"] },
+            columnValidationConditionTypes: { [idColIndex]: "ONE_OF_LIST" },
+          },
+        },
+      ],
+    });
+  }
+
+  function setRunStatusType(ss: SpreadsheetNamed): void {
+    ss.table("runItem").column("runStatus").updateColumnType("TEXT");
+  }
+
+  it("fails the run, naming the setting in its status", () => {
+    const { grid } = stubRunItemSheetWithDropdown();
+
+    runEndpoint(reportingEndpoint(setRunStatusType));
+
+    expect(
+      grid.sheet(runItemGid).cell(topDataRowIndex, runStatusColIndex),
+    ).toEqual({
+      value: expect.stringMatching(
+        /^Error: Refusing to set column types .*dropdownStyleReset: "ask"/,
+      ) as string,
+      backgroundColor: lightRed,
+    });
+  });
+
+  it("logs the refusal", () => {
+    stubRunItemSheetWithDropdown();
+    const logger = stubLogger();
+
+    runEndpoint(reportingEndpoint(setRunStatusType));
+
+    expect(logger.log).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /^Endpoint run failed: .*dropdownStyleReset: "ask"/,
+      ),
+    );
+  });
+});
+
 describe("EndpointRun.run, an empty selection", () => {
   it("runs no action and stamps nothing", () => {
     const { grid } = stubRunItemSheet([]);

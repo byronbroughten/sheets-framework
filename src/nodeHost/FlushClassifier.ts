@@ -2,9 +2,9 @@ import { Obj } from "@byronbroughten/utils/obj";
 import { Val } from "@byronbroughten/utils/val";
 
 import type { GoogleRequest } from "../00_Source/GoogleSheets/GoogleSheetsAPI";
+import type { DropdownStyleReset } from "../00_Source/RawSource/RawSource";
 import type { ForcedTrait } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
 import type {
-  DropdownStyleReset,
   FlushRead,
   HeldItem,
 } from "./FlushClassifier/flushClassifierTypes";

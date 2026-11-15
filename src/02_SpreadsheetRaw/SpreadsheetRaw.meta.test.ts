@@ -7,6 +7,7 @@ import {
   buildGridRows,
   type FakeCell,
   type FakeSheetProperties,
+  type FakeSheetsServiceOptions,
   type FakeTable,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
@@ -1304,8 +1305,10 @@ describe("ColumnProfileRaw.validationColumnReference", () => {
 describe("ColumnRaw.updateColumnType", () => {
   function stubTypedTable(
     table: Partial<NonNullable<FakeSheetProperties["table"]>> = {},
+    options: FakeSheetsServiceOptions = {},
   ) {
     return stubSheetsService({
+      ...options,
       sheets: [
         {
           sheetId: 111,
@@ -1439,20 +1442,75 @@ describe("ColumnRaw.updateColumnType", () => {
     expect(() => raw.batchUpdateGSheets()).toThrow(/columnName/);
   });
 
-  it("refuses before sending any batch update when a column on the Table has a validation rule, naming the Table and those columns", () => {
-    const { batchUpdateCount } = stubTypedTable({
+  it("fake: rejects a DROPDOWN column type sent without its rule", () => {
+    stubTypedTable();
+    const raw = fetchedRaw();
+    raw.gatherRawOperation(
+      googleRawRequest({
+        updateTable: {
+          table: {
+            tableId: "fake-table-111",
+            columnProperties: [
+              { columnName: "Name", columnType: "TEXT" },
+              { columnIndex: 1, columnName: "ID", columnType: "DROPDOWN" },
+              { columnIndex: 2, columnName: "Amount" },
+            ],
+          },
+          fields: "columnProperties",
+        },
+      }),
+    );
+
+    expect(() => raw.batchUpdateGSheets()).toThrow(/No conditionType/);
+  });
+
+  describe("on a Table with a dropdown", () => {
+    const dropdownTable = {
+      columnTypes: {
+        [startTableColIndex]: "TEXT",
+        [startTableColIndex + 1]: "DROPDOWN",
+      },
       columnValidationValues: { [startTableColIndex + 1]: ["a", "b"] },
       columnValidationConditionTypes: {
         [startTableColIndex + 1]: "ONE_OF_LIST",
       },
-    });
-    const raw = fetchedRaw();
-    raw.table(tableId111).column(2).updateColumnType("DOUBLE");
+    };
 
-    expect(() => raw.batchUpdateGSheets()).toThrow(
-      /fake-table-111.*Records.*ID/,
-    );
-    expect(batchUpdateCount()).toBe(0);
+    it('resends each dropdown\'s rule in the full list under dropdownStyleReset: "allow", so the dropdown keeps its type and options', () => {
+      const { grid } = stubTypedTable(dropdownTable, {
+        dropdownStyleReset: "allow",
+      });
+      const raw = fetchedRaw();
+      raw.table(tableId111).column(2).updateColumnType("DOUBLE");
+      raw.batchUpdateGSheets();
+
+      expect(grid.sheet(111).tables[0]?.columnProperties).toEqual([
+        { columnName: "Name", columnType: "TEXT" },
+        {
+          columnIndex: 1,
+          columnName: "ID",
+          columnType: "DROPDOWN",
+          dataValidationRule: {
+            condition: {
+              type: "ONE_OF_LIST",
+              values: [{ userEnteredValue: "a" }, { userEnteredValue: "b" }],
+            },
+          },
+        },
+        { columnIndex: 2, columnName: "Amount", columnType: "DOUBLE" },
+      ]);
+    });
+
+    it('refuses under dropdownStyleReset: "ask" before sending any batch update, naming the Table and the dropdowns it would reset', () => {
+      const { batchUpdateCount } = stubTypedTable(dropdownTable);
+      const raw = fetchedRaw();
+      raw.table(tableId111).column(2).updateColumnType("DOUBLE");
+
+      expect(() => raw.batchUpdateGSheets()).toThrow(
+        /fake-table-111.*Records.*dropdownStyleReset: "ask".*ID/,
+      );
+      expect(batchUpdateCount()).toBe(0);
+    });
   });
 
   it("refuses when the same flush inserts a column on that sheet, sending no batch update", () => {

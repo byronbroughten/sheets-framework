@@ -110,9 +110,10 @@ export class EndpointRun<
       });
       this._clearSelection();
       this._applyActionReport(report);
+      // Inside the `try`, so a write the flush refuses before sending reports as the run's failure.
+      this.ss.batchUpdateGSheets();
     } catch (error) {
       this._onRunError(error);
-    } finally {
       this.ss.batchUpdateGSheets();
     }
   }

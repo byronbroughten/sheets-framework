@@ -393,10 +393,21 @@ export interface SetTableColumnPropertiesOperation {
   columnProperties: TableColumnPropertiesUpdate[];
 }
 
-export type TableColumnPropertiesUpdate = Omit<
-  TableColumnPropertiesAdd,
-  "dataValidationRule"
->;
+// The same shape as an add, since a dropdown sent without its rule is refused.
+export type TableColumnPropertiesUpdate = TableColumnPropertiesAdd;
+
+// The app's setting for a columnProperties send, which resets every dropdown's style and colours; "ask" holds or refuses it.
+export type DropdownStyleReset = "ask" | "allow";
+
+// What an app that sets no dropdownStyleReset gets.
+export const defaultDropdownStyleReset: DropdownStyleReset = "ask";
+
+// For a host where no gate holds a send, so "ask" can only refuse one.
+export function refusesDropdownStyleReset(
+  setting: DropdownStyleReset | undefined,
+): boolean {
+  return (setting ?? defaultDropdownStyleReset) === "ask";
+}
 
 export interface AddCheckboxValidationOperation {
   kind: "addCheckboxValidation";
@@ -415,6 +426,8 @@ export interface RawWriteOperation {
 }
 
 export interface RawSource {
+  // True where no gate holds a send and the app's dropdownStyleReset is "ask".
+  readonly refusesDropdownStyleReset: boolean;
   fetchSheetProperties(
     options?: SheetPropertiesFetchOptions,
   ): SpreadsheetSnapshot;

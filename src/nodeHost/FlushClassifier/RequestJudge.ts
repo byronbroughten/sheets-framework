@@ -1,9 +1,9 @@
+import type { DropdownStyleReset } from "../../00_Source/RawSource/RawSource";
 import { ExtVal } from "../ExtVal";
 import type {
   BoundedRange,
   CellAfter,
   CellChange,
-  DropdownStyleReset,
   GoogleGridRange,
   GridCell,
   HeldItem,

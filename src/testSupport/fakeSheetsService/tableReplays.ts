@@ -141,6 +141,13 @@ function validateColumn(column: TableColumnProperties): void {
       `Invalid updateTable: column ${column.columnIndex ?? 0} has no columnName.`,
     );
   }
+  // Observed: docs/sheets-behaviour.md#creating-and-updating-tables.
+  if (
+    column.columnType === "DROPDOWN" &&
+    column.dataValidationRule?.condition?.type === undefined
+  ) {
+    throw new Error("Invalid updateTable: No conditionType specified.");
+  }
   const rule = column.dataValidationRule ?? {};
   const ruleFields = [
     ...Object.keys(rule).filter((field) => field !== "condition"),

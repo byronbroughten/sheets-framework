@@ -1,4 +1,5 @@
 import type { SheetEdit } from "../00_Source/PlatformEvents/sheetEdit";
+import type { DropdownStyleReset } from "../00_Source/RawSource/RawSource";
 import type { ColumnSchema } from "../01_SpreadsheetSchema/configReaders/ColumnSchema";
 import {
   type Configs,
@@ -22,6 +23,8 @@ interface ApiProps extends SpreadsheetNamedProps {
 export interface AppSetup {
   configs: Configs;
   endpoints: Endpoints;
+  // The endpoint module's dropdownStyleReset export; absent, "ask".
+  dropdownStyleReset?: DropdownStyleReset;
 }
 
 export class Api extends SpreadsheetBaseNamed {

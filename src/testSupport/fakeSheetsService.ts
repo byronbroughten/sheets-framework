@@ -5,7 +5,11 @@ import {
   type ModeledRequestVerb,
   type SheetsAdvancedTransport,
 } from "../00_Source/GoogleSheets/GoogleSheetsAPI";
-import { installRawSource } from "../00_Source/RawSource/RawSource";
+import {
+  type DropdownStyleReset,
+  installRawSource,
+  refusesDropdownStyleReset,
+} from "../00_Source/RawSource/RawSource";
 import { cellReplays } from "./fakeSheetsService/cellReplays";
 import { dimensionReplays } from "./fakeSheetsService/dimensionReplays";
 import { FakeGoogleRefusal } from "./fakeSheetsService/FakeGoogleRefusal";
@@ -182,6 +186,8 @@ export interface FakeSheetsServiceOptions {
   isEveryTableInFilteredFetch?: boolean;
   /** Runs before each batch update replays; a throw stands in for a host refusing the flush. */
   beforeEachBatchUpdate?: () => void;
+  /** The Apps Script host's app setting, defaulting to "ask", which refuses a send that resets a dropdown's style. */
+  dropdownStyleReset?: DropdownStyleReset;
   /** Edits the fake spreadsheet after each replayed batch update, standing in for Sheets keeping a value other than the one sent. */
   afterEachBatchUpdate?: (spreadsheet: FakeSpreadsheet) => void;
 }
@@ -327,6 +333,9 @@ export function stubSheetsService(
       sheets: service,
       spreadsheetId: fakeSpreadsheetId,
       host: "appsScript",
+      refusesDropdownStyleReset: refusesDropdownStyleReset(
+        options.dropdownStyleReset,
+      ),
     }),
   );
 

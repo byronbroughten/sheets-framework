@@ -25,6 +25,7 @@ import type {
   InsertRangeOperation,
   TableColumnPropertiesUpdate,
   TableColumnSnapshot,
+  TableColumnValidationRule,
 } from "../00_Source/RawSource/RawSource";
 import {
   type SheetColIndex,
@@ -944,6 +945,18 @@ export class TableRaw extends TableCommonRaw {
     );
     return columnTypes;
   }
+  // Google resets every dropdown's style and colours on a columnProperties send; observed: docs/sheets-behaviour.md#creating-and-updating-tables.
+  assertDropdownStyleResetAllowed(): void {
+    if (this.writes.columnTypes.size === 0) return;
+    if (!this.spreadsheetStateRaw.rawSource.refusesDropdownStyleReset) return;
+    const dropdowns = this.columnProperties.filter(
+      (column) => validationRuleOf(column) !== undefined,
+    );
+    if (dropdowns.length === 0) return;
+    throw new Error(
+      `Refusing to set column types on ${this._tableLabel()} under dropdownStyleReset: "ask": it would reset the style and colours of its dropdowns ${dropdowns.map(columnLabel).join(", ")}.`,
+    );
+  }
   gatherSetTableColumnPropertiesOperation(): void {
     const { columnTypes } = this.writes;
     if (columnTypes.size === 0) return;
@@ -974,16 +987,6 @@ export class TableRaw extends TableCommonRaw {
         `Refusing to set column types on ${tableLabel}: the same flush inserts or deletes a column on that sheet.`,
       );
     }
-    const validated = fetched.filter(
-      (column) =>
-        column.dataValidationConditionType !== undefined ||
-        column.dataValidationValues.length > 0,
-    );
-    if (validated.length > 0) {
-      throw new Error(
-        `Refusing to set column types on ${tableLabel}: it would reset the dropdown style and colours on its validated columns ${validated.map(columnLabel).join(", ")}.`,
-      );
-    }
     columnTypes.forEach((_, columnIndex) => {
       if (!fetched.some((column) => column.columnIndex === columnIndex)) {
         throw new Error(
@@ -992,7 +995,7 @@ export class TableRaw extends TableCommonRaw {
       }
     });
   }
-  // Full list, since a partial columnProperties replaces the rest.
+  // Full list with each rule, since a partial columnProperties replaces the rest and a dropdown sent without its rule is refused.
   private _columnTypesColumnProperties(
     columnTypes: ColumnTypes,
   ): TableColumnPropertiesUpdate[] {
@@ -1004,10 +1007,12 @@ export class TableRaw extends TableCommonRaw {
         );
       }
       const columnType = columnTypes.get(columnIndex) ?? column.columnType;
+      const dataValidationRule = validationRuleOf(column);
       return {
         columnIndex,
         columnName: column.columnName,
         ...(columnType !== undefined ? { columnType } : {}),
+        ...(dataValidationRule !== undefined ? { dataValidationRule } : {}),
       };
     });
   }
@@ -1233,6 +1238,18 @@ function columnRun(
     ...rows,
     startColumnIndex: SheetIndex.col(rows.startColumnIndex + startColIndex),
     endColumnIndex: SheetIndex.col(rows.startColumnIndex + endColIndex),
+  };
+}
+
+// Google reads every rule back with its condition type, so a column with none has no rule to resend.
+function validationRuleOf(
+  column: TableColumnSnapshot,
+): TableColumnValidationRule | undefined {
+  const { dataValidationConditionType, dataValidationValues } = column;
+  if (dataValidationConditionType === undefined) return undefined;
+  return {
+    condition: dataValidationConditionType,
+    values: dataValidationValues,
   };
 }
 

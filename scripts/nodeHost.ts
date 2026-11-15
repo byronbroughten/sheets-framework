@@ -12,6 +12,7 @@ import type {
   SheetsHttpRequest,
   SheetsHttpTransport,
 } from "../src/00_Source/GoogleSheets/GoogleSheetsAPI.ts";
+import type { DropdownStyleReset } from "../src/00_Source/RawSource/RawSource.ts";
 import type {
   Configs,
   ConfigSetBase,
@@ -183,8 +184,11 @@ function fetchSync(request: FetchRequest): FetchResponse {
   };
 }
 
-// The gate's terms but its hash, which the Node half supplies.
-type EnteredDataGateTerms = Omit<EnteredDataGateProps, "hash">;
+// The gate's terms but what the Node half supplies: its hash and the app's dropdownStyleReset.
+type EnteredDataGateTerms = Omit<
+  EnteredDataGateProps,
+  "hash" | "dropdownStyleReset"
+>;
 
 export async function startNodeHost({
   isDryRun,
@@ -210,7 +214,7 @@ export async function startNodeHost({
     transport,
     isDryRun,
     log: (message) => console.log(`  log: ${message}`),
-    enteredDataGate: hashedGate(enteredDataGate),
+    enteredDataGate: await gateProps(sheetsConfig, enteredDataGate),
   }).ensureGlobals();
 }
 
@@ -219,12 +223,14 @@ function liveTransport(): SheetsHttpTransport {
   return (request) => transport.send(request);
 }
 
-function hashedGate(
+async function gateProps(
+  sheetsConfig: SheetsConfig,
   terms: EnteredDataGateTerms | undefined,
-): EnteredDataGateProps | undefined {
+): Promise<EnteredDataGateProps | undefined> {
   if (terms === undefined) return undefined;
   return {
     ...terms,
+    dropdownStyleReset: await loadDropdownStyleReset(sheetsConfig),
     hash: (input) => createHash("sha256").update(input).digest("hex"),
   };
 }
@@ -296,6 +302,22 @@ export async function loadPackageEndpoints({
   return importConstNamedAfterFile<Endpoints>(
     endpointModule,
     "An endpoint module",
+  );
+}
+
+// The endpoint module's dropdownStyleReset export; undefined when the app has no module or the module exports none.
+export async function loadDropdownStyleReset({
+  endpointModule,
+}: SheetsConfig): Promise<DropdownStyleReset | undefined> {
+  if (endpointModule === undefined) return undefined;
+  const setting = await importExportIfPresent<unknown>(
+    endpointModule,
+    "dropdownStyleReset",
+  );
+  if (setting === undefined) return undefined;
+  if (setting === "ask" || setting === "allow") return setting;
+  throw new Error(
+    `${endpointModule} exports a dropdownStyleReset of ${JSON.stringify(setting)}; it is "ask" or "allow".`,
   );
 }
 

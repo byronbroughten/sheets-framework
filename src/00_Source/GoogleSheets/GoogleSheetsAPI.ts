@@ -1,19 +1,21 @@
 import { Val } from "@byronbroughten/utils/val";
 
 import { PartialTableRefusal } from "../RawSource/PartialTableRefusal";
-import type {
-  GridFetchOptions,
-  GridFetchRange,
-  LocalWriteOperation,
-  OpaqueRawRequest,
-  RawSource,
-  SheetConditionalFormatSnapshot,
-  SheetEditProtectionSnapshot,
-  SheetPropertiesFetchOptions,
-  SpreadsheetSnapshot,
-  TableColumnPropertiesAdd,
-  TableColumnPropertiesUpdate,
-  UpdateTabPropertiesOperation,
+import {
+  type DropdownStyleReset,
+  type GridFetchOptions,
+  type GridFetchRange,
+  type LocalWriteOperation,
+  type OpaqueRawRequest,
+  type RawSource,
+  refusesDropdownStyleReset,
+  type SheetConditionalFormatSnapshot,
+  type SheetEditProtectionSnapshot,
+  type SheetPropertiesFetchOptions,
+  type SpreadsheetSnapshot,
+  type TableColumnPropertiesAdd,
+  type TableColumnPropertiesUpdate,
+  type UpdateTabPropertiesOperation,
 } from "../RawSource/RawSource";
 import { AppsScript } from "./AppsScript";
 import { cellDataRequests } from "./GoogleSheetsAPI/cellData";
@@ -23,6 +25,8 @@ import { googleGrid } from "./GoogleSheetsAPI/gridSnapshots";
 import { googleProtectedRange } from "./GoogleSheetsAPI/protectedRanges";
 
 export type GoogleRequest = GoogleAppsScript.Sheets.Schema.Request;
+type GoogleColumnProperties =
+  GoogleAppsScript.Sheets.Schema.TableColumnProperties;
 
 export function googleRawRequest(request: GoogleRequest): OpaqueRawRequest {
   return request as unknown as OpaqueRawRequest;
@@ -145,6 +149,7 @@ export interface GoogleSheetsAPIProps {
   sheets: SheetsAdvancedTransport;
   spreadsheetId: string;
   host: keyof typeof gridMasksByHost;
+  refusesDropdownStyleReset: boolean;
 }
 
 export interface SheetsHttpRequest {
@@ -200,27 +205,34 @@ export class GoogleSheetsAPI implements RawSource {
   private sheets: SheetsAdvancedTransport;
   private spreadsheetId: string;
   private gridMasks: GridMasks;
-  constructor({ sheets, spreadsheetId, host }: GoogleSheetsAPIProps) {
-    this.sheets = sheets;
-    this.spreadsheetId = spreadsheetId;
-    this.gridMasks = gridMasksByHost[host];
+  readonly refusesDropdownStyleReset: boolean;
+  constructor(props: GoogleSheetsAPIProps) {
+    this.sheets = props.sheets;
+    this.spreadsheetId = props.spreadsheetId;
+    this.gridMasks = gridMasksByHost[props.host];
+    this.refusesDropdownStyleReset = props.refusesDropdownStyleReset;
   }
   static init(props: GoogleSheetsAPIProps): GoogleSheetsAPI {
     return new GoogleSheetsAPI(props);
   }
-  static forAppsScript(): GoogleSheetsAPI {
+  static forAppsScript(
+    dropdownStyleReset: DropdownStyleReset | undefined,
+  ): GoogleSheetsAPI {
     const spreadsheetId = AppsScript.boundSpreadsheetId();
     return GoogleSheetsAPI.init({
       sheets: Val.assert(Sheets, "Sheets (enable the Advanced Sheets Service)"),
       spreadsheetId,
       host: "appsScript",
+      refusesDropdownStyleReset: refusesDropdownStyleReset(dropdownStyleReset),
     });
   }
+  // The Node host's gate judges a dropdown reset against the setting, so nothing is refused here.
   static initHttp(props: GoogleSheetsAPIHttpProps): GoogleSheetsAPI {
     return GoogleSheetsAPI.init({
       sheets: httpSheetsTransport(props),
       spreadsheetId: props.spreadsheetId,
       host: "nodeHost",
+      refusesDropdownStyleReset: false,
     });
   }
   fetchSheetProperties(
@@ -663,9 +675,10 @@ function columnPropertiesRequest(
   };
 }
 
+// A rule with no values sends none, as the Table fetch reads one back.
 function googleColumn(
   column: TableColumnPropertiesAdd,
-): GoogleAppsScript.Sheets.Schema.TableColumnProperties {
+): GoogleColumnProperties {
   const { dataValidationRule, ...rest } = column;
   if (dataValidationRule === undefined) return rest;
   const { condition, values } = dataValidationRule;
@@ -674,7 +687,9 @@ function googleColumn(
     dataValidationRule: {
       condition: {
         type: condition,
-        values: values.map((userEnteredValue) => ({ userEnteredValue })),
+        ...(values.length > 0
+          ? { values: values.map((userEnteredValue) => ({ userEnteredValue })) }
+          : {}),
       },
     },
   };

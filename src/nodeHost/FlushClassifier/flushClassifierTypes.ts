@@ -13,8 +13,6 @@ export type RequestVerb = keyof GoogleRequest;
 
 export type FlushRead = SheetsHttpRead;
 
-export type DropdownStyleReset = "ask" | "allow";
-
 export interface GridCell {
   sheetGid: number;
   rowIndex: number;
