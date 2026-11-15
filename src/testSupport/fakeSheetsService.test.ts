@@ -365,6 +365,7 @@ describe("stubSheetsService replays Table updates by their field mask", () => {
             1: [1, "x", { value: 2, isFormula: true, formula: "=A2+1" }],
             2: [2, "y", { value: 3, isFormula: true, formula: "=A3+1" }],
             3: [3, "z", { value: 4, isFormula: true, formula: "=A4+1" }],
+            7: ["below"],
           }),
         },
       ],

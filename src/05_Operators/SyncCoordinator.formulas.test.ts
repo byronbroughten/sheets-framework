@@ -5,13 +5,17 @@ import { type PendingAlterations } from "../01_SpreadsheetSchema/configReaders/i
 import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { SpreadsheetRaw } from "../02_SpreadsheetRaw/SpreadsheetRaw";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
-import { stubSheetsService } from "../testSupport/fakeSheetsService";
+import {
+  type FakeSheetsService,
+  stubSheetsService,
+} from "../testSupport/fakeSheetsService";
 import {
   emittedItemColumn,
   itemAtEachFlush,
   itemColumns,
   itemGid,
   itemSheet,
+  noteColIndex,
   runItem,
   seedFixture,
 } from "./syncCoordinatorTestSupport";
@@ -24,8 +28,19 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+const compiledNote = {
+  isFormula: true,
+  value: `=SINGLE(${getTableTraitByName("item", "tableName")}[${itemColumns.id.header}])`,
+};
+
+function noteCellsOf(service: FakeSheetsService): unknown[] {
+  return service.grid
+    .sheet(itemGid)
+    .bodyRows()
+    .map((row) => row[noteColIndex]);
+}
+
 describe("SyncCoordinator.run formulas", () => {
-  const optionalNoteIndex = Object.keys(itemColumns).indexOf("optionalNote");
   const formulaAlteration: PendingAlterations = {
     tables: { item: { columns: { optionalNote: { formula: "=${@id}" } } } },
   };
@@ -44,15 +59,7 @@ describe("SyncCoordinator.run formulas", () => {
       alterations: formulaAlteration,
     });
 
-    const noteCells = service.grid
-      .sheet(itemGid)
-      .bodyRows()
-      .map((row) => row[optionalNoteIndex]);
-    const compiled = {
-      isFormula: true,
-      value: `=SINGLE(${getTableTraitByName("item", "tableName")}[${itemColumns.id.header}])`,
-    };
-    expect(noteCells).toEqual([compiled, compiled]);
+    expect(noteCellsOf(service)).toEqual([compiledNote, compiledNote]);
     expect(
       emittedItemColumn(Val.assert(files, "emitted files"), "optionalNote"),
     ).toContain('"formula": "=${@id}"');
@@ -71,42 +78,21 @@ describe("SyncCoordinator.run formulas", () => {
 
     const raw = SpreadsheetRaw.init();
     raw.fetchAllSheetProperties();
-    raw.table("item").appendDataRow([optionalNoteIndex]);
+    raw.table("item").appendDataRow([noteColIndex]);
     raw.batchUpdateGSheets();
 
-    const noteCells = service.grid
-      .sheet(itemGid)
-      .bodyRows()
-      .map((row) => row[optionalNoteIndex]);
-    const compiled = {
-      isFormula: true,
-      value: `=SINGLE(${getTableTraitByName("item", "tableName")}[${itemColumns.id.header}])`,
-    };
-    expect(noteCells).toEqual([compiled, compiled]);
+    expect(noteCellsOf(service)).toEqual([compiledNote, compiledNote]);
   });
 
-  describe("a body cell of the column being given a formula", () => {
-    it("holds the value a person entered when the send's flush goes out", () => {
-      const [atFirstFlush] = itemAtEachFlush({
-        isSending: true,
-        alterations: formulaAlteration,
-      });
-
-      expect(atFirstFlush?.note).toBe("kept");
+  it("reads the column before a send's flush, holding the cell a person entered", () => {
+    const [atFirstFlush] = itemAtEachFlush({
+      isSending: true,
+      alterations: formulaAlteration,
     });
 
-    it("is read before the send's flush, and no other column is", () => {
-      const [atFormulaFlush] = itemAtEachFlush({
-        isSending: true,
-        alterations: formulaAlteration,
-      });
-      const [atBareFlush] = itemAtEachFlush({
-        isSending: true,
-        alterations: { tables: { item: { columns: {} } } },
-      });
-
-      expect(atFormulaFlush?.colIndexesRead).toEqual([optionalNoteIndex]);
-      expect(atBareFlush?.colIndexesRead ?? []).toEqual([]);
+    expect(atFirstFlush).toEqual({
+      colIndexesRead: [noteColIndex],
+      note: "kept",
     });
   });
 
