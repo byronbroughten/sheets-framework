@@ -48,7 +48,7 @@ export interface SyncRunPlanned {
   // The new columns the refetch found, in place of their plan lines on the landed list.
   createdColumns: SyncCreatedColumn[];
   rowIds: SyncRunRowIds;
-  names: SyncNameRewriter;
+  nameRewriter: SyncNameRewriter;
 }
 
 interface SyncRunCommonProps {
@@ -58,7 +58,7 @@ interface SyncRunCommonProps {
   notes: string[];
   typedTraitChanges: SyncTypedTraitChange[];
   // Absent on a run that writes no files, so nothing it names was rewritten.
-  names?: SyncNameRewriter;
+  nameRewriter?: SyncNameRewriter;
 }
 
 // Builds one run's SyncRunResult from its mode and frame; the fields later tickets fill stay empty.
@@ -83,7 +83,7 @@ export class SyncRunResultBuilder {
     didntLand,
     createdColumns,
     rowIds,
-    names,
+    nameRewriter,
   }: SyncRunPlanned): SyncRunResult {
     const common = this._common({
       refusals: [],
@@ -91,7 +91,7 @@ export class SyncRunResultBuilder {
       rowIds,
       notes,
       typedTraitChanges,
-      names,
+      nameRewriter,
     });
     if (planned.isStopped) return this._unsent(common, { kind: "stopped" });
     if (!this.isSending) return dryRunResult(common, { kind: "ready" });
@@ -117,7 +117,7 @@ export class SyncRunResultBuilder {
         }),
       }),
       landed,
-      didntLand: didntLand.map((line) => asWritten(line, names)),
+      didntLand: didntLand.map((line) => asRewritten(line, nameRewriter)),
     };
   }
   // A send the host refused at a held flush; nothing after it was sent.
@@ -137,7 +137,7 @@ export class SyncRunResultBuilder {
     rowIds,
     notes,
     typedTraitChanges,
-    names,
+    nameRewriter,
   }: SyncRunCommonProps): SyncRunCommon {
     return {
       ...this.frame,
@@ -145,21 +145,21 @@ export class SyncRunResultBuilder {
       refusals,
       stops: (planned?.stops ?? []).map((stop) => {
         if (stop.kind !== "conflict") return stop;
-        return asWritten(stop, names);
+        return asRewritten(stop, nameRewriter);
       }),
       plan: [
-        ...(planned?.plan ?? []).map((item) => asWritten(item, names)),
+        ...(planned?.plan ?? []).map((item) => asRewritten(item, nameRewriter)),
         ...(rowIds?.plan ?? []),
       ],
       forcedTraits: planned?.forcedTraits ?? [],
       notices: rowIds?.notices ?? [],
       configs: {
         heldBack: (planned?.configs.heldBack ?? []).map((trait) =>
-          asWritten(trait, names),
+          asRewritten(trait, nameRewriter),
         ),
-        renamed: names?.renamed ?? [],
-        namesMoved: names?.namesMoved ?? [],
-        rewrites: names?.rewrites ?? [],
+        renamed: nameRewriter?.renamed ?? [],
+        namesMoved: nameRewriter?.namesMoved ?? [],
+        rewrites: nameRewriter?.rewrites ?? [],
         typedTraitChanges,
         notes,
       },
@@ -182,12 +182,12 @@ interface SentCounts {
 }
 
 // A pending entry's line under the name sync rewrote it to, once the regen renamed what it names.
-function asWritten<IT extends { subject: SyncSubject }>(
+function asRewritten<IT extends { subject: SyncSubject }>(
   item: IT,
-  names: SyncNameRewriter | undefined,
+  nameRewriter: SyncNameRewriter | undefined,
 ): IT {
-  if (names === undefined) return item;
-  return { ...item, subject: names.asWritten(item.subject) };
+  if (nameRewriter === undefined) return item;
+  return { ...item, subject: nameRewriter.asRewritten(item.subject) };
 }
 
 function landedSend({ subject, what }: SyncSendLine): SyncLandedItem {

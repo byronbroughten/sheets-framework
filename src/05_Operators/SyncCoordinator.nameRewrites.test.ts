@@ -157,6 +157,40 @@ describe("SyncCoordinator.run name rewrites", () => {
     ]);
   });
 
+  it("shows a pending entry under a renamed Table's new name when its column kept its name", () => {
+    seedFixture({ item: { name: "Stock" } });
+
+    const { result, files } = runItem({
+      isSending: false,
+      alterations: {
+        tables: {
+          item: { columns: { optionalNote: { emptyValueAllowed: false } } },
+        },
+      },
+    });
+
+    expect(Val.assert(files, "emitted files").alterations).toBe(
+      alterationsSource([
+        '  "tables": {',
+        '    "stock": {',
+        '      "columns": {',
+        '        "optionalNote": { "emptyValueAllowed": false }',
+        "      }",
+        "    }",
+        "  }",
+      ]),
+    );
+    expect(result.plan).toContainEqual(
+      expect.objectContaining({
+        subject: {
+          table: "stock",
+          column: "optionalNote",
+          path: "emptyValueAllowed",
+        },
+      }),
+    );
+  });
+
   it("follows each column's ID across a swap of two headers, and lists both names as moved", () => {
     seedFixture({
       item: {

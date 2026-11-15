@@ -20,6 +20,7 @@ function statusColumn(valueName: string): ColumnConfigStored {
 
 function configs(valueConfigs: ValueConfigsBase) {
   return {
+    idNameMap: { tables: {}, tabs: {} },
     columnConfigs: { ledger: { status: statusColumn("listStatus") } },
     valueConfigs,
   };

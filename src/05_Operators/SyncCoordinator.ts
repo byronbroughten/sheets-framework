@@ -8,6 +8,10 @@ import {
 } from "../01_SpreadsheetSchema/configReaders/apiAccessChanges";
 import { columnConfigsByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
 import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister";
+import type {
+  ConfigSnapshot,
+  ConfigSnapshots,
+} from "../01_SpreadsheetSchema/configReaders/configSnapshots";
 import {
   didntLandOf,
   hasLanded,
@@ -21,7 +25,6 @@ import {
   tableIdsByName,
 } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
 import type { PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState";
-import type { ColumnConfigsGeneric } from "../01_SpreadsheetSchema/configReaders/makeConfigs";
 import { remainingAlterations } from "../01_SpreadsheetSchema/configReaders/remainingAlterations";
 import { SyncEntryRefuser } from "../01_SpreadsheetSchema/configReaders/SyncEntryRefuser";
 import { SyncNameRewriter } from "../01_SpreadsheetSchema/configReaders/SyncNameRewriter";
@@ -101,9 +104,8 @@ export interface SyncRunProps {
 
 interface Regeneration {
   files: ConfigRegeneration;
-  // What the files record, for the name rewrite to compare with the previous configs.
-  idNameMap: IdNameMapGeneric;
-  columnConfigs: ColumnConfigsGeneric;
+  // The configs the files record, beside the ones the run started from.
+  configs: ConfigSnapshots;
   changes: SyncTypedTraitChange[];
   notes: string[];
   didntLand: SyncSendLine[];
@@ -124,9 +126,16 @@ interface RefetchProps {
   configTraits: TraitReadings;
   plan: SyncPlannerResult;
   sent: SyncSubject[];
+  previous: ConfigSnapshot;
   accessChanges: ApiAccessChanges;
   newColumns: MintedNewColumn[];
   ruleRemovals: IndexedRuleRemoval[];
+}
+
+interface RegenerationProps {
+  notes: string[];
+  sent: SyncSubject[];
+  previous: ConfigSnapshot;
 }
 
 // No files on a refused run: the run writes every file or none.
@@ -284,6 +293,11 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       }
     }
     const sent = isApplying ? planned.plan.map(({ subject }) => subject) : [];
+    const previous: ConfigSnapshot = {
+      idNameMap: props.previousIdNameMap,
+      columnConfigs: columnConfigsByName(),
+      valueConfigs: installedConfigs().valueConfigs,
+    };
     let refetched: SyncCoordinator | undefined;
     let regeneration: Regeneration;
     // A fresh read, since Raw's state has no reset; only a sent sheet trait, a new column or a removed rule changes what it would read.
@@ -298,12 +312,13 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         configTraits: planned.configTraits,
         plan: planned,
         sent,
+        previous,
         accessChanges,
         newColumns: applied.newColumns,
         ruleRemovals: applied.ruleRemovals,
       });
     } else {
-      regeneration = this._regeneration(notes, sent);
+      regeneration = this._regeneration({ notes, sent, previous });
     }
     // The fill reads the configs the files came from.
     const regenerator = refetched ?? this;
@@ -314,21 +329,14 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       this._flushPlan(applied);
     }
     const landed = sent.filter(hasLanded(didntLand));
-    const names = SyncNameRewriter.init({
+    const nameRewriter = SyncNameRewriter.init({
       alterations: remainingAlterations(alterations, landed),
-      idNameMaps: {
-        previous: props.previousIdNameMap,
-        regenerated: regeneration.idNameMap,
-      },
-      columnConfigs: {
-        previous: columnConfigsByName(),
-        regenerated: regeneration.columnConfigs,
-      },
+      configs: regeneration.configs,
       sent,
       landed,
     });
-    if (landed.length > 0 || names.rewrites.length > 0) {
-      files.alterations = alterationsFileSource(names.alterations);
+    if (landed.length > 0 || nameRewriter.rewrites.length > 0) {
+      files.alterations = alterationsFileSource(nameRewriter.alterations);
     }
     let fillPlan: SyncPlanItem[];
     if (isApplying) {
@@ -344,7 +352,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         didntLand,
         createdColumns,
         rowIds: { plan: [...checkboxPlan, ...fillPlan], notices },
-        names,
+        nameRewriter,
       }),
       files,
     };
@@ -379,6 +387,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     configTraits,
     plan,
     sent,
+    previous,
     accessChanges,
     newColumns,
     ruleRemovals,
@@ -397,31 +406,29 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     const rulesDidntLand =
       this.conditionalFormatConfigOperator.removalsDidntLand(ruleRemovals);
     return {
-      ...this._regeneration(notes, sent),
+      ...this._regeneration({ notes, sent, previous }),
       didntLand: [...traitsDidntLand, ...columns.didntLand, ...rulesDidntLand],
       createdColumns: columns.createdColumns,
     };
   }
-  private _regeneration(notes: string[], sent: SyncSubject[]): Regeneration {
+  private _regeneration({
+    notes,
+    sent,
+    previous,
+  }: RegenerationProps): Regeneration {
     this.valueConfigOperator.fetchAfterColumnConfigSynced();
-    const columnConfigs = this.columnConfigOperator.newColumnConfigs();
-    const changes = typedTraitChanges({
-      previous: {
-        columnConfigs: columnConfigsByName(),
-        valueConfigs: installedConfigs().valueConfigs,
-      },
+    const configs: ConfigSnapshots = {
+      previous,
       regenerated: {
-        columnConfigs,
+        idNameMap: this._idNameMap(),
+        columnConfigs: this.columnConfigOperator.newColumnConfigs(),
         valueConfigs: this.valueConfigOperator.newValueConfigs(),
       },
-      sent,
-    });
-    const idNameMap = this._idNameMap();
+    };
     return {
-      files: this._configFiles(idNameMap),
-      idNameMap,
-      columnConfigs,
-      changes,
+      files: this._configFiles(configs.regenerated.idNameMap),
+      configs,
+      changes: typedTraitChanges({ ...configs, sent }),
       notes,
       didntLand: [],
       createdColumns: [],
