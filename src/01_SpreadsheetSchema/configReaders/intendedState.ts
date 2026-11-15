@@ -1,3 +1,4 @@
+import type { ModelledConditionType } from "../../00_Source/RawSource/ConditionalFormat";
 import type { ColumnTypeBaseline } from "../columnBaseline";
 import type { IdNameMapRegistered } from "./configRegister";
 
@@ -59,11 +60,16 @@ interface ConditionalFormatIntended {
   strikethrough?: boolean;
 }
 
+interface ConditionIntended {
+  type: ModelledConditionType;
+  // Each value in brace form, as a formula column's is.
+  values?: string[];
+}
+
 // Spans the body rows of the columns named, so a rule never needs a column letter.
 interface ConditionalFormatRuleIntended<CN extends string> {
   columns: CN[] | "all";
-  // Each value in brace form, as a formula column's is.
-  condition: { type: string; values?: string[] };
+  condition: ConditionIntended;
   format: ConditionalFormatIntended;
 }
 

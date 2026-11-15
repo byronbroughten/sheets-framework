@@ -35,9 +35,9 @@ function itemTab(
             rowIndex: SheetIndex.row(3),
             colIndex: SheetIndex.col(2),
           },
+          endRowIndex: SheetIndex.row(10),
           columnNamesLeftToRight,
         },
-        endRowIndex: SheetIndex.row(10),
       },
     ],
     rules,
@@ -166,6 +166,33 @@ describe("RuleRecords.build", () => {
       "newColumn | =${@newColumn}>2 | background #ff0000-2",
       "newColumn | =${@newColumn}>2 | background #ff0000-3",
     ]);
+  });
+
+  it("keeps a whole-column rule's handle after its Table grows past the row its formula ends on", () => {
+    const rule = booleanRule({
+      ranges: [newColumnBody],
+      condition: {
+        type: "CUSTOM_FORMULA",
+        formula: "=COUNTIF($D$5:$D$10, $D5)>1",
+      },
+      format: red,
+    });
+    const tab = itemTab([rule]);
+    const grownTab: RuleRecordsTab = {
+      ...tab,
+      tables: tab.tables.map((table) => ({
+        ...table,
+        layout: { ...table.layout, endRowIndex: SheetIndex.row(20) },
+      })),
+    };
+    const handle =
+      "newColumn | =COUNTIF(${newColumn}, ${@newColumn})>1 | background #ff0000";
+    expect(Object.keys(RuleRecords.build([tab]).tables.item ?? {})).toEqual([
+      handle,
+    ]);
+    expect(
+      Object.keys(RuleRecords.build([grownTab]).tables.item ?? {}),
+    ).toEqual([handle]);
   });
 
   it("records a rule the brace form can't express as unmodelable, keyed by its raw content", () => {

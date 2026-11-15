@@ -9,7 +9,6 @@ import {
   type HexColor,
   rgbChannelsHex,
 } from "../../00_Source/RawSource/RgbColor";
-import type { SheetRowIndex } from "../../00_Source/RawSource/SheetIndex";
 import { SpreadsheetBaseSchema } from "../SpreadsheetBaseSchema";
 import { BraceFormula, type RuleLayout } from "./BraceFormula";
 import type { SyncPlanEffect } from "./syncRunResult";
@@ -27,7 +26,6 @@ export interface RuleRecordsTable {
   tableKey: string;
   tableId: string;
   layout: RuleLayout;
-  endRowIndex: SheetRowIndex;
 }
 
 export interface DeletedTableTab {
@@ -206,7 +204,7 @@ function ownerTable(
 function touchesTable(range: GridRangeProps, table: RuleRecordsTable): boolean {
   const { startCol, endCol } = tableColumnBounds(table);
   const overlapsRows =
-    range.startRowIndex < table.endRowIndex &&
+    range.startRowIndex < table.layout.endRowIndex &&
     (range.endRowIndex ?? Infinity) > table.layout.headerTopLeft.rowIndex;
   const overlapsColumns =
     (range.startColumnIndex ?? 0) < endCol &&
@@ -376,7 +374,7 @@ function bodyColumnOffsets(
   if (startRowIndex !== table.layout.headerTopLeft.rowIndex + 1) {
     return undefined;
   }
-  if (endRowIndex === undefined || endRowIndex > table.endRowIndex) {
+  if (endRowIndex === undefined || endRowIndex > table.layout.endRowIndex) {
     return undefined;
   }
   if (startColumnIndex === undefined || startColumnIndex < startCol) {
@@ -471,7 +469,7 @@ function isInsideTable(
   if (startColumnIndex === undefined) return false;
   return (
     table.layout.headerTopLeft.rowIndex <= startRowIndex &&
-    endRowIndex <= table.endRowIndex &&
+    endRowIndex <= table.layout.endRowIndex &&
     startCol <= startColumnIndex &&
     endColumnIndex <= endCol
   );

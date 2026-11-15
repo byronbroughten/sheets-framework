@@ -178,13 +178,14 @@ describe("BraceFormula.decompile", () => {
   });
 });
 
-describe("BraceFormula.compileForRule", () => {
-  // Header row 4 (index 3) from column C, so the first body row is row 5.
-  const layout = {
-    headerTopLeft: { rowIndex: SheetIndex.row(3), colIndex: SheetIndex.col(2) },
-    columnNamesLeftToRight: ["count", "newColumn", "price"],
-  };
+// Header row 4 (index 3) from column C, so the body runs from row 5 to row 10.
+const layout = {
+  headerTopLeft: { rowIndex: SheetIndex.row(3), colIndex: SheetIndex.col(2) },
+  endRowIndex: SheetIndex.row(10),
+  columnNamesLeftToRight: ["count", "newColumn", "price"],
+};
 
+describe("BraceFormula.compileForRule", () => {
   it("anchors an @ brace's column to the first body row, relative by row", () => {
     expect(
       BraceFormula.compileForRule({
@@ -195,14 +196,14 @@ describe("BraceFormula.compileForRule", () => {
     ).toBe("=$E5>$D5");
   });
 
-  it("gives a brace with no @ the whole body column", () => {
+  it("gives a brace with no @ the whole body column, ending on the last body row", () => {
     expect(
       BraceFormula.compileForRule({
         tableKey: "item",
         layout,
         formula: "=COUNTIF(${count}, ${@count})>COUNTA(${item[price]})",
       }),
-    ).toBe("=COUNTIF($C$5:$C, $C5)>COUNTA($E$5:$E)");
+    ).toBe("=COUNTIF($C$5:$C$10, $C5)>COUNTA($E$5:$E$10)");
   });
 
   it("refuses a brace naming no column of the layout, or another Table", () => {
@@ -228,12 +229,6 @@ describe("BraceFormula.compileForRule", () => {
 });
 
 describe("BraceFormula.decompileForRule", () => {
-  // Header row 4 (index 3) from column C, so the first body row is row 5.
-  const layout = {
-    headerTopLeft: { rowIndex: SheetIndex.row(3), colIndex: SheetIndex.col(2) },
-    columnNamesLeftToRight: ["count", "newColumn", "price"],
-  };
-
   function decompile(formula: string, isOneColumn = false) {
     return BraceFormula.decompileForRule({
       layout,
@@ -243,10 +238,44 @@ describe("BraceFormula.decompileForRule", () => {
   }
 
   it("gives back the brace form a rule's formula compiled from", () => {
-    expect(decompile("=COUNTIF($C$5:$C, $C5)>1")).toBe(
+    expect(decompile("=COUNTIF($C$5:$C$10, $C5)>1")).toBe(
       "=COUNTIF(${count}, ${@count})>1",
     );
     expect(decompile('=$E5>$D5&"$C5"')).toBe('=${@price}>${@newColumn}&"$C5"');
+  });
+
+  it("reads a whole-column reference ending on an earlier anchored row, or open-ended, as its column", () => {
+    expect(decompile("=COUNTIF($C$5:$C$7, $C5)>1")).toBe(
+      "=COUNTIF(${count}, ${@count})>1",
+    );
+    expect(decompile("=COUNTIF($C$5:$C$5, $C5)>1")).toBe(
+      "=COUNTIF(${count}, ${@count})>1",
+    );
+    expect(decompile("=COUNTIF($C$5:$C, $C5)>1")).toBe(
+      "=COUNTIF(${count}, ${@count})>1",
+    );
+  });
+
+  it("can't express a whole-column reference ending above the first body row or on a relative row", () => {
+    expect(decompile("=COUNTA($C$5:$C$4)>1")).toBeUndefined();
+    expect(decompile("=COUNTA($C$5:$C10)>1")).toBeUndefined();
+  });
+
+  it("gives the same brace form for a rule compiled before its Table grew", () => {
+    const formula = "=COUNTIF(${count}, ${@count})>1";
+    const compiled = BraceFormula.compileForRule({
+      tableKey: "item",
+      layout,
+      formula,
+    });
+    const grown = { ...layout, endRowIndex: SheetIndex.row(20) };
+    expect(
+      BraceFormula.decompileForRule({
+        layout: grown,
+        formula: compiled,
+        isOneColumn: true,
+      }),
+    ).toBe(formula);
   });
 
   it("reads a column-relative reference as its column only on a one-column rule", () => {

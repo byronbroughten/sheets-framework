@@ -62,7 +62,7 @@ describe("makePendingAlterations", () => {
             replace: {
               "log-entry-1": {
                 columns: "all",
-                condition: { type: "NOT_BLANK" },
+                condition: { type: "TEXT_EQ", values: ["done"] },
                 format: { backgroundColor: "#eeeeee" },
               },
             },

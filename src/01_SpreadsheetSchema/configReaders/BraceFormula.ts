@@ -57,6 +57,8 @@ interface Brace {
 
 export interface RuleLayout {
   headerTopLeft: { rowIndex: SheetRowIndex; colIndex: SheetColIndex };
+  // The Table's exclusive end, so the last body row is the row just above it.
+  endRowIndex: SheetRowIndex;
   // Undefined at a column with no ID yet, which a run that mints none leaves out of the configs.
   columnNamesLeftToRight: readonly (string | undefined)[];
 }
@@ -111,7 +113,11 @@ export const BraceFormula = {
       const colIndex = SheetIndex.col(layout.headerTopLeft.colIndex + offset);
       const firstBodyRow = SheetIndex.row(layout.headerTopLeft.rowIndex + 1);
       if (brace.isThisRow) return schema.anchoredA1(colIndex, firstBodyRow);
-      return schema.openColumnA1(colIndex, firstBodyRow);
+      return schema.anchoredColumnA1({
+        colIndex,
+        firstRowIndex: firstBodyRow,
+        lastRowIndex: SheetIndex.row(layout.endRowIndex - 1),
+      });
     });
   },
   // The inverse of compileForRule; undefined when a reference has no brace form.
@@ -365,15 +371,24 @@ function ruleBraceOf(
     if (!start.isColAbsolute && !context.isOneColumn) return undefined;
     return `\${@${columnName}}`;
   }
-  const isOpenColumn =
+  const isBodyColumn =
     start.isColAbsolute &&
     start.isRowAbsolute &&
     start.rowNumber === context.firstBodyRowNumber &&
     end.isColAbsolute &&
     end.colLetter === start.colLetter &&
-    end.rowNumber === undefined;
-  if (!isOpenColumn) return undefined;
+    isBodyColumnEnd(end, context.firstBodyRowNumber);
+  if (!isBodyColumn) return undefined;
   return `\${${columnName}}`;
+}
+
+// Any anchored end row from the first body row down, so a Table that grew since, or a rule from before ends were bounded, keeps its brace.
+function isBodyColumnEnd(
+  { isRowAbsolute, rowNumber }: CellAddress,
+  firstBodyRowNumber: number,
+): boolean {
+  if (rowNumber === undefined) return true;
+  return isRowAbsolute && rowNumber >= firstBodyRowNumber;
 }
 
 function liveTablesByName(configs: BraceConfigs): Map<string, LiveTable> {
