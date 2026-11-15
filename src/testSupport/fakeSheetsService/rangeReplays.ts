@@ -2,6 +2,7 @@ import { Obj } from "@byronbroughten/utils/obj";
 
 import type { CopyPasteType } from "../../00_Source/RawSource/RawSource";
 import type { FakeCell } from "../fakeSheetsService";
+import { a1Notation } from "./a1Notation";
 import { fakeCells } from "./fakeCells";
 import { type BandChange, type BoundedRange, fakeGrid } from "./fakeGrid";
 import {
@@ -33,7 +34,6 @@ const cellPastes: Record<CopyPasteType, CellPaste> = {
 };
 
 // The fake keeps a formula's text, so it can't shift a relative reference as Sheets would.
-const cellReference = /\$?[A-Z]{1,3}\$?\d+/;
 
 export const rangeReplays = {
   insertRange(
@@ -228,7 +228,7 @@ function withPastedFormula(cell: FakeCell, source: FakeCell): FakeCell {
       "The fake Sheets service does not replay a formula paste from a cell holding no formula.",
     );
   }
-  if (cellReference.test(formula)) {
+  if (a1Notation.cellReference.test(formula)) {
     throw new Error(
       `The fake Sheets service does not replay a formula paste of ${formula}, which holds a cell reference.`,
     );

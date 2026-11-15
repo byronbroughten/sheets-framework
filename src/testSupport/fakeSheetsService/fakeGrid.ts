@@ -1,7 +1,10 @@
 import type { FakeCell } from "../fakeSheetsService";
+import { a1Notation } from "./a1Notation";
+import { bandColumnRules, type BandShift, ruleOwner } from "./bandColumnRules";
 import { fakeCells } from "./fakeCells";
 import { FakeGoogleRefusal } from "./FakeGoogleRefusal";
 import { type FakeSheetState, type FakeTableState } from "./fakeSpreadsheet";
+import { unreplayed } from "./unreplayed";
 
 type GridRange = GoogleAppsScript.Sheets.Schema.GridRange;
 export type Dimension = "ROWS" | "COLUMNS";
@@ -75,7 +78,7 @@ export const fakeGrid = {
       bounded.startColumnIndex >= sheet.columnCount
     ) {
       throw new FakeGoogleRefusal(
-        `Range ('${sheet.title}'!${a1Range(bounded)}) exceeds grid limits. Max rows: ${sheet.rowCount}, max columns: ${sheet.columnCount}`,
+        `Range ('${sheet.title}'!${a1Notation.range(bounded)}) exceeds grid limits. Max rows: ${sheet.rowCount}, max columns: ${sheet.columnCount}`,
       );
     }
     return {
@@ -165,13 +168,13 @@ export const fakeGrid = {
         ...Array.from({ length: change.count }, (): FakeCell => null),
       );
     });
+    shiftBandRanges(sheet, { change, shift, kind: "insert" });
     bandTables(sheet, change).forEach((table) => {
       const hasGrown = shiftTable(table, change.dimension, shift);
       if (hasGrown && change.dimension === "COLUMNS") {
         nameNewColumns(sheet, table, change);
       }
     });
-    shiftBandRanges(sheet, change, shift);
     growGridToContent(sheet, change.dimension);
   },
   // Measured live: the grid keeps its size, and a Table may shrink to its header but never lose it.
@@ -182,22 +185,12 @@ export const fakeGrid = {
       line.splice(change.startIndex, change.count);
     });
     const shift = removeShift(change);
+    shiftBandRanges(sheet, { change, shift, kind: "remove" });
     bandTables(sheet, change).forEach((table) => {
       shiftTable(table, change.dimension, shift);
     });
-    shiftBandRanges(sheet, change, shift);
   },
 };
-
-function a1Range(range: BoundedRange): string {
-  return `${columnLetters(range.startColumnIndex)}${range.startRowIndex + 1}:${columnLetters(range.endColumnIndex - 1)}${range.endRowIndex}`;
-}
-
-function columnLetters(colIndex: number): string {
-  const letter = String.fromCharCode(65 + (colIndex % 26));
-  if (colIndex < 26) return letter;
-  return columnLetters(Math.floor(colIndex / 26) - 1) + letter;
-}
 
 function validateBandTables(sheet: FakeSheetState, change: BandChange): void {
   sheet.tables.forEach((table) => {
@@ -335,7 +328,7 @@ function growGridToContent(sheet: FakeSheetState, dimension: Dimension): void {
 }
 
 // Where a dimension change moves a span, and a single index (undefined once removed).
-interface DimensionShift {
+export interface DimensionShift {
   span(start: number, end: number): [number, number];
   index(index: number): number | undefined;
 }
@@ -465,22 +458,10 @@ function shiftSheetRanges(
 }
 
 // Rules and protections the band holds whole move with it; one it cuts across is beyond what was measured.
-function shiftBandRanges(
-  sheet: FakeSheetState,
-  change: BandChange,
-  shift: DimensionShift,
-): void {
+function shiftBandRanges(sheet: FakeSheetState, bandShift: BandShift): void {
+  const { change, shift } = bandShift;
   function shifted(range: GridRange, owner: string): GridRange | undefined {
-    if (isWholeSheetRange(range)) return range;
-    const [crossStart, crossEnd] = gridRangeSpan(range, crossDimension(change));
-    const [, end] = gridRangeSpan(range, change.dimension);
-    const overlap = bandOverlap(change, crossStart, crossEnd);
-    if (overlap === "none" || end <= change.startIndex) return range;
-    if (overlap === "part") {
-      throw new Error(
-        `The fake Sheets service does not replay a range shift over part of a ${owner}.`,
-      );
-    }
+    if (!isBandHeld(range, change, owner)) return range;
     return shiftGridRange(range, change.dimension, shift);
   }
   sheet.protectedRanges = sheet.protectedRanges?.flatMap((protection) => {
@@ -490,13 +471,62 @@ function shiftBandRanges(
         : shifted(protection.range, "protected range");
     return range === undefined ? [] : [{ ...protection, range }];
   });
+  if (change.dimension === "COLUMNS") {
+    shiftBandColumnRules(sheet, bandShift);
+    return;
+  }
   sheet.conditionalFormats = sheet.conditionalFormats?.flatMap((rule) => {
     const ranges = (rule.ranges ?? []).flatMap((range) => {
-      const moved = shifted(range, "conditional-format rule");
+      const moved = shifted(range, ruleOwner);
       return moved === undefined ? [] : [moved];
     });
     return ranges.length === 0 ? [] : [{ ...rule, ranges }];
   });
+}
+
+// Column changes rewrite rule formulas too, so they replay only the shapes sheets-framework#217 measured.
+function shiftBandColumnRules(
+  sheet: FakeSheetState,
+  bandShift: BandShift,
+): void {
+  const tableColumnSpans = bandTables(sheet, bandShift.change).map((table) =>
+    tableSpan(table, "COLUMNS"),
+  );
+  sheet.conditionalFormats = sheet.conditionalFormats?.flatMap((rule) => {
+    const ranges = rule.ranges ?? [];
+    const isHeld = ranges
+      .map((range) => isBandHeld(range, bandShift.change, ruleOwner))
+      .some(Boolean);
+    if (!isHeld) return [rule];
+    const [range] = ranges;
+    if (range === undefined || ranges.length > 1) {
+      throw unreplayed(
+        `a column change under a ${ruleOwner} of several ranges`,
+      );
+    }
+    return bandColumnRules.shift({
+      ...bandShift,
+      rule,
+      range,
+      tableColumnSpans,
+    });
+  });
+}
+
+// Whether a band change reaches a range it holds whole; one it cuts across is beyond what was measured.
+function isBandHeld(
+  range: GridRange,
+  change: BandChange,
+  owner: string,
+): boolean {
+  if (isWholeSheetRange(range)) return false;
+  const [crossStart, crossEnd] = gridRangeSpan(range, crossDimension(change));
+  const [, end] = gridRangeSpan(range, change.dimension);
+  const overlap = bandOverlap(change, crossStart, crossEnd);
+  if (overlap === "none") return false;
+  if (overlap === "whole") return true;
+  if (end <= change.startIndex) return false;
+  throw unreplayed(`a range shift over part of a ${owner}`);
 }
 
 // A whole-sheet range has no coordinates for a shift to move or cut.
