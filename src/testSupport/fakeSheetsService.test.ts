@@ -1188,7 +1188,7 @@ describe("stubSheetsService replays Table-bounded inserts and deletes", () => {
 
 const measuredGid = 217;
 
-// Mirrors the live probes (sheets-framework#217, Scratch217E to G): Table at A4:E7 under four rules.
+// Mirrors the live probes (sheets-framework#217, Scratch217A and E to G, K): Table at A4:E7 under four rules.
 function measuredRuleSheet(): FakeSheetProperties {
   return {
     sheetId: measuredGid,
@@ -1254,6 +1254,9 @@ function measuredBandColumns(
     endColumnIndex: startColumnIndex + 1,
   };
 }
+
+const cutUnderRuleMessage =
+  "The fake Sheets service does not replay a cutPaste under a conditional-format rule, other than a sideways cut inside a whole-Table rule naming no cut or pasted column.";
 
 function measuredRules(
   grid: FakeGridView,
@@ -1441,6 +1444,24 @@ describe("stubSheetsService replays rules under a Table-bounded column move as m
       formulaRule("E5:E7", "=C5>2"),
     ]);
   });
+
+  it.each([['=$A5="x"'], ['=A5="x"'], ['=$E5="x"']])(
+    "throws on a whole-row rule %s naming a cut or pasted column",
+    (formula) => {
+      stubSheetsService({
+        sheets: [
+          {
+            ...measuredRuleSheet(),
+            conditionalFormats: [formulaRule("A5:E7", formula)],
+          },
+        ],
+      });
+
+      expect(() => send(...moveFirstColumnBeforeLast)).toThrowError(
+        cutUnderRuleMessage,
+      );
+    },
+  );
 
   it("leaves all four rules matching the columns' new places once the whole-row rule is updated at its index (Scratch217K)", () => {
     const { grid } = stubSheetsService({ sheets: [measuredRuleSheet()] });
@@ -1732,9 +1753,7 @@ describe("stubSheetsService replays cutPaste as a whole-cell move", () => {
       ],
     });
 
-    expect(() => send(cut())).toThrowError(
-      "The fake Sheets service does not replay a cutPaste under a conditional-format rule.",
-    );
+    expect(() => send(cut())).toThrowError(cutUnderRuleMessage);
   });
 });
 

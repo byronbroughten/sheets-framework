@@ -98,7 +98,7 @@ export const rangeReplays = {
       );
     });
     if (pasteType === "PASTE_FORMAT") {
-      extendConditionalFormats(sheet, source, destination);
+      extendConditionalFormats(sheet, { source, destination });
     }
     return {};
   },
@@ -206,32 +206,65 @@ function moveTableColumnFacts({
   );
 }
 
-interface CellMove {
+interface PasteRanges {
   source: BoundedRange;
   destination: BoundedRange;
 }
 
-// Measured live (sheets-framework#217, Scratch217A): a sideways cut within a rule's columns leaves it as written.
-function validateNoRuleCut(
-  sheet: FakeSheetState,
-  { source, destination }: CellMove,
-): void {
-  const isSideways = source.startRowIndex === destination.startRowIndex;
-  const isCut = (sheet.conditionalFormats ?? []).some((rule) =>
-    (rule.ranges ?? []).some((range) => {
-      const bounded = fakeGrid.boundedRange(sheet, range);
-      const isWithinRule =
-        isSideways &&
-        coversColumns(bounded, source) &&
-        coversColumns(bounded, destination);
-      return overlaps(bounded, source) && !isWithinRule;
-    }),
+const cellReferences = new RegExp(a1Notation.cellReference, "g");
+
+function validateNoRuleCut(sheet: FakeSheetState, move: PasteRanges): void {
+  const isCut = (sheet.conditionalFormats ?? []).some(
+    (rule) =>
+      (rule.ranges ?? []).some((range) =>
+        overlaps(fakeGrid.boundedRange(sheet, range), move.source),
+      ) && !isLeftAsWritten(sheet, rule, move),
   );
   if (isCut) {
     throw new Error(
-      "The fake Sheets service does not replay a cutPaste under a conditional-format rule.",
+      "The fake Sheets service does not replay a cutPaste under a conditional-format rule, other than a sideways cut inside a whole-Table rule naming no cut or pasted column.",
     );
   }
+}
+
+// Measured live (sheets-framework#217, Scratch217A): only this shape was seen left as written.
+function isLeftAsWritten(
+  sheet: FakeSheetState,
+  rule: GoogleAppsScript.Sheets.Schema.ConditionalFormatRule,
+  move: PasteRanges,
+): boolean {
+  const { source, destination } = move;
+  const [range] = rule.ranges ?? [];
+  if (range === undefined || (rule.ranges ?? []).length > 1) return false;
+  if (source.startRowIndex !== destination.startRowIndex) return false;
+  const bounded = fakeGrid.boundedRange(sheet, range);
+  const isOverWholeTable = sheet.tables.some(
+    (table) =>
+      table.startColumnIndex === bounded.startColumnIndex &&
+      table.endColumnIndex === bounded.endColumnIndex,
+  );
+  if (!isOverWholeTable) return false;
+  if (!coversColumns(bounded, source)) return false;
+  if (!coversColumns(bounded, destination)) return false;
+  return !ruleColumnIndexes(rule).some(
+    (colIndex) =>
+      isInColumns(source, colIndex) || isInColumns(destination, colIndex),
+  );
+}
+
+function ruleColumnIndexes(
+  rule: GoogleAppsScript.Sheets.Schema.ConditionalFormatRule,
+): number[] {
+  const values = rule.booleanRule?.condition?.values ?? [];
+  return values.flatMap((value) =>
+    [...(value.userEnteredValue ?? "").matchAll(cellReferences)].map(
+      ([, , letters = "A"]) => a1Notation.columnIndex(letters),
+    ),
+  );
+}
+
+function isInColumns(range: BoundedRange, colIndex: number): boolean {
+  return range.startColumnIndex <= colIndex && colIndex < range.endColumnIndex;
 }
 
 // Refuses a plain value or a cell reference rather than guess what Sheets would paste.
@@ -292,21 +325,17 @@ function validBand(change: BandChange): BandChange {
 // Measured live (sheets-framework#61): a format paste onto the rows just below a rule's range extends the rule.
 function extendConditionalFormats(
   sheet: FakeSheetState,
-  source: BoundedRange,
-  destination: BoundedRange,
+  paste: PasteRanges,
 ): void {
   sheet.conditionalFormats = sheet.conditionalFormats?.map((rule) => ({
     ...rule,
-    ranges: (rule.ranges ?? []).map((range) =>
-      extendedRuleRange(range, source, destination),
-    ),
+    ranges: (rule.ranges ?? []).map((range) => extendedRuleRange(range, paste)),
   }));
 }
 
 function extendedRuleRange(
   range: GridRange,
-  source: BoundedRange,
-  destination: BoundedRange,
+  { source, destination }: PasteRanges,
 ): GridRange {
   const bounded = {
     startRowIndex: range.startRowIndex ?? 0,
