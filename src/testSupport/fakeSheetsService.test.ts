@@ -1411,6 +1411,57 @@ describe("stubSheetsService replays rules under Table-bounded column inserts and
   });
 });
 
+describe("stubSheetsService replays rules under a Table-bounded column move as measured", () => {
+  // Scratch217A: the first column moved to before the last, by an insert, a cut into the gap and a delete.
+  const moveFirstColumnBeforeLast: Request[] = [
+    {
+      insertRange: { range: measuredBandColumns(4), shiftDimension: "COLUMNS" },
+    },
+    {
+      cutPaste: {
+        source: measuredBandColumns(0),
+        destination: { sheetId: measuredGid, rowIndex: 0, columnIndex: 4 },
+        pasteType: "PASTE_NORMAL",
+      },
+    },
+    {
+      deleteRange: { range: measuredBandColumns(0), shiftDimension: "COLUMNS" },
+    },
+  ];
+
+  it("moves column rules and their relative references, and leaves a whole-row rule one column past the Table, its anchored reference as written", () => {
+    const { grid } = stubSheetsService({ sheets: [measuredRuleSheet()] });
+
+    send(...moveFirstColumnBeforeLast);
+
+    expect(measuredRules(grid)).toEqual([
+      formulaRule("A5:F7", '=$C5="x"'),
+      formulaRule("C5:C7", "=C5>0"),
+      formulaRule("A4:A7", "=LEN(A4)>5"),
+      formulaRule("E5:E7", "=C5>2"),
+    ]);
+  });
+
+  it("leaves all four rules matching the columns' new places once the whole-row rule is updated at its index (Scratch217K)", () => {
+    const { grid } = stubSheetsService({ sheets: [measuredRuleSheet()] });
+
+    send(...moveFirstColumnBeforeLast, {
+      updateConditionalFormatRule: {
+        sheetId: measuredGid,
+        index: 0,
+        rule: formulaRule("A5:E7", '=$B5="x"'),
+      },
+    });
+
+    expect(measuredRules(grid)).toEqual([
+      formulaRule("A5:E7", '=$B5="x"'),
+      formulaRule("C5:C7", "=C5>0"),
+      formulaRule("A4:A7", "=LEN(A4)>5"),
+      formulaRule("E5:E7", "=C5>2"),
+    ]);
+  });
+});
+
 describe("stubSheetsService replays copyPaste of format and validation", () => {
   const modelRow = bandRange({
     startRowIndex: 5,

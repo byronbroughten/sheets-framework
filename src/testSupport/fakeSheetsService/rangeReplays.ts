@@ -135,7 +135,7 @@ export const rangeReplays = {
         "The fake Sheets service does not replay a cutPaste onto its own source.",
       );
     }
-    validateNoRuleCut(sheet, source);
+    validateNoRuleCut(sheet, { source, destination });
     const lifted: FakeCell[][] = [];
     fakeGrid.forEachCell(source, (rowIndex, colIndex) => {
       const row = (lifted[rowIndex - source.startRowIndex] ??= []);
@@ -206,11 +206,26 @@ function moveTableColumnFacts({
   );
 }
 
-function validateNoRuleCut(sheet: FakeSheetState, source: BoundedRange): void {
+interface CellMove {
+  source: BoundedRange;
+  destination: BoundedRange;
+}
+
+// Measured live (sheets-framework#217, Scratch217A): a sideways cut within a rule's columns leaves it as written.
+function validateNoRuleCut(
+  sheet: FakeSheetState,
+  { source, destination }: CellMove,
+): void {
+  const isSideways = source.startRowIndex === destination.startRowIndex;
   const isCut = (sheet.conditionalFormats ?? []).some((rule) =>
-    (rule.ranges ?? []).some((range) =>
-      overlaps(fakeGrid.boundedRange(sheet, range), source),
-    ),
+    (rule.ranges ?? []).some((range) => {
+      const bounded = fakeGrid.boundedRange(sheet, range);
+      const isWithinRule =
+        isSideways &&
+        coversColumns(bounded, source) &&
+        coversColumns(bounded, destination);
+      return overlaps(bounded, source) && !isWithinRule;
+    }),
   );
   if (isCut) {
     throw new Error(
@@ -324,6 +339,13 @@ function overlaps(a: BoundedRange, b: BoundedRange): boolean {
     b.startRowIndex < a.endRowIndex &&
     a.startColumnIndex < b.endColumnIndex &&
     b.startColumnIndex < a.endColumnIndex
+  );
+}
+
+function coversColumns(outer: BoundedRange, inner: BoundedRange): boolean {
+  return (
+    outer.startColumnIndex <= inner.startColumnIndex &&
+    inner.endColumnIndex <= outer.endColumnIndex
   );
 }
 

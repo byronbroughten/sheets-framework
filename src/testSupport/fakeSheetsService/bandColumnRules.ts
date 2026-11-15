@@ -36,7 +36,7 @@ const stringLiteral = /("(?:[^"]|"")*")/;
 const unmeasuredReference =
   /(?<![A-Za-z0-9_])\$?[A-Z]{1,3}:\$?[A-Z]{1,3}(?![0-9A-Za-z_(])|(?<![A-Za-z0-9_])\$?\d+:\$?\d+|!/;
 
-// Measured live (sheets-framework#217, Scratch217E to G); any other shape throws rather than guess.
+// Measured live (sheets-framework#217, Scratch217A and E to G); any other shape throws rather than guess.
 export const bandColumnRules = {
   shift(ruleShift: BandColumnRuleShift): ConditionalFormatRule[] {
     const { range, change, shift } = ruleShift;
@@ -50,11 +50,15 @@ export const bandColumnRules = {
       return [withFormulasShifted({ ...ruleShift, placement: "before" })];
     }
     if (startColumnIndex < change.startIndex) {
-      return [spanningRule(ruleShift, startColumnIndex, endColumnIndex)];
+      return [spanningRule(ruleShift, endColumnIndex)];
     }
     const movedStart = shift.index(startColumnIndex);
     const movedLast = shift.index(endColumnIndex - 1);
     if (movedStart === undefined && movedLast === undefined) return [];
+    // Measured (Scratch217A): a delete of a Table's first column keeps a whole-Table rule's range too.
+    if (movedStart === undefined && isOverWholeTable(ruleShift)) {
+      return [spanningRule(ruleShift, endColumnIndex)];
+    }
     if (movedStart === undefined || movedLast === undefined) {
       throw unreplayed(
         `a column delete over part of a ${ruleOwner} (${a1Notation.range(range)})`,
@@ -79,14 +83,10 @@ export const bandColumnRules = {
 // Measured: an insert grows a rule over a whole Table, and a delete leaves it one column past the Table.
 function spanningRule(
   ruleShift: BandColumnRuleShift,
-  startColumnIndex: number,
   endColumnIndex: number,
 ): ConditionalFormatRule {
-  const { range, change, kind, tableColumnSpans } = ruleShift;
-  const isOverWholeTable = tableColumnSpans.some(
-    ([start, end]) => start === startColumnIndex && end === endColumnIndex,
-  );
-  if (!isOverWholeTable) {
+  const { range, change, kind } = ruleShift;
+  if (!isOverWholeTable(ruleShift)) {
     throw unreplayed(
       `a column change inside a ${ruleOwner} over part of a Table (${a1Notation.range(range)})`,
     );
@@ -97,6 +97,16 @@ function spanningRule(
     ...spanning,
     ranges: [{ ...range, endColumnIndex: endColumnIndex + change.count }],
   };
+}
+
+function isOverWholeTable({
+  range,
+  tableColumnSpans,
+}: BandColumnRuleShift): boolean {
+  return tableColumnSpans.some(
+    ([start, end]) =>
+      start === range.startColumnIndex && end === range.endColumnIndex,
+  );
 }
 
 function withFormulasShifted(placed: PlacedRule): ConditionalFormatRule {
