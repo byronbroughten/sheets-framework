@@ -50,6 +50,7 @@ export type ModeledRequestVerb =
   | "addProtectedRange"
   | "deleteProtectedRange"
   | "addSheet"
+  | "deleteSheet"
   | "addTable"
   | "deleteTable"
   | "updateSheetProperties"
@@ -538,6 +539,8 @@ function modeledOperationToGoogleRequests(
           },
         },
       ];
+    case "deleteSheet":
+      return [{ deleteSheet: { sheetId: operation.sheetId } }];
     // Google writes addTable's own column names three columns right of the Table; observed: docs/sheets-behaviour.md#creating-and-updating-tables.
     case "addTable":
       return [

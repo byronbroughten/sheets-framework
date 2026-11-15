@@ -489,8 +489,21 @@ describe("FlushClassifier.heldItems", () => {
     });
 
     it("holds a request verb with no classification", () => {
+      expect(
+        heldItems([{ mergeCells: { range: cellRange(rentRow, amount) } }]),
+      ).toEqual([
+        { kind: "unclassified", requestIndex: 0, verb: "mergeCells" },
+      ]);
+    });
+
+    it("holds every deleteSheet as unmeasured, naming the tab", () => {
       expect(heldItems([{ deleteSheet: { sheetId: gid } }])).toEqual([
-        { kind: "unclassified", requestIndex: 0, verb: "deleteSheet" },
+        {
+          kind: "unmeasured",
+          requestIndex: 0,
+          verb: "deleteSheet",
+          detail: `tab gid ${gid}, deleted with every Table on it`,
+        },
       ]);
     });
 

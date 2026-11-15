@@ -212,6 +212,8 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
       ...queued.deleteTable,
       ...this._deleteOperationsDescending(),
       ...queued.sortTable,
+      // After every write, so none queued before it lands on a tab already gone.
+      ...queued.deleteSheet,
       // Outside the ordering rules the queue was built around, so last.
       ...queued.raw,
     ];

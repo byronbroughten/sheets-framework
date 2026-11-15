@@ -16,6 +16,7 @@ export const emptyStateRaw = {
   writeOperations(): WriteOperations {
     return {
       addSheet: [],
+      deleteSheet: [],
       addTable: [],
       deleteTable: [],
       appendTableRows: [],

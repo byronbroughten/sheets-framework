@@ -493,12 +493,19 @@ describe("UpdateRequestSummary.lines", () => {
     );
   });
 
-  it("renders a request the framework does not model as its own verb and JSON", () => {
-    const line = onlyLine({ deleteSheet: { sheetId: unknownGid } });
+  it("names the tab a deleteSheet deletes", () => {
+    expect(onlyLine({ deleteSheet: { sheetId: unknownGid } })).toBe(
+      `deleteSheet gid ${unknownGid} delete tab`,
+    );
+  });
 
-    expect(line).toContain("deleteSheet");
-    expect(line).toContain(`gid ${unknownGid}`);
-    expect(line).toContain(`"sheetId":${unknownGid}`);
+  it("renders a request the framework does not model as its own verb and JSON", () => {
+    const line = onlyLine({
+      duplicateSheet: { sourceSheetId: unknownGid },
+    });
+
+    expect(line).toContain("duplicateSheet");
+    expect(line).toContain(`"sourceSheetId":${unknownGid}`);
   });
 
   it("is empty when nothing was queued", () => {

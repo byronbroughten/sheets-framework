@@ -35,6 +35,11 @@ export class SpreadsheetBaseRaw {
   get writeOperations(): WriteOperations {
     return this.spreadsheetStateRaw.writeQueue.operations;
   }
+  protected sheetIsQueuedForDelete(sheetGid: number): boolean {
+    return this.writeOperations.deleteSheet.some(
+      ({ sheetId }) => sheetId === sheetGid,
+    );
+  }
   get spreadsheetRawProps(): SpreadsheetRawProps {
     return {
       spreadsheetStateRaw: this.spreadsheetStateRaw,

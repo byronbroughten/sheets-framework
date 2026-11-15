@@ -95,6 +95,11 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
   private _sheetGidOf(tableId: string): number {
     const liveSheetGid = this.tablesStateRaw.get(tableId)?.sheetGid;
     if (liveSheetGid !== undefined) return liveSheetGid;
+    // So the tab's deletion guard refuses it by name, rather than a missing GID.
+    const deletedSheetGid = this.writeOperations.deleteSheet.find(
+      ({ tableIds }) => tableIds.includes(tableId),
+    )?.sheetId;
+    if (deletedSheetGid !== undefined) return deletedSheetGid;
     const placedSheetGid = Array.from(this.sheetsStateRaw.keys()).find(
       (sheetGid) =>
         this.sheetsStateRaw
