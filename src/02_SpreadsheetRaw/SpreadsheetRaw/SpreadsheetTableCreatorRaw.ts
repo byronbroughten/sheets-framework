@@ -8,7 +8,7 @@ import { dimensionIds } from "../../01_SpreadsheetSchema/dimensionIds";
 import { idPrefixes } from "../../01_SpreadsheetSchema/idPrefixes";
 import { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin";
 import { SpreadsheetBaseRaw } from "../ClassBases/SpreadsheetBaseRaw";
-import { columnTypeProperties } from "../ClassBases/TableBaseRaw";
+import { queuedColumnType } from "../ClassTypes/queuedColumnType";
 import type {
   CreatedTable,
   CreatedTablePlacement,
@@ -57,7 +57,9 @@ export class SpreadsheetTableCreatorRaw extends SpreadsheetBaseRaw {
       columnProperties: columns.map(({ header, columnType }, columnIndex) => ({
         columnIndex,
         columnName: header,
-        ...(columnType === undefined ? {} : columnTypeProperties(columnType)),
+        ...(columnType === undefined
+          ? {}
+          : queuedColumnType.properties(columnType)),
       })),
     });
     this._fillCells(placement.sheetGid, origin, [

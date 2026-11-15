@@ -2,17 +2,15 @@ import { Val } from "@byronbroughten/utils/val";
 
 import type {
   BoundedGridRange,
-  TableColumnPropertiesAdd,
   TableSnapshot,
 } from "../../00_Source/RawSource/RawSource";
-import type { ColumnTypeBaseline } from "../../01_SpreadsheetSchema/columnBaseline";
 import { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin";
 import { emptyStateRaw } from "../ClassTypes/emptyStateRaw";
+import { queuedColumnType } from "../ClassTypes/queuedColumnType";
 import type {
   BoundedTableGridRange,
   ColumnStateRaw,
   ColumnStatesRaw,
-  QueuedColumnType,
   RowStateRaw,
   RowStatesRaw,
   TablePropertiesRaw,
@@ -216,47 +214,11 @@ export function integrateColumnProperties(
   });
   // Queued column types outlive a re-fetch until the flush sends them.
   tableState.writeQueue.table.columnTypes.forEach((columnType, colIndex) => {
-    applyQueuedColumnType(ensureColumnState(tableState, colIndex), columnType);
+    queuedColumnType.applyTo(
+      ensureColumnState(tableState, colIndex),
+      columnType,
+    );
   });
-}
-
-export function applyQueuedColumnType(
-  columnState: ColumnStateRaw,
-  queued: QueuedColumnType,
-): void {
-  if (typeof queued === "string") {
-    columnState.columnType = queued;
-    return;
-  }
-  delete columnState.columnType;
-  delete columnState.validationConditionType;
-  delete columnState.validationValues;
-  if (queued.type !== null) columnState.columnType = queued.type;
-  if (queued.rule === null) return;
-  columnState.validationConditionType = queued.rule.condition;
-  if (queued.rule.values.length > 0) {
-    columnState.validationValues = queued.rule.values;
-  }
-}
-
-// A null type or rule is left out, which leaves the column on Automatic or with no rule.
-export function columnTypeProperties({
-  type,
-  rule,
-}: ColumnTypeBaseline): Pick<
-  TableColumnPropertiesAdd,
-  "columnType" | "dataValidationRule"
-> {
-  return {
-    ...(type === null ? {} : { columnType: type }),
-    ...(rule === null ? {} : { dataValidationRule: rule }),
-  };
-}
-
-// What the column's type is once the flush sends it; undefined is Automatic.
-export function queuedTypeOf(queued: QueuedColumnType): string | undefined {
-  if (typeof queued === "string") return queued;
-  return queued.type ?? undefined;
 }
 
 function ensureColumnState(

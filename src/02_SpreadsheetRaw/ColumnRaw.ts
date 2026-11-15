@@ -26,7 +26,7 @@ import {
 } from "../01_SpreadsheetSchema/headRows";
 import { CellRaw, validateFormulaString } from "./CellRaw";
 import { ColumnBaseRaw } from "./ClassBases/ColumnBaseRaw";
-import { applyQueuedColumnType } from "./ClassBases/TableBaseRaw";
+import { queuedColumnType } from "./ClassTypes/queuedColumnType";
 import type {
   CellFill,
   NewColumnHeadCells,
@@ -208,7 +208,10 @@ export class ColumnRaw<
       colIndex: this.colIndex,
       columnType,
     });
-    applyQueuedColumnType(this._ensureColumnState(this.colIndex), columnType);
+    queuedColumnType.applyTo(
+      this._ensureColumnState(this.colIndex),
+      columnType,
+    );
     return this;
   }
   addConditionalFormatRule(declaration: ConditionalFormatDeclaration): this {
