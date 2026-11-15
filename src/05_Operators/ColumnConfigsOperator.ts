@@ -1,6 +1,7 @@
 import { Val } from "@byronbroughten/utils/val";
 
 import { isFrameworkValueName } from "../00_Source/CellValues/frameworkValueSchemas";
+import { SheetIndex } from "../00_Source/RawSource/SheetIndex";
 import {
   type BraceConfigs,
   BraceFormula,
@@ -14,6 +15,7 @@ import {
   type ColumnConfigStored,
   makeImportLine,
 } from "../01_SpreadsheetSchema/configReaders/makeConfigs";
+import type { FormulaColumn } from "../01_SpreadsheetSchema/configReaders/outsideReferences";
 import { previousTraitTables } from "../01_SpreadsheetSchema/configReaders/previousTraitTables";
 import {
   type IntendedTrait,
@@ -289,6 +291,31 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
       previous: { tables: previousTraitTables(configs), tabs: {} },
       live: { tables: live, tabs: {} },
     };
+  }
+  // The live formula as traitReadings brace it, not the installed configs' text, so a person's edit since the last sync is what's checked.
+  formulaColumns(): FormulaColumn[] {
+    const configs = installedBraceConfigs();
+    return this._namedColumnIdentities().flatMap((identity) => {
+      const { tableId, tableKey, columnId } = identity;
+      const formula = bracedFormula({
+        configs,
+        tableKey,
+        formula: this._describedColumn(identity).topFormula,
+      });
+      if (formula === undefined || formula === null) return [];
+      const table = this.ss.raw.table(tableId);
+      // colIndexOf is Table-relative.
+      const colIndex = SheetIndex.col(
+        table.startColumnIndex + this._colIndexOf(tableId, columnId),
+      );
+      const bodyRows = this.schema.gridRangeA1({
+        startRowIndex: SheetIndex.row(table.startRowIndex + 1),
+        endRowIndex: table.endRowIndex,
+        startColumnIndex: colIndex,
+        endColumnIndex: SheetIndex.col(colIndex + 1),
+      });
+      return [{ tableKey, cell: `${table.sheetTitle}!${bodyRows}`, formula }];
+    });
   }
   // The previous configs with each API-access Table's live name and each live column's header.
   private _liveBraceConfigs({

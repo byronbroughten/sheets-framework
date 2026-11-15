@@ -137,13 +137,15 @@ export interface SyncOutsideReference {
   formula: string;
 }
 
+export interface SyncOutsideReferencesCheck {
+  kind: "outsideReferences";
+  subject: SyncSubject;
+  effect: SyncOutsideReferenceEffect;
+  references: SyncOutsideReference[];
+}
+
 export type SyncCheck =
-  | {
-      kind: "outsideReferences";
-      subject: SyncSubject;
-      effect: SyncOutsideReferenceEffect;
-      references: SyncOutsideReference[];
-    }
+  | SyncOutsideReferencesCheck
   | {
       kind: "followedSwap";
       subject: SyncTableSubject & { rewrittenFrom: SyncRewrittenFrom };

@@ -34,6 +34,7 @@ import {
   tableIdsByName,
 } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
 import type { PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState";
+import { outsideReferences } from "../01_SpreadsheetSchema/configReaders/outsideReferences";
 import { remainingAlterations } from "../01_SpreadsheetSchema/configReaders/remainingAlterations";
 import { SyncEntryRefuser } from "../01_SpreadsheetSchema/configReaders/SyncEntryRefuser";
 import { SyncNameRewriter } from "../01_SpreadsheetSchema/configReaders/SyncNameRewriter";
@@ -254,18 +255,6 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     this.tableConfigOperator.validateIdPrefixesUnchanged();
     this.rowIdsOperator.validateIdPrefixes();
     const checkboxPlan = this.rowIdsOperator.checkboxPlan();
-    const notices = [
-      ...goneNotices({
-        tabsGone: this.tabConfigOperator.goneTabNotices(
-          props.previousIdNameMap,
-        ),
-        tablesGone: this.tableConfigOperator.goneTableNotices(
-          props.previousIdNameMap,
-        ),
-        tabsByTable: tabOfTable,
-      }),
-      ...this.rowIdsOperator.idFirstNotices(),
-    ];
     const readings = this._traitReadings();
     const planned = this._withDeletionEffects(
       planner.plan({
@@ -289,6 +278,23 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       }),
       props.previousIdNameMap,
     );
+    const notices: SyncNotice[] = [
+      ...goneNotices({
+        tabsGone: this.tabConfigOperator.goneTabNotices(
+          props.previousIdNameMap,
+        ),
+        tablesGone: this.tableConfigOperator.goneTableNotices(
+          props.previousIdNameMap,
+        ),
+        tabsByTable: tabOfTable,
+      }),
+      ...this.rowIdsOperator.idFirstNotices(),
+    ];
+    if (
+      planned.plan.some(({ subject }) => deletedTableOf(subject) !== undefined)
+    ) {
+      notices.push(outsideReferences.uncheckedNotice);
+    }
     const isApplying = props.isSending && !planned.isStopped;
     // An unstopped dry run records the live readings: configTraits carry sends it won't make.
     this.columnConfigOperator.recordEmptyValueAllowed(
@@ -415,12 +421,20 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       files,
     };
   }
-  // A pure planner can't read the rules a deleted Table takes with it, so the run fills them in from its live read.
+  // A pure planner can't read the rules a deleted Table takes with it, or the formulas outside it that read it, so the run fills them in from its live read.
   private _withDeletionEffects(
     planned: SyncPlannerResult,
     previousIdNameMap: IdNameMapGeneric,
   ): SyncPlannerResult {
     const tableIds = tableIdsByName(previousIdNameMap);
+    const deletedTables = new Set(
+      planned.plan.flatMap(({ subject }) => deletedTableOf(subject) ?? []),
+    );
+    if (deletedTables.size === 0) return planned;
+    const checks = outsideReferences.checks({
+      deletedTables,
+      formulaColumns: this.columnConfigOperator.formulaColumns(),
+    });
     const plan = planned.plan.map((item) => {
       const table = deletedTableOf(item.subject);
       if (table === undefined) return item;
@@ -430,9 +444,17 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         table,
         tableId,
       });
-      return { ...item, effects: [...item.effects, ...ruleEffects] };
+      const check = checks.find(
+        ({ subject }) => "table" in subject && subject.table === table,
+      );
+      const referenceEffects =
+        check === undefined ? [] : [outsideReferences.effect(check)];
+      return {
+        ...item,
+        effects: [...item.effects, ...ruleEffects, ...referenceEffects],
+      };
     });
-    return { ...planned, plan };
+    return { ...planned, plan, checks: [...planned.checks, ...checks] };
   }
   // Its own send after the regen, planned from the fresh configs; it writes only blank cells, so the entered-data gate holds nothing.
   private _fillBlankIds(): SyncPlanItem[] {
