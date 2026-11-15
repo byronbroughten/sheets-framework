@@ -596,7 +596,7 @@ describe("SyncRunReport's refusals before the read", () => {
   it("names the Table and the trait it can't send yet", () => {
     expect(text).toContain("REFUSED 3 · item › name.columnType");
     expect(text).toContain(
-      "  sync can't send name.columnType yet: for now it sends only a Table's name, deleted, letApiAccess, newColumns, conditionalFormats.remove, a column's header, formula, deleted, emptyValueAllowed and a tab's title, color, before, frozenRows, frozenColumns, hidden.",
+      "  sync can't send name.columnType yet: for now it sends only a Table's name, deleted, letApiAccess, newColumns, conditionalFormats.remove, conditionalFormats.replace, a column's header, formula, deleted, emptyValueAllowed and a tab's title, color, before, frozenRows, frozenColumns, hidden.",
     );
   });
 });
@@ -823,6 +823,32 @@ describe("SyncRunReport's no-such-rule stop", () => {
     );
     expect(text).toContain(
       "  occCharge's rules now, by handle:\n    occCharge·all·=${void}=TRUE·bg#f4cccc\n    occCharge·amount·NUMBER_LESS(0)·text#cc0000\n  The entry stays in alterations.ts.",
+    );
+  });
+});
+
+describe("SyncRunReport's unmodelable-rule stop", () => {
+  const ruleHandle = 'A5:A9 | unmodelable {"gradientRule":{}}';
+  const lines = render({
+    ...appDryRun,
+    outcome: { kind: "stopped" },
+    stops: [
+      {
+        kind: "unmodelableRule",
+        table: "occCharge",
+        path: `conditionalFormats.replace["${ruleHandle}"]`,
+        handle: ruleHandle,
+      },
+    ],
+  });
+  const text = lines.join("\n");
+
+  it("names the handle and says the rule can only be removed", () => {
+    expect(text).toContain(
+      `STOP 1 · occCharge › conditionalFormats.replace["${ruleHandle}"]\n  The rule ${ruleHandle} is unmodelable: sync can't write a rule like it, so it can only be removed.`,
+    );
+    expect(resultLine(lines)).toBe(
+      "STOPPED: 1 unmodelable rule to replace. Nothing was sent, and nothing will be until it is resolved.",
     );
   });
 });

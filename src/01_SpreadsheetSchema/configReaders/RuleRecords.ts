@@ -110,6 +110,7 @@ interface HandledRecord<RR> {
 export interface TableRuleIndex {
   sharedHandle: string;
   index: number;
+  kind: TableRuleRecords[string]["kind"];
 }
 
 interface FiledRuleBase<RO, RR> {
@@ -157,12 +158,17 @@ export const RuleRecords = {
           handle,
           sharedHandle,
           index,
+          record,
         }): [string, TableRuleIndex][] => {
           if (owner?.tableId !== tableId) return [];
-          return [[handle, { sharedHandle, index }]];
+          return [[handle, { sharedHandle, index, kind: record.kind }]];
         },
       ),
     );
+  },
+  // The handle a rule would have on the Table before any duplicate suffix.
+  sharedHandleOf(rule: ConditionalFormatRule, table: RuleRecordsTable): string {
+    return tableRecord(rule, table).handle;
   },
   // Nothing is sent for a partly-over rule: it stays on the sheet, so the plan only reports it.
   deletionEffects({

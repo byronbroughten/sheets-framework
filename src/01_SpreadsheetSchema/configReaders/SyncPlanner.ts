@@ -2,7 +2,11 @@ import type { ColumnTypeBaseline } from "../columnBaseline";
 import { columnNameOfHeader } from "./columnConfigsTypes";
 import type { PendingAlterations } from "./intendedState";
 import { DeletionRefuser } from "./SyncPlanner/DeletionRefuser";
-import { entriesOf, type WideAlterations } from "./SyncPlanner/wideAlterations";
+import {
+  entriesOf,
+  type WideAlterations,
+  type WideRule,
+} from "./SyncPlanner/wideAlterations";
 import type {
   ForcedTrait,
   SyncConflict,
@@ -61,6 +65,13 @@ export interface PlannedRuleRemoval {
   handle: string;
 }
 
+// One `conditionalFormats.replace` entry, by its Table's codebase name: the handle it replaces and the rule it writes there.
+export interface PlannedRuleReplacement {
+  table: string;
+  handle: string;
+  rule: WideRule;
+}
+
 export interface SyncPlannerResult extends Pick<
   SyncRunResult,
   "stops" | "plan"
@@ -77,6 +88,8 @@ export interface SyncPlannerResult extends Pick<
   newColumns: PlannedNewColumn[];
   // The rules the plan removes, for the run to queue; empty when stopped.
   ruleRemovals: PlannedRuleRemoval[];
+  // The rules the plan replaces, for the run to queue; empty when stopped.
+  ruleReplacements: PlannedRuleReplacement[];
 }
 
 interface TableTraitAddress {
@@ -158,6 +171,22 @@ export const ruleRemovalLines = {
     return {
       subject: { table: removal.table, path: ruleRemovalLines.path(removal) },
       what: "remove the rule",
+    };
+  },
+};
+
+// How a `conditionalFormats.replace` entry reads on the plan, stop, landed and didntLand lists.
+export const ruleReplacementLines = {
+  path({ handle }: Pick<PlannedRuleReplacement, "handle">): string {
+    return `conditionalFormats.replace["${handle}"]`;
+  },
+  sendLine(replacement: PlannedRuleReplacement): SyncSendLine {
+    return {
+      subject: {
+        table: replacement.table,
+        path: ruleReplacementLines.path(replacement),
+      },
+      what: "replace the rule",
     };
   },
 };
@@ -250,6 +279,16 @@ export class SyncPlanner {
       })),
     );
   }
+  // From intended state alone, so the run can match each handle against the sheet's rules before planning.
+  get ruleReplacements(): PlannedRuleReplacement[] {
+    return entriesOf(this.alterations.tables).flatMap(([table, entry]) =>
+      entriesOf(entry.conditionalFormats?.replace).map(([handle, rule]) => ({
+        table,
+        handle,
+        rule,
+      })),
+    );
+  }
   plan({ previous, live, sheetStops = [] }: PlanProps): SyncPlannerResult {
     const stops: SyncConflict[] = [];
     const sends: SyncPlanItem[] = [];
@@ -314,6 +353,15 @@ export class SyncPlanner {
     for (const removal of ruleRemovals) {
       sends.push({ ...ruleRemovalLines.sendLine(removal), effects: [] });
     }
+    const ruleReplacements = this.ruleReplacements.filter(
+      ({ table }) => live.tables[table] !== undefined,
+    );
+    for (const replacement of ruleReplacements) {
+      sends.push({
+        ...ruleReplacementLines.sendLine(replacement),
+        effects: [],
+      });
+    }
     const isStopped = stops.length + sheetStops.length > 0;
     const sentIfUnstopped = isStopped ? [] : sentTraits;
     const newColumnsIfUnstopped = isStopped ? [] : newColumns;
@@ -343,6 +391,7 @@ export class SyncPlanner {
       sentTraits: sentIfUnstopped,
       newColumns: newColumnsIfUnstopped,
       ruleRemovals: isStopped ? [] : ruleRemovals,
+      ruleReplacements: isStopped ? [] : ruleReplacements,
     };
   }
   private _forcedTraitFor(intended: IntendedTrait): ForcedTrait | undefined {

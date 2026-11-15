@@ -180,7 +180,10 @@ export type SyncStop = SyncConflict | SyncSheetStop;
 
 // A stop found reading the sheet, outside the three-way comparison.
 export type SyncSheetStop =
-  SyncHeadRowsStop | SyncHeaderTakenStop | SyncNoSuchRuleStop;
+  | SyncHeadRowsStop
+  | SyncHeaderTakenStop
+  | SyncNoSuchRuleStop
+  | SyncUnmodelableRuleStop;
 
 export interface SyncConflict {
   kind: "conflict";
@@ -210,12 +213,20 @@ export interface SyncHeaderTakenStop {
   columnId: string;
 }
 
-// A `conditionalFormats.remove` handle no rule on the Table has on this run's read; `handles` are the Table's rules' now.
+// A `conditionalFormats.remove` or `replace` handle no rule on the Table has on this run's read; `handles` are the Table's rules' now.
 export interface SyncNoSuchRuleStop {
   kind: "noSuchRule";
   table: string;
   path: string;
   handles: string[];
+}
+
+// A `conditionalFormats.replace` handle naming a rule the configs record as unmodelable, which sync can only remove.
+export interface SyncUnmodelableRuleStop {
+  kind: "unmodelableRule";
+  table: string;
+  path: string;
+  handle: string;
 }
 
 export interface SyncHeld {

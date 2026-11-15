@@ -11,6 +11,8 @@ Custom formulas are stored as written for the range's top-left cell and re-evalu
 
 Removal is by exact range, by exact content, or by rule handle, which sync turns into the rule's index on the read it matched the handle on. Overlap is not a match. The framework never deletes a rule whose range, content or handle it was not asked to name, which is what keeps hand-drawn rules safe.
 
+Replacement is by rule handle too: sync rewrites the rule at its index with `updateConditionalFormatRule`, so its place in the order holds. The index is the one on the read the handle matched, less the removals of lower-indexed rules on the same sheet that the flush before it sent; the replacing rule is compiled against the Table's planned layout and sent after the run's column deletes and inserts, so Google doesn't shift it again. An unmodelable rule can't be replaced, since sync can't write what it held; it can only be removed.
+
 Every rule the payload holds is mapped, one for one, in order. A condition or format outside the modelled slice becomes an explicit unmodelable value that still occupies its index, so deletes by index cannot silently target a neighbour, and that keeps its raw content: the JSON of the Google rule without its ranges. Content equality against an unmodelable rule is always false; a range-scoped removal of one is allowed because the caller named the range.
 
 Rule writes embed row and column coordinates. Their refusal on stale row indexes, and the stale flag a rule-mutating flush sets: [stale row indexes](./stale-row-indexes.md).
