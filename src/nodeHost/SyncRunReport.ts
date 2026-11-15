@@ -7,12 +7,12 @@ import {
   type SyncCreatedTable,
   type SyncCreatedTableColumn,
   type SyncDryRunOutcome,
+  type SyncFlushStoppedOutcome,
   type SyncHeaderTakenStop,
   type SyncHeadRowsStop,
   type SyncHeld,
   type SyncHeldBy,
   type SyncHeldGroup,
-  type SyncHeldStoppedOutcome,
   type SyncLandedItem,
   type SyncNoSuchRuleStop,
   type SyncNotice,
@@ -25,9 +25,11 @@ import {
   type SyncSendOutcome,
   type SyncSentOutcome,
   type SyncStop,
+  type SyncStopCause,
   type SyncSubject,
   type SyncTableNameTakenStop,
   type SyncTabTitleTakenStop,
+  type SyncUnmodelableRuleStop,
 } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
 
 const layout = {
@@ -112,7 +114,7 @@ export class SyncRunReport {
     if (outcome.kind === "stopped") return this._stoppedText;
     if (outcome.kind === "refused") return this._refusedText;
     if (outcome.kind === "sent") return this._sentText(outcome);
-    return this._heldStoppedText(outcome);
+    return this._flushStoppedText(outcome);
   }
   private get _stoppedText(): OutcomeText {
     const { stops, command } = this.result;
@@ -171,9 +173,9 @@ export class SyncRunReport {
       next: `sync wrote ${generatedDir} and ${alterationsPath}. Run npm run check, then commit them with your change.`,
     };
   }
-  private _heldStoppedText(outcome: SyncHeldStoppedOutcome): OutcomeText {
+  private _flushStoppedText(outcome: SyncFlushStoppedOutcome): OutcomeText {
     return {
-      resultLine: heldRefusalLine(outcome),
+      resultLine: flushStoppedLine(outcome),
       planTitle: planTitles.send,
       next: rerunDryRunLine(this.result.command),
     };
@@ -234,15 +236,21 @@ export function heldSection(held: SyncHeld): string[] {
   ]);
 }
 
-// The result line of a send the gate refused, sync's or a chore's.
-export function heldRefusalLine(outcome: SyncHeldStoppedOutcome): string {
-  const reason = heldByReason[outcome.heldBy];
+// The result line of a send the gate or Google refused, sync's or a chore's.
+export function flushStoppedLine(outcome: SyncFlushStoppedOutcome): string {
+  const refused = refusedWords(outcome);
   if (outcome.kind === "stoppedBeforeSending") {
-    return `STOPPED: the send was refused before any flush landed, because ${reason}. Nothing was sent.`;
+    return `STOPPED: the send was refused before any flush landed${refused} Nothing was sent.`;
   }
   const { landedFlushes, flushCount } = outcome;
   const landed = flushSpan(landedFlushes, flushCount);
-  return `STOPPED PARTWAY: ${landed}; flush ${landedFlushes + 1} was refused, because ${reason}. Nothing after it was sent.`;
+  return `STOPPED PARTWAY: ${landed}; flush ${landedFlushes + 1} was refused${refused} Nothing after it was sent.`;
+}
+
+// Google's reworded refusal ends in its own full stop.
+function refusedWords(cause: SyncStopCause): string {
+  if ("heldBy" in cause) return `, because ${heldByReason[cause.heldBy]}.`;
+  return `: Google refused its batch and applied none of it. ${cause.googleRefusal}`;
 }
 
 export function rerunDryRunLine(command: string): string {
@@ -380,11 +388,14 @@ interface RefusalWords {
 
 function refusalWords(refusal: SyncRefusal): RefusalWords {
   if (refusal.kind === "touchesDeletion") {
-    const { deleted, deletedAt, touchedBy } = refusal;
+    const { deleted, deletedAt, touchedBy, takenTable } = refusal;
     return {
       heading: subjectLabel(deleted),
       lines: [
         `${deletedAt} deletes ${subjectLabel(deleted)}, and ${touchedBy} touches it in the same run.`,
+        ...(takenTable === undefined
+          ? []
+          : [`The tab's deletion already takes the Table ${takenTable}.`]),
         "Take one of the two out, then rerun.",
       ],
     };
@@ -493,6 +504,7 @@ const stopKinds: StopKind[] = [
   "tableNameTaken",
   "tabTitleTaken",
   "noSuchRule",
+  "unmodelableRule",
 ];
 
 const stopWords: { [SK in StopKind]: StopWords<SK> } = {
@@ -534,9 +546,16 @@ const stopWords: { [SK in StopKind]: StopWords<SK> } = {
   noSuchRule: {
     name: "stop",
     reason(count) {
-      return `${counted(count, "rule", "rules")} to remove not found`;
+      return `${counted(count, "rule", "rules")} not found`;
     },
     block: noSuchRuleBlock,
+  },
+  unmodelableRule: {
+    name: "stop",
+    reason(count) {
+      return `${counted(count, "unmodelable rule", "unmodelable rules")} to replace`;
+    },
+    block: unmodelableRuleBlock,
   },
 };
 
@@ -622,6 +641,20 @@ function noSuchRuleBlock(
       `No rule on ${table} has this handle now: a person changed the rule after the last sync`,
       "(a handle comes from its columns, formula, condition and format).",
       ...ruleHandleLines(table, handles),
+      entryStaysText,
+    ]),
+  ];
+}
+
+function unmodelableRuleBlock(
+  { table, path, handle }: SyncUnmodelableRuleStop,
+  number: number,
+): string[] {
+  return [
+    `STOP ${number} · ${table} › ${path}`,
+    ...indent(2, [
+      `The rule ${handle} is unmodelable: sync can't write a rule like it, so it can only be removed.`,
+      "Move the handle to conditionalFormats.remove and add the rule you want instead.",
       entryStaysText,
     ]),
   ];
@@ -749,7 +782,7 @@ function effectLine(effect: SyncPlanEffect): string {
       setting === "ask"
         ? 'dropdownStyleReset: "ask", so held, above'
         : 'dropdownStyleReset: "allow"';
-    return `Resets the style and colours of ${dropdowns}: ${columns.join(", ")} (${why}).`;
+    return `Resets the style and colours of ${dropdowns}: ${columns.join(", ")} (${why}). This is a quirk of Google's API: setting any column's type resends the Table's column list, which resets every dropdown on it.`;
   }
   if (effect.kind === "addedFirst") {
     const { outranks } = effect;
@@ -782,6 +815,9 @@ function effectLine(effect: SyncPlanEffect): string {
 
 function noticeLine(notice: SyncNotice): string {
   if (notice.kind === "text") return notice.text;
+  if (notice.kind === "tabGone") {
+    return `${notice.tab}: a person deleted this tab from the sheet, so sync dropped it from the configs.`;
+  }
   const { table } = notice;
   if (notice.kind === "tableGone") {
     return `${table}: a person deleted this Table from the sheet, so sync dropped it from the configs and retired its ID prefix.`;

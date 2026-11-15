@@ -483,7 +483,7 @@ describe("SyncCoordinator send with no alterations value sources", () => {
       expect(files.columnConfigs).toContain('"formula": "=${@amount}*2"');
     });
 
-    it("records the column type, with the rule a dropdown carries", () => {
+    it("records the column type, with the rule a dropdown carries in brace form", () => {
       seedFixture({
         extraSheets: [
           listSheet([{ header: "Payment status", values: ["Paid"] }]),
@@ -496,12 +496,19 @@ describe("SyncCoordinator send with no alterations value sources", () => {
               validationConditionType: "ONE_OF_RANGE",
               validationValues: ["=List[Payment status]"],
             },
+            {
+              header: "Priority",
+              values: ["High"],
+              columnType: "DROPDOWN",
+              validationConditionType: "ONE_OF_LIST",
+              validationValues: ["High", "Low"],
+            },
             { header: "Note", values: ["x"] },
           ]),
         ],
       });
 
-      const { ledger } = generateLedgerColumns();
+      const { files, ledger } = generateLedgerColumns();
 
       expect(ledger.amount?.columnType).toEqual({
         type: "CURRENCY",
@@ -509,7 +516,17 @@ describe("SyncCoordinator send with no alterations value sources", () => {
       });
       expect(ledger.status?.columnType).toEqual({
         type: "DROPDOWN",
-        rule: { condition: "ONE_OF_RANGE", values: ["=List[Payment status]"] },
+        rule: {
+          condition: "ONE_OF_RANGE",
+          values: ["=${list[paymentStatus]}"],
+        },
+      });
+      expect(files.columnConfigs).toContain(
+        '"values":["=${list[paymentStatus]}"]',
+      );
+      expect(ledger.priority?.columnType).toEqual({
+        type: "DROPDOWN",
+        rule: { condition: "ONE_OF_LIST", values: ["High", "Low"] },
       });
       expect(ledger.note?.columnType).toEqual({ type: null, rule: null });
     });

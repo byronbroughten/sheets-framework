@@ -45,10 +45,10 @@ export type SyncSendOutcome =
   | { kind: "stopped" }
   | { kind: "refused" }
   | SyncSentOutcome
-  | SyncHeldStoppedOutcome;
+  | SyncFlushStoppedOutcome;
 
-// A send the entered-data gate refused at a held flush.
-export type SyncHeldStoppedOutcome =
+// A send stopped at a flush the entered-data gate held or Google refused.
+export type SyncFlushStoppedOutcome =
   SyncStoppedBeforeSendingOutcome | SyncStoppedPartwayOutcome;
 
 export interface SyncSentOutcome {
@@ -56,19 +56,24 @@ export interface SyncSentOutcome {
   summary: string;
 }
 
-export interface SyncStoppedBeforeSendingOutcome {
+export type SyncStoppedBeforeSendingOutcome = {
   kind: "stoppedBeforeSending";
-  heldBy: SyncHeldBy;
-}
+} & SyncStopCause;
 
-export interface SyncStoppedPartwayOutcome {
+export type SyncStoppedPartwayOutcome = {
   kind: "stoppedPartway";
-  // At least 1: a send held at its first flush is stoppedBeforeSending, since nothing in it landed.
+} & SyncLandedFlushes &
+  SyncStopCause;
+
+export interface SyncLandedFlushes {
+  // At least 1 on a partway stop: a send stopped at its first flush is stoppedBeforeSending, since nothing in it landed.
   landedFlushes: number;
   // The dry run's flush count, from its held file; absent when the send had none to read.
   flushCount?: number;
-  heldBy: SyncHeldBy;
 }
+
+// The gate held the flush, or Google refused its batch whole, in the reworded text that names the Tables.
+export type SyncStopCause = { heldBy: SyncHeldBy } | { googleRefusal: string };
 
 // "uncovered": the send had no --confirm; "mismatched": the sheet or plan changed since the dry run.
 export type SyncHeldBy = "uncovered" | "mismatched";
@@ -180,6 +185,8 @@ export type SyncRefusal =
       deleted: SyncSubject;
       deletedAt: string;
       touchedBy: string;
+      // Set when touchedBy deletes this Table or one of its columns, which the tab's deletion already takes.
+      takenTable?: string;
     };
 
 export interface ForcedTrait {
@@ -195,6 +202,7 @@ export type SyncSheetStop =
   | SyncHeadRowsStop
   | SyncHeaderTakenStop
   | SyncNoSuchRuleStop
+  | SyncUnmodelableRuleStop
   | SyncNewTableStop;
 
 export type SyncNewTableStop = SyncTableNameTakenStop | SyncTabTitleTakenStop;
@@ -243,12 +251,20 @@ export interface SyncHeaderTakenStop {
   columnId: string;
 }
 
-// A `conditionalFormats.remove` handle no rule on the Table has on this run's read; `handles` are the Table's rules' now.
+// A `conditionalFormats.remove` or `replace` handle no rule on the Table has on this run's read; `handles` are the Table's rules' now.
 export interface SyncNoSuchRuleStop {
   kind: "noSuchRule";
   table: string;
   path: string;
   handles: string[];
+}
+
+// A `conditionalFormats.replace` handle naming a rule the configs record as unmodelable, which sync can only remove.
+export interface SyncUnmodelableRuleStop {
+  kind: "unmodelableRule";
+  table: string;
+  path: string;
+  handle: string;
 }
 
 export interface SyncHeld {
@@ -291,9 +307,21 @@ export type SyncPlanEffect =
 
 export type SyncNotice =
   | { kind: "idFirst"; table: string }
-  // A Table the previous configs hold that a person deleted from the sheet.
-  | { kind: "tableGone"; table: string }
+  | SyncTableGoneNotice
+  | SyncTabGoneNotice
   | { kind: "text"; text: string };
+
+// A Table the previous configs hold that a person deleted from the sheet.
+export interface SyncTableGoneNotice {
+  kind: "tableGone";
+  table: string;
+}
+
+// A tab the previous ID-name map holds that a person deleted from the sheet.
+export interface SyncTabGoneNotice {
+  kind: "tabGone";
+  tab: string;
+}
 
 // The framework endpoint's name, in every plan, summary and notice line that cites it.
 export const fillRowIdsName = "Fill Row IDs";

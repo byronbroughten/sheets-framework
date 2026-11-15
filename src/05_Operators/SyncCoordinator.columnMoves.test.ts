@@ -7,12 +7,14 @@ import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {
   type FakeCellValue,
   type FakeSheetsService,
+  stubSheetsService,
 } from "../testSupport/fakeSheetsService";
 import {
   bodyRowsWithNote,
   type ItemColumnName,
   itemColumns,
   itemGid,
+  itemSheet,
   runItem,
   seedFixture,
 } from "./syncCoordinatorTestSupport";
@@ -177,6 +179,61 @@ describe("SyncCoordinator.run column moves", () => {
 
     expect(itemSheetRows(service)).toEqual(before);
     expect(result).toMatchObject({ plan: [], landed: [] });
+  });
+
+  it("stops partway when Google refuses the move's batch over a taller Table beside it, the deletion before it landed", () => {
+    const { colIdRowIndex } = expectedSheetLayout;
+    let sentBatches = 0;
+    const service = stubSheetsService({
+      sheets: [itemSheet()],
+      // Added after the fetch, so only Google sees it split.
+      afterEachBatchUpdate(spreadsheet) {
+        sentBatches += 1;
+        if (sentBatches !== 1) return;
+        const sheet = Val.assert(
+          spreadsheet.sheets.find(({ sheetId }) => sheetId === itemGid),
+          "Item sheet",
+        );
+        const item = Val.assert(sheet.tables[0], "Item Table");
+        sheet.tables.push({
+          tableId: "beside",
+          name: "Beside",
+          startRowIndex: colIdRowIndex,
+          endRowIndex: item.endRowIndex + 4,
+          startColumnIndex: item.endColumnIndex + 1,
+          endColumnIndex: item.endColumnIndex + 3,
+        });
+      },
+    });
+    const remaining = columnNames.filter((name) => name !== "optionalNote");
+    const moved = Val.assert(remaining.at(-1), "last remaining column");
+    const target = Val.assert(remaining[1], "second remaining column");
+
+    const { result, files } = runItem({
+      isSending: true,
+      alterations: {
+        tables: {
+          item: {
+            columns: {
+              optionalNote: { deleted: true },
+              [moved]: { before: target },
+            },
+          },
+        },
+      },
+    });
+
+    expect(headersOf(itemSheetRows(service))).toEqual(
+      remaining.map((name) => itemColumns[name].header),
+    );
+    expect(files).toBeUndefined();
+    expect(result.outcome).toEqual({
+      kind: "stoppedPartway",
+      landedFlushes: 1,
+      googleRefusal: expect.stringContaining(
+        'Moving a column of Table "Item" on sheet "Item" would shift only part of Table "Beside". Move "Beside" so that it sits entirely within rows',
+      ),
+    });
   });
 
   it("throws before sending anything on moving the last column to the front", () => {

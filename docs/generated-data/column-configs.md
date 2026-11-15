@@ -12,10 +12,10 @@ Per column, `columnId`/`valueName`/`header`/`isFormula`/`emptyValueAllowed` are 
 
 ## The baseline each column records
 
-**Four traits record what the column looked like at the last regen**, so `sync`'s three-way comparison can tell an agent's change from a person's ([#219](https://github.com/byronbroughten/sheets-framework/issues/219)). No code compares them yet.
+**Four traits record what the column looked like at the last regen**, so `sync`'s three-way comparison can tell an agent's change from a person's ([#219](https://github.com/byronbroughten/sheets-framework/issues/219)). `formula` and `columnType` are compared; the two head cells aren't yet.
 
 - **`formula`**: the top data-row cell's formula text, decompiled to brace form by `BraceFormula.decompile` against this run's configs, so `Ledger[Amount]`, the whole column, reads `${amount}` on Ledger and `${ledger[amount]}` elsewhere, and `SINGLE(Ledger[Amount])`, this row's value, reads `${@amount}` on Ledger and `${ledger[@amount]}` elsewhere. A reference to a Table without Let api access stays as Sheets wrote it. `null` when the top cell holds no formula.
-- **`columnType`**: `{ type, rule }`, the Table column's declared type (`null` for Automatic) and its data-validation `rule` as `columnProperties` carries it, `{ condition, values }`, or `null`. A dropdown's rule values stay as Sheets wrote them, braces not applied.
+- **`columnType`**: `{ type, rule }`, the Table column's declared type (`null` for Automatic) and its data-validation `rule` as `columnProperties` carries it, `{ condition, values }`, or `null`. Each rule value starting with `=` is decompiled to brace form as `formula` is, and a list item stays as written. `sync` compares the live rule braced against each Table's live name and headers, so renaming a Table a rule names reads as no change. A rule recorded before rules were braced counts as not recorded, so live's rule is the baseline for that run.
 - **`actionRowCell`**: `null` for an empty cell, `{ kind: "checkbox" }` for any boolean, checked or not, and `{ kind: "groupHeading2", text }` for a level-2 group heading.
 - **`groupHeading1`**: the level-1 group heading's text, or `null`. A heading spanning several columns is recorded on its first cell only, the one that holds the text.
 

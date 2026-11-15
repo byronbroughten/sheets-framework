@@ -24,7 +24,7 @@ import {
 import type {
   SyncHeadRowsStop,
   SyncNewTableStop,
-  SyncNotice,
+  SyncTableGoneNotice,
 } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
 import {
   configRetiredIdPrefixes,
@@ -236,14 +236,15 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
     return new IdPrefixesByTableId(assigned);
   }
   // Read before any send, so a Table this run deletes is still live and only a person's deletion shows.
-  goneTableNotices(previousIdNameMap: IdNameMapGeneric): SyncNotice[] {
+  goneTableNotices(previousIdNameMap: IdNameMapGeneric): SyncTableGoneNotice[] {
     const { gone } = mapTablesByLiveness(
       previousIdNameMap,
       new Set(this.ss.raw.activeTableIds),
     );
-    return gone
-      .filter(hasApiAccess)
-      .map(({ name }): SyncNotice => ({ kind: "tableGone", table: name }));
+    return gone.filter(hasApiAccess).map(({ name }): SyncTableGoneNotice => ({
+      kind: "tableGone",
+      table: name,
+    }));
   }
   // A Table gone since the last run retires its prefix before this run mints any.
   private _retiredOrGoneIdPrefixes(): Set<string> {

@@ -514,6 +514,101 @@ describe("stubSheetsService replays deleteTable as the live API does", () => {
     ]);
   });
 
+  it("rewrites an outside formula's Table reference to the A1 range of the column's old body rows, never #REF!", () => {
+    const { grid } = stubSheetsService({
+      sheets: [
+        {
+          sheetId: deletedGid,
+          title: "Deleted",
+          rows: buildGridRows({
+            3: ["ID", "Status"],
+            4: [1, "x"],
+            5: [2, "y"],
+            0: [
+              null,
+              null,
+              null,
+              { value: "=SUM(Deleted[ID])", isFormula: true },
+              { value: "=ROWS(Deleted[Status])", isFormula: true },
+            ],
+          }),
+          table: { name: "Deleted", ...tableRange },
+        },
+      ],
+    });
+
+    send({ deleteTable: { tableId: "fake-table-9" } });
+
+    expect(
+      grid.sheet(deletedGid).values({
+        startRowIndex: 0,
+        endRowIndex: 1,
+        startColumnIndex: 3,
+        endColumnIndex: 5,
+      }),
+    ).toEqual([["=SUM(Deleted!$A$5:$A$6)", "=ROWS(Deleted!$B$5:$B$6)"]]);
+  });
+
+  it("leaves another Table's reference alone when its name only ends with the deleted Table's, and quotes a title with a dollar sign literally", () => {
+    const { grid } = stubSheetsService({
+      sheets: [
+        {
+          sheetId: deletedGid,
+          title: "Pay $& Tax",
+          rows: buildGridRows({
+            3: ["ID", "Status"],
+            4: [1, "x"],
+            0: [
+              null,
+              null,
+              null,
+              { value: "=SUM(Deleted[ID])", isFormula: true },
+              { value: "=SUM(myDeleted[ID])", isFormula: true },
+            ],
+          }),
+          table: { name: "Deleted", ...tableRange },
+        },
+      ],
+    });
+
+    send({ deleteTable: { tableId: "fake-table-9" } });
+
+    expect(
+      grid.sheet(deletedGid).values({
+        startRowIndex: 0,
+        endRowIndex: 1,
+        startColumnIndex: 3,
+        endColumnIndex: 5,
+      }),
+    ).toEqual([["=SUM('Pay $& Tax'!$A$5:$A$6)", "=SUM(myDeleted[ID])"]]);
+  });
+
+  it("throws on an outside reference in a form it doesn't rewrite, rather than leaving it as written", () => {
+    stubSheetsService({
+      sheets: [
+        {
+          sheetId: deletedGid,
+          title: "Deleted",
+          rows: buildGridRows({
+            3: ["ID", "Status"],
+            4: [1, "x"],
+            0: [
+              null,
+              null,
+              null,
+              { value: "=Deleted[[#ALL]]", isFormula: true },
+            ],
+          }),
+          table: { name: "Deleted", ...tableRange },
+        },
+      ],
+    });
+
+    expect(() =>
+      send({ deleteTable: { tableId: "fake-table-9" } }),
+    ).toThrowError('reading Table "Deleted" in a form other than name[header]');
+  });
+
   it("removes the rules lying wholly over the Table and keeps those reaching past it", () => {
     const { grid } = stubSheetWithHeadedTable();
 

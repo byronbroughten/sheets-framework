@@ -18,6 +18,7 @@ import type {
   GridRangeProps,
   TableColumnType,
 } from "../00_Source/RawSource/RawSource";
+import type { ColumnTypeBaseline } from "../01_SpreadsheetSchema/columnBaseline";
 import {
   type HeadRole,
   headRows,
@@ -25,9 +26,11 @@ import {
 } from "../01_SpreadsheetSchema/headRows";
 import { CellRaw, validateFormulaString } from "./CellRaw";
 import { ColumnBaseRaw } from "./ClassBases/ColumnBaseRaw";
+import { queuedColumnType } from "./ClassTypes/queuedColumnType";
 import type {
   CellFill,
   NewColumnHeadCells,
+  QueuedColumnType,
   TableGridRange,
 } from "./ClassTypes/StateRaw";
 import { ColumnProfileRaw } from "./ColumnProfileRaw";
@@ -192,13 +195,23 @@ export class ColumnRaw<
     return this;
   }
   updateColumnType(columnType: TableColumnType): this {
+    return this._queueColumnType(columnType);
+  }
+  // Replaces the column's rule too, so a dropdown's values change in the same send.
+  updateColumnTypeAndRule(columnType: ColumnTypeBaseline): this {
+    return this._queueColumnType(columnType);
+  }
+  private _queueColumnType(columnType: QueuedColumnType): this {
     this.table.assertTableIsKnown();
     this.table.queueTableWrite({
       action: "updateColumnType",
       colIndex: this.colIndex,
       columnType,
     });
-    this._ensureColumnState(this.colIndex).columnType = columnType;
+    queuedColumnType.applyTo(
+      this._ensureColumnState(this.colIndex),
+      columnType,
+    );
     return this;
   }
   addConditionalFormatRule(declaration: ConditionalFormatDeclaration): this {

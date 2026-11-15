@@ -1,6 +1,11 @@
 import { Val } from "@byronbroughten/utils/val";
 
 import { HeldFlushRefusal } from "../00_Source/RawSource/HeldFlushRefusal";
+import { PartialTableRefusal } from "../00_Source/RawSource/PartialTableRefusal";
+import {
+  defaultDropdownStyleReset,
+  type DropdownStyleReset,
+} from "../00_Source/RawSource/RawSource";
 import {
   type ApiAccessChanges,
   apiAccessChanges,
@@ -21,6 +26,10 @@ import {
   enteredDataReads,
 } from "../01_SpreadsheetSchema/configReaders/enteredDataReads";
 import {
+  heldStoppedOutcome,
+  refusedStoppedOutcome,
+} from "../01_SpreadsheetSchema/configReaders/flushStoppedOutcome";
+import {
   type IdNameMapGeneric,
   tableIdsByName,
 } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
@@ -40,11 +49,15 @@ import type {
   ForcedTrait,
   SyncCreatedColumn,
   SyncCreatedTable,
+  SyncFlushStoppedOutcome,
+  SyncNotice,
   SyncPlanItem,
   SyncRunFrame,
   SyncRunResult,
   SyncSendLine,
   SyncSubject,
+  SyncTabGoneNotice,
+  SyncTableGoneNotice,
   SyncTypedTraitChange,
 } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
 import { SyncRunResultBuilder } from "../01_SpreadsheetSchema/configReaders/SyncRunResultBuilder";
@@ -60,6 +73,7 @@ import {
   type PlannedColumnMove,
 } from "./ColumnConfigsOperator";
 import {
+  type CompiledRuleReplacement,
   ConditionalFormatConfigOperator,
   type IndexedRuleRemoval,
 } from "./ConditionalFormatConfigOperator";
@@ -104,6 +118,8 @@ export interface SyncRunProps {
   forcedTraits: ForcedTrait[];
   // Set by the Node half, whose host withholds a dry run's flushes, so an unstopped dry run flushes for the gate to judge.
   isHostWithholding?: boolean;
+  // The app's setting, which a column type's plan item names; unset is the default.
+  dropdownStyleReset?: DropdownStyleReset;
 }
 
 interface Regeneration {
@@ -125,6 +141,7 @@ interface AppliedPlan {
   newTables: MintedNewTable[];
   columnMoves: PlannedColumnMove[];
   ruleRemovals: IndexedRuleRemoval[];
+  ruleReplacements: CompiledRuleReplacement[];
   reads: EnteredDataReads;
 }
 
@@ -137,6 +154,7 @@ interface RefetchProps {
   newColumns: MintedNewColumn[];
   newTables: MintedNewTable[];
   ruleRemovals: IndexedRuleRemoval[];
+  ruleReplacements: CompiledRuleReplacement[];
 }
 
 interface RegenerationProps {
@@ -209,10 +227,12 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
   }
   run(props: SyncRunProps): SyncRun {
     const { alterations } = props.intendedState;
+    const tabOfTable = tabsByTable(props.previousIdNameMap);
     const planner = SyncPlanner.init({
       alterations,
-      tabsByTable: tabsByTable(props.previousIdNameMap),
+      tabsByTable: tabOfTable,
       forcedTraits: props.forcedTraits,
+      dropdownStyleReset: props.dropdownStyleReset ?? defaultDropdownStyleReset,
     });
     const refusals = [
       ...SyncEntryRefuser.init({
@@ -235,7 +255,15 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     this.rowIdsOperator.validateIdPrefixes();
     const checkboxPlan = this.rowIdsOperator.checkboxPlan();
     const notices = [
-      ...this.tableConfigOperator.goneTableNotices(props.previousIdNameMap),
+      ...goneNotices({
+        tabsGone: this.tabConfigOperator.goneTabNotices(
+          props.previousIdNameMap,
+        ),
+        tablesGone: this.tableConfigOperator.goneTableNotices(
+          props.previousIdNameMap,
+        ),
+        tabsByTable: tabOfTable,
+      }),
       ...this.rowIdsOperator.idFirstNotices(),
     ];
     const readings = this._traitReadings();
@@ -252,6 +280,10 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
           ...this.tableConfigOperator.newTableStops(planner.newTables),
           ...this.conditionalFormatConfigOperator.noSuchRuleStops(
             planner.ruleRemovals,
+            planner.ruleReplacements,
+          ),
+          ...this.conditionalFormatConfigOperator.unmodelableReplaceStops(
+            planner.ruleReplacements,
           ),
         ],
       }),
@@ -268,6 +300,10 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       planned.newColumns,
     );
     const newTables = this.tableConfigOperator.mintNewTables(planned.newTables);
+    const ruleRemovals =
+      this.conditionalFormatConfigOperator.indexedRuleRemovals(
+        planned.ruleRemovals,
+      );
     const applied: AppliedPlan = {
       accessChanges,
       sentTraits: planned.sentTraits,
@@ -277,9 +313,14 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         planned.sentTraits,
         newColumns,
       ),
-      ruleRemovals: this.conditionalFormatConfigOperator.indexedRuleRemovals(
-        planned.ruleRemovals,
-      ),
+      ruleRemovals,
+      ruleReplacements:
+        this.conditionalFormatConfigOperator.compiledRuleReplacements({
+          replacements: planned.ruleReplacements,
+          removals: ruleRemovals,
+          sentTraits: planned.sentTraits,
+          newColumns,
+        }),
       reads: enteredDataReads({
         alterations,
         sentTraits: planned.sentTraits,
@@ -291,13 +332,13 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     if (isApplying) this._applyPlan(applied);
     const notes = this._recordUntypedColumns();
     if (isApplying) {
-      const refusal = this._flushUnlessHeld(applied);
+      const stopped = this._flushUnlessStopped(applied);
       // No files: column IDs already recorded would reach the configs but not the sheet.
-      if (refusal !== undefined) {
+      if (stopped !== undefined) {
         return {
-          result: resultBuilder.heldStopped({
+          result: resultBuilder.flushStopped({
             planned,
-            refusal,
+            outcome: stopped,
             rowIds: { plan: checkboxPlan, notices },
           }),
         };
@@ -317,7 +358,8 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       (planned.sentTraits.some(isSheetTrait) ||
         applied.newColumns.length > 0 ||
         applied.newTables.length > 0 ||
-        applied.ruleRemovals.length > 0)
+        applied.ruleRemovals.length > 0 ||
+        applied.ruleReplacements.length > 0)
     ) {
       refetched = SyncCoordinator.init();
       regeneration = refetched._refetchedRegeneration({
@@ -329,6 +371,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         newColumns: applied.newColumns,
         newTables: applied.newTables,
         ruleRemovals: applied.ruleRemovals,
+        ruleReplacements: applied.ruleReplacements,
       });
     } else {
       regeneration = this._regeneration({ notes, sent, previous });
@@ -407,6 +450,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     newColumns,
     newTables,
     ruleRemovals,
+    ruleReplacements,
   }: RefetchProps): Regeneration {
     // Recorded before the read, so its head-row fetch covers granted Tables, created ones among them, and skips revoked ones.
     this.tableConfigOperator.recordApiAccessChanges({
@@ -426,8 +470,12 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     const notes = this._recordUntypedColumns();
     const columns = this.columnConfigOperator.landedColumns(newColumns);
     const tables = this.columnConfigOperator.landedTables(newTables);
-    const rulesDidntLand =
-      this.conditionalFormatConfigOperator.removalsDidntLand(ruleRemovals);
+    const rulesDidntLand = [
+      ...this.conditionalFormatConfigOperator.removalsDidntLand(ruleRemovals),
+      ...this.conditionalFormatConfigOperator.replacementsDidntLand(
+        ruleReplacements,
+      ),
+    ];
     return {
       ...this._regeneration({ notes, sent, previous }),
       didntLand: [
@@ -495,6 +543,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       .addMissingColumnIds()
       .appendColumns(newColumns)
       .updateHeaders(sentTraits)
+      .updateColumnTypes(sentTraits)
       .updateFormulas(sentTraits);
     this.tableConfigOperator
       .updateTableNames(sentTraits)
@@ -526,25 +575,35 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     }
     identified.fetchAllGathered();
   }
-  // The Node host's gate refuses a held flush by throwing; any other error goes on up.
-  private _flushUnlessHeld(applied: AppliedPlan): HeldFlushRefusal | undefined {
+  // The Node host's gate refuses a held flush by throwing, as Google refuses a batch over part of a Table; any other error goes on up.
+  private _flushUnlessStopped(
+    applied: AppliedPlan,
+  ): SyncFlushStoppedOutcome | undefined {
     try {
       this._flushPlan(applied);
       return undefined;
     } catch (error) {
-      if (error instanceof HeldFlushRefusal) return error;
+      if (error instanceof HeldFlushRefusal) return heldStoppedOutcome(error);
+      if (error instanceof PartialTableRefusal) {
+        return refusedStoppedOutcome(
+          this.ss.raw.landedFlushCount,
+          error.message,
+        );
+      }
       throw error;
     }
   }
-  // Column deletes and inserts, then moves, then new Tables, each flush alone: every later write is indexed by the layout the one before leaves.
+  // Column deletes and inserts with the replaced rules compiled against the layout they leave, then moves, then new Tables, each flush alone: every later write is indexed by the layout the one before leaves.
   private _flushPlan({
     sentTraits,
     newColumns,
     newTables,
+    ruleReplacements,
     columnMoves,
   }: AppliedPlan): void {
     this.ss.batchUpdateGSheets();
     this.columnConfigOperator.updateDeletionsAndInserts(sentTraits, newColumns);
+    this.conditionalFormatConfigOperator.replaceRules(ruleReplacements);
     this.ss.batchUpdateGSheets();
     this.columnConfigOperator.moveColumns(columnMoves);
     this.ss.batchUpdateGSheets();
@@ -636,4 +695,30 @@ function tabsByTable({
     },
     {},
   );
+}
+
+interface GoneNoticesProps {
+  tabsGone: SyncTabGoneNotice[];
+  tablesGone: SyncTableGoneNotice[];
+  tabsByTable: Record<string, string | undefined>;
+}
+
+// Each gone tab's line comes just before its own Tables' lines, then the Tables gone from a live tab.
+function goneNotices({
+  tabsGone,
+  tablesGone,
+  tabsByTable,
+}: GoneNoticesProps): SyncNotice[] {
+  const goneTabs = new Set(tabsGone.map(({ tab }) => tab));
+  const fromLiveTabs = tablesGone.filter(({ table }) => {
+    const tab = tabsByTable[table];
+    return tab === undefined || !goneTabs.has(tab);
+  });
+  return [
+    ...tabsGone.flatMap((tabGone) => [
+      tabGone,
+      ...tablesGone.filter(({ table }) => tabsByTable[table] === tabGone.tab),
+    ]),
+    ...fromLiveTabs,
+  ];
 }

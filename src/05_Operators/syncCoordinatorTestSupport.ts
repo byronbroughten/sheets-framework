@@ -1,5 +1,6 @@
 import { Val } from "@byronbroughten/utils/val";
 
+import type { DropdownStyleReset } from "../00_Source/RawSource/RawSource";
 import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister";
 import { type IdNameMapGeneric } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
 import { type PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState";
@@ -12,12 +13,14 @@ import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
 import {
   type FakeSheetProperties,
   type FakeSheetsService,
+  type FakeSheetsServiceOptions,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
 import {
   type FakeBodyRow,
   type FakeTableColumn,
   fakeTableSheet,
+  type FakeTableSheetProps,
 } from "../testSupport/fakeSheetsService/fakeTableSheet";
 import {
   type ConfigRegeneration,
@@ -36,10 +39,15 @@ export const itemGid = getTableTraitByName("item", "sheetGid");
 export const itemColumns = columnConfigs.item;
 export type ItemColumnName = keyof typeof itemColumns;
 
-interface ItemSheetOptions {
+// By absolute column index.
+type ItemColumnPassThrough = Pick<
+  FakeTableSheetProps<string>,
+  "columnTypes" | "columnValidationConditionTypes" | "columnValidationValues"
+>;
+
+interface ItemSheetOptions extends ItemColumnPassThrough {
   columns?: Record<string, FakeTableColumn>; // Replaces a configured column by name, or adds one after them.
   startRowIndex?: number;
-  columnTypes?: Record<number, string>; // By absolute column index.
   name?: string; // The Table's Sheets name; "Item" when unset.
   columnNames?: string[]; // The sheet's column order; the configured order when unset.
   bodyRows?: FakeBodyRow<string>[]; // One row with an ID when unset.
@@ -65,6 +73,8 @@ export function itemSheet(options: ItemSheetOptions = {}): FakeSheetProperties {
     actionRowCells: options.actionRowCells ?? { id: false },
     startRowIndex: options.startRowIndex,
     columnTypes: options.columnTypes,
+    columnValidationConditionTypes: options.columnValidationConditionTypes,
+    columnValidationValues: options.columnValidationValues,
   });
 }
 
@@ -72,9 +82,11 @@ export function seedFixture(
   options: {
     item?: ItemSheetOptions;
     extraSheets?: FakeSheetProperties[];
+    service?: Omit<FakeSheetsServiceOptions, "sheets">;
   } = {},
 ): FakeSheetsService {
   return stubSheetsService({
+    ...options.service,
     sheets: [itemSheet(options.item), ...(options.extraSheets ?? [])],
   });
 }
@@ -160,12 +172,14 @@ export interface RunOptions {
   isSending: boolean;
   alterations?: PendingAlterations;
   forcedTraits?: ForcedTrait[];
+  dropdownStyleReset?: DropdownStyleReset;
 }
 
 export function runItem({
   isSending,
   alterations = {},
   forcedTraits = [],
+  dropdownStyleReset,
 }: RunOptions): SyncRun {
   return SyncCoordinator.init().run({
     isSending,
@@ -173,6 +187,7 @@ export function runItem({
     previousIdNameMap: previousItemMap(),
     forcedTraits,
     frame,
+    dropdownStyleReset,
   });
 }
 
@@ -288,6 +303,11 @@ export function emptyValueAllowedOf(
     /"emptyValueAllowed": (true|false)/,
   );
   return JSON.parse(Val.assert(match?.[1], "emitted emptyValueAllowed"));
+}
+
+export function retiredPrefixesOf(files: ConfigRegeneration): unknown {
+  const match = files.retiredIdPrefixes.match(/makeRetiredIdPrefixes\((.*)\);/);
+  return JSON.parse(Val.assert(match?.[1], "emitted retired prefixes"));
 }
 
 export const optionalNoteAlteration: PendingAlterations = {

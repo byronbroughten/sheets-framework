@@ -1,6 +1,4 @@
-import type { HeldFlushRefusal } from "../../00_Source/RawSource/HeldFlushRefusal";
 import { hasLanded } from "./didntLand";
-import { heldStoppedOutcome } from "./heldStoppedOutcome";
 import type { SyncNameRewriter } from "./SyncNameRewriter";
 import {
   newColumnLines,
@@ -13,6 +11,7 @@ import {
   type SyncCreatedTable,
   type SyncDryRunOutcome,
   type SyncDryRunResult,
+  type SyncFlushStoppedOutcome,
   type SyncLandedItem,
   type SyncNotice,
   type SyncPlanItem,
@@ -38,9 +37,9 @@ export interface SyncRunRowIds {
   notices: SyncNotice[];
 }
 
-export interface SyncRunHeldStopped {
+export interface SyncRunFlushStopped {
   planned: SyncPlannerResult;
-  refusal: HeldFlushRefusal;
+  outcome: SyncFlushStoppedOutcome;
   rowIds: SyncRunRowIds;
 }
 
@@ -131,8 +130,12 @@ export class SyncRunResultBuilder {
       didntLand: didntLand.map((line) => asRewritten(line, nameRewriter)),
     };
   }
-  // A send the host refused at a held flush; nothing after it was sent.
-  heldStopped({ planned, refusal, rowIds }: SyncRunHeldStopped): SyncRunResult {
+  // A send the host held or Google refused at a flush; nothing after it was sent.
+  flushStopped({
+    planned,
+    outcome,
+    rowIds,
+  }: SyncRunFlushStopped): SyncRunResult {
     const common = this._common({
       refusals: [],
       planned,
@@ -140,7 +143,7 @@ export class SyncRunResultBuilder {
       notes: [],
       typedTraitChanges: [],
     });
-    return sendResult(common, heldStoppedOutcome(refusal));
+    return sendResult(common, outcome);
   }
   private _common({
     refusals,

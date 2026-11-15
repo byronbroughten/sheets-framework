@@ -140,7 +140,7 @@ describe("SyncRunReport, case A: both changed", () => {
 
   it("indents the dropdown reset under its send", () => {
     expect(text).toContain(
-      ' 1. occPayment: set amount\'s type to CURRENCY (resends all 15 columns).\n    Resets the style and colours of 4 dropdowns: payerCategory, nonOccupantPayerId, formOfPayment, paymentStatus (dropdownStyleReset: "allow").',
+      " 1. occPayment: set amount's type to CURRENCY (resends all 15 columns).\n    Resets the style and colours of 4 dropdowns: payerCategory, nonOccupantPayerId, formOfPayment, paymentStatus (dropdownStyleReset: \"allow\"). This is a quirk of Google's API: setting any column's type resends the Table's column list, which resets every dropdown on it.",
     );
   });
 
@@ -283,7 +283,7 @@ describe("SyncRunReport, case C: a dropdown reset under ask, a rule added first,
       [
         "== Plan: what --send sends, in order ==",
         " 1. item: set weight's type to NUMBER (resends all 9 columns).",
-        '    Resets the style and colours of 2 dropdowns: status, category (dropdownStyleReset: "ask", so held, above).',
+        "    Resets the style and colours of 2 dropdowns: status, category (dropdownStyleReset: \"ask\", so held, above). This is a quirk of Google's API: setting any column's type resends the Table's column list, which resets every dropdown on it.",
         " 2. item: add rule item·weight·NUMBER_LESS(0)·text#cc0000.",
         '    Added first; it outranks 1 rule on these cells: item·all·=${status}="Retired"·bg#eeeeee.',
       ].join("\n"),
@@ -561,6 +561,13 @@ describe("SyncRunReport's intended-state refusals", () => {
         deletedAt: "tabs.log",
         touchedBy: "tabs.item.before",
       },
+      {
+        kind: "touchesDeletion",
+        deleted: { tab: "log" },
+        deletedAt: "tabs.log",
+        touchedBy: "tables.logEntry",
+        takenTable: "logEntry",
+      },
     ],
   }).join("\n");
 
@@ -569,6 +576,13 @@ describe("SyncRunReport's intended-state refusals", () => {
     expect(text).toContain(
       "tabs.log deletes tab log, and tabs.item.before touches it in the same run.",
     );
+  });
+
+  it("says a tab's deletion already takes a Table another entry deletes", () => {
+    expect(text).toContain(
+      "tabs.log deletes tab log, and tables.logEntry touches it in the same run.\n  The tab's deletion already takes the Table logEntry.",
+    );
+    expect(text.match(/already takes/g)).toHaveLength(1);
   });
 });
 
@@ -579,7 +593,11 @@ describe("SyncRunReport's refusals before the read", () => {
     refusals: [
       { kind: "noSuchTable", entry: "tables", name: "vendor" },
       { kind: "noSuchTable", entry: "tabs", name: "vendors" },
-      { kind: "notSendableYet", table: "item", path: "name.columnType" },
+      {
+        kind: "notSendableYet",
+        table: "item",
+        path: "newColumns[0].columnType",
+      },
     ],
   }).join("\n");
 
@@ -594,9 +612,9 @@ describe("SyncRunReport's refusals before the read", () => {
   });
 
   it("names the Table and the trait it can't send yet", () => {
-    expect(text).toContain("REFUSED 3 · item › name.columnType");
+    expect(text).toContain("REFUSED 3 · item › newColumns[0].columnType");
     expect(text).toContain(
-      "  sync can't send name.columnType yet: for now it sends only a Table's name, deleted, letApiAccess, newColumns, conditionalFormats.remove, a column's header, formula, before, deleted, emptyValueAllowed and a tab's title, color, before, frozenRows, frozenColumns, hidden, newTables.",
+      "  sync can't send newColumns[0].columnType yet: for now it sends only a Table's name, deleted, letApiAccess, newColumns, conditionalFormats.remove, conditionalFormats.replace, a column's header, columnType, formula, before, deleted, emptyValueAllowed and a tab's title, color, before, frozenRows, frozenColumns, hidden, newTables.",
     );
   });
 });
@@ -897,6 +915,32 @@ describe("SyncRunReport's no-such-rule stop", () => {
   });
 });
 
+describe("SyncRunReport's unmodelable-rule stop", () => {
+  const ruleHandle = 'A5:A9 | unmodelable {"gradientRule":{}}';
+  const lines = render({
+    ...appDryRun,
+    outcome: { kind: "stopped" },
+    stops: [
+      {
+        kind: "unmodelableRule",
+        table: "occCharge",
+        path: `conditionalFormats.replace["${ruleHandle}"]`,
+        handle: ruleHandle,
+      },
+    ],
+  });
+  const text = lines.join("\n");
+
+  it("names the handle and says the rule can only be removed", () => {
+    expect(text).toContain(
+      `STOP 1 · occCharge › conditionalFormats.replace["${ruleHandle}"]\n  The rule ${ruleHandle} is unmodelable: sync can't write a rule like it, so it can only be removed.`,
+    );
+    expect(resultLine(lines)).toBe(
+      "STOPPED: 1 unmodelable rule to replace. Nothing was sent, and nothing will be until it is resolved.",
+    );
+  });
+});
+
 describe("SyncRunReport, case G: a send stopped partway", () => {
   const lines = render({
     ...appSend,
@@ -953,6 +997,41 @@ describe("SyncRunReport, case G: a send stopped partway", () => {
   });
 });
 
+describe("SyncRunReport, a send Google refused partway", () => {
+  const googleRefusal =
+    'Moving columns in Table "occCharge" on sheet "Charges" would split Table "beside" beside it. Move "beside" so that it sits entirely within rows 1–4, or entirely outside them.';
+  const lines = render({
+    ...appSend,
+    outcome: { kind: "stoppedPartway", landedFlushes: 1, googleRefusal },
+    landed: [],
+    notSent: [],
+    configs: noConfigChanges,
+  });
+
+  it("says the earlier flush landed and Google applied none of the refused one", () => {
+    expect(resultLine(lines)).toBe(
+      `STOPPED PARTWAY: flush 1 landed; flush 2 was refused: Google refused its batch and applied none of it. ${googleRefusal} Nothing after it was sent.`,
+    );
+  });
+});
+
+describe("SyncRunReport, a send Google refused at its first flush", () => {
+  const googleRefusal = 'Table "beside" would be split.';
+  const lines = render({
+    ...appSend,
+    outcome: { kind: "stoppedBeforeSending", googleRefusal },
+    landed: [],
+    notSent: [],
+    configs: noConfigChanges,
+  });
+
+  it("says nothing was sent", () => {
+    expect(resultLine(lines)).toBe(
+      `STOPPED: the send was refused before any flush landed: Google refused its batch and applied none of it. ${googleRefusal} Nothing was sent.`,
+    );
+  });
+});
+
 describe("SyncRunReport, a send refused at its first flush", () => {
   const lines = render({
     ...appSend,
@@ -990,6 +1069,26 @@ describe("SyncRunReport, a Table a person deleted", () => {
   it("names the Table under Notices, saying the configs dropped it", () => {
     expect(sections(lines)).toContain("Notices");
     expect(lines).toContain(
+      "occPayment: a person deleted this Table from the sheet, so sync dropped it from the configs and retired its ID prefix.",
+    );
+  });
+});
+
+describe("SyncRunReport, a tab a person deleted", () => {
+  const lines = render({
+    ...appSend,
+    outcome: { kind: "sent", summary: "nothing to send" },
+    notices: [
+      { kind: "tabGone", tab: "payments" },
+      { kind: "tableGone", table: "occPayment" },
+    ],
+  });
+
+  it("names the tab under Notices, beside its Table's line", () => {
+    const tabLine =
+      "payments: a person deleted this tab from the sheet, so sync dropped it from the configs.";
+    expect(lines).toContain(tabLine);
+    expect(lines[lines.indexOf(tabLine) + 1]).toBe(
       "occPayment: a person deleted this Table from the sheet, so sync dropped it from the configs and retired its ID prefix.",
     );
   });

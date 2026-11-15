@@ -1,4 +1,8 @@
-import { newTableLines, ruleRemovalLines } from "./SyncPlanner";
+import {
+  newTableLines,
+  ruleRemovalLines,
+  ruleReplacementLines,
+} from "./SyncPlanner";
 import {
   entriesOf,
   type WideAlterations,
@@ -7,7 +11,7 @@ import {
 } from "./SyncPlanner/wideAlterations";
 import type { SyncSubject } from "./syncRunResult";
 
-// The alterations still pending once `landed` went out; the refuser lets only a Table's, a column's or a tab's trait, a rule removal or a created Table or tab through, so any other subject is a bug.
+// The alterations still pending once `landed` went out; the refuser lets only a Table's, a column's or a tab's trait, a rule removal or replacement, or a created Table or tab through, so any other subject is a bug.
 export function remainingAlterations(
   alterations: WideAlterations,
   landed: SyncSubject[],
@@ -122,14 +126,14 @@ function remainingTableEntry(
   );
 }
 
-// A removal lands one handle at a time, so only the landed handles leave its list.
+// A removal or replacement lands one handle at a time, so only the landed handles leave its list.
 function remainingRuleOperations(
   tableName: string,
   formats: WideTableEntry["conditionalFormats"],
   landedKeys: Set<string>,
 ): NonNullable<WideTableEntry["conditionalFormats"]> {
-  const { remove, ...others } = formats ?? {};
-  const remaining = (remove ?? []).filter(
+  const { remove, replace, ...others } = formats ?? {};
+  const remainingRemove = (remove ?? []).filter(
     (handle) =>
       !landedKeys.has(
         traitKey(
@@ -138,8 +142,21 @@ function remainingRuleOperations(
         ),
       ),
   );
-  if (remaining.length === 0) return others;
-  return { ...others, remove: remaining };
+  const remainingReplace = Object.fromEntries(
+    entriesOf(replace).filter(
+      ([handle]) =>
+        !landedKeys.has(
+          traitKey(tableName, ruleReplacementLines.path({ handle })),
+        ),
+    ),
+  );
+  return {
+    ...others,
+    ...(remainingRemove.length === 0 ? {} : { remove: remainingRemove }),
+    ...(Object.keys(remainingReplace).length === 0
+      ? {}
+      : { replace: remainingReplace }),
+  };
 }
 
 function remainingColumns(

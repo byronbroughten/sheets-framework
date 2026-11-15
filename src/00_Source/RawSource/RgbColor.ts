@@ -27,6 +27,17 @@ export function rgbChannelsHex({ red, green, blue }: RgbChannels): HexColor {
   return `#${[red, green, blue].map(hexChannel).join("")}`;
 }
 
+// The inverse of rgbChannelsHex, for a colour an agent wrote as `#rrggbb`.
+export function hexRgbChannels(hex: string): RgbChannels {
+  if (!/^#[0-9a-fA-F]{6}$/.test(hex)) {
+    throw new Error(`The colour "${hex}" is not six-digit hex, as #00ff00 is.`);
+  }
+  const [red, green, blue] = [1, 3, 5].map(
+    (start) => parseInt(hex.slice(start, start + 2), 16) / 255,
+  );
+  return { red, green, blue };
+}
+
 // Google omits a zero channel, so an absent one is 0.
 function hexChannel(value: number | undefined): string {
   return Math.round((value ?? 0) * 255)

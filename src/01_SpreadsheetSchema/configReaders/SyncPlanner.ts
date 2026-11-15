@@ -1,3 +1,4 @@
+import type { DropdownStyleReset } from "../../00_Source/RawSource/RawSource";
 import type { ColumnTypeBaseline } from "../columnBaseline";
 import { SpreadsheetBaseSchema } from "../SpreadsheetBaseSchema";
 import { columnNameOfHeader } from "./columnConfigsTypes";
@@ -7,11 +8,13 @@ import {
   entriesOf,
   type WideAlterations,
   type WideNewTable,
+  type WideRule,
 } from "./SyncPlanner/wideAlterations";
 import type {
   ForcedTrait,
   SyncConflict,
   SyncHeldBackTrait,
+  SyncPlanEffect,
   SyncPlanItem,
   SyncRefusal,
   SyncRunResult,
@@ -39,6 +42,8 @@ export interface SyncPlannerProps {
   tabsByTable: Record<string, string | undefined>;
   // Only ever this run's --force arguments, so a yes can't outlive its run.
   forcedTraits: ForcedTrait[];
+  // The app's setting, which a column type's dropdownReset effect names.
+  dropdownStyleReset: DropdownStyleReset;
 }
 
 export interface PlanReadings {
@@ -86,6 +91,13 @@ export interface PlannedRuleRemoval {
   handle: string;
 }
 
+// One `conditionalFormats.replace` entry, by its Table's codebase name: the handle it replaces and the rule it writes there.
+export interface PlannedRuleReplacement {
+  table: string;
+  handle: string;
+  rule: WideRule;
+}
+
 export interface SyncPlannerResult extends Pick<
   SyncRunResult,
   "stops" | "plan"
@@ -104,6 +116,8 @@ export interface SyncPlannerResult extends Pick<
   newTables: PlannedNewTable[];
   // The rules the plan removes, for the run to queue; empty when stopped.
   ruleRemovals: PlannedRuleRemoval[];
+  // The rules the plan replaces, for the run to queue; empty when stopped.
+  ruleReplacements: PlannedRuleReplacement[];
 }
 
 interface TableTraitAddress {
@@ -146,7 +160,13 @@ export const tabTraits = [
 // The sent traits Raw's working view doesn't carry, so the run refetches after sending one; a tab's land in the working view.
 export const sheetTraits = {
   table: new Set<string>(["name", "deleted"]),
-  column: new Set<string>(["header", "formula", "before", "deleted"]),
+  column: new Set<string>([
+    "header",
+    "columnType",
+    "formula",
+    "before",
+    "deleted",
+  ]),
 } as const;
 
 // A deletion's one value, `true`, says nothing a plan line could show.
@@ -230,6 +250,22 @@ export const ruleRemovalLines = {
   },
 };
 
+// How a `conditionalFormats.replace` entry reads on the plan, stop, landed and didntLand lists.
+export const ruleReplacementLines = {
+  path({ handle }: Pick<PlannedRuleReplacement, "handle">): string {
+    return `conditionalFormats.replace["${handle}"]`;
+  },
+  sendLine(replacement: PlannedRuleReplacement): SyncSendLine {
+    return {
+      subject: {
+        table: replacement.table,
+        path: ruleReplacementLines.path(replacement),
+      },
+      what: "replace the rule",
+    };
+  },
+};
+
 export function isSheetTrait(intended: IntendedTrait): boolean {
   if (intended.kind === "tab") return false;
   return sheetTraits[intended.kind].has(intended.trait);
@@ -271,10 +307,12 @@ export class SyncPlanner {
   private alterations: WideAlterations;
   private tabsByTable: Record<string, string | undefined>;
   private forcedTraits: ForcedTrait[];
+  private dropdownStyleReset: DropdownStyleReset;
   constructor(props: SyncPlannerProps) {
     this.alterations = props.alterations;
     this.tabsByTable = props.tabsByTable;
     this.forcedTraits = props.forcedTraits;
+    this.dropdownStyleReset = props.dropdownStyleReset;
   }
   static init(props: SyncPlannerProps): SyncPlanner {
     return new SyncPlanner(props);
@@ -338,6 +376,16 @@ export class SyncPlanner {
       })),
     );
   }
+  // From intended state alone, so the run can match each handle against the sheet's rules before planning.
+  get ruleReplacements(): PlannedRuleReplacement[] {
+    return entriesOf(this.alterations.tables).flatMap(([table, entry]) =>
+      entriesOf(entry.conditionalFormats?.replace).map(([handle, rule]) => ({
+        table,
+        handle,
+        rule,
+      })),
+    );
+  }
   plan({ previous, live, sheetStops = [] }: PlanProps): SyncPlannerResult {
     const stops: SyncConflict[] = [];
     const sends: SyncPlanItem[] = [];
@@ -347,8 +395,9 @@ export class SyncPlanner {
     this._alterationDeclarations.forEach((intended) => {
       const sides = comparedSides(intended, previous, live);
       if (sides === undefined) return;
+      const effects = this._dropdownResetEffects(intended, live);
       function send(what: string): void {
-        sends.push({ subject: subjectOf(intended), what, effects: [] });
+        sends.push({ subject: subjectOf(intended), what, effects });
         sentTraits.push(intended);
       }
       if (isOrderTrait(intended)) {
@@ -408,6 +457,15 @@ export class SyncPlanner {
     for (const removal of ruleRemovals) {
       sends.push({ ...ruleRemovalLines.sendLine(removal), effects: [] });
     }
+    const ruleReplacements = this.ruleReplacements.filter(
+      ({ table }) => live.tables[table] !== undefined,
+    );
+    for (const replacement of ruleReplacements) {
+      sends.push({
+        ...ruleReplacementLines.sendLine(replacement),
+        effects: [],
+      });
+    }
     const isStopped = stops.length + sheetStops.length > 0;
     const sentIfUnstopped = isStopped ? [] : sentTraits;
     const newColumnsIfUnstopped = isStopped ? [] : newColumns;
@@ -440,7 +498,30 @@ export class SyncPlanner {
       newColumns: newColumnsIfUnstopped,
       newTables: newTablesIfUnstopped,
       ruleRemovals: isStopped ? [] : ruleRemovals,
+      ruleReplacements: isStopped ? [] : ruleReplacements,
     };
+  }
+  // Google resets every dropdown on a Table its column list is sent to, a newly set one included: docs/sheets-behaviour.md#creating-and-updating-tables.
+  private _dropdownResetEffects(
+    intended: IntendedTrait,
+    live: TraitReadings,
+  ): SyncPlanEffect[] {
+    if (intended.kind !== "column" || intended.trait !== "columnType") {
+      return [];
+    }
+    const columns = entriesOf(live.tables[intended.table]?.columns).flatMap(
+      ([column, traits]) => {
+        if (hasRule(traits.columnType)) return [column];
+        if (column === intended.column && hasRule(intended.value)) {
+          return [column];
+        }
+        return [];
+      },
+    );
+    if (columns.length === 0) return [];
+    return [
+      { kind: "dropdownReset", columns, setting: this.dropdownStyleReset },
+    ];
   }
   private _forcedTraitFor(intended: IntendedTrait): ForcedTrait | undefined {
     const key = addressKey(intended);
@@ -522,6 +603,10 @@ interface ComparedSides {
   agreed: TraitValue | undefined;
   live: TraitValue | undefined;
   isColumnGone: boolean;
+}
+
+function hasRule(value: TraitValue | undefined): boolean {
+  return typeof value === "object" && value.rule !== null;
 }
 
 function pickTraits<EN extends object, KY extends keyof EN & string>(

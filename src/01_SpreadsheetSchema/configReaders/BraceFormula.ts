@@ -3,6 +3,7 @@ import {
   SheetIndex,
   type SheetRowIndex,
 } from "../../00_Source/RawSource/SheetIndex";
+import type { ColumnTypeBaseline } from "../columnBaseline";
 import { SpreadsheetBaseSchema } from "../SpreadsheetBaseSchema";
 import type { ConfigSetBase } from "./configRegister";
 
@@ -81,6 +82,8 @@ export interface NamedColumn extends ConfiguredColumn {
 const formulaPatterns = {
   stringLiteral: /"(?:[^"]|"")*"/.source,
   brace: /\$\{(@?)([^{}[\]"@]+?)(?:\[(@?)([^{}[\]"@]+)\])?\}/.source,
+  // Any `${…}`, read as a brace or not.
+  anyBrace: /\$\{[^{}"]*\}/.source,
   liveReference: /([A-Za-z_][\w.]*)\[([^[\]"]+)\]/.source,
   // The lookarounds keep a function name such as LOG10( from reading as a cell.
   a1Reference:
@@ -186,12 +189,12 @@ export const BraceFormula = {
       return [match.text];
     });
   },
-  // A reference to no configured column stays as Sheets wrote it.
+  // A reference to no configured column stays as Sheets wrote it; a brace stays too, so text already in brace form comes back unchanged.
   decompile({ configs, tableKey, formula }: BraceFormulaProps): string {
     const liveTables = liveTablesByName(configs);
-    const { stringLiteral, liveReference } = formulaPatterns;
+    const { stringLiteral, anyBrace, liveReference } = formulaPatterns;
     const pattern = new RegExp(
-      `(${stringLiteral})|SINGLE\\(\\s*${liveReference}\\s*\\)|${liveReference}`,
+      `(${stringLiteral}|${anyBrace})|SINGLE\\(\\s*${liveReference}\\s*\\)|${liveReference}`,
       "g",
     );
     return formula.replace(
@@ -220,7 +223,57 @@ export const BraceFormula = {
       },
     );
   },
+  // Only a rule value starting with `=` is a formula; a list item such as `Size[cm]` stays text.
+  decompileColumnType({
+    configs,
+    tableKey,
+    columnType,
+  }: ColumnTypeProps): ColumnTypeBaseline | undefined {
+    if (columnType === undefined) return undefined;
+    return withRuleFormulas(columnType, (formula) =>
+      BraceFormula.decompile({ configs, tableKey, formula }),
+    );
+  },
+  // The inverse of decompileColumnType, for the names on the sheet when the rule lands.
+  compileColumnType({
+    configs,
+    tableKey,
+    columnType,
+  }: ColumnTypeCompileProps): ColumnTypeBaseline {
+    return withRuleFormulas(columnType, (formula) =>
+      BraceFormula.compileForCell({ configs, tableKey, formula }),
+    );
+  },
 };
+
+// Rewrites each rule value starting with `=`, the only ones that are formulas.
+function withRuleFormulas(
+  columnType: ColumnTypeBaseline,
+  rewrite: (formula: string) => string,
+): ColumnTypeBaseline {
+  const { rule } = columnType;
+  if (rule === null) return columnType;
+  return {
+    ...columnType,
+    rule: {
+      ...rule,
+      values: rule.values.map((value) => {
+        if (!value.startsWith("=")) return value;
+        return rewrite(value);
+      }),
+    },
+  };
+}
+
+interface ColumnTypeCompileProps extends Omit<ColumnTypeProps, "columnType"> {
+  columnType: ColumnTypeBaseline;
+}
+
+export interface ColumnTypeProps {
+  configs: BraceConfigs;
+  tableKey: string;
+  columnType: ColumnTypeBaseline | undefined;
+}
 
 interface BraceTextProps {
   ownTableKey: string;
@@ -251,7 +304,7 @@ function replaceBraces(
 // A string literal is matched first and kept, so a brace inside one stays text; any other `${…}` falls to the last group.
 function bracePattern(): RegExp {
   return new RegExp(
-    `(${formulaPatterns.stringLiteral})|${formulaPatterns.brace}|(\\$\\{[^{}"]*\\})`,
+    `(${formulaPatterns.stringLiteral})|${formulaPatterns.brace}|(${formulaPatterns.anyBrace})`,
     "g",
   );
 }

@@ -46,7 +46,7 @@ export class RowRaw extends RowCommonRaw {
     this.table.growDataRowCount();
     return this;
   }
-  // A new row copies its formulas from the rows already there, so one must survive.
+  // Growth pastes a new row's formulas from the body row above it (the model row), so one must survive.
   private validateTableKeepsADataRow(): void {
     if (!this.table.isDownToLastDataRow) return;
     throw new Error(

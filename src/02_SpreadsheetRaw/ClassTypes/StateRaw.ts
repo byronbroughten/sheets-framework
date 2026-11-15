@@ -41,6 +41,8 @@ export interface StateRaw {
   // The Tables the last grid fetch gathered for, kept past its queue reset for the placement check.
   usedTableIds: Set<string>;
   timeZone: string | undefined;
+  // The batches this run sent that Google took; an empty flush sends none.
+  landedFlushCount: number;
   rawSource: RawSource;
   fetchQueue: SpreadsheetFetchQueueRaw;
   writeQueue: SpreadsheetWriteQueueRaw;
@@ -264,6 +266,8 @@ export interface ColumnMoveSpan {
   count: number;
   beforeColIndex: ColIndex;
 }
+// A bare type keeps the column's fetched rule; a baseline sends its own rule, and Automatic for a null type.
+export type QueuedColumnType = TableColumnType | ColumnTypeBaseline;
 export interface TableWrites {
   sort: SortParameters | undefined;
   insertTableEndColumnCount: number;
@@ -272,7 +276,7 @@ export interface TableWrites {
   fillColumns: ColumnFill[];
   findReplaces: TableFindReplace[];
   // Gathered into the Table's one setTableColumnProperties.
-  columnTypes: Map<ColIndex, TableColumnType>;
+  columnTypes: Map<ColIndex, QueuedColumnType>;
   // Raw can't tell a formula column, so an append's caller names the ones growth copies.
   appendedFormulaColIndexes: Set<ColIndex>;
   checkboxCells: TableCell[];
@@ -378,7 +382,7 @@ export interface TableWritePropsObj {
   updateColumnType: {
     action: "updateColumnType";
     colIndex: ColIndex;
-    columnType: TableColumnType;
+    columnType: QueuedColumnType;
   };
   addCheckboxValidation: { action: "addCheckboxValidation" } & TableCell;
   copyAppendedFormulas: {

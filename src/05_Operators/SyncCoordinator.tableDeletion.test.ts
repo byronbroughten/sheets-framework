@@ -11,7 +11,7 @@ import {
 } from "../testSupport/fakeSheetsService";
 import { fakeSpreadsheet } from "../testSupport/fakeSheetsService/fakeSpreadsheet";
 import { parseIdNameMapFileSource } from "./parseIdNameMapFileSource";
-import { type ConfigRegeneration, SyncCoordinator } from "./SyncCoordinator";
+import { SyncCoordinator } from "./SyncCoordinator";
 import {
   bodyRowsWithNote,
   frame,
@@ -24,6 +24,7 @@ import {
   notesGid,
   notesSheet,
   previousItemMap,
+  retiredPrefixesOf,
   runItem,
   seedFixture,
 } from "./syncCoordinatorTestSupport";
@@ -45,13 +46,6 @@ describe("SyncCoordinator.run Table deletion", () => {
   const everyItemColIndex = Object.keys(itemColumns).map(
     (_, colIndex) => colIndex,
   );
-
-  function retiredPrefixesOf(files: ConfigRegeneration): unknown {
-    const match = files.retiredIdPrefixes.match(
-      /makeRetiredIdPrefixes\((.*)\);/,
-    );
-    return JSON.parse(Val.assert(match?.[1], "emitted retired prefixes"));
-  }
 
   it("plans a deletion on a dry run, sending nothing", () => {
     const service = seedFixture();

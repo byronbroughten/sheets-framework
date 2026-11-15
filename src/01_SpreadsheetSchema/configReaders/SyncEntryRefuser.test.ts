@@ -94,23 +94,26 @@ describe("SyncEntryRefuser, traits not sendable yet", () => {
     ).toEqual([]);
   });
 
-  it("refuses a column's other traits, naming the Table and the column's path", () => {
+  it("lets a column's type and dropdown rule through", () => {
     expect(
       refusals({
         alterations: {
           tables: {
             item: {
               columns: {
-                name: { columnType: { type: "TEXT", rule: null } },
-                count: { emptyValueAllowed: true },
+                name: {
+                  columnType: {
+                    type: "DROPDOWN",
+                    rule: { condition: "ONE_OF_LIST", values: ["a", "b"] },
+                  },
+                },
+                count: { columnType: { type: "CURRENCY", rule: null } },
               },
             },
           },
         },
       }),
-    ).toEqual([
-      { kind: "notSendableYet", table: "item", path: "name.columnType" },
-    ]);
+    ).toEqual([]);
   });
 
   it("lets a column's before through", () => {
@@ -224,7 +227,13 @@ describe("SyncEntryRefuser, traits not sendable yet", () => {
                     },
                   ],
                   conditionalFormats: {
-                    add: [{ columns: "all", condition: {} }],
+                    add: [
+                      {
+                        columns: "all",
+                        condition: { type: "NOT_BLANK" },
+                        format: {},
+                      },
+                    ],
                   },
                 },
               ],
