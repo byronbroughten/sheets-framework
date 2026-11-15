@@ -179,15 +179,13 @@ describe("BraceFormula.decompile", () => {
 });
 
 // Header row 4 (index 3) from column C, so the body runs from row 5 to row 10.
-const ruleLayout = {
+const layout = {
   headerTopLeft: { rowIndex: SheetIndex.row(3), colIndex: SheetIndex.col(2) },
   endRowIndex: SheetIndex.row(10),
   columnNamesLeftToRight: ["count", "newColumn", "price"],
 };
 
 describe("BraceFormula.compileForRule", () => {
-  const layout = ruleLayout;
-
   it("anchors an @ brace's column to the first body row, relative by row", () => {
     expect(
       BraceFormula.compileForRule({
@@ -231,8 +229,6 @@ describe("BraceFormula.compileForRule", () => {
 });
 
 describe("BraceFormula.decompileForRule", () => {
-  const layout = ruleLayout;
-
   function decompile(formula: string, isOneColumn = false) {
     return BraceFormula.decompileForRule({
       layout,
