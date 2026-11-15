@@ -30,7 +30,10 @@ import type {
 import { tableConfigsByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { type ValueName } from "../01_SpreadsheetSchema/configReaders/valueSchemas";
 import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
-import type { NewColumnHeadCells } from "../02_SpreadsheetRaw/ClassTypes/StateRaw";
+import type {
+  ColumnMoveSpan,
+  NewColumnHeadCells,
+} from "../02_SpreadsheetRaw/ClassTypes/StateRaw";
 import type {
   ColumnProfileRaw,
   TableColumnReference,
@@ -85,6 +88,31 @@ interface ColumnAt {
 
 interface ColumnInsert extends ColumnAt {
   headCells: NewColumnHeadCells;
+}
+
+// Indexed in the layout the run's column deletions and inserts leave.
+export interface PlannedColumnMove extends ColumnMoveSpan {
+  tableId: string;
+}
+
+interface ColumnMoveEntry {
+  tableId: string;
+  table: string;
+  column: string;
+  before: string;
+}
+
+interface ColumnOrderProps {
+  tableId: string;
+  deleted: Set<string>;
+  minted: MintedNewColumn[];
+}
+
+interface ColumnMoveProps {
+  order: string[];
+  columnId: string;
+  beforeColumnId: string;
+  entry: ColumnMoveEntry;
 }
 
 export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
@@ -216,16 +244,23 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
     return this;
   }
   // emptyValueAllowed isn't a sheet trait, so its live side carries the previous configs and only a deleted column can stop it.
+  // `before` is read live only, as a tab's is: order is never in the configs, so it can't conflict.
   traitReadings(): PlanReadings {
     const configs = installedBraceConfigs();
-    const live = this._namedColumnIdentities().reduce<TraitReadings["tables"]>(
+    const identities = this._namedColumnIdentities();
+    const namesByColumnId = new Map(
+      identities.map(({ columnId, columnName }) => [columnId, columnName]),
+    );
+    const live = identities.reduce<TraitReadings["tables"]>(
       (tables, identity) => {
-        const { tableId, tableKey, columnName } = identity;
+        const { tableId, tableKey, columnId, columnName } = identity;
         const reading = tables[tableKey] ?? {
           traits: { name: this.ss.raw.table(tableId).name },
           columns: {},
         };
         const { header, topFormula } = this._describedColumn(identity);
+        const order = this._columnIdOrder(tableId);
+        const next = order[order.indexOf(columnId) + 1];
         reading.columns[columnName] = {
           header,
           emptyValueAllowed: identity.previousEmptyValueAllowed,
@@ -233,6 +268,7 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
           formula:
             bracedFormula({ configs, tableKey, formula: topFormula }) ??
             undefined,
+          before: next === undefined ? undefined : namesByColumnId.get(next),
         };
         tables[tableKey] = reading;
         return tables;
@@ -394,6 +430,81 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
     return inserts
       .reverse()
       .sort((first, second) => second.colIndex - first.colIndex);
+  }
+  // Before any queue, so a throw sends nothing; each move is indexed in the layout the run's deletions, inserts and earlier moves leave.
+  planColumnMoves(
+    sent: IntendedTrait[],
+    minted: MintedNewColumn[],
+  ): PlannedColumnMove[] {
+    const deleted = new Set(
+      this._sentColumnTraits(sent, "deleted").map(({ columnId }) => columnId),
+    );
+    const orders = new Map<string, string[]>();
+    return this._columnMoveEntries(sent).flatMap(
+      (entry): PlannedColumnMove[] => {
+        const { tableId } = entry;
+        const order =
+          orders.get(tableId) ??
+          this._columnIdOrderAfterChanges({ tableId, deleted, minted });
+        orders.set(tableId, order);
+        const move = plannedColumnMove({
+          order,
+          columnId: this._columnIdOf(entry.table, entry.column),
+          beforeColumnId: this._columnIdOf(entry.table, entry.before),
+          entry,
+        });
+        if (move === undefined) return [];
+        orders.set(tableId, movedOrder(order, move));
+        return [{ tableId, ...move }];
+      },
+    );
+  }
+  // Queued once the run's deletions and inserts have flushed, since their indexes are the layout those leave.
+  moveColumns(moves: PlannedColumnMove[]): this {
+    for (const { tableId, ...span } of moves) {
+      this.ss.raw.table(tableId).moveColumns(span);
+    }
+    return this;
+  }
+  private _columnMoveEntries(sent: IntendedTrait[]): ColumnMoveEntry[] {
+    return sent.flatMap((intended): ColumnMoveEntry[] => {
+      if (intended.kind !== "column" || intended.trait !== "before") return [];
+      const { table, column, value } = intended;
+      return [
+        {
+          tableId: this.tableConfigOperator.tableIdOf(table),
+          table,
+          column,
+          before: String(value),
+        },
+      ];
+    });
+  }
+  // A column with no ID yet keeps its place as "", so the indexes still count it.
+  private _columnIdOrder(tableId: string): string[] {
+    const table = this.ss.raw.table(tableId);
+    return table.fullTableColIndexes.map((colIndex) =>
+      table.columnResolver.columnIdAt(colIndex),
+    );
+  }
+  // As updateDeletionsAndInserts and appendColumns leave the Table: each insert before its column in entry order, each append at the end.
+  private _columnIdOrderAfterChanges({
+    tableId,
+    deleted,
+    minted,
+  }: ColumnOrderProps): string[] {
+    const order = this._columnIdOrder(tableId).filter(
+      (columnId) => !deleted.has(columnId),
+    );
+    for (const { tableId: mintedTableId, table, columnId, before } of minted) {
+      if (mintedTableId !== tableId) continue;
+      if (before === undefined) {
+        order.push(columnId);
+        continue;
+      }
+      order.splice(order.indexOf(this._columnIdOf(table, before)), 0, columnId);
+    }
+    return order;
   }
   private _colIndexOf(tableId: string, columnId: string): number {
     return this.ss.raw.table(tableId).columnResolver.colIndexOf(columnId);
@@ -657,6 +768,43 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
       ``,
     ].join("\n");
   }
+}
+
+// Undefined when the earlier changes already left the column there.
+function plannedColumnMove({
+  order,
+  columnId,
+  beforeColumnId,
+  entry: { table, column, before },
+}: ColumnMoveProps): ColumnMoveSpan | undefined {
+  const colIndex = order.indexOf(columnId);
+  const beforeColIndex = order.indexOf(beforeColumnId);
+  if (colIndex === -1 || beforeColIndex === -1 || colIndex === beforeColIndex) {
+    throw new Error(
+      `Table ${table} can't move ${column} before ${before}: the run deletes one of them, or they are the same column.`,
+    );
+  }
+  if (beforeColIndex === colIndex + 1) return undefined;
+  if (beforeColIndex !== 0) return { colIndex, count: 1, beforeColIndex };
+  if (colIndex === order.length - 1) {
+    throw new Error(
+      `Table ${table} can't move ${column} before ${before}, its first column: moving its last column to the front is unmeasured.`,
+    );
+  }
+  // A move to the first column lands outside the Table, so the columns before it move right instead (sheets-behaviour.md).
+  return { colIndex: 0, count: colIndex, beforeColIndex: colIndex + 1 };
+}
+
+function movedOrder(
+  order: string[],
+  { colIndex, count, beforeColIndex }: ColumnMoveSpan,
+): string[] {
+  const block = order.slice(colIndex, colIndex + count);
+  const rest = [...order.slice(0, colIndex), ...order.slice(colIndex + count)];
+  const restBeforeIndex =
+    beforeColIndex > colIndex ? beforeColIndex - count : beforeColIndex;
+  rest.splice(restBeforeIndex, 0, ...block);
+  return rest;
 }
 
 function previousTraitTables(): TraitReadings["tables"] {

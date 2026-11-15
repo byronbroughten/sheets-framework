@@ -795,6 +795,8 @@ export class TableRaw extends TableCommonRaw {
       gap,
       `${columnChangeRequests.moveColumns.action} ${this._namedTableOnSheet}`,
     );
+    // An insert running past the grid's edge is clipped to it (sheets-behaviour.md), losing a cut column.
+    this.sheet.queueGridColumnsThrough(gap.endColumnIndex);
     const colIndexAfterGap =
       colIndex > beforeColIndex ? colIndex + count : colIndex;
     const vacated = this._headAndBodyBand(
