@@ -476,8 +476,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       throw error;
     }
   }
-  // A column delete or mid-Table insert goes in a flush of its own on its Table, since the plan's other writes are indexed by the columns before it.
-  // The moves follow in a third, indexed in the layout the deletes and inserts leave.
+  // Column deletes and inserts, then moves, each flush alone: every later write is indexed by the layout the one before leaves.
   private _flushPlan({
     sentTraits,
     newColumns,
