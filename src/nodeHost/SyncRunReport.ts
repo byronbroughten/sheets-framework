@@ -23,6 +23,7 @@ import {
   type SyncSendOutcome,
   type SyncSentOutcome,
   type SyncStop,
+  type SyncStopCause,
   type SyncSubject,
 } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
 
@@ -230,15 +231,21 @@ export function heldSection(held: SyncHeld): string[] {
   ]);
 }
 
-// The result line of a send the gate refused, sync's or a chore's.
+// The result line of a send the gate or Google refused, sync's or a chore's.
 export function heldRefusalLine(outcome: SyncHeldStoppedOutcome): string {
-  const reason = heldByReason[outcome.heldBy];
+  const refused = refusedWords(outcome);
   if (outcome.kind === "stoppedBeforeSending") {
-    return `STOPPED: the send was refused before any flush landed, because ${reason}. Nothing was sent.`;
+    return `STOPPED: the send was refused before any flush landed${refused} Nothing was sent.`;
   }
   const { landedFlushes, flushCount } = outcome;
   const landed = flushSpan(landedFlushes, flushCount);
-  return `STOPPED PARTWAY: ${landed}; flush ${landedFlushes + 1} was refused, because ${reason}. Nothing after it was sent.`;
+  return `STOPPED PARTWAY: ${landed}; flush ${landedFlushes + 1} was refused${refused} Nothing after it was sent.`;
+}
+
+// Google's reworded refusal ends in its own full stop.
+function refusedWords(cause: SyncStopCause): string {
+  if ("heldBy" in cause) return `, because ${heldByReason[cause.heldBy]}.`;
+  return `: Google refused its batch and applied none of it. ${cause.googleRefusal}`;
 }
 
 export function rerunDryRunLine(command: string): string {

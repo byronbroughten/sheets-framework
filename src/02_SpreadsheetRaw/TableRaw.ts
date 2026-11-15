@@ -686,6 +686,16 @@ export class TableRaw extends TableCommonRaw {
   columnInsertSplitting(neighbourName: string): string {
     return splittingPhrase(this.columnInsertLabel, neighbourName);
   }
+  // The changes that send an insertRange, the one refusal the flusher rewords.
+  columnChangeSplitting(
+    changeKind: "insertColumn" | "moveColumns",
+    neighbourName: string,
+  ): string {
+    return splittingPhrase(
+      `${columnChangeRequests[changeKind].action} ${this._namedTableOnSheet}`,
+      neighbourName,
+    );
+  }
   get columnInsertLabel(): string {
     return `Inserting a column at the end of ${this._namedTableOnSheet}`;
   }

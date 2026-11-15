@@ -1,6 +1,7 @@
 import { Val } from "@byronbroughten/utils/val";
 
 import { HeldFlushRefusal } from "../00_Source/RawSource/HeldFlushRefusal";
+import { PartialTableRefusal } from "../00_Source/RawSource/PartialTableRefusal";
 import {
   type ApiAccessChanges,
   apiAccessChanges,
@@ -21,6 +22,10 @@ import {
   enteredDataReads,
 } from "../01_SpreadsheetSchema/configReaders/enteredDataReads";
 import {
+  heldStoppedOutcome,
+  refusedStoppedOutcome,
+} from "../01_SpreadsheetSchema/configReaders/heldStoppedOutcome";
+import {
   type IdNameMapGeneric,
   tableIdsByName,
 } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
@@ -39,6 +44,7 @@ import {
 import type {
   ForcedTrait,
   SyncCreatedColumn,
+  SyncHeldStoppedOutcome,
   SyncPlanItem,
   SyncRunFrame,
   SyncRunResult,
@@ -280,13 +286,13 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     if (isApplying) this._applyPlan(applied);
     const notes = this._recordUntypedColumns();
     if (isApplying) {
-      const refusal = this._flushUnlessHeld(applied);
+      const stopped = this._flushUnlessStopped(applied);
       // No files: column IDs already recorded would reach the configs but not the sheet.
-      if (refusal !== undefined) {
+      if (stopped !== undefined) {
         return {
           result: resultBuilder.heldStopped({
             planned,
-            refusal,
+            outcome: stopped,
             rowIds: { plan: checkboxPlan, notices },
           }),
         };
@@ -496,13 +502,21 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     }
     identified.fetchAllGathered();
   }
-  // The Node host's gate refuses a held flush by throwing; any other error goes on up.
-  private _flushUnlessHeld(applied: AppliedPlan): HeldFlushRefusal | undefined {
+  // The Node host's gate refuses a held flush by throwing, as Google refuses a batch over part of a Table; any other error goes on up.
+  private _flushUnlessStopped(
+    applied: AppliedPlan,
+  ): SyncHeldStoppedOutcome | undefined {
     try {
       this._flushPlan(applied);
       return undefined;
     } catch (error) {
-      if (error instanceof HeldFlushRefusal) return error;
+      if (error instanceof HeldFlushRefusal) return heldStoppedOutcome(error);
+      if (error instanceof PartialTableRefusal) {
+        return refusedStoppedOutcome(
+          this.ss.raw.landedFlushCount,
+          error.message,
+        );
+      }
       throw error;
     }
   }

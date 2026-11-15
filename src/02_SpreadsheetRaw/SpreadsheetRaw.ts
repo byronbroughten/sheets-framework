@@ -135,6 +135,9 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
   batchUpdateGSheets(): void {
     this.flusher.flush();
   }
+  get landedFlushCount(): number {
+    return this.spreadsheetStateRaw.landedFlushCount;
+  }
   // Not queued: a toast is no write, so it shows the moment it's called.
   toast(message: string): void {
     this.spreadsheetStateRaw.rawSource.toast(message);

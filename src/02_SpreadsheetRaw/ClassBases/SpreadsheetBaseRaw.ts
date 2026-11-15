@@ -55,6 +55,7 @@ export class SpreadsheetBaseRaw {
         allSheetPropertiesAreFetched: false,
         usedTableIds: new Set(),
         timeZone: undefined,
+        landedFlushCount: 0,
         rawSource: installedRawSource(),
         fetchQueue: emptyStateRaw.spreadsheetFetchQueue(),
         writeQueue: emptyStateRaw.spreadsheetWriteQueue(),

@@ -41,6 +41,8 @@ export interface StateRaw {
   // The Tables the last grid fetch gathered for, kept past its queue reset for the placement check.
   usedTableIds: Set<string>;
   timeZone: string | undefined;
+  // The batches this run sent that Google took; an empty flush sends none.
+  landedFlushCount: number;
   rawSource: RawSource;
   fetchQueue: SpreadsheetFetchQueueRaw;
   writeQueue: SpreadsheetWriteQueueRaw;
