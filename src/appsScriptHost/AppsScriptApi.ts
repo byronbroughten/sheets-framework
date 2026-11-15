@@ -14,12 +14,14 @@ export class AppsScriptApi {
     e: GoogleAppsScript.Events.SheetsOnEdit,
   ): void {
     Api.handleSheetEdit(app, AppsScript.sheetEdit(e), () =>
-      installGoogleSheets(app.dropdownStyleReset ?? "ask"),
+      installGoogleSheets(app.dropdownStyleReset),
     );
   }
 }
 
-function installGoogleSheets(dropdownStyleReset: DropdownStyleReset): void {
+function installGoogleSheets(
+  dropdownStyleReset: DropdownStyleReset | undefined,
+): void {
   if (!hasInstalledRawSource()) {
     installRawSource(GoogleSheetsAPI.forAppsScript(dropdownStyleReset));
   }

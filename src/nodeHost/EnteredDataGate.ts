@@ -4,7 +4,10 @@ import type {
   SheetsHttpRead,
 } from "../00_Source/GoogleSheets/GoogleSheetsAPI";
 import { HeldFlushRefusal } from "../00_Source/RawSource/HeldFlushRefusal";
-import type { DropdownStyleReset } from "../00_Source/RawSource/RawSource";
+import {
+  defaultDropdownStyleReset,
+  type DropdownStyleReset,
+} from "../00_Source/RawSource/RawSource";
 import { FlushClassifier } from "./FlushClassifier";
 import type { HeldItem } from "./FlushClassifier/flushClassifierTypes";
 
@@ -25,7 +28,8 @@ export interface EnteredDataGateProps {
   target: string;
   // Undefined when the send was given no token.
   confirmedList: ConfirmedList | undefined;
-  dropdownStyleReset: DropdownStyleReset;
+  // Undefined when the app sets none.
+  dropdownStyleReset: DropdownStyleReset | undefined;
   // Injected by the Node half, since src/ takes no Node API.
   hash: (input: string) => string;
 }
@@ -42,7 +46,8 @@ export class EnteredDataGate {
   constructor(props: EnteredDataGateProps) {
     this.target = props.target;
     this.confirmedList = props.confirmedList;
-    this.dropdownStyleReset = props.dropdownStyleReset;
+    this.dropdownStyleReset =
+      props.dropdownStyleReset ?? defaultDropdownStyleReset;
     this.hash = props.hash;
     this.reads = [];
     this.flushes = [];

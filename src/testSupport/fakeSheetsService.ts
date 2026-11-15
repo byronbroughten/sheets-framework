@@ -8,6 +8,7 @@ import {
 import {
   type DropdownStyleReset,
   installRawSource,
+  refusesDropdownStyleReset,
 } from "../00_Source/RawSource/RawSource";
 import { cellReplays } from "./fakeSheetsService/cellReplays";
 import { dimensionReplays } from "./fakeSheetsService/dimensionReplays";
@@ -332,8 +333,9 @@ export function stubSheetsService(
       sheets: service,
       spreadsheetId: fakeSpreadsheetId,
       host: "appsScript",
-      refusesDropdownStyleReset:
-        (options.dropdownStyleReset ?? "ask") === "ask",
+      refusesDropdownStyleReset: refusesDropdownStyleReset(
+        options.dropdownStyleReset,
+      ),
     }),
   );
 

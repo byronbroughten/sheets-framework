@@ -384,6 +384,16 @@ export interface TableColumnValidationRule {
 // The app's setting for a columnProperties send, which resets every dropdown's style and colours; "ask" holds or refuses it.
 export type DropdownStyleReset = "ask" | "allow";
 
+// What an app that sets no dropdownStyleReset gets.
+export const defaultDropdownStyleReset: DropdownStyleReset = "ask";
+
+// For a host where no gate holds a send, so "ask" can only refuse one.
+export function refusesDropdownStyleReset(
+  setting: DropdownStyleReset | undefined,
+): boolean {
+  return (setting ?? defaultDropdownStyleReset) === "ask";
+}
+
 export interface AddCheckboxValidationOperation {
   kind: "addCheckboxValidation";
   range: BoundedGridRange;

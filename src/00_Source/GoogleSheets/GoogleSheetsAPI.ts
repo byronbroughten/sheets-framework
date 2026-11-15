@@ -1,20 +1,21 @@
 import { Val } from "@byronbroughten/utils/val";
 
 import { PartialTableRefusal } from "../RawSource/PartialTableRefusal";
-import type {
-  DropdownStyleReset,
-  GridFetchOptions,
-  GridFetchRange,
-  LocalWriteOperation,
-  OpaqueRawRequest,
-  RawSource,
-  SheetConditionalFormatSnapshot,
-  SheetEditProtectionSnapshot,
-  SheetPropertiesFetchOptions,
-  SpreadsheetSnapshot,
-  TableColumnPropertiesAdd,
-  TableColumnPropertiesUpdate,
-  UpdateTabPropertiesOperation,
+import {
+  type DropdownStyleReset,
+  type GridFetchOptions,
+  type GridFetchRange,
+  type LocalWriteOperation,
+  type OpaqueRawRequest,
+  type RawSource,
+  refusesDropdownStyleReset,
+  type SheetConditionalFormatSnapshot,
+  type SheetEditProtectionSnapshot,
+  type SheetPropertiesFetchOptions,
+  type SpreadsheetSnapshot,
+  type TableColumnPropertiesAdd,
+  type TableColumnPropertiesUpdate,
+  type UpdateTabPropertiesOperation,
 } from "../RawSource/RawSource";
 import { AppsScript } from "./AppsScript";
 import { cellDataRequests } from "./GoogleSheetsAPI/cellData";
@@ -212,16 +213,15 @@ export class GoogleSheetsAPI implements RawSource {
   static init(props: GoogleSheetsAPIProps): GoogleSheetsAPI {
     return new GoogleSheetsAPI(props);
   }
-  // No gate holds a send here, so "ask" refuses one.
   static forAppsScript(
-    dropdownStyleReset: DropdownStyleReset,
+    dropdownStyleReset: DropdownStyleReset | undefined,
   ): GoogleSheetsAPI {
     const spreadsheetId = AppsScript.boundSpreadsheetId();
     return GoogleSheetsAPI.init({
       sheets: Val.assert(Sheets, "Sheets (enable the Advanced Sheets Service)"),
       spreadsheetId,
       host: "appsScript",
-      refusesDropdownStyleReset: dropdownStyleReset === "ask",
+      refusesDropdownStyleReset: refusesDropdownStyleReset(dropdownStyleReset),
     });
   }
   // The Node host's gate judges a dropdown reset against the setting, so nothing is refused here.

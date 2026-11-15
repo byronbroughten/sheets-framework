@@ -68,15 +68,15 @@ describe("claspCredential", () => {
 });
 
 describe("loadDropdownStyleReset", () => {
-  it('is "ask" when the app has no endpoint module', async () => {
+  it("is undefined when the app has no endpoint module", async () => {
     expect(
       await loadDropdownStyleReset(configWithEndpointModule(undefined)),
-    ).toBe("ask");
+    ).toBeUndefined();
   });
 
-  it('is "ask" when the endpoint module exports none', async () => {
+  it("is undefined when the endpoint module exports none", async () => {
     const config = configWithEndpointModule("export const endpoints = {};");
-    expect(await loadDropdownStyleReset(config)).toBe("ask");
+    expect(await loadDropdownStyleReset(config)).toBeUndefined();
   });
 
   it("reads the endpoint module's export", async () => {

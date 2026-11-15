@@ -40,6 +40,10 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
     const tableIdsWithSorts = this._tableIdsWhere(
       ({ writeQueue }) => writeQueue.table.sort !== undefined,
     );
+    // Before the gather too, whose shifts would misplace a refused run's failure status.
+    for (const tableId of tableIdsWithColumnTypeUpdates) {
+      this.ss.table(tableId).assertDropdownStyleResetAllowed();
+    }
     this._gatherWriteOperations();
     const sheetGidsWithRowDeletes = this._sheetGidsWithRowDeletes();
     const sheetGidsWithConditionalFormatMutations =

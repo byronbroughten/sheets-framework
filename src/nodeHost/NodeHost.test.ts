@@ -224,7 +224,7 @@ function seedGatedHost({
   isDryRun,
   target,
   confirmedList,
-  dropdownStyleReset = "ask",
+  dropdownStyleReset,
 }: GatedHostCase) {
   const transport = gateTransport();
   const host = NodeHost.init({

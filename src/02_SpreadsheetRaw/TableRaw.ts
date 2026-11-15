@@ -942,6 +942,18 @@ export class TableRaw extends TableCommonRaw {
     );
     return columnTypes;
   }
+  // Google resets every dropdown's style and colours on a columnProperties send; observed: docs/sheets-behaviour.md#creating-and-updating-tables.
+  assertDropdownStyleResetAllowed(): void {
+    if (this.writes.columnTypes.size === 0) return;
+    if (!this.spreadsheetStateRaw.rawSource.refusesDropdownStyleReset) return;
+    const dropdowns = this.columnProperties.filter(
+      (column) => validationRuleOf(column) !== undefined,
+    );
+    if (dropdowns.length === 0) return;
+    throw new Error(
+      `Refusing to set column types on ${this._tableLabel()} under dropdownStyleReset: "ask": it would reset the style and colours of its dropdowns ${dropdowns.map(columnLabel).join(", ")}.`,
+    );
+  }
   gatherSetTableColumnPropertiesOperation(): void {
     const { columnTypes } = this.writes;
     if (columnTypes.size === 0) return;
@@ -972,7 +984,6 @@ export class TableRaw extends TableCommonRaw {
         `Refusing to set column types on ${tableLabel}: the same flush inserts or deletes a column on that sheet.`,
       );
     }
-    this._assertDropdownStyleResetAllowed();
     columnTypes.forEach((_, columnIndex) => {
       if (!fetched.some((column) => column.columnIndex === columnIndex)) {
         throw new Error(
@@ -980,17 +991,6 @@ export class TableRaw extends TableCommonRaw {
         );
       }
     });
-  }
-  // Google resets every dropdown's style and colours on a columnProperties send; observed: docs/sheets-behaviour.md#creating-and-updating-tables.
-  private _assertDropdownStyleResetAllowed(): void {
-    if (!this.spreadsheetStateRaw.rawSource.refusesDropdownStyleReset) return;
-    const dropdowns = this.columnProperties.filter(
-      (column) => validationRuleOf(column) !== undefined,
-    );
-    if (dropdowns.length === 0) return;
-    throw new Error(
-      `Refusing to set column types on ${this._tableLabel()} under dropdownStyleReset: "ask": it would reset the style and colours of its dropdowns ${dropdowns.map(columnLabel).join(", ")}.`,
-    );
   }
   // Full list with each rule, since a partial columnProperties replaces the rest and a dropdown sent without its rule is refused.
   private _columnTypesColumnProperties(
