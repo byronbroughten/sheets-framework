@@ -1,3 +1,5 @@
+import { a1Notation } from "./a1Notation";
+import { fakeCells } from "./fakeCells";
 import { fakeGrid } from "./fakeGrid";
 import {
   type FakeSheetState,
@@ -37,7 +39,7 @@ export const tableReplays = {
     sheet.tables.push(tableState);
     return {};
   },
-  // Measured live: the cells above the header stay and rules wholly over the Table go; a rule reaching past it was never probed.
+  // Measured live: the cells above the header stay and rules wholly over the Table go; a rule reaching past it was never probed. An outside formula's `name[header]` becomes the A1 range of the column's old body rows (not #REF!).
   deleteTable(
     spreadsheet: FakeSpreadsheet,
     request: GoogleAppsScript.Sheets.Schema.DeleteTableRequest,
@@ -46,6 +48,7 @@ export const tableReplays = {
       spreadsheet,
       request.tableId,
     );
+    rewriteReferencesToRanges(spreadsheet, sheet, table);
     sheet.tables = sheet.tables.filter((each) => each !== table);
     fakeGrid.forEachCell(table, (rowIndex, colIndex) => {
       fakeGrid.setCell(sheet, rowIndex, colIndex, null);
@@ -78,6 +81,45 @@ export const tableReplays = {
     return {};
   },
 };
+
+function rewriteReferencesToRanges(
+  spreadsheet: FakeSpreadsheet,
+  sheet: FakeSheetState,
+  table: FakeTableState,
+): void {
+  if (table.name === undefined) return;
+  const sheetPrefix = /^[A-Za-z_]\w*$/.test(sheet.title)
+    ? sheet.title
+    : `'${sheet.title.replaceAll("'", "''")}'`;
+  const rangesByReference = new Map<string, string>();
+  for (let col = table.startColumnIndex; col < table.endColumnIndex; col++) {
+    const header = fakeCells.value(
+      fakeGrid.cell(sheet, table.startRowIndex, col),
+    );
+    const letters = a1Notation.columnLetters(col);
+    rangesByReference.set(
+      `${table.name}[${header}]`,
+      `${sheetPrefix}!$${letters}$${table.startRowIndex + 2}:$${letters}$${table.endRowIndex}`,
+    );
+  }
+  for (const each of spreadsheet.sheets) {
+    each.rows.forEach((row, rowIndex) => {
+      row.forEach((cell, colIndex) => {
+        if (typeof cell !== "object" || cell?.isFormula !== true) return;
+        let rewritten = String(cell.value);
+        for (const [reference, range] of rangesByReference) {
+          rewritten = rewritten.replaceAll(reference, range);
+        }
+        if (rewritten === cell.value) return;
+        fakeGrid.setCell(each, rowIndex, colIndex, {
+          ...cell,
+          value: rewritten,
+          ...(cell.formula !== undefined ? { formula: rewritten } : {}),
+        });
+      });
+    });
+  }
+}
 
 // Measured live: the sent list replaces the Table's, so an unsent column keeps its header but loses its type.
 function replaceColumnProperties(
