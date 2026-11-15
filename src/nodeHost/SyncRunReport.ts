@@ -717,7 +717,7 @@ function effectLine(effect: SyncPlanEffect): string {
       setting === "ask"
         ? 'dropdownStyleReset: "ask", so held, above'
         : 'dropdownStyleReset: "allow"';
-    return `Resets the style and colours of ${dropdowns}: ${columns.join(", ")} (${why}).`;
+    return `Resets the style and colours of ${dropdowns}: ${columns.join(", ")} (${why}). This is a quirk of Google's API: setting any column's type resends the Table's column list, which resets every dropdown on it.`;
   }
   if (effect.kind === "addedFirst") {
     const { outranks } = effect;

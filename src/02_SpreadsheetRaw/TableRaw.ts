@@ -38,6 +38,7 @@ import { assertValueAndFormulaExclusive } from "./CellRaw";
 import type { RowCommonRaw } from "./ClassBases/RowCommonRaw";
 import { hasQueuedWrites, originOf } from "./ClassBases/TableBaseRaw";
 import { columnCountChange, TableCommonRaw } from "./ClassBases/TableCommonRaw";
+import { queuedColumnType } from "./ClassTypes/queuedColumnType";
 import {
   type ChangeTableColumns,
   type ColumnFill,
@@ -958,7 +959,7 @@ export class TableRaw extends TableCommonRaw {
       );
     }
     this.writes.columnTypes.forEach((columnType, colIndex) =>
-      columnTypes.set(colIndex, columnType),
+      columnTypes.set(colIndex, queuedColumnType.typeOf(columnType)),
     );
     return columnTypes;
   }
@@ -967,7 +968,11 @@ export class TableRaw extends TableCommonRaw {
     if (this.writes.columnTypes.size === 0) return;
     if (!this.spreadsheetStateRaw.rawSource.refusesDropdownStyleReset) return;
     const dropdowns = this.columnProperties.filter(
-      (column) => validationRuleOf(column) !== undefined,
+      (column) =>
+        validationRuleOf(column) !== undefined ||
+        queuedColumnType.ruleOf(
+          this.writes.columnTypes.get(column.columnIndex),
+        ) !== undefined,
     );
     if (dropdowns.length === 0) return;
     throw new Error(
@@ -1023,7 +1028,20 @@ export class TableRaw extends TableCommonRaw {
           `${this._tableLabel()} ${tableColumnLabel(columnIndex)} has no columnName; refusing to replace column properties.`,
         );
       }
-      const columnType = columnTypes.get(columnIndex) ?? column.columnType;
+      const queued = columnTypes.get(columnIndex);
+      const baseline =
+        queued === undefined ? undefined : queuedColumnType.baselineOf(queued);
+      if (baseline !== undefined) {
+        return {
+          columnIndex,
+          columnName: column.columnName,
+          ...queuedColumnType.properties(baseline),
+        };
+      }
+      const columnType =
+        queued === undefined
+          ? column.columnType
+          : queuedColumnType.typeOf(queued);
       const dataValidationRule = validationRuleOf(column);
       return {
         columnIndex,

@@ -120,6 +120,7 @@ describe("previousTraitTables", () => {
       },
       tabsByTable: {},
       forcedTraits: [],
+      dropdownStyleReset: "ask",
     }).plan({ previous, live });
 
     expect(result.stops).toEqual([]);

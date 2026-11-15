@@ -1,3 +1,4 @@
+import type { DropdownStyleReset } from "../../00_Source/RawSource/RawSource";
 import type { ColumnTypeBaseline } from "../columnBaseline";
 import { columnNameOfHeader } from "./columnConfigsTypes";
 import type { PendingAlterations } from "./intendedState";
@@ -11,6 +12,7 @@ import type {
   ForcedTrait,
   SyncConflict,
   SyncHeldBackTrait,
+  SyncPlanEffect,
   SyncPlanItem,
   SyncRefusal,
   SyncRunResult,
@@ -38,6 +40,8 @@ export interface SyncPlannerProps {
   tabsByTable: Record<string, string | undefined>;
   // Only ever this run's --force arguments, so a yes can't outlive its run.
   forcedTraits: ForcedTrait[];
+  // The app's setting, which a column type's dropdownReset effect names.
+  dropdownStyleReset: DropdownStyleReset;
 }
 
 export interface PlanReadings {
@@ -132,7 +136,13 @@ export const tabTraits = [
 // The sent traits Raw's working view doesn't carry, so the run refetches after sending one; a tab's land in the working view.
 export const sheetTraits = {
   table: new Set<string>(["name", "deleted"]),
-  column: new Set<string>(["header", "formula", "before", "deleted"]),
+  column: new Set<string>([
+    "header",
+    "columnType",
+    "formula",
+    "before",
+    "deleted",
+  ]),
 } as const;
 
 // A deletion's one value, `true`, says nothing a plan line could show.
@@ -232,10 +242,12 @@ export class SyncPlanner {
   private alterations: WideAlterations;
   private tabsByTable: Record<string, string | undefined>;
   private forcedTraits: ForcedTrait[];
+  private dropdownStyleReset: DropdownStyleReset;
   constructor(props: SyncPlannerProps) {
     this.alterations = props.alterations;
     this.tabsByTable = props.tabsByTable;
     this.forcedTraits = props.forcedTraits;
+    this.dropdownStyleReset = props.dropdownStyleReset;
   }
   static init(props: SyncPlannerProps): SyncPlanner {
     return new SyncPlanner(props);
@@ -298,8 +310,9 @@ export class SyncPlanner {
     this._alterationDeclarations.forEach((intended) => {
       const sides = comparedSides(intended, previous, live);
       if (sides === undefined) return;
+      const effects = this._dropdownResetEffects(intended, live);
       function send(what: string): void {
-        sends.push({ subject: subjectOf(intended), what, effects: [] });
+        sends.push({ subject: subjectOf(intended), what, effects });
         sentTraits.push(intended);
       }
       if (isOrderTrait(intended)) {
@@ -394,6 +407,28 @@ export class SyncPlanner {
       ruleReplacements: isStopped ? [] : ruleReplacements,
     };
   }
+  // Google resets every dropdown on a Table its column list is sent to, a newly set one included: docs/sheets-behaviour.md#creating-and-updating-tables.
+  private _dropdownResetEffects(
+    intended: IntendedTrait,
+    live: TraitReadings,
+  ): SyncPlanEffect[] {
+    if (intended.kind !== "column" || intended.trait !== "columnType") {
+      return [];
+    }
+    const columns = entriesOf(live.tables[intended.table]?.columns).flatMap(
+      ([column, traits]) => {
+        if (hasRule(traits.columnType)) return [column];
+        if (column === intended.column && hasRule(intended.value)) {
+          return [column];
+        }
+        return [];
+      },
+    );
+    if (columns.length === 0) return [];
+    return [
+      { kind: "dropdownReset", columns, setting: this.dropdownStyleReset },
+    ];
+  }
   private _forcedTraitFor(intended: IntendedTrait): ForcedTrait | undefined {
     const key = addressKey(intended);
     return this.forcedTraits.find(
@@ -443,6 +478,10 @@ interface ComparedSides {
   agreed: TraitValue | undefined;
   live: TraitValue | undefined;
   isColumnGone: boolean;
+}
+
+function hasRule(value: TraitValue | undefined): boolean {
+  return typeof value === "object" && value.rule !== null;
 }
 
 function pickTraits<EN extends object, KY extends keyof EN & string>(

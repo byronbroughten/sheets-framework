@@ -6,6 +6,7 @@ import type {
 } from "../../00_Source/RawSource/RawSource";
 import { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin";
 import { emptyStateRaw } from "../ClassTypes/emptyStateRaw";
+import { queuedColumnType } from "../ClassTypes/queuedColumnType";
 import type {
   BoundedTableGridRange,
   ColumnStateRaw,
@@ -213,7 +214,10 @@ export function integrateColumnProperties(
   });
   // Queued column types outlive a re-fetch until the flush sends them.
   tableState.writeQueue.table.columnTypes.forEach((columnType, colIndex) => {
-    ensureColumnState(tableState, colIndex).columnType = columnType;
+    queuedColumnType.applyTo(
+      ensureColumnState(tableState, colIndex),
+      columnType,
+    );
   });
 }
 

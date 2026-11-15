@@ -230,20 +230,44 @@ export const BraceFormula = {
     columnType,
   }: ColumnTypeProps): ColumnTypeBaseline | undefined {
     if (columnType === undefined) return undefined;
-    const { rule } = columnType;
-    if (rule === null) return columnType;
-    return {
-      ...columnType,
-      rule: {
-        ...rule,
-        values: rule.values.map((value) => {
-          if (!value.startsWith("=")) return value;
-          return BraceFormula.decompile({ configs, tableKey, formula: value });
-        }),
-      },
-    };
+    return withRuleFormulas(columnType, (formula) =>
+      BraceFormula.decompile({ configs, tableKey, formula }),
+    );
+  },
+  // The inverse of decompileColumnType, for the names on the sheet when the rule lands.
+  compileColumnType({
+    configs,
+    tableKey,
+    columnType,
+  }: ColumnTypeCompileProps): ColumnTypeBaseline {
+    return withRuleFormulas(columnType, (formula) =>
+      BraceFormula.compileForCell({ configs, tableKey, formula }),
+    );
   },
 };
+
+// Rewrites each rule value starting with `=`, the only ones that are formulas.
+function withRuleFormulas(
+  columnType: ColumnTypeBaseline,
+  rewrite: (formula: string) => string,
+): ColumnTypeBaseline {
+  const { rule } = columnType;
+  if (rule === null) return columnType;
+  return {
+    ...columnType,
+    rule: {
+      ...rule,
+      values: rule.values.map((value) => {
+        if (!value.startsWith("=")) return value;
+        return rewrite(value);
+      }),
+    },
+  };
+}
+
+interface ColumnTypeCompileProps extends Omit<ColumnTypeProps, "columnType"> {
+  columnType: ColumnTypeBaseline;
+}
 
 export interface ColumnTypeProps {
   configs: BraceConfigs;

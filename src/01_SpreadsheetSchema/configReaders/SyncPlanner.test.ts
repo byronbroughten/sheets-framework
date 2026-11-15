@@ -42,6 +42,7 @@ function planner(props: Partial<SyncPlannerProps>): SyncPlanner {
     alterations: {},
     tabsByTable: {},
     forcedTraits: [],
+    dropdownStyleReset: "ask",
     ...props,
   });
 }
