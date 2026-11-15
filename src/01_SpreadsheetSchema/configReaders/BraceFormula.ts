@@ -3,6 +3,7 @@ import {
   SheetIndex,
   type SheetRowIndex,
 } from "../../00_Source/RawSource/SheetIndex";
+import type { ColumnValidationRule } from "../columnBaseline";
 import { SpreadsheetBaseSchema } from "../SpreadsheetBaseSchema";
 import type { ConfigSetBase } from "./configRegister";
 
@@ -81,6 +82,8 @@ export interface NamedColumn extends ConfiguredColumn {
 const formulaPatterns = {
   stringLiteral: /"(?:[^"]|"")*"/.source,
   brace: /\$\{(@?)([^{}[\]"@]+?)(?:\[(@?)([^{}[\]"@]+)\])?\}/.source,
+  // Any `${…}`, read as a brace or not.
+  anyBrace: /\$\{[^{}"]*\}/.source,
   liveReference: /([A-Za-z_][\w.]*)\[([^[\]"]+)\]/.source,
   // The lookarounds keep a function name such as LOG10( from reading as a cell.
   a1Reference:
@@ -186,12 +189,12 @@ export const BraceFormula = {
       return [match.text];
     });
   },
-  // A reference to no configured column stays as Sheets wrote it.
+  // A reference to no configured column stays as Sheets wrote it; a brace stays too, so text already in brace form comes back unchanged.
   decompile({ configs, tableKey, formula }: BraceFormulaProps): string {
     const liveTables = liveTablesByName(configs);
-    const { stringLiteral, liveReference } = formulaPatterns;
+    const { stringLiteral, anyBrace, liveReference } = formulaPatterns;
     const pattern = new RegExp(
-      `(${stringLiteral})|SINGLE\\(\\s*${liveReference}\\s*\\)|${liveReference}`,
+      `(${stringLiteral}|${anyBrace})|SINGLE\\(\\s*${liveReference}\\s*\\)|${liveReference}`,
       "g",
     );
     return formula.replace(
@@ -220,7 +223,34 @@ export const BraceFormula = {
       },
     );
   },
+  // Only a value starting with `=` is a formula; a list item such as `Size[cm]` stays text.
+  decompileDropdownRule({
+    configs,
+    tableKey,
+    rule,
+  }: DropdownRuleProps): ColumnValidationRule {
+    return {
+      ...rule,
+      values: rule.values.map((value) => {
+        if (!value.startsWith("=")) return value;
+        return BraceFormula.decompile({ configs, tableKey, formula: value });
+      }),
+    };
+  },
+  // False for a rule recorded before rules were, whose references Sheets wrote.
+  isDropdownRuleInBraceForm(props: DropdownRuleProps): boolean {
+    const decompiled = BraceFormula.decompileDropdownRule(props);
+    return decompiled.values.every(
+      (value, index) => value === props.rule.values[index],
+    );
+  },
 };
+
+interface DropdownRuleProps {
+  configs: BraceConfigs;
+  tableKey: string;
+  rule: ColumnValidationRule;
+}
 
 interface BraceTextProps {
   ownTableKey: string;
@@ -251,7 +281,7 @@ function replaceBraces(
 // A string literal is matched first and kept, so a brace inside one stays text; any other `${…}` falls to the last group.
 function bracePattern(): RegExp {
   return new RegExp(
-    `(${formulaPatterns.stringLiteral})|${formulaPatterns.brace}|(\\$\\{[^{}"]*\\})`,
+    `(${formulaPatterns.stringLiteral})|${formulaPatterns.brace}|(${formulaPatterns.anyBrace})`,
     "g",
   );
 }

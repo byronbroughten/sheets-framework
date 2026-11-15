@@ -14,12 +14,12 @@ import {
   type ColumnConfigStored,
   makeImportLine,
 } from "../01_SpreadsheetSchema/configReaders/makeConfigs";
+import { previousTraitTables } from "../01_SpreadsheetSchema/configReaders/previousTraitTables";
 import {
   type IntendedTrait,
   newColumnLines,
   type PlannedNewColumn,
   type PlanReadings,
-  type TableReading,
   type TraitReadings,
 } from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
 import type {
@@ -235,6 +235,7 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
   // `before` is read live only, as a tab's is: order is never in the configs, so it can't conflict.
   traitReadings(): PlanReadings {
     const configs = installedBraceConfigs();
+    const liveConfigs = this._liveBraceConfigs();
     const identities = this._namedColumnIdentities();
     const namesByColumnId = new Map(
       identities.map(({ columnId, columnName }) => [columnId, columnName]),
@@ -246,7 +247,8 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
           traits: { name: this.ss.raw.table(tableId).name },
           columns: {},
         };
-        const { header, topFormula } = this._describedColumn(identity);
+        const { header, topFormula, columnType, validationRule } =
+          this._describedColumn(identity);
         const next = this._columnOrder(tableId, tableKey).columnIdAfter(
           columnId,
         );
@@ -257,6 +259,15 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
           formula:
             bracedFormula({ configs, tableKey, formula: topFormula }) ??
             undefined,
+          // Against live names under previous keys, so a person renaming a Table a rule names reads as no change.
+          columnType: bracedColumnType({
+            configs: liveConfigs,
+            tableKey,
+            columnType: {
+              type: columnType ?? null,
+              rule: validationRule ?? null,
+            },
+          }),
           before: next === undefined ? undefined : namesByColumnId.get(next),
         };
         tables[tableKey] = reading;
@@ -265,9 +276,39 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
       {},
     );
     return {
-      previous: { tables: previousTraitTables(), tabs: {} },
+      previous: { tables: previousTraitTables(configs), tabs: {} },
       live: { tables: live, tabs: {} },
     };
+  }
+  // The previous configs with each API-access Table's live name and each live column's header.
+  private _liveBraceConfigs(): BraceConfigs {
+    const { tableConfigs, columnConfigs } = installedBraceConfigs();
+    const apiTableIds = this.tableIdsApiAccesses;
+    return Object.entries(tableConfigs).reduce<BraceConfigs>(
+      (live, [tableKey, tableConfig]) => {
+        const previousColumns = columnConfigs[tableKey] ?? {};
+        if (!apiTableIds.has(tableConfig.tableId)) {
+          live.tableConfigs[tableKey] = tableConfig;
+          live.columnConfigs[tableKey] = previousColumns;
+          return live;
+        }
+        const table = this.ss.raw.table(tableConfig.tableId);
+        const liveColumnIds = new Set(table.profile.columnIds);
+        live.tableConfigs[tableKey] = { ...tableConfig, tableName: table.name };
+        live.columnConfigs[tableKey] = Object.entries(previousColumns).reduce<
+          BraceConfigs["columnConfigs"][string]
+        >((byName, [columnName, columnConfig]) => {
+          if (!liveColumnIds.has(columnConfig.columnId)) return byName;
+          byName[columnName] = {
+            ...columnConfig,
+            header: table.profile.columnById(columnConfig.columnId).header,
+          };
+          return byName;
+        }, {});
+        return live;
+      },
+      { tableConfigs: {}, columnConfigs: {} },
+    );
   }
   // Queues each sent column header, addressed by the previous names the readings use.
   updateHeaders(sent: IntendedTrait[]): this {
@@ -692,7 +733,7 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
         groupHeading1: describedColumn.groupHeading1 || null,
       };
     }
-    return this._withFormulasInBraceForm(columnConfigs);
+    return this._inBraceForm(columnConfigs);
   }
   apiTableColumnsByTableId(): Map<string, ApiTableColumns> {
     const byTableId = this.identifiedApiTableColumnsByTableId();
@@ -716,7 +757,7 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
     }, new Map<string, ApiTableColumns>());
   }
   // A second pass, because a brace names a column by the name this run gives it.
-  private _withFormulasInBraceForm(
+  private _inBraceForm(
     columnConfigs: ColumnConfigsGeneric,
   ): ColumnConfigsGeneric {
     const configs = {
@@ -734,6 +775,11 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
               configs,
               tableKey,
               formula: columnConfig.formula,
+            }),
+            columnType: bracedColumnType({
+              configs,
+              tableKey,
+              columnType: columnConfig.columnType,
             }),
           };
           return bracedTable;
@@ -755,31 +801,6 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
   }
 }
 
-function previousTraitTables(): TraitReadings["tables"] {
-  const tableConfigs = tableConfigsByName();
-  return Object.entries(columnConfigsByName()).reduce<TraitReadings["tables"]>(
-    (tables, [tableKey, columns]) => {
-      const tableName = tableConfigs[tableKey]?.tableName;
-      tables[tableKey] = {
-        traits: tableName === undefined ? {} : { name: tableName },
-        columns: Object.entries(columns).reduce<TableReading["columns"]>(
-          (byName, [columnName, { header, emptyValueAllowed, formula }]) => {
-            byName[columnName] = {
-              header,
-              emptyValueAllowed,
-              formula: formula ?? undefined,
-            };
-            return byName;
-          },
-          {},
-        ),
-      };
-      return tables;
-    },
-    {},
-  );
-}
-
 function installedBraceConfigs(): BraceConfigs {
   return {
     tableConfigs: tableConfigsByName(),
@@ -798,6 +819,28 @@ function bracedFormula({
 }): ColumnConfigStored["formula"] {
   if (formula === undefined || formula === null) return formula;
   return BraceFormula.decompile({ configs, tableKey, formula });
+}
+
+function bracedColumnType({
+  configs,
+  tableKey,
+  columnType,
+}: {
+  configs: BraceConfigs;
+  tableKey: string;
+  columnType: ColumnConfigStored["columnType"];
+}): ColumnConfigStored["columnType"] {
+  if (columnType?.rule === undefined || columnType.rule === null) {
+    return columnType;
+  }
+  return {
+    ...columnType,
+    rule: BraceFormula.decompileDropdownRule({
+      configs,
+      tableKey,
+      rule: columnType.rule,
+    }),
+  };
 }
 
 // The names on the sheet when a column fill lands: Table renames go out before column fills and header writes after (docs/architecture/flush-order.md).

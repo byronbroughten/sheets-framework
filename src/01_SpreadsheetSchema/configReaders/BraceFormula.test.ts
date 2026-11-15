@@ -164,6 +164,16 @@ describe("BraceFormula.decompile", () => {
     ).toBe('=Other[Thing]&Items[Gone]&"Items[Count]"&${@count}');
   });
 
+  it("leaves a brace as it is, even one spelled like a live reference", () => {
+    expect(
+      BraceFormula.decompile({
+        configs,
+        tableKey: "item",
+        formula: "=${Items[Count]}&${unit[@rent]}",
+      }),
+    ).toBe("=${Items[Count]}&${unit[@rent]}");
+  });
+
   it("gives back the brace form that compiled to the live text", () => {
     const formula =
       "=IF(${@count}>0, ${@price}/COUNTA(${unit[rent]}), ${unit[@rent]}+SUM(${count}))";
@@ -175,6 +185,43 @@ describe("BraceFormula.decompile", () => {
     expect(
       BraceFormula.decompile({ configs, tableKey: "item", formula: compiled }),
     ).toBe(formula);
+  });
+});
+
+describe("BraceFormula.decompileDropdownRule", () => {
+  it("leaves a list dropdown's items as they are, even one spelled like a reference", () => {
+    const rule = {
+      condition: "ONE_OF_LIST",
+      values: ["Paid", "Items[Count]"],
+    };
+    expect(
+      BraceFormula.decompileDropdownRule({ configs, tableKey: "item", rule }),
+    ).toEqual(rule);
+  });
+
+  it("puts a value naming a Table column in brace form, qualified for another Table", () => {
+    expect(
+      BraceFormula.decompileDropdownRule({
+        configs,
+        tableKey: "item",
+        rule: { condition: "ONE_OF_RANGE", values: ["=Unit_list[Rent]"] },
+      }),
+    ).toEqual({ condition: "ONE_OF_RANGE", values: ["=${unit[rent]}"] });
+  });
+});
+
+describe("BraceFormula.isDropdownRuleInBraceForm", () => {
+  it("holds for a rule in brace form and a list dropdown, and fails for one naming a Table column as Sheets wrote it", () => {
+    function isInBraceForm(values: string[]): boolean {
+      return BraceFormula.isDropdownRuleInBraceForm({
+        configs,
+        tableKey: "item",
+        rule: { condition: "ONE_OF_RANGE", values },
+      });
+    }
+    expect(isInBraceForm(["=${unit[rent]}"])).toBe(true);
+    expect(isInBraceForm(["Paid", "Unpaid"])).toBe(true);
+    expect(isInBraceForm(["=Unit_list[Rent]"])).toBe(false);
   });
 });
 
