@@ -254,6 +254,10 @@ export class SheetRaw extends SheetBaseRaw {
     this.conditionalFormats.removeConditionalFormatRule(rule);
     return this;
   }
+  removeConditionalFormatRuleByIndex(index: number): this {
+    this.conditionalFormats.removeConditionalFormatRuleByIndex(index);
+    return this;
+  }
   markConditionalFormatIndexesStale(): void {
     this.conditionalFormats.markConditionalFormatIndexesStale();
   }

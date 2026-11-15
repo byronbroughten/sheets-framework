@@ -601,19 +601,25 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
     return this._withFormulasInBraceForm(columnConfigs);
   }
   apiTableColumnsByTableId(): Map<string, ApiTableColumns> {
+    const byTableId = this.identifiedApiTableColumnsByTableId();
+    const tableKeysByTableId = this.tableConfigOperator.tableKeysByTableId();
+    for (const [tableId, tableKey] of tableKeysByTableId) {
+      Val.assert(byTableId.get(tableId), `column configs of ${tableKey}`);
+    }
+    return byTableId;
+  }
+  // Read before a send, an API-access Table whose column IDs the send mints has no column configs yet, so it is left out.
+  identifiedApiTableColumnsByTableId(): Map<string, ApiTableColumns> {
     const columnConfigs = this.newColumnConfigs();
     const tableKeysByTableId = this.tableConfigOperator.tableKeysByTableId();
-    return [...tableKeysByTableId].reduce(
-      (byTableId, [tableId, tableKey]) =>
-        byTableId.set(tableId, {
-          tableKey,
-          columnConfigs: Val.assert(
-            columnConfigs[tableKey],
-            `column configs of ${tableKey}`,
-          ),
-        }),
-      new Map<string, ApiTableColumns>(),
-    );
+    return [...tableKeysByTableId].reduce((byTableId, [tableId, tableKey]) => {
+      const tableColumnConfigs = columnConfigs[tableKey];
+      if (tableColumnConfigs === undefined) return byTableId;
+      return byTableId.set(tableId, {
+        tableKey,
+        columnConfigs: tableColumnConfigs,
+      });
+    }, new Map<string, ApiTableColumns>());
   }
   // A second pass, because a brace names a column by the name this run gives it.
   private _withFormulasInBraceForm(

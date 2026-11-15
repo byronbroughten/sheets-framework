@@ -133,13 +133,13 @@ describe("SyncEntryRefuser, traits not sendable yet", () => {
               name: "thing",
               deleted: true,
               newColumns: [{ header: "New" }],
-              conditionalFormats: { add: [] },
+              conditionalFormats: { add: [], remove: [] },
             },
           },
         },
       }),
     ).toEqual([
-      { kind: "notSendableYet", table: "item", path: "conditionalFormats" },
+      { kind: "notSendableYet", table: "item", path: "conditionalFormats.add" },
     ]);
   });
 

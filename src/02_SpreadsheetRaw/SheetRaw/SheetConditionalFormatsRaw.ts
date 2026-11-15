@@ -68,6 +68,16 @@ export class SheetConditionalFormatsRaw extends SheetBaseRaw {
       conditionalFormatRulesEqual(existing, rule),
     );
   }
+  // The one rule at its fetched index: two equal rules are two, and a match by content would take both.
+  removeConditionalFormatRuleByIndex(index: number): void {
+    this.assertConditionalFormatIndexesNotStale();
+    if (this.conditionalFormatRules()[index] === undefined) {
+      throw new Error(
+        `No conditional format rule at index ${index} for sheetGid ${this.sheetGid}.`,
+      );
+    }
+    this._queueRuleDelete(index);
+  }
   private _removeRulesWhere(
     matches: (rule: ConditionalFormatRule) => boolean,
   ): void {
@@ -75,11 +85,15 @@ export class SheetConditionalFormatsRaw extends SheetBaseRaw {
     this.assertConditionalFormatIndexesNotStale();
     this.conditionalFormatRules().forEach((existing, index) => {
       if (!matches(existing)) return;
-      this.writeOperations.deleteConditionalFormatRule.push({
-        kind: "deleteConditionalFormatRule",
-        sheetId: this.sheetGid,
-        index,
-      });
+      this._queueRuleDelete(index);
+    });
+  }
+  // Indexed as fetched: the flusher sends a sheet's deletes highest index first, so each is still right when sent.
+  private _queueRuleDelete(index: number): void {
+    this.writeOperations.deleteConditionalFormatRule.push({
+      kind: "deleteConditionalFormatRule",
+      sheetId: this.sheetGid,
+      index,
     });
   }
   markConditionalFormatIndexesStale(): void {

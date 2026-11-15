@@ -9,7 +9,7 @@ Ranges are the live Table data range of the structure named (sheet, column, or c
 
 Custom formulas are stored as written for the range's top-left cell and re-evaluated relative per cell. Callers compose formula text; `anchoredA1` resolves a column name to that top-left A1 so no call site hardcodes a letter.
 
-Removal is by exact range or by exact content. Overlap is not a match. The framework never deletes a rule whose range or content it was not asked to name, which is what keeps hand-drawn rules safe.
+Removal is by exact range, by exact content, or by rule handle, which sync turns into the rule's index on the read it matched the handle on. Overlap is not a match. The framework never deletes a rule whose range, content or handle it was not asked to name, which is what keeps hand-drawn rules safe.
 
 Every rule the payload holds is mapped, one for one, in order. A condition or format outside the modelled slice becomes an explicit unmodelable value that still occupies its index, so deletes by index cannot silently target a neighbour, and that keeps its raw content: the JSON of the Google rule without its ranges. Content equality against an unmodelable rule is always false; a range-scoped removal of one is allowed because the caller named the range.
 
