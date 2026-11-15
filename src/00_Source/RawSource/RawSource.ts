@@ -373,7 +373,16 @@ export interface TableColumnPropertiesUpdate {
   columnIndex: number;
   columnName: string;
   columnType?: string;
+  dataValidationRule?: TableColumnValidationRule;
 }
+
+export interface TableColumnValidationRule {
+  conditionType: string;
+  values: string[];
+}
+
+// The app's setting for a columnProperties send, which resets every dropdown's style and colours; "ask" holds or refuses it.
+export type DropdownStyleReset = "ask" | "allow";
 
 export interface AddCheckboxValidationOperation {
   kind: "addCheckboxValidation";
@@ -392,6 +401,8 @@ export interface RawWriteOperation {
 }
 
 export interface RawSource {
+  // True where no gate holds a send and the app's dropdownStyleReset is "ask".
+  readonly refusesDropdownStyleReset: boolean;
   fetchSheetProperties(
     options?: SheetPropertiesFetchOptions,
   ): SpreadsheetSnapshot;

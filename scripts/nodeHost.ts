@@ -12,6 +12,7 @@ import type {
   SheetsHttpRequest,
   SheetsHttpTransport,
 } from "../src/00_Source/GoogleSheets/GoogleSheetsAPI.ts";
+import type { DropdownStyleReset } from "../src/00_Source/RawSource/RawSource.ts";
 import type {
   Configs,
   ConfigSetBase,
@@ -296,6 +297,20 @@ export async function loadPackageEndpoints({
   return importConstNamedAfterFile<Endpoints>(
     endpointModule,
     "An endpoint module",
+  );
+}
+
+// The endpoint module's dropdownStyleReset export; "ask" when the app has no module or the module exports none.
+export async function loadDropdownStyleReset({
+  endpointModule,
+}: SheetsConfig): Promise<DropdownStyleReset> {
+  if (endpointModule === undefined) return "ask";
+  const setting = (await import(pathToFileURL(endpointModule).href))
+    .dropdownStyleReset;
+  if (setting === undefined) return "ask";
+  if (setting === "ask" || setting === "allow") return setting;
+  throw new Error(
+    `${endpointModule} exports a dropdownStyleReset of ${JSON.stringify(setting)}; it is "ask" or "allow".`,
   );
 }
 

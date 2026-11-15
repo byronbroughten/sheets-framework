@@ -1,6 +1,7 @@
 import { AppsScript } from "../00_Source/GoogleSheets/AppsScript";
 import { GoogleSheetsAPI } from "../00_Source/GoogleSheets/GoogleSheetsAPI";
 import {
+  type DropdownStyleReset,
   hasInstalledRawSource,
   installRawSource,
 } from "../00_Source/RawSource/RawSource";
@@ -12,12 +13,14 @@ export class AppsScriptApi {
     app: AppSetup,
     e: GoogleAppsScript.Events.SheetsOnEdit,
   ): void {
-    Api.handleSheetEdit(app, AppsScript.sheetEdit(e), installGoogleSheets);
+    Api.handleSheetEdit(app, AppsScript.sheetEdit(e), () =>
+      installGoogleSheets(app.dropdownStyleReset ?? "ask"),
+    );
   }
 }
 
-function installGoogleSheets(): void {
+function installGoogleSheets(dropdownStyleReset: DropdownStyleReset): void {
   if (!hasInstalledRawSource()) {
-    installRawSource(GoogleSheetsAPI.forAppsScript());
+    installRawSource(GoogleSheetsAPI.forAppsScript(dropdownStyleReset));
   }
 }

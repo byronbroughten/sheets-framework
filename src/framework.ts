@@ -1,6 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/triple-slash-reference -- ambient declarations ship with the entry, not as a module
 /// <reference path="./TypeDeclarations/google-apps-script-ext.d.ts" />
 // The framework's public runtime entry (`.`): app code imports nothing else, bar `./testing` in tests.
+export type { DropdownStyleReset } from "./00_Source/RawSource/RawSource";
 export type { Register } from "./01_SpreadsheetSchema/configReaders/configRegister";
 export {
   makeColumnConfigs,

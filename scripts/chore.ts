@@ -12,6 +12,7 @@ import { ChoreIndex } from "./choreIndex.ts";
 import { HeldFile, parseConfirmToken } from "./HeldFile.ts";
 import {
   importConstNamedAfterFile,
+  loadDropdownStyleReset,
   loadPackageConfigs,
   loadPackageEndpoints,
   startNodeHost,
@@ -144,6 +145,7 @@ export class ChoreRunner {
       enteredDataGate: {
         target: this.target,
         confirmedList: this.heldFile.confirmedList,
+        dropdownStyleReset: await loadDropdownStyleReset(this.sheetsConfig),
       },
       transport: standIn?.transport,
     });

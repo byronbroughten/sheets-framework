@@ -24,6 +24,7 @@ import {
   configFilePath,
   hasPackageConfigs,
   importExportIfPresent,
+  loadDropdownStyleReset,
   loadFrameworkConfigs,
   loadPackageConfigs,
   startNodeHost,
@@ -131,6 +132,7 @@ export class ConfigFilesGenerator {
       enteredDataGate: {
         target,
         confirmedList: this.heldFile.confirmedList,
+        dropdownStyleReset: await loadDropdownStyleReset(this.sheetsConfig),
       },
     });
     const { SyncCoordinator } =

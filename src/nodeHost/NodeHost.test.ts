@@ -8,6 +8,7 @@ import {
   type SheetsHttpRequest,
 } from "../00_Source/GoogleSheets/GoogleSheetsAPI";
 import { HeldFlushRefusal } from "../00_Source/RawSource/HeldFlushRefusal";
+import type { DropdownStyleReset } from "../00_Source/RawSource/RawSource";
 import { SheetIndex } from "../00_Source/RawSource/SheetIndex";
 import { getColumnTraitByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
 import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister";
@@ -212,13 +213,19 @@ interface GatedHostCase {
   isDryRun: boolean;
   target?: string;
   confirmedList?: HeldList;
+  dropdownStyleReset?: DropdownStyleReset;
 }
 
 interface SendCase extends Omit<GatedHostCase, "isDryRun"> {
   flushes: GoogleRequest[][];
 }
 
-function seedGatedHost({ isDryRun, target, confirmedList }: GatedHostCase) {
+function seedGatedHost({
+  isDryRun,
+  target,
+  confirmedList,
+  dropdownStyleReset = "ask",
+}: GatedHostCase) {
   const transport = gateTransport();
   const host = NodeHost.init({
     configs: installedConfigs(),
@@ -229,6 +236,7 @@ function seedGatedHost({ isDryRun, target, confirmedList }: GatedHostCase) {
     enteredDataGate: {
       target: target ?? gateTarget,
       confirmedList,
+      dropdownStyleReset,
       hash: (input) => `hash(${input})`,
     },
   });
@@ -285,6 +293,31 @@ const appendRows: GoogleRequest = {
   appendDimension: { sheetId: payments.gid, dimension: "ROWS", length: 5 },
 };
 
+// The full list Raw sends to type Amount, ID resent as the dropdown it is.
+const setPaymentsAmountType: GoogleRequest = {
+  updateTable: {
+    table: {
+      tableId: "tbl-pay",
+      columnProperties: [
+        { columnIndex: 0, columnName: "Name" },
+        {
+          columnIndex: 1,
+          columnName: "ID",
+          columnType: "DROPDOWN",
+          dataValidationRule: {
+            condition: {
+              type: "ONE_OF_LIST",
+              values: [{ userEnteredValue: "pay-0001" }],
+            },
+          },
+        },
+        { columnIndex: 2, columnName: "Amount", columnType: "CURRENCY" },
+      ],
+    },
+    fields: "columnProperties",
+  },
+};
+
 const replaceRent: GoogleRequest = {
   findReplace: { find: "Rent", replacement: "Lease", allSheets: true },
 };
@@ -307,11 +340,17 @@ function dryRunHeldList(flushes: GoogleRequest[][], target?: string): HeldList {
   return Val.assert(host.heldList, "heldList");
 }
 
-function sendFlushes({ flushes, confirmedList, target }: SendCase) {
+function sendFlushes({
+  flushes,
+  confirmedList,
+  target,
+  dropdownStyleReset,
+}: SendCase) {
   const { host, api, transport } = seedGatedHost({
     isDryRun: false,
     target,
     confirmedList,
+    dropdownStyleReset,
   });
   readPayments(api);
   let refusal: unknown;
@@ -447,6 +486,31 @@ describe("NodeHost with an entered-data gate", () => {
       flushCount: undefined,
     });
     expect(posts).toEqual([]);
+  });
+
+  it('holds a column-type send that resends a dropdown under dropdownStyleReset: "ask", sending nothing', () => {
+    const { refusal, posts } = sendFlushes({
+      flushes: [[setPaymentsAmountType]],
+    });
+
+    expect(refusal).toBeInstanceOf(HeldFlushRefusal);
+    expect(posts).toEqual([]);
+  });
+
+  it('lists that send as a dropdown reset on a dry run under dropdownStyleReset: "ask"', () => {
+    expect(heldKinds(dryRunHeldList([[setPaymentsAmountType]]))).toEqual([
+      ["dropdownReset"],
+    ]);
+  });
+
+  it('sends that column-type send under dropdownStyleReset: "allow"', () => {
+    const { refusal, posts } = sendFlushes({
+      flushes: [[setPaymentsAmountType]],
+      dropdownStyleReset: "allow",
+    });
+
+    expect(refusal).toBeUndefined();
+    expect(posts).toHaveLength(1);
   });
 
   it("sends a held flush the dry run's token and list cover", () => {

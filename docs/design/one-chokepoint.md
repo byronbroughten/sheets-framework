@@ -8,4 +8,4 @@ Every Sheets read goes through `fetchAllGathered` and every write through `_send
 
 ## Corollaries
 
-The chokepoint is also where shared state bites. One `spreadsheetStateRaw` threaded by reference means a flush commits everything queued anywhere in the run — which is why a failure path must discard before it writes status, or the `finally` ships a half-finished run alongside its own error report.
+The chokepoint is also where shared state bites. One `spreadsheetStateRaw` threaded by reference means a flush commits everything queued anywhere in the run — which is why a failure path must discard before it writes status, or its flush ships a half-finished run alongside its own error report.

@@ -2,6 +2,7 @@ import { Val } from "@byronbroughten/utils/val";
 
 import { PartialTableRefusal } from "../RawSource/PartialTableRefusal";
 import type {
+  DropdownStyleReset,
   GridFetchOptions,
   GridFetchRange,
   LocalWriteOperation,
@@ -23,6 +24,8 @@ import { googleGrid } from "./GoogleSheetsAPI/gridSnapshots";
 import { googleProtectedRange } from "./GoogleSheetsAPI/protectedRanges";
 
 export type GoogleRequest = GoogleAppsScript.Sheets.Schema.Request;
+type GoogleColumnProperties =
+  GoogleAppsScript.Sheets.Schema.TableColumnProperties;
 
 export function googleRawRequest(request: GoogleRequest): OpaqueRawRequest {
   return request as unknown as OpaqueRawRequest;
@@ -143,6 +146,7 @@ export interface GoogleSheetsAPIProps {
   sheets: SheetsAdvancedTransport;
   spreadsheetId: string;
   host: keyof typeof gridMasksByHost;
+  refusesDropdownStyleReset: boolean;
 }
 
 export interface SheetsHttpRequest {
@@ -198,27 +202,35 @@ export class GoogleSheetsAPI implements RawSource {
   private sheets: SheetsAdvancedTransport;
   private spreadsheetId: string;
   private gridMasks: GridMasks;
-  constructor({ sheets, spreadsheetId, host }: GoogleSheetsAPIProps) {
-    this.sheets = sheets;
-    this.spreadsheetId = spreadsheetId;
-    this.gridMasks = gridMasksByHost[host];
+  readonly refusesDropdownStyleReset: boolean;
+  constructor(props: GoogleSheetsAPIProps) {
+    this.sheets = props.sheets;
+    this.spreadsheetId = props.spreadsheetId;
+    this.gridMasks = gridMasksByHost[props.host];
+    this.refusesDropdownStyleReset = props.refusesDropdownStyleReset;
   }
   static init(props: GoogleSheetsAPIProps): GoogleSheetsAPI {
     return new GoogleSheetsAPI(props);
   }
-  static forAppsScript(): GoogleSheetsAPI {
+  // No gate holds a send here, so "ask" refuses one.
+  static forAppsScript(
+    dropdownStyleReset: DropdownStyleReset,
+  ): GoogleSheetsAPI {
     const spreadsheetId = AppsScript.boundSpreadsheetId();
     return GoogleSheetsAPI.init({
       sheets: Val.assert(Sheets, "Sheets (enable the Advanced Sheets Service)"),
       spreadsheetId,
       host: "appsScript",
+      refusesDropdownStyleReset: dropdownStyleReset === "ask",
     });
   }
+  // The Node host's gate judges a dropdown reset against the setting, so nothing is refused here.
   static initHttp(props: GoogleSheetsAPIHttpProps): GoogleSheetsAPI {
     return GoogleSheetsAPI.init({
       sheets: httpSheetsTransport(props),
       spreadsheetId: props.spreadsheetId,
       host: "nodeHost",
+      refusesDropdownStyleReset: false,
     });
   }
   fetchSheetProperties(
@@ -643,8 +655,30 @@ function columnPropertiesRequest(
 ): ModeledRequest {
   return {
     updateTable: {
-      table: { tableId, columnProperties },
+      table: {
+        tableId,
+        columnProperties: columnProperties.map(toGoogleColumnProperties),
+      },
       fields: "columnProperties",
+    },
+  };
+}
+
+function toGoogleColumnProperties({
+  dataValidationRule,
+  ...column
+}: TableColumnPropertiesUpdate): GoogleColumnProperties {
+  if (dataValidationRule === undefined) return column;
+  const { conditionType, values } = dataValidationRule;
+  return {
+    ...column,
+    dataValidationRule: {
+      condition: {
+        type: conditionType,
+        ...(values.length > 0
+          ? { values: values.map((userEnteredValue) => ({ userEnteredValue })) }
+          : {}),
+      },
     },
   };
 }
