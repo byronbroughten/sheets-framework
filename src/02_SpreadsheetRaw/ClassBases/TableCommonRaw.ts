@@ -248,6 +248,18 @@ export abstract class TableCommonRaw extends TableBaseRaw {
     if (properties === undefined) return range;
     return { ...range, endRowIndex: properties.endRowIndex };
   }
+  // A column's body rows in A1 on its tab, as a reference to them reads.
+  columnBodyA1(colIndex: number): string {
+    const origin = this.tableOrigin();
+    const bodyRows = this.schema.gridRangeA1({
+      sheetId: this.sheetGid,
+      startRowIndex: origin.sheetRowIndex(this.schema.tableHeaderRowIndex + 1),
+      endRowIndex: this.endRowIndex,
+      startColumnIndex: origin.sheetColIndex(colIndex),
+      endColumnIndex: origin.sheetColIndex(colIndex + 1),
+    });
+    return `${this.sheetTitle}!${bodyRows}`;
+  }
   queueTableWrite(props: TableWriteProps): this {
     const writes = this.writes;
     switch (props.action) {
