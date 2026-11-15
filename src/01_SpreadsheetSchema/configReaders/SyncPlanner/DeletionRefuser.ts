@@ -146,9 +146,9 @@ export class DeletionRefuser {
   }
   // A Table or column deletion touches only its tab, whose deletion already takes the Table.
   private _takenTableTouches(table: string, touchedBy: string): Touch[] {
-    const tab = this.tabsByTable[table];
-    if (tab === undefined) return [];
-    return [{ targets: [tabTarget(tab)], touchedBy, takenTable: table }];
+    const targets = this._tabTargets(table);
+    if (targets.length === 0) return [];
+    return [{ targets, touchedBy, takenTable: table }];
   }
   private _placedColumnTouches(
     table: string,
@@ -226,8 +226,11 @@ export class DeletionRefuser {
     return [columnTarget(table, column), ...this._tableTargets(table)];
   }
   private _tableTargets(table: string): string[] {
+    return [tableTarget(table), ...this._tabTargets(table)];
+  }
+  private _tabTargets(table: string): string[] {
     const tab = this.tabsByTable[table];
-    return [tableTarget(table), ...(tab === undefined ? [] : [tabTarget(tab)])];
+    return tab === undefined ? [] : [tabTarget(tab)];
   }
 }
 

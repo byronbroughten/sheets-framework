@@ -8,7 +8,15 @@ import {
   buildGridRows,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
-import { runItem, seedFixture } from "./syncCoordinatorTestSupport";
+import { SyncCoordinator } from "./SyncCoordinator";
+import {
+  frame,
+  itemGid,
+  previousItemMap,
+  retiredPrefixesOf,
+  runItem,
+  seedFixture,
+} from "./syncCoordinatorTestSupport";
 
 beforeEach(() => {
   stubLogger();
@@ -73,11 +81,6 @@ describe("SyncCoordinator.run tab deletion", () => {
       });
     }
 
-    function retiredPrefixesOf(source: string): unknown {
-      const match = source.match(/makeRetiredIdPrefixes\((.*)\);/);
-      return JSON.parse(Val.assert(match?.[1], "emitted retired prefixes"));
-    }
-
     it("drops the tab and its Tables from the configs with no conflict, retiring their prefixes and naming the tab beside its Tables", () => {
       seedWithItemTabGone();
 
@@ -86,7 +89,7 @@ describe("SyncCoordinator.run tab deletion", () => {
       const emitted = Val.assert(files, "emitted files");
       expect(emitted.tabConfigs).not.toContain('"item"');
       expect(emitted.tableConfigs).not.toContain('"item"');
-      expect(retiredPrefixesOf(emitted.retiredIdPrefixes)).toContain(
+      expect(retiredPrefixesOf(emitted)).toContain(
         getTableTraitByName("item", "idPrefix"),
       );
       expect(result).toMatchObject({
@@ -97,6 +100,33 @@ describe("SyncCoordinator.run tab deletion", () => {
           { kind: "tableGone", table: "item" },
         ],
       });
+    });
+
+    it("names each gone tab directly before its own Tables' lines", () => {
+      seedWithItemTabGone();
+      const previous = previousItemMap();
+      // GID keys list in numeric order, so this tab's notice comes after Item's.
+      const logGid = itemGid + 1;
+
+      const { result } = SyncCoordinator.init().run({
+        isSending: true,
+        intendedState: { alterations: {} },
+        previousIdNameMap: {
+          tables: previous.tables,
+          tabs: {
+            ...previous.tabs,
+            [String(logGid)]: { name: "log", title: "Log", tableIds: [] },
+          },
+        },
+        forcedTraits: [],
+        frame,
+      });
+
+      expect(result.notices).toEqual([
+        { kind: "tabGone", tab: "item" },
+        { kind: "tableGone", table: "item" },
+        { kind: "tabGone", tab: "log" },
+      ]);
     });
   });
 });
