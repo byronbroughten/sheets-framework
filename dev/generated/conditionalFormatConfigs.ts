@@ -1,11 +1,7 @@
 import { makeConditionalFormatConfigs } from "@byronbroughten/sheets-framework";
 
 export const conditionalFormatConfigs = makeConditionalFormatConfigs({
-  "tables": {
-    "item": {
-      "D5:D7 | unmodelable {\"gradientRule\":{\"minpoint\":{\"color\":{\"red\":1,\"green\":1,\"blue\":1},\"type\":\"MIN\",\"colorStyle\":{\"rgbColor\":{\"red\":1,\"green\":1,\"blue\":1}}},\"maxpoint\":{\"color\":{\"red\":0.34117648,\"green\":0.73333335,\"blue\":0.5411765},\"type\":\"MAX\",\"colorStyle\":{\"rgbColor\":{\"red\":0.34117648,\"green\":0.73333335,\"blue\":0.5411765}}}}}": { "kind": "unmodelable", "tableId": "item", "ranges": ["D5:D7"], "rawContent": "{\"gradientRule\":{\"minpoint\":{\"color\":{\"red\":1,\"green\":1,\"blue\":1},\"type\":\"MIN\",\"colorStyle\":{\"rgbColor\":{\"red\":1,\"green\":1,\"blue\":1}}},\"maxpoint\":{\"color\":{\"red\":0.34117648,\"green\":0.73333335,\"blue\":0.5411765},\"type\":\"MAX\",\"colorStyle\":{\"rgbColor\":{\"red\":0.34117648,\"green\":0.73333335,\"blue\":0.5411765}}}}}" }
-    }
-  },
+  "tables": {},
   "tabs": {
     "scratch217A": {
       "C5:C7 | NUMBER_GREATER 2 | background #ffcccc": { "kind": "boolean", "sheetGid": 217001, "ranges": ["C5:C7"], "condition": {"type":"NUMBER_GREATER","value":2}, "format": {"backgroundColor":"#ffcccc"} },
