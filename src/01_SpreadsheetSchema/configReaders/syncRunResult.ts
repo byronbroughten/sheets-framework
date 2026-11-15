@@ -173,6 +173,8 @@ export type SyncRefusal =
       deleted: SyncSubject;
       deletedAt: string;
       touchedBy: string;
+      // Set when touchedBy deletes this Table or one of its columns, which the tab's deletion already takes.
+      takenTable?: string;
     };
 
 export interface ForcedTrait {
@@ -185,7 +187,10 @@ export type SyncStop = SyncConflict | SyncSheetStop;
 
 // A stop found reading the sheet, outside the three-way comparison.
 export type SyncSheetStop =
-  SyncHeadRowsStop | SyncHeaderTakenStop | SyncNoSuchRuleStop;
+  | SyncHeadRowsStop
+  | SyncHeaderTakenStop
+  | SyncNoSuchRuleStop
+  | SyncUnmodelableRuleStop;
 
 export interface SyncConflict {
   kind: "conflict";
@@ -215,12 +220,20 @@ export interface SyncHeaderTakenStop {
   columnId: string;
 }
 
-// A `conditionalFormats.remove` handle no rule on the Table has on this run's read; `handles` are the Table's rules' now.
+// A `conditionalFormats.remove` or `replace` handle no rule on the Table has on this run's read; `handles` are the Table's rules' now.
 export interface SyncNoSuchRuleStop {
   kind: "noSuchRule";
   table: string;
   path: string;
   handles: string[];
+}
+
+// A `conditionalFormats.replace` handle naming a rule the configs record as unmodelable, which sync can only remove.
+export interface SyncUnmodelableRuleStop {
+  kind: "unmodelableRule";
+  table: string;
+  path: string;
+  handle: string;
 }
 
 export interface SyncHeld {
@@ -263,9 +276,21 @@ export type SyncPlanEffect =
 
 export type SyncNotice =
   | { kind: "idFirst"; table: string }
-  // A Table the previous configs hold that a person deleted from the sheet.
-  | { kind: "tableGone"; table: string }
+  | SyncTableGoneNotice
+  | SyncTabGoneNotice
   | { kind: "text"; text: string };
+
+// A Table the previous configs hold that a person deleted from the sheet.
+export interface SyncTableGoneNotice {
+  kind: "tableGone";
+  table: string;
+}
+
+// A tab the previous ID-name map holds that a person deleted from the sheet.
+export interface SyncTabGoneNotice {
+  kind: "tabGone";
+  tab: string;
+}
 
 // The framework endpoint's name, in every plan, summary and notice line that cites it.
 export const fillRowIdsName = "Fill Row IDs";

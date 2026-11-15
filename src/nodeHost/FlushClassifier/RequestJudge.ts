@@ -11,7 +11,7 @@ import type {
 } from "./flushClassifierTypes";
 import type { FlushTracker } from "./FlushTracker";
 import { Grid } from "./Grid";
-import type { RunReads } from "./RunReads";
+import type { ReadValue, RunReads } from "./RunReads";
 
 type GoogleTable = GoogleAppsScript.Sheets.Schema.Table;
 
@@ -77,7 +77,21 @@ export class RequestJudge {
     return this;
   }
   delete(cells: GridCell[]): this {
-    cells.forEach((cell) => this._judge(cell, { kind: "deleted" }));
+    for (const cell of cells) {
+      this._judge(cell, deletedAfter);
+    }
+    return this;
+  }
+  // Every held cell on the tab, which only a read of its whole used grid can show.
+  deleteSheet(sheetGid: number): this {
+    if (!this.reads.hasUsedGrid(sheetGid)) {
+      return this.holdUnmeasured(
+        `tab gid ${sheetGid}, deleted with every Table on it`,
+      );
+    }
+    for (const cell of this.cellsIn({ sheetId: sheetGid })) {
+      this._judgeTabCell(cell);
+    }
     return this;
   }
   // Every cell of the read range, header included, since deleteTable blanks it all.
@@ -130,17 +144,47 @@ export class RequestJudge {
     return this;
   }
   private _judge(cell: GridCell, after: CellAfter): void {
+    const origin = this._readOrigin(cell);
+    if (origin === undefined) return;
+    const read = this.reads.cellAt(origin);
+    if (read.kind === "outsideTables") return;
+    this._holdEnteredData({ origin, read, after });
+  }
+  // A Table's body cell is judged as deleteTable judges it, even inside another Table's head rows; any other non-blank cell, a formula included, is held.
+  private _judgeTabCell(cell: GridCell): void {
+    const origin = this._readOrigin(cell);
+    if (origin === undefined) return;
+    const read = this.reads.cellAt(origin);
+    if (read.kind !== "outsideTables") {
+      this._holdEnteredData({ origin, read, after: deletedAfter });
+      return;
+    }
+    if (this.reads.isInHeadRows(origin)) return;
+    const value = this.reads.valueAt(origin);
+    this._holdChange({ origin, read: value, after: deletedAfter });
+  }
+  // The read cell a cell holds; undefined when the flush made it, or a sort hid which.
+  private _readOrigin(cell: GridCell): GridCell | undefined {
     const origin = this.tracker.resolve(cell);
-    if (origin.kind === "created" || origin.kind === "written") return;
+    if (origin.kind === "created" || origin.kind === "written") {
+      return undefined;
+    }
     if (origin.kind === "reordered") {
       this.holdUnmeasured(
         `row ${cell.rowIndex + 1}, column ${cell.colIndex + 1} on gid ${cell.sheetGid}, which a sort earlier in this flush reordered`,
       );
-      return;
+      return undefined;
     }
-    const read = this.reads.cellAt(origin.cell);
-    if (read.kind === "outsideTables") return;
-    const heldCell = this.reads.heldCell(origin.cell);
+    return origin.cell;
+  }
+  // A formula in a Table's body isn't entered data.
+  private _holdEnteredData(judged: JudgedCell): void {
+    const { read } = judged;
+    if (read.kind === "read" && read.value?.formulaValue !== undefined) return;
+    this._holdChange(judged);
+  }
+  private _holdChange({ origin, read, after }: JudgedCell): void {
+    const heldCell = this.reads.heldCell(origin);
     if (read.kind === "unread") {
       this.held.push({
         kind: "unreadCell",
@@ -151,7 +195,7 @@ export class RequestJudge {
       return;
     }
     const before = read.value;
-    if (before === undefined || before.formulaValue !== undefined) return;
+    if (before === undefined) return;
     if (after.kind === "value" && ExtVal.isEqual(after.value, before)) {
       return;
     }
@@ -165,7 +209,14 @@ export class RequestJudge {
   }
 }
 
+interface JudgedCell {
+  origin: GridCell;
+  read: ReadValue;
+  after: CellAfter;
+}
+
 const notReadAfter: CellAfter = { kind: "unknown", label: "(not read)" };
+const deletedAfter: CellAfter = { kind: "deleted" };
 
 function hasDropdown(table: GoogleTable): boolean {
   return (table.columnProperties ?? []).some(

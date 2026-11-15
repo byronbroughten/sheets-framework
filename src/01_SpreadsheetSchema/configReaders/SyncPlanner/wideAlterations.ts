@@ -3,7 +3,16 @@ import type { ColumnTypeBaseline } from "../../columnBaseline";
 // `PendingAlterations` keyed by whatever the map holds, widened since the planner reads every entry alike.
 export interface WideRule {
   columns: string[] | "all";
-  condition: { values?: string[] };
+  condition: { type: string; values?: string[] };
+  format: WideRuleFormat;
+}
+
+export interface WideRuleFormat {
+  backgroundColor?: string;
+  foregroundColor?: string;
+  bold?: boolean;
+  italic?: boolean;
+  strikethrough?: boolean;
 }
 
 export interface WideColumnEntry {

@@ -6,6 +6,7 @@ import {
   entriesOf,
   type WideAlterations,
   type WideColumnEntry,
+  type WideRule,
   type WideTableEntry,
 } from "./SyncPlanner/wideAlterations";
 import type { SyncRefusal } from "./syncRunResult";
@@ -25,6 +26,7 @@ export const sendableTraits = {
     "letApiAccess",
     "newColumns",
     "conditionalFormats.remove",
+    "conditionalFormats.replace",
   ]),
   column: new Set<string>([...sheetTraits.column, "emptyValueAllowed"]),
   // A new column's own traits: a formula or column type would need a write after the insert.
@@ -173,9 +175,38 @@ function tableTraitRefusals(
   table: string,
   entry: WideTableEntry,
 ): SyncRefusal[] {
-  return [...traitPaths(entry), ...newColumnTraitPaths(entry)]
-    .filter(({ level, trait }) => !sendableTraits[level].has(trait))
-    .map(({ path }) => notSendableYet(table, path));
+  return [
+    ...[...traitPaths(entry), ...newColumnTraitPaths(entry)]
+      .filter(({ level, trait }) => !sendableTraits[level].has(trait))
+      .map(({ path }) => notSendableYet(table, path)),
+    ...ruleTextFormatPaths(entry).map((path) => notSendableYet(table, path)),
+  ];
+}
+
+// The Source's ConditionalFormat holds only the two colours, so a text style has nowhere to go yet.
+const ruleTextFormatTraits = ["bold", "italic", "strikethrough"] as const;
+
+function ruleTextFormatPaths({ conditionalFormats }: WideTableEntry): string[] {
+  const rules: [string, WideRule][] = [
+    ...(conditionalFormats?.add ?? []).map(
+      (rule, index): [string, WideRule] => [
+        `conditionalFormats.add[${index}]`,
+        rule,
+      ],
+    ),
+    ...entriesOf(conditionalFormats?.replace).map(
+      ([handle, rule]): [string, WideRule] => [
+        `conditionalFormats.replace["${handle}"]`,
+        rule,
+      ],
+    ),
+  ];
+  return rules.flatMap(([rulePath, { format }]) =>
+    ruleTextFormatTraits.flatMap((trait) => {
+      if (format[trait] === undefined) return [];
+      return [`${rulePath}.format.${trait}`];
+    }),
+  );
 }
 
 function newColumnTraitPaths({ newColumns }: WideTableEntry): TraitPath[] {

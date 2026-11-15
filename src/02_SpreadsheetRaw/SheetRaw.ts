@@ -246,6 +246,13 @@ export class SheetRaw extends SheetBaseRaw {
     this.conditionalFormats.updateConditionalFormatRule(index, rule);
     return this;
   }
+  updateConditionalFormatRuleReindexed(
+    index: number,
+    rule: ModelableConditionalFormatRule,
+  ): this {
+    this.conditionalFormats.updateConditionalFormatRuleReindexed(index, rule);
+    return this;
+  }
   removeConditionalFormatRulesAt(range: GridRangeProps): this {
     this.conditionalFormats.removeConditionalFormatRulesAt(range);
     return this;

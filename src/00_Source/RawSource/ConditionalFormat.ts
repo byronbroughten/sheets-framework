@@ -48,6 +48,21 @@ export interface UnmodelableConditionalFormatRule {
   rawContent: string;
 }
 
+// A comparison condition's value as Sheets' userEnteredValue text holds it.
+export const conditionLiteral = {
+  fromCellValue(value: CellValue): string {
+    if (value === true) return "TRUE";
+    if (value === false) return "FALSE";
+    return String(value);
+  },
+  toCellValue(text: string): CellValue {
+    if (text === "TRUE") return true;
+    if (text === "FALSE") return false;
+    if (text !== "" && Number(text).toString() === text) return Number(text);
+    return text;
+  },
+};
+
 export function isModelledConditionType(
   type: string,
 ): type is ModelledConditionType {

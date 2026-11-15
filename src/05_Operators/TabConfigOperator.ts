@@ -2,6 +2,7 @@ import { Val } from "@byronbroughten/utils/val";
 
 import type { SheetTabProperties } from "../00_Source/RawSource/RawSource";
 import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister";
+import type { IdNameMapGeneric } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
 import {
   makeImportLine,
   type TabConfigsBase,
@@ -11,6 +12,7 @@ import type {
   IntendedTrait,
   TraitReadings,
 } from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
+import type { SyncTabGoneNotice } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
 import type { SheetRaw } from "../02_SpreadsheetRaw/SheetRaw";
 import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
 import { oneLinePerEntryFileSource } from "./configFileSource";
@@ -94,6 +96,14 @@ export class TabConfigOperator extends SpreadsheetBaseOperator {
       }
     }
     return this;
+  }
+  // Read before any send, so a tab this run deletes is still live and only a person's deletion shows.
+  goneTabNotices({ tabs }: IdNameMapGeneric): SyncTabGoneNotice[] {
+    const liveGids = new Set(this.ss.raw.activeSheetGids.map(String));
+    return Object.entries(tabs).flatMap(
+      ([sheetGid, { name }]): SyncTabGoneNotice[] =>
+        liveGids.has(sheetGid) ? [] : [{ kind: "tabGone", tab: name }],
+    );
   }
   private _sheetsByTabName(): Map<string, SheetRaw> {
     const { raw } = this.ss;
