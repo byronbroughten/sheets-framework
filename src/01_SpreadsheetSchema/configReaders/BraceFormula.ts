@@ -243,7 +243,34 @@ export const BraceFormula = {
       },
     };
   },
+  // The inverse of decompileColumnType, for the names on the sheet when the rule lands.
+  compileColumnType({
+    configs,
+    tableKey,
+    columnType,
+  }: ColumnTypeCompileProps): ColumnTypeBaseline {
+    const { rule } = columnType;
+    if (rule === null) return columnType;
+    return {
+      ...columnType,
+      rule: {
+        ...rule,
+        values: rule.values.map((value) => {
+          if (!value.startsWith("=")) return value;
+          return BraceFormula.compileForCell({
+            configs,
+            tableKey,
+            formula: value,
+          });
+        }),
+      },
+    };
+  },
 };
+
+interface ColumnTypeCompileProps extends Omit<ColumnTypeProps, "columnType"> {
+  columnType: ColumnTypeBaseline;
+}
 
 export interface ColumnTypeProps {
   configs: BraceConfigs;

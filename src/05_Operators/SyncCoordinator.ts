@@ -3,6 +3,10 @@ import { Val } from "@byronbroughten/utils/val";
 import { HeldFlushRefusal } from "../00_Source/RawSource/HeldFlushRefusal";
 import { PartialTableRefusal } from "../00_Source/RawSource/PartialTableRefusal";
 import {
+  defaultDropdownStyleReset,
+  type DropdownStyleReset,
+} from "../00_Source/RawSource/RawSource";
+import {
   type ApiAccessChanges,
   apiAccessChanges,
   withApiAccessReadings,
@@ -106,6 +110,8 @@ export interface SyncRunProps {
   forcedTraits: ForcedTrait[];
   // Set by the Node half, whose host withholds a dry run's flushes, so an unstopped dry run flushes for the gate to judge.
   isHostWithholding?: boolean;
+  // The app's setting, which a column type's plan item names; unset is the default.
+  dropdownStyleReset?: DropdownStyleReset;
 }
 
 interface Regeneration {
@@ -211,6 +217,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       alterations,
       tabsByTable: tabsByTable(props.previousIdNameMap),
       forcedTraits: props.forcedTraits,
+      dropdownStyleReset: props.dropdownStyleReset ?? defaultDropdownStyleReset,
     });
     const refusals = [
       ...SyncEntryRefuser.init({
@@ -471,6 +478,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       .addMissingColumnIds()
       .appendColumns(newColumns)
       .updateHeaders(sentTraits)
+      .updateColumnTypes(sentTraits)
       .updateFormulas(sentTraits);
     this.tableConfigOperator
       .updateTableNames(sentTraits)

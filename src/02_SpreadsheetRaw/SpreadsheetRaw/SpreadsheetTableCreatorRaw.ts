@@ -1,15 +1,14 @@
 import type { CellValue } from "../../00_Source/CellValues/cellValues";
-import type { TableColumnPropertiesAdd } from "../../00_Source/RawSource/RawSource";
 import {
   type SheetColIndex,
   SheetIndex,
   type SheetRowIndex,
 } from "../../00_Source/RawSource/SheetIndex";
-import type { ColumnTypeBaseline } from "../../01_SpreadsheetSchema/columnBaseline";
 import { dimensionIds } from "../../01_SpreadsheetSchema/dimensionIds";
 import { idPrefixes } from "../../01_SpreadsheetSchema/idPrefixes";
 import { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin";
 import { SpreadsheetBaseRaw } from "../ClassBases/SpreadsheetBaseRaw";
+import { columnTypeProperties } from "../ClassBases/TableBaseRaw";
 import type {
   CreatedTable,
   CreatedTablePlacement,
@@ -58,7 +57,7 @@ export class SpreadsheetTableCreatorRaw extends SpreadsheetBaseRaw {
       columnProperties: columns.map(({ header, columnType }, columnIndex) => ({
         columnIndex,
         columnName: header,
-        ...columnTypeProperties(columnType),
+        ...(columnType === undefined ? {} : columnTypeProperties(columnType)),
       })),
     });
     this._fillCells(placement.sheetGid, origin, [
@@ -190,16 +189,5 @@ function tableEnd(
   return {
     endRowIndex: origin.sheetRowIndex(bodyRowCount),
     endColumnIndex: origin.sheetColIndex(columnCount),
-  };
-}
-
-function columnTypeProperties(
-  columnType: ColumnTypeBaseline | undefined,
-): Pick<TableColumnPropertiesAdd, "columnType" | "dataValidationRule"> {
-  if (columnType === undefined) return {};
-  const { type, rule } = columnType;
-  return {
-    ...(type === null ? {} : { columnType: type }),
-    ...(rule === null ? {} : { dataValidationRule: rule }),
   };
 }

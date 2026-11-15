@@ -36,13 +36,19 @@ import { type HeadRole, headRows } from "../01_SpreadsheetSchema/headRows";
 import type { TableOrigin } from "../01_SpreadsheetSchema/TableOrigin";
 import { assertValueAndFormulaExclusive } from "./CellRaw";
 import type { RowCommonRaw } from "./ClassBases/RowCommonRaw";
-import { hasQueuedWrites, originOf } from "./ClassBases/TableBaseRaw";
+import {
+  columnTypeProperties,
+  hasQueuedWrites,
+  originOf,
+  queuedTypeOf,
+} from "./ClassBases/TableBaseRaw";
 import { columnCountChange, TableCommonRaw } from "./ClassBases/TableCommonRaw";
 import {
   type ChangeTableColumns,
   type ColumnFill,
   type ColumnMoveSpan,
   type NewColumnHeadCells,
+  type QueuedColumnType,
   type SortParameters,
   type TableCell,
   type TableColumnChange,
@@ -958,7 +964,7 @@ export class TableRaw extends TableCommonRaw {
       );
     }
     this.writes.columnTypes.forEach((columnType, colIndex) =>
-      columnTypes.set(colIndex, columnType),
+      columnTypes.set(colIndex, queuedTypeOf(columnType)),
     );
     return columnTypes;
   }
@@ -967,7 +973,10 @@ export class TableRaw extends TableCommonRaw {
     if (this.writes.columnTypes.size === 0) return;
     if (!this.spreadsheetStateRaw.rawSource.refusesDropdownStyleReset) return;
     const dropdowns = this.columnProperties.filter(
-      (column) => validationRuleOf(column) !== undefined,
+      (column) =>
+        validationRuleOf(column) !== undefined ||
+        queuedRuleOf(this.writes.columnTypes.get(column.columnIndex)) !==
+          undefined,
     );
     if (dropdowns.length === 0) return;
     throw new Error(
@@ -1023,7 +1032,15 @@ export class TableRaw extends TableCommonRaw {
           `${this._tableLabel()} ${tableColumnLabel(columnIndex)} has no columnName; refusing to replace column properties.`,
         );
       }
-      const columnType = columnTypes.get(columnIndex) ?? column.columnType;
+      const queued = columnTypes.get(columnIndex);
+      if (queued !== undefined && typeof queued !== "string") {
+        return {
+          columnIndex,
+          columnName: column.columnName,
+          ...columnTypeProperties(queued),
+        };
+      }
+      const columnType = queued ?? column.columnType;
       const dataValidationRule = validationRuleOf(column);
       return {
         columnIndex,
@@ -1268,6 +1285,13 @@ function validationRuleOf(
     condition: dataValidationConditionType,
     values: dataValidationValues,
   };
+}
+
+function queuedRuleOf(
+  queued: QueuedColumnType | undefined,
+): TableColumnValidationRule | undefined {
+  if (queued === undefined || typeof queued === "string") return undefined;
+  return queued.rule ?? undefined;
 }
 
 function columnLabel(column: TableColumnSnapshot): string {

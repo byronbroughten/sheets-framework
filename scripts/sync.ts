@@ -24,6 +24,7 @@ import {
   configFilePath,
   hasPackageConfigs,
   importExportIfPresent,
+  loadDropdownStyleReset,
   loadFrameworkConfigs,
   loadPackageConfigs,
   startNodeHost,
@@ -147,6 +148,7 @@ export class ConfigFilesGenerator {
         alterationsPath: this.path.alterations,
       },
       isHostWithholding: true,
+      dropdownStyleReset: await loadDropdownStyleReset(this.sheetsConfig),
     });
     const { heldList } = host;
     if (heldList === undefined) return run;

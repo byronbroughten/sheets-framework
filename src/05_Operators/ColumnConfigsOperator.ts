@@ -340,6 +340,31 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
     }
     return this;
   }
+  // Each with its own rule, so a dropdown's values change in the same send as its type.
+  updateColumnTypes(sent: IntendedTrait[]): this {
+    const configs = namesAtColumnFill(sent);
+    for (const { tableId, columnId, tableKey, value } of this._sentColumnTraits(
+      sent,
+      "columnType",
+    )) {
+      if (typeof value !== "object") {
+        throw new Error(
+          `The columnType sent to ${tableKey} column ${columnId} isn't a type and rule.`,
+        );
+      }
+      const table = this.ss.raw.table(tableId);
+      table
+        .column(table.columnResolver.colIndexOf(columnId))
+        .updateColumnTypeAndRule(
+          BraceFormula.compileColumnType({
+            configs,
+            tableKey,
+            columnType: value,
+          }),
+        );
+    }
+    return this;
+  }
   // Matched by the name the regen would give the header, since two headers giving one name can't both be configured.
   headerTakenStops(newColumns: PlannedNewColumn[]): SyncHeaderTakenStop[] {
     const identities = this._namedColumnIdentities();
@@ -549,7 +574,7 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
   }
   private _sentColumnTraits(
     sent: IntendedTrait[],
-    trait: "header" | "formula" | "deleted" | "before",
+    trait: "header" | "columnType" | "formula" | "deleted" | "before",
   ): SentColumnTrait[] {
     const identities = this._namedColumnIdentities();
     return sent.flatMap((intended) => {
@@ -823,7 +848,7 @@ function bracedFormula({
   return BraceFormula.decompile({ configs, tableKey, formula });
 }
 
-// The names on the sheet when a column fill lands: Table renames go out before column fills and header writes after (docs/architecture/flush-order.md).
+// The names on the sheet when a column fill or column-property set lands: Table renames go out before both and header writes after (docs/architecture/flush-order.md).
 function namesAtColumnFill(sent: IntendedTrait[]): BraceConfigs {
   const { tableConfigs, columnConfigs } = installedBraceConfigs();
   const renamed = sent.reduce<BraceConfigs["tableConfigs"]>(

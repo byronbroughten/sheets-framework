@@ -140,7 +140,7 @@ describe("SyncRunReport, case A: both changed", () => {
 
   it("indents the dropdown reset under its send", () => {
     expect(text).toContain(
-      ' 1. occPayment: set amount\'s type to CURRENCY (resends all 15 columns).\n    Resets the style and colours of 4 dropdowns: payerCategory, nonOccupantPayerId, formOfPayment, paymentStatus (dropdownStyleReset: "allow").',
+      " 1. occPayment: set amount's type to CURRENCY (resends all 15 columns).\n    Resets the style and colours of 4 dropdowns: payerCategory, nonOccupantPayerId, formOfPayment, paymentStatus (dropdownStyleReset: \"allow\"). This is a quirk of Google's API: setting any column's type resends the Table's column list, which resets every dropdown on it.",
     );
   });
 
@@ -283,7 +283,7 @@ describe("SyncRunReport, case C: a dropdown reset under ask, a rule added first,
       [
         "== Plan: what --send sends, in order ==",
         " 1. item: set weight's type to NUMBER (resends all 9 columns).",
-        '    Resets the style and colours of 2 dropdowns: status, category (dropdownStyleReset: "ask", so held, above).',
+        "    Resets the style and colours of 2 dropdowns: status, category (dropdownStyleReset: \"ask\", so held, above). This is a quirk of Google's API: setting any column's type resends the Table's column list, which resets every dropdown on it.",
         " 2. item: add rule item·weight·NUMBER_LESS(0)·text#cc0000.",
         '    Added first; it outranks 1 rule on these cells: item·all·=${status}="Retired"·bg#eeeeee.',
       ].join("\n"),
@@ -579,7 +579,11 @@ describe("SyncRunReport's refusals before the read", () => {
     refusals: [
       { kind: "noSuchTable", entry: "tables", name: "vendor" },
       { kind: "noSuchTable", entry: "tabs", name: "vendors" },
-      { kind: "notSendableYet", table: "item", path: "name.columnType" },
+      {
+        kind: "notSendableYet",
+        table: "item",
+        path: "newColumns[0].columnType",
+      },
     ],
   }).join("\n");
 
@@ -594,9 +598,9 @@ describe("SyncRunReport's refusals before the read", () => {
   });
 
   it("names the Table and the trait it can't send yet", () => {
-    expect(text).toContain("REFUSED 3 · item › name.columnType");
+    expect(text).toContain("REFUSED 3 · item › newColumns[0].columnType");
     expect(text).toContain(
-      "  sync can't send name.columnType yet: for now it sends only a Table's name, deleted, letApiAccess, newColumns, conditionalFormats.remove, a column's header, formula, before, deleted, emptyValueAllowed and a tab's title, color, before, frozenRows, frozenColumns, hidden.",
+      "  sync can't send newColumns[0].columnType yet: for now it sends only a Table's name, deleted, letApiAccess, newColumns, conditionalFormats.remove, a column's header, columnType, formula, before, deleted, emptyValueAllowed and a tab's title, color, before, frozenRows, frozenColumns, hidden.",
     );
   });
 });
