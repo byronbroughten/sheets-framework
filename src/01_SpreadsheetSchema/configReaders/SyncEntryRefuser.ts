@@ -5,7 +5,6 @@ import { sheetTraits, tabTraits } from "./SyncPlanner";
 import {
   entriesOf,
   type WideAlterations,
-  type WideColumnEntry,
   type WideNewTable,
   type WideTableEntry,
 } from "./SyncPlanner/wideAlterations";
@@ -97,14 +96,7 @@ export class SyncEntryRefuser {
       mapNames: Object.values(this.idNameMap.tabs).map(({ name }) => name),
       entries: entriesOf(this.alterations.tabs),
       traitRefusals: (tab, entry) => [
-        ...refusedPaths(
-          tab,
-          definedKeys(entry).map((trait) => ({
-            level: "tab" as const,
-            trait,
-            path: trait,
-          })),
-        ),
+        ...refusedPaths(tab, traitPathsAt("tab", entry, "")),
         ...newTablesRefusals(tab, entry.newTables ?? [], "newTables"),
       ],
     });
@@ -119,14 +111,7 @@ export class SyncEntryRefuser {
           ? [notSendableYet(tab, `${at}.tables`)]
           : newTablesRefusals(tab, newTab.tables, `${at}.tables`);
       return [
-        ...refusedPaths(
-          tab,
-          definedKeys(newTab).map((trait) => ({
-            level: "newTab" as const,
-            trait,
-            path: `${at}.${trait}`,
-          })),
-        ),
+        ...refusedPaths(tab, traitPathsAt("newTab", newTab, `${at}.`)),
         ...tablesRefusals,
       ];
     });
@@ -160,22 +145,14 @@ function newTableTraitPaths(
   at: string,
 ): TraitPath[] {
   return [
-    ...definedKeys({ ...traits, columns }).map((trait) => ({
-      level: "newTable" as const,
-      trait,
-      path: `${at}.${trait}`,
-    })),
+    ...traitPathsAt("newTable", { ...traits, columns }, `${at}.`),
     ...definedKeys(conditionalFormats ?? {}).map((operation) => ({
       level: "newTable" as const,
       trait: `conditionalFormats.${operation}`,
       path: `${at}.conditionalFormats.${operation}`,
     })),
     ...columns.flatMap((column, columnIndex) =>
-      definedKeys(column).map((trait) => ({
-        level: "newTableColumn" as const,
-        trait,
-        path: `${at}.columns[${columnIndex}].${trait}`,
-      })),
+      traitPathsAt("newTableColumn", column, `${at}.columns[${columnIndex}].`),
     ),
   ];
 }
@@ -258,11 +235,7 @@ function tableTraitRefusals(
 
 function newColumnTraitPaths({ newColumns }: WideTableEntry): TraitPath[] {
   return (newColumns ?? []).flatMap((newColumn, index) =>
-    definedKeys(newColumn).map((trait) => ({
-      level: "newColumn" as const,
-      trait,
-      path: `newColumns[${index}].${trait}`,
-    })),
+    traitPathsAt("newColumn", newColumn, `newColumns[${index}].`),
   );
 }
 
@@ -289,7 +262,7 @@ function traitPaths({
       tableTraitPath(`conditionalFormats.${operation}`),
     ),
     ...entriesOf(columns).flatMap(([column, columnEntry]) =>
-      columnTraitPaths(column, columnEntry),
+      traitPathsAt("column", columnEntry, `${column}.`),
     ),
   ];
 }
@@ -298,11 +271,16 @@ function tableTraitPath(trait: string): TraitPath {
   return { level: "table", trait, path: trait };
 }
 
-function columnTraitPaths(column: string, entry: WideColumnEntry): TraitPath[] {
+// `prefix` is where the entry sits in its alterations, ending in a dot, or "" for a top-level entry.
+function traitPathsAt(
+  level: TraitPath["level"],
+  entry: object,
+  prefix: string,
+): TraitPath[] {
   return definedKeys(entry).map((trait) => ({
-    level: "column",
+    level,
     trait,
-    path: `${column}.${trait}`,
+    path: `${prefix}${trait}`,
   }));
 }
 

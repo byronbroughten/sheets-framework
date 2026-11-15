@@ -402,7 +402,7 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
       landed.createdTables.push({
         kind: "createdTable",
         table: tableKey,
-        tab: this.ss.raw.sheet(newTable.sheetGid).title,
+        tab: this.ss.raw.sheet(newTable.createdPlacement.sheetGid).title,
         tableId: newTable.tableId,
         columns,
       });

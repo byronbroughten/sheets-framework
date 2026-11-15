@@ -113,15 +113,18 @@ export interface SyncCreatedTable {
   table: string;
   tab: string;
   tableId: string;
-  columns: { header: string; column: string; columnId: string }[];
+  columns: SyncCreatedTableColumn[];
 }
 
-export interface SyncCreatedColumn {
-  kind: "createdColumn";
-  table: string;
+export interface SyncCreatedTableColumn {
   header: string;
   column: string;
   columnId: string;
+}
+
+export interface SyncCreatedColumn extends SyncCreatedTableColumn {
+  kind: "createdColumn";
+  table: string;
 }
 
 export interface SyncOutsideReference {
@@ -192,8 +195,9 @@ export type SyncSheetStop =
   | SyncHeadRowsStop
   | SyncHeaderTakenStop
   | SyncNoSuchRuleStop
-  | SyncTableNameTakenStop
-  | SyncTabTitleTakenStop;
+  | SyncNewTableStop;
+
+export type SyncNewTableStop = SyncTableNameTakenStop | SyncTabTitleTakenStop;
 
 // A new Table whose name gives the codebase name a live Table's does: `existing` and `tableId` are that Table's.
 export interface SyncTableNameTakenStop {

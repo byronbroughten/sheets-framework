@@ -23,9 +23,8 @@ import {
 } from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
 import type {
   SyncHeadRowsStop,
+  SyncNewTableStop,
   SyncNotice,
-  SyncTableNameTakenStop,
-  SyncTabTitleTakenStop,
 } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
 import {
   configRetiredIdPrefixes,
@@ -40,6 +39,7 @@ import {
   type IdPrefixLabel,
 } from "../01_SpreadsheetSchema/idPrefixes";
 import type { CreatedTablePlacement } from "../02_SpreadsheetRaw/ClassTypes/StateRaw";
+import type { SheetRaw } from "../02_SpreadsheetRaw/SheetRaw";
 import {
   randomSheetGid,
   randomTableId,
@@ -50,12 +50,10 @@ import { oneLinePerEntryFileSource } from "./configFileSource";
 import { validateIdPrefixesUnchanged } from "./idPrefixGuard";
 import { SpreadsheetBaseOperator } from "./SpreadsheetBaseOperator";
 
-export type SyncNewTableStop = SyncTableNameTakenStop | SyncTabTitleTakenStop;
-
-// A planned new Table with the IDs the run settled for it, its tab's GID included.
+// A planned new Table with the IDs the run settled for it, its tab's GID in its created placement.
 export interface MintedNewTable extends PlannedNewTable {
   tableId: string;
-  sheetGid: number;
+  createdPlacement: CreatedTablePlacement;
   idPrefix: string;
   columns: (PlannedNewTableColumn & { columnId: string })[];
 }
@@ -106,7 +104,6 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
   newTableStops(newTables: PlannedNewTable[]): SyncNewTableStop[] {
     const { raw } = this.ss;
     const liveTables = raw.activeTableIds.map((tableId) => raw.table(tableId));
-    const liveTabs = raw.activeSheetGids.map((sheetGid) => raw.sheet(sheetGid));
     return newTables.flatMap(({ table, name, placement }) => {
       const stops: SyncNewTableStop[] = [];
       const takenTable = liveTables.find(
@@ -122,10 +119,7 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
       }
       if (placement.kind !== "newTab") return stops;
       const { title } = placement;
-      const tab = this.schema.titleToName(title);
-      const takenTab = liveTabs.find(
-        (live) => this.schema.titleToName(live.title) === tab,
-      );
+      const takenTab = this._liveTabByName(this.schema.titleToName(title));
       if (takenTab !== undefined) {
         stops.push({
           kind: "tabTitleTaken",
@@ -140,7 +134,7 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
   // Minted before any queue, so a dry run's withheld flush and the report carry the same IDs.
   mintNewTables(newTables: PlannedNewTable[]): MintedNewTable[] {
     const prefixesInUse = new Set(this.idPrefixesByTableId().idPrefixes());
-    const retiredPrefixes = this.retiredOrGoneIdPrefixes();
+    const retiredPrefixes = this._retiredOrGoneIdPrefixes();
     const sheetGidsInUse = new Set(this.ss.raw.activeSheetGids);
     return newTables.map((newTable) => {
       const idPrefix = idPrefixes.fromTitle({
@@ -149,12 +143,15 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
         retiredPrefixes,
       });
       prefixesInUse.add(idPrefix);
-      const sheetGid = this._sheetGidFor(newTable.placement, sheetGidsInUse);
-      sheetGidsInUse.add(sheetGid);
+      const createdPlacement = this._createdPlacement(
+        newTable.placement,
+        sheetGidsInUse,
+      );
+      sheetGidsInUse.add(createdPlacement.sheetGid);
       return {
         ...newTable,
         tableId: randomTableId(),
-        sheetGid,
+        createdPlacement,
         idPrefix,
         columns: newTable.columns.map((column) => ({
           ...column,
@@ -163,26 +160,35 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
       };
     });
   }
-  private _sheetGidFor(
+  private _createdPlacement(
     placement: PlannedNewTablePlacement,
     sheetGidsInUse: Set<number>,
-  ): number {
-    if (placement.kind === "newTab") return randomSheetGid(sheetGidsInUse);
-    const { raw } = this.ss;
-    return Val.assert(
-      raw.activeSheetGids.find(
-        (sheetGid) =>
-          this.schema.titleToName(raw.sheet(sheetGid).title) === placement.tab,
-      ),
+  ): CreatedTablePlacement {
+    if (placement.kind === "newTab") {
+      return {
+        kind: "newTab",
+        sheetGid: randomSheetGid(sheetGidsInUse),
+        title: placement.title,
+      };
+    }
+    const tab = Val.assert(
+      this._liveTabByName(placement.tab),
       `live tab ${placement.tab}`,
     );
+    return { kind: "besideTables", sheetGid: tab.sheetGid, gap: placement.gap };
+  }
+  private _liveTabByName(tab: string): SheetRaw | undefined {
+    const { raw } = this.ss;
+    return raw.activeSheetGids
+      .map((sheetGid) => raw.sheet(sheetGid))
+      .find((live) => this.schema.titleToName(live.title) === tab);
   }
   // Each through the shared creation path; the run flushes them after every column write, which a beside placement can't follow.
   createTables(minted: MintedNewTable[]): this {
     for (const newTable of minted) {
       this.ss.raw.createTable({
         name: newTable.name,
-        placement: createdPlacement(newTable),
+        placement: newTable.createdPlacement,
         idPrefix: newTable.idPrefix,
         tableId: newTable.tableId,
         columns: newTable.columns.map(({ header, columnId }) => ({
@@ -203,7 +209,7 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
     validateIdPrefixesUnchanged({
       previousByTableId: previousIdPrefixesByTableId(),
       nextByTableId: this.idPrefixesByTableId(),
-      retiredPrefixes: this.retiredOrGoneIdPrefixes(),
+      retiredPrefixes: this._retiredOrGoneIdPrefixes(),
     });
   }
   idPrefixesByTableId(): IdPrefixesByTableId {
@@ -216,7 +222,7 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
       if (kept !== undefined) assigned.set(table.tableId, kept);
     }
     const prefixesInUse = new Set(assigned.values());
-    const retiredPrefixes = this.retiredOrGoneIdPrefixes();
+    const retiredPrefixes = this._retiredOrGoneIdPrefixes();
     for (const table of apiAccessTables) {
       if (assigned.has(table.tableId)) continue;
       const generated = idPrefixes.fromTitle({
@@ -240,7 +246,7 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
       .map(({ name }): SyncNotice => ({ kind: "tableGone", table: name }));
   }
   // A Table gone since the last run retires its prefix before this run mints any.
-  retiredOrGoneIdPrefixes(): Set<string> {
+  private _retiredOrGoneIdPrefixes(): Set<string> {
     return idPrefixes.retiredOrGone({
       previouslyRetired: configRetiredIdPrefixes(),
       previousByTableId: previousIdPrefixesByTableId(),
@@ -368,16 +374,6 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
       ``,
     ].join("\n");
   }
-}
-
-function createdPlacement({
-  placement,
-  sheetGid,
-}: MintedNewTable): CreatedTablePlacement {
-  if (placement.kind === "newTab") {
-    return { kind: "newTab", sheetGid, title: placement.title };
-  }
-  return { kind: "besideTables", sheetGid, gap: placement.gap };
 }
 
 function columnReferenceLabel(reference: string): string {

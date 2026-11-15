@@ -5,6 +5,7 @@ import {
   type SyncConfigs,
   type SyncConflict,
   type SyncCreatedTable,
+  type SyncCreatedTableColumn,
   type SyncDryRunOutcome,
   type SyncHeaderTakenStop,
   type SyncHeadRowsStop,
@@ -693,7 +694,7 @@ function createdColumnText({
   header,
   column,
   columnId,
-}: SyncCreatedTable["columns"][number]): string {
+}: SyncCreatedTableColumn): string {
   return `created "${header}" as ${column}, ${columnId}`;
 }
 
