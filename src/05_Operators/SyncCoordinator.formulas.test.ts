@@ -3,11 +3,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { type PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState";
 import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
+import { SpreadsheetRaw } from "../02_SpreadsheetRaw/SpreadsheetRaw";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {
+  type FakeSheetsService,
+  stubSheetsService,
+} from "../testSupport/fakeSheetsService";
+import {
   emittedItemColumn,
+  itemAtEachFlush,
   itemColumns,
   itemGid,
+  itemSheet,
+  noteColIndex,
   runItem,
   seedFixture,
 } from "./syncCoordinatorTestSupport";
@@ -20,8 +28,19 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+const compiledNote = {
+  isFormula: true,
+  value: `=SINGLE(${getTableTraitByName("item", "tableName")}[${itemColumns.id.header}])`,
+};
+
+function noteCellsOf(service: FakeSheetsService): unknown[] {
+  return service.grid
+    .sheet(itemGid)
+    .bodyRows()
+    .map((row) => row[noteColIndex]);
+}
+
 describe("SyncCoordinator.run formulas", () => {
-  const optionalNoteIndex = Object.keys(itemColumns).indexOf("optionalNote");
   const formulaAlteration: PendingAlterations = {
     tables: { item: { columns: { optionalNote: { formula: "=${@id}" } } } },
   };
@@ -40,18 +59,41 @@ describe("SyncCoordinator.run formulas", () => {
       alterations: formulaAlteration,
     });
 
-    const noteCells = service.grid
-      .sheet(itemGid)
-      .bodyRows()
-      .map((row) => row[optionalNoteIndex]);
-    const compiled = {
-      isFormula: true,
-      value: `=SINGLE(${getTableTraitByName("item", "tableName")}[${itemColumns.id.header}])`,
-    };
-    expect(noteCells).toEqual([compiled, compiled]);
+    expect(noteCellsOf(service)).toEqual([compiledNote, compiledNote]);
     expect(
       emittedItemColumn(Val.assert(files, "emitted files"), "optionalNote"),
     ).toContain('"formula": "=${@id}"');
+  });
+
+  it("gives a row appended afterward through Raw the compiled formula", () => {
+    const sheet = itemSheet({
+      name: getTableTraitByName("item", "tableName"),
+      bodyRows: [{ id: "r:itm:one" }],
+    });
+    // Room below the Table, so the append grows it through `PASTE_FORMULA` and not the grid's edge.
+    const service = stubSheetsService({
+      sheets: [{ ...sheet, rows: [...Val.assert(sheet.rows, "rows"), [], []] }],
+    });
+    runItem({ isSending: true, alterations: formulaAlteration });
+
+    const raw = SpreadsheetRaw.init();
+    raw.fetchAllSheetProperties();
+    raw.table("item").appendDataRow([noteColIndex]);
+    raw.batchUpdateGSheets();
+
+    expect(noteCellsOf(service)).toEqual([compiledNote, compiledNote]);
+  });
+
+  it("reads the column before a send's flush, holding the cell a person entered", () => {
+    const [atFirstFlush] = itemAtEachFlush({
+      isSending: true,
+      alterations: formulaAlteration,
+    });
+
+    expect(atFirstFlush).toEqual({
+      colIndexesRead: [noteColIndex],
+      note: "kept",
+    });
   });
 
   it("refuses a brace naming no column before any read", () => {
