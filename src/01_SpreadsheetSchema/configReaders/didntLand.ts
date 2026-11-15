@@ -11,7 +11,7 @@ import {
 } from "./SyncPlanner";
 import type { SyncPlanItem, SyncSendLine, SyncSubject } from "./syncRunResult";
 
-function subjectKey(subject: SyncSubject): string {
+export function subjectKey(subject: SyncSubject): string {
   return JSON.stringify(subject);
 }
 

@@ -21,8 +21,10 @@ import {
   tableIdsByName,
 } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
 import type { PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState";
+import type { ColumnConfigsGeneric } from "../01_SpreadsheetSchema/configReaders/makeConfigs";
 import { remainingAlterations } from "../01_SpreadsheetSchema/configReaders/remainingAlterations";
 import { SyncEntryRefuser } from "../01_SpreadsheetSchema/configReaders/SyncEntryRefuser";
+import { SyncNameRewriter } from "../01_SpreadsheetSchema/configReaders/SyncNameRewriter";
 import {
   deletedTableOf,
   isSheetTrait,
@@ -99,6 +101,9 @@ export interface SyncRunProps {
 
 interface Regeneration {
   files: ConfigRegeneration;
+  // What the files record, for the name rewrite to compare with the previous configs.
+  idNameMap: IdNameMapGeneric;
+  columnConfigs: ColumnConfigsGeneric;
   changes: SyncTypedTraitChange[];
   notes: string[];
   didntLand: SyncSendLine[];
@@ -140,7 +145,9 @@ export interface SyncRun {
  * placed before another in a flush of their own,
  * refetches, then emits every generated config file, the ID-name map and
  * the remaining alterations, or none, and fills blank
- * row IDs from the fresh configs as its own send. A bare run sends nothing but still
+ * row IDs from the fresh configs as its own send. Every run that refreshes the
+ * ID-name map rewrites the pending entries naming a renamed Table, column or
+ * tab, a bare or stopped run included. A bare run sends nothing but still
  * refreshes the configs from its read; on a host that withholds, it then
  * flushes the plan for the host's entered-data gate to judge. Before either
  * flush it reads the cells a deletion or a formula would overwrite, so the
@@ -307,10 +314,21 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       this._flushPlan(applied);
     }
     const landed = sent.filter(hasLanded(didntLand));
-    if (landed.length > 0) {
-      files.alterations = alterationsFileSource(
-        remainingAlterations(alterations, landed),
-      );
+    const names = SyncNameRewriter.init({
+      alterations: remainingAlterations(alterations, landed),
+      idNameMaps: {
+        previous: props.previousIdNameMap,
+        regenerated: regeneration.idNameMap,
+      },
+      columnConfigs: {
+        previous: columnConfigsByName(),
+        regenerated: regeneration.columnConfigs,
+      },
+      sent,
+      landed,
+    });
+    if (landed.length > 0 || names.rewrites.length > 0) {
+      files.alterations = alterationsFileSource(names.alterations);
     }
     let fillPlan: SyncPlanItem[];
     if (isApplying) {
@@ -326,6 +344,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         didntLand,
         createdColumns,
         rowIds: { plan: [...checkboxPlan, ...fillPlan], notices },
+        names,
       }),
       files,
     };
@@ -385,19 +404,23 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
   }
   private _regeneration(notes: string[], sent: SyncSubject[]): Regeneration {
     this.valueConfigOperator.fetchAfterColumnConfigSynced();
+    const columnConfigs = this.columnConfigOperator.newColumnConfigs();
     const changes = typedTraitChanges({
       previous: {
         columnConfigs: columnConfigsByName(),
         valueConfigs: installedConfigs().valueConfigs,
       },
       regenerated: {
-        columnConfigs: this.columnConfigOperator.newColumnConfigs(),
+        columnConfigs,
         valueConfigs: this.valueConfigOperator.newValueConfigs(),
       },
       sent,
     });
+    const idNameMap = this._idNameMap();
     return {
-      files: this._configFiles(),
+      files: this._configFiles(idNameMap),
+      idNameMap,
+      columnConfigs,
       changes,
       notes,
       didntLand: [],
@@ -503,7 +526,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     if (untypedColumnsSummary === undefined) return [];
     return [untypedColumnsSummary];
   }
-  private _configFiles(): ConfigRegeneration {
+  private _configFiles(idNameMap: IdNameMapGeneric): ConfigRegeneration {
     return {
       tableConfigs: this.tableConfigOperator.toFileSource(),
       tabConfigs: this.tabConfigOperator.toFileSource(),
@@ -512,7 +535,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       retiredIdPrefixes: this.tableConfigOperator.retiredIdPrefixesFileSource(),
       columnConfigs: this.columnConfigOperator.toFileSource(),
       valueConfigs: this.valueConfigOperator.toFileSource(),
-      idNameMap: idNameMapFileSource(this._idNameMap()),
+      idNameMap: idNameMapFileSource(idNameMap),
     };
   }
   private _idNameMap(): IdNameMapGeneric {
