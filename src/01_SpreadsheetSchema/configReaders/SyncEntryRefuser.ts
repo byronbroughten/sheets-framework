@@ -6,6 +6,7 @@ import {
   entriesOf,
   type WideAlterations,
   type WideColumnEntry,
+  type WideNewTable,
   type WideTableEntry,
 } from "./SyncPlanner/wideAlterations";
 import type { SyncRefusal } from "./syncRunResult";
@@ -29,7 +30,12 @@ export const sendableTraits = {
   column: new Set<string>([...sheetTraits.column, "emptyValueAllowed"]),
   // A new column's own traits: a formula or column type would need a write after the insert.
   newColumn: new Set<string>(["header", "before", "emptyValueAllowed"]),
-  tab: new Set<string>(tabTraits),
+  tab: new Set<string>([...tabTraits, "newTables"]),
+  // A new tab's other traits would need sheet-property updates after its addSheet.
+  newTab: new Set<string>(["title", "tables"]),
+  // A new Table's rules would need adds after its creation.
+  newTable: new Set<string>(["name", "columns", "gap"]),
+  newTableColumn: new Set<string>(["header", "emptyValueAllowed"]),
 } as const;
 
 interface TraitPath {
@@ -90,17 +96,88 @@ export class SyncEntryRefuser {
       entry: "tabs",
       mapNames: Object.values(this.idNameMap.tabs).map(({ name }) => name),
       entries: entriesOf(this.alterations.tabs),
-      traitRefusals: (tab, entry) =>
-        definedKeys(entry)
-          .filter((trait) => !sendableTraits.tab.has(trait))
-          .map((trait) => notSendableYet(tab, trait)),
+      traitRefusals: (tab, entry) => [
+        ...refusedPaths(
+          tab,
+          definedKeys(entry).map((trait) => ({
+            level: "tab" as const,
+            trait,
+            path: trait,
+          })),
+        ),
+        ...newTablesRefusals(tab, entry.newTables ?? [], "newTables"),
+      ],
     });
   }
   private get _newTabRefusals(): SyncRefusal[] {
-    return (this.alterations.newTabs ?? []).map(({ title }) =>
-      notSendableYet(title ?? "newTabs", "newTabs"),
-    );
+    return (this.alterations.newTabs ?? []).flatMap((newTab, index) => {
+      const at = `newTabs[${index}]`;
+      const tab = newTab.title ?? "newTabs";
+      // addSheet is sent only with a Table to create on it.
+      const tablesRefusals =
+        newTab.tables.length === 0
+          ? [notSendableYet(tab, `${at}.tables`)]
+          : newTablesRefusals(tab, newTab.tables, `${at}.tables`);
+      return [
+        ...refusedPaths(
+          tab,
+          definedKeys(newTab).map((trait) => ({
+            level: "newTab" as const,
+            trait,
+            path: `${at}.${trait}`,
+          })),
+        ),
+        ...tablesRefusals,
+      ];
+    });
   }
+}
+
+function refusedPaths(table: string, paths: TraitPath[]): SyncRefusal[] {
+  return paths
+    .filter(({ level, trait }) => !sendableTraits[level].has(trait))
+    .map(({ path }) => notSendableYet(table, path));
+}
+
+// The working view doesn't list a Table its flush adds, so a second on the same tab would be placed over the first.
+function newTablesRefusals(
+  tab: string,
+  newTables: WideNewTable[],
+  tablesAt: string,
+): SyncRefusal[] {
+  const [first, ...others] = newTables;
+  if (first === undefined) return [];
+  return [
+    ...refusedPaths(tab, newTableTraitPaths(first, `${tablesAt}[0]`)),
+    ...others.map((_, index) =>
+      notSendableYet(tab, `${tablesAt}[${index + 1}]`),
+    ),
+  ];
+}
+
+function newTableTraitPaths(
+  { columns, conditionalFormats, ...traits }: WideNewTable,
+  at: string,
+): TraitPath[] {
+  return [
+    ...definedKeys({ ...traits, columns }).map((trait) => ({
+      level: "newTable" as const,
+      trait,
+      path: `${at}.${trait}`,
+    })),
+    ...definedKeys(conditionalFormats ?? {}).map((operation) => ({
+      level: "newTable" as const,
+      trait: `conditionalFormats.${operation}`,
+      path: `${at}.conditionalFormats.${operation}`,
+    })),
+    ...columns.flatMap((column, columnIndex) =>
+      definedKeys(column).map((trait) => ({
+        level: "newTableColumn" as const,
+        trait,
+        path: `${at}.columns[${columnIndex}].${trait}`,
+      })),
+    ),
+  ];
 }
 
 interface EntryRefusalsProps<EN extends object> {
@@ -173,9 +250,10 @@ function tableTraitRefusals(
   table: string,
   entry: WideTableEntry,
 ): SyncRefusal[] {
-  return [...traitPaths(entry), ...newColumnTraitPaths(entry)]
-    .filter(({ level, trait }) => !sendableTraits[level].has(trait))
-    .map(({ path }) => notSendableYet(table, path));
+  return refusedPaths(table, [
+    ...traitPaths(entry),
+    ...newColumnTraitPaths(entry),
+  ]);
 }
 
 function newColumnTraitPaths({ newColumns }: WideTableEntry): TraitPath[] {
@@ -235,7 +313,7 @@ function definedKeys(entry: object): string[] {
   });
 }
 
-// Alterations alone still repeat a refusal: two untitled `newTabs` are one.
+// Alterations alone can still repeat a refusal, so each is listed once.
 function withoutRepeats(refusals: SyncRefusal[]): SyncRefusal[] {
   const seen = new Set<string>();
   return refusals.filter((refusal) => {

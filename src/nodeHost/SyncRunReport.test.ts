@@ -596,7 +596,7 @@ describe("SyncRunReport's refusals before the read", () => {
   it("names the Table and the trait it can't send yet", () => {
     expect(text).toContain("REFUSED 3 · item › name.columnType");
     expect(text).toContain(
-      "  sync can't send name.columnType yet: for now it sends only a Table's name, deleted, letApiAccess, newColumns, conditionalFormats.remove, a column's header, formula, before, deleted, emptyValueAllowed and a tab's title, color, before, frozenRows, frozenColumns, hidden.",
+      "  sync can't send name.columnType yet: for now it sends only a Table's name, deleted, letApiAccess, newColumns, conditionalFormats.remove, a column's header, formula, before, deleted, emptyValueAllowed and a tab's title, color, before, frozenRows, frozenColumns, hidden, newTables.",
     );
   });
 });
@@ -791,6 +791,76 @@ describe("SyncRunReport's header-taken stop", () => {
       "STOPPED: 1 Table can't take head rows and 1 new column taken. Nothing was sent, and nothing will be until they are resolved.",
     );
     expect(stoppedText).toContain("Resolve each stop above, then rerun");
+  });
+});
+
+describe("SyncRunReport's new-Table and new-tab stops", () => {
+  const stopped = render({
+    ...appDryRun,
+    outcome: { kind: "stopped" },
+    stops: [
+      {
+        kind: "tableNameTaken",
+        name: "Occ Charge",
+        existing: "Occ charge",
+        tableId: "tbl-0a1b2c3d4e",
+      },
+      {
+        kind: "tabTitleTaken",
+        title: "Charges",
+        existing: "charges",
+        gid: 4217,
+      },
+    ],
+  });
+  const stoppedText = stopped.join("\n");
+
+  it("names the new Table, the live one and its ID", () => {
+    expect(stoppedText).toContain(
+      'STOP 1 · new Table "Occ Charge"\n  A Table already gives its name\'s codebase name: "Occ charge", tbl-0a1b2c3d4e.',
+    );
+  });
+
+  it("names the new tab, the live one and its GID", () => {
+    expect(stoppedText).toContain(
+      'STOP 2 · new tab "Charges"\n  A tab already gives its title\'s codebase name: "charges", GID 4217.',
+    );
+  });
+
+  it("counts each kind of stop", () => {
+    expect(resultLine(stopped)).toBe(
+      "STOPPED: 1 new Table name taken and 1 new tab title taken. Nothing was sent, and nothing will be until they are resolved.",
+    );
+  });
+});
+
+describe("SyncRunReport's created Table", () => {
+  const text = render({
+    ...appSend,
+    outcome: { kind: "sent", summary: "2 alterations landed" },
+    landed: [
+      {
+        kind: "send",
+        subject: { tab: "Payments", path: "newTabs" },
+        what: "create the tab",
+      },
+      {
+        kind: "createdTable",
+        table: "paymentLog",
+        tab: "Payments",
+        tableId: "tbl-0a1b2c3d4e",
+        columns: [
+          { header: "Payee", column: "payee", columnId: "c:plg:Xw3nB7d" },
+          { header: "Amount", column: "amount", columnId: "c:plg:Q8x1mZp" },
+        ],
+      },
+    ],
+  }).join("\n");
+
+  it("prints the Table's codebase name and ID and each column's", () => {
+    expect(text).toContain(
+      'Payments: created Table paymentLog, tbl-0a1b2c3d4e; created "Payee" as payee, c:plg:Xw3nB7d; created "Amount" as amount, c:plg:Q8x1mZp.',
+    );
   });
 });
 

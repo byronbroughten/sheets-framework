@@ -151,6 +151,16 @@ export function randomTableId(): string {
   return `tbl-${hexDigits}`;
 }
 
+// Sheets takes any positive 32-bit GID a tab doesn't already have.
+export function randomSheetGid(sheetGidsInUse: ReadonlySet<number>): number {
+  const maxGid = 2 ** 31 - 1;
+  let sheetGid: number;
+  do {
+    sheetGid = 1 + Math.floor(Math.random() * maxGid);
+  } while (sheetGidsInUse.has(sheetGid));
+  return sheetGid;
+}
+
 function validateSeedRows(
   name: string,
   columnCount: number,

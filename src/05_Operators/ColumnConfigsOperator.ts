@@ -17,6 +17,7 @@ import {
 import {
   type IntendedTrait,
   newColumnLines,
+  newTableLines,
   type PlannedNewColumn,
   type PlanReadings,
   type TableReading,
@@ -24,6 +25,7 @@ import {
 } from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
 import type {
   SyncCreatedColumn,
+  SyncCreatedTable,
   SyncHeaderTakenStop,
   SyncSendLine,
 } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
@@ -50,7 +52,10 @@ import {
   type ValueSource,
 } from "./SpreadsheetBaseOperator";
 import { TableColumnOrder } from "./TableColumnOrder";
-import { TableConfigsOperator } from "./TableConfigsOperator";
+import {
+  type MintedNewTable,
+  TableConfigsOperator,
+} from "./TableConfigsOperator";
 
 export interface ApiTableColumns {
   tableKey: string;
@@ -79,6 +84,11 @@ export interface MintedNewColumn extends PlannedNewColumn {
 
 export interface LandedColumns {
   createdColumns: SyncCreatedColumn[];
+  didntLand: SyncSendLine[];
+}
+
+export interface LandedTables {
+  createdTables: SyncCreatedTable[];
   didntLand: SyncSendLine[];
 }
 
@@ -363,6 +373,38 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
         header: config.header,
         column,
         columnId: newColumn.columnId,
+      });
+    }
+    return landed;
+  }
+  // Found by minted ID in the fresh configs, the Table with every one of its columns, or it didn't land.
+  landedTables(minted: MintedNewTable[]): LandedTables {
+    const columnConfigs = this.newColumnConfigs();
+    const tableKeysByTableId = this.tableConfigOperator.tableKeysByTableId();
+    const landed: LandedTables = { createdTables: [], didntLand: [] };
+    for (const newTable of minted) {
+      const tableKey = tableKeysByTableId.get(newTable.tableId);
+      const configs = Object.entries(
+        tableKey === undefined ? {} : (columnConfigs[tableKey] ?? {}),
+      );
+      const columns = newTable.columns.flatMap(({ columnId }) => {
+        const found = configs.find(
+          ([, config]) => config.columnId === columnId,
+        );
+        if (found === undefined) return [];
+        const [column, config] = found;
+        return [{ header: config.header, column, columnId }];
+      });
+      if (tableKey === undefined || columns.length < newTable.columns.length) {
+        landed.didntLand.push(newTableLines.sendLine(newTable));
+        continue;
+      }
+      landed.createdTables.push({
+        kind: "createdTable",
+        table: tableKey,
+        tab: this.ss.raw.sheet(newTable.sheetGid).title,
+        tableId: newTable.tableId,
+        columns,
       });
     }
     return landed;

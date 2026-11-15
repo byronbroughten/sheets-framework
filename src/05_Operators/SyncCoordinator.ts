@@ -39,6 +39,7 @@ import {
 import type {
   ForcedTrait,
   SyncCreatedColumn,
+  SyncCreatedTable,
   SyncPlanItem,
   SyncRunFrame,
   SyncRunResult,
@@ -70,7 +71,10 @@ import {
 import { RowIdsOperator } from "./RowIdsOperator";
 import { SpreadsheetBaseOperator } from "./SpreadsheetBaseOperator";
 import { TabConfigOperator } from "./TabConfigOperator";
-import { TableConfigsOperator } from "./TableConfigsOperator";
+import {
+  type MintedNewTable,
+  TableConfigsOperator,
+} from "./TableConfigsOperator";
 import { ValueConfigsOperator } from "./ValueConfigsOperator";
 
 export interface ConfigRegeneration {
@@ -110,6 +114,7 @@ interface Regeneration {
   notes: string[];
   didntLand: SyncSendLine[];
   createdColumns: SyncCreatedColumn[];
+  createdTables: SyncCreatedTable[];
 }
 
 // What a plan's flush writes, and the cells read before it so the gate can judge them.
@@ -117,6 +122,7 @@ interface AppliedPlan {
   accessChanges: ApiAccessChanges;
   sentTraits: SyncPlannerResult["sentTraits"];
   newColumns: MintedNewColumn[];
+  newTables: MintedNewTable[];
   columnMoves: PlannedColumnMove[];
   ruleRemovals: IndexedRuleRemoval[];
   reads: EnteredDataReads;
@@ -129,6 +135,7 @@ interface RefetchProps {
   previous: ConfigSnapshot;
   accessChanges: ApiAccessChanges;
   newColumns: MintedNewColumn[];
+  newTables: MintedNewTable[];
   ruleRemovals: IndexedRuleRemoval[];
 }
 
@@ -147,12 +154,13 @@ export interface SyncRun {
 /**
  * Runs sync: refuses what intended state alone can't plan, reads the live
  * Tables, plans the three-way comparison against the previous configs and
- * each new column, stopping on a new column whose header its Table already
- * has. On an unstopped --send it mints each new column's ID, sends the plan,
- * any missing column IDs, Fill Row IDs checkboxes and new columns at a
+ * each new column and Table, stopping on a new column whose header its Table
+ * already has, or a new Table or tab whose name a live one already gives. On
+ * an unstopped --send it mints each new column's and Table's IDs, sends the
+ * plan, any missing column IDs, Fill Row IDs checkboxes and new columns at a
  * Table's end in one flush, then its column deletions and the new columns
- * placed before another in a flush of their own,
- * refetches, then emits every generated config file, the ID-name map and
+ * placed before another in a flush of their own, its moves, then its new
+ * tabs and Tables, refetches, then emits every generated config file, the ID-name map and
  * the remaining alterations, or none, and fills blank
  * row IDs from the fresh configs as its own send. Every run that refreshes the
  * ID-name map rewrites the pending entries naming a renamed Table, column or
@@ -241,6 +249,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         sheetStops: [
           ...this.tableConfigOperator.grantHeadRowStops(accessChanges.grants),
           ...this.columnConfigOperator.headerTakenStops(planner.newColumns),
+          ...this.tableConfigOperator.newTableStops(planner.newTables),
           ...this.conditionalFormatConfigOperator.noSuchRuleStops(
             planner.ruleRemovals,
           ),
@@ -258,10 +267,12 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     const newColumns = this.columnConfigOperator.mintColumnIds(
       planned.newColumns,
     );
+    const newTables = this.tableConfigOperator.mintNewTables(planned.newTables);
     const applied: AppliedPlan = {
       accessChanges,
       sentTraits: planned.sentTraits,
       newColumns,
+      newTables,
       columnMoves: this.columnConfigOperator.planColumnMoves(
         planned.sentTraits,
         newColumns,
@@ -300,11 +311,12 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     };
     let refetched: SyncCoordinator | undefined;
     let regeneration: Regeneration;
-    // A fresh read, since Raw's state has no reset; only a sent sheet trait, a new column or a removed rule changes what it would read.
+    // A fresh read, since Raw's state has no reset; only a sent sheet trait, a new column or Table or a removed rule changes what it would read.
     if (
       isApplying &&
       (planned.sentTraits.some(isSheetTrait) ||
         applied.newColumns.length > 0 ||
+        applied.newTables.length > 0 ||
         applied.ruleRemovals.length > 0)
     ) {
       refetched = SyncCoordinator.init();
@@ -315,6 +327,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         previous,
         accessChanges,
         newColumns: applied.newColumns,
+        newTables: applied.newTables,
         ruleRemovals: applied.ruleRemovals,
       });
     } else {
@@ -322,7 +335,8 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     }
     // The fill reads the configs the files came from.
     const regenerator = refetched ?? this;
-    const { files, changes, didntLand, createdColumns } = regeneration;
+    const { files, changes, didntLand, createdColumns, createdTables } =
+      regeneration;
     // After the files are strings, so the host's gate judges what a send would write and the configs never see it.
     if (props.isHostWithholding && !props.isSending && !planned.isStopped) {
       this._applyPlan(applied);
@@ -351,6 +365,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         typedTraitChanges: changes,
         didntLand,
         createdColumns,
+        createdTables,
         rowIds: { plan: [...checkboxPlan, ...fillPlan], notices },
         nameRewriter,
       }),
@@ -390,10 +405,17 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     previous,
     accessChanges,
     newColumns,
+    newTables,
     ruleRemovals,
   }: RefetchProps): Regeneration {
-    // Recorded before the read, so its head-row fetch covers granted Tables and skips revoked ones.
-    this.tableConfigOperator.recordApiAccessChanges(accessChanges);
+    // Recorded before the read, so its head-row fetch covers granted Tables, created ones among them, and skips revoked ones.
+    this.tableConfigOperator.recordApiAccessChanges({
+      ...accessChanges,
+      grants: [
+        ...accessChanges.grants,
+        ...newTables.map(({ tableId, table }) => ({ tableId, table })),
+      ],
+    });
     this._readLive();
     this.columnConfigOperator.recordEmptyValueAllowed(configTraits);
     const traitsDidntLand = didntLandOf({
@@ -403,12 +425,19 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     });
     const notes = this._recordUntypedColumns();
     const columns = this.columnConfigOperator.landedColumns(newColumns);
+    const tables = this.columnConfigOperator.landedTables(newTables);
     const rulesDidntLand =
       this.conditionalFormatConfigOperator.removalsDidntLand(ruleRemovals);
     return {
       ...this._regeneration({ notes, sent, previous }),
-      didntLand: [...traitsDidntLand, ...columns.didntLand, ...rulesDidntLand],
+      didntLand: [
+        ...traitsDidntLand,
+        ...columns.didntLand,
+        ...tables.didntLand,
+        ...rulesDidntLand,
+      ],
       createdColumns: columns.createdColumns,
+      createdTables: tables.createdTables,
     };
   }
   private _regeneration({
@@ -432,6 +461,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       notes,
       didntLand: [],
       createdColumns: [],
+      createdTables: [],
     };
   }
   private _traitReadings(): PlanProps {
@@ -506,16 +536,20 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       throw error;
     }
   }
-  // Column deletes and inserts, then moves, each flush alone: every later write is indexed by the layout the one before leaves.
+  // Column deletes and inserts, then moves, then new Tables, each flush alone: every later write is indexed by the layout the one before leaves.
   private _flushPlan({
     sentTraits,
     newColumns,
+    newTables,
     columnMoves,
   }: AppliedPlan): void {
     this.ss.batchUpdateGSheets();
     this.columnConfigOperator.updateDeletionsAndInserts(sentTraits, newColumns);
     this.ss.batchUpdateGSheets();
     this.columnConfigOperator.moveColumns(columnMoves);
+    this.ss.batchUpdateGSheets();
+    if (newTables.length === 0) return;
+    this.tableConfigOperator.createTables(newTables);
     this.ss.batchUpdateGSheets();
   }
   private _applyApiAccessChanges(accessChanges: ApiAccessChanges): void {

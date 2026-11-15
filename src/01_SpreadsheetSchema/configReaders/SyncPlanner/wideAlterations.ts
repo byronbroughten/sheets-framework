@@ -28,9 +28,18 @@ export interface WideTableEntry {
   };
 }
 
+export interface WideNewTableColumn {
+  header: string;
+  formula?: string;
+  columnType?: ColumnTypeBaseline;
+  emptyValueAllowed?: boolean;
+}
+
 export interface WideNewTable {
   name: string;
-  columns: { formula?: string }[];
+  columns: WideNewTableColumn[];
+  conditionalFormats?: { add?: WideRule[] };
+  gap?: 0 | 1;
 }
 
 export interface WideTabEntry {
@@ -47,7 +56,7 @@ export interface WideTabEntry {
 export interface WideAlterations {
   tables?: Record<string, WideTableEntry | undefined>;
   tabs?: Record<string, WideTabEntry | undefined>;
-  newTabs?: (WideTabEntry & { tables: WideNewTable[] })[];
+  newTabs?: (WideTabEntry & { title: string; tables: WideNewTable[] })[];
 }
 
 export function entriesOf<VL>(
