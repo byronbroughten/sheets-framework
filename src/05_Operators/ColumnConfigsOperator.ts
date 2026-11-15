@@ -235,7 +235,7 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
   // `before` is read live only, as a tab's is: order is never in the configs, so it can't conflict.
   traitReadings(): PlanReadings {
     const configs = installedBraceConfigs();
-    const liveConfigs = this._liveBraceConfigs();
+    const liveConfigs = this._liveBraceConfigs(configs);
     const identities = this._namedColumnIdentities();
     const namesByColumnId = new Map(
       identities.map(({ columnId, columnName }) => [columnId, columnName]),
@@ -260,7 +260,7 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
             bracedFormula({ configs, tableKey, formula: topFormula }) ??
             undefined,
           // Against live names under previous keys, so a person renaming a Table a rule names reads as no change.
-          columnType: bracedColumnType({
+          columnType: BraceFormula.decompileColumnType({
             configs: liveConfigs,
             tableKey,
             columnType: {
@@ -281,8 +281,10 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
     };
   }
   // The previous configs with each API-access Table's live name and each live column's header.
-  private _liveBraceConfigs(): BraceConfigs {
-    const { tableConfigs, columnConfigs } = installedBraceConfigs();
+  private _liveBraceConfigs({
+    tableConfigs,
+    columnConfigs,
+  }: BraceConfigs): BraceConfigs {
     const apiTableIds = this.tableIdsApiAccesses;
     return Object.entries(tableConfigs).reduce<BraceConfigs>(
       (live, [tableKey, tableConfig]) => {
@@ -776,7 +778,7 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
               tableKey,
               formula: columnConfig.formula,
             }),
-            columnType: bracedColumnType({
+            columnType: BraceFormula.decompileColumnType({
               configs,
               tableKey,
               columnType: columnConfig.columnType,
@@ -819,28 +821,6 @@ function bracedFormula({
 }): ColumnConfigStored["formula"] {
   if (formula === undefined || formula === null) return formula;
   return BraceFormula.decompile({ configs, tableKey, formula });
-}
-
-function bracedColumnType({
-  configs,
-  tableKey,
-  columnType,
-}: {
-  configs: BraceConfigs;
-  tableKey: string;
-  columnType: ColumnConfigStored["columnType"];
-}): ColumnConfigStored["columnType"] {
-  if (columnType?.rule === undefined || columnType.rule === null) {
-    return columnType;
-  }
-  return {
-    ...columnType,
-    rule: BraceFormula.decompileDropdownRule({
-      configs,
-      tableKey,
-      rule: columnType.rule,
-    }),
-  };
 }
 
 // The names on the sheet when a column fill lands: Table renames go out before column fills and header writes after (docs/architecture/flush-order.md).

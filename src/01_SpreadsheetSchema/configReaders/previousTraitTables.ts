@@ -1,4 +1,8 @@
-import { type BraceConfigs, BraceFormula } from "./BraceFormula";
+import {
+  type BraceConfigs,
+  BraceFormula,
+  type ColumnTypeProps,
+} from "./BraceFormula";
 import type { ColumnConfigStored } from "./makeConfigs";
 import type { TableReading, TraitReadings } from "./SyncPlanner";
 
@@ -33,22 +37,15 @@ export function previousTraitTables(
   );
 }
 
-interface PreviousColumnTypeProps {
-  configs: BraceConfigs;
-  tableKey: string;
-  columnType: ColumnConfigStored["columnType"];
-}
-
 // A rule recorded as Sheets wrote it, before rules were braced, counts as not recorded, so live is the baseline.
-function previousColumnType({
-  configs,
-  tableKey,
-  columnType,
-}: PreviousColumnTypeProps): ColumnConfigStored["columnType"] {
-  const rule = columnType?.rule;
-  if (rule === undefined || rule === null) return columnType;
-  if (BraceFormula.isDropdownRuleInBraceForm({ configs, tableKey, rule })) {
-    return columnType;
-  }
-  return undefined;
+function previousColumnType(
+  props: ColumnTypeProps,
+): ColumnConfigStored["columnType"] {
+  const recorded = props.columnType?.rule?.values ?? [];
+  const braced = BraceFormula.decompileColumnType(props)?.rule?.values ?? [];
+  const isInBraceForm = braced.every(
+    (value, index) => value === recorded[index],
+  );
+  if (!isInBraceForm) return undefined;
+  return props.columnType;
 }

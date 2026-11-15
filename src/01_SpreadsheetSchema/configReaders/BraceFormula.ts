@@ -3,7 +3,7 @@ import {
   SheetIndex,
   type SheetRowIndex,
 } from "../../00_Source/RawSource/SheetIndex";
-import type { ColumnValidationRule } from "../columnBaseline";
+import type { ColumnTypeBaseline } from "../columnBaseline";
 import { SpreadsheetBaseSchema } from "../SpreadsheetBaseSchema";
 import type { ConfigSetBase } from "./configRegister";
 
@@ -223,33 +223,32 @@ export const BraceFormula = {
       },
     );
   },
-  // Only a value starting with `=` is a formula; a list item such as `Size[cm]` stays text.
-  decompileDropdownRule({
+  // Only a rule value starting with `=` is a formula; a list item such as `Size[cm]` stays text.
+  decompileColumnType({
     configs,
     tableKey,
-    rule,
-  }: DropdownRuleProps): ColumnValidationRule {
+    columnType,
+  }: ColumnTypeProps): ColumnTypeBaseline | undefined {
+    if (columnType === undefined) return undefined;
+    const { rule } = columnType;
+    if (rule === null) return columnType;
     return {
-      ...rule,
-      values: rule.values.map((value) => {
-        if (!value.startsWith("=")) return value;
-        return BraceFormula.decompile({ configs, tableKey, formula: value });
-      }),
+      ...columnType,
+      rule: {
+        ...rule,
+        values: rule.values.map((value) => {
+          if (!value.startsWith("=")) return value;
+          return BraceFormula.decompile({ configs, tableKey, formula: value });
+        }),
+      },
     };
-  },
-  // False for a rule recorded before rules were, whose references Sheets wrote.
-  isDropdownRuleInBraceForm(props: DropdownRuleProps): boolean {
-    const decompiled = BraceFormula.decompileDropdownRule(props);
-    return decompiled.values.every(
-      (value, index) => value === props.rule.values[index],
-    );
   },
 };
 
-interface DropdownRuleProps {
+export interface ColumnTypeProps {
   configs: BraceConfigs;
   tableKey: string;
-  rule: ColumnValidationRule;
+  columnType: ColumnTypeBaseline | undefined;
 }
 
 interface BraceTextProps {

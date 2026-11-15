@@ -56,7 +56,9 @@ describe("SyncCoordinator dropdown rules", () => {
       rule: { condition: "ONE_OF_RANGE", values: ["=${item[id]}"] },
     };
 
-    expect(liveStatusColumnType("Item")).toEqual(expected);
+    const configsName = getTableTraitByName("item", "tableName");
+
+    expect(liveStatusColumnType(configsName)).toEqual(expected);
     expect(liveStatusColumnType("Stock")).toEqual(expected);
   });
 });

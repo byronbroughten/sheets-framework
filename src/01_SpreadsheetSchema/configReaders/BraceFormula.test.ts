@@ -188,40 +188,53 @@ describe("BraceFormula.decompile", () => {
   });
 });
 
-describe("BraceFormula.decompileDropdownRule", () => {
+describe("BraceFormula.decompileColumnType", () => {
+  function decompiledDropdown(condition: string, values: string[]) {
+    return BraceFormula.decompileColumnType({
+      configs,
+      tableKey: "item",
+      columnType: { type: "DROPDOWN", rule: { condition, values } },
+    });
+  }
+
   it("leaves a list dropdown's items as they are, even one spelled like a reference", () => {
-    const rule = {
-      condition: "ONE_OF_LIST",
-      values: ["Paid", "Items[Count]"],
+    expect(decompiledDropdown("ONE_OF_LIST", ["Paid", "Items[Count]"])).toEqual(
+      {
+        type: "DROPDOWN",
+        rule: { condition: "ONE_OF_LIST", values: ["Paid", "Items[Count]"] },
+      },
+    );
+  });
+
+  it("puts a value naming a Table column in brace form, qualified for another Table, and keeps one already braced", () => {
+    const braced = {
+      type: "DROPDOWN",
+      rule: { condition: "ONE_OF_RANGE", values: ["=${unit[rent]}"] },
     };
-    expect(
-      BraceFormula.decompileDropdownRule({ configs, tableKey: "item", rule }),
-    ).toEqual(rule);
+    expect(decompiledDropdown("ONE_OF_RANGE", ["=Unit_list[Rent]"])).toEqual(
+      braced,
+    );
+    expect(decompiledDropdown("ONE_OF_RANGE", ["=${unit[rent]}"])).toEqual(
+      braced,
+    );
   });
 
-  it("puts a value naming a Table column in brace form, qualified for another Table", () => {
+  it("gives back a column type with no rule, or none, as it is", () => {
+    const currency = { type: "CURRENCY", rule: null };
     expect(
-      BraceFormula.decompileDropdownRule({
+      BraceFormula.decompileColumnType({
         configs,
         tableKey: "item",
-        rule: { condition: "ONE_OF_RANGE", values: ["=Unit_list[Rent]"] },
+        columnType: currency,
       }),
-    ).toEqual({ condition: "ONE_OF_RANGE", values: ["=${unit[rent]}"] });
-  });
-});
-
-describe("BraceFormula.isDropdownRuleInBraceForm", () => {
-  it("holds for a rule in brace form and a list dropdown, and fails for one naming a Table column as Sheets wrote it", () => {
-    function isInBraceForm(values: string[]): boolean {
-      return BraceFormula.isDropdownRuleInBraceForm({
+    ).toBe(currency);
+    expect(
+      BraceFormula.decompileColumnType({
         configs,
         tableKey: "item",
-        rule: { condition: "ONE_OF_RANGE", values },
-      });
-    }
-    expect(isInBraceForm(["=${unit[rent]}"])).toBe(true);
-    expect(isInBraceForm(["Paid", "Unpaid"])).toBe(true);
-    expect(isInBraceForm(["=Unit_list[Rent]"])).toBe(false);
+        columnType: undefined,
+      }),
+    ).toBeUndefined();
   });
 });
 
