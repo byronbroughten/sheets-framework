@@ -250,6 +250,19 @@ describe("ColumnConfigsOperator.traitReadings", () => {
       );
     }
 
+    // Live reads each column's before as the next column on the sheet; the last has none.
+    function withLiveOrder(
+      columns: TableReading["columns"],
+    ): TableReading["columns"] {
+      const names = Object.keys(columns);
+      return Object.fromEntries(
+        Object.entries(columns).map(([columnName, reading], index) => [
+          columnName,
+          { ...reading, before: names[index + 1] },
+        ]),
+      );
+    }
+
     const { previous, live } = syncedOperator().traitReadings();
 
     expect(previous.tables.item).toEqual({
@@ -258,7 +271,7 @@ describe("ColumnConfigsOperator.traitReadings", () => {
     });
     expect(live.tables.item).toEqual({
       traits: { name: "Widget" },
-      columns: expectedColumns(" Renamed"),
+      columns: withLiveOrder(expectedColumns(" Renamed")),
     });
     expect(Object.keys(live.tables)).toEqual(["item"]);
   });

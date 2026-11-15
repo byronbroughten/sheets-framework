@@ -30,7 +30,10 @@ import type {
 import { tableConfigsByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { type ValueName } from "../01_SpreadsheetSchema/configReaders/valueSchemas";
 import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
-import type { NewColumnHeadCells } from "../02_SpreadsheetRaw/ClassTypes/StateRaw";
+import type {
+  ColumnMoveSpan,
+  NewColumnHeadCells,
+} from "../02_SpreadsheetRaw/ClassTypes/StateRaw";
 import type {
   ColumnProfileRaw,
   TableColumnReference,
@@ -46,6 +49,7 @@ import {
   type UntypedHeadersByTableName,
   type ValueSource,
 } from "./SpreadsheetBaseOperator";
+import { TableColumnOrder } from "./TableColumnOrder";
 import { TableConfigsOperator } from "./TableConfigsOperator";
 
 export interface ApiTableColumns {
@@ -85,6 +89,18 @@ interface ColumnAt {
 
 interface ColumnInsert extends ColumnAt {
   headCells: NewColumnHeadCells;
+}
+
+// Indexed in the layout the run's column deletions and inserts leave.
+export interface PlannedColumnMove extends ColumnMoveSpan {
+  tableId: string;
+}
+
+interface ColumnOrderProps {
+  tableId: string;
+  tableKey: string;
+  deleted: Set<string>;
+  minted: MintedNewColumn[];
 }
 
 export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
@@ -216,16 +232,24 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
     return this;
   }
   // emptyValueAllowed isn't a sheet trait, so its live side carries the previous configs and only a deleted column can stop it.
+  // `before` is read live only, as a tab's is: order is never in the configs, so it can't conflict.
   traitReadings(): PlanReadings {
     const configs = installedBraceConfigs();
-    const live = this._namedColumnIdentities().reduce<TraitReadings["tables"]>(
+    const identities = this._namedColumnIdentities();
+    const namesByColumnId = new Map(
+      identities.map(({ columnId, columnName }) => [columnId, columnName]),
+    );
+    const live = identities.reduce<TraitReadings["tables"]>(
       (tables, identity) => {
-        const { tableId, tableKey, columnName } = identity;
+        const { tableId, tableKey, columnId, columnName } = identity;
         const reading = tables[tableKey] ?? {
           traits: { name: this.ss.raw.table(tableId).name },
           columns: {},
         };
         const { header, topFormula } = this._describedColumn(identity);
+        const next = this._columnOrder(tableId, tableKey).columnIdAfter(
+          columnId,
+        );
         reading.columns[columnName] = {
           header,
           emptyValueAllowed: identity.previousEmptyValueAllowed,
@@ -233,6 +257,7 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
           formula:
             bracedFormula({ configs, tableKey, formula: topFormula }) ??
             undefined,
+          before: next === undefined ? undefined : namesByColumnId.get(next),
         };
         tables[tableKey] = reading;
         return tables;
@@ -395,6 +420,77 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
       .reverse()
       .sort((first, second) => second.colIndex - first.colIndex);
   }
+  // Before any queue, so a throw sends nothing; each move is indexed in the layout the run's deletions, inserts and earlier moves leave.
+  planColumnMoves(
+    sent: IntendedTrait[],
+    minted: MintedNewColumn[],
+  ): PlannedColumnMove[] {
+    const deleted = new Set(
+      this._sentColumnTraits(sent, "deleted").map(({ columnId }) => columnId),
+    );
+    const orders = new Map<string, TableColumnOrder>();
+    return this._sentColumnTraits(sent, "before").flatMap(
+      ({
+        tableId,
+        tableKey,
+        columnId,
+        columnName,
+        value,
+      }): PlannedColumnMove[] => {
+        const order =
+          orders.get(tableId) ??
+          this._columnOrderAfterChanges({ tableId, tableKey, deleted, minted });
+        orders.set(tableId, order);
+        const before = String(value);
+        const span = order.moveSpan({
+          columnId,
+          beforeColumnId: this._columnIdOf(tableKey, before),
+          column: columnName,
+          before,
+        });
+        if (span === undefined) return [];
+        order.move(span);
+        return [{ tableId, ...span }];
+      },
+    );
+  }
+  // Queued once the run's deletions and inserts have flushed, since their indexes are the layout those leave.
+  moveColumns(moves: PlannedColumnMove[]): this {
+    for (const { tableId, ...span } of moves) {
+      this.ss.raw.table(tableId).moveColumns(span);
+    }
+    return this;
+  }
+  // As updateDeletionsAndInserts and appendColumns leave the Table: each insert before its column in entry order, each append at the end.
+  private _columnOrderAfterChanges({
+    tableId,
+    tableKey,
+    deleted,
+    minted,
+  }: ColumnOrderProps): TableColumnOrder {
+    const order = this._columnOrder(tableId, tableKey).without(deleted);
+    for (const {
+      tableId: mintedTableId,
+      table: key,
+      columnId,
+      before,
+    } of minted) {
+      if (mintedTableId !== tableId) continue;
+      let beforeColumnId: string | undefined;
+      if (before !== undefined) beforeColumnId = this._columnIdOf(key, before);
+      order.insert(columnId, beforeColumnId);
+    }
+    return order;
+  }
+  private _columnOrder(tableId: string, tableKey: string): TableColumnOrder {
+    const table = this.ss.raw.table(tableId);
+    return new TableColumnOrder(
+      tableKey,
+      table.fullTableColIndexes.map((colIndex) =>
+        table.columnResolver.columnIdAt(colIndex),
+      ),
+    );
+  }
   private _colIndexOf(tableId: string, columnId: string): number {
     return this.ss.raw.table(tableId).columnResolver.colIndexOf(columnId);
   }
@@ -410,7 +506,7 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
   }
   private _sentColumnTraits(
     sent: IntendedTrait[],
-    trait: "header" | "formula" | "deleted",
+    trait: "header" | "formula" | "deleted" | "before",
   ): SentColumnTrait[] {
     const identities = this._namedColumnIdentities();
     return sent.flatMap((intended) => {

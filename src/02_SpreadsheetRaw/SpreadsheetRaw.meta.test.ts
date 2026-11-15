@@ -605,6 +605,21 @@ describe("TableRaw.appendColumn, insertColumn and deleteColumn", () => {
       expect(tableColumnNames(grid)).toEqual(["B", "C", "ID", "D"]);
     });
 
+    it("grows the grid for a block's gap running past its edge, so no column is lost", () => {
+      const { grid } = stubFourColumnTable();
+
+      const raw = fetchedFourColumnRaw();
+      raw
+        .table(tableId111)
+        .moveColumns({ colIndex: 0, count: 2, beforeColIndex: 3 });
+      raw.batchUpdateGSheets();
+
+      expect(grid.sheet(111).values(tableBand)).toEqual(
+        bandInOrder([2, 0, 1, 3]),
+      );
+      expect(tableColumnNames(grid)).toEqual(["C", "ID", "B", "D"]);
+    });
+
     it("leaves the working view permuted, with the column count unchanged", () => {
       stubFourColumnTable();
 

@@ -51,6 +51,7 @@ import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
 import {
   ColumnConfigsOperator,
   type MintedNewColumn,
+  type PlannedColumnMove,
 } from "./ColumnConfigsOperator";
 import {
   ConditionalFormatConfigOperator,
@@ -109,6 +110,7 @@ interface AppliedPlan {
   accessChanges: ApiAccessChanges;
   sentTraits: SyncPlannerResult["sentTraits"];
   newColumns: MintedNewColumn[];
+  columnMoves: PlannedColumnMove[];
   ruleRemovals: IndexedRuleRemoval[];
   reads: EnteredDataReads;
 }
@@ -237,10 +239,17 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         ? planned.configTraits
         : readings.live,
     );
+    const newColumns = this.columnConfigOperator.mintColumnIds(
+      planned.newColumns,
+    );
     const applied: AppliedPlan = {
       accessChanges,
       sentTraits: planned.sentTraits,
-      newColumns: this.columnConfigOperator.mintColumnIds(planned.newColumns),
+      newColumns,
+      columnMoves: this.columnConfigOperator.planColumnMoves(
+        planned.sentTraits,
+        newColumns,
+      ),
       ruleRemovals: this.conditionalFormatConfigOperator.indexedRuleRemovals(
         planned.ruleRemovals,
       ),
@@ -467,10 +476,16 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       throw error;
     }
   }
-  // A column delete or mid-Table insert goes in a flush of its own on its Table, since the plan's other writes are indexed by the columns before it.
-  private _flushPlan({ sentTraits, newColumns }: AppliedPlan): void {
+  // Column deletes and inserts, then moves, each flush alone: every later write is indexed by the layout the one before leaves.
+  private _flushPlan({
+    sentTraits,
+    newColumns,
+    columnMoves,
+  }: AppliedPlan): void {
     this.ss.batchUpdateGSheets();
     this.columnConfigOperator.updateDeletionsAndInserts(sentTraits, newColumns);
+    this.ss.batchUpdateGSheets();
+    this.columnConfigOperator.moveColumns(columnMoves);
     this.ss.batchUpdateGSheets();
   }
   private _applyApiAccessChanges(accessChanges: ApiAccessChanges): void {
