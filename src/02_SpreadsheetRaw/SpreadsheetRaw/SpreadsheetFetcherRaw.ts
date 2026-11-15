@@ -38,7 +38,9 @@ export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
     this.spreadsheetStateRaw.usedTableIds = this._usedTableIds();
     // An empty dataFilters list would fetch the whole spreadsheet's grid data.
     if (this.fetcherGridRanges.length === 0) return;
-    const data = this._fetchByGridRanges(includeProgrammaticFacts);
+    const data = this._withoutSheetsQueuedForDelete(
+      this._fetchByGridRanges(includeProgrammaticFacts),
+    );
     // Before finalize, which clears the zone flags.
     this.spreadsheetStateRaw.fetchQueue.gridRanges = [];
     this._addDataToState(data);
@@ -67,11 +69,21 @@ export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
   private _fetchAndIntegrateAllSheetProperties(
     options?: SheetPropertiesFetchOptions,
   ): void {
-    const data =
-      this.spreadsheetStateRaw.rawSource.fetchSheetProperties(options);
+    const data = this._withoutSheetsQueuedForDelete(
+      this.spreadsheetStateRaw.rawSource.fetchSheetProperties(options),
+    );
     this._removeTablesAbsentFrom(data.sheets);
     this._addDataToState(data);
     this.spreadsheetStateRaw.allSheetPropertiesAreFetched = true;
+  }
+  // A queued deleteSheet outlives a re-fetch, as every queued write does.
+  private _withoutSheetsQueuedForDelete(
+    snapshot: SpreadsheetSnapshot,
+  ): SpreadsheetSnapshot {
+    const sheets = snapshot.sheets.filter(
+      ({ sheetGid }) => !this.sheetIsQueuedForDelete(sheetGid),
+    );
+    return { ...snapshot, sheets };
   }
   // Only a fetch covering the whole sheet lists every Table on it, so only it can tell one is gone.
   private _removeTablesAbsentFrom(sheets: SheetSnapshot[]): void {

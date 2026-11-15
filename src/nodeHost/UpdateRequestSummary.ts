@@ -295,6 +295,11 @@ const requestBody: {
       "",
     );
   },
+  deleteSheet(
+    remove: GoogleAppsScript.Sheets.Schema.DeleteSheetRequest | undefined,
+  ): string {
+    return columns(label.sheet(remove?.sheetId), "delete tab", "", "");
+  },
   addTable(
     add: GoogleAppsScript.Sheets.Schema.AddTableRequest | undefined,
   ): string {

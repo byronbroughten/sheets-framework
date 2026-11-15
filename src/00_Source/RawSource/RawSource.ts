@@ -178,6 +178,7 @@ export interface GridCellSnapshot {
 
 export type LocalWriteOperation =
   | AddSheetOperation
+  | DeleteSheetOperation
   | AddTableOperation
   | DeleteTableOperation
   | AppendDimensionOperation
@@ -210,6 +211,11 @@ export interface AddSheetOperation {
   title: string;
   rowCount: number;
   columnCount: number;
+}
+
+export interface DeleteSheetOperation {
+  kind: "deleteSheet";
+  sheetId: number;
 }
 
 // Google's own tableId arrives only in the reply, too late for the same-batch updateTable (sheets-framework#59).

@@ -94,6 +94,23 @@ export class SheetRaw extends SheetBaseRaw {
     this.sheetState.working.title = title;
     return this;
   }
+  // Out of the working view at once, so the tab and its Tables refuse any write queued after.
+  queueDelete(): this {
+    this.writeOperations.deleteSheet.push({
+      kind: "deleteSheet",
+      sheetId: this.sheetGid,
+    });
+    this._dropFromWorkingView();
+    return this;
+  }
+  private _dropFromWorkingView(): void {
+    for (const tableId of this.tableIds) this.tablesStateRaw.delete(tableId);
+    this.sheetsStateRaw.delete(this.sheetGid);
+    const { fetchQueue } = this.spreadsheetStateRaw;
+    fetchQueue.gridRanges = fetchQueue.gridRanges.filter(
+      ({ sheetId }) => sheetId !== this.sheetGid,
+    );
+  }
   updateTabProperties(properties: Partial<SheetTabProperties>): this {
     this._queueTabProperties(properties);
     this.sheetState.working.tabProperties = {

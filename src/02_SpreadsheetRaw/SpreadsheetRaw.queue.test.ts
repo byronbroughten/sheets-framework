@@ -163,6 +163,70 @@ describe("TableRaw.queueDelete", () => {
   });
 });
 
+describe("SheetRaw.queueDelete", () => {
+  function stubTwoTabs() {
+    return stubSheetsService({
+      sheets: [
+        {
+          sheetId: 111,
+          title: "Records",
+          table: { endRowIndex: topDataRowIndex + 1, endColumnIndex: 2 },
+        },
+        {
+          sheetId: 222,
+          title: "Kept",
+          table: { endRowIndex: topDataRowIndex + 1, endColumnIndex: 2 },
+        },
+      ],
+    });
+  }
+
+  it("deletes the tab in the flush, after the writes queued before it", () => {
+    const { grid } = stubTwoTabs();
+
+    const raw = SpreadsheetRaw.init();
+    raw.fetchAllSheetProperties();
+    raw.table(tableId222).row(0).cell(1).updateValue("written");
+    raw.sheet(111).queueDelete();
+    raw.batchUpdateGSheets();
+
+    expect(grid.sheetTitles()).toEqual(["Kept"]);
+    expect(
+      grid.sheet(222).values({
+        startRowIndex: topDataRowIndex,
+        endRowIndex: topDataRowIndex + 1,
+      }),
+    ).toEqual([[null, "written"]]);
+  });
+
+  it("drops the tab and its Tables from the working view, and keeps them out through a re-fetch", () => {
+    stubTwoTabs();
+
+    const raw = SpreadsheetRaw.init();
+    raw.fetchAllSheetProperties();
+    raw.sheet(111).queueDelete();
+    raw.fetchAllSheetProperties();
+
+    expect(raw.activeSheetGids).toEqual([222]);
+    expect(raw.activeTableIds).toEqual([tableId222]);
+  });
+
+  it("refuses a write queued after it on the tab or on one of its Tables", () => {
+    stubTwoTabs();
+
+    const raw = SpreadsheetRaw.init();
+    raw.fetchAllSheetProperties();
+    raw.sheet(111).queueDelete();
+
+    expect(() => raw.sheet(111).updateTitle("Renamed")).toThrow(
+      "Sheet GID 111 is queued for deletion in this flush",
+    );
+    expect(() =>
+      raw.table(tableId111).row(0).cell(1).updateValue("lost"),
+    ).toThrow(tableId111);
+  });
+});
+
 describe("queued writes outlive a same-run re-fetch", () => {
   function stubTwoDataRows(topDataRow: FakeCell[] = ["r:lse:1", "live"]) {
     stubSheetsService({

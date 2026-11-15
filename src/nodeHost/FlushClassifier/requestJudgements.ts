@@ -178,6 +178,12 @@ export const requestJudgements: {
       columnCount: properties.gridProperties?.columnCount ?? 26,
     });
   },
+  // Held whole until the classifier judges what a tab delete takes with it (sheets-framework#314).
+  deleteSheet(remove, judge): void {
+    judge.holdUnmeasured(
+      `tab gid ${remove.sheetId ?? 0}, deleted with every Table on it`,
+    );
+  },
   addTable(add, _judge, tracker): void {
     if (add.table?.tableId !== undefined) {
       tracker.addTable(add.table.tableId);
