@@ -8,6 +8,10 @@ import {
 } from "../01_SpreadsheetSchema/configReaders/apiAccessChanges";
 import { columnConfigsByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
 import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister";
+import type {
+  ConfigSnapshot,
+  ConfigSnapshots,
+} from "../01_SpreadsheetSchema/configReaders/configSnapshots";
 import {
   didntLandOf,
   hasLanded,
@@ -23,6 +27,7 @@ import {
 import type { PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState";
 import { remainingAlterations } from "../01_SpreadsheetSchema/configReaders/remainingAlterations";
 import { SyncEntryRefuser } from "../01_SpreadsheetSchema/configReaders/SyncEntryRefuser";
+import { SyncNameRewriter } from "../01_SpreadsheetSchema/configReaders/SyncNameRewriter";
 import {
   deletedTableOf,
   isSheetTrait,
@@ -99,6 +104,8 @@ export interface SyncRunProps {
 
 interface Regeneration {
   files: ConfigRegeneration;
+  // The configs the files record, beside the ones the run started from.
+  configs: ConfigSnapshots;
   changes: SyncTypedTraitChange[];
   notes: string[];
   didntLand: SyncSendLine[];
@@ -119,9 +126,16 @@ interface RefetchProps {
   configTraits: TraitReadings;
   plan: SyncPlannerResult;
   sent: SyncSubject[];
+  previous: ConfigSnapshot;
   accessChanges: ApiAccessChanges;
   newColumns: MintedNewColumn[];
   ruleRemovals: IndexedRuleRemoval[];
+}
+
+interface RegenerationProps {
+  notes: string[];
+  sent: SyncSubject[];
+  previous: ConfigSnapshot;
 }
 
 // No files on a refused run: the run writes every file or none.
@@ -140,7 +154,9 @@ export interface SyncRun {
  * placed before another in a flush of their own,
  * refetches, then emits every generated config file, the ID-name map and
  * the remaining alterations, or none, and fills blank
- * row IDs from the fresh configs as its own send. A bare run sends nothing but still
+ * row IDs from the fresh configs as its own send. Every run that refreshes the
+ * ID-name map rewrites the pending entries naming a renamed Table, column or
+ * tab, a bare or stopped run included. A bare run sends nothing but still
  * refreshes the configs from its read; on a host that withholds, it then
  * flushes the plan for the host's entered-data gate to judge. Before either
  * flush it reads the cells a deletion or a formula would overwrite, so the
@@ -277,6 +293,11 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       }
     }
     const sent = isApplying ? planned.plan.map(({ subject }) => subject) : [];
+    const previous: ConfigSnapshot = {
+      idNameMap: props.previousIdNameMap,
+      columnConfigs: columnConfigsByName(),
+      valueConfigs: installedConfigs().valueConfigs,
+    };
     let refetched: SyncCoordinator | undefined;
     let regeneration: Regeneration;
     // A fresh read, since Raw's state has no reset; only a sent sheet trait, a new column or a removed rule changes what it would read.
@@ -291,12 +312,13 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         configTraits: planned.configTraits,
         plan: planned,
         sent,
+        previous,
         accessChanges,
         newColumns: applied.newColumns,
         ruleRemovals: applied.ruleRemovals,
       });
     } else {
-      regeneration = this._regeneration(notes, sent);
+      regeneration = this._regeneration({ notes, sent, previous });
     }
     // The fill reads the configs the files came from.
     const regenerator = refetched ?? this;
@@ -307,10 +329,14 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       this._flushPlan(applied);
     }
     const landed = sent.filter(hasLanded(didntLand));
-    if (landed.length > 0) {
-      files.alterations = alterationsFileSource(
-        remainingAlterations(alterations, landed),
-      );
+    const nameRewriter = SyncNameRewriter.init({
+      alterations: remainingAlterations(alterations, landed),
+      configs: regeneration.configs,
+      sent,
+      landed,
+    });
+    if (landed.length > 0 || nameRewriter.rewrites.length > 0) {
+      files.alterations = alterationsFileSource(nameRewriter.alterations);
     }
     let fillPlan: SyncPlanItem[];
     if (isApplying) {
@@ -326,6 +352,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         didntLand,
         createdColumns,
         rowIds: { plan: [...checkboxPlan, ...fillPlan], notices },
+        nameRewriter,
       }),
       files,
     };
@@ -360,6 +387,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     configTraits,
     plan,
     sent,
+    previous,
     accessChanges,
     newColumns,
     ruleRemovals,
@@ -378,27 +406,29 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     const rulesDidntLand =
       this.conditionalFormatConfigOperator.removalsDidntLand(ruleRemovals);
     return {
-      ...this._regeneration(notes, sent),
+      ...this._regeneration({ notes, sent, previous }),
       didntLand: [...traitsDidntLand, ...columns.didntLand, ...rulesDidntLand],
       createdColumns: columns.createdColumns,
     };
   }
-  private _regeneration(notes: string[], sent: SyncSubject[]): Regeneration {
+  private _regeneration({
+    notes,
+    sent,
+    previous,
+  }: RegenerationProps): Regeneration {
     this.valueConfigOperator.fetchAfterColumnConfigSynced();
-    const changes = typedTraitChanges({
-      previous: {
-        columnConfigs: columnConfigsByName(),
-        valueConfigs: installedConfigs().valueConfigs,
-      },
+    const configs: ConfigSnapshots = {
+      previous,
       regenerated: {
+        idNameMap: this._idNameMap(),
         columnConfigs: this.columnConfigOperator.newColumnConfigs(),
         valueConfigs: this.valueConfigOperator.newValueConfigs(),
       },
-      sent,
-    });
+    };
     return {
-      files: this._configFiles(),
-      changes,
+      files: this._configFiles(configs.regenerated.idNameMap),
+      configs,
+      changes: typedTraitChanges({ ...configs, sent }),
       notes,
       didntLand: [],
       createdColumns: [],
@@ -503,7 +533,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     if (untypedColumnsSummary === undefined) return [];
     return [untypedColumnsSummary];
   }
-  private _configFiles(): ConfigRegeneration {
+  private _configFiles(idNameMap: IdNameMapGeneric): ConfigRegeneration {
     return {
       tableConfigs: this.tableConfigOperator.toFileSource(),
       tabConfigs: this.tabConfigOperator.toFileSource(),
@@ -512,7 +542,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       retiredIdPrefixes: this.tableConfigOperator.retiredIdPrefixesFileSource(),
       columnConfigs: this.columnConfigOperator.toFileSource(),
       valueConfigs: this.valueConfigOperator.toFileSource(),
-      idNameMap: idNameMapFileSource(this._idNameMap()),
+      idNameMap: idNameMapFileSource(idNameMap),
     };
   }
   private _idNameMap(): IdNameMapGeneric {

@@ -1,3 +1,4 @@
+import type { ConfigSnapshots } from "./configSnapshots";
 import type {
   ColumnConfigsGeneric,
   ColumnConfigStored,
@@ -6,14 +7,7 @@ import type {
 } from "./makeConfigs";
 import type { SyncSubject, SyncTypedTraitChange } from "./syncRunResult";
 
-export interface TypedTraitConfigs {
-  columnConfigs: ColumnConfigsGeneric;
-  valueConfigs: ValueConfigsBase;
-}
-
-export interface TypedTraitChangesProps {
-  previous: TypedTraitConfigs;
-  regenerated: TypedTraitConfigs;
+export interface TypedTraitChangesProps extends ConfigSnapshots {
   // What the run itself sent: those columns aren't a person's change.
   sent: SyncSubject[];
 }

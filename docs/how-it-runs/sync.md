@@ -22,7 +22,11 @@
 
 ## What sync writes
 
-A refused run writes no file. Every other run writes every config file, the ID-name map and `appConfigs.ts`, which gathers them and registers them and the map on `Register`, and rewrites `alterations.ts` only when the run returns it, with the landed alterations removed. It leaves the Table Config and Column Config tabs alone. When the `generatedDir`'s parent holds no `alterations.ts`, it creates one in the format sync emits, holding an empty `makePendingAlterations({})`. It prints the configs diff before the report, then runs the package's `npm run tsc`, and fails if that fails.
+A refused run writes no file. Every other run writes every config file, the ID-name map and `appConfigs.ts`, which gathers them and registers them and the map on `Register`, and rewrites `alterations.ts` only when the run returns it, with the landed alterations removed and every name the regen renamed rewritten.
+
+**A pending entry still names what it meant after a rename**: when the regen gives a Table, column or tab ID a new name, every run that writes files, a bare or stopped one included, rewrites the entry keys and `before:` names that used the old one (`SyncNameRewriter`, [ADR 0035](../adr/0035-key-alterations-by-codebase-name-and-have-sync-rewrite-pending-names-on-a-rename.md)). Formula text and rule handles keep the old name for now, and endpoint and chore code are never rewritten. The report lists each rewrite and each name that now points at another column under Configs, and shows a rewritten entry's subject as `table › newName (you wrote oldName; columnId)`. What an agent does after a run that lists a moved name: [`src/01_SpreadsheetSchema/AGENTS.md`](../../src/01_SpreadsheetSchema/AGENTS.md).
+
+The run leaves the Table Config and Column Config tabs alone. When the `generatedDir`'s parent holds no `alterations.ts`, it creates one in the format sync emits, holding an empty `makePendingAlterations({})`. It prints the configs diff before the report, then runs the package's `npm run tsc`, and fails if that fails.
 
 ## sync's exit codes
 
