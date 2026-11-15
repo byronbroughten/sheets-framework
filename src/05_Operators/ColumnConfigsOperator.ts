@@ -1,7 +1,6 @@
 import { Val } from "@byronbroughten/utils/val";
 
 import { isFrameworkValueName } from "../00_Source/CellValues/frameworkValueSchemas";
-import { SheetIndex } from "../00_Source/RawSource/SheetIndex";
 import {
   type BraceConfigs,
   BraceFormula,
@@ -15,7 +14,7 @@ import {
   type ColumnConfigStored,
   makeImportLine,
 } from "../01_SpreadsheetSchema/configReaders/makeConfigs";
-import type { FormulaColumn } from "../01_SpreadsheetSchema/configReaders/outsideReferences";
+import type { FormulaColumn } from "../01_SpreadsheetSchema/configReaders/OutsideReferences";
 import { previousTraitTables } from "../01_SpreadsheetSchema/configReaders/previousTraitTables";
 import {
   type IntendedTrait,
@@ -259,7 +258,7 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
           traits: { name: this.ss.raw.table(tableId).name },
           columns: {},
         };
-        const { header, topFormula, columnType, validationRule } =
+        const { header, columnType, validationRule } =
           this._describedColumn(identity);
         const next = this._columnOrder(tableId, tableKey).columnIdAfter(
           columnId,
@@ -267,10 +266,7 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
         reading.columns[columnName] = {
           header,
           emptyValueAllowed: identity.previousEmptyValueAllowed,
-          // In brace form against the previous configs, the names an alteration's formula uses.
-          formula:
-            bracedFormula({ configs, tableKey, formula: topFormula }) ??
-            undefined,
+          formula: this._bracedTopFormula(configs, identity),
           // Against live names under previous keys, so a person renaming a Table a rule names reads as no change.
           columnType: BraceFormula.decompileColumnType({
             configs: liveConfigs,
@@ -297,26 +293,27 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
     const configs = installedBraceConfigs();
     return this._namedColumnIdentities().flatMap((identity) => {
       const { tableId, tableKey, columnId } = identity;
-      const formula = bracedFormula({
-        configs,
-        tableKey,
-        formula: this._describedColumn(identity).topFormula,
-      });
-      if (formula === undefined || formula === null) return [];
-      const table = this.ss.raw.table(tableId);
-      // colIndexOf is Table-relative.
-      const colIndex = SheetIndex.col(
-        table.startColumnIndex + this._colIndexOf(tableId, columnId),
-      );
-      const bodyRows = this.schema.gridRangeA1({
-        sheetId: table.sheetGid,
-        startRowIndex: SheetIndex.row(table.startRowIndex + 1),
-        endRowIndex: table.endRowIndex,
-        startColumnIndex: colIndex,
-        endColumnIndex: SheetIndex.col(colIndex + 1),
-      });
-      return [{ tableKey, cell: `${table.sheetTitle}!${bodyRows}`, formula }];
+      const formula = this._bracedTopFormula(configs, identity);
+      if (formula === undefined) return [];
+      const cell = this.ss.raw
+        .table(tableId)
+        .columnBodyA1(this._colIndexOf(tableId, columnId));
+      return [{ tableKey, cell, formula }];
     });
+  }
+  // In brace form against the previous configs, the names an alteration's formula uses.
+  private _bracedTopFormula(
+    configs: BraceConfigs,
+    identity: NamedColumnIdentity,
+  ): string | undefined {
+    const { topFormula } = this._describedColumn(identity);
+    return (
+      bracedFormula({
+        configs,
+        tableKey: identity.tableKey,
+        formula: topFormula,
+      }) ?? undefined
+    );
   }
   // The previous configs with each API-access Table's live name and each live column's header.
   private _liveBraceConfigs({

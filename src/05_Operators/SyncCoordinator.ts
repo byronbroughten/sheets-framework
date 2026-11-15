@@ -34,7 +34,7 @@ import {
   tableIdsByName,
 } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
 import type { PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState";
-import { outsideReferences } from "../01_SpreadsheetSchema/configReaders/outsideReferences";
+import { OutsideReferences } from "../01_SpreadsheetSchema/configReaders/OutsideReferences";
 import { remainingAlterations } from "../01_SpreadsheetSchema/configReaders/remainingAlterations";
 import { SyncEntryRefuser } from "../01_SpreadsheetSchema/configReaders/SyncEntryRefuser";
 import { SyncNameRewriter } from "../01_SpreadsheetSchema/configReaders/SyncNameRewriter";
@@ -164,6 +164,12 @@ interface RegenerationProps {
   previous: ConfigSnapshot;
 }
 
+interface DeletionEffectsProps {
+  planned: SyncPlannerResult;
+  deletedTables: Set<string>;
+  previousIdNameMap: IdNameMapGeneric;
+}
+
 // No files on a refused run: the run writes every file or none.
 export interface SyncRun {
   result: SyncRunResult;
@@ -256,28 +262,33 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     this.rowIdsOperator.validateIdPrefixes();
     const checkboxPlan = this.rowIdsOperator.checkboxPlan();
     const readings = this._traitReadings();
-    const planned = this._withDeletionEffects(
-      planner.plan({
-        ...withApiAccessReadings({
-          readings,
-          previousIdNameMap: props.previousIdNameMap,
-          liveTableIds: new Set(this.ss.raw.activeTableIds),
-        }),
-        sheetStops: [
-          ...this.tableConfigOperator.grantHeadRowStops(accessChanges.grants),
-          ...this.columnConfigOperator.headerTakenStops(planner.newColumns),
-          ...this.tableConfigOperator.newTableStops(planner.newTables),
-          ...this.conditionalFormatConfigOperator.noSuchRuleStops(
-            planner.ruleRemovals,
-            planner.ruleReplacements,
-          ),
-          ...this.conditionalFormatConfigOperator.unmodelableReplaceStops(
-            planner.ruleReplacements,
-          ),
-        ],
+    const plannedSends = planner.plan({
+      ...withApiAccessReadings({
+        readings,
+        previousIdNameMap: props.previousIdNameMap,
+        liveTableIds: new Set(this.ss.raw.activeTableIds),
       }),
-      props.previousIdNameMap,
+      sheetStops: [
+        ...this.tableConfigOperator.grantHeadRowStops(accessChanges.grants),
+        ...this.columnConfigOperator.headerTakenStops(planner.newColumns),
+        ...this.tableConfigOperator.newTableStops(planner.newTables),
+        ...this.conditionalFormatConfigOperator.noSuchRuleStops(
+          planner.ruleRemovals,
+          planner.ruleReplacements,
+        ),
+        ...this.conditionalFormatConfigOperator.unmodelableReplaceStops(
+          planner.ruleReplacements,
+        ),
+      ],
+    });
+    const deletedTables = new Set(
+      plannedSends.plan.flatMap(({ subject }) => deletedTableOf(subject) ?? []),
     );
+    const planned = this._withDeletionEffects({
+      planned: plannedSends,
+      deletedTables,
+      previousIdNameMap: props.previousIdNameMap,
+    });
     const notices: SyncNotice[] = [
       ...goneNotices({
         tabsGone: this.tabConfigOperator.goneTabNotices(
@@ -290,10 +301,8 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       }),
       ...this.rowIdsOperator.idFirstNotices(),
     ];
-    if (
-      planned.plan.some(({ subject }) => deletedTableOf(subject) !== undefined)
-    ) {
-      notices.push(outsideReferences.uncheckedNotice);
+    if (deletedTables.size > 0) {
+      notices.push(OutsideReferences.uncheckedNotice);
     }
     const isApplying = props.isSending && !planned.isStopped;
     // An unstopped dry run records the live readings: configTraits carry sends it won't make.
@@ -422,16 +431,14 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     };
   }
   // A pure planner can't read the rules a deleted Table takes with it, or the formulas outside it that read it, so the run fills them in from its live read.
-  private _withDeletionEffects(
-    planned: SyncPlannerResult,
-    previousIdNameMap: IdNameMapGeneric,
-  ): SyncPlannerResult {
-    const tableIds = tableIdsByName(previousIdNameMap);
-    const deletedTables = new Set(
-      planned.plan.flatMap(({ subject }) => deletedTableOf(subject) ?? []),
-    );
+  private _withDeletionEffects({
+    planned,
+    deletedTables,
+    previousIdNameMap,
+  }: DeletionEffectsProps): SyncPlannerResult {
     if (deletedTables.size === 0) return planned;
-    const checks = outsideReferences.checks({
+    const tableIds = tableIdsByName(previousIdNameMap);
+    const checks = OutsideReferences.checks({
       deletedTables,
       formulaColumns: this.columnConfigOperator.formulaColumns(),
     });
@@ -448,7 +455,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         ({ subject }) => "table" in subject && subject.table === table,
       );
       const referenceEffects =
-        check === undefined ? [] : [outsideReferences.effect(check)];
+        check === undefined ? [] : [OutsideReferences.effect(check)];
       return {
         ...item,
         effects: [...item.effects, ...ruleEffects, ...referenceEffects],

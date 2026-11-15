@@ -11,6 +11,7 @@ import {
   type FakeSheetsService,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
+import { a1Notation } from "../testSupport/fakeSheetsService/a1Notation";
 import { fakeSpreadsheet } from "../testSupport/fakeSheetsService/fakeSpreadsheet";
 import { fakeTableSheet } from "../testSupport/fakeSheetsService/fakeTableSheet";
 import { parseIdNameMapFileSource } from "./parseIdNameMapFileSource";
@@ -222,8 +223,8 @@ describe("SyncCoordinator.run Table deletion", () => {
     const logColumns = columnConfigs.log;
     const logColumnNames = Object.keys(logColumns);
     const formulaColumn = Val.assert(logColumnNames.at(-1), "a Log column");
-    const formulaLetter = String.fromCharCode(
-      65 + logColumnNames.indexOf(formulaColumn),
+    const formulaLetter = a1Notation.columnLetters(
+      logColumnNames.indexOf(formulaColumn),
     );
     const nameHeader = columnConfigs.item.name.header;
     const uncheckedNotice = {

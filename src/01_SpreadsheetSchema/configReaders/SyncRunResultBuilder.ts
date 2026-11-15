@@ -67,7 +67,7 @@ interface SyncRunCommonProps {
   nameRewriter?: SyncNameRewriter;
 }
 
-// Builds one run's SyncRunResult from its mode and frame; the fields later tickets fill stay empty.
+// Builds one run's SyncRunResult from its mode and frame.
 export class SyncRunResultBuilder {
   readonly isSending: boolean;
   readonly frame: SyncRunFrame;

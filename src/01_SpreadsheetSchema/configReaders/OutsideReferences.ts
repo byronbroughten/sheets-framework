@@ -23,7 +23,7 @@ interface OutsideReferencesProps {
 // Live, a deleted Table's references are rewritten to its old body rows, which read blank (#318).
 const deletedTableEffect = "blank";
 
-export const outsideReferences = {
+export const OutsideReferences = {
   // One check per deleted Table a formula outside the deleted Tables names; a deleted Table's own formulas go with it.
   checks({
     deletedTables,
