@@ -140,7 +140,7 @@ export class TabConfigOperator extends SpreadsheetBaseOperator {
 function deletedTabsOf(sent: IntendedTrait[]): Set<string> {
   return new Set(
     sent.flatMap((intended) => {
-      if (intended.kind !== "tab" || !isTabDeletion(intended)) return [];
+      if (!isTabDeletion(intended)) return [];
       return [intended.tab];
     }),
   );

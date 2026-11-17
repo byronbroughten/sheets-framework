@@ -37,9 +37,12 @@ export interface TraitReadings {
   tabs: Record<string, TraitRecord | undefined>;
 }
 
+// Each Table's tab, both by codebase name.
+export type TabsByTable = Record<string, string | undefined>;
+
 export interface SyncPlannerProps {
   alterations: PendingAlterations;
-  tabsByTable: Record<string, string | undefined>;
+  tabsByTable: TabsByTable;
   // Only ever this run's --force arguments, so a yes can't outlive its run.
   forcedTraits: ForcedTrait[];
   // The app's setting, which a column type's dropdownReset effect names.
@@ -306,7 +309,7 @@ const absentText = "(none)";
 // Pure: the three-way comparison of intended state against the previous configs and the live sheet.
 export class SyncPlanner {
   private alterations: WideAlterations;
-  private tabsByTable: Record<string, string | undefined>;
+  private tabsByTable: TabsByTable;
   private forcedTraits: ForcedTrait[];
   private dropdownStyleReset: DropdownStyleReset;
   constructor(props: SyncPlannerProps) {
@@ -642,7 +645,9 @@ export function isTableDeletion(address: TraitAddress): boolean {
   return address.kind === "table" && address.trait === "deleted";
 }
 
-export function isTabDeletion(address: TraitAddress): boolean {
+export function isTabDeletion(
+  address: TraitAddress,
+): address is TabTraitAddress & { trait: "deleted" } {
   return address.kind === "tab" && address.trait === "deleted";
 }
 
@@ -768,7 +773,7 @@ interface ConfigTraitsProps {
   heldBack: HeldBackValue[];
   newColumns: PlannedNewColumn[];
   newTables: PlannedNewTable[];
-  tabsByTable: Record<string, string | undefined>;
+  tabsByTable: TabsByTable;
 }
 
 function configTraitsOf({
@@ -804,7 +809,7 @@ function configTraitsOf({
     ...created,
   ];
   return written.reduce((readings, { address, value }) => {
-    if (address.kind === "tab" && isTabDeletion(address)) {
+    if (isTabDeletion(address)) {
       return withoutTab(readings, address.tab, tabsByTable);
     }
     return withTrait(readings, address, value);
@@ -815,7 +820,7 @@ function configTraitsOf({
 function withoutTab(
   readings: TraitReadings,
   tab: string,
-  tabsByTable: Record<string, string | undefined>,
+  tabsByTable: TabsByTable,
 ): TraitReadings {
   const { [tab]: _deleted, ...tabs } = readings.tabs;
   const tables = Object.fromEntries(

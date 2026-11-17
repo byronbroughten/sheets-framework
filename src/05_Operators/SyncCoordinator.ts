@@ -44,6 +44,7 @@ import {
   type PlanProps,
   SyncPlanner,
   type SyncPlannerResult,
+  type TabsByTable,
   type TraitReadings,
 } from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
 import type {
@@ -713,11 +714,8 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
 }
 
 // Each Table's tab by name, from the previous map, since nothing is read before the refusals.
-function tabsByTable({
-  tables,
-  tabs,
-}: IdNameMapGeneric): Record<string, string | undefined> {
-  return Object.values(tables).reduce<Record<string, string | undefined>>(
+function tabsByTable({ tables, tabs }: IdNameMapGeneric): TabsByTable {
+  return Object.values(tables).reduce<TabsByTable>(
     (byTable, { name, sheetGid }) => {
       byTable[name] = tabs[String(sheetGid)]?.name;
       return byTable;
@@ -729,7 +727,7 @@ function tabsByTable({
 interface GoneNoticesProps {
   tabsGone: SyncTabGoneNotice[];
   tablesGone: SyncTableGoneNotice[];
-  tabsByTable: Record<string, string | undefined>;
+  tabsByTable: TabsByTable;
 }
 
 // Each gone tab's line comes just before its own Tables' lines, then the Tables gone from a live tab.
