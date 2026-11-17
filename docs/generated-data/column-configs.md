@@ -53,7 +53,7 @@ The sync resolves it in six steps, first match winning: the ID column is always 
 
 ## The untyped-columns summary
 
-Because a column left on Automatic with no mapped format and no Insert > Checkbox declares nothing, the sample is still doing real work: **the sync counts every column whose value name it had to guess and returns a one-line summary**, naming how many Tables they span; the per-Table breakdown goes to the log. The regen never fails over an untyped column — a send also writes missing column IDs, and a throw would discard that. The summary rides back in the run's result as a note in `configs.notes`, and `npm run sync` prints every note in its report's Configs section. **The agent must report that count**, per the root alias's standing permission in byro-repo's [tier list](https://github.com/byronbroughten/byro-repo/blob/master/docs/targets-and-gates.md#which-tier-an-action-is-in).
+Because a column left on Automatic with no mapped format and no Insert > Checkbox declares nothing, the sample is still doing real work: **the sync counts every column whose value name it had to guess and returns a one-line summary**, naming how many Tables they span; the per-Table breakdown goes to the log. The regen never fails over an untyped column — a send also writes missing column IDs, and a throw would discard that. The summary rides back in the run's result as a note in `configs.notes`, and `npm run sync` prints every note in its report's Configs section. **The agent must report that count**, per the standing permission byro-repo's [tier list](https://github.com/byronbroughten/byro-repo/blob/master/docs/targets-and-gates.md#which-tier-an-action-is-in) gives `sync`'s root alias.
 
 ## The generated entry never says which step decided it
 

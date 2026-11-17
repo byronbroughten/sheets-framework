@@ -1,6 +1,6 @@
 # Rules for `src/01_SpreadsheetSchema/`
 
-- **Regenerate the config files, `appConfigs.ts` and `idNameMap.ts` in a package's `generatedDir` together with `sync`, never a subset**, and never edit their data by hand: fix the live tab, or write an `alterations.ts` entry. Its root alias: byro-repo's [tier list](https://github.com/byronbroughten/byro-repo/blob/master/docs/targets-and-gates.md#which-tier-an-action-is-in).
+- **Regenerate the config files, `appConfigs.ts` and `idNameMap.ts` in a package's `generatedDir` together with `sync`, never a subset**, and never edit their data by hand: fix the live tab, or write an `alterations.ts` entry.
 - **A sheet-shape bug is fixed on the sheet, then regenerated.** Read the regenerated entry before building on it.
 - **Fix a Table's spelling before code references it**: its name becomes the Table's key in the generated files and every string literal naming it.
 - **`makeValueConfigs` keeps its `const` type parameter.** Without it every dropdown column's value type widens to `string`, silently.
