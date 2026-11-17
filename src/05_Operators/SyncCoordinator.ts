@@ -577,7 +577,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     this.tableConfigOperator
       .updateTableNames(sentTraits)
       .deleteTables(sentTraits);
-    this.tabConfigOperator.updateTabTraits(sentTraits);
+    this.tabConfigOperator.updateTabTraits(sentTraits).deleteTabs(sentTraits);
   }
   // The cells the host's entered-data gate judges; a Table or tab gone from the sheet has none to read.
   private _readEnteredData({

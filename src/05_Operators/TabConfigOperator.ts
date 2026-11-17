@@ -8,9 +8,10 @@ import {
   type TabConfigsBase,
   type TabConfigStored,
 } from "../01_SpreadsheetSchema/configReaders/makeConfigs";
-import type {
-  IntendedTrait,
-  TraitReadings,
+import {
+  type IntendedTrait,
+  isTabDeletion,
+  type TraitReadings,
 } from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
 import type { SyncTabGoneNotice } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
 import type { SheetRaw } from "../02_SpreadsheetRaw/SheetRaw";
@@ -80,8 +81,10 @@ export class TabConfigOperator extends SpreadsheetBaseOperator {
     function sheetNamed(tabName: string): SheetRaw {
       return Val.assert(sheets.get(tabName), `live tab ${tabName}`);
     }
+    // A deleted tab's other traits would be lost with it, and a retitle would hide it from deleteTabs.
+    const deletedTabs = deletedTabsOf(sent);
     for (const intended of sent) {
-      if (intended.kind !== "tab") continue;
+      if (intended.kind !== "tab" || deletedTabs.has(intended.tab)) continue;
       const sheet = sheetNamed(intended.tab);
       const { trait, value } = intended;
       if (trait === "title") {
@@ -94,6 +97,14 @@ export class TabConfigOperator extends SpreadsheetBaseOperator {
           [trait]: value,
         } as Partial<SheetTabProperties>);
       }
+    }
+    return this;
+  }
+  // By the names before any retitle, which updateTabTraits leaves a deleted tab without.
+  deleteTabs(sent: IntendedTrait[]): this {
+    const sheets = this._sheetsByTabName();
+    for (const tab of deletedTabsOf(sent)) {
+      Val.assert(sheets.get(tab), `live tab ${tab}`).queueDelete();
     }
     return this;
   }
@@ -124,6 +135,15 @@ export class TabConfigOperator extends SpreadsheetBaseOperator {
       ``,
     ].join("\n");
   }
+}
+
+function deletedTabsOf(sent: IntendedTrait[]): Set<string> {
+  return new Set(
+    sent.flatMap((intended) => {
+      if (intended.kind !== "tab" || !isTabDeletion(intended)) return [];
+      return [intended.tab];
+    }),
+  );
 }
 
 // The configs write no colour as null; the planner's absent value is undefined.

@@ -157,7 +157,7 @@ export const tabTraits = [
   "hidden",
 ] as const;
 
-// The sent traits Raw's working view doesn't carry, so the run refetches after sending one; a tab's land in the working view.
+// The sent traits the run refetches after sending, so the refetch can show whether each landed; a tab's other traits land in the working view.
 export const sheetTraits = {
   table: new Set<string>(["name", "deleted"]),
   column: new Set<string>([
@@ -167,12 +167,14 @@ export const sheetTraits = {
     "before",
     "deleted",
   ]),
+  tab: new Set<string>(["deleted"]),
 } as const;
 
 // A deletion's one value, `true`, says nothing a plan line could show.
 const deletionWhat = {
   table: "delete the Table",
   column: "delete the column",
+  tab: "delete the tab",
 } as const;
 
 // How a `newColumns` entry reads on the plan, landed and didntLand lists.
@@ -267,7 +269,6 @@ export const ruleReplacementLines = {
 };
 
 export function isSheetTrait(intended: IntendedTrait): boolean {
-  if (intended.kind === "tab") return false;
   return sheetTraits[intended.kind].has(intended.trait);
 }
 
@@ -411,6 +412,11 @@ export class SyncPlanner {
         send(deletionWhat.table);
         return;
       }
+      // Likewise a tab a person deleted.
+      if (isTabDeletion(intended)) {
+        send(deletionWhat.tab);
+        return;
+      }
       const stop = stopOf(intended, sides);
       if (stop === undefined) {
         if (!sendsIntended(intended.value, sides)) return;
@@ -495,6 +501,7 @@ export class SyncPlanner {
         heldBack: heldBackTraits,
         newColumns: newColumnsIfUnstopped,
         newTables: newTablesIfUnstopped,
+        tabsByTable: this.tabsByTable,
       }),
       sentTraits: sentIfUnstopped,
       newColumns: newColumnsIfUnstopped,
@@ -560,7 +567,7 @@ export class SyncPlanner {
     );
     const tabDeclarations = entriesOf(this.alterations.tabs).flatMap(
       ([tab, entry]): IntendedTrait[] =>
-        pickTraits(entry, tabTraits).map((trait) => ({
+        pickTraits(entry, [...tabTraits, "deleted"]).map((trait) => ({
           kind: "tab",
           tab,
           ...trait,
@@ -633,6 +640,10 @@ export function isColumnDeletion(address: TraitAddress): boolean {
 
 export function isTableDeletion(address: TraitAddress): boolean {
   return address.kind === "table" && address.trait === "deleted";
+}
+
+export function isTabDeletion(address: TraitAddress): boolean {
+  return address.kind === "tab" && address.trait === "deleted";
 }
 
 function addressKey(address: TraitAddress): string {
@@ -757,6 +768,7 @@ interface ConfigTraitsProps {
   heldBack: HeldBackValue[];
   newColumns: PlannedNewColumn[];
   newTables: PlannedNewTable[];
+  tabsByTable: Record<string, string | undefined>;
 }
 
 function configTraitsOf({
@@ -765,6 +777,7 @@ function configTraitsOf({
   heldBack,
   newColumns,
   newTables,
+  tabsByTable,
 }: ConfigTraitsProps): TraitReadings {
   const createdColumns = [
     ...newColumns,
@@ -790,10 +803,27 @@ function configTraitsOf({
     })),
     ...created,
   ];
-  return written.reduce(
-    (readings, { address, value }) => withTrait(readings, address, value),
-    live,
+  return written.reduce((readings, { address, value }) => {
+    if (address.kind === "tab" && isTabDeletion(address)) {
+      return withoutTab(readings, address.tab, tabsByTable);
+    }
+    return withTrait(readings, address, value);
+  }, live);
+}
+
+// A deleted tab takes its Tables with it.
+function withoutTab(
+  readings: TraitReadings,
+  tab: string,
+  tabsByTable: Record<string, string | undefined>,
+): TraitReadings {
+  const { [tab]: _deleted, ...tabs } = readings.tabs;
+  const tables = Object.fromEntries(
+    Object.entries(readings.tables).filter(
+      ([table]) => tabsByTable[table] !== tab,
+    ),
   );
+  return { tables, tabs };
 }
 
 function withTrait(
