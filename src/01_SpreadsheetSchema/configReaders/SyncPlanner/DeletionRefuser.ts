@@ -1,4 +1,5 @@
 import { BraceFormula } from "../BraceFormula";
+import type { TabsByTable } from "../SyncPlanner";
 import type { SyncRefusal, SyncSubject } from "../syncRunResult";
 import {
   entriesOf,
@@ -10,7 +11,7 @@ import {
 
 interface DeletionRefuserProps {
   alterations: WideAlterations;
-  tabsByTable: Record<string, string | undefined>;
+  tabsByTable: TabsByTable;
 }
 
 interface Deletion {
@@ -28,7 +29,7 @@ interface Touch {
 // Refuses a deletion beside another entry touching what it deletes, naming both.
 export class DeletionRefuser {
   private alterations: WideAlterations;
-  private tabsByTable: Record<string, string | undefined>;
+  private tabsByTable: TabsByTable;
   constructor(props: DeletionRefuserProps) {
     this.alterations = props.alterations;
     this.tabsByTable = props.tabsByTable;
