@@ -78,13 +78,6 @@ export interface CompiledRuleReplacement
 export interface CompiledRuleRespan
   extends PlannedRuleRespan, IndexedRuleUpdate {}
 
-export interface CompiledRuleRespansProps {
-  removals: IndexedRuleRemoval[];
-  replacements: PlannedRuleReplacement[];
-  additions: PlannedRuleAddition[];
-  columnChanges: PlannedColumnChanges;
-}
-
 interface SentIndexProps {
   index: number;
   sheetGid: number;
@@ -99,7 +92,8 @@ export interface PlannedColumnChanges {
   newColumns: MintedNewColumn[];
 }
 
-export interface CompiledRuleReplacementsProps {
+// What a rule update compiles and indexes against: the replacements', and the re-spans', which leave a replaced rule to its replace.
+export interface CompiledRuleUpdatesProps {
   replacements: PlannedRuleReplacement[];
   removals: IndexedRuleRemoval[];
   additions: PlannedRuleAddition[];
@@ -282,7 +276,7 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
     removals,
     additions,
     columnChanges,
-  }: CompiledRuleReplacementsProps): CompiledRuleReplacement[] {
+  }: CompiledRuleUpdatesProps): CompiledRuleReplacement[] {
     const rulesByTable = this._tableRulesByTable([
       ...replacements,
       ...additions,
@@ -324,7 +318,7 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
     replacements,
     additions,
     columnChanges,
-  }: CompiledRuleRespansProps): CompiledRuleRespan[] {
+  }: CompiledRuleUpdatesProps): CompiledRuleRespan[] {
     const rulesByTable = this._tableRulesByTable(this._identifiedTables());
     const reshapedGids = reshapedSheetGids(rulesByTable, columnChanges);
     const named = new Set(
@@ -366,7 +360,18 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
       );
     });
   }
-  // The pre-send read's index once the removals' flush lands, and the adds the flusher sends ahead of a batch's updates, each at index 0.
+  // By the previous configs' name, the one a plan subject and tableIdOf take; _tableRulesByTable skips a Table no longer live, but needs the regen to identify one for its rule layout.
+  private _identifiedTables(): Pick<PlannedRuleRemoval, "table">[] {
+    const apiTableColumnsByTableId =
+      this.columnConfigOperator.identifiedApiTableColumnsByTableId();
+    return Object.entries(tableConfigsByName()).flatMap(
+      ([table, { tableId }]) => {
+        if (!apiTableColumnsByTableId.has(tableId)) return [];
+        return [{ table }];
+      },
+    );
+  }
+  // The pre-send read's index once the removals' flush lands.
   private _sentIndex({
     index,
     sheetGid,
@@ -379,22 +384,11 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
         removal.index < index &&
         this.ss.raw.table(removal.tableId).sheetGid === sheetGid,
     ).length;
+    // The flusher sends a batch's adds before its updates, and each add goes in at index 0.
     const addedAbove = additions.filter(
       (addition) => rulesByTable.get(addition.table)?.sheetGid === sheetGid,
     ).length;
     return index - removedAbove + addedAbove;
-  }
-  // By the previous configs' name, the one a plan subject and tableIdOf take; only a live Table the regen identifies has rule handles.
-  private _identifiedTables(): Pick<PlannedRuleRemoval, "table">[] {
-    const apiTableColumnsByTableId =
-      this.columnConfigOperator.identifiedApiTableColumnsByTableId();
-    return Object.entries(tableConfigsByName()).flatMap(
-      ([table, { tableId }]) => {
-        if (!this.ss.raw.tableIdIsActive(tableId)) return [];
-        if (!apiTableColumnsByTableId.has(tableId)) return [];
-        return [{ table }];
-      },
-    );
   }
   // Compiled before any send, so a bad colour or brace throws with nothing sent.
   compiledRuleAdditions({

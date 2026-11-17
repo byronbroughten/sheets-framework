@@ -71,13 +71,16 @@ export const IntendedRule = {
   ofRecord({ columns, condition, format }: TableRuleRecord): WideRule {
     return {
       columns,
-      condition: { type: condition.type, values: [conditionText(condition)] },
+      condition: {
+        type: condition.type,
+        values: [wideConditionValue(condition)],
+      },
       format,
     };
   },
 };
 
-function conditionText(condition: BooleanCondition): string {
+function wideConditionValue(condition: BooleanCondition): string {
   if (condition.type === "CUSTOM_FORMULA") return condition.formula;
   return conditionLiteral.fromCellValue(condition.value);
 }
