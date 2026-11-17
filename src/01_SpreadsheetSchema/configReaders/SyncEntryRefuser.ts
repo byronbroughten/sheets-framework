@@ -4,9 +4,9 @@ import { BraceRefuser } from "./SyncEntryRefuser/BraceRefuser";
 import { sheetTraits, tabTraits } from "./SyncPlanner";
 import {
   entriesOf,
+  rulesOf,
   type WideAlterations,
   type WideNewTable,
-  type WideRule,
   type WideTableEntry,
 } from "./SyncPlanner/wideAlterations";
 import type { SyncRefusal } from "./syncRunResult";
@@ -232,22 +232,8 @@ function tableTraitRefusals(
 // The Source's ConditionalFormat holds only the two colours, so a text style has nowhere to go yet.
 const ruleTextFormatTraits = ["bold", "italic", "strikethrough"] as const;
 
-function ruleTextFormatPaths({ conditionalFormats }: WideTableEntry): string[] {
-  const rules: [string, WideRule][] = [
-    ...(conditionalFormats?.add ?? []).map(
-      (rule, index): [string, WideRule] => [
-        `conditionalFormats.add[${index}]`,
-        rule,
-      ],
-    ),
-    ...entriesOf(conditionalFormats?.replace).map(
-      ([handle, rule]): [string, WideRule] => [
-        `conditionalFormats.replace["${handle}"]`,
-        rule,
-      ],
-    ),
-  ];
-  return rules.flatMap(([rulePath, { format }]) =>
+function ruleTextFormatPaths(entry: WideTableEntry): string[] {
+  return rulesOf(entry).flatMap(({ path: rulePath, rule: { format } }) =>
     ruleTextFormatTraits.flatMap((trait) => {
       if (format[trait] === undefined) return [];
       return [`${rulePath}.format.${trait}`];

@@ -11,6 +11,12 @@ type ItemEntry = NonNullable<TableEntries["item"]>;
 type ItemColumnEntries = NonNullable<ItemEntry["columns"]>;
 type ItemNameEntry = NonNullable<ItemColumnEntries["name"]>;
 type ItemNewColumn = NonNullable<ItemEntry["newColumns"]>[number];
+type ItemRuleColumn = Exclude<
+  NonNullable<
+    NonNullable<ItemEntry["conditionalFormats"]>["add"]
+  >[number]["columns"],
+  "all"
+>[number];
 type ItemColumnName = "optionalNote" | "requiredCount" | "id" | "name";
 type TabEntries = NonNullable<PendingAlterations["tabs"]>;
 type ItemTabEntry = NonNullable<TabEntries["item"]>;
@@ -135,6 +141,24 @@ describe("PendingAlterations' keys", () => {
     // @ts-expect-error a new column too
     const newColumn: ItemNewColumn = { header: "X", before: "entry" };
     expect([otherTable, newColumn]).toHaveLength(2);
+  });
+
+  it("let a Table's rules name a column its newColumns create, by the name its header gives", () => {
+    assertType<"name" extends ItemRuleColumn ? true : false>(true);
+    assertType<"lateFee" extends ItemRuleColumn ? true : false>(true);
+    const overNewColumn: ItemEntry = {
+      newColumns: [{ header: "Late fee" }],
+      conditionalFormats: {
+        add: [
+          {
+            columns: ["lateFee"],
+            condition: { type: "CUSTOM_FORMULA", values: ["=${@lateFee}>0"] },
+            format: {},
+          },
+        ],
+      },
+    };
+    expect(overNewColumn).toBeDefined();
   });
 
   it("place a tab only before a tab the map holds", () => {
