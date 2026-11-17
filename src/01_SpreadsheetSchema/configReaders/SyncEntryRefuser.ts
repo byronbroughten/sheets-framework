@@ -1,6 +1,7 @@
 import { hasApiAccess } from "./apiAccessChanges";
 import type { IdNameMapGeneric } from "./idNameMapTypes";
 import { BraceRefuser } from "./SyncEntryRefuser/BraceRefuser";
+import { RuleRefuser } from "./SyncEntryRefuser/RuleRefuser";
 import { sheetTraits, tabTraits } from "./SyncPlanner";
 import {
   entriesOf,
@@ -80,6 +81,7 @@ export class SyncEntryRefuser {
         return [mapTable.name];
       }),
     );
+    const columnNamesByTable = this._columnNamesByTable;
     const braceRefuser = this._braceRefuser;
     return entryRefusals({
       entry: "tables",
@@ -92,18 +94,20 @@ export class SyncEntryRefuser {
         return [
           ...tableTraitRefusals(table, entry),
           ...braceRefuser.tableEntryRefusals(table, entry),
+          ...new RuleRefuser({ table, entry, columnNamesByTable }).refusals,
         ];
       },
     });
   }
   private get _braceRefuser(): BraceRefuser {
-    return new BraceRefuser(
-      new Map(
-        Object.values(this.idNameMap.tables).map(({ name, columns }) => [
-          name,
-          Object.keys(columns ?? {}),
-        ]),
-      ),
+    return new BraceRefuser(this._columnNamesByTable, new Map());
+  }
+  private get _columnNamesByTable(): Map<string, string[]> {
+    return new Map(
+      Object.values(this.idNameMap.tables).map(({ name, columns }) => [
+        name,
+        Object.keys(columns ?? {}),
+      ]),
     );
   }
   private get _tabRefusals(): SyncRefusal[] {

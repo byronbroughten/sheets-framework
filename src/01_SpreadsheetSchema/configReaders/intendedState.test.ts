@@ -144,8 +144,12 @@ describe("PendingAlterations' keys", () => {
   });
 
   it("let a Table's rules name a column its newColumns create, by the name its header gives", () => {
-    assertType<"name" extends ItemRuleColumn ? true : false>(true);
-    assertType<"lateFee" extends ItemRuleColumn ? true : false>(true);
+    assertType<
+      IsExactly<
+        ItemRuleColumn,
+        ItemColumnName | (string & Record<never, never>)
+      >
+    >(true);
     const overNewColumn: ItemEntry = {
       newColumns: [{ header: "Late fee" }],
       conditionalFormats: {
