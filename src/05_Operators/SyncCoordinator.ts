@@ -399,10 +399,12 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       }
     }
     const sent = isApplying ? planned.plan.map(({ subject }) => subject) : [];
+    const { tableConfigs, valueConfigs } = installedConfigs();
     const previous: ConfigSnapshot = {
       idNameMap: props.previousIdNameMap,
+      tableConfigs,
       columnConfigs: columnConfigsByName(),
-      valueConfigs: installedConfigs().valueConfigs,
+      valueConfigs,
     };
     let refetched: SyncCoordinator | undefined;
     let regeneration: Regeneration;
@@ -574,6 +576,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       previous,
       regenerated: {
         idNameMap: this._idNameMap(),
+        tableConfigs: this.tableConfigOperator.newTableConfigs(),
         columnConfigs: this.columnConfigOperator.newColumnConfigs(),
         valueConfigs: this.valueConfigOperator.newValueConfigs(),
       },

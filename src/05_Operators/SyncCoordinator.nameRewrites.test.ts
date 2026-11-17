@@ -244,6 +244,156 @@ describe("SyncCoordinator.run name rewrites", () => {
     ]);
   });
 
+  it("rewrites a renamed column's braces and Table[Header] references in a pending formula, leaving a string literal", () => {
+    seedFixture({
+      item: {
+        columns: { requiredCount: { ...requiredCount, header: "Tally" } },
+      },
+    });
+    const written = `=\${requiredCount}+SUM(item[${requiredCount.header}])+\${item[@requiredCount]}&"\${requiredCount}"`;
+    const now = '=${tally}+SUM(Item[Tally])+${item[@tally]}&"${requiredCount}"';
+
+    const { result, files } = runItem({
+      isSending: false,
+      alterations: {
+        tables: { item: { columns: { optionalNote: { formula: written } } } },
+      },
+    });
+
+    expect(Val.assert(files, "emitted files").alterations).toContain(
+      JSON.stringify(now),
+    );
+    expect(result.configs.rewrites).toEqual([
+      {
+        from: `item.columns.optionalNote.formula "${written}"`,
+        to: `"${now}"`,
+      },
+    ]);
+  });
+
+  it("rewrites a renamed Table's braces and Table[Header] references in pending formulas, a new Table's included, keeping a bare brace", () => {
+    seedFixture({ item: { name: "Stock" } });
+    const written = `=\${requiredCount}+SUM(item[${requiredCount.header}])+\${item[@requiredCount]}`;
+    const now = `=\${requiredCount}+SUM(Stock[${requiredCount.header}])+\${stock[@requiredCount]}`;
+
+    const { result, files } = runItem({
+      isSending: false,
+      alterations: {
+        tables: { item: { columns: { optionalNote: { formula: written } } } },
+        newTabs: [
+          {
+            title: "Ledger",
+            tables: [
+              {
+                name: "Payments",
+                columns: [
+                  { header: "Due", formula: "=SUM(${item[requiredCount]})" },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    const emitted = Val.assert(files, "emitted files").alterations;
+    expect(emitted).toContain(JSON.stringify(now));
+    expect(emitted).toContain(JSON.stringify("=SUM(${stock[requiredCount]})"));
+    expect(result.configs.rewrites).toEqual([
+      {
+        from: "item",
+        to: "stock",
+        why: "tableId item, which a person renamed",
+      },
+      {
+        from: `item.columns.optionalNote.formula "${written}"`,
+        to: `"${now}"`,
+      },
+      {
+        from: 'newTabs[0].tables[0].columns[0].formula "=SUM(${item[requiredCount]})"',
+        to: '"=SUM(${stock[requiredCount]})"',
+      },
+    ]);
+  });
+
+  it("rewrites a renamed column in a pending rule's columns, condition values and handles", () => {
+    seedFixture({
+      item: {
+        columns: { requiredCount: { ...requiredCount, header: "Tally" } },
+      },
+    });
+    const rule = {
+      columns: ["requiredCount" as const],
+      condition: {
+        type: "CUSTOM_FORMULA" as const,
+        values: ["=${@requiredCount}>0"],
+      },
+      format: { backgroundColor: "#00ff00" },
+    };
+    const handle = "requiredCount | =${@requiredCount}>0 | background #ff0000";
+    const handleNow = "tally | =${@tally}>0 | background #ff0000";
+
+    const { result } = runItem({
+      isSending: false,
+      alterations: {
+        tables: {
+          item: {
+            conditionalFormats: {
+              add: [rule],
+              remove: [handle],
+              replace: { [handle]: rule },
+            },
+          },
+        },
+      },
+    });
+
+    expect(result.configs.rewrites).toEqual([
+      {
+        from: 'item.conditionalFormats.add[0].columns "requiredCount"',
+        to: '"tally"',
+      },
+      {
+        from: 'item.conditionalFormats.add[0].condition.values[0] "=${@requiredCount}>0"',
+        to: '"=${@tally}>0"',
+      },
+      {
+        from: `item.conditionalFormats.remove[0] "${handle}"`,
+        to: `"${handleNow}"`,
+      },
+      {
+        from: `item.conditionalFormats.replace "${handle}"`,
+        to: `"${handleNow}"`,
+      },
+      {
+        from: `item.conditionalFormats.replace["${handle}"].columns "requiredCount"`,
+        to: '"tally"',
+      },
+      {
+        from: `item.conditionalFormats.replace["${handle}"].condition.values[0] "=\${@requiredCount}>0"`,
+        to: '"=${@tally}>0"',
+      },
+    ]);
+  });
+
+  it("rewrites a handle whose condition names a renamed Table", () => {
+    seedFixture({ item: { name: "Stock" } });
+    const handle = `optionalNote | =COUNT(item[${requiredCount.header}])>\${item[requiredCount]} | background #ff0000`;
+    const handleNow = `optionalNote | =COUNT(Stock[${requiredCount.header}])>\${stock[requiredCount]} | background #ff0000`;
+
+    const { result } = runItem({
+      isSending: false,
+      alterations: {
+        tables: { item: { conditionalFormats: { remove: [handle] } } },
+      },
+    });
+
+    expect(result.configs.rewrites).toContainEqual({
+      from: `item.conditionalFormats.remove[0] "${handle}"`,
+      to: `"${handleNow}"`,
+    });
+  });
+
   it("leaves alterations.ts untouched when nothing it names was renamed", () => {
     seedFixture();
 

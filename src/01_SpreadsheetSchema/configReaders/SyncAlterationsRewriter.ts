@@ -1,11 +1,14 @@
 import { Val } from "@byronbroughten/utils/val";
 
+import type { FormulaRenames } from "./BraceFormula";
 import { subjectKey } from "./didntLand";
 import type { NamesNow, TableNow } from "./namesNow";
+import { type Rename, SyncFormulaRewriter } from "./SyncFormulaRewriter";
 import {
   entriesOf,
   type WideAlterations,
   type WideColumnEntry,
+  type WideNewTable,
   type WideTabEntry,
   type WideTableEntry,
 } from "./SyncPlanner/wideAlterations";
@@ -15,14 +18,8 @@ export interface SyncAlterationsRewriterProps {
   names: NamesNow;
   // Each column's header in the regenerated configs, by column ID.
   headers: Map<string, string>;
+  renames: FormulaRenames;
   sentKeys: Set<string>;
-}
-
-interface Rename {
-  written: string;
-  // Undefined when the regen gives the ID no name: the entry keeps the one written.
-  now: string | undefined;
-  rewrite: (now: string) => SyncRewrite;
 }
 
 interface BeforeRename {
@@ -42,6 +39,7 @@ interface ColumnsRewrite {
   tableName: string;
   columns: NonNullable<WideTableEntry["columns"]>;
   table: TableNow | undefined;
+  formulas: SyncFormulaRewriter;
 }
 
 // Rewrites pending alterations' names, collecting a line for each rewrite it makes.
@@ -49,10 +47,17 @@ export class SyncAlterationsRewriter {
   readonly rewrites: SyncRewrite[] = [];
   private readonly names: NamesNow;
   private readonly headers: Map<string, string>;
+  private readonly renames: FormulaRenames;
   private readonly sentKeys: Set<string>;
-  constructor({ names, headers, sentKeys }: SyncAlterationsRewriterProps) {
+  constructor({
+    names,
+    headers,
+    renames,
+    sentKeys,
+  }: SyncAlterationsRewriterProps) {
     this.names = names;
     this.headers = headers;
+    this.renames = renames;
     this.sentKeys = sentKeys;
   }
   rewritten(alterations: WideAlterations): WideAlterations {
@@ -64,10 +69,15 @@ export class SyncAlterationsRewriter {
       ...(newTabs === undefined
         ? {}
         : {
-            newTabs: newTabs.map((newTab, index) => ({
-              ...newTab,
-              ...this._tabBefore(newTab, `newTabs[${index}]`),
-            })),
+            newTabs: newTabs.map((newTab, index) => {
+              const at = `newTabs[${index}]`;
+              return {
+                ...newTab,
+                ...this._tabBefore(newTab, at),
+                ...this._tabNewTables(newTab, at),
+                tables: this._newTables(newTab.tables, `${at}.tables`),
+              };
+            }),
           }),
     };
   }
@@ -104,20 +114,32 @@ export class SyncAlterationsRewriter {
     entry,
     table,
   }: TableEntryRewrite): WideTableEntry {
-    const { columns, newColumns } = entry;
+    const { columns, newColumns, conditionalFormats } = entry;
     const rewritten: WideTableEntry = { ...entry };
+    const formulas = this._formulaRewriter(tableName, table);
     if (columns !== undefined) {
-      rewritten.columns = this._columns({ tableName, columns, table });
+      rewritten.columns = this._columns({
+        tableName,
+        columns,
+        table,
+        formulas,
+      });
     }
     if (newColumns !== undefined) {
-      rewritten.newColumns = newColumns.map((newColumn, index) => ({
-        ...newColumn,
-        ...this._columnBefore(
-          newColumn,
-          `${tableName}.newColumns[${index}]`,
-          table,
-        ),
-      }));
+      rewritten.newColumns = newColumns.map((newColumn, index) => {
+        const at = `${tableName}.newColumns[${index}]`;
+        return {
+          ...newColumn,
+          ...this._columnBefore(newColumn, at, table),
+          ...formulas.formulaTexts(newColumn, at),
+        };
+      });
+    }
+    if (conditionalFormats !== undefined) {
+      rewritten.conditionalFormats = formulas.rules(
+        conditionalFormats,
+        `${tableName}.conditionalFormats`,
+      );
     }
     return rewritten;
   }
@@ -125,6 +147,7 @@ export class SyncAlterationsRewriter {
     tableName,
     columns,
     table,
+    formulas,
   }: ColumnsRewrite): Record<string, WideColumnEntry> {
     const tableNow = table?.name ?? tableName;
     return entriesOf(columns).reduce<Record<string, WideColumnEntry>>(
@@ -156,6 +179,7 @@ export class SyncAlterationsRewriter {
           ...byName[name],
           ...columnEntry,
           ...this._columnBefore(columnEntry, at, table),
+          ...formulas.formulaTexts(columnEntry, at),
         };
         return byName;
       },
@@ -192,10 +216,12 @@ export class SyncAlterationsRewriter {
             };
           },
         });
+        const at = `tabs.${tabName}`;
         rewritten[name] = {
           ...rewritten[name],
           ...entry,
-          ...this._tabBefore(entry, `tabs.${tabName}`),
+          ...this._tabBefore(entry, at),
+          ...this._tabNewTables(entry, at),
         };
         return rewritten;
       },
@@ -210,6 +236,52 @@ export class SyncAlterationsRewriter {
       before: entry.before,
       at,
       nowOf: (name) => this.names.tabs.get(name)?.name,
+    });
+  }
+  private _tabNewTables(
+    entry: WideTabEntry,
+    at: string,
+  ): Pick<WideTabEntry, "newTables"> {
+    const { newTables } = entry;
+    if (newTables === undefined) return {};
+    return { newTables: this._newTables(newTables, `${at}.newTables`) };
+  }
+  // A new Table's own columns have no previous name, so only what its text names elsewhere is rewritten.
+  private _newTables(newTables: WideNewTable[], at: string): WideNewTable[] {
+    const formulas = this._formulaRewriter(undefined, undefined);
+    return newTables.map((newTable, tableIndex) => {
+      const tableAt = `${at}[${tableIndex}]`;
+      const { columns, conditionalFormats } = newTable;
+      const add = conditionalFormats?.add;
+      return {
+        ...newTable,
+        columns: columns.map((column, index) => ({
+          ...column,
+          ...formulas.formulaTexts(column, `${tableAt}.columns[${index}]`),
+        })),
+        ...(add === undefined
+          ? {}
+          : {
+              conditionalFormats: {
+                ...conditionalFormats,
+                add: formulas.addedRules(
+                  add,
+                  `${tableAt}.conditionalFormats.add`,
+                ),
+              },
+            }),
+      };
+    });
+  }
+  private _formulaRewriter(
+    tableKey: string | undefined,
+    table: TableNow | undefined,
+  ): SyncFormulaRewriter {
+    return new SyncFormulaRewriter({
+      renames: this.renames,
+      tableKey,
+      table,
+      renamed: (rename) => this._renamed(rename),
     });
   }
   private _before({ before, at, nowOf }: BeforeRename): { before?: string } {
