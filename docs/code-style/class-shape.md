@@ -28,17 +28,14 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       SpreadsheetBaseNamed.initSpreadsheetNamedProps(),
     );
   }
-  get tableConfigOperator() {
+  get ss(): SpreadsheetNamed {
+    return new SpreadsheetNamed(this.spreadsheetNamedProps);
+  }
+  get tableConfigOperator(): TableConfigsOperator {
     return new TableConfigsOperator(this.operatorProps);
   }
-  get columnConfigOperator() {
+  get columnConfigOperator(): ColumnConfigsOperator {
     return new ColumnConfigsOperator(this.operatorProps);
-  }
-  get configSheetFloor() {
-    return new ConfigSheetFloor(this.spreadsheetNamedProps);
-  }
-  ensureConfigSheetFloor(): string {
-    return this.configSheetFloor.ensure();
   }
 }
 ```

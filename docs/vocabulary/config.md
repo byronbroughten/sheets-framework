@@ -9,12 +9,11 @@ The elaboration behind [docs/vocabulary.md](../vocabulary.md), whose one-line en
   - **`XConfig`** (singular, e.g. `TableConfig`, `ColumnConfig`) — one entry's full record.
   - **trait** — one property picked out of a single config record (e.g. a Table's `sheetGid`), via accessors like `getTableTraitByGid`/`getColumnTraitById`. The same word is reused one layer up for picking a single property out of a `ValueSchema` (`getValTrait`) — "trait" always means "one property of a multi-field record," never a collection.
   - **Typed trait**: a column trait the generated configs carry into the types endpoint code compiles against: its value kind (from its column type, a dropdown's options included) and `emptyValueAllowed`. A person changing one makes `tsc` fail where code relied on the old value, so the run report lists each.
-  - Why the three config-describing Tables' own entries form a fixed floor: [the config-sheet floor](../generated-data/config-sheet-floor.md#the-seed-declares-structure-the-generated-files-hold-identity).
   - Not "sampled configs": sampled facts are only what a column's top data row gives, and `letApiAccess` and `emptyValueAllowed` are carried forward, or for `emptyValueAllowed` set by an alteration, not sampled.
 
 ## Intended state
 
-Planned by [the map to replace Table Config and Column Config](https://github.com/byronbroughten/sheets-framework/issues/178), and named in [its naming ticket](https://github.com/byronbroughten/sheets-framework/issues/187); no code uses these words yet.
+Planned by [the map to replace Table Config and Column Config](https://github.com/byronbroughten/sheets-framework/issues/178), and named in [its naming ticket](https://github.com/byronbroughten/sheets-framework/issues/187); `sync` plans with them ([how](../generated-data/config-sync.md)).
 
 - **Intended state**: what the repo says the spreadsheet's structure will be, only for the traits it names; a trait it omits belongs to the sheet. It is the third side of `sync`'s comparison: intended state, the configs, and the live sheet. For now it is `alterations.ts` alone. One trait's value in it is an **intended value**.
   - Not "declarations": TypeScript's declaration files, `declare` and declaration merging would send an agent looking for `.d.ts` files. The verb "declare" stays plain English.

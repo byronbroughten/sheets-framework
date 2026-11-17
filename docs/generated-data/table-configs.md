@@ -1,14 +1,10 @@
-# `tableConfigs` and Table Config: the Table list
+# `tableConfigs`: the Tables with API access
 
-Part of [generated data](../generated-data.md). Table Config lists every Google Table in the spreadsheet, and `tableConfigs` holds the ones with API access; `hasIdColumn`, `hasNameColumn` and `idPrefix` are sampled from the described Table. Beside it, `generated/tabConfigs.ts` holds `tabConfigs`, the tab list, and `generated/retiredIdPrefixes.ts` holds `retiredIdPrefixes`.
-
-## The Table Config sheet
-
-**Table Config has one row per Google Table in the spreadsheet: `Table ID | Table name | Sheet title | Let api access`.** `TableConfigsOperator` (`05_Operators`) owns it. Table ID is the row's identity. Table name and Sheet title are readable identity for a human. Let api access is the only declared column, and nothing reads it. The regen neither reads nor writes this sheet ([config sheets](./config-sync.md)); API access is a Table's presence in the previous `tableConfigs`, until a `letApiAccess` alteration changes it ([granting and revoking](#granting-and-revoking-api-access)). A tab with two Tables gets two rows, and a tab with no Table gets none.
+Part of [generated data](../generated-data.md). `tableConfigs` holds the Tables with API access, which is a Table's presence in the previous `tableConfigs`, changed only by a `letApiAccess` alteration; `hasIdColumn`, `hasNameColumn` and `idPrefix` are sampled from the described Table. Beside it, `generated/tabConfigs.ts` holds `tabConfigs`, the tab list, and `generated/retiredIdPrefixes.ts` holds `retiredIdPrefixes`.
 
 ## How `tableConfigs` is generated
 
-**`tableConfigs`** (`generated/tableConfigs.ts`) holds one entry per Table with API access, keyed by the live Table name through `titleToName`. A Table without it gets no entry and no Column Config rows, and two Tables whose names give the same key fail the run, naming both. Each entry holds the Table's live `tableId` and name, its sheet GID, its `idPrefix`, `hasIdColumn` and `hasNameColumn`. `sheetGid` is recorded, but a regen never refuses a Table because it changed: a Table moved to another tab is the same Table. It records no position: a run finds the Table by its `tableId` in the sheet's header zone ([table placement](../architecture/table-placement.md)), and the run refuses a Table with API access whose header row is outside it.
+**`tableConfigs`** (`generated/tableConfigs.ts`) holds one entry per Table with API access, keyed by the live Table name through `titleToName`; `TableConfigsOperator` (`05_Operators`) builds it. **API access is a Table's presence in the previous `tableConfigs`**: a Table keeps it from run to run until a `letApiAccess` alteration changes it ([granting and revoking](#granting-and-revoking-api-access)), and no sheet records it. A Table without it gets no entry and no `columnConfigs` entry, and two Tables whose names give the same key fail the run, naming both. Each entry holds the Table's live `tableId` and name, its sheet GID, its `idPrefix`, `hasIdColumn` and `hasNameColumn`. `sheetGid` is recorded, but a regen never refuses a Table because it changed: a Table moved to another tab is the same Table. It records no position: a run finds the Table by its `tableId` in the sheet's header zone ([table placement](../architecture/table-placement.md)), and the run refuses a Table with API access whose header row is outside it.
 
 ## Granting and revoking API access
 

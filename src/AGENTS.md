@@ -14,5 +14,5 @@
 - **`src/` is host-neutral, `nodeHost/` included: no Node or DOM APIs.** It is platform-neutral outside `00_Source/GoogleSheets/`, `appsScriptHost/` and the entry points. Lint holds both.
 - **Read by block**: grep `columnConfigs.ts` (`dev/generated/` here) for the Table key (`"occupancy":`) and read that one object; open a long test file's one `describe`. Regenerating and editing generated data: [`01_SpreadsheetSchema/AGENTS.md`](./01_SpreadsheetSchema/AGENTS.md).
 - **A framework member's callers live in `src/`, `scripts/`, `valueKinds/` and the app's `src/`**; search all four before calling it unused.
-- **A guard ships in the same commit as the write it guards, or earlier**: a standing-permission `gen:configs` run can land between any two commits.
+- **A guard ships in the same commit as the write it guards, or earlier**: a standing-permission `sync` run can land between any two commits.
 - **Read the general style doc (`docs/code-style.md` in `@byronbroughten/config`), then the framework's [docs/code-style.md](../docs/code-style.md), before editing TypeScript here.** Words: [docs/vocabulary.md](../docs/vocabulary.md). Mechanics: the [`docs/architecture.md`](../docs/architecture.md) index.

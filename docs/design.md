@@ -31,7 +31,7 @@ One line per principle. A principle's argument and instances, where it has them,
 - **Give the common case the unmarked name.** The reflexive name is the one wanted most of the time, decided by counting call sites; the rare case costs exactly one word.
 - **Record a deliberate absence as deliberate.** In an AI-assisted codebase the riskiest gap is one that looks like an oversight: an unexplained gap reads as a to-do and gets filled in; a documented one carries its reason and survives.
 - **A live config-sheet column must identify a row or serve a human on that sheet.** Sampled generated traits do not earn a cell.
-- **Structure is declared in code; identity is recorded from the sheet.** Headers, floor columns, head rows and ID shape are declared; GID, `tableId`, column ID and prefix are read.
+- **Structure is declared in code; identity is recorded from the sheet.** Headers, head rows and ID shape are declared; GID, `tableId`, column ID and prefix are read.
 
 ## Adding a principle
 

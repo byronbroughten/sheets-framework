@@ -12,7 +12,7 @@ One line per term. The elaboration is one file away. Open a reasoning file only 
 | --- | --- |
 | Source, Platform, Raw, Identified, Named, `rowIndex` | [`docs/vocabulary/tiers.md`](./vocabulary/tiers.md) |
 | Tier word, State, Base, Operator, Collaborator | [`docs/vocabulary/class-names.md`](./vocabulary/class-names.md) |
-| `xConfigs` / `XConfig` / trait, the config-sheet floor; intended state, alteration, ID-name map; entered data, held | [`docs/vocabulary/config.md`](./vocabulary/config.md) |
+| `xConfigs` / `XConfig` / trait, typed trait; intended state, alteration, ID-name map; entered data, held | [`docs/vocabulary/config.md`](./vocabulary/config.md) |
 | Profile, sampled facts, which class a member belongs to, Working, head rows | [`docs/vocabulary/profile.md`](./vocabulary/profile.md) |
 | Schema, blank cells, `value` / `valueOrEmpty` / `valueNotEmpty`, checkbox, `SerialDate`, `emptyValueAllowed` | [`docs/vocabulary/values.md`](./vocabulary/values.md) |
 
@@ -66,6 +66,6 @@ One line per term. The elaboration is one file away. Open a reasoning file only 
 ## Values
 
 - **Nearly every cell is tri-state: `Value<VN>` includes `""`.** Code that branches on a value says what empty means. `checkbox` is exactly `boolean`; don't restore the blank to it.
-- **`valueNotEmpty` throws on a blank, `valueOrEmpty` keeps `""`, and `value` is whichever the column's Empty value allowed box declares.** The plurals follow suit; only Named offers `value`/`valueArr`.
+- **`valueNotEmpty` throws on a blank, `valueOrEmpty` keeps `""`, and `value` is whichever the column's `emptyValueAllowed` declares.** The plurals follow suit; only Named offers `value`/`valueArr`.
 - **An in-app date is a `SerialDate`, never a JS `Date`, and moves by `SerialDate.addDays`/`addMonths`, never `+ 1`.**
 - **`emptyValueAllowed` shapes the accessor, not the value type**, and is enforced at access, never at fetch or write.

@@ -2,16 +2,15 @@
 
 Each package's `generatedDir` (the app's `src/generated/`, the framework's `dev/generated/`) holds the config files generated from the live spreadsheet, plus `appConfigs.ts`, which gathers them into one `appConfigs` const and registers it and the type-only ID-name map, `idNameMap.ts`, on `Register`. The hand-written `alterations.ts` beside the `generatedDir` is not generated. The rules for regenerating and editing them are [`src/01_SpreadsheetSchema/AGENTS.md`](../src/01_SpreadsheetSchema/AGENTS.md)'s; what the command writes is [`how-it-runs/sync.md`](./how-it-runs/sync.md#what-sync-writes)'s.
 
-## One file per generated constant and the floor
+## One file per generated constant and the sync
 
 | When | File |
 | --- | --- |
-| The Table Config sheet, `tableConfigs`, `hasIdColumn`, `hasNameColumn`, `idPrefix`, the `tabConfigs` tab list, `retiredIdPrefixes` | [`generated-data/table-configs.md`](./generated-data/table-configs.md) |
-| `columnConfigs`, `emptyValueAllowed`, `isFormula`, `valueName` resolution, the untyped-columns summary | [`generated-data/column-configs.md`](./generated-data/column-configs.md) |
+| `tableConfigs`, API access and `letApiAccess`, `hasIdColumn`, `hasNameColumn`, `idPrefix`, the `tabConfigs` tab list, `retiredIdPrefixes` | [`generated-data/table-configs.md`](./generated-data/table-configs.md) |
+| `columnConfigs`, `emptyValueAllowed`, `isFormula`, `valueName` resolution, the baseline traits, the untyped-columns summary | [`generated-data/column-configs.md`](./generated-data/column-configs.md) |
 | `valueConfigs` and its `const` type parameter | [`generated-data/value-configs.md`](./generated-data/value-configs.md) |
 | `conditionalFormatConfigs`, its `tables` and `tabs` groups, the rule handle | [`generated-data/conditional-format-configs.md`](./generated-data/conditional-format-configs.md) |
-| Which config-sheet columns exist, what the regen leaves alone | [`generated-data/config-sync.md`](./generated-data/config-sync.md) |
-| The config-sheet floor, the floor seed, floor identity checks | [`generated-data/config-sheet-floor.md`](./generated-data/config-sheet-floor.md) |
+| How `sync` plans and sends each alteration, refetches, and what the configs drop | [`generated-data/config-sync.md`](./generated-data/config-sync.md) |
 
 ## Reading the generated files by block
 
@@ -19,7 +18,7 @@ Each package's `generatedDir` (the app's `src/generated/`, the framework's `dev/
 
 ## The generated half and the hand-written half
 
-A `generatedDir` holds the generated data files, `tableConfigs.ts`, `tabConfigs.ts`, `retiredIdPrefixes.ts`, `columnConfigs.ts`, `valueConfigs.ts` and `conditionalFormatConfigs.ts`, plus the generated `appConfigs.ts` and `idNameMap.ts`, and nothing else. Each data file is one literal passed through its validating constructor (`makeTableConfigs`, `makeTabConfigs`, `makeRetiredIdPrefixes`, `makeColumnConfigs`, `makeValueConfigs`, `makeConditionalFormatConfigs`), which the framework's main entry, `@byronbroughten/sheets-framework`, exports. The hand-written half sits in the Schema tier's `configReaders/` folder: the generator helpers in `makeConfigs.ts`, the floor seed in `configSheetFloorSeed.ts`, and a sibling types file per constant (`tableConfigsTypes`, `columnConfigsTypes`, `valueConfigsTypes`, and `RuleRecords` for `conditionalFormatConfigs`) holding the derived types and accessor functions built on the data. `sync` writes every data file's import from that entry.
+A `generatedDir` holds the generated data files, `tableConfigs.ts`, `tabConfigs.ts`, `retiredIdPrefixes.ts`, `columnConfigs.ts`, `valueConfigs.ts` and `conditionalFormatConfigs.ts`, plus the generated `appConfigs.ts` and `idNameMap.ts`, and nothing else. Each data file is one literal passed through its validating constructor (`makeTableConfigs`, `makeTabConfigs`, `makeRetiredIdPrefixes`, `makeColumnConfigs`, `makeValueConfigs`, `makeConditionalFormatConfigs`), which the framework's main entry, `@byronbroughten/sheets-framework`, exports. The hand-written half sits in the Schema tier's `configReaders/` folder: the generator helpers in `makeConfigs.ts`, the intended-state types in `intendedState.ts`, and a sibling types file per constant (`tableConfigsTypes`, `columnConfigsTypes`, `valueConfigsTypes`, and `RuleRecords` for `conditionalFormatConfigs`) holding the derived types and accessor functions built on the data. `sync` writes every data file's import from that entry.
 
 ## The ID-name map
 
