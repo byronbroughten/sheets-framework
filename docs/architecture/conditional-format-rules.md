@@ -2,6 +2,7 @@
 
 Map fragment. Sibling headings live in this folder.
 
+## Order, ranges and formulas
 
 A sheet's rules are an ordered list and the first match wins per format property. Adds prepend at index 0; there is no caller-supplied insertion index in this version. Identity is content — ranges, condition and format — not position. A newly added rule that is already present identically over the same range queues nothing.
 
@@ -9,11 +10,19 @@ Ranges are the live Table data range of the structure named (sheet, column, or c
 
 Custom formulas are stored as written for the range's top-left cell and re-evaluated relative per cell. Callers compose formula text; `anchoredA1` resolves a column name to that top-left A1 so no call site hardcodes a letter.
 
+## Sync's removals, replacements and adds
+
 Removal is by exact range, by exact content, or by rule handle, which sync turns into the rule's index on the read it matched the handle on. Overlap is not a match. The framework never deletes a rule whose range, content or handle it was not asked to name, which is what keeps hand-drawn rules safe.
 
 Replacement is by rule handle too: sync rewrites the rule at its index with `updateConditionalFormatRule`, so its place in the order holds. The index is the one on the read the handle matched, less the removals of lower-indexed rules on the same sheet that the flush before it sent; the replacing rule is compiled against the Table's planned layout and sent after the run's column deletes and inserts, so Google doesn't shift it again. An unmodelable rule can't be replaced, since sync can't write what it held; it can only be removed.
 
 Sync's adds are compiled the same way and queued on the sheet in the replacements' flush, each at index 0 and the list last first, so the list's first rule ends first. A batch sends its adds before its updates, so each replacement's index also counts the run's adds on its sheet. An add equal to a rule already there gives that rule's handle a second copy, so an add is checked on the refetch by copies, as a removal is: named on the planned layout, it expects the read's copies less those the run removes or replaces away, plus the replacements and adds that compile to it.
+
+## Re-spanning a rule that ends short of its Table
+
+A rule over a Table whose ranges end above the Table's last body row, as rows a person typed below the Table leave it, is re-spanned the way a replacement is sent: its record turned back into a rule, compiled against the planned layout so its ranges and whole-column references end on the last body row, and sent with `updateConditionalFormatRule` at its index in the replacements' flush, indexed the same way. Each one is planned from the live read on every unstopped run, rather than from an alteration, so it goes in the run's batch or is its only send; a rule with no brace form, one a pending `replace` or `remove` names, and every rule on a tab where the run deletes a Table, a column or the tab are left alone. A whole-column brace reads back whatever its end row, so a re-span keeps its handle, and one the refetch still finds short is reported under Didn't land.
+
+## Unmodelable rules, reads and rule handles
 
 Every rule the payload holds is mapped, one for one, in order. A condition or format outside the modelled slice becomes an explicit unmodelable value that still occupies its index, so deletes by index cannot silently target a neighbour, and that keeps its raw content: the JSON of the Google rule without its ranges. Content equality against an unmodelable rule is always false; a range-scoped removal of one is allowed because the caller named the range.
 
