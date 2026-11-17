@@ -4,7 +4,7 @@ Map fragment. Sibling headings live in this folder.
 
 ## Order, ranges and formulas
 
-A sheet's rules are an ordered list and the first match wins per format property. Adds prepend at index 0; there is no caller-supplied insertion index in this version. Identity is content — ranges, condition and format — not position. A newly added rule that is already present identically over the same range queues nothing.
+A sheet's rules are an ordered list and the first match wins per format property. Adds prepend at index 0; there is no caller-supplied insertion index in this version. A rule is identified by its [rule handle](#unmodelable-rules-reads-and-rule-handles), its readable content, not its position: an `alterations.ts` `remove` or `replace` names a rule by handle, sync matches the handle on its read, and a `replace` rewrites the rule at the index it found ([sync's alterations](#syncs-removals-replacements-and-adds)). The imperative API that chores call matches by content, ranges, condition and format, and an add already present identically over the same range queues nothing.
 
 Ranges are the live Table data range of the structure named (sheet, column, or cell), bounded rather than open-ended. Growth's `PASTE_FORMAT` copy grows a rule's range ending at the Table's last row over the new rows, which its insert alone leaves out ([observed](../sheets-behaviour.md#copying-format-and-validation-onto-new-rows), [insert alone](../sheets-behaviour.md#growing-a-table-with-an-insert-and-a-widen)).
 

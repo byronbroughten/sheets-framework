@@ -1,3 +1,7 @@
+---
+status: accepted, amended by sheets-framework#219
+---
+
 # Key alterations by codebase name, and have `sync` rewrite pending names when a regen renames
 
 Every alteration in `alterations.ts` names what it changes by codebase name, as endpoint code does (Table name, column name, tab name), typed against the ID-name map, with no ID and no separate `name` field. `sync` resolves each name to an ID through the previous configs, what the agent saw at its last refresh, and rewrites a pending entry's names when a regen renames what they name. So an agent writes what it reads, with no ID lookup and no duplicated fact, and an entry held for `--confirm` or left over from a partial landing still names the thing it meant.
@@ -24,5 +28,9 @@ Claims are deferred to [#286](https://github.com/byronbroughten/sheets-framework
 - **ID keys with a `tsc`-checked `name`** ([file shape](https://github.com/byronbroughten/sheets-framework/issues/186), [tabs](https://github.com/byronbroughten/sheets-framework/issues/209)): rejected. It costs a lookup and a second copy of every name, and its `name` goes stale on a person's rename while an entry is pending, which `sync` can fix and the agent otherwise must.
 - **Keys in display text** (`"Rent"`, `"Rent Roll"`): rejected for the codebase names endpoints already use, which need no quotes where dot access applies.
 - **`sync` rewriting names in endpoint and chore code**: rejected. Only a type-aware codemod could tell a column name from any other string, a rename sometimes needs retarget's ask, it would widen what a run writes into hand-written `src/`, and it would hide the claim stop that #286 may add. A codemod as retarget's first step is its own effort.
+
+## Amended
+
+[sheets-framework#219](https://github.com/byronbroughten/sheets-framework/issues/219): pending formula text, a column's or a rule's, holds braces, not `Table[Header]`, so the rewrite reaches every reference in it by codebase name, as it reaches a key. Sheets' `Table[Header]` is left only where no brace can name the column, a Table without API access, and the rewrite keeps it on that Table's live names.
 
 Source: byronbroughten/sheets-framework#218, byronbroughten/sheets-framework#178, byronbroughten/sheets-framework#285

@@ -8,7 +8,7 @@ Design reasoning. The one-line principle lives in [`docs/design.md`](../design.m
 
 ## Corollaries
 
-Where "the common case" differs per subject, let the subject declare it rather than picking one meaning for all of them ([ADR 0029](../adr/0029-let-a-columns-empty-value-allowed-tick-decide-what-the-unmarked-value-read-means.md) lets a column's own **Empty value allowed** box decide what its unmarked read means, since no call site could tell a legitimately blank column from the rest, and brings `valueNotEmpty` back as the marked word for a call site stricter than its column). That carries the principle further rather than reversing byro-repo#8's validating `value`: the unmarked word is the reflexive correct read on every column now, instead of only on one that cannot be blank.
+Where "the common case" differs per subject, let the subject declare it rather than picking one meaning for all of them ([ADR 0029](../adr/0029-let-a-columns-empty-value-allowed-tick-decide-what-the-unmarked-value-read-means.md) lets a column's own **Empty value allowed** declaration, its `emptyValueAllowed` trait, decide what its unmarked read means, since no call site could tell a legitimately blank column from the rest, and brings `valueNotEmpty` back as the marked word for a call site stricter than its column). That carries the principle further rather than reversing byro-repo#8's validating `value`: the unmarked word is the reflexive correct read on every column now, instead of only on one that cannot be blank.
 
 The marked name is a record of intent, not merely a longer spelling. `valueOrEmpty` at a call site says blank was thought about, which is a fact a later reader cannot recover from the surrounding logic.
 
