@@ -245,9 +245,9 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
     rowIndex,
     colIndex,
   }: AddedSheetCell): void {
-    const added = this.writeOperations.addTable.some(
-      ({ range }) =>
-        range.sheetId === sheetId &&
+    const added = this._addedTableHolds(
+      sheetId,
+      (range) =>
         range.startRowIndex - headRows.countAboveHeader <= rowIndex &&
         rowIndex < range.endRowIndex &&
         range.startColumnIndex <= colIndex &&
@@ -266,9 +266,9 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
       startColumnIndex,
       endColumnIndex,
     } = rangeProps;
-    const added = this.writeOperations.addTable.some(
-      ({ range }) =>
-        range.sheetId === sheetId &&
+    const added = this._addedTableHolds(
+      sheetId,
+      (range) =>
         range.startRowIndex <= startRowIndex &&
         endRowIndex !== undefined &&
         endRowIndex <= range.endRowIndex &&
@@ -280,6 +280,14 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
     if (added) return;
     throw new Error(
       `Added-Table rule refused: no addTable queued in this flush holds the range ${JSON.stringify(rangeProps)}.`,
+    );
+  }
+  private _addedTableHolds(
+    sheetId: number,
+    holds: (range: BoundedGridRange) => boolean,
+  ): boolean {
+    return this.writeOperations.addTable.some(
+      ({ range }) => range.sheetId === sheetId && holds(range),
     );
   }
 }

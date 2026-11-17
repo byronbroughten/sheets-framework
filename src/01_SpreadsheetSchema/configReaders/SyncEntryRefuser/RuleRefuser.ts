@@ -23,7 +23,7 @@ export interface NewTableRuleRefuserProps {
   columnNamesByTable: Map<string, string[]>;
 }
 
-interface RuleRefuserProfile extends RuleRefuserProps {
+interface RuleRefuserConstructorProps extends RuleRefuserProps {
   // What a refusal names: the Table, or a new Table's tab.
   refusedAs: string;
   // Where the entry sits in its alterations, ending in a dot, or "" for a top-level entry.
@@ -45,7 +45,7 @@ export class RuleRefuser {
     pathPrefix,
     entry,
     columnNamesByTable,
-  }: RuleRefuserProfile) {
+  }: RuleRefuserConstructorProps) {
     this.refusedAs = refusedAs;
     this.tableKey = table;
     this.pathPrefix = pathPrefix;
