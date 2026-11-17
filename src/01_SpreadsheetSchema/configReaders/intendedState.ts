@@ -81,13 +81,16 @@ interface ConditionalFormatAlterations<CN extends string> {
   replace?: Record<RuleHandle, ConditionalFormatRuleIntended<CN>>;
 }
 
+// The name `columnNameOfHeader` gives a `newColumns` header, which no type can compute; the entry refuser checks it before any read.
+type NewColumnName = string & Record<never, never>;
+
 interface TableTraits<CN extends string, CE extends object> {
   // A Sheets Table's name is its codebase name, so a rename renames both.
   name?: string;
   letApiAccess?: boolean;
   columns?: { [C in CN]?: CE };
   newColumns?: NewColumn<CN>[];
-  conditionalFormats?: ConditionalFormatAlterations<CN>;
+  conditionalFormats?: ConditionalFormatAlterations<CN | NewColumnName>;
 }
 
 type TableAlteration<TN extends MappedTableName> = Deletable<

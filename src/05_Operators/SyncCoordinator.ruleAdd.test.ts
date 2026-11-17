@@ -271,6 +271,98 @@ describe("SyncCoordinator.run conditional-format rule add", () => {
     ]);
   });
 
+  it("adds a rule over a column the same run creates, in the one run that creates it", () => {
+    const service = seedWithRules();
+
+    const { result, files } = runItem({
+      isSending: true,
+      alterations: {
+        tables: {
+          item: {
+            newColumns: [{ header: "Late fee" }],
+            conditionalFormats: {
+              add: [{ ...blackWhenFalse, columns: ["lateFee"] }],
+            },
+          },
+        },
+      },
+    });
+
+    expect(rulesLeft(service)).toEqual([
+      formulaRule("=FALSE", 0, bodyRange(columnNames.length)),
+      firstTrue,
+      secondTrue,
+    ]);
+    expect(result).toMatchObject({
+      outcome: { kind: "sent" },
+      refusals: [],
+      didntLand: [],
+    });
+    const emitted = Val.assert(files, "emitted files");
+    expect(emitted.conditionalFormatConfigs).toContain(
+      "lateFee | =FALSE | background #000000",
+    );
+    expect(emitted.alterations).toContain("makePendingAlterations({})");
+  });
+
+  it("refuses before any read an add naming a column neither mapped nor created by the run", () => {
+    const service = seedWithRules();
+
+    const { result } = runItem({
+      isSending: true,
+      alterations: {
+        tables: {
+          item: {
+            newColumns: [{ header: "Late fee" }],
+            conditionalFormats: {
+              add: [{ ...blackWhenFalse, columns: ["lateFees"] }],
+            },
+          },
+        },
+      },
+    });
+
+    expect(service.batchUpdateCount()).toBe(0);
+    expect(result.refusals).toEqual([
+      {
+        kind: "unknownColumn",
+        table: "item",
+        path: "conditionalFormats.add[0].columns",
+        column: "lateFees",
+        columns: [...columnNames, "lateFee"],
+      },
+    ]);
+  });
+
+  it("refuses before any read an add naming a column two new headers both give", () => {
+    const service = seedWithRules();
+
+    const { result } = runItem({
+      isSending: true,
+      alterations: {
+        tables: {
+          item: {
+            newColumns: [{ header: "Late fee" }, { header: "late Fee" }],
+            conditionalFormats: {
+              add: [{ ...blackWhenFalse, columns: ["lateFee"] }],
+            },
+          },
+        },
+      },
+    });
+
+    expect(service.batchUpdateCount()).toBe(0);
+    expect(result.refusals).toEqual([
+      {
+        kind: "ambiguousColumn",
+        table: "item",
+        path: "conditionalFormats.add[0].columns",
+        column: "lateFee",
+        headers: ["Late fee", "late Fee"],
+      },
+    ]);
+  });
+
   it("throws before any send on an add whose colour isn't six-digit hex", () => {
     const service = seedWithRules();
 

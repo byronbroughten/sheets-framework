@@ -171,7 +171,7 @@ export type SyncRefusal =
   | { kind: "noSuchTable"; entry: "tables" | "tabs"; name: string }
   // `table` names the tab for a tab's trait; `path` is the trait's, with its column in front for a column's.
   | { kind: "notSendableYet"; table: string; path: string }
-  // A brace naming a Table or column the previous ID-name map lacks; `columns` is braceTable's, undefined when the map holds no such Table.
+  // A brace naming a Table or column the previous ID-name map lacks, or for a rule's brace one the Table's `newColumns` create; `columns` is braceTable's, undefined when the map holds no such Table.
   | {
       kind: "unknownBrace";
       table: string;
@@ -182,6 +182,22 @@ export type SyncRefusal =
     }
   // A `${…}` in a formula that reads as no brace, such as `@` before a Table key.
   | { kind: "malformedBrace"; table: string; path: string; brace: string }
+  // A rule's column neither in the map nor created by the Table's `newColumns`; `columns` lists both.
+  | {
+      kind: "unknownColumn";
+      table: string;
+      path: string;
+      column: string;
+      columns: string[];
+    }
+  // A rule's column or brace naming the column name two or more `newColumns` headers give.
+  | {
+      kind: "ambiguousColumn";
+      table: string;
+      path: string;
+      column: string;
+      headers: string[];
+    }
   | {
       kind: "touchesDeletion";
       deleted: SyncSubject;

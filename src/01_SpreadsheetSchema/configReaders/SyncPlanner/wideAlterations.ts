@@ -68,6 +68,25 @@ export interface WideAlterations {
   newTabs?: (WideTabEntry & { title: string; tables: WideNewTable[] })[];
 }
 
+// A rule a Table entry adds or writes over a handle, by where it sits in the entry.
+export interface WideRuleAt {
+  path: string;
+  rule: WideRule;
+}
+
+export function rulesOf({ conditionalFormats }: WideTableEntry): WideRuleAt[] {
+  return [
+    ...(conditionalFormats?.add ?? []).map((rule, index) => ({
+      path: `conditionalFormats.add[${index}]`,
+      rule,
+    })),
+    ...entriesOf(conditionalFormats?.replace).map(([handle, rule]) => ({
+      path: `conditionalFormats.replace["${handle}"]`,
+      rule,
+    })),
+  ];
+}
+
 export function entriesOf<VL>(
   record: Record<string, VL | undefined> | undefined,
 ): [string, VL][] {
