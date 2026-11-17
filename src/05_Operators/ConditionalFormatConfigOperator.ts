@@ -1,6 +1,7 @@
 import { Val } from "@byronbroughten/utils/val";
 
 import type { ModelableConditionalFormatRule } from "../00_Source/RawSource/ConditionalFormat";
+import { rangesShareCell } from "../00_Source/RawSource/RawSource";
 import type { RuleLayout } from "../01_SpreadsheetSchema/configReaders/BraceFormula";
 import { columnConfigsByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
 import { IntendedRule } from "../01_SpreadsheetSchema/configReaders/IntendedRule";
@@ -442,6 +443,18 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
       },
     );
   }
+  // Read before any send, so only the rules live before the run count; an add outranks each one sharing a cell with it.
+  addedFirstEffects(
+    additions: CompiledRuleAddition[],
+  ): Map<CompiledRuleAddition, SyncPlanEffect[]> {
+    const rulesByTable = this._tableRulesByTable(additions);
+    return new Map(
+      additions.map((addition) => [
+        addition,
+        addedFirstEffectsOf(rulesByTable.get(addition.table), addition),
+      ]),
+    );
+  }
   // Each at index 0, last first, so the list's first rule ends first and every rule already there stays below them.
   addRules(additions: CompiledRuleAddition[]): this {
     for (const { sheetGid, compiled } of [...additions].reverse()) {
@@ -686,6 +699,22 @@ function refetchedCopyCount(
     rules.indexes,
     RuleRecords.sharedHandleOf(compiled, rules.table),
   );
+}
+
+function addedFirstEffectsOf(
+  rules: TableRules | undefined,
+  addition: CompiledRuleAddition,
+): SyncPlanEffect[] {
+  if (rules === undefined) return [];
+  const outranks = [...rules.indexes].flatMap(([handle, { index }]) => {
+    const rule = Val.assert(rules.tab.rules[index], `rule ${handle}`);
+    const sharesCell = rule.ranges.some((range) =>
+      addition.compiled.ranges.some((added) => rangesShareCell(range, added)),
+    );
+    return sharesCell ? [handle] : [];
+  });
+  if (outranks.length === 0) return [];
+  return [{ kind: "addedFirst", outranks }];
 }
 
 function handleEntries(

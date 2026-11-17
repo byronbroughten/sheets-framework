@@ -6,11 +6,15 @@ import type {
   ConditionalFormatRule,
   ModelableConditionalFormatRule,
 } from "../../00_Source/RawSource/ConditionalFormat";
-import type { GridRangeProps } from "../../00_Source/RawSource/RawSource";
+import {
+  type GridRangeProps,
+  rangesShareCell,
+} from "../../00_Source/RawSource/RawSource";
 import {
   type HexColor,
   rgbChannelsHex,
 } from "../../00_Source/RawSource/RgbColor";
+import { SheetIndex } from "../../00_Source/RawSource/SheetIndex";
 import { SpreadsheetBaseSchema } from "../SpreadsheetBaseSchema";
 import { BraceFormula, type RuleLayout } from "./BraceFormula";
 import type { SyncPlanEffect } from "./syncRunResult";
@@ -264,13 +268,13 @@ function ownerTable(
 
 function touchesTable(range: GridRangeProps, table: RuleRecordsTable): boolean {
   const { startCol, endCol } = tableColumnBounds(table);
-  const overlapsRows =
-    range.startRowIndex < table.layout.endRowIndex &&
-    (range.endRowIndex ?? Infinity) > table.layout.headerTopLeft.rowIndex;
-  const overlapsColumns =
-    (range.startColumnIndex ?? 0) < endCol &&
-    (range.endColumnIndex ?? Infinity) > startCol;
-  return overlapsRows && overlapsColumns;
+  return rangesShareCell(range, {
+    sheetId: range.sheetId,
+    startRowIndex: table.layout.headerTopLeft.rowIndex,
+    endRowIndex: table.layout.endRowIndex,
+    startColumnIndex: SheetIndex.col(startCol),
+    endColumnIndex: SheetIndex.col(endCol),
+  });
 }
 
 function tableColumnBounds(table: RuleRecordsTable): {

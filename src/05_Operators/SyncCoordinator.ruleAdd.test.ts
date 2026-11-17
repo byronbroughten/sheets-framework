@@ -266,6 +266,52 @@ describe("SyncCoordinator.run conditional-format rule add", () => {
       {
         subject: { table: "item", path: "conditionalFormats.add[0]" },
         what: "add the rule",
+        effects: [{ kind: "addedFirst", outranks: [firstHandle] }],
+      },
+    ]);
+  });
+
+  it("plans an add over cells two live rules cover as outranking both", () => {
+    seedWithRules();
+    const secondColumn = Val.assert(columnNames[1], "second column");
+
+    const { result } = runItem({
+      isSending: false,
+      alterations: adding([allOverThree]),
+    });
+
+    expect(result.plan).toEqual([
+      {
+        subject: { table: "item", path: "conditionalFormats.add[0]" },
+        what: "add the rule",
+        effects: [
+          {
+            kind: "addedFirst",
+            outranks: [
+              firstHandle,
+              `${secondColumn} | =TRUE | background #ff0000`,
+            ],
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("plans an add over cells no rule covers with no effect", () => {
+    stubSheetsService({
+      sheets: [{ ...itemSheet(), conditionalFormats: [firstTrue] }],
+    });
+    const secondColumn = Val.assert(columnNames[1], "second column");
+
+    const { result } = runItem({
+      isSending: false,
+      alterations: adding([{ ...blackWhenFalse, columns: [secondColumn] }]),
+    });
+
+    expect(result.plan).toEqual([
+      {
+        subject: { table: "item", path: "conditionalFormats.add[0]" },
+        what: "add the rule",
         effects: [],
       },
     ]);
