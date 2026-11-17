@@ -1,6 +1,7 @@
 import { Val } from "@byronbroughten/utils/val";
 
 import type { ModelableConditionalFormatRule } from "../00_Source/RawSource/ConditionalFormat";
+import type { RuleLayout } from "../01_SpreadsheetSchema/configReaders/BraceFormula";
 import { columnConfigsByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
 import { IntendedRule } from "../01_SpreadsheetSchema/configReaders/IntendedRule";
 import {
@@ -15,11 +16,14 @@ import {
 } from "../01_SpreadsheetSchema/configReaders/RuleRecords";
 import {
   type IntendedTrait,
+  type PlannedRuleAddition,
   type PlannedRuleRemoval,
   type PlannedRuleReplacement,
+  ruleAdditionLines,
   ruleRemovalLines,
   ruleReplacementLines,
 } from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
+import type { WideRule } from "../01_SpreadsheetSchema/configReaders/SyncPlanner/wideAlterations";
 import type {
   SyncNoSuchRuleStop,
   SyncPlanEffect,
@@ -63,11 +67,58 @@ export interface CompiledRuleReplacement extends PlannedRuleReplacement {
   compiled: ModelableConditionalFormatRule;
 }
 
+// The run's column deletes and inserts, which move the layout a rule compiles against.
+export interface PlannedColumnChanges {
+  sentTraits: IntendedTrait[];
+  newColumns: MintedNewColumn[];
+}
+
 export interface CompiledRuleReplacementsProps {
   replacements: PlannedRuleReplacement[];
   removals: IndexedRuleRemoval[];
-  sentTraits: IntendedTrait[];
-  newColumns: MintedNewColumn[];
+  additions: PlannedRuleAddition[];
+  columnChanges: PlannedColumnChanges;
+}
+
+// An add compiled against the planned layout; `copiesAfter` is how many rules with its shared handle the Table holds once the run's sends land.
+export interface CompiledRuleAddition extends PlannedRuleAddition {
+  sheetGid: number;
+  compiled: ModelableConditionalFormatRule;
+  copiesAfter: number;
+}
+
+export interface CompiledRuleAdditionsProps {
+  additions: PlannedRuleAddition[];
+  removals: IndexedRuleRemoval[];
+  replacements: CompiledRuleReplacement[];
+  columnChanges: PlannedColumnChanges;
+}
+
+interface CompiledOnPlanProps {
+  tableKey: string;
+  rules: TableRules;
+  rule: WideRule;
+  columnChanges: PlannedColumnChanges;
+}
+
+interface CompiledOnPlan {
+  compiled: ModelableConditionalFormatRule;
+  plannedTable: RuleRecordsTable;
+}
+
+interface PlannedLayoutOfProps {
+  table: string;
+  layout: RuleLayout;
+  columnChanges: PlannedColumnChanges;
+}
+
+interface CopiesKeptProps {
+  table: string;
+  sharedHandle: string;
+  rules: TableRules;
+  plannedTable: RuleRecordsTable;
+  removals: IndexedRuleRemoval[];
+  replacements: CompiledRuleReplacement[];
 }
 
 interface TableRules {
@@ -198,19 +249,23 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
       ];
     });
   }
-  // Compiled before any send, so a bad colour or brace throws with nothing sent; indexed for the flush after the removals'.
+  // Compiled before any send, so a bad colour or brace throws with nothing sent; indexed for the flush after the removals', past the adds sent ahead of it.
   compiledRuleReplacements({
     replacements,
     removals,
-    sentTraits,
-    newColumns,
+    additions,
+    columnChanges,
   }: CompiledRuleReplacementsProps): CompiledRuleReplacement[] {
-    const rulesByTable = this._tableRulesByTable(replacements);
+    const rulesByTable = this._tableRulesByTable([
+      ...replacements,
+      ...additions,
+    ]);
     return replacements.map((replacement) => {
-      const { tableId, sheetGid, table, indexes } = Val.assert(
+      const rules = Val.assert(
         rulesByTable.get(replacement.table),
         `rules of ${replacement.table}`,
       );
+      const { tableId, sheetGid, indexes } = rules;
       const { index } = Val.assert(
         indexes.get(replacement.handle),
         `rule ${replacement.handle} on ${replacement.table}`,
@@ -220,31 +275,93 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
           removal.index < index &&
           this.ss.raw.table(removal.tableId).sheetGid === sheetGid,
       ).length;
-      const layout = IntendedRule.plannedLayout({
-        layout: table.layout,
-        deletedColumns: sentTraits.flatMap((intended) => {
-          if (intended.kind !== "column" || intended.trait !== "deleted") {
-            return [];
-          }
-          if (intended.table !== replacement.table) return [];
-          return [intended.column];
-        }),
-        newColumns: newColumns.filter(
-          (newColumn) => newColumn.table === replacement.table,
-        ),
+      // The flusher sends a batch's adds before its updates, and each add goes in at index 0.
+      const addedAbove = additions.filter(
+        (addition) => rulesByTable.get(addition.table)?.sheetGid === sheetGid,
+      ).length;
+      const { compiled } = compiledOnPlan({
+        tableKey: replacement.table,
+        rules,
+        rule: replacement.rule,
+        columnChanges,
       });
       return {
         ...replacement,
         tableId,
         sheetGid,
-        index: index - removedAbove,
-        compiled: IntendedRule.compile({
-          tableKey: replacement.table,
-          sheetGid,
-          layout,
-          rule: replacement.rule,
+        index: index - removedAbove + addedAbove,
+        compiled,
+      };
+    });
+  }
+  // Compiled before any send, so a bad colour or brace throws with nothing sent.
+  compiledRuleAdditions({
+    additions,
+    removals,
+    replacements,
+    columnChanges,
+  }: CompiledRuleAdditionsProps): CompiledRuleAddition[] {
+    const rulesByTable = this._tableRulesByTable(additions);
+    const compiledAdditions = additions.map((addition) => {
+      const rules = Val.assert(
+        rulesByTable.get(addition.table),
+        `rules of ${addition.table}`,
+      );
+      const { compiled, plannedTable } = compiledOnPlan({
+        tableKey: addition.table,
+        rules,
+        rule: addition.rule,
+        columnChanges,
+      });
+      // Named on the planned layout, as the refetch names it: a column the run deletes would move a read-layout name.
+      const sharedHandle = RuleRecords.sharedHandleOf(compiled, plannedTable);
+      return {
+        addition,
+        sheetGid: rules.sheetGid,
+        compiled,
+        sharedHandle,
+        copiesKept: copiesKeptOf({
+          table: addition.table,
+          sharedHandle,
+          rules,
+          plannedTable,
+          removals,
+          replacements,
         }),
       };
+    });
+    return compiledAdditions.map(
+      ({ addition, sheetGid, compiled, sharedHandle, copiesKept }) => {
+        const addedCopies = compiledAdditions.filter(
+          (other) =>
+            other.addition.table === addition.table &&
+            other.sharedHandle === sharedHandle,
+        ).length;
+        return {
+          ...addition,
+          sheetGid,
+          compiled,
+          copiesAfter: copiesKept + addedCopies,
+        };
+      },
+    );
+  }
+  // Each at index 0, last first, so the list's first rule ends first and every rule already there stays below them.
+  addRules(additions: CompiledRuleAddition[]): this {
+    for (const { sheetGid, compiled } of [...additions].reverse()) {
+      this.ss.raw.sheet(sheetGid).addConditionalFormatRuleFirst(compiled);
+    }
+    return this;
+  }
+  // By copies on the refetched layout: an add equal to a rule already there gives it a second copy, not a new handle.
+  additionsDidntLand(additions: CompiledRuleAddition[]): SyncSendLine[] {
+    const rulesByTable = this._tableRulesByTable(additions);
+    return additions.flatMap((addition): SyncSendLine[] => {
+      if (refetchedCopyCount(rulesByTable, addition) >= addition.copiesAfter) {
+        return [];
+      }
+      const { subject, what } = ruleAdditionLines.sendLine(addition);
+      return [{ subject, what: `${what}; Sheets didn't add it` }];
     });
   }
   // Queued for the flush after the removals', so the index skips the stale check the removals' flush set.
@@ -262,17 +379,7 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
   ): SyncSendLine[] {
     const rulesByTable = this._tableRulesByTable(replacements);
     return replacements.flatMap((replacement): SyncSendLine[] => {
-      const rules = rulesByTable.get(replacement.table);
-      if (rules !== undefined) {
-        const sharedHandle = RuleRecords.sharedHandleOf(
-          replacement.compiled,
-          rules.table,
-        );
-        const isLanded = [...rules.indexes.values()].some(
-          (rule) => rule.sharedHandle === sharedHandle,
-        );
-        if (isLanded) return [];
-      }
+      if (refetchedCopyCount(rulesByTable, replacement) > 0) return [];
       const { subject, what } = ruleReplacementLines.sendLine(replacement);
       return [{ subject, what: `${what}; Sheets kept the old one` }];
     });
@@ -361,6 +468,95 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
       ``,
     ].join("\n");
   }
+}
+
+function compiledOnPlan({
+  tableKey,
+  rules,
+  rule,
+  columnChanges,
+}: CompiledOnPlanProps): CompiledOnPlan {
+  const plannedTable: RuleRecordsTable = {
+    ...rules.table,
+    layout: plannedLayoutOf({
+      table: tableKey,
+      layout: rules.table.layout,
+      columnChanges,
+    }),
+  };
+  return {
+    compiled: IntendedRule.compile({
+      tableKey,
+      sheetGid: rules.sheetGid,
+      layout: plannedTable.layout,
+      rule,
+    }),
+    plannedTable,
+  };
+}
+
+function plannedLayoutOf({
+  table,
+  layout,
+  columnChanges: { sentTraits, newColumns },
+}: PlannedLayoutOfProps): RuleLayout {
+  return IntendedRule.plannedLayout({
+    layout,
+    deletedColumns: sentTraits.flatMap((intended) => {
+      if (intended.kind !== "column" || intended.trait !== "deleted") {
+        return [];
+      }
+      if (intended.table !== table) return [];
+      return [intended.column];
+    }),
+    newColumns: newColumns.filter((newColumn) => newColumn.table === table),
+  });
+}
+
+// The read's copies, less those the run removes or replaces away, plus the replacements that compile to it.
+function copiesKeptOf({
+  table,
+  sharedHandle,
+  rules,
+  plannedTable,
+  removals,
+  replacements,
+}: CopiesKeptProps): number {
+  const removedCopies = removals.filter(
+    (removal) =>
+      removal.table === table && removal.sharedHandle === sharedHandle,
+  ).length;
+  const tableReplacements = replacements.filter(
+    (replacement) => replacement.table === table,
+  );
+  const replacedAway = tableReplacements.filter(
+    (replacement) =>
+      rules.indexes.get(replacement.handle)?.sharedHandle === sharedHandle,
+  ).length;
+  const replacedInto = tableReplacements.filter(
+    (replacement) =>
+      RuleRecords.sharedHandleOf(replacement.compiled, plannedTable) ===
+      sharedHandle,
+  ).length;
+  return (
+    copyCount(rules.indexes, sharedHandle) -
+    removedCopies -
+    replacedAway +
+    replacedInto
+  );
+}
+
+// Named on the refetched layout; 0 for a Table the refetch no longer has.
+function refetchedCopyCount(
+  rulesByTable: Map<string, TableRules>,
+  { table, compiled }: Pick<CompiledRuleAddition, "table" | "compiled">,
+): number {
+  const rules = rulesByTable.get(table);
+  if (rules === undefined) return 0;
+  return copyCount(
+    rules.indexes,
+    RuleRecords.sharedHandleOf(compiled, rules.table),
+  );
 }
 
 function handleEntries(

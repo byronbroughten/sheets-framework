@@ -136,7 +136,7 @@ describe("SyncEntryRefuser, traits not sendable yet", () => {
     ).toEqual([]);
   });
 
-  it("refuses a Table's own traits but its name, deleted and new columns", () => {
+  it("lets a Table's name, deleted, new columns and conditional formats through", () => {
     expect(
       refusals({
         alterations: {
@@ -150,9 +150,7 @@ describe("SyncEntryRefuser, traits not sendable yet", () => {
           },
         },
       }),
-    ).toEqual([
-      { kind: "notSendableYet", table: "item", path: "conditionalFormats.add" },
-    ]);
+    ).toEqual([]);
   });
 
   it("lets a new column's header, position and empty value allowed through, refusing its other traits", () => {

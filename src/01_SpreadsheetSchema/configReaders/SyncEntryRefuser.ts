@@ -27,6 +27,7 @@ export const sendableTraits = {
     "newColumns",
     "conditionalFormats.remove",
     "conditionalFormats.replace",
+    "conditionalFormats.add",
   ]),
   column: new Set<string>([...sheetTraits.column, "emptyValueAllowed"]),
   // A new column's own traits: a formula or column type would need a write after the insert.

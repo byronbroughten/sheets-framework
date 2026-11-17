@@ -273,7 +273,6 @@ describe("SyncCoordinator.run conditional-format rule replacement", () => {
     expect(files).toBeUndefined();
     expect(service.batchUpdateCount()).toBe(0);
     expect(result.refusals).toEqual([
-      { kind: "notSendableYet", table: "item", path: "conditionalFormats.add" },
       {
         kind: "notSendableYet",
         table: "item",
