@@ -35,6 +35,21 @@ export function isWholeSheetGridRange(
   return !("startRowIndex" in range);
 }
 
+// An unbounded side runs to the sheet's edge, as Sheets reads it.
+export function rangesShareCell(
+  left: GridRangeProps,
+  right: GridRangeProps,
+): boolean {
+  if (left.sheetId !== right.sheetId) return false;
+  const sharesRows =
+    left.startRowIndex < (right.endRowIndex ?? Infinity) &&
+    right.startRowIndex < (left.endRowIndex ?? Infinity);
+  const sharesColumns =
+    (left.startColumnIndex ?? 0) < (right.endColumnIndex ?? Infinity) &&
+    (right.startColumnIndex ?? 0) < (left.endColumnIndex ?? Infinity);
+  return sharesRows && sharesColumns;
+}
+
 export function rangeEqual(
   left: GridRangeProps,
   right: GridRangeProps | undefined,

@@ -515,16 +515,18 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     additions: CompiledRuleAddition[],
   ): SyncPlanItem[] {
     if (additions.length === 0) return plan;
+    const effectsByAddition =
+      this.conditionalFormatConfigOperator.addedFirstEffects(additions);
     return plan.map((item) => {
+      const { subject } = item;
+      if (!("table" in subject)) return item;
       const addition = additions.find(
         ({ table, position }) =>
-          "table" in item.subject &&
-          item.subject.table === table &&
-          item.subject.path === ruleAdditionLines.path({ position }),
+          subject.table === table &&
+          subject.path === ruleAdditionLines.path({ position }),
       );
       if (addition === undefined) return item;
-      const effects =
-        this.conditionalFormatConfigOperator.addedFirstEffects(addition);
+      const effects = effectsByAddition.get(addition) ?? [];
       return { ...item, effects: [...item.effects, ...effects] };
     });
   }
