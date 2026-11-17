@@ -1,6 +1,7 @@
 import { Val } from "@byronbroughten/utils/val";
 
 import type { ModelableConditionalFormatRule } from "../00_Source/RawSource/ConditionalFormat";
+import type { RuleLayout } from "../01_SpreadsheetSchema/configReaders/BraceFormula";
 import { columnConfigsByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
 import { IntendedRule } from "../01_SpreadsheetSchema/configReaders/IntendedRule";
 import {
@@ -15,8 +16,10 @@ import {
 } from "../01_SpreadsheetSchema/configReaders/RuleRecords";
 import {
   type IntendedTrait,
+  type PlannedRuleAddition,
   type PlannedRuleRemoval,
   type PlannedRuleReplacement,
+  ruleAdditionLines,
   ruleRemovalLines,
   ruleReplacementLines,
 } from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
@@ -66,6 +69,28 @@ export interface CompiledRuleReplacement extends PlannedRuleReplacement {
 export interface CompiledRuleReplacementsProps {
   replacements: PlannedRuleReplacement[];
   removals: IndexedRuleRemoval[];
+  additions: CompiledRuleAddition[];
+  sentTraits: IntendedTrait[];
+  newColumns: MintedNewColumn[];
+}
+
+// An add compiled against the planned layout; `copiesAfter` is how many rules with its shared handle the Table holds once the run's sends land.
+export interface CompiledRuleAddition extends PlannedRuleAddition {
+  sheetGid: number;
+  compiled: ModelableConditionalFormatRule;
+  copiesAfter: number;
+}
+
+export interface CompiledRuleAdditionsProps {
+  additions: PlannedRuleAddition[];
+  removals: IndexedRuleRemoval[];
+  sentTraits: IntendedTrait[];
+  newColumns: MintedNewColumn[];
+}
+
+interface PlannedLayoutOfProps {
+  table: string;
+  layout: RuleLayout;
   sentTraits: IntendedTrait[];
   newColumns: MintedNewColumn[];
 }
@@ -198,10 +223,11 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
       ];
     });
   }
-  // Compiled before any send, so a bad colour or brace throws with nothing sent; indexed for the flush after the removals'.
+  // Compiled before any send, so a bad colour or brace throws with nothing sent; indexed for the flush after the removals', past the adds sent ahead of it.
   compiledRuleReplacements({
     replacements,
     removals,
+    additions,
     sentTraits,
     newColumns,
   }: CompiledRuleReplacementsProps): CompiledRuleReplacement[] {
@@ -220,24 +246,21 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
           removal.index < index &&
           this.ss.raw.table(removal.tableId).sheetGid === sheetGid,
       ).length;
-      const layout = IntendedRule.plannedLayout({
+      // The flusher sends a batch's adds before its updates, and each add goes in at index 0.
+      const addedAbove = additions.filter(
+        (addition) => addition.sheetGid === sheetGid,
+      ).length;
+      const layout = plannedLayoutOf({
+        table: replacement.table,
         layout: table.layout,
-        deletedColumns: sentTraits.flatMap((intended) => {
-          if (intended.kind !== "column" || intended.trait !== "deleted") {
-            return [];
-          }
-          if (intended.table !== replacement.table) return [];
-          return [intended.column];
-        }),
-        newColumns: newColumns.filter(
-          (newColumn) => newColumn.table === replacement.table,
-        ),
+        sentTraits,
+        newColumns,
       });
       return {
         ...replacement,
         tableId,
         sheetGid,
-        index: index - removedAbove,
+        index: index - removedAbove + addedAbove,
         compiled: IntendedRule.compile({
           tableKey: replacement.table,
           sheetGid,
@@ -245,6 +268,85 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
           rule: replacement.rule,
         }),
       };
+    });
+  }
+  // Compiled before any send, so a bad colour or brace throws with nothing sent.
+  compiledRuleAdditions({
+    additions,
+    removals,
+    sentTraits,
+    newColumns,
+  }: CompiledRuleAdditionsProps): CompiledRuleAddition[] {
+    const rulesByTable = this._tableRulesByTable(additions);
+    const compiledAdditions = additions.map((addition) => {
+      const { sheetGid, table, indexes } = Val.assert(
+        rulesByTable.get(addition.table),
+        `rules of ${addition.table}`,
+      );
+      const compiled = IntendedRule.compile({
+        tableKey: addition.table,
+        sheetGid,
+        layout: plannedLayoutOf({
+          table: addition.table,
+          layout: table.layout,
+          sentTraits,
+          newColumns,
+        }),
+        rule: addition.rule,
+      });
+      const sharedHandle = RuleRecords.sharedHandleOf(compiled, table);
+      const removedCopies = removals.filter(
+        (removal) =>
+          removal.table === addition.table &&
+          removal.sharedHandle === sharedHandle,
+      ).length;
+      return {
+        addition,
+        sheetGid,
+        compiled,
+        sharedHandle,
+        copiesKept: copyCount(indexes, sharedHandle) - removedCopies,
+      };
+    });
+    return compiledAdditions.map(
+      ({ addition, sheetGid, compiled, sharedHandle, copiesKept }) => {
+        const addedCopies = compiledAdditions.filter(
+          (other) =>
+            other.addition.table === addition.table &&
+            other.sharedHandle === sharedHandle,
+        ).length;
+        return {
+          ...addition,
+          sheetGid,
+          compiled,
+          copiesAfter: copiesKept + addedCopies,
+        };
+      },
+    );
+  }
+  // Each at index 0, last first, so the list's first rule ends first and every rule already there stays below them.
+  addRules(additions: CompiledRuleAddition[]): this {
+    for (const { sheetGid, compiled } of [...additions].reverse()) {
+      this.ss.raw.sheet(sheetGid).addConditionalFormatRuleFirst(compiled);
+    }
+    return this;
+  }
+  // By copies on the refetched layout: an add equal to a rule already there gives it a second copy, not a new handle.
+  additionsDidntLand(additions: CompiledRuleAddition[]): SyncSendLine[] {
+    const rulesByTable = this._tableRulesByTable(additions);
+    return additions.flatMap((addition): SyncSendLine[] => {
+      const rules = rulesByTable.get(addition.table);
+      if (rules !== undefined) {
+        const sharedHandle = RuleRecords.sharedHandleOf(
+          addition.compiled,
+          rules.table,
+        );
+        if (copyCount(rules.indexes, sharedHandle) >= addition.copiesAfter) {
+          return [];
+        }
+      }
+      const { subject, what } = ruleAdditionLines.sendLine(addition);
+      return [{ subject, what: `${what}; Sheets didn't add it` }];
     });
   }
   // Queued for the flush after the removals', so the index skips the stale check the removals' flush set.
@@ -361,6 +463,25 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
       ``,
     ].join("\n");
   }
+}
+
+function plannedLayoutOf({
+  table,
+  layout,
+  sentTraits,
+  newColumns,
+}: PlannedLayoutOfProps): RuleLayout {
+  return IntendedRule.plannedLayout({
+    layout,
+    deletedColumns: sentTraits.flatMap((intended) => {
+      if (intended.kind !== "column" || intended.trait !== "deleted") {
+        return [];
+      }
+      if (intended.table !== table) return [];
+      return [intended.column];
+    }),
+    newColumns: newColumns.filter((newColumn) => newColumn.table === table),
+  });
 }
 
 function handleEntries(

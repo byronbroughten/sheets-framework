@@ -1,5 +1,6 @@
 import {
   newTableLines,
+  ruleAdditionLines,
   ruleRemovalLines,
   ruleReplacementLines,
 } from "./SyncPlanner";
@@ -126,13 +127,19 @@ function remainingTableEntry(
   );
 }
 
-// A removal or replacement lands one handle at a time, so only the landed handles leave its list.
+// A removal, replacement or add lands one rule at a time, so only the landed ones leave its list.
 function remainingRuleOperations(
   tableName: string,
   formats: WideTableEntry["conditionalFormats"],
   landedKeys: Set<string>,
 ): NonNullable<WideTableEntry["conditionalFormats"]> {
-  const { remove, replace, ...others } = formats ?? {};
+  const { remove, replace, add, ...others } = formats ?? {};
+  const remainingAdd = (add ?? []).filter(
+    (_, position) =>
+      !landedKeys.has(
+        traitKey(tableName, ruleAdditionLines.path({ position })),
+      ),
+  );
   const remainingRemove = (remove ?? []).filter(
     (handle) =>
       !landedKeys.has(
@@ -156,6 +163,7 @@ function remainingRuleOperations(
     ...(Object.keys(remainingReplace).length === 0
       ? {}
       : { replace: remainingReplace }),
+    ...(remainingAdd.length === 0 ? {} : { add: remainingAdd }),
   };
 }
 

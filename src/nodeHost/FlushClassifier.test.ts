@@ -884,6 +884,19 @@ describe("FlushClassifier.heldItems", () => {
       ).toEqual([]);
     });
 
+    it("frees a conditional-format rule add", () => {
+      expect(
+        heldItems([
+          {
+            addConditionalFormatRule: {
+              index: 0,
+              rule: { ranges: [rowRange(1, 3)] },
+            },
+          },
+        ]),
+      ).toEqual([]);
+    });
+
     it("frees appends", () => {
       expect(
         heldItems([

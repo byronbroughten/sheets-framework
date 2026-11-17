@@ -98,6 +98,13 @@ export interface PlannedRuleReplacement {
   rule: WideRule;
 }
 
+// One `conditionalFormats.add` entry, by its Table's codebase name and its place in the list.
+export interface PlannedRuleAddition {
+  table: string;
+  position: number;
+  rule: WideRule;
+}
+
 export interface SyncPlannerResult extends Pick<
   SyncRunResult,
   "stops" | "plan"
@@ -118,6 +125,8 @@ export interface SyncPlannerResult extends Pick<
   ruleRemovals: PlannedRuleRemoval[];
   // The rules the plan replaces, for the run to queue; empty when stopped.
   ruleReplacements: PlannedRuleReplacement[];
+  // The rules the plan adds, for the run to queue; empty when stopped.
+  ruleAdditions: PlannedRuleAddition[];
 }
 
 interface TableTraitAddress {
@@ -266,6 +275,22 @@ export const ruleReplacementLines = {
   },
 };
 
+// How a `conditionalFormats.add` entry reads on the plan, landed and didntLand lists.
+export const ruleAdditionLines = {
+  path({ position }: Pick<PlannedRuleAddition, "position">): string {
+    return `conditionalFormats.add[${position}]`;
+  },
+  sendLine(addition: PlannedRuleAddition): SyncSendLine {
+    return {
+      subject: {
+        table: addition.table,
+        path: ruleAdditionLines.path(addition),
+      },
+      what: "add the rule",
+    };
+  },
+};
+
 export function isSheetTrait(intended: IntendedTrait): boolean {
   if (intended.kind === "tab") return false;
   return sheetTraits[intended.kind].has(intended.trait);
@@ -386,6 +411,15 @@ export class SyncPlanner {
       })),
     );
   }
+  get ruleAdditions(): PlannedRuleAddition[] {
+    return entriesOf(this.alterations.tables).flatMap(([table, entry]) =>
+      (entry.conditionalFormats?.add ?? []).map((rule, position) => ({
+        table,
+        position,
+        rule,
+      })),
+    );
+  }
   plan({ previous, live, sheetStops = [] }: PlanProps): SyncPlannerResult {
     const stops: SyncConflict[] = [];
     const sends: SyncPlanItem[] = [];
@@ -466,6 +500,12 @@ export class SyncPlanner {
         effects: [],
       });
     }
+    const ruleAdditions = this.ruleAdditions.filter(
+      ({ table }) => live.tables[table] !== undefined,
+    );
+    for (const addition of ruleAdditions) {
+      sends.push({ ...ruleAdditionLines.sendLine(addition), effects: [] });
+    }
     const isStopped = stops.length + sheetStops.length > 0;
     const sentIfUnstopped = isStopped ? [] : sentTraits;
     const newColumnsIfUnstopped = isStopped ? [] : newColumns;
@@ -499,6 +539,7 @@ export class SyncPlanner {
       newTables: newTablesIfUnstopped,
       ruleRemovals: isStopped ? [] : ruleRemovals,
       ruleReplacements: isStopped ? [] : ruleReplacements,
+      ruleAdditions: isStopped ? [] : ruleAdditions,
     };
   }
   // Google resets every dropdown on a Table its column list is sent to, a newly set one included: docs/sheets-behaviour.md#creating-and-updating-tables.

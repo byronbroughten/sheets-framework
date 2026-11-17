@@ -73,6 +73,7 @@ import {
   type PlannedColumnMove,
 } from "./ColumnConfigsOperator";
 import {
+  type CompiledRuleAddition,
   type CompiledRuleReplacement,
   ConditionalFormatConfigOperator,
   type IndexedRuleRemoval,
@@ -142,6 +143,7 @@ interface AppliedPlan {
   columnMoves: PlannedColumnMove[];
   ruleRemovals: IndexedRuleRemoval[];
   ruleReplacements: CompiledRuleReplacement[];
+  ruleAdditions: CompiledRuleAddition[];
   reads: EnteredDataReads;
 }
 
@@ -155,6 +157,7 @@ interface RefetchProps {
   newTables: MintedNewTable[];
   ruleRemovals: IndexedRuleRemoval[];
   ruleReplacements: CompiledRuleReplacement[];
+  ruleAdditions: CompiledRuleAddition[];
 }
 
 interface RegenerationProps {
@@ -304,6 +307,13 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       this.conditionalFormatConfigOperator.indexedRuleRemovals(
         planned.ruleRemovals,
       );
+    const ruleAdditions =
+      this.conditionalFormatConfigOperator.compiledRuleAdditions({
+        additions: planned.ruleAdditions,
+        removals: ruleRemovals,
+        sentTraits: planned.sentTraits,
+        newColumns,
+      });
     const applied: AppliedPlan = {
       accessChanges,
       sentTraits: planned.sentTraits,
@@ -318,9 +328,11 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         this.conditionalFormatConfigOperator.compiledRuleReplacements({
           replacements: planned.ruleReplacements,
           removals: ruleRemovals,
+          additions: ruleAdditions,
           sentTraits: planned.sentTraits,
           newColumns,
         }),
+      ruleAdditions,
       reads: enteredDataReads({
         alterations,
         sentTraits: planned.sentTraits,
@@ -352,14 +364,15 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     };
     let refetched: SyncCoordinator | undefined;
     let regeneration: Regeneration;
-    // A fresh read, since Raw's state has no reset; only a sent sheet trait, a new column or Table or a removed rule changes what it would read.
+    // A fresh read, since Raw's state has no reset; only a sent sheet trait, a new column or Table or a removed, replaced or added rule changes what it would read.
     if (
       isApplying &&
       (planned.sentTraits.some(isSheetTrait) ||
         applied.newColumns.length > 0 ||
         applied.newTables.length > 0 ||
         applied.ruleRemovals.length > 0 ||
-        applied.ruleReplacements.length > 0)
+        applied.ruleReplacements.length > 0 ||
+        applied.ruleAdditions.length > 0)
     ) {
       refetched = SyncCoordinator.init();
       regeneration = refetched._refetchedRegeneration({
@@ -372,6 +385,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         newTables: applied.newTables,
         ruleRemovals: applied.ruleRemovals,
         ruleReplacements: applied.ruleReplacements,
+        ruleAdditions: applied.ruleAdditions,
       });
     } else {
       regeneration = this._regeneration({ notes, sent, previous });
@@ -451,6 +465,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     newTables,
     ruleRemovals,
     ruleReplacements,
+    ruleAdditions,
   }: RefetchProps): Regeneration {
     // Recorded before the read, so its head-row fetch covers granted Tables, created ones among them, and skips revoked ones.
     this.tableConfigOperator.recordApiAccessChanges({
@@ -475,6 +490,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       ...this.conditionalFormatConfigOperator.replacementsDidntLand(
         ruleReplacements,
       ),
+      ...this.conditionalFormatConfigOperator.additionsDidntLand(ruleAdditions),
     ];
     return {
       ...this._regeneration({ notes, sent, previous }),
@@ -593,17 +609,20 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       throw error;
     }
   }
-  // Column deletes and inserts with the replaced rules compiled against the layout they leave, then moves, then new Tables, each flush alone: every later write is indexed by the layout the one before leaves.
+  // Column deletes and inserts with the replaced and added rules compiled against the layout they leave, then moves, then new Tables, each flush alone: every later write is indexed by the layout the one before leaves.
   private _flushPlan({
     sentTraits,
     newColumns,
     newTables,
     ruleReplacements,
+    ruleAdditions,
     columnMoves,
   }: AppliedPlan): void {
     this.ss.batchUpdateGSheets();
     this.columnConfigOperator.updateDeletionsAndInserts(sentTraits, newColumns);
-    this.conditionalFormatConfigOperator.replaceRules(ruleReplacements);
+    this.conditionalFormatConfigOperator
+      .replaceRules(ruleReplacements)
+      .addRules(ruleAdditions);
     this.ss.batchUpdateGSheets();
     this.columnConfigOperator.moveColumns(columnMoves);
     this.ss.batchUpdateGSheets();

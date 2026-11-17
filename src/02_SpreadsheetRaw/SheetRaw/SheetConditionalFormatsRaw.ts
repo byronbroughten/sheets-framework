@@ -60,6 +60,15 @@ export class SheetConditionalFormatsRaw extends SheetBaseRaw {
   ): void {
     this._queueRuleUpdate(index, rule);
   }
+  // Index 0 needs no stale check, since it names no fetched rule; the flusher sends adds before updates.
+  addConditionalFormatRuleFirst(rule: ModelableConditionalFormatRule): void {
+    this.sheet.assertRowIndexesNotStale();
+    this.writeOperations.addConditionalFormatRule.push({
+      kind: "addConditionalFormatRule",
+      index: 0,
+      rule,
+    });
+  }
   private _queueRuleUpdate(
     index: number,
     rule: ModelableConditionalFormatRule,
