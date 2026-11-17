@@ -22,23 +22,24 @@ export interface SyncNameRewriterProps {
   landed: SyncSubject[];
 }
 
-interface BothSides {
+// Each ID's name in the previous configs and in the regenerated ones.
+interface NamesAcrossRegen {
   previous: Map<string, string>;
   regenerated: Map<string, string>;
 }
 
 interface PersonRenamesProps {
   names: NamesNow;
-  headers: BothSides;
+  headers: NamesAcrossRegen;
   sentKeys: Set<string>;
 }
 
 interface FormulaRenamesProps {
   names: NamesNow;
   // By column ID.
-  headers: BothSides;
+  headers: NamesAcrossRegen;
   // Each Table's name on the sheet, by Table ID.
-  tableNames: BothSides;
+  tableNames: NamesAcrossRegen;
 }
 
 // Rewrites pending alterations' names through the IDs the previous ID-name map gave them (ADR 0035), and words the report's renames.

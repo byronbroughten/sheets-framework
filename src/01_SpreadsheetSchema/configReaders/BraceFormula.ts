@@ -1,3 +1,5 @@
+import { Val } from "@byronbroughten/utils/val";
+
 import {
   type SheetColIndex,
   SheetIndex,
@@ -123,6 +125,12 @@ const formulaPatterns = {
       .source,
 } as const;
 
+// The match text and bracePattern's capture groups, counted off an empty match so a new group moves it too.
+const braceGroupCount = Val.assert(
+  new RegExp(`${bracePattern().source}|`).exec(""),
+  "an empty match of the brace pattern",
+).length;
+
 export const BraceFormula = {
   compileForCell({ configs, tableKey, formula }: BraceCompileProps): string {
     return replaceBraces({ tableKey, formula }, (brace) => {
@@ -221,9 +229,12 @@ export const BraceFormula = {
       "g",
     );
     return formula.replace(pattern, (...groups: unknown[]) => {
-      const [liveTable, header] = groups.slice(7, 9);
-      if (typeof liveTable === "string" && typeof header === "string") {
-        return renamedLiveReference(renames.liveNames, liveTable, header);
+      const reference = liveReferenceMatchOf(groups);
+      if (reference !== undefined) {
+        return renamedLiveReference({
+          ...reference,
+          liveNames: renames.liveNames,
+        });
       }
       return renamedBrace({
         match: braceMatchOf(groups),
@@ -472,11 +483,31 @@ function renamedBrace({ match, ownTable, names }: BraceRename): string {
   return `\${${table.name}[${secondAt ?? ""}${column}]}`;
 }
 
-function renamedLiveReference(
-  liveNames: Map<string, RenamedTable>,
-  liveTable: string,
-  header: string,
-): string {
+interface LiveReferenceMatch {
+  liveTable: string;
+  header: string;
+}
+
+interface LiveReferenceRename extends LiveReferenceMatch {
+  liveNames: Map<string, RenamedTable>;
+}
+
+// Takes the groups a live reference adds after bracePattern's; undefined when the match was the brace pattern's.
+function liveReferenceMatchOf(
+  groups: unknown[],
+): LiveReferenceMatch | undefined {
+  const [liveTable, header] = groups.slice(braceGroupCount);
+  if (typeof liveTable !== "string" || typeof header !== "string") {
+    return undefined;
+  }
+  return { liveTable, header };
+}
+
+function renamedLiveReference({
+  liveNames,
+  liveTable,
+  header,
+}: LiveReferenceRename): string {
   const table = liveNames.get(liveTable);
   if (table === undefined) return `${liveTable}[${header}]`;
   return `${table.name}[${table.columns.get(header) ?? header}]`;

@@ -1,16 +1,14 @@
 import { Val } from "@byronbroughten/utils/val";
 
-import type { ColumnTypeBaseline } from "../columnBaseline";
-import { BraceFormula, type FormulaRenames } from "./BraceFormula";
+import type { FormulaRenames } from "./BraceFormula";
 import { subjectKey } from "./didntLand";
 import type { NamesNow, TableNow } from "./namesNow";
-import { RuleRecords } from "./RuleRecords";
+import { type Rename, SyncFormulaRewriter } from "./SyncFormulaRewriter";
 import {
   entriesOf,
   type WideAlterations,
   type WideColumnEntry,
   type WideNewTable,
-  type WideRule,
   type WideTabEntry,
   type WideTableEntry,
 } from "./SyncPlanner/wideAlterations";
@@ -22,13 +20,6 @@ export interface SyncAlterationsRewriterProps {
   headers: Map<string, string>;
   renames: FormulaRenames;
   sentKeys: Set<string>;
-}
-
-interface Rename {
-  written: string;
-  // Undefined when the regen gives the ID no name: the entry keeps the one written.
-  now: string | undefined;
-  rewrite: (now: string) => SyncRewrite;
 }
 
 interface BeforeRename {
@@ -48,45 +39,7 @@ interface ColumnsRewrite {
   tableName: string;
   columns: NonNullable<WideTableEntry["columns"]>;
   table: TableNow | undefined;
-}
-
-type FormulaTexts = Pick<WideColumnEntry, "formula" | "columnType">;
-
-// Where formula text sits, and the Table whose columns its bare braces name; undefined for a Table this run creates.
-interface FormulaPlace {
-  at: string;
-  tableKey: string | undefined;
-}
-
-interface FormulaTextsRewrite extends FormulaPlace {
-  entry: FormulaTexts;
-}
-
-interface FormulaValuesRewrite extends FormulaPlace {
-  values: string[];
-}
-
-interface FormulaRewrite extends FormulaPlace {
-  formula: string;
-}
-
-interface RulePlace extends FormulaPlace {
-  // Undefined for a Table this run creates, whose columns no regen has renamed.
-  table: TableNow | undefined;
-}
-
-interface RuleRewrite extends RulePlace {
-  rule: WideRule;
-}
-
-interface HandleRewrite extends RulePlace {
-  handle: string;
-}
-
-interface RulesRewrite {
-  tableName: string;
-  rules: NonNullable<WideTableEntry["conditionalFormats"]>;
-  table: TableNow | undefined;
+  formulas: SyncFormulaRewriter;
 }
 
 // Rewrites pending alterations' names, collecting a line for each rewrite it makes.
@@ -163,8 +116,14 @@ export class SyncAlterationsRewriter {
   }: TableEntryRewrite): WideTableEntry {
     const { columns, newColumns, conditionalFormats } = entry;
     const rewritten: WideTableEntry = { ...entry };
+    const formulas = this._formulaRewriter(tableName, table);
     if (columns !== undefined) {
-      rewritten.columns = this._columns({ tableName, columns, table });
+      rewritten.columns = this._columns({
+        tableName,
+        columns,
+        table,
+        formulas,
+      });
     }
     if (newColumns !== undefined) {
       rewritten.newColumns = newColumns.map((newColumn, index) => {
@@ -172,16 +131,15 @@ export class SyncAlterationsRewriter {
         return {
           ...newColumn,
           ...this._columnBefore(newColumn, at, table),
-          ...this._formulaTexts({ entry: newColumn, at, tableKey: tableName }),
+          ...formulas.formulaTexts(newColumn, at),
         };
       });
     }
     if (conditionalFormats !== undefined) {
-      rewritten.conditionalFormats = this._rules({
-        tableName,
-        rules: conditionalFormats,
-        table,
-      });
+      rewritten.conditionalFormats = formulas.rules(
+        conditionalFormats,
+        `${tableName}.conditionalFormats`,
+      );
     }
     return rewritten;
   }
@@ -189,6 +147,7 @@ export class SyncAlterationsRewriter {
     tableName,
     columns,
     table,
+    formulas,
   }: ColumnsRewrite): Record<string, WideColumnEntry> {
     const tableNow = table?.name ?? tableName;
     return entriesOf(columns).reduce<Record<string, WideColumnEntry>>(
@@ -220,11 +179,7 @@ export class SyncAlterationsRewriter {
           ...byName[name],
           ...columnEntry,
           ...this._columnBefore(columnEntry, at, table),
-          ...this._formulaTexts({
-            entry: columnEntry,
-            at,
-            tableKey: tableName,
-          }),
+          ...formulas.formulaTexts(columnEntry, at),
         };
         return byName;
       },
@@ -240,167 +195,6 @@ export class SyncAlterationsRewriter {
       before: entry.before,
       at,
       nowOf: (name) => table?.columns.get(name)?.name,
-    });
-  }
-  private _formulaTexts({
-    entry,
-    at,
-    tableKey,
-  }: FormulaTextsRewrite): FormulaTexts {
-    const { formula, columnType } = entry;
-    return {
-      ...(formula === undefined
-        ? {}
-        : {
-            formula: this._formula({
-              formula,
-              at: `${at}.formula`,
-              tableKey,
-            }),
-          }),
-      ...(columnType === undefined
-        ? {}
-        : {
-            columnType: this._columnType(columnType, {
-              at: `${at}.columnType`,
-              tableKey,
-            }),
-          }),
-    };
-  }
-  private _columnType(
-    columnType: ColumnTypeBaseline,
-    { at, tableKey }: FormulaPlace,
-  ): ColumnTypeBaseline {
-    const { rule } = columnType;
-    if (rule === null) return columnType;
-    return {
-      ...columnType,
-      rule: {
-        ...rule,
-        values: this._formulaValues({
-          values: rule.values,
-          at: `${at}.rule.values`,
-          tableKey,
-        }),
-      },
-    };
-  }
-  // Only a value starting with `=` is a formula; a list item such as `Size[cm]` stays text.
-  private _formulaValues({
-    values,
-    at,
-    tableKey,
-  }: FormulaValuesRewrite): string[] {
-    return values.map((value, index) => {
-      if (!value.startsWith("=")) return value;
-      return this._formula({ formula: value, at: `${at}[${index}]`, tableKey });
-    });
-  }
-  private _formula({ formula, at, tableKey }: FormulaRewrite): string {
-    return this._renamed({
-      written: formula,
-      now: this._formulaNow(formula, tableKey),
-      rewrite: (now) => ({ from: `${at} "${formula}"`, to: `"${now}"` }),
-    });
-  }
-  private _formulaNow(formula: string, tableKey: string | undefined): string {
-    return BraceFormula.renamed({ tableKey, formula, renames: this.renames });
-  }
-  private _rules({
-    tableName,
-    rules,
-    table,
-  }: RulesRewrite): NonNullable<WideTableEntry["conditionalFormats"]> {
-    const { add, remove, replace } = rules;
-    const at = `${tableName}.conditionalFormats`;
-    const place = { tableKey: tableName, table };
-    return {
-      ...rules,
-      ...(add === undefined
-        ? {}
-        : {
-            add: add.map((rule, index) =>
-              this._rule({ rule, at: `${at}.add[${index}]`, ...place }),
-            ),
-          }),
-      ...(remove === undefined
-        ? {}
-        : {
-            remove: remove.map((handle, index) =>
-              this._handle({ handle, at: `${at}.remove[${index}]`, ...place }),
-            ),
-          }),
-      ...(replace === undefined
-        ? {}
-        : {
-            replace: entriesOf(replace).reduce<Record<string, WideRule>>(
-              (rewritten, [handle, rule]) => {
-                const handleNow = this._handle({
-                  handle,
-                  at: `${at}.replace`,
-                  ...place,
-                });
-                rewritten[handleNow] = this._rule({
-                  rule,
-                  at: `${at}.replace["${handle}"]`,
-                  ...place,
-                });
-                return rewritten;
-              },
-              {},
-            ),
-          }),
-    };
-  }
-  private _rule({ rule, at, tableKey, table }: RuleRewrite): WideRule {
-    const { columns, condition } = rule;
-    const { values } = condition;
-    return {
-      ...rule,
-      columns: this._ruleColumns(columns, at, table),
-      condition: {
-        ...condition,
-        ...(values === undefined
-          ? {}
-          : {
-              values: this._formulaValues({
-                values,
-                at: `${at}.condition.values`,
-                tableKey,
-              }),
-            }),
-      },
-    };
-  }
-  private _ruleColumns(
-    columns: WideRule["columns"],
-    at: string,
-    table: TableNow | undefined,
-  ): WideRule["columns"] {
-    if (columns === "all") return columns;
-    return columns.map((columnName) =>
-      this._renamed({
-        written: columnName,
-        now: table?.columns.get(columnName)?.name,
-        rewrite: (now) => ({
-          from: `${at}.columns "${columnName}"`,
-          to: `"${now}"`,
-        }),
-      }),
-    );
-  }
-  // A handle changes only where the configs would record it under a renamed column or Table.
-  private _handle({ handle, at, tableKey, table }: HandleRewrite): string {
-    return this._renamed({
-      written: handle,
-      now: RuleRecords.renamedHandle({
-        handle,
-        columnNow: (columnName) =>
-          table?.columns.get(columnName)?.name ?? columnName,
-        formulaNow: (formula) => this._formulaNow(formula, tableKey),
-      }),
-      rewrite: (now) => ({ from: `${at} "${handle}"`, to: `"${now}"` }),
     });
   }
   private _tabs(
@@ -454,36 +248,40 @@ export class SyncAlterationsRewriter {
   }
   // A new Table's own columns have no previous name, so only what its text names elsewhere is rewritten.
   private _newTables(newTables: WideNewTable[], at: string): WideNewTable[] {
+    const formulas = this._formulaRewriter(undefined, undefined);
     return newTables.map((newTable, tableIndex) => {
       const tableAt = `${at}[${tableIndex}]`;
       const { columns, conditionalFormats } = newTable;
       const add = conditionalFormats?.add;
-      const place = { tableKey: undefined, table: undefined };
       return {
         ...newTable,
         columns: columns.map((column, index) => ({
           ...column,
-          ...this._formulaTexts({
-            entry: column,
-            at: `${tableAt}.columns[${index}]`,
-            tableKey: undefined,
-          }),
+          ...formulas.formulaTexts(column, `${tableAt}.columns[${index}]`),
         })),
         ...(add === undefined
           ? {}
           : {
               conditionalFormats: {
                 ...conditionalFormats,
-                add: add.map((rule, index) =>
-                  this._rule({
-                    rule,
-                    at: `${tableAt}.conditionalFormats.add[${index}]`,
-                    ...place,
-                  }),
+                add: formulas.addedRules(
+                  add,
+                  `${tableAt}.conditionalFormats.add`,
                 ),
               },
             }),
       };
+    });
+  }
+  private _formulaRewriter(
+    tableKey: string | undefined,
+    table: TableNow | undefined,
+  ): SyncFormulaRewriter {
+    return new SyncFormulaRewriter({
+      renames: this.renames,
+      tableKey,
+      table,
+      renamed: (rename) => this._renamed(rename),
     });
   }
   private _before({ before, at, nowOf }: BeforeRename): { before?: string } {
