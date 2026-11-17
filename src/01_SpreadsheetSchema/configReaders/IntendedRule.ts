@@ -9,6 +9,7 @@ import type { GridRangeProps } from "../../00_Source/RawSource/RawSource";
 import { hexRgbChannels } from "../../00_Source/RawSource/RgbColor";
 import { SheetIndex } from "../../00_Source/RawSource/SheetIndex";
 import { BraceFormula, type RuleLayout } from "./BraceFormula";
+import type { TableRuleRecord } from "./RuleRecords";
 import type { WideRule, WideRuleFormat } from "./SyncPlanner/wideAlterations";
 
 // A new column by the name the regen gives it, placed before `before` or at the Table's end.
@@ -66,7 +67,20 @@ export const IntendedRule = {
       format: compiledFormat(rule.format),
     };
   },
+  // A recorded rule as an agent would write it, so a re-span compiles it as a replace does.
+  ofRecord({ columns, condition, format }: TableRuleRecord): WideRule {
+    return {
+      columns,
+      condition: { type: condition.type, values: [conditionText(condition)] },
+      format,
+    };
+  },
 };
+
+function conditionText(condition: BooleanCondition): string {
+  if (condition.type === "CUSTOM_FORMULA") return condition.formula;
+  return conditionLiteral.fromCellValue(condition.value);
+}
 
 function columnOffsets(layout: RuleLayout, { columns }: WideRule): number[] {
   const names = layout.columnNamesLeftToRight;

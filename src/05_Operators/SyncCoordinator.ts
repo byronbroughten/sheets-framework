@@ -42,6 +42,7 @@ import {
   deletedTableOf,
   isSheetTrait,
   type PlanProps,
+  ruleRespanLines,
   SyncPlanner,
   type SyncPlannerResult,
   type TabsByTable,
@@ -78,6 +79,7 @@ import {
 import {
   type CompiledRuleAddition,
   type CompiledRuleReplacement,
+  type CompiledRuleRespan,
   ConditionalFormatConfigOperator,
   type IndexedRuleRemoval,
 } from "./ConditionalFormatConfigOperator";
@@ -147,6 +149,7 @@ interface AppliedPlan {
   ruleRemovals: IndexedRuleRemoval[];
   ruleReplacements: CompiledRuleReplacement[];
   ruleAdditions: CompiledRuleAddition[];
+  ruleRespans: CompiledRuleRespan[];
   reads: EnteredDataReads;
 }
 
@@ -161,6 +164,7 @@ interface RefetchProps {
   ruleRemovals: IndexedRuleRemoval[];
   ruleReplacements: CompiledRuleReplacement[];
   ruleAdditions: CompiledRuleAddition[];
+  ruleRespans: CompiledRuleRespan[];
 }
 
 interface RegenerationProps {
@@ -289,7 +293,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     const deletedTables = new Set(
       plannedSends.plan.flatMap(({ subject }) => deletedTableOf(subject) ?? []),
     );
-    const planned = this._withDeletionEffects({
+    const withDeletions = this._withDeletionEffects({
       planned: plannedSends,
       deletedTables,
       previousIdNameMap: props.previousIdNameMap,
@@ -309,39 +313,55 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     if (deletedTables.size > 0) {
       notices.push(OutsideReferences.uncheckedNotice);
     }
-    const isApplying = props.isSending && !planned.isStopped;
+    const isApplying = props.isSending && !withDeletions.isStopped;
     // An unstopped dry run records the live readings: configTraits carry sends it won't make.
     this.columnConfigOperator.recordEmptyValueAllowed(
-      props.isSending || planned.isStopped
-        ? planned.configTraits
+      props.isSending || withDeletions.isStopped
+        ? withDeletions.configTraits
         : readings.live,
     );
     const newColumns = this.columnConfigOperator.mintColumnIds(
-      planned.newColumns,
+      withDeletions.newColumns,
     );
     const newTables = this.tableConfigOperator.mintNewTables(
-      planned.newTables,
-      namesAtTableCreation(planned.sentTraits, planned.newTables),
+      withDeletions.newTables,
+      namesAtTableCreation(withDeletions.sentTraits, withDeletions.newTables),
     );
     const ruleRemovals =
       this.conditionalFormatConfigOperator.indexedRuleRemovals(
-        planned.ruleRemovals,
+        withDeletions.ruleRemovals,
       );
-    const columnChanges = { sentTraits: planned.sentTraits, newColumns };
+    const columnChanges = { sentTraits: withDeletions.sentTraits, newColumns };
     const ruleReplacements =
       this.conditionalFormatConfigOperator.compiledRuleReplacements({
-        replacements: planned.ruleReplacements,
+        replacements: withDeletions.ruleReplacements,
         removals: ruleRemovals,
-        additions: planned.ruleAdditions,
+        additions: withDeletions.ruleAdditions,
         columnChanges,
       });
     const ruleAdditions =
       this.conditionalFormatConfigOperator.compiledRuleAdditions({
-        additions: planned.ruleAdditions,
+        additions: withDeletions.ruleAdditions,
         removals: ruleRemovals,
         replacements: ruleReplacements,
         columnChanges,
       });
+    // Planned from the live read rather than an alteration, so a stopped run plans none.
+    const ruleRespans = withDeletions.isStopped
+      ? []
+      : this.conditionalFormatConfigOperator.compiledRuleRespans({
+          removals: ruleRemovals,
+          replacements: withDeletions.ruleReplacements,
+          additions: withDeletions.ruleAdditions,
+          columnChanges,
+        });
+    const planned: SyncPlannerResult = {
+      ...withDeletions,
+      plan: [
+        ...withDeletions.plan,
+        ...ruleRespans.map((respan) => ruleRespanLines.planItem(respan)),
+      ],
+    };
     const applied: AppliedPlan = {
       accessChanges,
       sentTraits: planned.sentTraits,
@@ -354,6 +374,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       ruleRemovals,
       ruleReplacements,
       ruleAdditions,
+      ruleRespans,
       reads: enteredDataReads({
         alterations,
         sentTraits: planned.sentTraits,
@@ -385,7 +406,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     };
     let refetched: SyncCoordinator | undefined;
     let regeneration: Regeneration;
-    // A fresh read, since Raw's state has no reset; only a sent sheet trait, a new column or Table or a removed, replaced or added rule changes what it would read.
+    // A fresh read, since Raw's state has no reset; only a sent sheet trait, a new column or Table or a removed, replaced, added or re-spanned rule changes what it would read.
     if (
       isApplying &&
       (planned.sentTraits.some(isSheetTrait) ||
@@ -393,7 +414,8 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         applied.newTables.length > 0 ||
         applied.ruleRemovals.length > 0 ||
         applied.ruleReplacements.length > 0 ||
-        applied.ruleAdditions.length > 0)
+        applied.ruleAdditions.length > 0 ||
+        applied.ruleRespans.length > 0)
     ) {
       refetched = SyncCoordinator.init();
       regeneration = refetched._refetchedRegeneration({
@@ -407,6 +429,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         ruleRemovals: applied.ruleRemovals,
         ruleReplacements: applied.ruleReplacements,
         ruleAdditions: applied.ruleAdditions,
+        ruleRespans: applied.ruleRespans,
       });
     } else {
       regeneration = this._regeneration({ notes, sent, previous });
@@ -501,6 +524,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     ruleRemovals,
     ruleReplacements,
     ruleAdditions,
+    ruleRespans,
   }: RefetchProps): Regeneration {
     // Recorded before the read, so its head-row fetch covers granted Tables, created ones among them, and skips revoked ones.
     this.tableConfigOperator.recordApiAccessChanges({
@@ -526,6 +550,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         ruleReplacements,
       ),
       ...this.conditionalFormatConfigOperator.additionsDidntLand(ruleAdditions),
+      ...this.conditionalFormatConfigOperator.respansDidntLand(ruleRespans),
     ];
     return {
       ...this._regeneration({ notes, sent, previous }),
@@ -651,12 +676,13 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     newTables,
     ruleReplacements,
     ruleAdditions,
+    ruleRespans,
     columnMoves,
   }: AppliedPlan): void {
     this.ss.batchUpdateGSheets();
     this.columnConfigOperator.updateDeletionsAndInserts(sentTraits, newColumns);
     this.conditionalFormatConfigOperator
-      .replaceRules(ruleReplacements)
+      .replaceRules([...ruleReplacements, ...ruleRespans])
       .addRules(ruleAdditions);
     this.ss.batchUpdateGSheets();
     this.columnConfigOperator.moveColumns(columnMoves);

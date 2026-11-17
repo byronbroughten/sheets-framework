@@ -111,6 +111,14 @@ export interface PlannedRuleAddition {
   rule: WideRule;
 }
 
+// A rule ending short of its Table's last body row, by its Table's codebase name; rows are 1-based, as a person reads them.
+export interface PlannedRuleRespan {
+  table: string;
+  handle: string;
+  fromRow: number;
+  toRow: number;
+}
+
 export interface SyncPlannerResult extends Pick<
   SyncRunResult,
   "checks" | "stops" | "plan"
@@ -295,6 +303,26 @@ export const ruleAdditionLines = {
         path: ruleAdditionLines.path(addition),
       },
       what: "add the rule",
+    };
+  },
+};
+
+// How a rule sync stretches to its Table's last body row reads on the plan, landed and didntLand lists; no alterations.ts entry has its path.
+export const ruleRespanLines = {
+  path({ handle }: Pick<PlannedRuleRespan, "handle">): string {
+    return `conditionalFormats["${handle}"]`;
+  },
+  sendLine(respan: PlannedRuleRespan): SyncSendLine {
+    return {
+      subject: { table: respan.table, path: ruleRespanLines.path(respan) },
+      what: "re-span the rule",
+    };
+  },
+  planItem(respan: PlannedRuleRespan): SyncPlanItem {
+    const { handle, fromRow, toRow } = respan;
+    return {
+      ...ruleRespanLines.sendLine(respan),
+      effects: [{ kind: "ruleRespanned", handle, fromRow, toRow }],
     };
   },
 };

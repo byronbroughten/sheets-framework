@@ -19,9 +19,11 @@ import {
   type PlannedRuleAddition,
   type PlannedRuleRemoval,
   type PlannedRuleReplacement,
+  type PlannedRuleRespan,
   ruleAdditionLines,
   ruleRemovalLines,
   ruleReplacementLines,
+  ruleRespanLines,
 } from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
 import type { WideRule } from "../01_SpreadsheetSchema/configReaders/SyncPlanner/wideAlterations";
 import type {
@@ -30,6 +32,7 @@ import type {
   SyncSendLine,
   SyncUnmodelableRuleStop,
 } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
+import { tableConfigsByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import type { SheetRaw } from "../02_SpreadsheetRaw/SheetRaw";
 import type { TableRaw } from "../02_SpreadsheetRaw/TableRaw";
 import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
@@ -59,12 +62,35 @@ export interface IndexedRuleRemoval
   copiesLeft: number;
 }
 
-// A replacement matched on the pre-send read, `index` already moved past the removals sent before it, and compiled against the planned layout.
-export interface CompiledRuleReplacement extends PlannedRuleReplacement {
+// A rule written over the one at `index`, already moved past the removals sent before it, and compiled against the planned layout.
+export interface IndexedRuleUpdate {
   tableId: string;
   sheetGid: number;
   index: number;
   compiled: ModelableConditionalFormatRule;
+}
+
+// A replacement matched on the pre-send read.
+export interface CompiledRuleReplacement
+  extends PlannedRuleReplacement, IndexedRuleUpdate {}
+
+// A rule ending short of its Table's last body row, stretched down to it.
+export interface CompiledRuleRespan
+  extends PlannedRuleRespan, IndexedRuleUpdate {}
+
+export interface CompiledRuleRespansProps {
+  removals: IndexedRuleRemoval[];
+  replacements: PlannedRuleReplacement[];
+  additions: PlannedRuleAddition[];
+  columnChanges: PlannedColumnChanges;
+}
+
+interface SentIndexProps {
+  index: number;
+  sheetGid: number;
+  removals: IndexedRuleRemoval[];
+  additions: PlannedRuleAddition[];
+  rulesByTable: Map<string, TableRules>;
 }
 
 // The run's column deletes and inserts, which move the layout a rule compiles against.
@@ -124,6 +150,7 @@ interface CopiesKeptProps {
 interface TableRules {
   tableId: string;
   sheetGid: number;
+  tab: RuleRecordsTab;
   table: RuleRecordsTable;
   indexes: Map<string, TableRuleIndex>;
 }
@@ -270,15 +297,6 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
         indexes.get(replacement.handle),
         `rule ${replacement.handle} on ${replacement.table}`,
       );
-      const removedAbove = removals.filter(
-        (removal) =>
-          removal.index < index &&
-          this.ss.raw.table(removal.tableId).sheetGid === sheetGid,
-      ).length;
-      // The flusher sends a batch's adds before its updates, and each add goes in at index 0.
-      const addedAbove = additions.filter(
-        (addition) => rulesByTable.get(addition.table)?.sheetGid === sheetGid,
-      ).length;
       const { compiled } = compiledOnPlan({
         tableKey: replacement.table,
         rules,
@@ -289,10 +307,94 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
         ...replacement,
         tableId,
         sheetGid,
-        index: index - removedAbove + addedAbove,
+        index: this._sentIndex({
+          index,
+          sheetGid,
+          removals,
+          additions,
+          rulesByTable,
+        }),
         compiled,
       };
     });
+  }
+  // Every rule over a Table ending short of its last body row, as rows typed below the Table leave it; one a pending replace or remove names is left to it.
+  compiledRuleRespans({
+    removals,
+    replacements,
+    additions,
+    columnChanges,
+  }: CompiledRuleRespansProps): CompiledRuleRespan[] {
+    const rulesByTable = this._tableRulesByTable(this._identifiedTables());
+    const reshapedGids = reshapedSheetGids(rulesByTable, columnChanges);
+    const named = new Set(
+      [...removals, ...replacements].map(({ table, handle }) =>
+        JSON.stringify([table, handle]),
+      ),
+    );
+    return [...rulesByTable].flatMap(([table, rules]) => {
+      const { tableId, sheetGid, tab } = rules;
+      if (reshapedGids.has(sheetGid)) return [];
+      return RuleRecords.shortRules(tab, rules.table).flatMap(
+        ({ handle, index, record, endRowIndex }): CompiledRuleRespan[] => {
+          if (named.has(JSON.stringify([table, handle]))) return [];
+          const { compiled, plannedTable } = compiledOnPlan({
+            tableKey: table,
+            rules,
+            rule: IntendedRule.ofRecord(record),
+            columnChanges,
+          });
+          return [
+            {
+              table,
+              handle,
+              fromRow: endRowIndex,
+              toRow: plannedTable.layout.endRowIndex,
+              tableId,
+              sheetGid,
+              index: this._sentIndex({
+                index,
+                sheetGid,
+                removals,
+                additions,
+                rulesByTable,
+              }),
+              compiled,
+            },
+          ];
+        },
+      );
+    });
+  }
+  // The pre-send read's index once the removals' flush lands, and the adds the flusher sends ahead of a batch's updates, each at index 0.
+  private _sentIndex({
+    index,
+    sheetGid,
+    removals,
+    additions,
+    rulesByTable,
+  }: SentIndexProps): number {
+    const removedAbove = removals.filter(
+      (removal) =>
+        removal.index < index &&
+        this.ss.raw.table(removal.tableId).sheetGid === sheetGid,
+    ).length;
+    const addedAbove = additions.filter(
+      (addition) => rulesByTable.get(addition.table)?.sheetGid === sheetGid,
+    ).length;
+    return index - removedAbove + addedAbove;
+  }
+  // By the previous configs' name, the one a plan subject and tableIdOf take; only a live Table the regen identifies has rule handles.
+  private _identifiedTables(): Pick<PlannedRuleRemoval, "table">[] {
+    const apiTableColumnsByTableId =
+      this.columnConfigOperator.identifiedApiTableColumnsByTableId();
+    return Object.entries(tableConfigsByName()).flatMap(
+      ([table, { tableId }]) => {
+        if (!this.ss.raw.tableIdIsActive(tableId)) return [];
+        if (!apiTableColumnsByTableId.has(tableId)) return [];
+        return [{ table }];
+      },
+    );
   }
   // Compiled before any send, so a bad colour or brace throws with nothing sent.
   compiledRuleAdditions({
@@ -365,8 +467,8 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
     });
   }
   // Queued for the flush after the removals', so the index skips the stale check the removals' flush set.
-  replaceRules(replacements: CompiledRuleReplacement[]): this {
-    for (const { sheetGid, index, compiled } of replacements) {
+  replaceRules(updates: IndexedRuleUpdate[]): this {
+    for (const { sheetGid, index, compiled } of updates) {
       this.ss.raw
         .sheet(sheetGid)
         .updateConditionalFormatRuleReindexed(index, compiled);
@@ -382,6 +484,20 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
       if (refetchedCopyCount(rulesByTable, replacement) > 0) return [];
       const { subject, what } = ruleReplacementLines.sendLine(replacement);
       return [{ subject, what: `${what}; Sheets kept the old one` }];
+    });
+  }
+  // By handle, which a rule keeps whatever its end row: one still short on the refetch kept its old span.
+  respansDidntLand(respans: CompiledRuleRespan[]): SyncSendLine[] {
+    const rulesByTable = this._tableRulesByTable(respans);
+    return respans.flatMap((respan): SyncSendLine[] => {
+      const rules = rulesByTable.get(respan.table);
+      if (rules === undefined) return [];
+      const isStillShort = RuleRecords.shortRules(rules.tab, rules.table).some(
+        ({ handle }) => handle === respan.handle,
+      );
+      if (!isStillShort) return [];
+      const { subject, what } = ruleRespanLines.sendLine(respan);
+      return [{ subject, what: `${what}; Sheets kept its old span` }];
     });
   }
   // Indexed on the read the stops were matched on, so every handle names a rule.
@@ -448,6 +564,7 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
       rulesByTable.set(table, {
         tableId,
         sheetGid: tab.sheetGid,
+        tab,
         table: Val.assert(
           tab.tables.find((candidate) => candidate.tableId === tableId),
           `rule layout of ${table}`,
@@ -511,6 +628,24 @@ function plannedLayoutOf({
     }),
     newColumns: newColumns.filter((newColumn) => newColumn.table === table),
   });
+}
+
+// The tabs where the run deletes a Table, a column or the tab itself: Sheets drops or moves rules there, so a pre-send index could name another rule.
+function reshapedSheetGids(
+  rulesByTable: Map<string, TableRules>,
+  { sentTraits }: PlannedColumnChanges,
+): Set<number> {
+  const gids = sentTraits.flatMap((intended) => {
+    if (intended.trait !== "deleted") return [];
+    if (intended.kind === "tab") {
+      return [...rulesByTable.values()].flatMap(({ tab, sheetGid }) =>
+        tab.tabName === intended.tab ? [sheetGid] : [],
+      );
+    }
+    const rules = rulesByTable.get(intended.table);
+    return rules === undefined ? [] : [rules.sheetGid];
+  });
+  return new Set(gids);
 }
 
 // The read's copies, less those the run removes or replaces away, plus the replacements that compile to it.
