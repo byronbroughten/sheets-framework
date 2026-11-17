@@ -1,9 +1,14 @@
 import type { IdNameMapGeneric } from "./idNameMapTypes";
-import type { ColumnConfigsGeneric, ValueConfigsBase } from "./makeConfigs";
+import type {
+  ColumnConfigsGeneric,
+  TableConfigsBase,
+  ValueConfigsBase,
+} from "./makeConfigs";
 
 // The configs on one side of a regen.
 export interface ConfigSnapshot {
   idNameMap: IdNameMapGeneric;
+  tableConfigs: TableConfigsBase;
   columnConfigs: ColumnConfigsGeneric;
   valueConfigs: ValueConfigsBase;
 }

@@ -17,6 +17,14 @@ import type { SyncPlanEffect } from "./syncRunResult";
 
 const schema = new SpreadsheetBaseSchema();
 
+const handleSeparators = { part: " | ", column: "+" } as const;
+
+interface HandleRename {
+  handle: string;
+  columnNow: (columnName: string) => string;
+  formulaNow: (formula: string) => string;
+}
+
 export interface RuleRecordsTab {
   tabName: string;
   sheetGid: number;
@@ -195,6 +203,27 @@ export const RuleRecords = {
   // The handle a rule would have on the Table before any duplicate suffix.
   sharedHandleOf(rule: ConditionalFormatRule, table: RuleRecordsTable): string {
     return tableRecord(rule, table).handle;
+  },
+  // An unmodelable rule's handle comes back unchanged: its scope is ranges, and its condition no formula.
+  renamedHandle({ handle, columnNow, formulaNow }: HandleRename): string {
+    const { part, column } = handleSeparators;
+    const parts = handle.split(part);
+    const [scope] = parts;
+    const format = parts.at(-1);
+    if (parts.length < 3 || scope === undefined || format === undefined) {
+      return handle;
+    }
+    const condition = parts.slice(1, -1).join(part);
+    let scopeNow = scope;
+    if (scope !== "all") {
+      scopeNow = scope
+        .split(column)
+        .map((columnName) => columnNow(columnName))
+        .join(column);
+    }
+    let conditionNow = condition;
+    if (condition.startsWith("=")) conditionNow = formulaNow(condition);
+    return [scopeNow, conditionNow, format].join(part);
   },
   // Nothing is sent for a partly-over rule: it stays on the sheet, so the plan only reports it.
   deletionEffects({
@@ -438,11 +467,13 @@ function braceCondition({
 
 function columnsText(columns: RuleColumns): string {
   if (columns === "all") return "all";
-  return columns.join("+");
+  return columns.join(handleSeparators.column);
 }
 
 function handleOf({ scope, condition, format }: HandleParts): string {
-  return `${scope} | ${conditionText(condition)} | ${formatText(format)}`;
+  return [scope, conditionText(condition), formatText(format)].join(
+    handleSeparators.part,
+  );
 }
 
 function conditionText(condition: BooleanCondition): string {

@@ -1,8 +1,9 @@
 import { Val } from "@byronbroughten/utils/val";
 
+import type { FormulaRenames } from "./BraceFormula";
 import type { ConfigSnapshots } from "./configSnapshots";
 import { subjectKey } from "./didntLand";
-import type { ColumnConfigsGeneric } from "./makeConfigs";
+import type { ColumnConfigsGeneric, TableConfigsBase } from "./makeConfigs";
 import { movedNames, type NamesNow, namesNow } from "./namesNow";
 import { SyncAlterationsRewriter } from "./SyncAlterationsRewriter";
 import type { WideAlterations } from "./SyncPlanner/wideAlterations";
@@ -21,10 +22,23 @@ export interface SyncNameRewriterProps {
   landed: SyncSubject[];
 }
 
+interface BothSides {
+  previous: Map<string, string>;
+  regenerated: Map<string, string>;
+}
+
 interface PersonRenamesProps {
   names: NamesNow;
-  headers: { previous: Map<string, string>; regenerated: Map<string, string> };
+  headers: BothSides;
   sentKeys: Set<string>;
+}
+
+interface FormulaRenamesProps {
+  names: NamesNow;
+  // By column ID.
+  headers: BothSides;
+  // Each Table's name on the sheet, by Table ID.
+  tableNames: BothSides;
 }
 
 // Rewrites pending alterations' names through the IDs the previous ID-name map gave them (ADR 0035), and words the report's renames.
@@ -44,22 +58,26 @@ export class SyncNameRewriter {
     this.names = namesNow(idNameMaps);
     this.landedKeys = new Set(landed.map(subjectKey));
     const sentKeys = new Set(sent.map(subjectKey));
-    const regeneratedHeaders = headersByColumnId(regenerated.columnConfigs);
+    const headers = {
+      previous: headersByColumnId(previous.columnConfigs),
+      regenerated: headersByColumnId(regenerated.columnConfigs),
+    };
     const rewriter = new SyncAlterationsRewriter({
       names: this.names,
-      headers: regeneratedHeaders,
+      headers: headers.regenerated,
+      renames: formulaRenames({
+        names: this.names,
+        headers,
+        tableNames: {
+          previous: tableNamesById(previous.tableConfigs),
+          regenerated: tableNamesById(regenerated.tableConfigs),
+        },
+      }),
       sentKeys,
     });
     this.alterations = rewriter.rewritten(alterations);
     this.rewrites = rewriter.rewrites;
-    this.renamed = personRenames({
-      names: this.names,
-      headers: {
-        previous: headersByColumnId(previous.columnConfigs),
-        regenerated: regeneratedHeaders,
-      },
-      sentKeys,
-    });
+    this.renamed = personRenames({ names: this.names, headers, sentKeys });
     this.namesMoved = movedNames(idNameMaps);
   }
   static init(props: SyncNameRewriterProps): SyncNameRewriter {
@@ -100,6 +118,47 @@ function headersByColumnId(
         ({ columnId, header }): [string, string] => [columnId, header],
       ),
     ),
+  );
+}
+
+function tableNamesById(tableConfigs: TableConfigsBase): Map<string, string> {
+  return new Map(
+    Object.values(tableConfigs).map(({ tableId, tableName }) => [
+      tableId,
+      tableName,
+    ]),
+  );
+}
+
+// A Table the previous configs held without API access has no live name to rewrite.
+function formulaRenames({
+  names,
+  headers,
+  tableNames,
+}: FormulaRenamesProps): FormulaRenames {
+  return [...names.tables].reduce<FormulaRenames>(
+    (renames, [previousName, { tableId, name, columns }]) => {
+      renames.names.set(previousName, {
+        name,
+        columns: new Map(
+          [...columns].map(([from, column]) => [from, column.name]),
+        ),
+      });
+      const liveFrom = tableNames.previous.get(tableId);
+      const liveTo = tableNames.regenerated.get(tableId);
+      if (liveFrom === undefined || liveTo === undefined) return renames;
+      renames.liveNames.set(liveFrom, {
+        name: liveTo,
+        columns: [...columns.values()].reduce((byHeader, { columnId }) => {
+          const from = headers.previous.get(columnId);
+          const to = headers.regenerated.get(columnId);
+          if (from !== undefined && to !== undefined) byHeader.set(from, to);
+          return byHeader;
+        }, new Map<string, string>()),
+      });
+      return renames;
+    },
+    { names: new Map(), liveNames: new Map() },
   );
 }
 

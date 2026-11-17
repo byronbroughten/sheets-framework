@@ -69,6 +69,25 @@ interface Brace {
   isThisRow: boolean;
 }
 
+export interface RenamedTable {
+  name: string;
+  // Each column's name now, by its previous one.
+  columns: Map<string, string>;
+}
+
+// Each Table by its previous name: `names` as braces write them, `liveNames` as Sheets' `Table[Header]` does.
+export interface FormulaRenames {
+  names: Map<string, RenamedTable>;
+  liveNames: Map<string, RenamedTable>;
+}
+
+interface FormulaRenameProps {
+  // Undefined for a Table this run creates, whose own columns no regen has renamed.
+  tableKey: string | undefined;
+  formula: string;
+  renames: FormulaRenames;
+}
+
 export interface RuleLayout {
   headerTopLeft: { rowIndex: SheetRowIndex; colIndex: SheetColIndex };
   // The Table's exclusive end, so the last body row is the row just above it.
@@ -191,6 +210,26 @@ export const BraceFormula = {
           columnName: brace.columnName,
         },
       ];
+    });
+  },
+  // Each brace and `Table[Header]` reference outside a string literal, under the names a regen gave it.
+  renamed({ tableKey, formula, renames }: FormulaRenameProps): string {
+    const ownTable =
+      tableKey === undefined ? undefined : renames.names.get(tableKey);
+    const pattern = new RegExp(
+      `${bracePattern().source}|${formulaPatterns.liveReference}`,
+      "g",
+    );
+    return formula.replace(pattern, (...groups: unknown[]) => {
+      const [liveTable, header] = groups.slice(7, 9);
+      if (typeof liveTable === "string" && typeof header === "string") {
+        return renamedLiveReference(renames.liveNames, liveTable, header);
+      }
+      return renamedBrace({
+        match: braceMatchOf(groups),
+        ownTable,
+        names: renames.names,
+      });
     });
   },
   // Each `${…}` outside a string literal that reads as no brace, such as `${@table[column]}`, so a run can refuse it rather than paste it.
@@ -409,6 +448,38 @@ function braceOf(
     columnName: second,
     isThisRow: secondAt === "@",
   };
+}
+
+interface BraceRename {
+  match: BraceMatch;
+  ownTable: RenamedTable | undefined;
+  names: Map<string, RenamedTable>;
+}
+
+// Keeps the brace's form as written, bare or qualified, `@` included.
+function renamedBrace({ match, ownTable, names }: BraceRename): string {
+  const { text, literal, firstAt, first, secondAt, second, unread } = match;
+  if (literal !== undefined || unread !== undefined) return text;
+  if (first === undefined) return text;
+  if (second === undefined) {
+    const column = ownTable?.columns.get(first) ?? first;
+    return `\${${firstAt ?? ""}${column}}`;
+  }
+  if (firstAt === "@") return text;
+  const table = names.get(first);
+  if (table === undefined) return text;
+  const column = table.columns.get(second) ?? second;
+  return `\${${table.name}[${secondAt ?? ""}${column}]}`;
+}
+
+function renamedLiveReference(
+  liveNames: Map<string, RenamedTable>,
+  liveTable: string,
+  header: string,
+): string {
+  const table = liveNames.get(liveTable);
+  if (table === undefined) return `${liveTable}[${header}]`;
+  return `${table.name}[${table.columns.get(header) ?? header}]`;
 }
 
 function liveReferenceOf(
