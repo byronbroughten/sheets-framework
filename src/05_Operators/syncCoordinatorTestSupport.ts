@@ -169,7 +169,7 @@ export function previousItemMap(): IdNameMapGeneric {
   };
 }
 
-export const logGid = getTableTraitByName("log", "sheetGid");
+const logGid = getTableTraitByName("log", "sheetGid");
 const logColumns = columnConfigs.log;
 const logColumnNames = Object.keys(logColumns);
 const logFormulaColumn = Val.assert(logColumnNames.at(-1), "a Log column");
@@ -180,7 +180,7 @@ const logFormulaLetter = a1Notation.columnLetters(
 export const logFormulaCell = `Log!${logFormulaLetter}5:${logFormulaLetter}5`;
 
 // The dev Log Table with one formula in its last column; a brace decompile matches the Sheets name the previous configs record, which for item is "item".
-export function logSheet(formula: string): FakeSheetProperties {
+function logSheet(formula: string): FakeSheetProperties {
   return fakeTableSheet.build({
     sheetId: logGid,
     title: "Log",

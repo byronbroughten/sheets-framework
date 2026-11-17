@@ -60,6 +60,8 @@ import type {
   SyncCreatedTable,
   SyncFlushStoppedOutcome,
   SyncNotice,
+  SyncOutsideReferencesCheck,
+  SyncPlanEffect,
   SyncPlanItem,
   SyncRunFrame,
   SyncRunResult,
@@ -297,12 +299,8 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         ),
       ],
     });
-    const deletedTables = new Set(
-      plannedSends.plan.flatMap(({ subject }) => deletedTableOf(subject) ?? []),
-    );
-    const deletedTabs = new Set(
-      plannedSends.plan.flatMap(({ subject }) => deletedTabOf(subject) ?? []),
-    );
+    const deletedTables = deletionsOf(plannedSends.plan, deletedTableOf);
+    const deletedTabs = deletionsOf(plannedSends.plan, deletedTabOf);
     const withDeletions = this._withDeletionEffects({
       planned: plannedSends,
       deletedTables,
@@ -505,13 +503,9 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     const plan = planned.plan.map((item) => {
       const tab = deletedTabOf(item.subject);
       if (tab !== undefined) {
-        const check = checks.find(
-          ({ subject }) => "tab" in subject && subject.tab === tab,
-        );
-        if (check === undefined) return item;
         return {
           ...item,
-          effects: [...item.effects, OutsideReferences.effect(check)],
+          effects: [...item.effects, ...referenceEffects(checks, { tab })],
         };
       }
       const table = deletedTableOf(item.subject);
@@ -522,14 +516,13 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         table,
         tableId,
       });
-      const check = checks.find(
-        ({ subject }) => "table" in subject && subject.table === table,
-      );
-      const referenceEffects =
-        check === undefined ? [] : [OutsideReferences.effect(check)];
       return {
         ...item,
-        effects: [...item.effects, ...ruleEffects, ...referenceEffects],
+        effects: [
+          ...item.effects,
+          ...ruleEffects,
+          ...referenceEffects(checks, { table }),
+        ],
       };
     });
     return { ...planned, plan, checks: [...planned.checks, ...checks] };
@@ -814,29 +807,6 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
 }
 
 // Each Table's tab by name, from the previous map, since nothing is read before the refusals.
-// The entry refuser and the planner already hold the tab to the map; its Tables' Sheets names come from the previous configs.
-function deletedTabOfMap(
-  { tables, tabs }: IdNameMapGeneric,
-  tab: string,
-): DeletedTab {
-  const mapTab = Val.assert(
-    Object.values(tabs).find(({ name }) => name === tab),
-    `the ID-name map's tab ${tab}`,
-  );
-  const tableConfigs: BraceNames["tableConfigs"] =
-    installedConfigs().tableConfigs;
-  return {
-    tab,
-    title: mapTab.title,
-    tables: mapTab.tableIds.flatMap((tableId) => {
-      const tableKey = tables[tableId]?.name;
-      if (tableKey === undefined) return [];
-      const tableName = tableConfigs[tableKey]?.tableName ?? tableKey;
-      return [{ tableKey, tableName }];
-    }),
-  };
-}
-
 function tabsByTable({ tables, tabs }: IdNameMapGeneric): TabsByTable {
   return Object.values(tables).reduce<TabsByTable>(
     (byTable, { name, sheetGid }) => {
@@ -845,6 +815,14 @@ function tabsByTable({ tables, tabs }: IdNameMapGeneric): TabsByTable {
     },
     {},
   );
+}
+
+// Each Table or tab the plan deletes, as deletedOf names it.
+function deletionsOf(
+  plan: SyncPlanItem[],
+  deletedOf: (subject: SyncSubject) => string | undefined,
+): Set<string> {
+  return new Set(plan.flatMap(({ subject }) => deletedOf(subject) ?? []));
 }
 
 interface GoneNoticesProps {
@@ -871,4 +849,41 @@ function goneNotices({
     ]),
     ...fromLiveTabs,
   ];
+}
+
+// The entry refuser and the planner already hold the tab to the map; its Tables' Sheets names come from the previous configs.
+function deletedTabOfMap(
+  { tables, tabs }: IdNameMapGeneric,
+  tab: string,
+): DeletedTab {
+  const mapTab = Val.assert(
+    Object.values(tabs).find(({ name }) => name === tab),
+    `the ID-name map's tab ${tab}`,
+  );
+  const tableConfigs: BraceNames["tableConfigs"] =
+    installedConfigs().tableConfigs;
+  return {
+    tab,
+    title: mapTab.title,
+    tables: mapTab.tableIds.flatMap((tableId) => {
+      const tableKey = tables[tableId]?.name;
+      if (tableKey === undefined) return [];
+      const tableName = tableConfigs[tableKey]?.tableName ?? tableKey;
+      return [{ tableKey, tableName }];
+    }),
+  };
+}
+
+// A check's subject is the bare Table or tab its plan line deletes.
+function referenceEffects(
+  checks: SyncOutsideReferencesCheck[],
+  deleted: { table: string } | { tab: string },
+): SyncPlanEffect[] {
+  const check = checks.find(({ subject }) =>
+    "tab" in deleted
+      ? "tab" in subject && subject.tab === deleted.tab
+      : "table" in subject && subject.table === deleted.table,
+  );
+  if (check === undefined) return [];
+  return [OutsideReferences.effect(check)];
 }
