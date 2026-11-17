@@ -12,7 +12,9 @@
 
 ## Creating Tables with newTabs and newTables
 
-**`newTabs` and a tab's `newTables` are sendable, one new Table per tab per run, and `sync` mints each new Table's ID, ID prefix and column IDs.** A new tab goes by `addSheet` with only its title; its other traits are refused as not sendable yet, as are a new Table's column `formula` and `columnType` and its `conditionalFormats`. The Tables are created last, in their own flush, and a new Table whose name a live Table has, or a new tab whose title is taken, stops the run before any send (`TableConfigsOperator.newTableStops`).
+**`newTabs` and a tab's `newTables` are sendable, one new Table per tab per run, and `sync` mints each new Table's ID, ID prefix and column IDs.** A new tab goes by `addSheet` with only its title; its other traits are refused as not sendable yet, as is a new Table's `conditionalFormats`. The Tables are created last, in their own flush, and a new Table whose name a live Table has, or a new tab whose title is taken, stops the run before any send (`TableConfigsOperator.newTableStops`).
+
+**A new Table's column `formula` and `columnType` go in the flush that creates it**: the type and rule in the creation's column properties, so `dropdownStyleReset` doesn't apply, and the formula filled into every body row (`SpreadsheetTableCreatorRaw.createTable`). Both compile when the Table's IDs are minted, before any send, and a brace naming the new Table resolves against its planned columns by the `columnName` each header gives (`columnNameOfHeader`). A seed value in a formula column is refused.
 
 ## Moving a column with before
 

@@ -70,6 +70,7 @@ import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
 import {
   ColumnConfigsOperator,
   type MintedNewColumn,
+  namesAtTableCreation,
   type PlannedColumnMove,
 } from "./ColumnConfigsOperator";
 import {
@@ -299,7 +300,10 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     const newColumns = this.columnConfigOperator.mintColumnIds(
       planned.newColumns,
     );
-    const newTables = this.tableConfigOperator.mintNewTables(planned.newTables);
+    const newTables = this.tableConfigOperator.mintNewTables(
+      planned.newTables,
+      namesAtTableCreation(planned.sentTraits),
+    );
     const ruleRemovals =
       this.conditionalFormatConfigOperator.indexedRuleRemovals(
         planned.ruleRemovals,

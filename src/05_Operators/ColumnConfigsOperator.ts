@@ -4,6 +4,7 @@ import { isFrameworkValueName } from "../00_Source/CellValues/frameworkValueSche
 import {
   type BraceConfigs,
   BraceFormula,
+  type BraceNames,
 } from "../01_SpreadsheetSchema/configReaders/BraceFormula";
 import {
   columnConfigsByName,
@@ -907,6 +908,27 @@ function namesAtColumnFill(sent: IntendedTrait[]): BraceConfigs {
     { ...tableConfigs },
   );
   return { tableConfigs: renamed, columnConfigs };
+}
+
+// The names on the sheet when a new Table lands: its flush comes after the one sending Table renames and headers.
+export function namesAtTableCreation(sent: IntendedTrait[]): BraceNames {
+  const { tableConfigs, columnConfigs } = namesAtColumnFill(sent);
+  const reheaded = sent.reduce<BraceNames["columnConfigs"]>(
+    (byKey, intended) => {
+      if (intended.kind !== "column" || intended.trait !== "header") {
+        return byKey;
+      }
+      const tableColumns = byKey[intended.table];
+      if (tableColumns?.[intended.column] === undefined) return byKey;
+      byKey[intended.table] = {
+        ...tableColumns,
+        [intended.column]: { header: String(intended.value) },
+      };
+      return byKey;
+    },
+    { ...columnConfigs },
+  );
+  return { tableConfigs, columnConfigs: reheaded };
 }
 
 function valueSourceName({

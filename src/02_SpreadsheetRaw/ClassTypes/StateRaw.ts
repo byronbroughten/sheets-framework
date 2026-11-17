@@ -345,6 +345,8 @@ export interface CreatedTableColumn {
   header: string;
   columnId?: string;
   columnType?: ColumnTypeBaseline;
+  // Already in the names on the sheet; filled into every body row.
+  formula?: string;
 }
 
 // A fixed prefix, or the prefixes a prefix drawn from the Table's name must skip.

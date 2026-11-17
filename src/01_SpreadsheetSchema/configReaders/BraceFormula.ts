@@ -6,6 +6,7 @@ import {
 import type { ColumnTypeBaseline } from "../columnBaseline";
 import { SpreadsheetBaseSchema } from "../SpreadsheetBaseSchema";
 import type { ConfigSetBase } from "./configRegister";
+import type { ColumnConfigStored, TableConfigStored } from "./makeConfigs";
 
 const schema = new SpreadsheetBaseSchema();
 
@@ -14,12 +15,24 @@ export type BraceConfigs = Pick<
   "tableConfigs" | "columnConfigs"
 >;
 
+// Only the names a compile reads, so a Table this run creates, which has no config yet, can be compiled against.
+export interface BraceNames {
+  tableConfigs: Record<string, Pick<TableConfigStored, "tableName">>;
+  columnConfigs: Record<
+    string,
+    Record<string, Pick<ColumnConfigStored, "header">>
+  >;
+}
+
 interface FormulaText {
   tableKey: string;
   formula: string;
 }
 interface BraceFormulaProps extends FormulaText {
   configs: BraceConfigs;
+}
+interface BraceCompileProps extends FormulaText {
+  configs: BraceNames;
 }
 interface RuleFormulaProps extends FormulaText {
   layout: RuleLayout;
@@ -92,7 +105,7 @@ const formulaPatterns = {
 } as const;
 
 export const BraceFormula = {
-  compileForCell({ configs, tableKey, formula }: BraceFormulaProps): string {
+  compileForCell({ configs, tableKey, formula }: BraceCompileProps): string {
     return replaceBraces({ tableKey, formula }, (brace) => {
       const reference = liveReferenceOf(configs, brace, formula);
       if (!brace.isThisRow) return reference;
@@ -265,7 +278,9 @@ function withRuleFormulas(
   };
 }
 
-interface ColumnTypeCompileProps extends Omit<ColumnTypeProps, "columnType"> {
+interface ColumnTypeCompileProps {
+  configs: BraceNames;
+  tableKey: string;
   columnType: ColumnTypeBaseline;
 }
 
@@ -357,7 +372,7 @@ function braceOf(
 }
 
 function liveReferenceOf(
-  configs: BraceConfigs,
+  configs: BraceNames,
   brace: Brace,
   formula: string,
 ): string {

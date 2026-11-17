@@ -1,5 +1,7 @@
+import { SpreadsheetBaseSchema } from "../SpreadsheetBaseSchema";
 import { hasApiAccess } from "./apiAccessChanges";
 import { BraceFormula } from "./BraceFormula";
+import { columnNameOfHeader } from "./columnConfigsTypes";
 import type { IdNameMapGeneric } from "./idNameMapTypes";
 import { sheetTraits, tabTraits } from "./SyncPlanner";
 import {
@@ -36,7 +38,12 @@ export const sendableTraits = {
   newTab: new Set<string>(["title", "tables"]),
   // A new Table's rules would need adds after its creation.
   newTable: new Set<string>(["name", "columns", "gap"]),
-  newTableColumn: new Set<string>(["header", "emptyValueAllowed"]),
+  newTableColumn: new Set<string>([
+    "header",
+    "emptyValueAllowed",
+    "formula",
+    "columnType",
+  ]),
 } as const;
 
 interface TraitPath {
@@ -74,9 +81,7 @@ export class SyncEntryRefuser {
         return [mapTable.name];
       }),
     );
-    const columnNamesByTable = new Map(
-      mapTables.map(({ name, columns }) => [name, Object.keys(columns ?? {})]),
-    );
+    const columnNamesByTable = this._columnNamesByTable;
     return entryRefusals({
       entry: "tables",
       mapNames: mapTables.map(({ name }) => name),
@@ -92,6 +97,14 @@ export class SyncEntryRefuser {
       },
     });
   }
+  private get _columnNamesByTable(): Map<string, string[]> {
+    return new Map(
+      Object.values(this.idNameMap.tables).map(({ name, columns }) => [
+        name,
+        Object.keys(columns ?? {}),
+      ]),
+    );
+  }
   private get _tabRefusals(): SyncRefusal[] {
     return entryRefusals({
       entry: "tabs",
@@ -99,7 +112,12 @@ export class SyncEntryRefuser {
       entries: entriesOf(this.alterations.tabs),
       traitRefusals: (tab, entry) => [
         ...refusedPaths(tab, traitPathsAt("tab", entry, "")),
-        ...newTablesRefusals(tab, entry.newTables ?? [], "newTables"),
+        ...newTablesRefusals({
+          tab,
+          newTables: entry.newTables ?? [],
+          tablesAt: "newTables",
+          columnNamesByTable: this._columnNamesByTable,
+        }),
       ],
     });
   }
@@ -111,7 +129,12 @@ export class SyncEntryRefuser {
       const tablesRefusals =
         newTab.tables.length === 0
           ? [notSendableYet(tab, `${at}.tables`)]
-          : newTablesRefusals(tab, newTab.tables, `${at}.tables`);
+          : newTablesRefusals({
+              tab,
+              newTables: newTab.tables,
+              tablesAt: `${at}.tables`,
+              columnNamesByTable: this._columnNamesByTable,
+            });
       return [
         ...refusedPaths(tab, traitPathsAt("newTab", newTab, `${at}.`)),
         ...tablesRefusals,
@@ -126,20 +149,61 @@ function refusedPaths(table: string, paths: TraitPath[]): SyncRefusal[] {
     .map(({ path }) => notSendableYet(table, path));
 }
 
+interface NewTablesRefusalsProps {
+  tab: string;
+  newTables: WideNewTable[];
+  tablesAt: string;
+  columnNamesByTable: Map<string, string[]>;
+}
+
 // The working view doesn't list a Table its flush adds, so a second on the same tab would be placed over the first.
-function newTablesRefusals(
-  tab: string,
-  newTables: WideNewTable[],
-  tablesAt: string,
-): SyncRefusal[] {
+function newTablesRefusals({
+  tab,
+  newTables,
+  tablesAt,
+  columnNamesByTable,
+}: NewTablesRefusalsProps): SyncRefusal[] {
   const [first, ...others] = newTables;
   if (first === undefined) return [];
+  const at = `${tablesAt}[0]`;
   return [
-    ...refusedPaths(tab, newTableTraitPaths(first, `${tablesAt}[0]`)),
+    ...refusedPaths(tab, newTableTraitPaths(first, at)),
+    ...newTableBraceRefusals({ tab, newTable: first, at, columnNamesByTable }),
     ...others.map((_, index) =>
       notSendableYet(tab, `${tablesAt}[${index + 1}]`),
     ),
   ];
+}
+
+interface NewTableBraceRefusalsProps {
+  tab: string;
+  newTable: WideNewTable;
+  at: string;
+  columnNamesByTable: Map<string, string[]>;
+}
+
+// A brace naming the new Table resolves against its planned columns, each named as the regen will name its header.
+function newTableBraceRefusals({
+  tab,
+  newTable,
+  at,
+  columnNamesByTable,
+}: NewTableBraceRefusalsProps): SyncRefusal[] {
+  const tableKey = new SpreadsheetBaseSchema().titleToName(newTable.name);
+  const withPlanned = new Map(columnNamesByTable).set(
+    tableKey,
+    newTable.columns.map(({ header }) => columnNameOfHeader(header)),
+  );
+  return newTable.columns.flatMap(({ formula }, columnIndex) => {
+    if (formula === undefined) return [];
+    return formulaBraceRefusals({
+      table: tab,
+      tableKey,
+      path: `${at}.columns[${columnIndex}].formula`,
+      formula,
+      columnNamesByTable: withPlanned,
+    });
+  });
 }
 
 function newTableTraitPaths(
@@ -192,29 +256,53 @@ function braceRefusals({
 }: BraceRefusalsProps): SyncRefusal[] {
   return entriesOf(entry.columns).flatMap(([column, { formula }]) => {
     if (formula === undefined) return [];
-    const path = `${column}.formula`;
-    const malformed = BraceFormula.malformedBraces({ formula }).map(
-      (brace): SyncRefusal => ({ kind: "malformedBrace", table, path, brace }),
-    );
-    const unknown = BraceFormula.columnsNamed({
+    return formulaBraceRefusals({
+      table,
       tableKey: table,
+      path: `${column}.formula`,
       formula,
-    }).flatMap(({ brace, tableKey, columnName }): SyncRefusal[] => {
-      const columnNames = columnNamesByTable.get(tableKey);
-      if (columnNames?.includes(columnName)) return [];
-      return [
-        {
-          kind: "unknownBrace",
-          table,
-          path,
-          brace,
-          braceTable: tableKey,
-          columns: columnNames,
-        },
-      ];
+      columnNamesByTable,
     });
-    return [...malformed, ...unknown];
   });
+}
+
+interface FormulaBraceRefusalsProps {
+  // The name a refusal gives; `tableKey` is the one a bare brace resolves against.
+  table: string;
+  tableKey: string;
+  path: string;
+  formula: string;
+  columnNamesByTable: Map<string, string[]>;
+}
+
+function formulaBraceRefusals({
+  table,
+  tableKey: ownTableKey,
+  path,
+  formula,
+  columnNamesByTable,
+}: FormulaBraceRefusalsProps): SyncRefusal[] {
+  const malformed = BraceFormula.malformedBraces({ formula }).map(
+    (brace): SyncRefusal => ({ kind: "malformedBrace", table, path, brace }),
+  );
+  const unknown = BraceFormula.columnsNamed({
+    tableKey: ownTableKey,
+    formula,
+  }).flatMap(({ brace, tableKey, columnName }): SyncRefusal[] => {
+    const columnNames = columnNamesByTable.get(tableKey);
+    if (columnNames?.includes(columnName)) return [];
+    return [
+      {
+        kind: "unknownBrace",
+        table,
+        path,
+        brace,
+        braceTable: tableKey,
+        columns: columnNames,
+      },
+    ];
+  });
+  return [...malformed, ...unknown];
 }
 
 function noSuchTable(entry: "tables" | "tabs", name: string): SyncRefusal {

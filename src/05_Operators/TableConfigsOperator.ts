@@ -6,6 +6,10 @@ import {
   hasApiAccess,
 } from "../01_SpreadsheetSchema/configReaders/apiAccessChanges";
 import {
+  BraceFormula,
+  type BraceNames,
+} from "../01_SpreadsheetSchema/configReaders/BraceFormula";
+import {
   type ColumnReference,
   type IdNameMapGeneric,
   mapTablesByLiveness,
@@ -50,7 +54,7 @@ import { oneLinePerEntryFileSource } from "./configFileSource";
 import { validateIdPrefixesUnchanged } from "./idPrefixGuard";
 import { SpreadsheetBaseOperator } from "./SpreadsheetBaseOperator";
 
-// A planned new Table with the IDs the run settled for it, its tab's GID in its created placement.
+// A planned new Table with the IDs the run settled for it, its tab's GID in its created placement, and each column's formula and type compiled to the names on the sheet.
 export interface MintedNewTable extends PlannedNewTable {
   tableId: string;
   createdPlacement: CreatedTablePlacement;
@@ -131,11 +135,15 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
       return stops;
     });
   }
-  // Minted before any queue, so a dry run's withheld flush and the report carry the same IDs.
-  mintNewTables(newTables: PlannedNewTable[]): MintedNewTable[] {
+  // Minted before any queue, so a dry run's withheld flush and the report carry the same IDs; compiled then too, so a bad brace throws before any flush.
+  mintNewTables(
+    newTables: PlannedNewTable[],
+    namesAtCreation: BraceNames,
+  ): MintedNewTable[] {
     const prefixesInUse = new Set(this.idPrefixesByTableId().idPrefixes());
     const retiredPrefixes = this._retiredOrGoneIdPrefixes();
     const sheetGidsInUse = new Set(this.ss.raw.activeSheetGids);
+    const names = withPlannedTables(namesAtCreation, newTables);
     return newTables.map((newTable) => {
       const idPrefix = idPrefixes.fromTitle({
         title: newTable.name,
@@ -155,6 +163,7 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
         idPrefix,
         columns: newTable.columns.map((column) => ({
           ...column,
+          ...compiledColumn(column, { names, tableKey: newTable.table }),
           columnId: dimensionIds.col(idPrefix),
         })),
       };
@@ -191,10 +200,14 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
         placement: newTable.createdPlacement,
         idPrefix: newTable.idPrefix,
         tableId: newTable.tableId,
-        columns: newTable.columns.map(({ header, columnId }) => ({
-          header,
-          columnId,
-        })),
+        columns: newTable.columns.map(
+          ({ header, columnId, columnType, formula }) => ({
+            header,
+            columnId,
+            columnType,
+            formula,
+          }),
+        ),
       });
     }
     return this;
@@ -379,6 +392,53 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
 
 function columnReferenceLabel(reference: string): string {
   return `Column reference "${reference}"`;
+}
+
+// A planned Table answers to its own name, and each column to the name its header gives.
+function withPlannedTables(
+  names: BraceNames,
+  newTables: PlannedNewTable[],
+): BraceNames {
+  return newTables.reduce<BraceNames>(
+    (withPlanned, { table, name, columns }) => {
+      withPlanned.tableConfigs[table] = { tableName: name };
+      withPlanned.columnConfigs[table] = Object.fromEntries(
+        columns.map(({ column, header }) => [column, { header }]),
+      );
+      return withPlanned;
+    },
+    {
+      tableConfigs: { ...names.tableConfigs },
+      columnConfigs: { ...names.columnConfigs },
+    },
+  );
+}
+
+interface CompiledColumnContext {
+  names: BraceNames;
+  tableKey: string;
+}
+
+function compiledColumn(
+  { formula, columnType }: PlannedNewTableColumn,
+  { names, tableKey }: CompiledColumnContext,
+): Pick<PlannedNewTableColumn, "formula" | "columnType"> {
+  const compiled: Pick<PlannedNewTableColumn, "formula" | "columnType"> = {};
+  if (formula !== undefined) {
+    compiled.formula = BraceFormula.compileForCell({
+      configs: names,
+      tableKey,
+      formula,
+    });
+  }
+  if (columnType !== undefined) {
+    compiled.columnType = BraceFormula.compileColumnType({
+      configs: names,
+      tableKey,
+      columnType,
+    });
+  }
+  return compiled;
 }
 
 function previousIdPrefixesByTableId(): IdPrefixesByTableId {
