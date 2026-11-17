@@ -87,13 +87,25 @@ export interface CompiledRuleRespan
 // A brace rule recompiled on the planned layout after a column insert or delete.
 export interface CompiledRuleRewrite extends RuleRewrite, IndexedRuleUpdate {}
 
-interface SentIndexProps {
-  index: number;
-  sheetGid: number;
+// The batch's other rule sends and column changes, which a rule update compiles and indexes against.
+export interface BatchRuleSends {
   removals: IndexedRuleRemoval[];
   additions: PlannedRuleAddition[];
   dropped: DroppedRule[];
+  columnChanges: PlannedColumnChanges;
+}
+
+interface SentIndexProps {
+  index: number;
+  sheetGid: number;
+  sends: BatchRuleSends;
   rulesByTable: Map<string, TableRules>;
+}
+
+interface IndexedUpdatesProps<RE extends PlannedRuleRemoval> {
+  entries: RE[];
+  ruleOf: (entry: RE) => WideRule;
+  sends: BatchRuleSends;
 }
 
 // The run's column deletes and inserts, which move the layout a rule compiles against.
@@ -136,24 +148,23 @@ export interface ColumnChangeRulesProps {
 }
 
 // What a rule update compiles and indexes against: the replacements', and the re-spans', which leave a replaced rule to its replace.
-export interface CompiledRuleUpdatesProps {
+export interface CompiledRuleUpdatesProps extends BatchRuleSends {
   replacements: PlannedRuleReplacement[];
-  removals: IndexedRuleRemoval[];
-  additions: PlannedRuleAddition[];
-  dropped: DroppedRule[];
-  columnChanges: PlannedColumnChanges;
 }
 
-export interface CompiledRuleRewritesProps extends Omit<
-  CompiledRuleUpdatesProps,
-  "replacements"
-> {
+export interface CompiledRuleRewritesProps extends BatchRuleSends {
   rewrites: RuleRewrite[];
 }
 
+// The column changes a rewrite follows; a move rewrites no rule yet.
+type ColumnChangeKind = Exclude<
+  Extract<SyncPlanEffect, { kind: "rulesRewritten" }>["after"],
+  "move"
+>;
+
 interface TableColumnChange {
   deletedColumns: string[];
-  after: "insert" | "delete";
+  after: ColumnChangeKind;
 }
 
 type RuleFate =
@@ -342,55 +353,54 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
   // Compiled before any send, so a bad colour or brace throws with nothing sent; indexed for the flush after the removals', past the adds sent ahead of it.
   compiledRuleReplacements({
     replacements,
-    removals,
-    additions,
-    dropped,
-    columnChanges,
+    ...sends
   }: CompiledRuleUpdatesProps): CompiledRuleReplacement[] {
+    return this._indexedUpdates({
+      entries: replacements,
+      ruleOf: ({ rule }) => rule,
+      sends,
+    });
+  }
+  private _indexedUpdates<RE extends PlannedRuleRemoval>({
+    entries,
+    ruleOf,
+    sends,
+  }: IndexedUpdatesProps<RE>): (RE & IndexedRuleUpdate)[] {
     const rulesByTable = this._tableRulesByTable([
-      ...replacements,
-      ...additions,
+      ...entries,
+      ...sends.additions,
     ]);
-    return replacements.map((replacement) => {
+    return entries.map((entry) => {
       const rules = Val.assert(
-        rulesByTable.get(replacement.table),
-        `rules of ${replacement.table}`,
+        rulesByTable.get(entry.table),
+        `rules of ${entry.table}`,
       );
       const { tableId, sheetGid, indexes } = rules;
       const { index } = Val.assert(
-        indexes.get(replacement.handle),
-        `rule ${replacement.handle} on ${replacement.table}`,
+        indexes.get(entry.handle),
+        `rule ${entry.handle} on ${entry.table}`,
       );
       const { compiled } = compiledOnPlan({
-        tableKey: replacement.table,
+        tableKey: entry.table,
         rules,
-        rule: replacement.rule,
-        columnChanges,
+        rule: ruleOf(entry),
+        columnChanges: sends.columnChanges,
       });
       return {
-        ...replacement,
+        ...entry,
         tableId,
         sheetGid,
-        index: this._sentIndex({
-          index,
-          sheetGid,
-          removals,
-          additions,
-          dropped,
-          rulesByTable,
-        }),
+        index: this._sentIndex({ index, sheetGid, sends, rulesByTable }),
         compiled,
       };
     });
   }
   // Every rule over a Table ending short of its last body row, as rows typed below the Table leave it; one a pending replace or remove names is left to it, and one a column insert or delete rewrites is stretched by its rewrite.
   compiledRuleRespans({
-    removals,
     replacements,
-    additions,
-    dropped,
-    columnChanges,
+    ...sends
   }: CompiledRuleUpdatesProps): CompiledRuleRespan[] {
+    const { removals, columnChanges } = sends;
     const rulesByTable = this._tableRulesByTable(this._identifiedTables());
     const reshapedGids = reshapedSheetGids(rulesByTable, columnChanges);
     const changedTables = columnChangesByTable(columnChanges);
@@ -415,14 +425,7 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
               toRow: plannedTable.layout.endRowIndex,
               tableId,
               sheetGid,
-              index: this._sentIndex({
-                index,
-                sheetGid,
-                removals,
-                additions,
-                dropped,
-                rulesByTable,
-              }),
+              index: this._sentIndex({ index, sheetGid, sends, rulesByTable }),
               compiled,
             },
           ];
@@ -471,42 +474,12 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
   // Compiled before any send, so a bad brace throws with nothing sent; indexed for the flush after the column changes, past the rules they drop.
   compiledRuleRewrites({
     rewrites,
-    removals,
-    additions,
-    dropped,
-    columnChanges,
+    ...sends
   }: CompiledRuleRewritesProps): CompiledRuleRewrite[] {
-    const rulesByTable = this._tableRulesByTable([...rewrites, ...additions]);
-    return rewrites.map((rewrite) => {
-      const rules = Val.assert(
-        rulesByTable.get(rewrite.table),
-        `rules of ${rewrite.table}`,
-      );
-      const { tableId, sheetGid, indexes } = rules;
-      const { index } = Val.assert(
-        indexes.get(rewrite.handle),
-        `rule ${rewrite.handle} on ${rewrite.table}`,
-      );
-      const { compiled } = compiledOnPlan({
-        tableKey: rewrite.table,
-        rules,
-        rule: IntendedRule.ofRecord(rewrite.record),
-        columnChanges,
-      });
-      return {
-        ...rewrite,
-        tableId,
-        sheetGid,
-        index: this._sentIndex({
-          index,
-          sheetGid,
-          removals,
-          additions,
-          dropped,
-          rulesByTable,
-        }),
-        compiled,
-      };
+    return this._indexedUpdates({
+      entries: rewrites,
+      ruleOf: ({ record }) => IntendedRule.ofRecord(record),
+      sends,
     });
   }
   // By the previous configs' name, the one a plan subject and tableIdOf take; _tableRulesByTable skips a Table no longer live, but needs the regen to identify one for its rule layout.
@@ -524,9 +497,7 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
   private _sentIndex({
     index,
     sheetGid,
-    removals,
-    additions,
-    dropped,
+    sends: { removals, additions, dropped },
     rulesByTable,
   }: SentIndexProps): number {
     const removedAbove = removals.filter(
@@ -898,8 +869,10 @@ function columnDroppedUnder(
     },
   );
   if (!isDropped) return undefined;
-  const startColumnIndex = rule.ranges[0]?.startColumnIndex;
-  if (startColumnIndex === undefined) return undefined;
+  const startColumnIndex = Val.assert(
+    rule.ranges[0]?.startColumnIndex,
+    "first column of a rule's first range",
+  );
   return deletedByColIndex.get(startColumnIndex);
 }
 

@@ -79,6 +79,7 @@ import {
   type PlannedColumnMove,
 } from "./ColumnConfigsOperator";
 import {
+  type BatchRuleSends,
   type ColumnChangeRules,
   type CompiledRuleAddition,
   type CompiledRuleReplacement,
@@ -341,7 +342,6 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
           removals: withDeletions.ruleRemovals,
           replacements: withDeletions.ruleReplacements,
         });
-    const { dropped } = columnChangeRules;
     // In the first flush, so no column delete lands under a rule reading the column: what Sheets does to that rule is unmeasured.
     const ruleRemovals =
       this.conditionalFormatConfigOperator.indexedRuleRemovals([
@@ -351,13 +351,16 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
           handle,
         })),
       ]);
+    const ruleSends: BatchRuleSends = {
+      removals: ruleRemovals,
+      additions: withDeletions.ruleAdditions,
+      dropped: columnChangeRules.dropped,
+      columnChanges,
+    };
     const ruleReplacements =
       this.conditionalFormatConfigOperator.compiledRuleReplacements({
+        ...ruleSends,
         replacements: withDeletions.ruleReplacements,
-        removals: ruleRemovals,
-        additions: withDeletions.ruleAdditions,
-        dropped,
-        columnChanges,
       });
     const ruleAdditions =
       this.conditionalFormatConfigOperator.compiledRuleAdditions({
@@ -370,24 +373,22 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     const ruleRespans = withDeletions.isStopped
       ? []
       : this.conditionalFormatConfigOperator.compiledRuleRespans({
-          removals: ruleRemovals,
+          ...ruleSends,
           replacements: withDeletions.ruleReplacements,
-          additions: withDeletions.ruleAdditions,
-          dropped,
-          columnChanges,
         });
     const ruleRewrites =
       this.conditionalFormatConfigOperator.compiledRuleRewrites({
+        ...ruleSends,
         rewrites: columnChangeRules.rewrites,
-        removals: ruleRemovals,
-        additions: withDeletions.ruleAdditions,
-        dropped,
-        columnChanges,
       });
     const planned: SyncPlannerResult = {
       ...withDeletions,
       plan: [
-        ...withColumnChangeRuleEffects(withDeletions.plan, columnChangeRules),
+        ...withColumnChangeRuleEffects({
+          plan: withDeletions.plan,
+          rules: columnChangeRules,
+          newColumns,
+        }),
         ...ruleRespans.map((respan) => ruleRespanLines.planItem(respan)),
       ],
       checks: [...withDeletions.checks, ...columnChangeRules.checks],
@@ -803,20 +804,36 @@ const noColumnChangeRules: ColumnChangeRules = {
   checks: [],
 };
 
-// Each deleted column's item lists the rules going with it; a Table's rewrites go on its first delete item, or else its first new column's.
-function withColumnChangeRuleEffects(
-  plan: SyncPlanItem[],
-  { removals, dropped, rewrites }: ColumnChangeRules,
-): SyncPlanItem[] {
+interface ColumnChangeRuleEffectsProps {
+  plan: SyncPlanItem[];
+  rules: ColumnChangeRules;
+  newColumns: MintedNewColumn[];
+}
+
+// Each deleted column's item lists the rules going with it; a Table's rewrites go on its first delete item, or else its first insert's, never an append's.
+function withColumnChangeRuleEffects({
+  plan,
+  rules: { removals, dropped, rewrites },
+  newColumns,
+}: ColumnChangeRuleEffectsProps): SyncPlanItem[] {
   const rewrittenTables = new Set(rewrites.map(({ table }) => table));
   const rewriteItems = new Set(
     [...rewrittenTables].flatMap((table) => {
       const ofTable = plan.filter(
         ({ subject }) => "table" in subject && subject.table === table,
       );
+      const insert = newColumns.find(
+        (newColumn) =>
+          newColumn.table === table && newColumn.before !== undefined,
+      );
+      const insertWhat =
+        insert === undefined ? undefined : newColumnLines.sendLine(insert).what;
       const item =
         ofTable.find(({ subject }) => isDeletedColumn(subject)) ??
-        ofTable.find(({ subject }) => newColumnLines.isSubject(subject));
+        ofTable.find(
+          ({ subject, what }) =>
+            newColumnLines.isSubject(subject) && what === insertWhat,
+        );
       return item === undefined ? [] : [item];
     }),
   );

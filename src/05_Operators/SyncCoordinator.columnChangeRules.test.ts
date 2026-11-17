@@ -120,10 +120,6 @@ describe("SyncCoordinator.run rules after a column insert or delete", () => {
     return service.grid.sheet(itemGid).conditionalFormats ?? [];
   }
 
-  function runWith(isSending: boolean, alterations: PendingAlterations) {
-    return runItem({ isSending, alterations });
-  }
-
   const deleteCount: PendingAlterations = {
     tables: { item: { columns: { requiredCount: { deleted: true } } } },
   };
@@ -141,7 +137,10 @@ describe("SyncCoordinator.run rules after a column insert or delete", () => {
       handDrawnRule,
     ]);
 
-    const { result } = runWith(true, deleteCount);
+    const { result } = runItem({
+      isSending: true,
+      alterations: deleteCount,
+    });
 
     const namesAfter = columnNames.filter((name) => name !== "requiredCount");
     expect(rulesLeft(service)).toEqual([
@@ -171,7 +170,7 @@ describe("SyncCoordinator.run rules after a column insert or delete", () => {
   it("after an insert, rewrites a whole-Table rule over the new column too", () => {
     const service = seedWith([wholeTableRule(columnNames), handDrawnRule]);
 
-    const { result } = runWith(true, insertRef);
+    const { result } = runItem({ isSending: true, alterations: insertRef });
 
     const namesAfter = [...columnNames];
     namesAfter.splice(countColIndex, 0, "ref");
@@ -196,7 +195,7 @@ describe("SyncCoordinator.run rules after a column insert or delete", () => {
   it("lists a hand-drawn rule on a dry run, by its handle", () => {
     seedWith([handDrawnRule]);
 
-    const { result } = runWith(false, insertRef);
+    const { result } = runItem({ isSending: false, alterations: insertRef });
 
     expect(result.checks).toEqual([
       expect.objectContaining({
@@ -214,8 +213,11 @@ describe("SyncCoordinator.run rules after a column insert or delete", () => {
     const rules = [wholeTableRule(columnNames), handDrawnRule];
     const service = seedWith(rules);
 
-    const { result } = runWith(true, {
-      tables: { item: { columns: { optionalNote: { header: "Remark" } } } },
+    const { result } = runItem({
+      isSending: true,
+      alterations: {
+        tables: { item: { columns: { optionalNote: { header: "Remark" } } } },
+      },
     });
 
     expect(rulesLeft(service)).toEqual(rules);
