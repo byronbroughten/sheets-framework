@@ -75,6 +75,9 @@ export interface PlannedNewTableColumn {
   header: string;
   column: string;
   emptyValueAllowed: boolean;
+  // In brace form, as the alterations give them.
+  formula?: string;
+  columnType?: ColumnTypeBaseline;
 }
 
 // One `newTabs` or `newTables` Table; `table` is the codebase name the regen gives its name.
@@ -593,18 +596,29 @@ export class SyncPlanner {
 }
 
 function plannedNewTable(
-  { name, columns }: WideNewTable,
+  newTable: WideNewTable,
   placement: PlannedNewTablePlacement,
 ): PlannedNewTable {
+  return { ...unplacedNewTable(newTable), placement };
+}
+
+// A new Table's entry named as the regen will name it, before it has a place.
+export function unplacedNewTable({
+  name,
+  columns,
+}: WideNewTable): Omit<PlannedNewTable, "placement"> {
   return {
     table: new SpreadsheetBaseSchema().titleToName(name),
     name,
-    placement,
-    columns: columns.map(({ header, emptyValueAllowed }) => ({
-      header,
-      column: columnNameOfHeader(header),
-      emptyValueAllowed: emptyValueAllowed ?? false,
-    })),
+    columns: columns.map(
+      ({ header, emptyValueAllowed, formula, columnType }) => ({
+        header,
+        column: columnNameOfHeader(header),
+        emptyValueAllowed: emptyValueAllowed ?? false,
+        ...(formula === undefined ? {} : { formula }),
+        ...(columnType === undefined ? {} : { columnType }),
+      }),
+    ),
   };
 }
 
@@ -806,22 +820,28 @@ function configTraitsOf({
   newColumns,
   newTables,
 }: ConfigTraitsProps): TraitReadings {
-  const createdColumns = [
+  const createdColumns: (PlannedNewTableColumn & { table: string })[] = [
     ...newColumns,
     ...newTables.flatMap(({ table, columns }) =>
       columns.map((column) => ({ table, ...column })),
     ),
   ];
-  const created = createdColumns.flatMap(
-    ({ table, column, header, emptyValueAllowed }) =>
-      [
-        { trait: "header", value: header },
-        { trait: "emptyValueAllowed", value: emptyValueAllowed },
-      ].map(({ trait, value }) => ({
-        address: { kind: "column" as const, table, column, trait },
-        value,
-      })),
-  );
+  const created = createdColumns.flatMap((createdColumn) => {
+    const { table, column, header, emptyValueAllowed, formula, columnType } =
+      createdColumn;
+    const traits: { trait: string; value: TraitValue | undefined }[] = [
+      { trait: "header", value: header },
+      { trait: "emptyValueAllowed", value: emptyValueAllowed },
+      { trait: "formula", value: formula },
+      { trait: "columnType", value: columnType },
+    ];
+    return traits.flatMap(({ trait, value }) => {
+      if (value === undefined) return [];
+      return [
+        { address: { kind: "column" as const, table, column, trait }, value },
+      ];
+    });
+  });
   const written = [
     ...sent.map((intended) => ({ address: intended, value: intended.value })),
     ...heldBack.map(({ intended, agreed }) => ({

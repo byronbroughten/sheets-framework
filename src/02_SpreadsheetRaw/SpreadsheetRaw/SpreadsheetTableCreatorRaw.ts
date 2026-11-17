@@ -11,6 +11,7 @@ import { SpreadsheetBaseRaw } from "../ClassBases/SpreadsheetBaseRaw";
 import { queuedColumnType } from "../ClassTypes/queuedColumnType";
 import type {
   CreatedTable,
+  CreatedTableColumn,
   CreatedTablePlacement,
   CreateTableProps,
 } from "../ClassTypes/StateRaw";
@@ -36,7 +37,7 @@ export class SpreadsheetTableCreatorRaw extends SpreadsheetBaseRaw {
   // IDs are settled before any queue, so a dry run's withheld flush and the caller's record carry the same ones.
   createTable(props: CreateTableProps): CreatedTable {
     const { name, placement, columns, seedRows = [] } = props;
-    validateSeedRows(name, columns.length, seedRows);
+    validateSeedRows(name, columns, seedRows);
     const created = createdIds(props);
     const size = {
       bodyRowCount: Math.max(minBodyRowCount, seedRows.length),
@@ -72,6 +73,10 @@ export class SpreadsheetTableCreatorRaw extends SpreadsheetBaseRaw {
         values,
       })),
     ]);
+    this._fillFormulas(placement.sheetGid, origin, {
+      columns,
+      bodyRowCount: size.bodyRowCount,
+    });
     return created;
   }
   // Returns where the Table starts, having queued a tab or grid that holds it.
@@ -141,6 +146,29 @@ export class SpreadsheetTableCreatorRaw extends SpreadsheetBaseRaw {
       }
     }
   }
+  // Every body row, as a Table copies a uniform column formula into the rows it grows by.
+  private _fillFormulas(
+    sheetId: number,
+    origin: TableOrigin,
+    { columns, bodyRowCount }: FormulaFill,
+  ): void {
+    for (const [colIndex, { formula }] of columns.entries()) {
+      if (formula === undefined) continue;
+      for (let bodyRow = 0; bodyRow < bodyRowCount; bodyRow++) {
+        this.ss.gatherAddedTableFillCellOperation({
+          sheetId,
+          rowIndex: origin.sheetRowIndex(bodyRow),
+          colIndex: origin.sheetColIndex(colIndex),
+          formula,
+        });
+      }
+    }
+  }
+}
+
+interface FormulaFill {
+  columns: CreatedTableColumn[];
+  bodyRowCount: number;
 }
 
 export function randomTableId(): string {
@@ -162,17 +190,31 @@ export function randomSheetGid(sheetGidsInUse: ReadonlySet<number>): number {
   return sheetGid;
 }
 
+// A formula column fills every body row, so a seed value there would be overwritten.
 function validateSeedRows(
   name: string,
-  columnCount: number,
+  columns: CreatedTableColumn[],
   seedRows: CellValue[][],
 ): void {
   for (const [rowIndex, values] of seedRows.entries()) {
-    if (values.length <= columnCount) continue;
+    if (values.length > columns.length) {
+      throw new Error(
+        `${seedRowLabel(name, rowIndex)}: it holds ${values.length} values for ${columns.length} columns.`,
+      );
+    }
+    const formulaColumn = columns.find(
+      ({ formula }, colIndex) =>
+        formula !== undefined && (values[colIndex] ?? "") !== "",
+    );
+    if (formulaColumn === undefined) continue;
     throw new Error(
-      `Table "${name}" can't take seed row ${rowIndex + 1}: it holds ${values.length} values for ${columnCount} columns.`,
+      `${seedRowLabel(name, rowIndex)}: it holds a value in formula column "${formulaColumn.header}".`,
     );
   }
+}
+
+function seedRowLabel(name: string, rowIndex: number): string {
+  return `Table "${name}" can't take seed row ${rowIndex + 1}`;
 }
 
 function createdIds({

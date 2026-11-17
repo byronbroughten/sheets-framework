@@ -6,6 +6,10 @@ import {
   hasApiAccess,
 } from "../01_SpreadsheetSchema/configReaders/apiAccessChanges";
 import {
+  BraceFormula,
+  type BraceNames,
+} from "../01_SpreadsheetSchema/configReaders/BraceFormula";
+import {
   type ColumnReference,
   type IdNameMapGeneric,
   mapTablesByLiveness,
@@ -50,7 +54,7 @@ import { oneLinePerEntryFileSource } from "./configFileSource";
 import { validateIdPrefixesUnchanged } from "./idPrefixGuard";
 import { SpreadsheetBaseOperator } from "./SpreadsheetBaseOperator";
 
-// A planned new Table with the IDs the run settled for it, its tab's GID in its created placement.
+// A planned new Table with the IDs the run settled for it, its tab's GID in its created placement, and each column's formula and type compiled to the names on the sheet.
 export interface MintedNewTable extends PlannedNewTable {
   tableId: string;
   createdPlacement: CreatedTablePlacement;
@@ -131,8 +135,11 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
       return stops;
     });
   }
-  // Minted before any queue, so a dry run's withheld flush and the report carry the same IDs.
-  mintNewTables(newTables: PlannedNewTable[]): MintedNewTable[] {
+  // Minted before any queue, so a dry run's withheld flush and the report carry the same IDs; compiled then too, so a bad brace throws before any flush.
+  mintNewTables(
+    newTables: PlannedNewTable[],
+    names: BraceNames,
+  ): MintedNewTable[] {
     const prefixesInUse = new Set(this.idPrefixesByTableId().idPrefixes());
     const retiredPrefixes = this._retiredOrGoneIdPrefixes();
     const sheetGidsInUse = new Set(this.ss.raw.activeSheetGids);
@@ -154,7 +161,11 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
         createdPlacement,
         idPrefix,
         columns: newTable.columns.map((column) => ({
-          ...column,
+          ...BraceFormula.compileColumn({
+            configs: names,
+            tableKey: newTable.table,
+            column,
+          }),
           columnId: dimensionIds.col(idPrefix),
         })),
       };
@@ -191,10 +202,14 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
         placement: newTable.createdPlacement,
         idPrefix: newTable.idPrefix,
         tableId: newTable.tableId,
-        columns: newTable.columns.map(({ header, columnId }) => ({
-          header,
-          columnId,
-        })),
+        columns: newTable.columns.map(
+          ({ header, columnId, columnType, formula }) => ({
+            header,
+            columnId,
+            columnType,
+            formula,
+          }),
+        ),
       });
     }
     return this;
