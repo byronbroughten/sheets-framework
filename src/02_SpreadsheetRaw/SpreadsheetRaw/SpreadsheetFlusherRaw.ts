@@ -170,6 +170,10 @@ export class SpreadsheetFlusherRaw extends SpreadsheetBaseRaw {
       }
       sheetGids.add(sheetId);
     });
+    // A tab this flush adds has no sheet state to mark; its first fetch reads its rules fresh.
+    for (const { sheetId } of this.writeOperations.addSheet) {
+      sheetGids.delete(sheetId);
+    }
     return sheetGids;
   }
   private _sheetGidsWithEditProtectionMutations(): Set<number> {

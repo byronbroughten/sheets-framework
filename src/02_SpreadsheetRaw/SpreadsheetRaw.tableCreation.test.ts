@@ -89,6 +89,7 @@ describe("SpreadsheetRaw.createTable on a tab the same flush adds", () => {
       tableId: grid.sheet(newGid).tables[0]?.tableId,
       idPrefix: "plg",
       columnIds: [mintedColumnId("plg"), mintedColumnId("plg")],
+      range: { sheetId: newGid, ...grid.sheet(newGid).tables[0]?.range },
     });
     expect(created.columnIds[0]).not.toBe(created.columnIds[1]);
   });
@@ -168,6 +169,7 @@ describe("SpreadsheetRaw.createTable on a tab the same flush adds", () => {
       tableId: "tbl-fixture01",
       idPrefix: "pay",
       columnIds: ["c:pay:payee", "c:pay:amount"],
+      range: { sheetId: newGid, ...grid.sheet(newGid).tables[0]?.range },
     });
     const added = grid.sheet(newGid);
     expect(added.tables[0]?.tableId).toBe("tbl-fixture01");

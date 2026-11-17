@@ -207,7 +207,7 @@ describe("SyncEntryRefuser, traits not sendable yet", () => {
     ).toEqual([]);
   });
 
-  it("lets a new Table's column formula and type through, refusing its rules by the tab's path", () => {
+  it("lets a new Table's column formula, type and rule adds through", () => {
     expect(
       refusals({
         alterations: {
@@ -239,11 +239,39 @@ describe("SyncEntryRefuser, traits not sendable yet", () => {
           },
         },
       }),
+    ).toEqual([]);
+  });
+
+  it("refuses a new Table's rule text style by the tab's path", () => {
+    expect(
+      refusals({
+        alterations: {
+          tabs: {
+            items: {
+              newTables: [
+                {
+                  name: "Extra",
+                  columns: [{ header: "Note" }],
+                  conditionalFormats: {
+                    add: [
+                      {
+                        columns: "all",
+                        condition: { type: "NOT_BLANK" },
+                        format: { bold: true },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        },
+      }),
     ).toEqual([
       {
         kind: "notSendableYet",
         table: "items",
-        path: "newTables[0].conditionalFormats.add",
+        path: "newTables[0].conditionalFormats.add[0].format.bold",
       },
     ]);
   });

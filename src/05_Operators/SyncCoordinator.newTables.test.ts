@@ -248,6 +248,177 @@ describe("SyncCoordinator.run new tabs and Tables", () => {
     });
   });
 
+  describe("a new Table's rules", () => {
+    const overThree = {
+      columns: ["amount"],
+      condition: { type: "NUMBER_GREATER" as const, values: ["3"] },
+      format: { foregroundColor: "#0000ff" },
+    };
+    const withRule = {
+      ...paymentLog,
+      conditionalFormats: { add: [overThree] },
+    };
+
+    function overThreeRule(
+      sheetId: number,
+      startColumnIndex: number,
+    ): GoogleAppsScript.Sheets.Schema.ConditionalFormatRule {
+      return {
+        ranges: [
+          {
+            sheetId,
+            startRowIndex: tableHeaderRowIndex + 1,
+            endRowIndex: tableHeaderRowIndex + 2,
+            startColumnIndex,
+            endColumnIndex: startColumnIndex + 1,
+          },
+        ],
+        booleanRule: {
+          condition: {
+            type: "NUMBER_GREATER",
+            values: [{ userEnteredValue: "3" }],
+          },
+          format: {
+            textFormat: { foregroundColor: { red: 0, green: 0, blue: 1 } },
+          },
+        },
+      };
+    }
+
+    it("sends a rule over a Table on a new tab in the run that creates it", () => {
+      const service = seedFixture();
+
+      const { result, files } = runItem({
+        isSending: true,
+        alterations: { newTabs: [{ title: "Payments", tables: [withRule] }] },
+      });
+
+      const gid = tabGidOf(mapOf(files), "Payments");
+      expect(service.grid.sheet(gid).conditionalFormats).toEqual([
+        overThreeRule(gid, startTableColIndex + 1),
+      ]);
+      expect(result).toMatchObject({
+        outcome: { kind: "sent" },
+        refusals: [],
+        didntLand: [],
+      });
+      expect(files?.conditionalFormatConfigs).toContain("amount | ");
+      expect(files?.alterations).toContain("makePendingAlterations({})");
+    });
+
+    it("compiles a rule over a Table beside Item against where it lands, after Item's new column", () => {
+      const service = seedFixture();
+      const itemEnd = itemTableEnd(service);
+
+      const { result } = runItem({
+        isSending: true,
+        alterations: {
+          tables: { item: { newColumns: [{ header: "Late fee" }] } },
+          tabs: { item: { newTables: [{ ...withRule, gap: 1 }] } },
+        },
+      });
+
+      const newTableStart = itemEnd + 1 + 1;
+      expect(service.grid.sheet(itemGid).tables[1]?.range).toMatchObject({
+        startColumnIndex: newTableStart,
+      });
+      expect(service.grid.sheet(itemGid).conditionalFormats).toContainEqual(
+        overThreeRule(itemGid, newTableStart + 1),
+      );
+      expect(result).toMatchObject({
+        outcome: { kind: "sent" },
+        didntLand: [],
+      });
+    });
+
+    it("refuses before any read a rule naming a column none of the new Table's headers gives", () => {
+      const service = seedFixture();
+
+      const { result } = runItem({
+        isSending: true,
+        alterations: {
+          newTabs: [
+            {
+              title: "Payments",
+              tables: [
+                {
+                  ...paymentLog,
+                  conditionalFormats: {
+                    add: [{ ...overThree, columns: ["amounts"] }],
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      });
+
+      expect(service.batchUpdateCount()).toBe(0);
+      expect(result.refusals).toEqual([
+        {
+          kind: "unknownColumn",
+          table: "Payments",
+          path: "newTabs[0].tables[0].conditionalFormats.add[0].columns",
+          column: "amounts",
+          columns: ["payee", "amount"],
+        },
+      ]);
+    });
+
+    it("refuses before any read a rule naming a column two of the new Table's headers give", () => {
+      const service = seedFixture();
+
+      const { result } = runItem({
+        isSending: true,
+        alterations: {
+          tabs: {
+            item: {
+              newTables: [
+                {
+                  ...withRule,
+                  columns: [{ header: "Amount" }, { header: "amount" }],
+                },
+              ],
+            },
+          },
+        },
+      });
+
+      expect(service.batchUpdateCount()).toBe(0);
+      expect(result.refusals).toEqual([
+        {
+          kind: "ambiguousColumn",
+          table: "item",
+          path: "newTables[0].conditionalFormats.add[0].columns",
+          column: "amount",
+          headers: ["Amount", "amount"],
+        },
+      ]);
+    });
+
+    it("throws before any send on a rule whose colour isn't six-digit hex", () => {
+      const service = seedFixture();
+      const blueByName = { ...overThree, format: { foregroundColor: "blue" } };
+
+      expect(() =>
+        runItem({
+          isSending: true,
+          alterations: {
+            newTabs: [
+              {
+                title: "Payments",
+                tables: [
+                  { ...paymentLog, conditionalFormats: { add: [blueByName] } },
+                ],
+              },
+            ],
+          },
+        }),
+      ).toThrow(/blue/);
+      expect(service.batchUpdateCount()).toBe(0);
+    });
+  });
+
   it("keeps Item's columns as they were", () => {
     seedFixture();
 
