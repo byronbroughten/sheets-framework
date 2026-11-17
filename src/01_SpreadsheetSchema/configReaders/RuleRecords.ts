@@ -14,6 +14,7 @@ import {
   type HexColor,
   rgbChannelsHex,
 } from "../../00_Source/RawSource/RgbColor";
+import { SheetIndex } from "../../00_Source/RawSource/SheetIndex";
 import { SpreadsheetBaseSchema } from "../SpreadsheetBaseSchema";
 import { BraceFormula, type RuleLayout } from "./BraceFormula";
 import type { SyncPlanEffect } from "./syncRunResult";
@@ -271,8 +272,8 @@ function touchesTable(range: GridRangeProps, table: RuleRecordsTable): boolean {
     sheetId: range.sheetId,
     startRowIndex: table.layout.headerTopLeft.rowIndex,
     endRowIndex: table.layout.endRowIndex,
-    startColumnIndex: startCol,
-    endColumnIndex: endCol,
+    startColumnIndex: SheetIndex.col(startCol),
+    endColumnIndex: SheetIndex.col(endCol),
   });
 }
 
