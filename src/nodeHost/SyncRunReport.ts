@@ -450,6 +450,17 @@ function tableRefusalText(
       `${refusal.brace} isn't a brace: write \${@column} or \${table[@column]} for this row, \${column} or \${table[column]} for the whole column.`,
     ];
   }
+  if (refusal.kind === "unknownColumn") {
+    return [
+      `${refusal.column} names no column of ${table}, nor one its newColumns create. Its columns: ${refusal.columns.join(", ")}.`,
+    ];
+  }
+  if (refusal.kind === "ambiguousColumn") {
+    return [
+      `${refusal.column} could be any of the columns these newColumns headers create: ${refusal.headers.join(", ")}.`,
+      "Give each a header whose column name is its own, then rerun.",
+    ];
+  }
   return unknownBraceText(refusal);
 }
 

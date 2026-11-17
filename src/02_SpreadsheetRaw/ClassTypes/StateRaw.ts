@@ -367,6 +367,8 @@ export interface CreatedTable {
   tableId: string;
   idPrefix: string;
   columnIds: string[];
+  // Header row through the last body row, where the addTable puts it.
+  range: BoundedGridRange;
 }
 
 export interface TableWritePropsObj {

@@ -16,13 +16,17 @@ import { parseIdNameMapFileSource } from "./parseIdNameMapFileSource";
 import { SyncCoordinator } from "./SyncCoordinator";
 import {
   bodyRowsWithNote,
+  columnConfigs,
+  dryRunBesideLog,
   frame,
   itemGid,
   itemSheet,
+  logFormulaCell,
   previousItemMap,
   retiredPrefixesOf,
   runItem,
   seedFixture,
+  uncheckedOutsideFormulasNotice,
 } from "./syncCoordinatorTestSupport";
 
 beforeEach(() => {
@@ -257,6 +261,77 @@ describe("SyncCoordinator.run tab deletion", () => {
       didntLand: [
         { subject: tabSubject, what: "delete the tab; Sheets kept false" },
       ],
+    });
+  });
+
+  describe("its outside references", () => {
+    const nameHeader = columnConfigs.item.name.header;
+
+    it.each<{ row: string; logFormula: string; formula: string }>([
+      {
+        row: "a reference to its Table",
+        logFormula: `=COUNTA(item[${nameHeader}])`,
+        formula: "=COUNTA(${item[name]})",
+      },
+      {
+        row: "a reference to a header its Table's configs don't hold",
+        logFormula: "=COUNTA(item[No Such Header])",
+        formula: "=COUNTA(item[No Such Header])",
+      },
+      {
+        row: "its title as a quoted sheet reference",
+        logFormula: "='Item'!B2",
+        formula: "='Item'!B2",
+      },
+      {
+        row: "its title as a bare sheet reference",
+        logFormula: "=SUM(Item!B2:B9)",
+        formula: "=SUM(Item!B2:B9)",
+      },
+    ])(
+      "lists a formula column on another tab holding $row under Check before sending, and counts it on the plan line",
+      ({ logFormula, formula }) => {
+        const { result } = dryRunBesideLog({
+          alterations: deleteItemTab,
+          logFormula,
+        });
+
+        expect(result.checks).toEqual([
+          {
+            kind: "outsideReferences",
+            subject: { tab: "item" },
+            effect: "ref",
+            references: [{ cell: logFormulaCell, formula }],
+          },
+        ]);
+        expect(result.plan).toEqual([
+          {
+            subject: tabSubject,
+            what: "delete the tab",
+            effects: [{ kind: "outsideReferences", count: 1, effect: "ref" }],
+          },
+        ]);
+      },
+    );
+
+    it("leaves out a referencing formula in a Table deleted in the same run", () => {
+      const { result } = dryRunBesideLog({
+        alterations: { ...deleteItemTab, tables: { log: { deleted: true } } },
+        logFormula: "='Item'!B2",
+      });
+
+      expect(result.checks).toEqual([]);
+      expect(result.plan.map(({ effects }) => effects)).toEqual([[], []]);
+    });
+
+    it("says in a notice that formulas outside the API-access Tables' formula columns aren't checked", () => {
+      const { result } = dryRunBesideLog({
+        alterations: deleteItemTab,
+        logFormula: "=1",
+      });
+
+      expect(result.checks).toEqual([]);
+      expect(result.notices).toContainEqual(uncheckedOutsideFormulasNotice);
     });
   });
 

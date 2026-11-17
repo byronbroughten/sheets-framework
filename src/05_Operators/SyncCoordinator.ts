@@ -11,6 +11,7 @@ import {
   apiAccessChanges,
   withApiAccessReadings,
 } from "../01_SpreadsheetSchema/configReaders/apiAccessChanges";
+import type { BraceNames } from "../01_SpreadsheetSchema/configReaders/BraceFormula";
 import { columnConfigsByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
 import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister";
 import type {
@@ -34,15 +35,20 @@ import {
   tableIdsByName,
 } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
 import type { PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState";
-import { OutsideReferences } from "../01_SpreadsheetSchema/configReaders/OutsideReferences";
+import {
+  type DeletedTab,
+  OutsideReferences,
+} from "../01_SpreadsheetSchema/configReaders/OutsideReferences";
 import { remainingAlterations } from "../01_SpreadsheetSchema/configReaders/remainingAlterations";
 import { SyncEntryRefuser } from "../01_SpreadsheetSchema/configReaders/SyncEntryRefuser";
 import { SyncNameRewriter } from "../01_SpreadsheetSchema/configReaders/SyncNameRewriter";
 import {
   deletedTableOf,
+  deletedTabOf,
   isSheetTrait,
   newColumnLines,
   type PlanProps,
+  ruleAdditionLines,
   ruleRespanLines,
   SyncPlanner,
   type SyncPlannerResult,
@@ -55,6 +61,7 @@ import type {
   SyncCreatedTable,
   SyncFlushStoppedOutcome,
   SyncNotice,
+  SyncOutsideReferencesCheck,
   SyncPlanEffect,
   SyncPlanItem,
   SyncRunFrame,
@@ -182,6 +189,7 @@ interface RegenerationProps {
 interface DeletionEffectsProps {
   planned: SyncPlannerResult;
   deletedTables: Set<string>;
+  deletedTabs: Set<string>;
   previousIdNameMap: IdNameMapGeneric;
 }
 
@@ -296,12 +304,12 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         ),
       ],
     });
-    const deletedTables = new Set(
-      plannedSends.plan.flatMap(({ subject }) => deletedTableOf(subject) ?? []),
-    );
+    const deletedTables = deletionsOf(plannedSends.plan, deletedTableOf);
+    const deletedTabs = deletionsOf(plannedSends.plan, deletedTabOf);
     const withDeletions = this._withDeletionEffects({
       planned: plannedSends,
       deletedTables,
+      deletedTabs,
       previousIdNameMap: props.previousIdNameMap,
     });
     const notices: SyncNotice[] = [
@@ -316,7 +324,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       }),
       ...this.rowIdsOperator.idFirstNotices(),
     ];
-    if (deletedTables.size > 0) {
+    if (deletedTables.size > 0 || deletedTabs.size > 0) {
       notices.push(OutsideReferences.uncheckedNotice);
     }
     const isApplying = props.isSending && !withDeletions.isStopped;
@@ -385,7 +393,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       ...withDeletions,
       plan: [
         ...withColumnChangeRuleEffects({
-          plan: withDeletions.plan,
+          plan: this._withAddedFirstEffects(withDeletions.plan, ruleAdditions),
           rules: columnChangeRules,
           newColumns,
         }),
@@ -431,10 +439,12 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       }
     }
     const sent = isApplying ? planned.plan.map(({ subject }) => subject) : [];
+    const { tableConfigs, valueConfigs } = installedConfigs();
     const previous: ConfigSnapshot = {
       idNameMap: props.previousIdNameMap,
+      tableConfigs,
       columnConfigs: columnConfigsByName(),
-      valueConfigs: installedConfigs().valueConfigs,
+      valueConfigs,
     };
     let refetched: SyncCoordinator | undefined;
     let regeneration: Regeneration;
@@ -506,19 +516,30 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       files,
     };
   }
-  // A pure planner can't read the rules a deleted Table takes with it, or the formulas outside it that read it, so the run fills them in from its live read.
+  // A pure planner can't read the rules a deleted Table takes with it, or the formulas outside a deleted Table or tab that read it, so the run fills them in from its live read.
   private _withDeletionEffects({
     planned,
     deletedTables,
+    deletedTabs,
     previousIdNameMap,
   }: DeletionEffectsProps): SyncPlannerResult {
-    if (deletedTables.size === 0) return planned;
+    if (deletedTables.size === 0 && deletedTabs.size === 0) return planned;
     const tableIds = tableIdsByName(previousIdNameMap);
     const checks = OutsideReferences.checks({
       deletedTables,
+      deletedTabs: [...deletedTabs].map((tab) =>
+        deletedTabOfMap(previousIdNameMap, tab),
+      ),
       formulaColumns: this.columnConfigOperator.formulaColumns(),
     });
     const plan = planned.plan.map((item) => {
+      const tab = deletedTabOf(item.subject);
+      if (tab !== undefined) {
+        return {
+          ...item,
+          effects: [...item.effects, ...referenceEffects(checks, { tab })],
+        };
+      }
       const table = deletedTableOf(item.subject);
       if (table === undefined) return item;
       // The entry refuser and the planner already hold the Table to the map and the live sheet.
@@ -527,17 +548,37 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         table,
         tableId,
       });
-      const check = checks.find(
-        ({ subject }) => "table" in subject && subject.table === table,
-      );
-      const referenceEffects =
-        check === undefined ? [] : [OutsideReferences.effect(check)];
       return {
         ...item,
-        effects: [...item.effects, ...ruleEffects, ...referenceEffects],
+        effects: [
+          ...item.effects,
+          ...ruleEffects,
+          ...referenceEffects(checks, { table }),
+        ],
       };
     });
     return { ...planned, plan, checks: [...planned.checks, ...checks] };
+  }
+  // A pure planner can't read the live rules an add goes in ahead of, so the run fills them in from its live read.
+  private _withAddedFirstEffects(
+    plan: SyncPlanItem[],
+    additions: CompiledRuleAddition[],
+  ): SyncPlanItem[] {
+    if (additions.length === 0) return plan;
+    const effectsByAddition =
+      this.conditionalFormatConfigOperator.addedFirstEffects(additions);
+    return plan.map((item) => {
+      const { subject } = item;
+      if (!("table" in subject)) return item;
+      const addition = additions.find(
+        ({ table, position }) =>
+          subject.table === table &&
+          subject.path === ruleAdditionLines.path({ position }),
+      );
+      if (addition === undefined) return item;
+      const effects = effectsByAddition.get(addition) ?? [];
+      return { ...item, effects: [...item.effects, ...effects] };
+    });
   }
   // Its own send after the regen, planned from the fresh configs; it writes only blank cells, so the entered-data gate holds nothing.
   private _fillBlankIds(): SyncPlanItem[] {
@@ -607,6 +648,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       previous,
       regenerated: {
         idNameMap: this._idNameMap(),
+        tableConfigs: this.tableConfigOperator.newTableConfigs(),
         columnConfigs: this.columnConfigOperator.newColumnConfigs(),
         valueConfigs: this.valueConfigOperator.newValueConfigs(),
       },
@@ -881,6 +923,14 @@ function tabsByTable({ tables, tabs }: IdNameMapGeneric): TabsByTable {
   );
 }
 
+// Each Table or tab the plan deletes, as deletedOf names it.
+function deletionsOf(
+  plan: SyncPlanItem[],
+  deletedOf: (subject: SyncSubject) => string | undefined,
+): Set<string> {
+  return new Set(plan.flatMap(({ subject }) => deletedOf(subject) ?? []));
+}
+
 interface GoneNoticesProps {
   tabsGone: SyncTabGoneNotice[];
   tablesGone: SyncTableGoneNotice[];
@@ -905,4 +955,41 @@ function goneNotices({
     ]),
     ...fromLiveTabs,
   ];
+}
+
+// The entry refuser and the planner already hold the tab to the map; its Tables' Sheets names come from the previous configs.
+function deletedTabOfMap(
+  { tables, tabs }: IdNameMapGeneric,
+  tab: string,
+): DeletedTab {
+  const mapTab = Val.assert(
+    Object.values(tabs).find(({ name }) => name === tab),
+    `the ID-name map's tab ${tab}`,
+  );
+  const tableConfigs: BraceNames["tableConfigs"] =
+    installedConfigs().tableConfigs;
+  return {
+    tab,
+    title: mapTab.title,
+    tables: mapTab.tableIds.flatMap((tableId) => {
+      const tableKey = tables[tableId]?.name;
+      if (tableKey === undefined) return [];
+      const tableName = tableConfigs[tableKey]?.tableName ?? tableKey;
+      return [{ tableKey, tableName }];
+    }),
+  };
+}
+
+// A check's subject is the bare Table or tab its plan line deletes.
+function referenceEffects(
+  checks: SyncOutsideReferencesCheck[],
+  deleted: { table: string } | { tab: string },
+): SyncPlanEffect[] {
+  const check = checks.find(({ subject }) =>
+    "tab" in deleted
+      ? "tab" in subject && subject.tab === deleted.tab
+      : "table" in subject && subject.table === deleted.table,
+  );
+  if (check === undefined) return [];
+  return [OutsideReferences.effect(check)];
 }

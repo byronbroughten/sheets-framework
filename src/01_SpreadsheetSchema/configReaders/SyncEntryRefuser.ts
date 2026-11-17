@@ -1,12 +1,13 @@
 import { hasApiAccess } from "./apiAccessChanges";
 import type { IdNameMapGeneric } from "./idNameMapTypes";
 import { BraceRefuser } from "./SyncEntryRefuser/BraceRefuser";
+import { RuleRefuser } from "./SyncEntryRefuser/RuleRefuser";
 import { sheetTraits, tabTraits } from "./SyncPlanner";
 import {
   entriesOf,
+  rulesOf,
   type WideAlterations,
   type WideNewTable,
-  type WideRule,
   type WideTableEntry,
 } from "./SyncPlanner/wideAlterations";
 import type { SyncRefusal } from "./syncRunResult";
@@ -35,8 +36,12 @@ export const sendableTraits = {
   tab: new Set<string>([...tabTraits, ...sheetTraits.tab, "newTables"]),
   // A new tab's other traits would need sheet-property updates after its addSheet.
   newTab: new Set<string>(["title", "tables"]),
-  // A new Table's rules would need adds after its creation.
-  newTable: new Set<string>(["name", "columns", "gap"]),
+  newTable: new Set<string>([
+    "name",
+    "columns",
+    "gap",
+    "conditionalFormats.add",
+  ]),
   newTableColumn: new Set<string>([
     "header",
     "emptyValueAllowed",
@@ -80,6 +85,7 @@ export class SyncEntryRefuser {
         return [mapTable.name];
       }),
     );
+    const columnNamesByTable = this._columnNamesByTable;
     const braceRefuser = this._braceRefuser;
     return entryRefusals({
       entry: "tables",
@@ -92,18 +98,21 @@ export class SyncEntryRefuser {
         return [
           ...tableTraitRefusals(table, entry),
           ...braceRefuser.tableEntryRefusals(table, entry),
+          ...RuleRefuser.ofTableEntry({ table, entry, columnNamesByTable })
+            .refusals,
         ];
       },
     });
   }
   private get _braceRefuser(): BraceRefuser {
-    return new BraceRefuser(
-      new Map(
-        Object.values(this.idNameMap.tables).map(({ name, columns }) => [
-          name,
-          Object.keys(columns ?? {}),
-        ]),
-      ),
+    return new BraceRefuser(this._columnNamesByTable, new Map());
+  }
+  private get _columnNamesByTable(): Map<string, string[]> {
+    return new Map(
+      Object.values(this.idNameMap.tables).map(({ name, columns }) => [
+        name,
+        Object.keys(columns ?? {}),
+      ]),
     );
   }
   private get _tabRefusals(): SyncRefusal[] {
@@ -152,6 +161,15 @@ export class SyncEntryRefuser {
     return [
       ...refusedPaths(tab, newTableTraitPaths(first, at)),
       ...this._braceRefuser.newTableRefusals({ tab, newTable: first, at }),
+      ...RuleRefuser.ofNewTable({
+        tab,
+        newTable: first,
+        at,
+        columnNamesByTable: this._columnNamesByTable,
+      }).refusals,
+      ...ruleTextFormatPaths({
+        conditionalFormats: first.conditionalFormats,
+      }).map((path) => notSendableYet(tab, `${at}.${path}`)),
       ...others.map((_, index) =>
         notSendableYet(tab, `${tablesAt}[${index + 1}]`),
       ),
@@ -232,22 +250,8 @@ function tableTraitRefusals(
 // The Source's ConditionalFormat holds only the two colours, so a text style has nowhere to go yet.
 const ruleTextFormatTraits = ["bold", "italic", "strikethrough"] as const;
 
-function ruleTextFormatPaths({ conditionalFormats }: WideTableEntry): string[] {
-  const rules: [string, WideRule][] = [
-    ...(conditionalFormats?.add ?? []).map(
-      (rule, index): [string, WideRule] => [
-        `conditionalFormats.add[${index}]`,
-        rule,
-      ],
-    ),
-    ...entriesOf(conditionalFormats?.replace).map(
-      ([handle, rule]): [string, WideRule] => [
-        `conditionalFormats.replace["${handle}"]`,
-        rule,
-      ],
-    ),
-  ];
-  return rules.flatMap(([rulePath, { format }]) =>
+function ruleTextFormatPaths(entry: WideTableEntry): string[] {
+  return rulesOf(entry).flatMap(({ path: rulePath, rule: { format } }) =>
     ruleTextFormatTraits.flatMap((trait) => {
       if (format[trait] === undefined) return [];
       return [`${rulePath}.format.${trait}`];

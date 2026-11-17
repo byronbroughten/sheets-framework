@@ -748,6 +748,50 @@ describe("SyncRunReport, case F: two refusals, then a head-row stop", () => {
     );
   });
 
+  it("names a rule's unknown column, with the columns it could name", () => {
+    const text = render({
+      ...appDryRun,
+      outcome: { kind: "refused" },
+      refusals: [
+        {
+          kind: "unknownColumn",
+          table: "occCharge",
+          path: "conditionalFormats.add[0].columns",
+          column: "lateFees",
+          columns: ["id", "amount", "lateFee"],
+        },
+      ],
+    }).join("\n");
+    expect(text).toContain(
+      "REFUSED 1 · occCharge › conditionalFormats.add[0].columns",
+    );
+    expect(text).toContain(
+      "lateFees names no column of occCharge, nor one its newColumns create. Its columns: id, amount, lateFee.",
+    );
+  });
+
+  it("names the newColumns headers an ambiguous column could be", () => {
+    const text = render({
+      ...appDryRun,
+      outcome: { kind: "refused" },
+      refusals: [
+        {
+          kind: "ambiguousColumn",
+          table: "occCharge",
+          path: "conditionalFormats.add[0].columns",
+          column: "lateFee",
+          headers: ["Late fee", "Late Fee"],
+        },
+      ],
+    }).join("\n");
+    expect(text).toContain(
+      "lateFee could be any of the columns these newColumns headers create: Late fee, Late Fee.",
+    );
+    expect(text).toContain(
+      "Give each a header whose column name is its own, then rerun.",
+    );
+  });
+
   it("says a misplaced @ isn't a brace, with the four forms", () => {
     const text = render({
       ...appDryRun,

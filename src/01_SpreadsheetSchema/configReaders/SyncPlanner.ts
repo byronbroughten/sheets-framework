@@ -89,6 +89,8 @@ export interface PlannedNewTable {
   name: string;
   placement: PlannedNewTablePlacement;
   columns: PlannedNewTableColumn[];
+  // Its `conditionalFormats.add`, compiled once the Table's created.
+  rules: WideRule[];
 }
 
 // One `conditionalFormats.remove` handle, by its Table's codebase name.
@@ -644,10 +646,12 @@ function plannedNewTable(
 export function unplacedNewTable({
   name,
   columns,
+  conditionalFormats,
 }: WideNewTable): Omit<PlannedNewTable, "placement"> {
   return {
     table: new SpreadsheetBaseSchema().titleToName(name),
     name,
+    rules: conditionalFormats?.add ?? [],
     columns: columns.map(
       ({ header, emptyValueAllowed, formula, columnType }) => ({
         header,
@@ -831,6 +835,11 @@ export function deletedTableOf(subject: SyncSubject): string | undefined {
   if (!("table" in subject) || subject.column !== undefined) return undefined;
   if (subject.path !== "deleted") return undefined;
   return subject.table;
+}
+
+export function deletedTabOf(subject: SyncSubject): string | undefined {
+  if (!("tab" in subject) || subject.path !== "deleted") return undefined;
+  return subject.tab;
 }
 
 // Both comparison and display, so a column type's key order can't read as a change.

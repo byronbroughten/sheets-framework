@@ -207,7 +207,7 @@ describe("SyncEntryRefuser, traits not sendable yet", () => {
     ).toEqual([]);
   });
 
-  it("lets a new Table's column formula and type through, refusing its rules by the tab's path", () => {
+  it("lets a new Table's column formula, type and rule adds through", () => {
     expect(
       refusals({
         alterations: {
@@ -239,11 +239,39 @@ describe("SyncEntryRefuser, traits not sendable yet", () => {
           },
         },
       }),
+    ).toEqual([]);
+  });
+
+  it("refuses a new Table's rule text style by the tab's path", () => {
+    expect(
+      refusals({
+        alterations: {
+          tabs: {
+            items: {
+              newTables: [
+                {
+                  name: "Extra",
+                  columns: [{ header: "Note" }],
+                  conditionalFormats: {
+                    add: [
+                      {
+                        columns: "all",
+                        condition: { type: "NOT_BLANK" },
+                        format: { bold: true },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        },
+      }),
     ).toEqual([
       {
         kind: "notSendableYet",
         table: "items",
-        path: "newTables[0].conditionalFormats.add",
+        path: "newTables[0].conditionalFormats.add[0].format.bold",
       },
     ]);
   });
@@ -361,6 +389,103 @@ describe("SyncEntryRefuser, a formula's braces", () => {
         brace: "${log[when]}",
         braceTable: "log",
         columns: [],
+      },
+    ]);
+  });
+});
+
+describe("SyncEntryRefuser, a rule's columns and braces", () => {
+  function ruleRefusals(columns: string[], formula: string) {
+    return refusals({
+      alterations: {
+        tables: {
+          item: {
+            newColumns: [
+              { header: "Late fee" },
+              { header: "Ref" },
+              { header: "ref" },
+            ],
+            conditionalFormats: {
+              add: [
+                {
+                  columns,
+                  condition: { type: "CUSTOM_FORMULA", values: [formula] },
+                  format: { backgroundColor: "#000000" },
+                },
+              ],
+            },
+          },
+        },
+      },
+    });
+  }
+
+  it("lets through a rule naming mapped columns and ones the run's newColumns create", () => {
+    expect(ruleRefusals(["name", "lateFee"], "=${@lateFee}>${@count}")).toEqual(
+      [],
+    );
+  });
+
+  it("refuses a column or brace naming neither, listing both kinds of column", () => {
+    const columns = ["name", "count", "lateFee", "ref"];
+    expect(ruleRefusals(["lateFees"], "=${@cost}>0")).toEqual([
+      {
+        kind: "unknownColumn",
+        table: "item",
+        path: "conditionalFormats.add[0].columns",
+        column: "lateFees",
+        columns,
+      },
+      {
+        kind: "unknownBrace",
+        table: "item",
+        path: "conditionalFormats.add[0].condition.values[0]",
+        brace: "${@cost}",
+        braceTable: "item",
+        columns,
+      },
+    ]);
+  });
+
+  it("refuses a column or brace naming a column two new headers both give", () => {
+    const ambiguous = {
+      kind: "ambiguousColumn",
+      table: "item",
+      column: "ref",
+      headers: ["Ref", "ref"],
+    };
+    expect(ruleRefusals(["ref"], "=${@ref}>0")).toEqual([
+      { ...ambiguous, path: "conditionalFormats.add[0].columns" },
+      { ...ambiguous, path: "conditionalFormats.add[0].condition.values[0]" },
+    ]);
+  });
+
+  it("checks a replace's rule by its handle's path", () => {
+    expect(
+      refusals({
+        alterations: {
+          tables: {
+            item: {
+              conditionalFormats: {
+                replace: {
+                  "name | =TRUE": {
+                    columns: ["cost"],
+                    condition: { type: "NUMBER_GREATER", values: ["${cost}"] },
+                    format: {},
+                  },
+                },
+              },
+            },
+          },
+        },
+      }),
+    ).toEqual([
+      {
+        kind: "unknownColumn",
+        table: "item",
+        path: 'conditionalFormats.replace["name | =TRUE"].columns',
+        column: "cost",
+        columns: ["name", "count"],
       },
     ]);
   });

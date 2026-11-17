@@ -1,8 +1,10 @@
 import { Val } from "@byronbroughten/utils/val";
 
+import type { ModelableConditionalFormatRule } from "../00_Source/RawSource/ConditionalFormat";
 import type {
   AddSheetOperation,
   BoundedGridRange,
+  GridRangeProps,
   OpaqueRawRequest,
   SheetPropertiesFetchOptions,
 } from "../00_Source/RawSource/RawSource";
@@ -176,6 +178,18 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
     this._validateInAddedTable(props);
     return this._gatherAddedFillCellOperation(props);
   }
+  // A rule over a Table this flush adds, which has no properties to reach it through TableRaw until fetched; first, as SheetRaw adds its own.
+  gatherAddedTableConditionalFormatRule(
+    rule: ModelableConditionalFormatRule,
+  ): this {
+    for (const range of rule.ranges) this._validateRangeInAddedTable(range);
+    this.writeOperations.addConditionalFormatRule.push({
+      kind: "addConditionalFormatRule",
+      index: 0,
+      rule,
+    });
+    return this;
+  }
   // A checkbox on a tab this flush adds; an existing tab goes through CellRaw.
   gatherAddedSheetCheckboxValidationOperation(range: BoundedGridRange): this {
     this._validateAddSheetQueued(range.sheetId, "checkbox validation");
@@ -231,9 +245,9 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
     rowIndex,
     colIndex,
   }: AddedSheetCell): void {
-    const added = this.writeOperations.addTable.some(
-      ({ range }) =>
-        range.sheetId === sheetId &&
+    const added = this._addedTableHolds(
+      sheetId,
+      (range) =>
         range.startRowIndex - headRows.countAboveHeader <= rowIndex &&
         rowIndex < range.endRowIndex &&
         range.startColumnIndex <= colIndex &&
@@ -242,6 +256,38 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
     if (added) return;
     throw new Error(
       `Added-Table cell write refused: no addTable queued in this flush holds row ${rowIndex}, column ${colIndex} of GID ${sheetId}.`,
+    );
+  }
+  private _validateRangeInAddedTable(rangeProps: GridRangeProps): void {
+    const {
+      sheetId,
+      startRowIndex,
+      endRowIndex,
+      startColumnIndex,
+      endColumnIndex,
+    } = rangeProps;
+    const added = this._addedTableHolds(
+      sheetId,
+      (range) =>
+        range.startRowIndex <= startRowIndex &&
+        endRowIndex !== undefined &&
+        endRowIndex <= range.endRowIndex &&
+        startColumnIndex !== undefined &&
+        range.startColumnIndex <= startColumnIndex &&
+        endColumnIndex !== undefined &&
+        endColumnIndex <= range.endColumnIndex,
+    );
+    if (added) return;
+    throw new Error(
+      `Added-Table rule refused: no addTable queued in this flush holds the range ${JSON.stringify(rangeProps)}.`,
+    );
+  }
+  private _addedTableHolds(
+    sheetId: number,
+    holds: (range: BoundedGridRange) => boolean,
+  ): boolean {
+    return this.writeOperations.addTable.some(
+      ({ range }) => range.sheetId === sheetId && holds(range),
     );
   }
 }
