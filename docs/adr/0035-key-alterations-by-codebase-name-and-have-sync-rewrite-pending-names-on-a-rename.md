@@ -4,7 +4,9 @@ Every alteration in `alterations.ts` names what it changes by codebase name, as 
 
 ## The names and the rewrite
 
-A column name is the camelCase of its header and a tab name the camelCase of its title. Display text appears only in a value that sets it (`header: "Monthly Rent"`, a new column's `header`, a tab's `title`). `sync` works on the live sheet by ID. Every regen is a `sync` run, so the rewrite sees every rename, and the run report lists each rewrite. It covers keys, `before:` and conditional-format `columns` values, rule handles changed only by a rename, and the `Table[Header]` and `${columnName}` references in pending formula text.
+A column name is the camelCase of its header and a tab name the camelCase of its title. Display text appears only in a value that sets it (`header: "Monthly Rent"`, a new column's `header`, a tab's `title`). `sync` works on the live sheet by ID. Every regen is a `sync` run, so the rewrite sees every rename, and the run report lists each rewrite. It covers keys, `before:` and conditional-format `columns` values, rule handles changed only by a rename, and the braces in pending formula text.
+
+Amended by [sheets-framework#219](https://github.com/byronbroughten/sheets-framework/issues/219): pending formula text, a column's or a rule's, holds braces, not `Table[Header]`. A brace names its Table and column by codebase name, so the rewrite reaches it as it reaches a key. Sheets' `Table[Header]` is left only where no brace can name the column, a Table without API access, and the rewrite keeps it on that Table's live names.
 
 ## What it gives up
 
@@ -16,7 +18,7 @@ Claims are deferred to [#286](https://github.com/byronbroughten/sheets-framework
 
 ## Also decided
 
-- Braces in a conditional-format formula name columns by column name (`${@moveOut}` for the row's own value, `${moveOut}` for the whole column), not header: the framework's own syntax uses codebase names, while Sheets' `Table[Header]` keeps header text.
+- Braces in pending formula text name columns by column name (`${@moveOut}` for the row's own value, `${moveOut}` for the whole column), not header: the framework's own syntax uses codebase names, while Sheets' `Table[Header]` keeps header text.
 - A regen fails when two tab titles camelCase to the same tab name, as it already does for two headers in one Table.
 
 ## Considered options
