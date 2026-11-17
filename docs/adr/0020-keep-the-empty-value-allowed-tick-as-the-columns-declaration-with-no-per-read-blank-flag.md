@@ -1,5 +1,5 @@
 ---
-status: accepted, amended by sheets-framework#219, which moves the declaration from the Column Config tick to the `emptyValueAllowed` trait
+status: accepted, amended by sheets-framework#219
 ---
 
 # Keep the Empty value allowed tick as the column's declaration, with no per-read blank flag
