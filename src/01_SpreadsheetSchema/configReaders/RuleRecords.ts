@@ -123,6 +123,19 @@ export interface ShortTableRule {
   endRowIndex: number;
 }
 
+// A rule a Table owns, with its place in its tab's rule list.
+export interface OwnedTableRule {
+  handle: string;
+  index: number;
+  rule: ConditionalFormatRule;
+  record: TableRuleRecord | UnmodelableTableRuleRecord;
+}
+
+export interface RuleText {
+  range: string;
+  formula: string;
+}
+
 interface FiledRuleBase<RO, RR> {
   owner: RO;
   handle: string;
@@ -176,21 +189,38 @@ export const RuleRecords = {
       ),
     );
   },
+  // Filed by build's walk, so each handle names the rule the configs record.
+  tableRules(tab: RuleRecordsTab, table: RuleRecordsTable): OwnedTableRule[] {
+    return filedRules(tab).flatMap((filed): OwnedTableRule[] => {
+      if (filed.owner === undefined) return [];
+      if (filed.owner.tableId !== table.tableId) return [];
+      const { handle, record, index } = filed;
+      const rule = Val.assert(tab.rules[index], `rule ${index}`);
+      return [{ handle, index, rule, record }];
+    });
+  },
   // A rule with no brace form isn't one: sync can't compile it against the longer span.
   shortRules(tab: RuleRecordsTab, table: RuleRecordsTable): ShortTableRule[] {
-    return filedRules(tab).flatMap((filed): ShortTableRule[] => {
-      if (filed.owner?.tableId !== table.tableId) return [];
-      const { handle, record, index } = filed;
-      if (record.kind !== "boolean" || !("tableId" in record)) return [];
-      const rule = Val.assert(tab.rules[index], `rule ${index}`);
-      const endRowIndex = Math.max(
-        ...rule.ranges.map((range) =>
-          Val.assert(range.endRowIndex, `end row of ${handle}`),
-        ),
-      );
-      if (endRowIndex >= table.layout.endRowIndex) return [];
-      return [{ handle, index, record, endRowIndex }];
-    });
+    const owned = RuleRecords.tableRules(tab, table);
+    return owned.flatMap(
+      ({ handle, index, rule, record }): ShortTableRule[] => {
+        if (record.kind !== "boolean") return [];
+        const endRowIndex = Math.max(
+          ...rule.ranges.map((range) =>
+            Val.assert(range.endRowIndex, `end row of ${handle}`),
+          ),
+        );
+        if (endRowIndex >= table.layout.endRowIndex) return [];
+        return [{ handle, index, record, endRowIndex }];
+      },
+    );
+  },
+  // A rule as a check shows it: its ranges in A1 and its formula, or its raw content when it has none.
+  ruleText(rule: ConditionalFormatRule): RuleText {
+    return {
+      range: rule.ranges.map((range) => schema.gridRangeA1(range)).join(","),
+      formula: ruleFormula(rule),
+    };
   },
   // The handle a rule would have on the Table before any duplicate suffix.
   sharedHandleOf(rule: ConditionalFormatRule, table: RuleRecordsTable): string {
@@ -213,8 +243,7 @@ export const RuleRecords = {
       partlyOver.push({
         kind: "rulePartlyOver",
         tab: tabName,
-        range: rule.ranges.map((range) => schema.gridRangeA1(range)).join(","),
-        formula: ruleFormula(rule),
+        ...RuleRecords.ruleText(rule),
       });
     }
     const handles = Object.keys(removed);

@@ -1,7 +1,10 @@
 import { Val } from "@byronbroughten/utils/val";
 
 import type { ModelableConditionalFormatRule } from "../00_Source/RawSource/ConditionalFormat";
-import type { RuleLayout } from "../01_SpreadsheetSchema/configReaders/BraceFormula";
+import {
+  BraceFormula,
+  type RuleLayout,
+} from "../01_SpreadsheetSchema/configReaders/BraceFormula";
 import { columnConfigsByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
 import { IntendedRule } from "../01_SpreadsheetSchema/configReaders/IntendedRule";
 import {
@@ -9,10 +12,12 @@ import {
   makeImportLine,
 } from "../01_SpreadsheetSchema/configReaders/makeConfigs";
 import {
+  type OwnedTableRule,
   RuleRecords,
   type RuleRecordsTab,
   type RuleRecordsTable,
   type TableRuleIndex,
+  type TableRuleRecord,
 } from "../01_SpreadsheetSchema/configReaders/RuleRecords";
 import {
   type IntendedTrait,
@@ -27,6 +32,7 @@ import {
 } from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
 import type { WideRule } from "../01_SpreadsheetSchema/configReaders/SyncPlanner/wideAlterations";
 import type {
+  SyncCheck,
   SyncNoSuchRuleStop,
   SyncPlanEffect,
   SyncSendLine,
@@ -78,11 +84,15 @@ export interface CompiledRuleReplacement
 export interface CompiledRuleRespan
   extends PlannedRuleRespan, IndexedRuleUpdate {}
 
+// A brace rule recompiled on the planned layout after a column insert or delete.
+export interface CompiledRuleRewrite extends RuleRewrite, IndexedRuleUpdate {}
+
 interface SentIndexProps {
   index: number;
   sheetGid: number;
   removals: IndexedRuleRemoval[];
   additions: PlannedRuleAddition[];
+  dropped: DroppedRule[];
   rulesByTable: Map<string, TableRules>;
 }
 
@@ -92,12 +102,71 @@ export interface PlannedColumnChanges {
   newColumns: MintedNewColumn[];
 }
 
+// A rule removed with the deleted column it names.
+export interface ColumnChangeRemoval extends PlannedRuleRemoval {
+  column: string;
+}
+
+// A rule wholly over deleted columns, which Sheets drops with them; `index` is its place on the pre-send read.
+export interface DroppedRule extends ColumnChangeRemoval {
+  sheetGid: number;
+  index: number;
+}
+
+// A brace rule over a Table a column insert or delete reshapes.
+export interface RuleRewrite extends PlannedRuleRemoval {
+  record: TableRuleRecord;
+  after: TableColumnChange["after"];
+}
+
+export type HandDrawnRuleCheck = Extract<SyncCheck, { kind: "handDrawnRule" }>;
+
+// What a run's column inserts and deletes leave sync to do with each rule over their Tables.
+export interface ColumnChangeRules {
+  removals: ColumnChangeRemoval[];
+  dropped: DroppedRule[];
+  rewrites: RuleRewrite[];
+  checks: HandDrawnRuleCheck[];
+}
+
+export interface ColumnChangeRulesProps {
+  columnChanges: PlannedColumnChanges;
+  removals: PlannedRuleRemoval[];
+  replacements: PlannedRuleReplacement[];
+}
+
 // What a rule update compiles and indexes against: the replacements', and the re-spans', which leave a replaced rule to its replace.
 export interface CompiledRuleUpdatesProps {
   replacements: PlannedRuleReplacement[];
   removals: IndexedRuleRemoval[];
   additions: PlannedRuleAddition[];
+  dropped: DroppedRule[];
   columnChanges: PlannedColumnChanges;
+}
+
+export interface CompiledRuleRewritesProps extends Omit<
+  CompiledRuleUpdatesProps,
+  "replacements"
+> {
+  rewrites: RuleRewrite[];
+}
+
+interface TableColumnChange {
+  deletedColumns: string[];
+  after: "insert" | "delete";
+}
+
+type RuleFate =
+  | { kind: "dropped"; dropped: DroppedRule }
+  | { kind: "removed"; removal: ColumnChangeRemoval }
+  | { kind: "rewritten"; rewrite: RuleRewrite }
+  | { kind: "handDrawn"; check: HandDrawnRuleCheck };
+
+interface RuleFateProps {
+  table: string;
+  rules: TableRules;
+  change: TableColumnChange;
+  owned: OwnedTableRule;
 }
 
 // An add compiled against the planned layout; `copiesAfter` is how many rules with its shared handle the Table holds once the run's sends land.
@@ -275,6 +344,7 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
     replacements,
     removals,
     additions,
+    dropped,
     columnChanges,
   }: CompiledRuleUpdatesProps): CompiledRuleReplacement[] {
     const rulesByTable = this._tableRulesByTable([
@@ -306,32 +376,31 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
           sheetGid,
           removals,
           additions,
+          dropped,
           rulesByTable,
         }),
         compiled,
       };
     });
   }
-  // Every rule over a Table ending short of its last body row, as rows typed below the Table leave it; one a pending replace or remove names is left to it.
+  // Every rule over a Table ending short of its last body row, as rows typed below the Table leave it; one a pending replace or remove names is left to it, and one a column insert or delete rewrites is stretched by its rewrite.
   compiledRuleRespans({
     removals,
     replacements,
     additions,
+    dropped,
     columnChanges,
   }: CompiledRuleUpdatesProps): CompiledRuleRespan[] {
     const rulesByTable = this._tableRulesByTable(this._identifiedTables());
     const reshapedGids = reshapedSheetGids(rulesByTable, columnChanges);
-    const named = new Set(
-      [...removals, ...replacements].map(({ table, handle }) =>
-        JSON.stringify([table, handle]),
-      ),
-    );
+    const changedTables = columnChangesByTable(columnChanges);
+    const named = namedRuleKeys([...removals, ...replacements]);
     return [...rulesByTable].flatMap(([table, rules]) => {
       const { tableId, sheetGid, tab } = rules;
-      if (reshapedGids.has(sheetGid)) return [];
+      if (reshapedGids.has(sheetGid) || changedTables.has(table)) return [];
       return RuleRecords.shortRules(tab, rules.table).flatMap(
         ({ handle, index, record, endRowIndex }): CompiledRuleRespan[] => {
-          if (named.has(JSON.stringify([table, handle]))) return [];
+          if (named.has(ruleKey(table, handle))) return [];
           const { compiled, plannedTable } = compiledOnPlan({
             tableKey: table,
             rules,
@@ -351,6 +420,7 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
                 sheetGid,
                 removals,
                 additions,
+                dropped,
                 rulesByTable,
               }),
               compiled,
@@ -358,6 +428,85 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
           ];
         },
       );
+    });
+  }
+  // Every rule over a Table a column insert or delete reshapes; one a pending replace or remove names is left to it.
+  columnChangeRules({
+    columnChanges,
+    removals,
+    replacements,
+  }: ColumnChangeRulesProps): ColumnChangeRules {
+    const changes = columnChangesByTable(columnChanges);
+    const rulesByTable = this._tableRulesByTable(
+      [...changes.keys()].map((table) => ({ table })),
+    );
+    const named = namedRuleKeys([...removals, ...replacements]);
+    const fates = [...rulesByTable].flatMap(([table, rules]) => {
+      const change = Val.assert(
+        changes.get(table),
+        `column change of ${table}`,
+      );
+      return RuleRecords.tableRules(rules.tab, rules.table).flatMap(
+        (owned): RuleFate[] => {
+          if (named.has(ruleKey(table, owned.handle))) return [];
+          return [ruleFate({ table, rules, change, owned })];
+        },
+      );
+    });
+    return {
+      removals: fates.flatMap((fate) =>
+        fate.kind === "removed" ? [fate.removal] : [],
+      ),
+      dropped: fates.flatMap((fate) =>
+        fate.kind === "dropped" ? [fate.dropped] : [],
+      ),
+      rewrites: fates.flatMap((fate) =>
+        fate.kind === "rewritten" ? [fate.rewrite] : [],
+      ),
+      checks: fates.flatMap((fate) =>
+        fate.kind === "handDrawn" ? [fate.check] : [],
+      ),
+    };
+  }
+  // Compiled before any send, so a bad brace throws with nothing sent; indexed for the flush after the column changes, past the rules they drop.
+  compiledRuleRewrites({
+    rewrites,
+    removals,
+    additions,
+    dropped,
+    columnChanges,
+  }: CompiledRuleRewritesProps): CompiledRuleRewrite[] {
+    const rulesByTable = this._tableRulesByTable([...rewrites, ...additions]);
+    return rewrites.map((rewrite) => {
+      const rules = Val.assert(
+        rulesByTable.get(rewrite.table),
+        `rules of ${rewrite.table}`,
+      );
+      const { tableId, sheetGid, indexes } = rules;
+      const { index } = Val.assert(
+        indexes.get(rewrite.handle),
+        `rule ${rewrite.handle} on ${rewrite.table}`,
+      );
+      const { compiled } = compiledOnPlan({
+        tableKey: rewrite.table,
+        rules,
+        rule: IntendedRule.ofRecord(rewrite.record),
+        columnChanges,
+      });
+      return {
+        ...rewrite,
+        tableId,
+        sheetGid,
+        index: this._sentIndex({
+          index,
+          sheetGid,
+          removals,
+          additions,
+          dropped,
+          rulesByTable,
+        }),
+        compiled,
+      };
     });
   }
   // By the previous configs' name, the one a plan subject and tableIdOf take; _tableRulesByTable skips a Table no longer live, but needs the regen to identify one for its rule layout.
@@ -377,6 +526,7 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
     sheetGid,
     removals,
     additions,
+    dropped,
     rulesByTable,
   }: SentIndexProps): number {
     const removedAbove = removals.filter(
@@ -384,11 +534,15 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
         removal.index < index &&
         this.ss.raw.table(removal.tableId).sheetGid === sheetGid,
     ).length;
+    // Sheets drops these with their columns, ahead of the updates in the same batch.
+    const droppedAbove = dropped.filter(
+      (rule) => rule.index < index && rule.sheetGid === sheetGid,
+    ).length;
     // The flusher sends a batch's adds before its updates, and each add goes in at index 0.
     const addedAbove = additions.filter(
       (addition) => rulesByTable.get(addition.table)?.sheetGid === sheetGid,
     ).length;
-    return index - removedAbove + addedAbove;
+    return index - removedAbove - droppedAbove + addedAbove;
   }
   // Compiled before any send, so a bad colour or brace throws with nothing sent.
   compiledRuleAdditions({
@@ -640,6 +794,126 @@ function reshapedSheetGids(
     return rules === undefined ? [] : [rules.sheetGid];
   });
   return new Set(gids);
+}
+
+// An append leaves every rule where it was, so only a column placed before another counts as an insert.
+function columnChangesByTable({
+  sentTraits,
+  newColumns,
+}: PlannedColumnChanges): Map<string, TableColumnChange> {
+  const deletes = sentTraits.reduce((byTable, intended) => {
+    if (intended.kind !== "column" || intended.trait !== "deleted") {
+      return byTable;
+    }
+    const change = byTable.get(intended.table) ?? {
+      deletedColumns: [],
+      after: "delete",
+    };
+    change.deletedColumns.push(intended.column);
+    byTable.set(intended.table, change);
+    return byTable;
+  }, new Map<string, TableColumnChange>());
+  return newColumns.reduce((byTable, { table, before }) => {
+    if (before === undefined || byTable.has(table)) return byTable;
+    byTable.set(table, { deletedColumns: [], after: "insert" });
+    return byTable;
+  }, deletes);
+}
+
+function namedRuleKeys(entries: PlannedRuleRemoval[]): Set<string> {
+  return new Set(entries.map(({ table, handle }) => ruleKey(table, handle)));
+}
+
+function ruleKey(table: string, handle: string): string {
+  return JSON.stringify([table, handle]);
+}
+
+// Dropped before removed, since Sheets takes a rule wholly over deleted columns itself, and handDrawn before either reads a record it can't.
+function ruleFate({ table, rules, change, owned }: RuleFateProps): RuleFate {
+  const { handle, index, rule, record } = owned;
+  const { layout } = rules.table;
+  const deletedByColIndex = new Map(
+    change.deletedColumns.map((column) => [
+      layout.headerTopLeft.colIndex +
+        layout.columnNamesLeftToRight.indexOf(column),
+      column,
+    ]),
+  );
+  const droppedColumn = columnDroppedUnder(rule, deletedByColIndex);
+  if (droppedColumn !== undefined) {
+    return {
+      kind: "dropped",
+      dropped: {
+        table,
+        handle,
+        column: droppedColumn,
+        sheetGid: rules.sheetGid,
+        index,
+      },
+    };
+  }
+  if (record.kind === "unmodelable") {
+    return {
+      kind: "handDrawn",
+      check: {
+        kind: "handDrawnRule",
+        table,
+        tab: rules.tab.tabName,
+        ...RuleRecords.ruleText(rule),
+        handle,
+        cause: `couldn't be rewritten, and the ${change.after} may leave it pointing at the wrong column`,
+      },
+    };
+  }
+  const namedColumn = recordColumnNames(table, record).find((column) =>
+    change.deletedColumns.includes(column),
+  );
+  if (namedColumn !== undefined) {
+    return { kind: "removed", removal: { table, handle, column: namedColumn } };
+  }
+  return {
+    kind: "rewritten",
+    rewrite: { table, handle, record, after: change.after },
+  };
+}
+
+// The deleted column at the rule's first cell, when every range lies inside deleted columns.
+function columnDroppedUnder(
+  rule: OwnedTableRule["rule"],
+  deletedByColIndex: Map<number, string>,
+): string | undefined {
+  const isDropped = rule.ranges.every(
+    ({ startColumnIndex, endColumnIndex }) => {
+      if (startColumnIndex === undefined || endColumnIndex === undefined) {
+        return false;
+      }
+      for (
+        let colIndex = startColumnIndex;
+        colIndex < endColumnIndex;
+        colIndex++
+      ) {
+        if (!deletedByColIndex.has(colIndex)) return false;
+      }
+      return true;
+    },
+  );
+  if (!isDropped) return undefined;
+  const startColumnIndex = rule.ranges[0]?.startColumnIndex;
+  if (startColumnIndex === undefined) return undefined;
+  return deletedByColIndex.get(startColumnIndex);
+}
+
+// The columns a rule covers and the ones its formula reads.
+function recordColumnNames(table: string, record: TableRuleRecord): string[] {
+  const covered = record.columns === "all" ? [] : record.columns;
+  if (record.condition.type !== "CUSTOM_FORMULA") return covered;
+  const read = BraceFormula.columnsNamed({
+    tableKey: table,
+    formula: record.condition.formula,
+  }).flatMap(({ tableKey, columnName }) =>
+    tableKey === table ? [columnName] : [],
+  );
+  return [...covered, ...read];
 }
 
 // The read's copies, less those the run removes or replaces away, plus the replacements that compile to it.
