@@ -199,7 +199,7 @@ function validateSeedRows(
   for (const [rowIndex, values] of seedRows.entries()) {
     if (values.length > columns.length) {
       throw new Error(
-        `Table "${name}" can't take seed row ${rowIndex + 1}: it holds ${values.length} values for ${columns.length} columns.`,
+        `${seedRowLabel(name, rowIndex)}: it holds ${values.length} values for ${columns.length} columns.`,
       );
     }
     const formulaColumn = columns.find(
@@ -208,9 +208,13 @@ function validateSeedRows(
     );
     if (formulaColumn === undefined) continue;
     throw new Error(
-      `Table "${name}" can't take seed row ${rowIndex + 1}: it holds a value in formula column "${formulaColumn.header}".`,
+      `${seedRowLabel(name, rowIndex)}: it holds a value in formula column "${formulaColumn.header}".`,
     );
   }
+}
+
+function seedRowLabel(name: string, rowIndex: number): string {
+  return `Table "${name}" can't take seed row ${rowIndex + 1}`;
 }
 
 function createdIds({

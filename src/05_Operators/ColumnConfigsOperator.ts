@@ -21,6 +21,7 @@ import {
   newColumnLines,
   newTableLines,
   type PlannedNewColumn,
+  type PlannedNewTable,
   type PlanReadings,
   type TraitReadings,
 } from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
@@ -910,8 +911,28 @@ function namesAtColumnFill(sent: IntendedTrait[]): BraceConfigs {
   return { tableConfigs: renamed, columnConfigs };
 }
 
-// The names on the sheet when a new Table lands: its flush comes after the one sending Table renames and headers.
-export function namesAtTableCreation(sent: IntendedTrait[]): BraceNames {
+// The names on the sheet when a new Table lands: its flush comes after the one sending Table renames and headers, and each planned Table answers to its own name and each column to the name its header gives.
+export function namesAtTableCreation(
+  sent: IntendedTrait[],
+  newTables: PlannedNewTable[],
+): BraceNames {
+  const sentNames = namesAfterSends(sent);
+  return newTables.reduce<BraceNames>(
+    (withPlanned, { table, name, columns }) => {
+      withPlanned.tableConfigs[table] = { tableName: name };
+      withPlanned.columnConfigs[table] = Object.fromEntries(
+        columns.map(({ column, header }) => [column, { header }]),
+      );
+      return withPlanned;
+    },
+    {
+      tableConfigs: { ...sentNames.tableConfigs },
+      columnConfigs: { ...sentNames.columnConfigs },
+    },
+  );
+}
+
+function namesAfterSends(sent: IntendedTrait[]): BraceNames {
   const { tableConfigs, columnConfigs } = namesAtColumnFill(sent);
   const reheaded = sent.reduce<BraceNames["columnConfigs"]>(
     (byKey, intended) => {

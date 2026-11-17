@@ -257,7 +257,47 @@ export const BraceFormula = {
       BraceFormula.compileForCell({ configs, tableKey, formula }),
     );
   },
+  // A column's formula and rule together, for a Table this run creates.
+  compileColumn<CL extends CompilableColumn>({
+    configs,
+    tableKey,
+    column,
+  }: ColumnCompileProps<CL>): CL {
+    const { formula, columnType } = column;
+    return {
+      ...column,
+      ...(formula === undefined
+        ? {}
+        : {
+            formula: BraceFormula.compileForCell({
+              configs,
+              tableKey,
+              formula,
+            }),
+          }),
+      ...(columnType === undefined
+        ? {}
+        : {
+            columnType: BraceFormula.compileColumnType({
+              configs,
+              tableKey,
+              columnType,
+            }),
+          }),
+    };
+  },
 };
+
+interface CompilableColumn {
+  formula?: string;
+  columnType?: ColumnTypeBaseline;
+}
+
+interface ColumnCompileProps<CL extends CompilableColumn> {
+  configs: BraceNames;
+  tableKey: string;
+  column: CL;
+}
 
 // Rewrites each rule value starting with `=`, the only ones that are formulas.
 function withRuleFormulas(

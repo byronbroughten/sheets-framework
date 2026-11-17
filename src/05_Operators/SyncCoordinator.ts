@@ -302,7 +302,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     );
     const newTables = this.tableConfigOperator.mintNewTables(
       planned.newTables,
-      namesAtTableCreation(planned.sentTraits),
+      namesAtTableCreation(planned.sentTraits, planned.newTables),
     );
     const ruleRemovals =
       this.conditionalFormatConfigOperator.indexedRuleRemovals(

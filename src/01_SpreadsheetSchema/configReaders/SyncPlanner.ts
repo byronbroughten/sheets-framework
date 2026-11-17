@@ -572,13 +572,20 @@ export class SyncPlanner {
 }
 
 function plannedNewTable(
-  { name, columns }: WideNewTable,
+  newTable: WideNewTable,
   placement: PlannedNewTablePlacement,
 ): PlannedNewTable {
+  return { ...unplacedNewTable(newTable), placement };
+}
+
+// A new Table's entry named as the regen will name it, before it has a place.
+export function unplacedNewTable({
+  name,
+  columns,
+}: WideNewTable): Omit<PlannedNewTable, "placement"> {
   return {
     table: new SpreadsheetBaseSchema().titleToName(name),
     name,
-    placement,
     columns: columns.map(
       ({ header, emptyValueAllowed, formula, columnType }) => ({
         header,

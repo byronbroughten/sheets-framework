@@ -138,12 +138,11 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
   // Minted before any queue, so a dry run's withheld flush and the report carry the same IDs; compiled then too, so a bad brace throws before any flush.
   mintNewTables(
     newTables: PlannedNewTable[],
-    namesAtCreation: BraceNames,
+    names: BraceNames,
   ): MintedNewTable[] {
     const prefixesInUse = new Set(this.idPrefixesByTableId().idPrefixes());
     const retiredPrefixes = this._retiredOrGoneIdPrefixes();
     const sheetGidsInUse = new Set(this.ss.raw.activeSheetGids);
-    const names = withPlannedTables(namesAtCreation, newTables);
     return newTables.map((newTable) => {
       const idPrefix = idPrefixes.fromTitle({
         title: newTable.name,
@@ -162,8 +161,11 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
         createdPlacement,
         idPrefix,
         columns: newTable.columns.map((column) => ({
-          ...column,
-          ...compiledColumn(column, { names, tableKey: newTable.table }),
+          ...BraceFormula.compileColumn({
+            configs: names,
+            tableKey: newTable.table,
+            column,
+          }),
           columnId: dimensionIds.col(idPrefix),
         })),
       };
@@ -392,53 +394,6 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
 
 function columnReferenceLabel(reference: string): string {
   return `Column reference "${reference}"`;
-}
-
-// A planned Table answers to its own name, and each column to the name its header gives.
-function withPlannedTables(
-  names: BraceNames,
-  newTables: PlannedNewTable[],
-): BraceNames {
-  return newTables.reduce<BraceNames>(
-    (withPlanned, { table, name, columns }) => {
-      withPlanned.tableConfigs[table] = { tableName: name };
-      withPlanned.columnConfigs[table] = Object.fromEntries(
-        columns.map(({ column, header }) => [column, { header }]),
-      );
-      return withPlanned;
-    },
-    {
-      tableConfigs: { ...names.tableConfigs },
-      columnConfigs: { ...names.columnConfigs },
-    },
-  );
-}
-
-interface CompiledColumnContext {
-  names: BraceNames;
-  tableKey: string;
-}
-
-function compiledColumn(
-  { formula, columnType }: PlannedNewTableColumn,
-  { names, tableKey }: CompiledColumnContext,
-): Pick<PlannedNewTableColumn, "formula" | "columnType"> {
-  const compiled: Pick<PlannedNewTableColumn, "formula" | "columnType"> = {};
-  if (formula !== undefined) {
-    compiled.formula = BraceFormula.compileForCell({
-      configs: names,
-      tableKey,
-      formula,
-    });
-  }
-  if (columnType !== undefined) {
-    compiled.columnType = BraceFormula.compileColumnType({
-      configs: names,
-      tableKey,
-      columnType,
-    });
-  }
-  return compiled;
 }
 
 function previousIdPrefixesByTableId(): IdPrefixesByTableId {
