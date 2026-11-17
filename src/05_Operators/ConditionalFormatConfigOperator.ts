@@ -1,3 +1,4 @@
+import { Arr } from "@byronbroughten/utils/arr";
 import { Val } from "@byronbroughten/utils/val";
 
 import type { ModelableConditionalFormatRule } from "../00_Source/RawSource/ConditionalFormat";
@@ -47,6 +48,7 @@ import {
   type ApiTableColumns,
   ColumnConfigsOperator,
   type MintedNewColumn,
+  type PlannedColumnMove,
 } from "./ColumnConfigsOperator";
 import {
   columnNamesByColumnId,
@@ -54,6 +56,7 @@ import {
   tablesAndTabsFileSource,
 } from "./configFileSource";
 import { SpreadsheetBaseOperator } from "./SpreadsheetBaseOperator";
+import { blockMoveOf } from "./TableColumnOrder";
 import { TableConfigsOperator } from "./TableConfigsOperator";
 
 // A Table a plan deletes: its codebase name and its ID.
@@ -85,7 +88,7 @@ export interface CompiledRuleReplacement
 export interface CompiledRuleRespan
   extends PlannedRuleRespan, IndexedRuleUpdate {}
 
-// A brace rule recompiled on the planned layout after a column insert or delete.
+// A brace rule recompiled on the planned layout after a column insert, delete or move.
 export interface CompiledRuleRewrite extends RuleRewrite, IndexedRuleUpdate {}
 
 // The batch's other rule sends and column changes, which a rule update compiles and indexes against.
@@ -107,6 +110,7 @@ interface IndexedUpdatesProps<RE extends PlannedRuleRemoval> {
   entries: RE[];
   ruleOf: (entry: RE) => WideRule;
   sends: BatchRuleSends;
+  moves: PlannedColumnMove[];
 }
 
 // The run's column deletes and inserts, which move the layout a rule compiles against.
@@ -126,7 +130,7 @@ export interface DroppedRule extends ColumnChangeRemoval {
   index: number;
 }
 
-// A brace rule over a Table a column insert or delete reshapes.
+// A brace rule over a Table a column insert, delete or move reshapes; one `after` a move is sent in the move's batch.
 export interface RuleRewrite extends PlannedRuleRemoval {
   record: TableRuleRecord;
   after: TableColumnChange["after"];
@@ -134,7 +138,7 @@ export interface RuleRewrite extends PlannedRuleRemoval {
 
 export type HandDrawnRuleCheck = Extract<SyncCheck, { kind: "handDrawnRule" }>;
 
-// What a run's column inserts and deletes leave sync to do with each rule over their Tables.
+// What a run's column inserts, deletes and moves leave sync to do with each rule over their Tables.
 export interface ColumnChangeRules {
   removals: ColumnChangeRemoval[];
   dropped: DroppedRule[];
@@ -144,6 +148,7 @@ export interface ColumnChangeRules {
 
 export interface ColumnChangeRulesProps {
   columnChanges: PlannedColumnChanges;
+  moves: PlannedColumnMove[];
   removals: PlannedRuleRemoval[];
   replacements: PlannedRuleReplacement[];
 }
@@ -153,19 +158,20 @@ export interface CompiledRuleUpdatesProps extends BatchRuleSends {
   replacements: PlannedRuleReplacement[];
 }
 
-export interface CompiledRuleRewritesProps extends BatchRuleSends {
-  rewrites: RuleRewrite[];
+// `moves` names the Tables whose rules a rewrite stretches; a re-span compiles against no move.
+export interface CompiledRuleRespansProps extends CompiledRuleUpdatesProps {
+  moves: PlannedColumnMove[];
 }
 
-// The column changes a rewrite follows; a move rewrites no rule yet.
-type ColumnChangeKind = Exclude<
-  Extract<SyncPlanEffect, { kind: "rulesRewritten" }>["after"],
-  "move"
->;
+export interface CompiledRuleRewritesProps extends BatchRuleSends {
+  rewrites: RuleRewrite[];
+  moves: PlannedColumnMove[];
+}
 
+// The last change a Table's rewrite follows: a move, sent after the deletes and inserts, outranks them.
 interface TableColumnChange {
   deletedColumns: string[];
-  after: ColumnChangeKind;
+  after: Extract<SyncPlanEffect, { kind: "rulesRewritten" }>["after"];
 }
 
 type RuleFate =
@@ -195,11 +201,13 @@ export interface CompiledRuleAdditionsProps {
   columnChanges: PlannedColumnChanges;
 }
 
+// `moves` only for a rule sent after them, in the move's batch.
 interface CompiledOnPlanProps {
   tableKey: string;
   rules: TableRules;
   rule: WideRule;
   columnChanges: PlannedColumnChanges;
+  moves: PlannedColumnMove[];
 }
 
 interface CompiledOnPlan {
@@ -211,6 +219,7 @@ interface PlannedLayoutOfProps {
   table: string;
   layout: RuleLayout;
   columnChanges: PlannedColumnChanges;
+  moves: PlannedColumnMove[];
 }
 
 interface CopiesKeptProps {
@@ -360,12 +369,14 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
       entries: replacements,
       ruleOf: ({ rule }) => rule,
       sends,
+      moves: [],
     });
   }
   private _indexedUpdates<RE extends PlannedRuleRemoval>({
     entries,
     ruleOf,
     sends,
+    moves,
   }: IndexedUpdatesProps<RE>): (RE & IndexedRuleUpdate)[] {
     const rulesByTable = this._tableRulesByTable([
       ...entries,
@@ -386,6 +397,7 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
         rules,
         rule: ruleOf(entry),
         columnChanges: sends.columnChanges,
+        moves,
       });
       return {
         ...entry,
@@ -396,15 +408,16 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
       };
     });
   }
-  // Every rule over a Table ending short of its last body row, as rows typed below the Table leave it; one a pending replace or remove names is left to it, and one a column insert or delete rewrites is stretched by its rewrite.
+  // Every rule over a Table ending short of its last body row, as rows typed below the Table leave it; one a pending replace or remove names is left to it, and one a column insert, delete or move rewrites is stretched by its rewrite.
   compiledRuleRespans({
     replacements,
+    moves,
     ...sends
-  }: CompiledRuleUpdatesProps): CompiledRuleRespan[] {
+  }: CompiledRuleRespansProps): CompiledRuleRespan[] {
     const { removals, columnChanges } = sends;
     const rulesByTable = this._tableRulesByTable(this._identifiedTables());
     const reshapedGids = reshapedSheetGids(rulesByTable, columnChanges);
-    const changedTables = columnChangesByTable(columnChanges);
+    const changedTables = columnChangesByTable(columnChanges, moves);
     const named = namedRuleKeys([...removals, ...replacements]);
     return [...rulesByTable].flatMap(([table, rules]) => {
       const { tableId, sheetGid, tab } = rules;
@@ -417,6 +430,7 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
             rules,
             rule: IntendedRule.ofRecord(record),
             columnChanges,
+            moves: [],
           });
           return [
             {
@@ -434,13 +448,14 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
       );
     });
   }
-  // Every rule over a Table a column insert or delete reshapes; one a pending replace or remove names is left to it.
+  // Every rule over a Table a column insert, delete or move reshapes; one a pending replace or remove names is left to it.
   columnChangeRules({
     columnChanges,
+    moves,
     removals,
     replacements,
   }: ColumnChangeRulesProps): ColumnChangeRules {
-    const changes = columnChangesByTable(columnChanges);
+    const changes = columnChangesByTable(columnChanges, moves);
     const rulesByTable = this._tableRulesByTable(
       [...changes.keys()].map((table) => ({ table })),
     );
@@ -472,16 +487,26 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
       ),
     };
   }
-  // Compiled before any send, so a bad brace throws with nothing sent; indexed for the flush after the column changes, past the rules they drop.
+  // Compiled before any send, so a bad brace throws with nothing sent; indexed for the flush after the column changes, past the rules they drop, which a move's batch leaves where they were (sheets-behaviour.md, Scratch217K).
   compiledRuleRewrites({
     rewrites,
+    moves,
     ...sends
   }: CompiledRuleRewritesProps): CompiledRuleRewrite[] {
     return this._indexedUpdates({
       entries: rewrites,
       ruleOf: ({ record }) => IntendedRule.ofRecord(record),
       sends,
+      moves,
     });
+  }
+  // A moved Table's delete or insert still leaves its rules past the Table, where the move's band insert can't carry them, so those rewrites also go in the first flush.
+  reshapeRewrites(
+    rewrites: RuleRewrite[],
+    columnChanges: PlannedColumnChanges,
+  ): RuleRewrite[] {
+    const reshaped = columnChangesByTable(columnChanges, []);
+    return rewrites.filter(({ table }) => reshaped.has(table));
   }
   // By the previous configs' name, the one a plan subject and tableIdOf take; _tableRulesByTable skips a Table no longer live, but needs the regen to identify one for its rule layout.
   private _identifiedTables(): Pick<PlannedRuleRemoval, "table">[] {
@@ -534,6 +559,7 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
         rules,
         rule: addition.rule,
         columnChanges,
+        moves: [],
       });
       // Named on the planned layout, as the refetch names it: a column the run deletes would move a read-layout name.
       const sharedHandle = RuleRecords.sharedHandleOf(compiled, plannedTable);
@@ -724,6 +750,7 @@ function compiledOnPlan({
   rules,
   rule,
   columnChanges,
+  moves,
 }: CompiledOnPlanProps): CompiledOnPlan {
   const plannedTable: RuleRecordsTable = {
     ...rules.table,
@@ -731,6 +758,7 @@ function compiledOnPlan({
       table: tableKey,
       layout: rules.table.layout,
       columnChanges,
+      moves,
     }),
   };
   return {
@@ -748,8 +776,9 @@ function plannedLayoutOf({
   table,
   layout,
   columnChanges: { sentTraits, newColumns },
+  moves,
 }: PlannedLayoutOfProps): RuleLayout {
-  return IntendedRule.plannedLayout({
+  const changed = IntendedRule.plannedLayout({
     layout,
     deletedColumns: sentTraits.flatMap((intended) => {
       if (intended.kind !== "column" || intended.trait !== "deleted") {
@@ -760,6 +789,13 @@ function plannedLayoutOf({
     }),
     newColumns: newColumns.filter((newColumn) => newColumn.table === table),
   });
+  // Each move's indexes are Table-relative, on the layout the one before leaves.
+  const columnNames = moves.reduce(
+    (names, move) =>
+      move.table === table ? Arr.moveBlock(names, blockMoveOf(move)) : names,
+    changed.columnNamesLeftToRight,
+  );
+  return { ...changed, columnNamesLeftToRight: columnNames };
 }
 
 // The tabs where the run deletes a Table, a column or the tab itself: Sheets drops or moves rules there, so a pre-send index could name another rule.
@@ -780,11 +816,11 @@ function reshapedSheetGids(
   return new Set(gids);
 }
 
-// An append leaves every rule where it was, so only a column placed before another counts as an insert.
-function columnChangesByTable({
-  sentTraits,
-  newColumns,
-}: PlannedColumnChanges): Map<string, TableColumnChange> {
+// An append leaves every rule where it was, so only a column placed before another counts as an insert; a move, flushed last, names the change on a Table it touches.
+function columnChangesByTable(
+  { sentTraits, newColumns }: PlannedColumnChanges,
+  moves: PlannedColumnMove[],
+): Map<string, TableColumnChange> {
   const deletes = sentTraits.reduce((byTable, intended) => {
     if (intended.kind !== "column" || intended.trait !== "deleted") {
       return byTable;
@@ -797,11 +833,16 @@ function columnChangesByTable({
     byTable.set(intended.table, change);
     return byTable;
   }, new Map<string, TableColumnChange>());
-  return newColumns.reduce((byTable, { table, before }) => {
+  const inserts = newColumns.reduce((byTable, { table, before }) => {
     if (before === undefined || byTable.has(table)) return byTable;
     byTable.set(table, { deletedColumns: [], after: "insert" });
     return byTable;
   }, deletes);
+  return moves.reduce((byTable, { table }) => {
+    const deletedColumns = byTable.get(table)?.deletedColumns ?? [];
+    byTable.set(table, { deletedColumns, after: "move" });
+    return byTable;
+  }, inserts);
 }
 
 function namedRuleKeys(entries: PlannedRuleRemoval[]): Set<string> {

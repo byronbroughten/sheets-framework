@@ -1,3 +1,5 @@
+import { Arr, type BlockMove } from "@byronbroughten/utils/arr";
+
 import type { ColumnMoveSpan } from "../02_SpreadsheetRaw/ClassTypes/StateRaw";
 
 export interface ColumnOrderMove {
@@ -65,16 +67,16 @@ export class TableColumnOrder {
     // A move to the first column lands outside the Table, so the columns before it move right instead (sheets-behaviour.md).
     return { colIndex: 0, count: colIndex, beforeColIndex: colIndex + 1 };
   }
-  move({ colIndex, count, beforeColIndex }: ColumnMoveSpan): this {
-    const block = this.columnIds.slice(colIndex, colIndex + count);
-    const rest = [
-      ...this.columnIds.slice(0, colIndex),
-      ...this.columnIds.slice(colIndex + count),
-    ];
-    const restBeforeIndex =
-      beforeColIndex > colIndex ? beforeColIndex - count : beforeColIndex;
-    rest.splice(restBeforeIndex, 0, ...block);
-    this.columnIds = rest;
+  move(span: ColumnMoveSpan): this {
+    this.columnIds = Arr.moveBlock(this.columnIds, blockMoveOf(span));
     return this;
   }
+}
+
+export function blockMoveOf({
+  colIndex,
+  count,
+  beforeColIndex,
+}: ColumnMoveSpan): BlockMove {
+  return { index: colIndex, count, beforeIndex: beforeColIndex };
 }
