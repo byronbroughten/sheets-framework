@@ -1,19 +1,24 @@
 import { Val } from "@byronbroughten/utils/val";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { type IdNameMapGeneric } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
 import { type PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState";
 import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {
   buildGridRows,
+  type FakeSheetProperties,
   type FakeSheetsService,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
+import { a1Notation } from "../testSupport/fakeSheetsService/a1Notation";
 import { fakeSpreadsheet } from "../testSupport/fakeSheetsService/fakeSpreadsheet";
+import { fakeTableSheet } from "../testSupport/fakeSheetsService/fakeTableSheet";
 import { parseIdNameMapFileSource } from "./parseIdNameMapFileSource";
-import { SyncCoordinator } from "./SyncCoordinator";
+import { SyncCoordinator, type SyncRun } from "./SyncCoordinator";
 import {
   bodyRowsWithNote,
+  columnConfigs,
   frame,
   itemAtEachFlush,
   type ItemAtFlush,
@@ -210,6 +215,127 @@ describe("SyncCoordinator.run Table deletion", () => {
           .sheet(itemGid)
           .conditionalFormats?.map(({ ranges }) => ranges?.[0]?.endRowIndex),
       ).toEqual([endRowIndex + 5]);
+    });
+  });
+
+  describe("its outside references", () => {
+    const logGid = getTableTraitByName("log", "sheetGid");
+    const logColumns = columnConfigs.log;
+    const logColumnNames = Object.keys(logColumns);
+    const formulaColumn = Val.assert(logColumnNames.at(-1), "a Log column");
+    const formulaLetter = a1Notation.columnLetters(
+      logColumnNames.indexOf(formulaColumn),
+    );
+    const nameHeader = columnConfigs.item.name.header;
+    const uncheckedNotice = {
+      kind: "text",
+      text: "A Table deletion's outside formulas are checked only in the API-access Tables' formula columns; a formula anywhere else that reads a deleted Table isn't listed.",
+    };
+
+    // The brace decompile matches the Sheets name the previous configs record, which for item is "item".
+    function logSheet(): FakeSheetProperties {
+      return fakeTableSheet.build({
+        sheetId: logGid,
+        title: "Log",
+        tableId: getTableTraitByName("log", "tableId"),
+        name: getTableTraitByName("log", "tableName"),
+        columnConfigs: logColumns,
+        columnNames: logColumnNames,
+        bodyRows: [
+          {
+            [formulaColumn]: {
+              value: 1,
+              isFormula: true,
+              formula: `=COUNTA(item[${nameHeader}])`,
+            },
+          },
+        ],
+      });
+    }
+
+    function previousItemAndLogMap(): IdNameMapGeneric {
+      const previous = previousItemMap();
+      return {
+        tables: {
+          ...previous.tables,
+          log: {
+            name: "log",
+            sheetGid: logGid,
+            columns: Object.fromEntries(
+              Object.entries(logColumns).map(([columnName, { columnId }]) => [
+                columnName,
+                columnId,
+              ]),
+            ),
+          },
+        },
+        tabs: {
+          ...previous.tabs,
+          [String(logGid)]: {
+            name: "log",
+            title: "Log",
+            tableIds: [getTableTraitByName("log", "tableId")],
+          },
+        },
+      };
+    }
+
+    function runDeleting(alterations: PendingAlterations): SyncRun {
+      seedFixture({ extraSheets: [logSheet()] });
+      return SyncCoordinator.init().run({
+        isSending: false,
+        intendedState: { alterations },
+        previousIdNameMap: previousItemAndLogMap(),
+        forcedTraits: [],
+        frame,
+      });
+    }
+
+    it("lists a formula in another API-access Table's formula column under Check before sending, and counts it on the plan item", () => {
+      const { result } = runDeleting(deleteItem);
+
+      expect(result.checks).toEqual([
+        {
+          kind: "outsideReferences",
+          subject: { table: "item" },
+          effect: "blank",
+          references: [
+            {
+              cell: `Log!${formulaLetter}5:${formulaLetter}5`,
+              formula: "=COUNTA(${item[name]})",
+            },
+          ],
+        },
+      ]);
+      expect(result.plan).toEqual([
+        {
+          subject: itemSubject,
+          what: "delete the Table",
+          effects: [{ kind: "outsideReferences", count: 1, effect: "blank" }],
+        },
+      ]);
+    });
+
+    it("says in a notice that formulas outside the API-access Tables' formula columns aren't checked", () => {
+      const { result } = runDeleting(deleteItem);
+
+      expect(result.notices).toContainEqual(uncheckedNotice);
+    });
+
+    it("leaves out a referencing formula in a Table deleted in the same run", () => {
+      const { result } = runDeleting({
+        tables: { item: { deleted: true }, log: { deleted: true } },
+      });
+
+      expect(result.checks).toEqual([]);
+      expect(result.plan.map(({ effects }) => effects)).toEqual([[], []]);
+    });
+
+    it("lists nothing and gives no notice when no Table is deleted", () => {
+      const { result } = runDeleting({});
+
+      expect(result.checks).toEqual([]);
+      expect(result.notices).not.toContainEqual(uncheckedNotice);
     });
   });
 

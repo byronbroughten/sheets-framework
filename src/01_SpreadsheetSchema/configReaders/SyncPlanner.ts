@@ -107,7 +107,7 @@ export interface PlannedRuleAddition {
 
 export interface SyncPlannerResult extends Pick<
   SyncRunResult,
-  "stops" | "plan"
+  "checks" | "stops" | "plan"
 > {
   isStopped: boolean;
   configs: { heldBack: SyncHeldBackTrait[] };
@@ -498,6 +498,8 @@ export class SyncPlanner {
       ({ intended }) => isStopped || !forcedNotHeld.has(addressKey(intended)),
     );
     return {
+      // The planner can't read what a send breaks outside its subject; the run fills these in from its live read.
+      checks: [],
       stops: [...sheetStops, ...stops],
       isStopped,
       plan: sends,
