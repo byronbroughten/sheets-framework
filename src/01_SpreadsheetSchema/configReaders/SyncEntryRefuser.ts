@@ -36,8 +36,12 @@ export const sendableTraits = {
   tab: new Set<string>([...tabTraits, ...sheetTraits.tab, "newTables"]),
   // A new tab's other traits would need sheet-property updates after its addSheet.
   newTab: new Set<string>(["title", "tables"]),
-  // A new Table's rules would need adds after its creation.
-  newTable: new Set<string>(["name", "columns", "gap"]),
+  newTable: new Set<string>([
+    "name",
+    "columns",
+    "gap",
+    "conditionalFormats.add",
+  ]),
   newTableColumn: new Set<string>([
     "header",
     "emptyValueAllowed",
@@ -94,7 +98,8 @@ export class SyncEntryRefuser {
         return [
           ...tableTraitRefusals(table, entry),
           ...braceRefuser.tableEntryRefusals(table, entry),
-          ...new RuleRefuser({ table, entry, columnNamesByTable }).refusals,
+          ...RuleRefuser.ofTableEntry({ table, entry, columnNamesByTable })
+            .refusals,
         ];
       },
     });
@@ -156,6 +161,15 @@ export class SyncEntryRefuser {
     return [
       ...refusedPaths(tab, newTableTraitPaths(first, at)),
       ...this._braceRefuser.newTableRefusals({ tab, newTable: first, at }),
+      ...RuleRefuser.ofNewTable({
+        tab,
+        newTable: first,
+        at,
+        columnNamesByTable: this._columnNamesByTable,
+      }).refusals,
+      ...ruleTextFormatPaths({
+        conditionalFormats: first.conditionalFormats,
+      }).map((path) => notSendableYet(tab, `${at}.${path}`)),
       ...others.map((_, index) =>
         notSendableYet(tab, `${tablesAt}[${index + 1}]`),
       ),

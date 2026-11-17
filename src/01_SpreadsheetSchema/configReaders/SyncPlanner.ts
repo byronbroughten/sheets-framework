@@ -89,6 +89,8 @@ export interface PlannedNewTable {
   name: string;
   placement: PlannedNewTablePlacement;
   columns: PlannedNewTableColumn[];
+  // Its `conditionalFormats.add`, compiled once the Table's created.
+  rules: WideRule[];
 }
 
 // One `conditionalFormats.remove` handle, by its Table's codebase name.
@@ -644,10 +646,12 @@ function plannedNewTable(
 export function unplacedNewTable({
   name,
   columns,
+  conditionalFormats,
 }: WideNewTable): Omit<PlannedNewTable, "placement"> {
   return {
     table: new SpreadsheetBaseSchema().titleToName(name),
     name,
+    rules: conditionalFormats?.add ?? [],
     columns: columns.map(
       ({ header, emptyValueAllowed, formula, columnType }) => ({
         header,

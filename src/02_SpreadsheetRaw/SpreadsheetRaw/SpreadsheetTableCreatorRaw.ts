@@ -38,16 +38,15 @@ export class SpreadsheetTableCreatorRaw extends SpreadsheetBaseRaw {
   createTable(props: CreateTableProps): CreatedTable {
     const { name, placement, columns, seedRows = [] } = props;
     validateSeedRows(name, columns, seedRows);
-    const created = createdIds(props);
+    const ids = createdIds(props);
     const size = {
       bodyRowCount: Math.max(minBodyRowCount, seedRows.length),
       columnCount: columns.length,
     };
     const origin = this._queueGridFor(name, placement, size);
     const { endRowIndex, endColumnIndex } = tableEnd(origin, size);
-    this.ss.gatherAddTableOperation({
-      tableId: created.tableId,
-      name,
+    const created = {
+      ...ids,
       range: {
         sheetId: placement.sheetGid,
         startRowIndex: origin.headerRowIndex,
@@ -55,6 +54,11 @@ export class SpreadsheetTableCreatorRaw extends SpreadsheetBaseRaw {
         startColumnIndex: origin.startColIndex,
         endColumnIndex,
       },
+    };
+    this.ss.gatherAddTableOperation({
+      tableId: created.tableId,
+      name,
+      range: created.range,
       columnProperties: columns.map(({ header, columnType }, columnIndex) => ({
         columnIndex,
         columnName: header,
@@ -66,7 +70,7 @@ export class SpreadsheetTableCreatorRaw extends SpreadsheetBaseRaw {
     this._fillCells(placement.sheetGid, origin, [
       {
         rowIndex: origin.headSheetRowIndex("columnId"),
-        values: created.columnIds,
+        values: ids.columnIds,
       },
       ...seedRows.map((values, rowIndex) => ({
         rowIndex: origin.sheetRowIndex(rowIndex),
@@ -222,7 +226,7 @@ function createdIds({
   idPrefix: idPrefixChoice,
   columns,
   tableId = randomTableId(),
-}: CreateTableProps): CreatedTable {
+}: CreateTableProps): Omit<CreatedTable, "range"> {
   const idPrefix =
     typeof idPrefixChoice === "string"
       ? idPrefixChoice

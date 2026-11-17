@@ -1,5 +1,7 @@
 import { Val } from "@byronbroughten/utils/val";
 
+import type { ModelableConditionalFormatRule } from "../00_Source/RawSource/ConditionalFormat";
+import type { BoundedGridRange } from "../00_Source/RawSource/RawSource";
 import {
   type ApiAccessChanges,
   type ApiAccessGrant,
@@ -14,6 +16,7 @@ import {
   type IdNameMapGeneric,
   mapTablesByLiveness,
 } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
+import { IntendedRule } from "../01_SpreadsheetSchema/configReaders/IntendedRule";
 import {
   makeImportLine,
   type TableConfigsBase,
@@ -42,6 +45,7 @@ import {
   IdPrefixesByTableId,
   type IdPrefixLabel,
 } from "../01_SpreadsheetSchema/idPrefixes";
+import { TableOrigin } from "../01_SpreadsheetSchema/TableOrigin";
 import type { CreatedTablePlacement } from "../02_SpreadsheetRaw/ClassTypes/StateRaw";
 import type { SheetRaw } from "../02_SpreadsheetRaw/SheetRaw";
 import {
@@ -155,7 +159,7 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
         sheetGidsInUse,
       );
       sheetGidsInUse.add(createdPlacement.sheetGid);
-      return {
+      const mintedTable = {
         ...newTable,
         tableId: randomTableId(),
         createdPlacement,
@@ -169,6 +173,9 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
           columnId: dimensionIds.col(idPrefix),
         })),
       };
+      // Thrown away: only a rule's position waits on where the Table lands, and its colour, condition and braces don't.
+      compiledRules(mintedTable, provisionalRange(mintedTable));
+      return mintedTable;
     });
   }
   private _createdPlacement(
@@ -197,7 +204,7 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
   // Each through the shared creation path; the run flushes them after every column write, which a beside placement can't follow.
   createTables(minted: MintedNewTable[]): this {
     for (const newTable of minted) {
-      this.ss.raw.createTable({
+      const { range } = this.ss.raw.createTable({
         name: newTable.name,
         placement: newTable.createdPlacement,
         idPrefix: newTable.idPrefix,
@@ -211,6 +218,10 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
           }),
         ),
       });
+      // Reversed, as each lands first, so the list's first rule ends on top.
+      for (const compiled of compiledRules(newTable, range).reverse()) {
+        this.ss.raw.gatherAddedTableConditionalFormatRule(compiled);
+      }
     }
     return this;
   }
@@ -390,6 +401,44 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
       ``,
     ].join("\n");
   }
+}
+
+// Each of a new Table's rules over the body rows of `range`, its columns left to right as its headers give them.
+function compiledRules(
+  { table, columns, rules }: MintedNewTable,
+  range: BoundedGridRange,
+): ModelableConditionalFormatRule[] {
+  const layout = {
+    headerTopLeft: {
+      rowIndex: range.startRowIndex,
+      colIndex: range.startColumnIndex,
+    },
+    endRowIndex: range.endRowIndex,
+    columnNamesLeftToRight: columns.map(({ column }) => column),
+  };
+  return rules.map((rule) =>
+    IntendedRule.compile({
+      tableKey: table,
+      sheetGid: range.sheetId,
+      layout,
+      rule,
+    }),
+  );
+}
+
+// Where the Table would sit alone on a tab, one body row deep.
+function provisionalRange({
+  createdPlacement,
+  columns,
+}: MintedNewTable): BoundedGridRange {
+  const origin = TableOrigin.expected();
+  return {
+    sheetId: createdPlacement.sheetGid,
+    startRowIndex: origin.headerRowIndex,
+    endRowIndex: origin.sheetRowIndex(1),
+    startColumnIndex: origin.startColIndex,
+    endColumnIndex: origin.sheetColIndex(columns.length),
+  };
 }
 
 function columnReferenceLabel(reference: string): string {
