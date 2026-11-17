@@ -1,3 +1,4 @@
+import { Arr } from "@byronbroughten/utils/arr";
 import { Val } from "@byronbroughten/utils/val";
 
 import type { ModelableConditionalFormatRule } from "../00_Source/RawSource/ConditionalFormat";
@@ -55,6 +56,7 @@ import {
   tablesAndTabsFileSource,
 } from "./configFileSource";
 import { SpreadsheetBaseOperator } from "./SpreadsheetBaseOperator";
+import { blockMoveOf } from "./TableColumnOrder";
 import { TableConfigsOperator } from "./TableConfigsOperator";
 
 // A Table a plan deletes: its codebase name and its ID.
@@ -485,7 +487,7 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
       ),
     };
   }
-  // Compiled before any send, so a bad brace throws with nothing sent; indexed for the flush after the column changes, past the rules they drop, which a move's batch leaves where they were.
+  // Compiled before any send, so a bad brace throws with nothing sent; indexed for the flush after the column changes, past the rules they drop, which a move's batch leaves where they were (sheets-behaviour.md, Scratch217K).
   compiledRuleRewrites({
     rewrites,
     moves,
@@ -787,16 +789,12 @@ function plannedLayoutOf({
     }),
     newColumns: newColumns.filter((newColumn) => newColumn.table === table),
   });
-  const columnNames = [...changed.columnNamesLeftToRight];
   // Each move's indexes are Table-relative, on the layout the one before leaves.
-  for (const move of moves) {
-    if (move.table !== table) continue;
-    const { colIndex, count, beforeColIndex } = move;
-    const block = columnNames.splice(colIndex, count);
-    const insertAt =
-      beforeColIndex > colIndex ? beforeColIndex - count : beforeColIndex;
-    columnNames.splice(insertAt, 0, ...block);
-  }
+  const columnNames = moves.reduce(
+    (names, move) =>
+      move.table === table ? Arr.moveBlock(names, blockMoveOf(move)) : names,
+    changed.columnNamesLeftToRight,
+  );
   return { ...changed, columnNamesLeftToRight: columnNames };
 }
 
