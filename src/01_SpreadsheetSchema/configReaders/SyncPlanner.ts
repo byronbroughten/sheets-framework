@@ -78,6 +78,9 @@ export interface PlannedNewTableColumn {
   header: string;
   column: string;
   emptyValueAllowed: boolean;
+  // In brace form, as the alterations give them.
+  formula?: string;
+  columnType?: ColumnTypeBaseline;
 }
 
 // One `newTabs` or `newTables` Table; `table` is the codebase name the regen gives its name.
@@ -101,6 +104,13 @@ export interface PlannedRuleReplacement {
   rule: WideRule;
 }
 
+// One `conditionalFormats.add` entry, by its Table's codebase name and its place in the list.
+export interface PlannedRuleAddition {
+  table: string;
+  position: number;
+  rule: WideRule;
+}
+
 export interface SyncPlannerResult extends Pick<
   SyncRunResult,
   "checks" | "stops" | "plan"
@@ -121,6 +131,8 @@ export interface SyncPlannerResult extends Pick<
   ruleRemovals: PlannedRuleRemoval[];
   // The rules the plan replaces, for the run to queue; empty when stopped.
   ruleReplacements: PlannedRuleReplacement[];
+  // The rules the plan adds, for the run to queue; empty when stopped.
+  ruleAdditions: PlannedRuleAddition[];
 }
 
 interface TableTraitAddress {
@@ -271,6 +283,22 @@ export const ruleReplacementLines = {
   },
 };
 
+// How a `conditionalFormats.add` entry reads on the plan, landed and didntLand lists.
+export const ruleAdditionLines = {
+  path({ position }: Pick<PlannedRuleAddition, "position">): string {
+    return `conditionalFormats.add[${position}]`;
+  },
+  sendLine(addition: PlannedRuleAddition): SyncSendLine {
+    return {
+      subject: {
+        table: addition.table,
+        path: ruleAdditionLines.path(addition),
+      },
+      what: "add the rule",
+    };
+  },
+};
+
 export function isSheetTrait(intended: IntendedTrait): boolean {
   return sheetTraits[intended.kind].has(intended.trait);
 }
@@ -390,6 +418,15 @@ export class SyncPlanner {
       })),
     );
   }
+  get ruleAdditions(): PlannedRuleAddition[] {
+    return entriesOf(this.alterations.tables).flatMap(([table, entry]) =>
+      (entry.conditionalFormats?.add ?? []).map((rule, position) => ({
+        table,
+        position,
+        rule,
+      })),
+    );
+  }
   plan({ previous, live, sheetStops = [] }: PlanProps): SyncPlannerResult {
     const stops: SyncConflict[] = [];
     const sends: SyncPlanItem[] = [];
@@ -447,12 +484,8 @@ export class SyncPlanner {
       }
     });
     // A Table a person deleted has nowhere to put one.
-    const newColumns = this.newColumns.filter(
-      ({ table }) => live.tables[table] !== undefined,
-    );
-    for (const newColumn of newColumns) {
-      sends.push({ ...newColumnLines.sendLine(newColumn), effects: [] });
-    }
+    const newColumns = onLiveTables(this.newColumns, live);
+    sends.push(...effectlessSends(newColumns, newColumnLines));
     // A tab a person deleted has nowhere to put one.
     const newTables = this.newTables.filter(
       ({ placement }) =>
@@ -460,21 +493,12 @@ export class SyncPlanner {
     );
     sends.push(...newTableSends(newTables));
     // A Table a person deleted took its rules with it.
-    const ruleRemovals = this.ruleRemovals.filter(
-      ({ table }) => live.tables[table] !== undefined,
-    );
-    for (const removal of ruleRemovals) {
-      sends.push({ ...ruleRemovalLines.sendLine(removal), effects: [] });
-    }
-    const ruleReplacements = this.ruleReplacements.filter(
-      ({ table }) => live.tables[table] !== undefined,
-    );
-    for (const replacement of ruleReplacements) {
-      sends.push({
-        ...ruleReplacementLines.sendLine(replacement),
-        effects: [],
-      });
-    }
+    const ruleRemovals = onLiveTables(this.ruleRemovals, live);
+    sends.push(...effectlessSends(ruleRemovals, ruleRemovalLines));
+    const ruleReplacements = onLiveTables(this.ruleReplacements, live);
+    sends.push(...effectlessSends(ruleReplacements, ruleReplacementLines));
+    const ruleAdditions = onLiveTables(this.ruleAdditions, live);
+    sends.push(...effectlessSends(ruleAdditions, ruleAdditionLines));
     const isStopped = stops.length + sheetStops.length > 0;
     const sentIfUnstopped = isStopped ? [] : sentTraits;
     const newColumnsIfUnstopped = isStopped ? [] : newColumns;
@@ -511,6 +535,7 @@ export class SyncPlanner {
       newTables: newTablesIfUnstopped,
       ruleRemovals: isStopped ? [] : ruleRemovals,
       ruleReplacements: isStopped ? [] : ruleReplacements,
+      ruleAdditions: isStopped ? [] : ruleAdditions,
     };
   }
   // Google resets every dropdown on a Table its column list is sent to, a newly set one included: docs/sheets-behaviour.md#creating-and-updating-tables.
@@ -581,19 +606,48 @@ export class SyncPlanner {
 }
 
 function plannedNewTable(
-  { name, columns }: WideNewTable,
+  newTable: WideNewTable,
   placement: PlannedNewTablePlacement,
 ): PlannedNewTable {
+  return { ...unplacedNewTable(newTable), placement };
+}
+
+// A new Table's entry named as the regen will name it, before it has a place.
+export function unplacedNewTable({
+  name,
+  columns,
+}: WideNewTable): Omit<PlannedNewTable, "placement"> {
   return {
     table: new SpreadsheetBaseSchema().titleToName(name),
     name,
-    placement,
-    columns: columns.map(({ header, emptyValueAllowed }) => ({
-      header,
-      column: columnNameOfHeader(header),
-      emptyValueAllowed: emptyValueAllowed ?? false,
-    })),
+    columns: columns.map(
+      ({ header, emptyValueAllowed, formula, columnType }) => ({
+        header,
+        column: columnNameOfHeader(header),
+        emptyValueAllowed: emptyValueAllowed ?? false,
+        ...(formula === undefined ? {} : { formula }),
+        ...(columnType === undefined ? {} : { columnType }),
+      }),
+    ),
   };
+}
+
+function onLiveTables<EN extends { table: string }>(
+  entries: EN[],
+  live: TraitReadings,
+): EN[] {
+  return entries.filter(({ table }) => live.tables[table] !== undefined);
+}
+
+interface SendLines<EN> {
+  sendLine(entry: EN): SyncSendLine;
+}
+
+function effectlessSends<EN>(
+  entries: EN[],
+  lines: SendLines<EN>,
+): SyncPlanItem[] {
+  return entries.map((entry) => ({ ...lines.sendLine(entry), effects: [] }));
 }
 
 // A new tab's own line comes once, before its first Table's.
@@ -784,22 +838,28 @@ function configTraitsOf({
   newTables,
   tabsByTable,
 }: ConfigTraitsProps): TraitReadings {
-  const createdColumns = [
+  const createdColumns: (PlannedNewTableColumn & { table: string })[] = [
     ...newColumns,
     ...newTables.flatMap(({ table, columns }) =>
       columns.map((column) => ({ table, ...column })),
     ),
   ];
-  const created = createdColumns.flatMap(
-    ({ table, column, header, emptyValueAllowed }) =>
-      [
-        { trait: "header", value: header },
-        { trait: "emptyValueAllowed", value: emptyValueAllowed },
-      ].map(({ trait, value }) => ({
-        address: { kind: "column" as const, table, column, trait },
-        value,
-      })),
-  );
+  const created = createdColumns.flatMap((createdColumn) => {
+    const { table, column, header, emptyValueAllowed, formula, columnType } =
+      createdColumn;
+    const traits: { trait: string; value: TraitValue | undefined }[] = [
+      { trait: "header", value: header },
+      { trait: "emptyValueAllowed", value: emptyValueAllowed },
+      { trait: "formula", value: formula },
+      { trait: "columnType", value: columnType },
+    ];
+    return traits.flatMap(({ trait, value }) => {
+      if (value === undefined) return [];
+      return [
+        { address: { kind: "column" as const, table, column, trait }, value },
+      ];
+    });
+  });
   const written = [
     ...sent.map((intended) => ({ address: intended, value: intended.value })),
     ...heldBack.map(({ intended, agreed }) => ({
