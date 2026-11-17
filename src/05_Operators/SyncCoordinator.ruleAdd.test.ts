@@ -188,6 +188,39 @@ describe("SyncCoordinator.run conditional-format rule add", () => {
     expect(result).toMatchObject({ outcome: { kind: "sent" }, didntLand: [] });
   });
 
+  it("lands an add equal to a rule the same run replaces away", () => {
+    const service = seedWithRules();
+
+    const { result, files } = runItem({
+      isSending: true,
+      alterations: {
+        tables: {
+          item: {
+            conditionalFormats: {
+              add: [
+                {
+                  ...blackWhenFalse,
+                  condition: { ...blackWhenFalse.condition, values: ["=TRUE"] },
+                  format: { backgroundColor: "#ff0000" },
+                },
+              ],
+              replace: { [firstHandle]: allOverThree },
+            },
+          },
+        },
+      },
+    });
+
+    expect(rulesLeft(service)).toEqual([
+      firstTrue,
+      allOverThreeRule,
+      secondTrue,
+    ]);
+    expect(result).toMatchObject({ outcome: { kind: "sent" }, didntLand: [] });
+    const emitted = Val.assert(files, "emitted files");
+    expect(emitted.alterations).toContain("makePendingAlterations({})");
+  });
+
   it("reports an add the refetch doesn't show under Didn't land, the entry staying pending", () => {
     const seeded = {
       ...itemSheet(),

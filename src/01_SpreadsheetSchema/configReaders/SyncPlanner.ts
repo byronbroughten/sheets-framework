@@ -472,12 +472,8 @@ export class SyncPlanner {
       }
     });
     // A Table a person deleted has nowhere to put one.
-    const newColumns = this.newColumns.filter(
-      ({ table }) => live.tables[table] !== undefined,
-    );
-    for (const newColumn of newColumns) {
-      sends.push({ ...newColumnLines.sendLine(newColumn), effects: [] });
-    }
+    const newColumns = onLiveTables(this.newColumns, live);
+    sends.push(...effectlessSends(newColumns, newColumnLines));
     // A tab a person deleted has nowhere to put one.
     const newTables = this.newTables.filter(
       ({ placement }) =>
@@ -485,27 +481,12 @@ export class SyncPlanner {
     );
     sends.push(...newTableSends(newTables));
     // A Table a person deleted took its rules with it.
-    const ruleRemovals = this.ruleRemovals.filter(
-      ({ table }) => live.tables[table] !== undefined,
-    );
-    for (const removal of ruleRemovals) {
-      sends.push({ ...ruleRemovalLines.sendLine(removal), effects: [] });
-    }
-    const ruleReplacements = this.ruleReplacements.filter(
-      ({ table }) => live.tables[table] !== undefined,
-    );
-    for (const replacement of ruleReplacements) {
-      sends.push({
-        ...ruleReplacementLines.sendLine(replacement),
-        effects: [],
-      });
-    }
-    const ruleAdditions = this.ruleAdditions.filter(
-      ({ table }) => live.tables[table] !== undefined,
-    );
-    for (const addition of ruleAdditions) {
-      sends.push({ ...ruleAdditionLines.sendLine(addition), effects: [] });
-    }
+    const ruleRemovals = onLiveTables(this.ruleRemovals, live);
+    sends.push(...effectlessSends(ruleRemovals, ruleRemovalLines));
+    const ruleReplacements = onLiveTables(this.ruleReplacements, live);
+    sends.push(...effectlessSends(ruleReplacements, ruleReplacementLines));
+    const ruleAdditions = onLiveTables(this.ruleAdditions, live);
+    sends.push(...effectlessSends(ruleAdditions, ruleAdditionLines));
     const isStopped = stops.length + sheetStops.length > 0;
     const sentIfUnstopped = isStopped ? [] : sentTraits;
     const newColumnsIfUnstopped = isStopped ? [] : newColumns;
@@ -623,6 +604,24 @@ function plannedNewTable(
       emptyValueAllowed: emptyValueAllowed ?? false,
     })),
   };
+}
+
+function onLiveTables<EN extends { table: string }>(
+  entries: EN[],
+  live: TraitReadings,
+): EN[] {
+  return entries.filter(({ table }) => live.tables[table] !== undefined);
+}
+
+interface SendLines<EN> {
+  sendLine(entry: EN): SyncSendLine;
+}
+
+function effectlessSends<EN>(
+  entries: EN[],
+  lines: SendLines<EN>,
+): SyncPlanItem[] {
+  return entries.map((entry) => ({ ...lines.sendLine(entry), effects: [] }));
 }
 
 // A new tab's own line comes once, before its first Table's.

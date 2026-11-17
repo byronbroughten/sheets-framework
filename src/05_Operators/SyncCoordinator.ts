@@ -307,12 +307,20 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       this.conditionalFormatConfigOperator.indexedRuleRemovals(
         planned.ruleRemovals,
       );
+    const columnChanges = { sentTraits: planned.sentTraits, newColumns };
+    const ruleReplacements =
+      this.conditionalFormatConfigOperator.compiledRuleReplacements({
+        replacements: planned.ruleReplacements,
+        removals: ruleRemovals,
+        additions: planned.ruleAdditions,
+        columnChanges,
+      });
     const ruleAdditions =
       this.conditionalFormatConfigOperator.compiledRuleAdditions({
         additions: planned.ruleAdditions,
         removals: ruleRemovals,
-        sentTraits: planned.sentTraits,
-        newColumns,
+        replacements: ruleReplacements,
+        columnChanges,
       });
     const applied: AppliedPlan = {
       accessChanges,
@@ -324,14 +332,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         newColumns,
       ),
       ruleRemovals,
-      ruleReplacements:
-        this.conditionalFormatConfigOperator.compiledRuleReplacements({
-          replacements: planned.ruleReplacements,
-          removals: ruleRemovals,
-          additions: ruleAdditions,
-          sentTraits: planned.sentTraits,
-          newColumns,
-        }),
+      ruleReplacements,
       ruleAdditions,
       reads: enteredDataReads({
         alterations,
