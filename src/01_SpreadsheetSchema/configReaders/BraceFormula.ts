@@ -113,16 +113,22 @@ export interface NamedColumn extends ConfiguredColumn {
   brace: string;
 }
 
+// A sheet reference's title, quoted or bare, and the lookbehind that keeps it from starting mid-word.
+const sheetTitle = /'(?:[^']|'')*'|[A-Za-z_][\w.]*/.source;
+const beforeSheetPrefix = /(?<![\w$.'])/.source;
+
 const formulaPatterns = {
   stringLiteral: /"(?:[^"]|"")*"/.source,
   brace: /\$\{(@?)([^{}[\]"@]+?)(?:\[(@?)([^{}[\]"@]+)\])?\}/.source,
   // Any `${…}`, read as a brace or not.
   anyBrace: /\$\{[^{}"]*\}/.source,
   liveReference: /([A-Za-z_][\w.]*)\[([^[\]"]+)\]/.source,
+  sheetPrefix: `${beforeSheetPrefix}(${sheetTitle})!`,
   // The lookarounds keep a function name such as LOG10( from reading as a cell.
-  a1Reference:
-    /(?<![\w$.'])((?:'(?:[^']|'')*'|[A-Za-z_][\w.]*)!)?(\$?)([A-Z]{1,3})(\$?)(\d+)?(?::(\$?)([A-Z]{1,3})(\$?)(\d+)?)?(?![\w$(])/
-      .source,
+  a1Reference: `${beforeSheetPrefix}((?:${sheetTitle})!)?${
+    /(\$?)([A-Z]{1,3})(\$?)(\d+)?(?::(\$?)([A-Z]{1,3})(\$?)(\d+)?)?(?![\w$(])/
+      .source
+  }`,
 } as const;
 
 // The match text and bracePattern's capture groups, counted off an empty match so a new group moves it too.
@@ -218,6 +224,31 @@ export const BraceFormula = {
           columnName: brace.columnName,
         },
       ];
+    });
+  },
+  // The Sheets name of each Table a `Table[Header]` reference outside a string literal or brace names.
+  liveTablesNamed({ formula }: Pick<FormulaText, "formula">): string[] {
+    const pattern = new RegExp(
+      `${bracePattern().source}|${formulaPatterns.liveReference}`,
+      "g",
+    );
+    return [...formula.matchAll(pattern)].flatMap((groups) => {
+      const reference = liveReferenceMatchOf([...groups]);
+      if (reference === undefined) return [];
+      return [reference.liveTable];
+    });
+  },
+  // The title each sheet reference outside a string literal or brace names.
+  sheetsNamed({ formula }: Pick<FormulaText, "formula">): string[] {
+    const { stringLiteral, anyBrace, sheetPrefix } = formulaPatterns;
+    const pattern = new RegExp(
+      `(${stringLiteral}|${anyBrace})|${sheetPrefix}`,
+      "g",
+    );
+    return [...formula.matchAll(pattern)].flatMap(([, skipped, title]) => {
+      if (skipped !== undefined || title === undefined) return [];
+      if (!title.startsWith("'")) return [title];
+      return [title.slice(1, -1).replaceAll("''", "'")];
     });
   },
   // Each brace and `Table[Header]` reference outside a string literal, under the names a regen gave it.

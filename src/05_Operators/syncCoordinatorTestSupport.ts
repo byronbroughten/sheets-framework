@@ -16,6 +16,7 @@ import {
   type FakeSheetsServiceOptions,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
+import { a1Notation } from "../testSupport/fakeSheetsService/a1Notation";
 import {
   type FakeBodyRow,
   type FakeTableColumn,
@@ -166,6 +167,81 @@ export function previousItemMap(): IdNameMapGeneric {
       [String(itemGid)]: { name: "item", title: "Item", tableIds: ["item"] },
     },
   };
+}
+
+const logGid = getTableTraitByName("log", "sheetGid");
+const logColumns = columnConfigs.log;
+const logColumnNames = Object.keys(logColumns);
+const logFormulaColumn = Val.assert(logColumnNames.at(-1), "a Log column");
+const logFormulaLetter = a1Notation.columnLetters(
+  logColumnNames.indexOf(logFormulaColumn),
+);
+// The top body cell of Log's formula column, as an outside-references check lists it.
+export const logFormulaCell = `Log!${logFormulaLetter}5:${logFormulaLetter}5`;
+
+// The dev Log Table with one formula in its last column; a brace decompile matches the Sheets name the previous configs record, which for item is "item".
+function logSheet(formula: string): FakeSheetProperties {
+  return fakeTableSheet.build({
+    sheetId: logGid,
+    title: "Log",
+    tableId: getTableTraitByName("log", "tableId"),
+    name: getTableTraitByName("log", "tableName"),
+    columnConfigs: logColumns,
+    columnNames: logColumnNames,
+    bodyRows: [{ [logFormulaColumn]: { value: 1, isFormula: true, formula } }],
+  });
+}
+
+function previousItemAndLogMap(): IdNameMapGeneric {
+  const previous = previousItemMap();
+  return {
+    tables: {
+      ...previous.tables,
+      log: {
+        name: "log",
+        sheetGid: logGid,
+        columns: Object.fromEntries(
+          Object.entries(logColumns).map(([columnName, { columnId }]) => [
+            columnName,
+            columnId,
+          ]),
+        ),
+      },
+    },
+    tabs: {
+      ...previous.tabs,
+      [String(logGid)]: {
+        name: "log",
+        title: "Log",
+        tableIds: [getTableTraitByName("log", "tableId")],
+      },
+    },
+  };
+}
+
+export const uncheckedOutsideFormulasNotice = {
+  kind: "text",
+  text: "A deletion's outside formulas are checked only in the API-access Tables' formula columns; a formula anywhere else that reads a deleted Table or tab isn't listed.",
+};
+
+interface BesideLogProps {
+  alterations: PendingAlterations;
+  logFormula: string;
+}
+
+// A dry run on Item and Log, Log's formula column holding logFormula.
+export function dryRunBesideLog({
+  alterations,
+  logFormula,
+}: BesideLogProps): SyncRun {
+  seedFixture({ extraSheets: [logSheet(logFormula)] });
+  return SyncCoordinator.init().run({
+    isSending: false,
+    intendedState: { alterations },
+    previousIdNameMap: previousItemAndLogMap(),
+    forcedTraits: [],
+    frame,
+  });
 }
 
 export interface RunOptions {
