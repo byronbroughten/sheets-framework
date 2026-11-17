@@ -7,7 +7,7 @@ A Google Sheets spreadsheet that a person operates directly, with an Apps Script
 ### Sheet layout
 
 **Table**:
-A Google Table (Insert > Table) laid over a block of a sheet's data; a sheet holds one or more. Each with **Let api access** starts on its Table header row, with at least one data row (a **blank row** counts). A Table deleted and inserted again is a different Table, even with the same name and columns, so runs read it as missing until the configs are regenerated. What a run does about a missing Table, or one outside the header zone: [`docs/architecture/table-placement.md`](./docs/architecture/table-placement.md).
+A Google Table (Insert > Table) laid over a block of a sheet's data; a sheet holds one or more. Each with **API access** starts on its Table header row, with at least one data row (a **blank row** counts). A Table deleted and inserted again is a different Table, even with the same name and columns, so runs read it as missing until the configs are regenerated. What a run does about a missing Table, or one outside the header zone: [`docs/architecture/table-placement.md`](./docs/architecture/table-placement.md).
 _Avoid_: range, data range, grid
 
 **Table reference**:
@@ -15,7 +15,7 @@ A formula that names a Table column by the Table's name and the column header �
 _Avoid_: structured reference, A1, cell address
 
 **Header zone**:
-The top rows of a sheet, across every column, where each Table with **Let api access** must have its Table header row. Its head rows then sit inside it too. It's four rows by default, so the header sits on row 4. A Table may move within it freely; one outside it stops any run that reads or writes that Table, or inserts a column on its sheet.
+The top rows of a sheet, across every column, where each Table with **API access** must have its Table header row. Its head rows then sit inside it too. It's four rows by default, so the header sits on row 4. A Table may move within it freely; one outside it stops any run that reads or writes that Table, or inserts a column on its sheet.
 _Avoid_: search area, Table zone, header band
 
 **Head rows**:
@@ -50,9 +50,9 @@ _Avoid_: empty row, placeholder row, spare row
 The short, readable code every row ID and column ID in a Table begins with, so you can tell at a glance which Table an ID belongs to. The app gives one to every Table it knows about, taken from the Table name. No two Tables share one, and renaming the Table doesn't change it.
 _Avoid_: sheet prefix, table prefix, ID code
 
-**Let api access**:
-The Table Config checkbox that says this Table is one the app knows about — not every Table, and not every catalogue row on Table Config.
-_Avoid_: enabled sheet, API sheet, known sheet, known Table
+**API access**:
+Whether a Table is one the app knows about, reads and writes — not every Table is. The app's own record of its Tables holds it, not the spreadsheet: a Table keeps it from one sync to the next, and only a developer's alteration grants or revokes it.
+_Avoid_: Let api access (the retired Table Config tick), enabled sheet, API sheet, known sheet, known Table
 
 **Edit protection**:
 Any protection the app finds on a sheet: an edit warning, an edit lock, or one it can't read as either, which it leaves alone.
@@ -62,25 +62,9 @@ _Avoid_: protected range (that is Google's name for the API object)
 A prompt Sheets shows anyone, the owner included, before they change a cell the app depends on or the shape of a tab it depends on (renaming it, deleting it, inserting a column); the change still goes through if they confirm.
 _Avoid_: warning (that is a run state), protection
 
-**Editable range**:
-A part of a warned floor tab left free of its edit warning, where a person's edit sticks. It skips a self-describing row's declared cell, so an edit there prompts.
-_Avoid_: hole, unprotected range (that is Google's API field), exception
-
 **Edit lock**:
 A cell only the editors it names can change; a lock that names none stops nobody.
 _Avoid_: protection, lock
-
-**Config-sheet floor**:
-Everything on the three config sheets that the app guarantees and restores on each config sync: tab titles, Table names, headers, column IDs, group headings, column types, Spreadsheet Config's Table menu space data cell, and the framework endpoints' columns. Edits to it are overwritten and reported ([`docs/generated-data/config-sheet-floor.md`](./docs/generated-data/config-sheet-floor.md)).
-_Avoid_: minimum floor, minimum headers, floor sheet
-
-**Floor seed**:
-The app's own declaration of what the config-sheet floor looks like: its structure, plus Table menu space's data value. A floor tab or column keeps the identity it was created with.
-_Avoid_: template, default config
-
-**Self-describing row**:
-A Table Config or Column Config row describing a config-sheet floor Table or floor column; its declared cell is enforced from the floor seed.
-_Avoid_: config-about-config row
 
 ### Endpoints
 
@@ -89,7 +73,7 @@ A unit of work the spreadsheet can be asked to do, wired to one column and trigg
 _Avoid_: handler, command, action
 
 **Framework endpoint**:
-An endpoint the framework itself provides, wired to a column on Spreadsheet Config. The config-sheet floor restores its column on every config sync, so it is present in every spreadsheet whatever endpoints the app adds, and an app's own endpoint can't be wired to a config-sheet column, so the two never share a column.
+An endpoint the framework itself provides, present in every spreadsheet whatever endpoints the app adds: Fill Row IDs, wired to the ID column of every Table with API access that has one. An app's own endpoint can't be wired to an ID column, so the two never share a column.
 _Avoid_: base endpoint, built-in endpoint, core endpoint, system endpoint
 
 **Runner**:
@@ -147,7 +131,7 @@ A column the operator made a checkbox: the type menu says Checkbox, or Insert > 
 _Avoid_: boolean column, tickbox column, flag column
 
 **Empty value allowed**:
-A box you tick against a column in Column Config to say that a blank in it is a real answer rather than something missing. Unticked, the app treats a blank there as missing and stops on it, naming the cell, unless the work reading it says what a blank means; ticked, it hands the blank on to whatever asked for it, and that work has to say what a missing value means.
+A column's declaration that a blank in it is a real answer rather than something missing. The app's own record of the column holds it, not the spreadsheet: it carries from one sync to the next, only a developer's alteration changes it, and a new column starts without it unless its alteration says otherwise. Without it, the app treats a blank there as missing and stops on it, naming the cell, unless the work reading it says what a blank means; with it, the app hands the blank on to whatever asked for it, and that work has to say what a missing value means.
 _Avoid_: nullable, optional column, blank allowed
 
 **Untyped**:
@@ -155,7 +139,7 @@ Said of a column whose type menu, checkbox validation, and first-data-row number
 _Avoid_: unset, automatic, missing type
 
 **Value source**:
-A column of a Table with **Let api access** that a dropdown on such a Table offers as its options, by naming that Table column as the dropdown's range. A Table's **Name column** or ID column as a value source makes the dropdown refer to that Table's rows, so a row added there is an option at once; any other value source is a fixed list, and a value added to it counts only after the next config sync. A dropdown typed from a list of items, or from a range that isn't a Table column, has no value source.
+A column of a Table with **API access** that a dropdown on such a Table offers as its options, by naming that Table column as the dropdown's range. A Table's **Name column** or ID column as a value source makes the dropdown refer to that Table's rows, so a row added there is an option at once; any other value source is a fixed list, and a value added to it counts only after the next sync. A dropdown typed from a list of items, or from a range that isn't a Table column, has no value source.
 _Avoid_: Value Config (now just one app's Table), lookup column, options column
 
 **Name column**:

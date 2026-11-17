@@ -41,12 +41,12 @@ One line per rule. The reasoning and worked examples are one file away. Open a r
 
 ## Comments
 
-- **The framework's file-level navigation blocks are the six listed in the reasoning file**; a new one is the exception.
+- **The framework's file-level navigation blocks are the five listed in the reasoning file**; a new one is the exception.
 
 ## Error handling & validation
 
 - **`Val.assert(value, "label")` for "this shouldn't be missing" guards**, never a bare `!`; lint rejects `!`.
-- **Read and validate in one step; reach for a marked read (`valueOrEmpty`, `valueNotEmpty`) only where the call site's requirement differs from its column's** Empty value allowed declaration.
+- **Read and validate in one step; reach for a marked read (`valueOrEmpty`, `valueNotEmpty`) only where the call site's requirement differs from its column's** `emptyValueAllowed` declaration.
 - **`try`/`catch` has no established convention yet**; don't generalize from its one use.
 - **`value`/`valueOrEmpty` throw on a row never fetched**, so a decision that branches on a cell queues its fetch in the same cycle, or says at the call site what an unfetched row means.
 
