@@ -837,6 +837,11 @@ export function deletedTableOf(subject: SyncSubject): string | undefined {
   return subject.table;
 }
 
+export function deletedTabOf(subject: SyncSubject): string | undefined {
+  if (!("tab" in subject) || subject.path !== "deleted") return undefined;
+  return subject.tab;
+}
+
 // Both comparison and display, so a column type's key order can't read as a change.
 export function valueText(value: TraitValue | undefined): string {
   if (value === undefined) return absentText;

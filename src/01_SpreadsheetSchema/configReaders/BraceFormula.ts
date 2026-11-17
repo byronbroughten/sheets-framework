@@ -119,6 +119,8 @@ const formulaPatterns = {
   // Any `${…}`, read as a brace or not.
   anyBrace: /\$\{[^{}"]*\}/.source,
   liveReference: /([A-Za-z_][\w.]*)\[([^[\]"]+)\]/.source,
+  // A sheet reference's prefix, its title quoted or bare.
+  sheetPrefix: /(?<![\w$.'])(?:'((?:[^']|'')*)'|([A-Za-z_][\w.]*))!/.source,
   // The lookarounds keep a function name such as LOG10( from reading as a cell.
   a1Reference:
     /(?<![\w$.'])((?:'(?:[^']|'')*'|[A-Za-z_][\w.]*)!)?(\$?)([A-Z]{1,3})(\$?)(\d+)?(?::(\$?)([A-Z]{1,3})(\$?)(\d+)?)?(?![\w$(])/
@@ -219,6 +221,34 @@ export const BraceFormula = {
         },
       ];
     });
+  },
+  // The Sheets name of each Table a `Table[Header]` reference outside a string literal or brace names.
+  liveTablesNamed({ formula }: Pick<FormulaText, "formula">): string[] {
+    const pattern = new RegExp(
+      `${bracePattern().source}|${formulaPatterns.liveReference}`,
+      "g",
+    );
+    return [...formula.matchAll(pattern)].flatMap((groups) => {
+      const reference = liveReferenceMatchOf([...groups]);
+      if (reference === undefined) return [];
+      return [reference.liveTable];
+    });
+  },
+  // The title each sheet reference outside a string literal or brace names.
+  sheetsNamed({ formula }: Pick<FormulaText, "formula">): string[] {
+    const { stringLiteral, anyBrace, sheetPrefix } = formulaPatterns;
+    const pattern = new RegExp(
+      `(${stringLiteral}|${anyBrace})|${sheetPrefix}`,
+      "g",
+    );
+    return [...formula.matchAll(pattern)].flatMap(
+      ([, skipped, quoted, bare]) => {
+        if (skipped !== undefined) return [];
+        if (quoted !== undefined) return [quoted.replaceAll("''", "'")];
+        if (bare !== undefined) return [bare];
+        return [];
+      },
+    );
   },
   // Each brace and `Table[Header]` reference outside a string literal, under the names a regen gave it.
   renamed({ tableKey, formula, renames }: FormulaRenameProps): string {
