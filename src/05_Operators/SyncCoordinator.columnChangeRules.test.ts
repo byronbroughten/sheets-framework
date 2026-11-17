@@ -31,7 +31,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("SyncCoordinator.run rules after a column insert or delete", () => {
+describe("SyncCoordinator.run rules after a column insert, delete or move", () => {
   const sheet = itemSheet({
     bodyRows: [{ id: "r:itm:one" }, { id: "r:itm:two" }, { id: "r:itm:three" }],
   });
@@ -207,6 +207,123 @@ describe("SyncCoordinator.run rules after a column insert or delete", () => {
           "couldn't be rewritten, and the insert may leave it pointing at the wrong column",
       }),
     ]);
+  });
+
+  describe("after a move", () => {
+    // On a column no move here cuts or pastes into once the band's insert lands: the fake replays only a cut under a rule naming neither.
+    const idFormula = `=\${@id}=""`;
+
+    function idReadingRule(names: string[]): SheetsRule {
+      return formulaRule(
+        rangeOver(0, names.length),
+        BraceFormula.compileForRule({
+          tableKey: "item",
+          formula: idFormula,
+          layout: layoutOf(names),
+        }),
+      );
+    }
+
+    function namesMoved(
+      names: string[],
+      { column, before }: { column: string; before: string },
+    ): string[] {
+      const moved = names.filter((name) => name !== column);
+      moved.splice(moved.indexOf(before), 0, column);
+      return moved;
+    }
+
+    // Leaves the note column, under the hand-drawn rule, uncut.
+    const countBeforeName = { column: "requiredCount", before: "name" };
+    const moveAlterations: PendingAlterations = {
+      tables: {
+        item: {
+          columns: {
+            [countBeforeName.column]: { before: countBeforeName.before },
+          },
+        },
+      },
+    };
+
+    it("rewrites a whole-Table rule back inside the Table, in the move's batch", () => {
+      const service = seedWith([idReadingRule(columnNames), handDrawnRule]);
+
+      const { result } = runItem({
+        isSending: true,
+        alterations: moveAlterations,
+      });
+
+      expect(rulesLeft(service)).toEqual([
+        idReadingRule(namesMoved(columnNames, countBeforeName)),
+        handDrawnRule,
+      ]);
+      expect(result).toMatchObject({
+        outcome: { kind: "sent" },
+        stops: [],
+        didntLand: [],
+      });
+      expect(result.plan).toEqual([
+        {
+          subject: { table: "item", column: "requiredCount", path: "before" },
+          what: "set to name",
+          effects: [
+            { kind: "rulesRewritten", table: "item", count: 1, after: "move" },
+          ],
+        },
+      ]);
+    });
+
+    it("rewrites after a move that follows a delete, on the layout both leave", () => {
+      const service = seedWith([idReadingRule(columnNames), handDrawnRule]);
+      const idBeforeCount = { column: "id", before: "requiredCount" };
+
+      const { result } = runItem({
+        isSending: true,
+        alterations: {
+          tables: {
+            item: {
+              columns: {
+                name: { deleted: true },
+                [idBeforeCount.column]: { before: idBeforeCount.before },
+              },
+            },
+          },
+        },
+      });
+
+      const namesLeft = columnNames.filter((name) => name !== "name");
+      expect(rulesLeft(service)).toEqual([
+        idReadingRule(namesMoved(namesLeft, idBeforeCount)),
+        handDrawnRule,
+      ]);
+      expect(result).toMatchObject({ outcome: { kind: "sent" }, stops: [] });
+      expect(
+        result.plan.flatMap(({ effects }) =>
+          effects.filter(({ kind }) => kind === "rulesRewritten"),
+        ),
+      ).toEqual([
+        { kind: "rulesRewritten", table: "item", count: 1, after: "move" },
+      ]);
+    });
+
+    it("lists a hand-drawn rule on a dry run", () => {
+      seedWith([handDrawnRule]);
+
+      const { result } = runItem({
+        isSending: false,
+        alterations: moveAlterations,
+      });
+
+      expect(result.checks).toEqual([
+        expect.objectContaining({
+          kind: "handDrawnRule",
+          table: "item",
+          formula: "=TRUE",
+          cause:
+            "couldn't be rewritten, and the move may leave it pointing at the wrong column",
+        }),
+      ]);
+    });
   });
 
   it("sends no rule after a header rename", () => {

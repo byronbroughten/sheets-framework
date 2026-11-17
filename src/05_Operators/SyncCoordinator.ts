@@ -163,6 +163,8 @@ interface AppliedPlan {
   ruleAdditions: CompiledRuleAddition[];
   ruleRespans: CompiledRuleRespan[];
   ruleRewrites: CompiledRuleRewrite[];
+  // The column deletes' and inserts' rewrites, on the layout they leave: a moved Table's are sent again in ruleRewrites, after its move.
+  reshapeRuleRewrites: CompiledRuleRewrite[];
   reads: EnteredDataReads;
 }
 
@@ -342,11 +344,16 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       namesAtTableCreation(withDeletions.sentTraits, withDeletions.newTables),
     );
     const columnChanges = { sentTraits: withDeletions.sentTraits, newColumns };
+    const columnMoves = this.columnConfigOperator.planColumnMoves(
+      withDeletions.sentTraits,
+      newColumns,
+    );
     // Planned from the live read rather than an alteration, so a stopped run plans none.
     const columnChangeRules = withDeletions.isStopped
       ? noColumnChangeRules
       : this.conditionalFormatConfigOperator.columnChangeRules({
           columnChanges,
+          moves: columnMoves,
           removals: withDeletions.ruleRemovals,
           replacements: withDeletions.ruleReplacements,
         });
@@ -383,11 +390,22 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       : this.conditionalFormatConfigOperator.compiledRuleRespans({
           ...ruleSends,
           replacements: withDeletions.ruleReplacements,
+          moves: columnMoves,
         });
     const ruleRewrites =
       this.conditionalFormatConfigOperator.compiledRuleRewrites({
         ...ruleSends,
         rewrites: columnChangeRules.rewrites,
+        moves: columnMoves,
+      });
+    const reshapeRuleRewrites =
+      this.conditionalFormatConfigOperator.compiledRuleRewrites({
+        ...ruleSends,
+        rewrites: this.conditionalFormatConfigOperator.reshapeRewrites(
+          columnChangeRules.rewrites,
+          columnChanges,
+        ),
+        moves: [],
       });
     const planned: SyncPlannerResult = {
       ...withDeletions,
@@ -406,15 +424,13 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       sentTraits: planned.sentTraits,
       newColumns,
       newTables,
-      columnMoves: this.columnConfigOperator.planColumnMoves(
-        planned.sentTraits,
-        newColumns,
-      ),
+      columnMoves,
       ruleRemovals,
       ruleReplacements,
       ruleAdditions,
       ruleRespans,
       ruleRewrites,
+      reshapeRuleRewrites,
       reads: enteredDataReads({
         alterations,
         sentTraits: planned.sentTraits,
@@ -744,7 +760,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       throw error;
     }
   }
-  // Column deletes and inserts with the replaced, re-spanned, rewritten and added rules compiled against the layout they leave, then moves, then new Tables, each flush alone: every later write is indexed by the layout the one before leaves.
+  // Column deletes and inserts with the replaced, re-spanned, rewritten and added rules compiled against the layout they leave, then moves with the moved Tables' rewrites, then new Tables, each flush alone: every later write is indexed by the layout the one before leaves.
   private _flushPlan({
     sentTraits,
     newColumns,
@@ -753,15 +769,23 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     ruleAdditions,
     ruleRespans,
     ruleRewrites,
+    reshapeRuleRewrites,
     columnMoves,
   }: AppliedPlan): void {
     this.ss.batchUpdateGSheets();
     this.columnConfigOperator.updateDeletionsAndInserts(sentTraits, newColumns);
     this.conditionalFormatConfigOperator
-      .replaceRules([...ruleReplacements, ...ruleRespans, ...ruleRewrites])
+      .replaceRules([
+        ...ruleReplacements,
+        ...ruleRespans,
+        ...reshapeRuleRewrites,
+      ])
       .addRules(ruleAdditions);
     this.ss.batchUpdateGSheets();
     this.columnConfigOperator.moveColumns(columnMoves);
+    this.conditionalFormatConfigOperator.replaceRules(
+      ruleRewrites.filter(({ after }) => after === "move"),
+    );
     this.ss.batchUpdateGSheets();
     if (newTables.length === 0) return;
     this.tableConfigOperator.createTables(newTables);
@@ -852,18 +876,25 @@ interface ColumnChangeRuleEffectsProps {
   newColumns: MintedNewColumn[];
 }
 
-// Each deleted column's item lists the rules going with it; a Table's rewrites go on its first delete item, or else its first insert's, never an append's.
+// Each deleted column's item lists the rules going with it; a Table's rewrites go on its first move item when it moves, else its first delete item, else its first insert's, never an append's.
 function withColumnChangeRuleEffects({
   plan,
   rules: { removals, dropped, rewrites },
   newColumns,
 }: ColumnChangeRuleEffectsProps): SyncPlanItem[] {
   const rewrittenTables = new Set(rewrites.map(({ table }) => table));
+  const movedTables = new Set(
+    rewrites.flatMap(({ table, after }) => (after === "move" ? [table] : [])),
+  );
   const rewriteItems = new Set(
     [...rewrittenTables].flatMap((table) => {
       const ofTable = plan.filter(
         ({ subject }) => "table" in subject && subject.table === table,
       );
+      if (movedTables.has(table)) {
+        const move = ofTable.find(({ subject }) => isMovedColumn(subject));
+        return move === undefined ? [] : [move];
+      }
       const insert = newColumns.find(
         (newColumn) =>
           newColumn.table === table && newColumn.before !== undefined,
@@ -905,10 +936,16 @@ function withColumnChangeRuleEffects({
 }
 
 function isDeletedColumn(subject: SyncSubject): boolean {
+  return isColumnTrait(subject, "deleted");
+}
+
+function isMovedColumn(subject: SyncSubject): boolean {
+  return isColumnTrait(subject, "before");
+}
+
+function isColumnTrait(subject: SyncSubject, path: string): boolean {
   return (
-    "table" in subject &&
-    subject.column !== undefined &&
-    subject.path === "deleted"
+    "table" in subject && subject.column !== undefined && subject.path === path
   );
 }
 

@@ -104,9 +104,10 @@ interface ColumnInsert extends ColumnAt {
   headCells: NewColumnHeadCells;
 }
 
-// Indexed in the layout the run's column deletions and inserts leave.
+// Indexed in the layout the run's column deletions and inserts leave; `table` is the codebase name a rule rewrite looks it up by.
 export interface PlannedColumnMove extends ColumnMoveSpan {
   tableId: string;
+  table: string;
 }
 
 interface ColumnOrderProps {
@@ -587,14 +588,16 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
         });
         if (span === undefined) return [];
         order.move(span);
-        return [{ tableId, ...span }];
+        return [{ tableId, table: tableKey, ...span }];
       },
     );
   }
   // Queued once the run's deletions and inserts have flushed, since their indexes are the layout those leave.
   moveColumns(moves: PlannedColumnMove[]): this {
-    for (const { tableId, ...span } of moves) {
-      this.ss.raw.table(tableId).moveColumns(span);
+    for (const { tableId, colIndex, count, beforeColIndex } of moves) {
+      this.ss.raw
+        .table(tableId)
+        .moveColumns({ colIndex, count, beforeColIndex });
     }
     return this;
   }
