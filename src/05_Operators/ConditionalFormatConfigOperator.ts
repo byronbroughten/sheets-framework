@@ -1,6 +1,7 @@
 import { Val } from "@byronbroughten/utils/val";
 
 import type { ModelableConditionalFormatRule } from "../00_Source/RawSource/ConditionalFormat";
+import type { GridRangeProps } from "../00_Source/RawSource/RawSource";
 import type { RuleLayout } from "../01_SpreadsheetSchema/configReaders/BraceFormula";
 import { columnConfigsByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
 import { IntendedRule } from "../01_SpreadsheetSchema/configReaders/IntendedRule";
@@ -442,6 +443,20 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
       },
     );
   }
+  // Read before any send, so only the rules live before the run count; an add outranks each one sharing a cell with it.
+  addedFirstEffects(addition: CompiledRuleAddition): SyncPlanEffect[] {
+    const rules = this._tableRulesByTable([addition]).get(addition.table);
+    if (rules === undefined) return [];
+    const outranks = [...rules.indexes].flatMap(([handle, { index }]) => {
+      const rule = Val.assert(rules.tab.rules[index], `rule ${handle}`);
+      const sharesCell = rule.ranges.some((range) =>
+        addition.compiled.ranges.some((added) => rangesShareCell(range, added)),
+      );
+      return sharesCell ? [handle] : [];
+    });
+    if (outranks.length === 0) return [];
+    return [{ kind: "addedFirst", outranks }];
+  }
   // Each at index 0, last first, so the list's first rule ends first and every rule already there stays below them.
   addRules(additions: CompiledRuleAddition[]): this {
     for (const { sheetGid, compiled } of [...additions].reverse()) {
@@ -686,6 +701,18 @@ function refetchedCopyCount(
     rules.indexes,
     RuleRecords.sharedHandleOf(compiled, rules.table),
   );
+}
+
+// An unbounded side runs to the sheet's edge, as Sheets reads it.
+function rangesShareCell(left: GridRangeProps, right: GridRangeProps): boolean {
+  if (left.sheetId !== right.sheetId) return false;
+  const sharesRows =
+    left.startRowIndex < (right.endRowIndex ?? Infinity) &&
+    right.startRowIndex < (left.endRowIndex ?? Infinity);
+  const sharesColumns =
+    (left.startColumnIndex ?? 0) < (right.endColumnIndex ?? Infinity) &&
+    (right.startColumnIndex ?? 0) < (left.endColumnIndex ?? Infinity);
+  return sharesRows && sharesColumns;
 }
 
 function handleEntries(

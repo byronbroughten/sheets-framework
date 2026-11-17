@@ -42,6 +42,7 @@ import {
   deletedTableOf,
   isSheetTrait,
   type PlanProps,
+  ruleAdditionLines,
   ruleRespanLines,
   SyncPlanner,
   type SyncPlannerResult,
@@ -358,7 +359,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     const planned: SyncPlannerResult = {
       ...withDeletions,
       plan: [
-        ...withDeletions.plan,
+        ...this._withAddedFirstEffects(withDeletions.plan, ruleAdditions),
         ...ruleRespans.map((respan) => ruleRespanLines.planItem(respan)),
       ],
     };
@@ -507,6 +508,25 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       };
     });
     return { ...planned, plan, checks: [...planned.checks, ...checks] };
+  }
+  // A pure planner can't read the live rules an add goes in ahead of, so the run fills them in from its live read.
+  private _withAddedFirstEffects(
+    plan: SyncPlanItem[],
+    additions: CompiledRuleAddition[],
+  ): SyncPlanItem[] {
+    if (additions.length === 0) return plan;
+    return plan.map((item) => {
+      const addition = additions.find(
+        ({ table, position }) =>
+          "table" in item.subject &&
+          item.subject.table === table &&
+          item.subject.path === ruleAdditionLines.path({ position }),
+      );
+      if (addition === undefined) return item;
+      const effects =
+        this.conditionalFormatConfigOperator.addedFirstEffects(addition);
+      return { ...item, effects: [...item.effects, ...effects] };
+    });
   }
   // Its own send after the regen, planned from the fresh configs; it writes only blank cells, so the entered-data gate holds nothing.
   private _fillBlankIds(): SyncPlanItem[] {
