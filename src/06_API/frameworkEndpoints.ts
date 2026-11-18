@@ -35,9 +35,7 @@ function fillRowIdsEndpoint(
     action: (ss) => {
       ss.fillMissingRowIds([tableName]);
       ss.batchUpdateGSheets();
-      ss.toast(
-        `Filled the blank IDs in "${ss.table(tableName).raw.sheetTitle}".`,
-      );
+      ss.toast(`Filled the blank IDs in "${ss.table(tableName).raw.name}".`);
     },
   };
 }

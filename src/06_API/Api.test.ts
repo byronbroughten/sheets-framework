@@ -479,7 +479,7 @@ describe("Api.handleSheetEdit, the Fill Row IDs endpoint", () => {
             5: ["", false, "needs an ID", ""],
             6: ["", false, "needs one too", ""],
           }),
-          table: { endRowIndex },
+          table: { endRowIndex, name: "Run items" },
         },
       ],
     });
@@ -501,7 +501,7 @@ describe("Api.handleSheetEdit, the Fill Row IDs endpoint", () => {
       expect.stringMatching(/^r:rit:/),
     ]);
     expect(new Set(ids).size).toBe(3);
-    expect(toasts).toEqual(['Filled the blank IDs in "Run item".']);
+    expect(toasts).toEqual(['Filled the blank IDs in "Run items".']);
     expect(actionRowCells(grid)).toEqual([false, null, null, null]);
   });
 });
