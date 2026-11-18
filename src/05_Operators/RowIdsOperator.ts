@@ -28,16 +28,6 @@ export class RowIdsOperator extends SpreadsheetBaseOperator {
   get tableConfigOperator(): TableConfigsOperator {
     return new TableConfigsOperator(this.operatorProps);
   }
-  // From the pre-send read, so the stop comes before any send.
-  validateIdPrefixes(): void {
-    const idPrefixesByTableId = this.tableConfigOperator.idPrefixesByTableId();
-    for (const { table } of this._liveIdColumns()) {
-      if (idPrefixesByTableId.get(table.tableId)) continue;
-      throw new Error(
-        `Table "${table.name}" has an ID column but no ID prefix, so sync stopped before sending.`,
-      );
-    }
-  }
   // Not a claim (#286): a cell holding anything is left alone.
   checkboxPlan(): SyncPlanItem[] {
     return this._columnsLackingCheckbox().map(({ tableKey }) =>

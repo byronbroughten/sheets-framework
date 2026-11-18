@@ -284,7 +284,6 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     this._readLive();
     // The ID-prefix guard runs before the column-ID write it guards.
     this.tableConfigOperator.validateIdPrefixesUnchanged();
-    this.rowIdsOperator.validateIdPrefixes();
     const checkboxPlan = this.rowIdsOperator.checkboxPlan();
     const readings = this._traitReadings();
     const plannedSends = planner.plan({

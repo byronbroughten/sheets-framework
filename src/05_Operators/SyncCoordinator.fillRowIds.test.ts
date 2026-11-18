@@ -1,7 +1,6 @@
 import { Val } from "@byronbroughten/utils/val";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { IdPrefixesByTableId } from "../01_SpreadsheetSchema/idPrefixes";
 import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {
@@ -17,7 +16,6 @@ import {
   runItem,
   seedFixture,
 } from "./syncCoordinatorTestSupport";
-import { TableConfigsOperator } from "./TableConfigsOperator";
 
 beforeEach(() => {
   stubLogger();
@@ -93,19 +91,6 @@ describe("SyncCoordinator.run Fill Row IDs", () => {
         effects: [],
       },
     ]);
-  });
-
-  it("stops before any send when a Table with an ID column has no ID prefix, naming the Table", () => {
-    const { batchUpdateCount } = seedFixture({ item: { bodyRows: [{}] } });
-    vi.spyOn(
-      TableConfigsOperator.prototype,
-      "idPrefixesByTableId",
-    ).mockReturnValue(new IdPrefixesByTableId(new Map()));
-
-    expect(() => runItem({ isSending: true })).toThrow(
-      'Table "Item" has an ID column but no ID prefix, so sync stopped before sending.',
-    );
-    expect(batchUpdateCount()).toBe(0);
   });
 
   it("sends a Fill Row IDs checkbox into the empty action-row cell above ID, listed in the plan, and the configs take it", () => {
