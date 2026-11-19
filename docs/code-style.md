@@ -58,7 +58,7 @@ One line per rule. The reasoning and worked examples are one file away. Open a r
 - **A registry keyed by a finite name union takes a plain `: Type` annotation, not `makeStructuredConfig`**, which stays for the generated config files.
 - **A custom generic utility type goes in `@byronbroughten/utils`**, whose `AGENTS.md` places it, unless it transforms a framework concept, as `NotEmpty` does.
 
-## Where `for…in` appears
+## Where for…in appears
 
 - **`for…in` appears only in `@byronbroughten/utils`**, where the structural utilities live.
 
