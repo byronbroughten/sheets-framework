@@ -7,13 +7,13 @@ import {
 } from "./SyncPlanner";
 import {
   fillRowIdsName,
-  heldBackRuleWhat,
+  heldBackChangeWhat,
   type SyncCreatedColumn,
   type SyncCreatedTable,
   type SyncDryRunOutcome,
   type SyncDryRunResult,
   type SyncFlushStoppedOutcome,
-  type SyncHeldBackRule,
+  type SyncHeldBackChange,
   type SyncLandedItem,
   type SyncNotice,
   type SyncPlanItem,
@@ -58,7 +58,7 @@ export interface SyncRunPlanned {
   rowIds: SyncRunRowIds;
   nameRewriter: SyncNameRewriter;
   // Left out of the plan, so a send lists each as not sent and a dry run as a notice.
-  heldBackRules: SyncHeldBackRule[];
+  heldBackChanges: SyncHeldBackChange[];
 }
 
 interface SyncRunCommonProps {
@@ -95,7 +95,7 @@ export class SyncRunResultBuilder {
     createdTables,
     rowIds,
     nameRewriter,
-    heldBackRules,
+    heldBackChanges,
   }: SyncRunPlanned): SyncRunResult {
     const common = this._common({
       refusals: [],
@@ -109,7 +109,7 @@ export class SyncRunResultBuilder {
     if (!this.isSending) {
       const notices: SyncNotice[] = [
         ...common.notices,
-        ...heldBackRules.map((rule) => ({
+        ...heldBackChanges.map((rule) => ({
           kind: "ruleHeldBack" as const,
           ...rule,
         })),
@@ -142,7 +142,7 @@ export class SyncRunResultBuilder {
         }),
       }),
       landed,
-      notSent: heldBackRules.map((rule) =>
+      notSent: heldBackChanges.map((rule) =>
         asRewritten(heldBackLine(rule), nameRewriter),
       ),
       didntLand: didntLand.map((line) => asRewritten(line, nameRewriter)),
@@ -224,8 +224,8 @@ function asRewritten<IT extends { subject: SyncSubject }>(
   return { ...item, subject: nameRewriter.asRewritten(item.subject) };
 }
 
-function heldBackLine(rule: SyncHeldBackRule): SyncSendLine {
-  return { subject: rule.subject, what: heldBackRuleWhat(rule) };
+function heldBackLine(rule: SyncHeldBackChange): SyncSendLine {
+  return { subject: rule.subject, what: heldBackChangeWhat(rule) };
 }
 
 function landedSend({ subject, what }: SyncSendLine): SyncLandedItem {
