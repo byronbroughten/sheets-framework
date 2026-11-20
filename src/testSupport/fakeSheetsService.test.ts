@@ -1310,11 +1310,18 @@ function measuredRuleSheet(): FakeSheetProperties {
 }
 
 function measuredRange(a1: string): GoogleAppsScript.Sheets.Schema.GridRange {
+  return a1GridRange(measuredGid, a1);
+}
+
+function a1GridRange(
+  sheetId: number,
+  a1: string,
+): GoogleAppsScript.Sheets.Schema.GridRange {
   const match = /^([A-Z]+)(\d+):([A-Z]+)(\d+)$/.exec(a1);
   const [, startCol = "A", startRow = "1", endCol = "A", endRow = "1"] =
     match ?? [];
   return {
-    sheetId: measuredGid,
+    sheetId,
     startRowIndex: Number(startRow) - 1,
     endRowIndex: Number(endRow),
     startColumnIndex: a1Notation.columnIndex(startCol),
@@ -1580,24 +1587,37 @@ describe("stubSheetsService replays rules under a Table-bounded column move as m
 
 const edgeGid = 337;
 
-function edgeTable(
-  tableId: string,
-  startColumnIndex: number,
-  headers: string[],
-): FakeTable {
+interface EdgeTable {
+  tableId: string;
+  startColumnIndex?: number;
+  endRowIndex?: number;
+  headers: string[];
+  columnIds?: string[];
+}
+
+function edgeTable({
+  tableId,
+  startColumnIndex = 0,
+  endRowIndex = 6,
+  headers,
+  columnIds,
+}: EdgeTable): FakeTable {
   return {
     tableId,
     name: tableId,
     startRowIndex: 3,
     startColumnIndex,
-    endRowIndex: 6,
+    endRowIndex,
     endColumnIndex: startColumnIndex + headers.length,
-    headRows: { 0: headers },
+    headRows: {
+      0: headers,
+      ...(columnIds === undefined ? {} : { 3: columnIds }),
+    },
   };
 }
 
 function edgeRange(a1: string): GoogleAppsScript.Sheets.Schema.GridRange {
-  return { ...measuredRange(a1), sheetId: edgeGid };
+  return a1GridRange(edgeGid, a1);
 }
 
 function edgeTableRanges(
@@ -1616,7 +1636,9 @@ describe("stubSheetsService replays the grid-edge measurements (sheets-framework
           sheetId: edgeGid,
           title: "Scratch337A",
           rows: buildGridRows({ 4: ["a", 1], 5: ["b", 2] }),
-          tables: [edgeTable("s337a", 0, ["Name", "Amount"])],
+          tables: [
+            edgeTable({ tableId: "s337a", headers: ["Name", "Amount"] }),
+          ],
         },
       ],
     });
@@ -1647,8 +1669,12 @@ describe("stubSheetsService replays the grid-edge measurements (sheets-framework
             5: ["b", 2, null, "y", 20],
           }),
           tables: [
-            edgeTable("s337l", 0, ["Name", "Amount"]),
-            edgeTable("s337r", 3, ["Label", "Count"]),
+            edgeTable({ tableId: "s337l", headers: ["Name", "Amount"] }),
+            edgeTable({
+              tableId: "s337r",
+              startColumnIndex: 3,
+              headers: ["Label", "Count"],
+            }),
           ],
         },
       ],
@@ -1694,14 +1720,12 @@ describe("stubSheetsService replays the grid-edge measurements (sheets-framework
             6: ["a3", "b3", "c3", "d3"],
           }),
           tables: [
-            {
-              ...edgeTable("s337c", 0, ["One", "Two", "Three", "Four"]),
+            edgeTable({
+              tableId: "s337c",
               endRowIndex: 7,
-              headRows: {
-                3: ["c:1", "c:2", "c:3", "c:4"],
-                0: ["One", "Two", "Three", "Four"],
-              },
-            },
+              headers: ["One", "Two", "Three", "Four"],
+              columnIds: ["c:1", "c:2", "c:3", "c:4"],
+            }),
           ],
         },
       ],
