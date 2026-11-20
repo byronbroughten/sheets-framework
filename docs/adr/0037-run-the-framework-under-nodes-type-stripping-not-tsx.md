@@ -1,6 +1,8 @@
 # Run the framework under Node's type stripping, not tsx
 
-The framework's bin, the chores it loads and `@byronbroughten/utils`' source run as plain `node file.ts` under Node's own type stripping, with no `tsx`. This works because the framework is used from a workspace or a linked clone: Node follows the `node_modules` symlink to the package's real path, and refuses to strip types only for a file really inside `node_modules`. Running under Node alone shapes the source in three ways:
+The framework's bin, the chores it loads and `@byronbroughten/utils`' source run as plain `node file.ts` under Node's own type stripping, with no `tsx`. This works because the framework is used from a workspace or a linked clone: Node follows the `node_modules` symlink to the package's real path, and refuses to strip types only for a file really inside `node_modules`.
+
+## What running under Node alone asks of the source
 
 - **Every relative import carries `.ts`**, checked by `tsc` under `nodenext` with `allowImportingTsExtensions`. Node resolves no extensionless or `.js` specifier to a `.ts` file. The rollup preset and utils' build set `rewriteRelativeImportExtensions`.
 - **A subclass field with no initializer is `declare`**, and `erasableSyntaxOnly` is on. Node's stripping ignores `useDefineForClassFields: false`, so it would turn such a field into a define that resets a value a base constructor set, while the Apps Script bundle keeps assign semantics. `declare` makes the two runtimes the same, and a lint selector enforces it.
