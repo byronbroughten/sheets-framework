@@ -7,11 +7,13 @@ import {
 } from "./SyncPlanner";
 import {
   fillRowIdsName,
+  heldBackRuleWhat,
   type SyncCreatedColumn,
   type SyncCreatedTable,
   type SyncDryRunOutcome,
   type SyncDryRunResult,
   type SyncFlushStoppedOutcome,
+  type SyncHeldBackRule,
   type SyncLandedItem,
   type SyncNotice,
   type SyncPlanItem,
@@ -55,6 +57,8 @@ export interface SyncRunPlanned {
   createdTables: SyncCreatedTable[];
   rowIds: SyncRunRowIds;
   nameRewriter: SyncNameRewriter;
+  // Left out of the plan, so a send lists each as not sent and a dry run as a notice.
+  heldBackRules: SyncHeldBackRule[];
 }
 
 interface SyncRunCommonProps {
@@ -91,6 +95,7 @@ export class SyncRunResultBuilder {
     createdTables,
     rowIds,
     nameRewriter,
+    heldBackRules,
   }: SyncRunPlanned): SyncRunResult {
     const common = this._common({
       refusals: [],
@@ -101,7 +106,16 @@ export class SyncRunResultBuilder {
       nameRewriter,
     });
     if (planned.isStopped) return this._unsent(common, { kind: "stopped" });
-    if (!this.isSending) return dryRunResult(common, { kind: "ready" });
+    if (!this.isSending) {
+      const notices: SyncNotice[] = [
+        ...common.notices,
+        ...heldBackRules.map((rule) => ({
+          kind: "ruleHeldBack" as const,
+          ...rule,
+        })),
+      ];
+      return dryRunResult({ ...common, notices }, { kind: "ready" });
+    }
     const isLanded = hasLanded(didntLand);
     const landed: SyncLandedItem[] = [
       ...planned.plan
@@ -127,6 +141,9 @@ export class SyncRunResultBuilder {
         }),
       }),
       landed,
+      notSent: heldBackRules.map((rule) =>
+        asRewritten(heldBackLine(rule), nameRewriter),
+      ),
       didntLand: didntLand.map((line) => asRewritten(line, nameRewriter)),
     };
   }
@@ -202,6 +219,13 @@ function asRewritten<IT extends { subject: SyncSubject }>(
 ): IT {
   if (nameRewriter === undefined) return item;
   return { ...item, subject: nameRewriter.asRewritten(item.subject) };
+}
+
+function heldBackLine(rule: SyncHeldBackRule): SyncSendLine {
+  return {
+    subject: { table: rule.table, path: rule.path },
+    what: heldBackRuleWhat(rule),
+  };
 }
 
 function landedSend({ subject, what }: SyncSendLine): SyncLandedItem {

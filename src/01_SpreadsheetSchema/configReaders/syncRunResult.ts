@@ -369,7 +369,28 @@ export type SyncNotice =
   | { kind: "idFirst"; table: string }
   | SyncTableGoneNotice
   | SyncTabGoneNotice
+  | SyncRuleHeldBackNotice
   | { kind: "text"; text: string };
+
+// A rule add or replace at `path` on `table`, whose columns `shiftedBy`'s column insert or delete shifts this run; it stays in alterations.ts and is sent next run.
+export interface SyncHeldBackRule {
+  table: string;
+  path: string;
+  shiftedBy: string;
+}
+
+// A dry run's word for a held-back rule change, which a send lists as not sent.
+export interface SyncRuleHeldBackNotice extends SyncHeldBackRule {
+  kind: "ruleHeldBack";
+}
+
+// One phrase for the not-sent line and the dry run's notice.
+export function heldBackRuleWhat({
+  table,
+  shiftedBy,
+}: Omit<SyncHeldBackRule, "path">): string {
+  return `held back: ${shiftedBy}'s column change shifts ${table}'s columns this run, so it is sent next run`;
+}
 
 // A Table the previous configs hold that a person deleted from the sheet.
 export interface SyncTableGoneNotice {

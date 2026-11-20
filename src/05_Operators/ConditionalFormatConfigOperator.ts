@@ -35,6 +35,7 @@ import {
 import type { WideRule } from "../01_SpreadsheetSchema/configReaders/SyncPlanner/wideAlterations";
 import type {
   SyncCheck,
+  SyncHeldBackRule,
   SyncNoSuchRuleStop,
   SyncPlanEffect,
   SyncSendLine,
@@ -186,6 +187,12 @@ interface RuleFateProps {
   rules: TableRules;
   change: TableColumnChange;
   owned: OwnedTableRule;
+}
+
+export interface HeldBackRuleChangesProps {
+  additions: PlannedRuleAddition[];
+  replacements: PlannedRuleReplacement[];
+  columnChanges: PlannedColumnChanges;
 }
 
 // An add compiled against the planned layout; `copiesAfter` is how many rules with its shared handle the Table holds once the run's sends land.
@@ -359,6 +366,43 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
           handle: replacement.handle,
         },
       ];
+    });
+  }
+  // Not compiled on a shift sync doesn't compute: the change waits for the next run, whose read has the shifted layout.
+  heldBackRuleChanges({
+    additions,
+    replacements,
+    columnChanges,
+  }: HeldBackRuleChangesProps): SyncHeldBackRule[] {
+    const shifting = shiftingTables(columnChanges);
+    if (shifting.size === 0) return [];
+    const changes = [
+      ...additions.map(({ table, ...addition }) => ({
+        table,
+        path: ruleAdditionLines.path(addition),
+      })),
+      ...replacements.map(({ table, ...replacement }) => ({
+        table,
+        path: ruleReplacementLines.path(replacement),
+      })),
+    ];
+    const rulesByTable = this._tableRulesByTable([
+      ...changes,
+      ...[...shifting].map((table) => ({ table })),
+    ]);
+    return changes.flatMap(({ table, path }): SyncHeldBackRule[] => {
+      const rules = rulesByTable.get(table);
+      if (rules === undefined) return [];
+      const shiftedBy = [...shifting].find((other) => {
+        const neighbour = rulesByTable.get(other);
+        return (
+          other !== table &&
+          neighbour !== undefined &&
+          isShiftedBy(rules, neighbour)
+        );
+      });
+      if (shiftedBy === undefined) return [];
+      return [{ table, path, shiftedBy }];
     });
   }
   // Compiled before any send, so a bad colour or brace throws with nothing sent; indexed for the flush after the removals', past the adds sent ahead of it.
@@ -815,6 +859,31 @@ function reshapedSheetGids(
     return rules === undefined ? [] : [rules.sheetGid];
   });
   return new Set(gids);
+}
+
+// An append inserts its column into the tab too, so it shifts a Table to its right; a move's gap insert and vacated delete cancel out there.
+function shiftingTables({
+  sentTraits,
+  newColumns,
+}: PlannedColumnChanges): Set<string> {
+  const deleting = sentTraits.flatMap((intended) =>
+    intended.kind === "column" && intended.trait === "deleted"
+      ? [intended.table]
+      : [],
+  );
+  return new Set([...deleting, ...newColumns.map(({ table }) => table)]);
+}
+
+// A neighbour to the left on the same tab sharing any of the Table's rows; one sharing only some is refused when its change is gathered.
+function isShiftedBy(rules: TableRules, neighbour: TableRules): boolean {
+  if (neighbour.sheetGid !== rules.sheetGid) return false;
+  const { layout } = rules.table;
+  const neighbourLayout = neighbour.table.layout;
+  return (
+    neighbourLayout.headerTopLeft.colIndex < layout.headerTopLeft.colIndex &&
+    neighbourLayout.headerTopLeft.rowIndex < layout.endRowIndex &&
+    layout.headerTopLeft.rowIndex < neighbourLayout.endRowIndex
+  );
 }
 
 // An append leaves every rule where it was, so only a column placed before another counts as an insert; a move, flushed last, names the change on a Table it touches.
