@@ -3,9 +3,12 @@ import type { TabsByTable } from "../SyncPlanner";
 import type { SyncRefusal, SyncSubject } from "../syncRunResult";
 import {
   entriesOf,
+  moveBeforePath,
+  moveColumnPath,
   newColumnPath,
   type WideAlterations,
   type WideColumnEntry,
+  type WideColumnGroupMove,
   type WideNewTable,
   type WideTableEntry,
 } from "./wideAlterations";
@@ -131,8 +134,22 @@ export class DeletionRefuser {
           `${at}.${newColumnPath(index)}`,
         ),
       ),
+      ...this._moveTouches(table, entry.moves ?? []),
       ...this._ruleTouches(table, entry.conditionalFormats, at),
     ];
+  }
+  private _moveTouches(table: string, moves: WideColumnGroupMove[]): Touch[] {
+    const at = `tables.${table}`;
+    return moves.flatMap(({ columns, before }, index) => [
+      ...columns.map((column, columnIndex) => ({
+        targets: this._columnTargets(table, column),
+        touchedBy: `${at}.${moveColumnPath({ index, columnIndex })}`,
+      })),
+      {
+        targets: this._columnTargets(table, before),
+        touchedBy: `${at}.${moveBeforePath(index)}`,
+      },
+    ]);
   }
   private _columnEntryTouches(
     table: string,

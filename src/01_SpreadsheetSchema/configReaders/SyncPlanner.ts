@@ -6,8 +6,11 @@ import type { PendingAlterations } from "./intendedState";
 import { DeletionRefuser } from "./SyncPlanner/DeletionRefuser";
 import {
   entriesOf,
+  isMovePath,
+  movePath,
   newColumnPath,
   type WideAlterations,
+  type WideColumnGroupMove,
   type WideNewTable,
   type WideRule,
 } from "./SyncPlanner/wideAlterations";
@@ -69,6 +72,13 @@ export interface PlannedNewColumn {
   header: string;
   before?: string;
   emptyValueAllowed: boolean;
+}
+
+// One `moves` group, by its Table's codebase name and its columns' previous names.
+export interface PlannedColumnGroupMove extends WideColumnGroupMove {
+  table: string;
+  // The group's path in its Table entry, as `moves[0]`.
+  path: string;
 }
 
 // A tab the run adds, or one already there by its codebase name, with `gap` empty columns right of its rightmost Table.
@@ -138,6 +148,8 @@ export interface SyncPlannerResult extends Pick<
   sentTraits: IntendedTrait[];
   // The columns the plan creates, for the run to queue; empty when stopped.
   newColumns: PlannedNewColumn[];
+  // The `moves` groups not already in place, for the run to queue; empty when stopped.
+  columnGroupMoves: PlannedColumnGroupMove[];
   // The Tables the plan creates, for the run to queue; empty when stopped.
   newTables: PlannedNewTable[];
   // The traits of the tabs the plan creates, each `tab` and tab `before` named as the regen will name it; empty when stopped.
@@ -225,6 +237,39 @@ export const newColumnLines = {
   },
   isSubject(subject: SyncSubject): boolean {
     return "table" in subject && subject.path === newColumnLines.path;
+  },
+};
+
+// How a `moves` group reads on the plan, already-met, landed and didntLand lists.
+export const columnGroupMoveLines = {
+  sendLine({
+    table,
+    path,
+    columns,
+    before,
+  }: PlannedColumnGroupMove): SyncSendLine {
+    return {
+      subject: { table, path },
+      what: `move ${columns.join(", ")} before ${before}`,
+    };
+  },
+  isSubject(subject: SyncSubject): boolean {
+    return (
+      "table" in subject &&
+      subject.column === undefined &&
+      subject.path !== undefined &&
+      isMovePath(subject.path)
+    );
+  },
+  // Its columns sit together, in its order, immediately before its target; order is never in the configs, so live alone decides it.
+  isInPlace(
+    { table, columns, before }: PlannedColumnGroupMove,
+    live: TraitReadings,
+  ): boolean {
+    const liveColumns = live.tables[table]?.columns ?? {};
+    return columns.every((column, index) =>
+      isSameValue(liveColumns[column]?.before, columns[index + 1] ?? before),
+    );
   },
 };
 
@@ -382,6 +427,11 @@ const stopWords = {
     label: "a person deleted this column",
     cause: "The column is in the configs but no longer on the sheet.",
   },
+  groupColumnDeleted: {
+    label: "a person deleted a column this group names",
+    cause:
+      "A column the group names is in the configs but no longer on the sheet.",
+  },
 } as const;
 
 const absentText = "(none)";
@@ -473,6 +523,16 @@ export class SyncPlanner {
       })),
     );
   }
+  get columnGroupMoves(): PlannedColumnGroupMove[] {
+    return entriesOf(this.alterations.tables).flatMap(([table, entry]) =>
+      (entry.moves ?? []).map(({ columns, before }, index) => ({
+        table,
+        path: movePath(index),
+        columns,
+        before,
+      })),
+    );
+  }
   get ruleAdditions(): PlannedRuleAddition[] {
     return entriesOf(this.alterations.tables).flatMap(([table, entry]) =>
       (entry.conditionalFormats?.add ?? []).map((rule, position) => ({
@@ -554,6 +614,14 @@ export class SyncPlanner {
     // A Table a person deleted has nowhere to put one.
     const newColumns = onLiveTables(this.newColumns, live);
     sends.push(...effectlessSends(newColumns, newColumnLines));
+    const groupMoves = groupMovesByOutcome(
+      onLiveTables(this.columnGroupMoves, live),
+      live,
+    );
+    const columnGroupMoves = groupMoves.toSend;
+    stops.push(...groupMoves.stops);
+    alreadyMet.push(...groupMoves.inPlace);
+    sends.push(...effectlessSends(columnGroupMoves, columnGroupMoveLines));
     // A tab a person deleted has nowhere to put one.
     const newTables = this.newTables.filter(
       ({ placement }) =>
@@ -607,6 +675,7 @@ export class SyncPlanner {
       }),
       sentTraits: sentIfUnstopped,
       newColumns: newColumnsIfUnstopped,
+      columnGroupMoves: isStopped ? [] : columnGroupMoves,
       newTables: newTablesIfUnstopped,
       newTabTraits: newTabTraitsIfUnstopped,
       ruleRemovals: isStopped ? [] : ruleRemovals,
@@ -760,6 +829,46 @@ function effectlessSends<EN>(
   lines: SendLines<EN>,
 ): SyncPlanItem[] {
   return entries.map((entry) => ({ ...lines.sendLine(entry), effects: [] }));
+}
+
+interface GroupMovesByOutcome {
+  toSend: PlannedColumnGroupMove[];
+  inPlace: SyncSendLine[];
+  stops: SyncConflict[];
+}
+
+// A group naming a column a person deleted stops the run; one already in place is met, so a rerun moves nothing.
+function groupMovesByOutcome(
+  groups: PlannedColumnGroupMove[],
+  live: TraitReadings,
+): GroupMovesByOutcome {
+  return groups.reduce<GroupMovesByOutcome>(
+    (byOutcome, group) => {
+      const line = columnGroupMoveLines.sendLine(group);
+      const liveColumns = live.tables[group.table]?.columns ?? {};
+      const gone = [...group.columns, group.before].filter(
+        (column) => liveColumns[column] === undefined,
+      );
+      if (gone.length > 0) {
+        byOutcome.stops.push({
+          kind: "conflict",
+          subject: line.subject,
+          ...stopWords.groupColumnDeleted,
+          yours: line.what,
+          // Order is never in the configs, so they hold no agreed group.
+          agreed: absentText,
+          live: `no ${gone.join(", ")}`,
+          isColumnGone: true,
+        });
+      } else if (columnGroupMoveLines.isInPlace(group, live)) {
+        byOutcome.inPlace.push({ ...line, what: "already in place" });
+      } else {
+        byOutcome.toSend.push(group);
+      }
+      return byOutcome;
+    },
+    { toSend: [], inPlace: [], stops: [] },
+  );
 }
 
 // A new tab's own line comes once, before its first Table's.

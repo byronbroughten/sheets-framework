@@ -5,6 +5,7 @@ import {
   heldBackRuleWhat,
   type SyncBeforeFirstColumnStop,
   type SyncCheck,
+  type SyncClashingMoves,
   type SyncConfigs,
   type SyncConflict,
   type SyncCreatedTable,
@@ -486,8 +487,11 @@ function tableRefusalText(
   if (refusal.kind === "removedAndReplaced") {
     return [
       `${refusal.removedAt} removes the rule this handle names, and ${refusal.path} replaces it in the same run.`,
-      "Keep one of the two, then rerun.",
+      keepOneText,
     ];
+  }
+  if (refusal.kind === "clashingMoves") {
+    return [clashingMovesText[refusal.clash](refusal), keepOneText];
   }
   if (refusal.kind === "renamedColumn") {
     return [
@@ -497,6 +501,24 @@ function tableRefusalText(
   }
   return unknownBraceText(refusal);
 }
+
+// Why the two paths of a `moves` clash can't both hold.
+const clashingMovesText: Record<
+  SyncClashingMoves["clash"],
+  (refusal: SyncClashingMoves) => string
+> = {
+  sameBefore: ({ path, otherPath, column }) =>
+    `${path} puts its group before ${column}, as ${otherPath} does: only one group can sit right before it.`,
+  repeatedColumn: ({ path, otherPath, column }) =>
+    `${path} moves ${column}, as ${otherPath} does: a column can sit in only one group.`,
+  movedBefore: ({ path, otherPath, column }) =>
+    `${path} puts its group before ${column}, which ${otherPath} moves: a group's target can't itself move.`,
+  ownBefore: ({ path, otherPath, column }) =>
+    `${path} moves ${column}, and ${otherPath} places it too: a column takes one place a run.`,
+};
+
+// The one phrase for two entries that can't both land.
+const keepOneText = "Keep one of the two, then rerun.";
 
 // The one phrase for two new headers giving one column name.
 const newColumnNameOwnText =
@@ -777,9 +799,12 @@ const forceNeeds =
 
 function waysOut(conflict: SyncConflict): [string, string][] {
   const { yours, live } = conflict;
+  // A deleted column leaves no live value to set the entry to.
   const adopt: [string, string] = [
     "adopt",
-    `Remove the entry, or set it to ${live}. Free, but your change to this trait is given up.`,
+    conflict.isColumnGone === true
+      ? "Remove the entry. Free, but your change is given up."
+      : `Remove the entry, or set it to ${live}. Free, but your change to this trait is given up.`,
   ];
   const ask: [string, string] = [
     "ask",

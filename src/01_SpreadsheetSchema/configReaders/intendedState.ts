@@ -47,6 +47,12 @@ interface NewColumn<CN extends string> extends ColumnTraits {
   before?: CN;
 }
 
+// Its columns, in order, sit together immediately before `before`; no group's `before` may be a column any group moves, so every group can hold at once.
+interface ColumnGroupMove<CN extends string> {
+  columns: CN[];
+  before: CN;
+}
+
 interface NewTableColumn extends ColumnTraits {
   header: string;
 }
@@ -93,6 +99,8 @@ interface TableTraits<CN extends string, CE extends object> {
   letApiAccess?: boolean;
   columns?: { [C in CN]?: CE };
   newColumns?: NewColumn<CN>[];
+  // Applied in list order.
+  moves?: ColumnGroupMove<CN>[];
   conditionalFormats?: ConditionalFormatAlterations<CN | NewColumnName>;
 }
 

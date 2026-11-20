@@ -21,11 +21,13 @@ import {
   type IntendedTrait,
   newColumnLines,
   newTableLines,
+  type PlannedColumnGroupMove,
   type PlannedNewColumn,
   type PlannedNewTable,
   type PlanReadings,
   type TraitReadings,
 } from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
+import type { WideColumnGroupMove } from "../01_SpreadsheetSchema/configReaders/SyncPlanner/wideAlterations";
 import {
   beforeFirstColumnText,
   type SyncBeforeFirstColumnStop,
@@ -110,6 +112,18 @@ interface ColumnInsert extends ColumnAt {
 export interface PlannedColumnMove extends ColumnMoveSpan {
   tableId: string;
   table: string;
+}
+
+interface ColumnMovesProps {
+  sent: IntendedTrait[];
+  minted: MintedNewColumn[];
+  groupMoves: PlannedColumnGroupMove[];
+}
+
+// Columns to sit together, in order, immediately before `before`, all by previous names.
+interface OrderedColumns extends WideColumnGroupMove {
+  tableId: string;
+  tableKey: string;
 }
 
 interface ColumnOrderProps {
@@ -572,38 +586,63 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
       .sort((first, second) => second.colIndex - first.colIndex);
   }
   // Before any queue, so a throw sends nothing; each move is indexed in the layout the run's deletions, inserts and earlier moves leave.
-  planColumnMoves(
-    sent: IntendedTrait[],
-    minted: MintedNewColumn[],
-  ): PlannedColumnMove[] {
+  planColumnMoves({
+    sent,
+    minted,
+    groupMoves,
+  }: ColumnMovesProps): PlannedColumnMove[] {
     const deleted = new Set(
       this._sentColumnTraits(sent, "deleted").map(({ columnId }) => columnId),
     );
+    // One order per Table, so each move is indexed in the layout the earlier ones leave.
     const orders = new Map<string, TableColumnOrder>();
-    return this._sentColumnTraits(sent, "before").flatMap(
-      ({
+    const columnMoves = this._sentColumnTraits(sent, "before").map(
+      ({ tableId, tableKey, columnName, value }) => ({
         tableId,
         tableKey,
-        columnId,
-        columnName,
-        value,
-      }): PlannedColumnMove[] => {
-        const order =
-          orders.get(tableId) ??
-          this._columnOrderAfterChanges({ tableId, tableKey, deleted, minted });
-        orders.set(tableId, order);
-        const before = String(value);
+        columns: [columnName],
+        before: String(value),
+      }),
+    );
+    // After the per-column moves, so each group is indexed in the layout those leave.
+    const columnGroupMoves = groupMoves.map(({ table, columns, before }) => ({
+      tableId: this.tableConfigOperator.tableIdOf(table),
+      tableKey: table,
+      columns,
+      before,
+    }));
+    return [...columnMoves, ...columnGroupMoves].flatMap((ordered) => {
+      const { tableId, tableKey } = ordered;
+      const order =
+        orders.get(tableId) ??
+        this._columnOrderAfterChanges({ tableId, tableKey, deleted, minted });
+      orders.set(tableId, order);
+      return this._plannedMoves(order, ordered);
+    });
+  }
+  // Last column first, each before the one after it in the group, so the group ends in its order before its target.
+  private _plannedMoves(
+    order: TableColumnOrder,
+    { tableId, tableKey, columns, before }: OrderedColumns,
+  ): PlannedColumnMove[] {
+    const sequence = [...columns, before];
+    return columns
+      .map((column, index) => ({
+        column,
+        before: Val.assert(sequence[index + 1], `column after ${column}`),
+      }))
+      .reverse()
+      .flatMap(({ column, before: target }): PlannedColumnMove[] => {
         const span = order.moveSpan({
-          columnId,
-          beforeColumnId: this._columnIdOf(tableKey, before),
-          column: columnName,
-          before,
+          columnId: this._columnIdOf(tableKey, column),
+          beforeColumnId: this._columnIdOf(tableKey, target),
+          column,
+          before: target,
         });
         if (span === undefined) return [];
         order.move(span);
         return [{ tableId, table: tableKey, ...span }];
-      },
-    );
+      });
   }
   // Queued once the run's deletions and inserts have flushed, since their indexes are the layout those leave.
   moveColumns(moves: PlannedColumnMove[]): this {

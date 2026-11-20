@@ -615,7 +615,7 @@ describe("SyncRunReport's refusals before the read", () => {
   it("names the Table and the trait it can't send yet", () => {
     expect(text).toContain("REFUSED 3 · item › newColumns[0].columnType");
     expect(text).toContain(
-      "  sync can't send newColumns[0].columnType yet: for now it sends only a Table's name, deleted, letApiAccess, newColumns, conditionalFormats.remove, conditionalFormats.replace, conditionalFormats.add, a column's header, columnType, formula, before, deleted, emptyValueAllowed and a tab's title, color, before, frozenRows, frozenColumns, hidden, deleted, newTables.",
+      "  sync can't send newColumns[0].columnType yet: for now it sends only a Table's name, deleted, letApiAccess, newColumns, moves, conditionalFormats.remove, conditionalFormats.replace, conditionalFormats.add, a column's header, columnType, formula, before, deleted, emptyValueAllowed and a tab's title, color, before, frozenRows, frozenColumns, hidden, deleted, newTables.",
     );
   });
 });
@@ -654,6 +654,17 @@ describe("SyncRunReport's force way out", () => {
         { isColumnGone: true },
       ),
     ).not.toContain("force");
+  });
+
+  it("leaves adopt only removing the entry for a deleted column, which has no live value to take", () => {
+    const text = conflictText(
+      { table: "item", path: "moves[0]" },
+      { isColumnGone: true },
+    );
+    expect(text).toContain(
+      "adopt  Remove the entry. Free, but your change is given up.",
+    );
+    expect(text).not.toContain("set it to");
   });
 
   it("is offered for a column's trait", () => {
@@ -828,6 +839,54 @@ describe("SyncRunReport, case F: two refusals, then a head-row stop", () => {
     expect(text).toContain(
       'REFUSED 1 · occCharge › conditionalFormats.replace["amount | =TRUE"]\n  conditionalFormats.remove["amount | =TRUE"] removes the rule this handle names, and conditionalFormats.replace["amount | =TRUE"] replaces it in the same run.\n  Keep one of the two, then rerun.',
     );
+  });
+
+  it("names both paths of each moves clash", () => {
+    const clashes = [
+      {
+        clash: "sameBefore",
+        path: "moves[1].before",
+        otherPath: "moves[0].before",
+        line: "moves[1].before puts its group before amount, as moves[0].before does: only one group can sit right before it.",
+      },
+      {
+        clash: "repeatedColumn",
+        path: "moves[1].columns[0]",
+        otherPath: "moves[0].columns[0]",
+        line: "moves[1].columns[0] moves amount, as moves[0].columns[0] does: a column can sit in only one group.",
+      },
+      {
+        clash: "movedBefore",
+        path: "moves[1].before",
+        otherPath: "moves[0].columns[0]",
+        line: "moves[1].before puts its group before amount, which moves[0].columns[0] moves: a group's target can't itself move.",
+      },
+      {
+        clash: "ownBefore",
+        path: "moves[0].columns[0]",
+        otherPath: "amount.before",
+        line: "moves[0].columns[0] moves amount, and amount.before places it too: a column takes one place a run.",
+      },
+    ] as const;
+    for (const { clash, path, otherPath, line } of clashes) {
+      const text = render({
+        ...appDryRun,
+        outcome: { kind: "refused" },
+        refusals: [
+          {
+            kind: "clashingMoves",
+            clash,
+            table: "occCharge",
+            path,
+            otherPath,
+            column: "amount",
+          },
+        ],
+      }).join("\n");
+      expect(text).toContain(
+        `REFUSED 1 · occCharge › ${path}\n  ${line}\n  Keep one of the two, then rerun.`,
+      );
+    }
   });
 
   it("says to name a renamed column by its old name this run", () => {
