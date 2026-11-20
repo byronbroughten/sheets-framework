@@ -6,6 +6,7 @@ import type { PendingAlterations } from "./intendedState";
 import { DeletionRefuser } from "./SyncPlanner/DeletionRefuser";
 import {
   entriesOf,
+  newColumnPath,
   type WideAlterations,
   type WideNewTable,
   type WideRule,
@@ -268,7 +269,7 @@ export const newTableLines = {
 
 // How a `conditionalFormats.remove` handle reads on the plan, stop, landed and didntLand lists.
 export const ruleRemovalLines = {
-  path({ handle }: PlannedRuleRemoval): string {
+  path({ handle }: Pick<PlannedRuleRemoval, "handle">): string {
     return `conditionalFormats.remove["${handle}"]`;
   },
   sendLine(removal: PlannedRuleRemoval): SyncSendLine {
@@ -400,7 +401,7 @@ export class SyncPlanner {
           return [
             {
               table,
-              path: `newColumns[${index}]`,
+              path: newColumnPath(index),
               column: columnNameOfHeader(header),
               header,
               ...(before === undefined ? {} : { before }),

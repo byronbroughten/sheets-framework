@@ -20,6 +20,7 @@ type ItemReplace = NonNullable<
     NonNullable<NonNullable<PendingAlterations["tables"]>["item"]>
   >["conditionalFormats"]
 >["replace"];
+type ItemRuleColumns = NonNullable<NonNullable<ItemReplace>[string]>["columns"];
 
 beforeEach(() => {
   stubLogger();
@@ -275,13 +276,15 @@ describe("SyncCoordinator.run conditional-format rule replacement", () => {
           kind: "removedAndReplaced",
           table: "item",
           path: `conditionalFormats.replace["${firstHandle}"]`,
-          removedAt: "conditionalFormats.remove[0]",
+          removedAt: `conditionalFormats.remove["${firstHandle}"]`,
         },
       ],
     });
   });
 
-  function renamingFirstAndReplacing(columns: string[]): PendingAlterations {
+  function renamingFirstAndReplacing(
+    columns: ItemRuleColumns,
+  ): PendingAlterations {
     return {
       tables: {
         item: {
@@ -291,7 +294,7 @@ describe("SyncCoordinator.run conditional-format rule replacement", () => {
           },
         },
       },
-    } as PendingAlterations;
+    };
   }
 
   it("refuses before any read a rule naming a column by the name the run's rename gives it", () => {

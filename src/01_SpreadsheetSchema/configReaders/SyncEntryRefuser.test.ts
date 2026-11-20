@@ -554,7 +554,7 @@ describe("SyncEntryRefuser, entries that can't all hold", () => {
         kind: "removedAndReplaced",
         table: "item",
         path: 'conditionalFormats.replace["name | =TRUE"]',
-        removedAt: "conditionalFormats.remove[1]",
+        removedAt: 'conditionalFormats.remove["name | =TRUE"]',
       },
     ]);
   });
@@ -590,6 +590,47 @@ describe("SyncEntryRefuser, entries that can't all hold", () => {
     expect(renamedRuleRefusals(["total"], "=${@total}>0")).toEqual([
       { ...renamed, path: "conditionalFormats.add[0].columns" },
       { ...renamed, path: "conditionalFormats.add[0].condition.values[0]" },
+    ]);
+  });
+
+  it("refuses a brace naming another Table's column by the name its rename in the same run gives it", () => {
+    expect(
+      refusals({
+        alterations: {
+          tables: { item: { columns: { count: { header: "Total" } } } },
+          newTabs: [
+            {
+              title: "Orders",
+              tables: [
+                {
+                  name: "order",
+                  columns: [{ header: "Ref" }],
+                  conditionalFormats: {
+                    add: [
+                      {
+                        columns: ["ref"],
+                        condition: {
+                          type: "CUSTOM_FORMULA",
+                          values: ["=${item[@total]}>0"],
+                        },
+                        format: {},
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      }),
+    ).toEqual([
+      {
+        kind: "renamedColumn",
+        table: "Orders",
+        path: "newTabs[0].tables[0].conditionalFormats.add[0].condition.values[0]",
+        column: "total",
+        oldName: "count",
+      },
     ]);
   });
 

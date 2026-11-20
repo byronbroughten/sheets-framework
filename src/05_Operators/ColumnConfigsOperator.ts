@@ -425,25 +425,13 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
   beforeFirstColumnStops(
     newColumns: PlannedNewColumn[],
   ): SyncBeforeFirstColumnStop[] {
-    const identities = this._namedColumnIdentities();
     return newColumns.flatMap(
       ({ table, path, header, before }): SyncBeforeFirstColumnStop[] => {
-        const placedBefore = identities.find(
-          (identity) =>
-            identity.tableKey === table && identity.columnName === before,
-        );
+        if (before === undefined) return [];
+        const placedBefore = this._liveColumnNamed(table, before);
         if (placedBefore === undefined) return [];
-        const { tableId, columnId } = placedBefore;
-        if (this._colIndexOf(tableId, columnId) !== 0) return [];
-        return [
-          {
-            kind: "beforeFirstColumn",
-            table,
-            path,
-            header,
-            before: placedBefore.columnName,
-          },
-        ];
+        if (!this._isFirstColumn(placedBefore)) return [];
+        return [{ kind: "beforeFirstColumn", table, path, header, before }];
       },
     );
   }
@@ -463,9 +451,8 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
     { table, header, before }: PlannedNewColumn,
   ): void {
     if (before === undefined) return;
-    if (this._colIndexOf(tableId, this._columnIdOf(table, before)) !== 0) {
-      return;
-    }
+    const columnId = this._columnIdOf(table, before);
+    if (!this._isFirstColumn({ tableId, columnId })) return;
     throw new Error(beforeFirstColumnText({ table, header, before }));
   }
   // At the end, a new column shifts none of the plan's other writes, so it joins their flush.
@@ -660,15 +647,27 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
   private _colIndexOf(tableId: string, columnId: string): number {
     return this.ss.raw.table(tableId).columnResolver.colIndexOf(columnId);
   }
-  // By previous names, as an alteration's `before` gives them.
+  private _isFirstColumn({
+    tableId,
+    columnId,
+  }: Pick<NamedColumnIdentity, "tableId" | "columnId">): boolean {
+    return this._colIndexOf(tableId, columnId) === 0;
+  }
   private _columnIdOf(tableKey: string, columnName: string): string {
     return Val.assert(
-      this._namedColumnIdentities().find(
-        (identity) =>
-          identity.tableKey === tableKey && identity.columnName === columnName,
-      ),
+      this._liveColumnNamed(tableKey, columnName),
       `live column ${tableKey}.${columnName}`,
     ).columnId;
+  }
+  // By previous names, as an alteration's `before` gives them.
+  private _liveColumnNamed(
+    tableKey: string,
+    columnName: string,
+  ): NamedColumnIdentity | undefined {
+    return this._namedColumnIdentities().find(
+      (identity) =>
+        identity.tableKey === tableKey && identity.columnName === columnName,
+    );
   }
   private _sentColumnTraits(
     sent: IntendedTrait[],

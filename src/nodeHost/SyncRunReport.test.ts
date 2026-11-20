@@ -820,12 +820,12 @@ describe("SyncRunReport, case F: two refusals, then a head-row stop", () => {
           kind: "removedAndReplaced",
           table: "occCharge",
           path: 'conditionalFormats.replace["amount | =TRUE"]',
-          removedAt: "conditionalFormats.remove[0]",
+          removedAt: 'conditionalFormats.remove["amount | =TRUE"]',
         },
       ],
     }).join("\n");
     expect(text).toContain(
-      'REFUSED 1 · occCharge › conditionalFormats.replace["amount | =TRUE"]\n  conditionalFormats.remove[0] removes the rule this handle names, and conditionalFormats.replace["amount | =TRUE"] replaces it in the same run.\n  Keep one of the two, then rerun.',
+      'REFUSED 1 · occCharge › conditionalFormats.replace["amount | =TRUE"]\n  conditionalFormats.remove["amount | =TRUE"] removes the rule this handle names, and conditionalFormats.replace["amount | =TRUE"] replaces it in the same run.\n  Keep one of the two, then rerun.',
     );
   });
 

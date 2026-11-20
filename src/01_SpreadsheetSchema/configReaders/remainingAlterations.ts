@@ -142,12 +142,7 @@ function remainingRuleOperations(
   );
   const remainingRemove = (remove ?? []).filter(
     (handle) =>
-      !landedKeys.has(
-        traitKey(
-          tableName,
-          ruleRemovalLines.path({ table: tableName, handle }),
-        ),
-      ),
+      !landedKeys.has(traitKey(tableName, ruleRemovalLines.path({ handle }))),
   );
   const remainingReplace = Object.fromEntries(
     entriesOf(replace).filter(

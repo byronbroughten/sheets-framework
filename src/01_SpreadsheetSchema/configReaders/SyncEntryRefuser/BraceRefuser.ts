@@ -6,7 +6,15 @@ import {
   type WideTableEntry,
 } from "../SyncPlanner/wideAlterations";
 import type { SyncRefusal } from "../syncRunResult";
+import { namedColumnRefusals } from "./namedColumnRefusals";
 import type { NewColumnNames } from "./NewColumnNames";
+import type { RenamedColumnNames } from "./RenamedColumnNames";
+
+interface BraceRefuserProps {
+  columnNamesByTable: Map<string, string[]>;
+  newColumnsByTable?: Map<string, NewColumnNames>;
+  renamedColumnsByTable?: Map<string, RenamedColumnNames>;
+}
 
 interface NewTableBraceProps {
   tab: string;
@@ -26,12 +34,15 @@ interface FormulaBraceProps {
 export class BraceRefuser {
   private columnNamesByTable: Map<string, string[]>;
   private newColumnsByTable: Map<string, NewColumnNames>;
-  constructor(
-    columnNamesByTable: Map<string, string[]>,
-    newColumnsByTable: Map<string, NewColumnNames>,
-  ) {
+  private renamedColumnsByTable: Map<string, RenamedColumnNames>;
+  constructor({
+    columnNamesByTable,
+    newColumnsByTable = new Map(),
+    renamedColumnsByTable = new Map(),
+  }: BraceRefuserProps) {
     this.columnNamesByTable = columnNamesByTable;
     this.newColumnsByTable = newColumnsByTable;
+    this.renamedColumnsByTable = renamedColumnsByTable;
   }
   tableEntryRefusals(table: string, entry: WideTableEntry): SyncRefusal[] {
     return entriesOf(entry.columns).flatMap(([column, { formula }]) => {
@@ -47,13 +58,14 @@ export class BraceRefuser {
   // A brace naming the new Table resolves against its planned columns, each named as the regen will name its header.
   newTableRefusals({ tab, newTable, at }: NewTableBraceProps): SyncRefusal[] {
     const { table: tableKey, columns } = unplacedNewTable(newTable);
-    const withPlanned = new BraceRefuser(
-      new Map(this.columnNamesByTable).set(
+    const withPlanned = new BraceRefuser({
+      columnNamesByTable: new Map(this.columnNamesByTable).set(
         tableKey,
         columns.map(({ column }) => column),
       ),
-      this.newColumnsByTable,
-    );
+      newColumnsByTable: this.newColumnsByTable,
+      renamedColumnsByTable: this.renamedColumnsByTable,
+    });
     return newTable.columns.flatMap(({ formula }, columnIndex) => {
       if (formula === undefined) return [];
       return withPlanned.formulaRefusals({
@@ -77,24 +89,23 @@ export class BraceRefuser {
       tableKey: ownTableKey,
       formula,
     }).flatMap(({ brace, tableKey, columnName }): SyncRefusal[] => {
-      const newColumns = this.newColumnsByTable.get(tableKey);
-      const at = { table, path, column: columnName };
-      const ambiguous = newColumns?.ambiguousRefusals(at) ?? [];
-      if (ambiguous.length > 0) return ambiguous;
       const columnNames = this.columnNamesByTable.get(tableKey);
-      if (columnNames?.includes(columnName)) return [];
-      const renamed = newColumns?.renamedRefusals(at) ?? [];
-      if (renamed.length > 0) return renamed;
-      return [
+      return namedColumnRefusals(
+        { table, path, column: columnName },
         {
+          names: columnNames,
+          newColumns: this.newColumnsByTable.get(tableKey),
+          renamedColumns: this.renamedColumnsByTable.get(tableKey),
+        },
+        () => ({
           kind: "unknownBrace",
           table,
           path,
           brace,
           braceTable: tableKey,
           columns: columnNames,
-        },
-      ];
+        }),
+      );
     });
     return [...malformed, ...unknown];
   }

@@ -1014,7 +1014,7 @@ function handleEntries(
     ...removals.map(({ table, handle }) => ({
       table,
       handle,
-      path: ruleRemovalLines.path({ table, handle }),
+      path: ruleRemovalLines.path({ handle }),
     })),
     ...replacements.map(({ table, handle }) => ({
       table,

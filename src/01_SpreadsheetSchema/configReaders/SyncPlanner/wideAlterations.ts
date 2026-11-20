@@ -74,6 +74,11 @@ export interface WideRuleAt {
   rule: WideRule;
 }
 
+// A `newColumns` entry's path in its Table entry, as `newColumns[0]`.
+export function newColumnPath(index: number): string {
+  return `newColumns[${index}]`;
+}
+
 export function rulesOf({ conditionalFormats }: WideTableEntry): WideRuleAt[] {
   return [
     ...(conditionalFormats?.add ?? []).map((rule, index) => ({
