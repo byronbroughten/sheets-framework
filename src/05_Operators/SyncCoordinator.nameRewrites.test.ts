@@ -332,6 +332,9 @@ describe("SyncCoordinator.run name rewrites", () => {
     };
     const handle = "requiredCount | =${@requiredCount}>0 | background #ff0000";
     const handleNow = "tally | =${@tally}>0 | background #ff0000";
+    // Its own handle: one both removed and replaced is refused before the read.
+    const removed = "requiredCount | =${@requiredCount}>1 | background #ff0000";
+    const removedNow = "tally | =${@tally}>1 | background #ff0000";
 
     const { result } = runItem({
       isSending: false,
@@ -340,7 +343,7 @@ describe("SyncCoordinator.run name rewrites", () => {
           item: {
             conditionalFormats: {
               add: [rule],
-              remove: [handle],
+              remove: [removed],
               replace: { [handle]: rule },
             },
           },
@@ -358,8 +361,8 @@ describe("SyncCoordinator.run name rewrites", () => {
         to: '"=${@tally}>0"',
       },
       {
-        from: `item.conditionalFormats.remove[0] "${handle}"`,
-        to: `"${handleNow}"`,
+        from: `item.conditionalFormats.remove[0] "${removed}"`,
+        to: `"${removedNow}"`,
       },
       {
         from: `item.conditionalFormats.replace "${handle}"`,
