@@ -65,8 +65,11 @@ describe("SyncCoordinator.run new columns", () => {
         tables: {
           item: {
             newColumns: [
-              { header: "Late fee" },
-              { header: "Ref", before: Val.assert(secondColumn, "column") },
+              { columns: [{ header: "Late fee" }] },
+              {
+                columns: [{ header: "Ref" }],
+                before: Val.assert(secondColumn, "column"),
+              },
             ],
           },
         },
@@ -99,7 +102,9 @@ describe("SyncCoordinator.run new columns", () => {
     const { result, files } = runItem({
       isSending: true,
       alterations: {
-        tables: { item: { newColumns: [{ header: "Late fee" }] } },
+        tables: {
+          item: { newColumns: [{ columns: [{ header: "Late fee" }] }] },
+        },
       },
     });
 
@@ -144,7 +149,10 @@ describe("SyncCoordinator.run new columns", () => {
         tables: {
           item: {
             newColumns: [
-              { header: "Ref", before: secondName, emptyValueAllowed: true },
+              {
+                columns: [{ header: "Ref", emptyValueAllowed: true }],
+                before: secondName,
+              },
             ],
           },
         },
@@ -256,7 +264,7 @@ describe("SyncCoordinator.run new columns", () => {
           tables: {
             item: {
               newColumns: [
-                { header: "Ref", before: secondName },
+                { columns: [{ header: "Ref" }], before: secondName },
                 { columns: [{ header: "Late fee" }], before: secondName },
               ],
             },
@@ -326,7 +334,7 @@ describe("SyncCoordinator.run new columns", () => {
           tables: {
             item: {
               newColumns: [
-                { header: "Late fee" },
+                { columns: [{ header: "Late fee" }] },
                 { columns: [{ header: "Ref" }, { header: "Late Fee" }] },
               ],
             },
@@ -337,7 +345,7 @@ describe("SyncCoordinator.run new columns", () => {
           kind: "repeatedNewColumn",
           table: "item",
           path: "newColumns[1].columns[1].header",
-          firstPath: "newColumns[0].header",
+          firstPath: "newColumns[0].columns[0].header",
           column: "lateFee",
         },
       ]);
@@ -436,8 +444,8 @@ describe("SyncCoordinator.run new columns", () => {
       tables: {
         item: {
           newColumns: [
-            { header: "Late fee" },
-            { header: "Ref", before: firstName },
+            { columns: [{ header: "Late fee" }] },
+            { columns: [{ header: "Ref" }], before: firstName },
           ],
         },
       },
@@ -490,7 +498,12 @@ describe("SyncCoordinator.run new columns", () => {
       isSending: true,
       alterations: {
         tables: {
-          item: { newColumns: [{ header }, { header: "Late fee" }] },
+          item: {
+            newColumns: [
+              { columns: [{ header }] },
+              { columns: [{ header: "Late fee" }] },
+            ],
+          },
         },
       },
     });

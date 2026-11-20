@@ -42,11 +42,7 @@ interface HeadedColumn extends ColumnTraits {
   header: string;
 }
 
-interface NewColumn<CN extends string> extends HeadedColumn {
-  before?: CN;
-}
-
-// Its columns, in order, sit together immediately before `before`, or at the Table's end without one; no two `newColumns` items, nor a `moves` group, may name one `before`.
+// Its columns, in order, sit together immediately before `before`, or at the Table's end without one; no two `newColumns` groups, nor a `moves` group, may name one `before`.
 interface NewColumnGroup<CN extends string> {
   columns: HeadedColumn[];
   before?: CN;
@@ -99,7 +95,7 @@ interface TableTraits<CN extends string, CE extends object> {
   name?: string;
   letApiAccess?: boolean;
   columns?: { [C in CN]?: CE };
-  newColumns?: (NewColumn<CN> | NewColumnGroup<CN>)[];
+  newColumns?: NewColumnGroup<CN>[];
   // Applied in list order.
   moves?: ColumnGroupMove<CN>[];
   conditionalFormats?: ConditionalFormatAlterations<CN | NewColumnName>;

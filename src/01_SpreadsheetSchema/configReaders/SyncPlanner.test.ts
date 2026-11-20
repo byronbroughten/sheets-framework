@@ -397,7 +397,7 @@ describe("SyncPlanner.refusals", () => {
             tables: {
               item: {
                 columns: { name: { deleted: true } },
-                newColumns: [{ header: "X", before: "name" }],
+                newColumns: [{ columns: [{ header: "X" }], before: "name" }],
               },
             },
           },

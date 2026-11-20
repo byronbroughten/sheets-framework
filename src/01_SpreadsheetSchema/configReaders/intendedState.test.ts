@@ -49,9 +49,8 @@ describe("makePendingAlterations", () => {
           },
           newColumns: [
             {
-              header: "Price",
+              columns: [{ header: "Price", emptyValueAllowed: true }],
               before: "requiredCount",
-              emptyValueAllowed: true,
             },
           ],
           moves: [{ columns: ["optionalNote"], before: "name" }],
@@ -138,8 +137,11 @@ describe("PendingAlterations' keys", () => {
   it("place a column only before another column of its own Table", () => {
     // @ts-expect-error entry is a log column, not an item one
     const otherTable: ItemMove = { columns: ["id"], before: "entry" };
-    // @ts-expect-error a new column too
-    const newColumn: ItemNewColumn = { header: "X", before: "entry" };
+    const newColumn: ItemNewColumn = {
+      columns: [{ header: "X" }],
+      // @ts-expect-error a new column group too
+      before: "entry",
+    };
     expect([otherTable, newColumn]).toHaveLength(2);
   });
 
@@ -157,7 +159,7 @@ describe("PendingAlterations' keys", () => {
       >
     >(true);
     const overNewColumn: ItemEntry = {
-      newColumns: [{ header: "Late fee" }],
+      newColumns: [{ columns: [{ header: "Late fee" }] }],
       conditionalFormats: {
         add: [
           {
@@ -178,8 +180,10 @@ describe("PendingAlterations' keys", () => {
   });
 
   it("give a new column and a new tab their display text", () => {
-    // @ts-expect-error a new column needs its header
-    const headerless: ItemEntry = { newColumns: [{ emptyValueAllowed: true }] };
+    const headerless: ItemEntry = {
+      // @ts-expect-error a new column needs its header
+      newColumns: [{ columns: [{ emptyValueAllowed: true }] }],
+    };
     // @ts-expect-error a new tab needs its title
     const untitled: NewTabs = [{ tables: [] }];
     expect([headerless, untitled]).toHaveLength(2);

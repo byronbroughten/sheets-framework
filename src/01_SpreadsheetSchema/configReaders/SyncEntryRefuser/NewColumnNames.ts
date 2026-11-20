@@ -13,7 +13,7 @@ export interface ColumnNamedAt {
 
 interface NewHeader {
   header: string;
-  // The header's path in the Table entry, as `newColumns[0].header` or `newColumns[0].columns[1].header`.
+  // The header's path in the Table entry, as `newColumns[0].columns[1].header`.
   path: string;
 }
 

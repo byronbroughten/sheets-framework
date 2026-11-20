@@ -83,7 +83,9 @@ const addOnRight: PendingAlterations = {
 };
 const insertOnLeft: PendingAlterations = {
   tables: {
-    layoutLeft: { newColumns: [{ header: "Note", before: "amount" }] },
+    layoutLeft: {
+      newColumns: [{ columns: [{ header: "Note" }], before: "amount" }],
+    },
   },
 };
 const deleteOnLeft: PendingAlterations = {
@@ -152,7 +154,9 @@ describe("SyncCoordinator.run holds back a rule change a left neighbour's column
 
     const { result } = runLayout({
       tables: {
-        layoutRight: { newColumns: [{ header: "Note", before: "amount" }] },
+        layoutRight: {
+          newColumns: [{ columns: [{ header: "Note" }], before: "amount" }],
+        },
         layoutLeft: { conditionalFormats: { add: [amountTrue] } },
       },
     });

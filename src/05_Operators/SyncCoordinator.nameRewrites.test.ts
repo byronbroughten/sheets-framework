@@ -44,7 +44,9 @@ describe("SyncCoordinator.run name rewrites", () => {
         tables: {
           item: {
             columns: { requiredCount: { emptyValueAllowed: true } },
-            newColumns: [{ header: "Extra", before: "requiredCount" }],
+            newColumns: [
+              { columns: [{ header: "Extra" }], before: "requiredCount" },
+            ],
           },
         },
       },
@@ -58,7 +60,7 @@ describe("SyncCoordinator.run name rewrites", () => {
         '      "columns": {',
         '        "tally": { "emptyValueAllowed": true }',
         "      },",
-        '      "newColumns": [{"header":"Extra","before":"tally"}]',
+        '      "newColumns": [{"columns":[{"header":"Extra"}],"before":"tally"}]',
         "    }",
         "  }",
       ]),

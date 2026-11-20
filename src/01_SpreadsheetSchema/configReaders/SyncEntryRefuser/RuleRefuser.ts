@@ -104,7 +104,9 @@ export class RuleRefuser {
       refusedAs: tab,
       pathPrefix: `${at}.`,
       entry: {
-        newColumns: newTable.columns.map(({ header }) => ({ header })),
+        newColumns: [
+          { columns: newTable.columns.map(({ header }) => ({ header })) },
+        ],
         conditionalFormats: newTable.conditionalFormats,
       },
       columnNamesByTable: withoutLive,

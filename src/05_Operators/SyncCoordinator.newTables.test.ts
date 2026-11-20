@@ -404,7 +404,9 @@ describe("SyncCoordinator.run new tabs and Tables", () => {
       const { result } = runItem({
         isSending: true,
         alterations: {
-          tables: { item: { newColumns: [{ header: "Late fee" }] } },
+          tables: {
+            item: { newColumns: [{ columns: [{ header: "Late fee" }] }] },
+          },
           tabs: { item: { newTables: [{ ...withRule, gap: 1 }] } },
         },
       });

@@ -6,7 +6,6 @@ import type { NamesNow, TableNow } from "./namesNow";
 import { type Rename, SyncFormulaRewriter } from "./SyncFormulaRewriter";
 import {
   entriesOf,
-  isNewColumnGroup,
   moveBeforePath,
   moveColumnPath,
   newColumnGroupColumnPath,
@@ -14,7 +13,7 @@ import {
   type WideAlterations,
   type WideColumnEntry,
   type WideColumnGroupMove,
-  type WideNewColumnItem,
+  type WideNewColumnGroup,
   type WideNewTable,
   type WideTabEntry,
   type WideTableEntry,
@@ -156,13 +155,6 @@ export class SyncAlterationsRewriter {
     if (newColumns !== undefined) {
       rewritten.newColumns = newColumns.map((item, index) => {
         const at = `${tableName}.${newColumnPath(index)}`;
-        if (!isNewColumnGroup(item)) {
-          return {
-            ...item,
-            ...this._columnBefore(item, at, table),
-            ...formulas.formulaTexts(item, at),
-          };
-        }
         return {
           ...item,
           ...this._columnBefore(item, at, table),
@@ -232,10 +224,10 @@ export class SyncAlterationsRewriter {
     );
   }
   private _columnBefore(
-    entry: WideNewColumnItem,
+    entry: WideNewColumnGroup,
     at: string,
     table: TableNow | undefined,
-  ): Pick<WideNewColumnItem, "before"> {
+  ): Pick<WideNewColumnGroup, "before"> {
     return this._before({
       before: entry.before,
       at,
