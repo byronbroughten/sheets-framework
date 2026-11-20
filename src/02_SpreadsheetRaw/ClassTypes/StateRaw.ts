@@ -343,8 +343,8 @@ export type CreatedTablePlacement =
 
 // The exclusive end row and column a grid must reach.
 export interface GridEnd {
-  endRowIndex: number;
-  endColumnIndex: number;
+  endRowIndex: SheetRowIndex;
+  endColumnIndex: SheetColIndex;
 }
 
 export interface CreatedTableColumn {

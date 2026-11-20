@@ -188,7 +188,6 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
       return mintedTable;
     });
   }
-  // A new tab's first Table adds it, and each later one goes beside the Tables before it there.
   private _createdPlacement({
     placement,
     sheetGidsInUse,

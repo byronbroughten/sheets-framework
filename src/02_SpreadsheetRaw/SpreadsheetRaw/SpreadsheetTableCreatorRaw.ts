@@ -1,6 +1,5 @@
 import type { CellValue } from "../../00_Source/CellValues/cellValues";
 import {
-  type SheetColIndex,
   SheetIndex,
   type SheetRowIndex,
 } from "../../00_Source/RawSource/SheetIndex";
@@ -14,6 +13,7 @@ import type {
   CreatedTableColumn,
   CreatedTablePlacement,
   CreateTableProps,
+  GridEnd,
 } from "../ClassTypes/StateRaw";
 import { SpreadsheetRaw } from "../SpreadsheetRaw";
 
@@ -104,7 +104,7 @@ export class SpreadsheetTableCreatorRaw extends SpreadsheetBaseRaw {
     const end = tableEnd(origin, size);
     const { sheetGid } = placement;
     if (this.ss.sheetIsAdded(sheetGid)) {
-      this.ss.growAddedSheetThrough(sheetGid, end);
+      this.ss.updateAddedSheetGridThrough(sheetGid, end);
       return origin;
     }
     const sheet = this.ss.sheet(sheetGid);
@@ -124,7 +124,6 @@ export class SpreadsheetTableCreatorRaw extends SpreadsheetBaseRaw {
       startColIndex: SheetIndex.col(rightmostEnd + gap),
     });
   }
-  // The rightmost end of the Tables fetched onto the tab and those this flush adds there.
   private _rightmostEndBeside(
     name: string,
     sheetGid: number,
@@ -266,7 +265,7 @@ function createdIds({
 function tableEnd(
   origin: TableOrigin,
   { bodyRowCount, columnCount }: TableSize,
-): { endRowIndex: SheetRowIndex; endColumnIndex: SheetColIndex } {
+): GridEnd {
   return {
     endRowIndex: origin.sheetRowIndex(bodyRowCount),
     endColumnIndex: origin.sheetColIndex(columnCount),

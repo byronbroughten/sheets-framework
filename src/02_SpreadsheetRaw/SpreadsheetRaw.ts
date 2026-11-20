@@ -155,7 +155,7 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
     return this._queuedAddSheet(sheetGid) !== undefined;
   }
   // So a further Table this flush adds on the tab fits its grid.
-  growAddedSheetThrough(
+  updateAddedSheetGridThrough(
     sheetGid: number,
     { endRowIndex, endColumnIndex }: GridEnd,
   ): this {
@@ -167,11 +167,10 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
     addSheet.columnCount = Math.max(addSheet.columnCount, endColumnIndex);
     return this;
   }
-  // The exclusive end column of the rightmost Table this flush adds on the sheet.
   addedTablesEndColIndex(sheetGid: number): number | undefined {
-    const ends = this.writeOperations.addTable
-      .filter(({ range }) => range.sheetId === sheetGid)
-      .map(({ range }) => range.endColumnIndex);
+    const ends = this._queuedAddTableRanges(sheetGid).map(
+      ({ endColumnIndex }) => endColumnIndex,
+    );
     if (ends.length === 0) return undefined;
     return Math.max(...ends);
   }
@@ -315,8 +314,11 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
     sheetId: number,
     holds: (range: BoundedGridRange) => boolean,
   ): boolean {
-    return this.writeOperations.addTable.some(
-      ({ range }) => range.sheetId === sheetId && holds(range),
-    );
+    return this._queuedAddTableRanges(sheetId).some(holds);
+  }
+  private _queuedAddTableRanges(sheetGid: number): BoundedGridRange[] {
+    return this.writeOperations.addTable
+      .map(({ range }) => range)
+      .filter(({ sheetId }) => sheetId === sheetGid);
   }
 }

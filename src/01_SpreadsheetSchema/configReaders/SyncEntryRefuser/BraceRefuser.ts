@@ -16,7 +16,6 @@ interface BraceRefuserProps {
   renamedColumnsByTable?: Map<string, RenamedColumnNames>;
 }
 
-// A new Table entry, its tab and the path naming it in the alterations.
 export interface NewTableAt {
   tab: string;
   newTable: WideNewTable;
