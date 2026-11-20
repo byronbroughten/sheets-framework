@@ -14,8 +14,9 @@ Only an unstopped send writes, in these flushes in order, each alone because eve
 2. Column deletions and inserts, then the rules replaced, re-spanned, rewritten or added, compiled against the layout they leave.
 3. Column moves, then the moved Tables' rule rewrites.
 4. New Tables.
+5. New tabs' other traits, after a refetch of the sheet properties, since Raw has no sheet state for a tab before its `addSheet` lands.
 
-A dry run on a host that withholds flushes them too, for the entered-data gate ([sync's gate](../how-it-runs/sync.md#syncs-entered-data-gate-and---confirm)).
+A dry run on a host that withholds flushes the first four too, for the entered-data gate ([sync's gate](../how-it-runs/sync.md#syncs-entered-data-gate-and---confirm)); the fifth has no tab to reach and writes no cells.
 
 A live ID prefix that differs from the configs stops the run before any write (`idPrefixGuard`, run over every Table, sharing the retired prefixes with the title-derived prefix).
 

@@ -81,8 +81,11 @@ interface ConditionalFormatAlterations<CN extends string> {
   replace?: Record<RuleHandle, ConditionalFormatRuleIntended<CN>>;
 }
 
+// Any string, while an editor still offers the mapped names it is unioned with.
+type UnmappedName = string & Record<never, never>;
+
 // The name `columnNameOfHeader` gives a `newColumns` header, which no type can compute; the entry refuser checks it before any read.
-type NewColumnName = string & Record<never, never>;
+type NewColumnName = UnmappedName;
 
 interface TableTraits<CN extends string, CE extends object> {
   // A Sheets Table's name is its codebase name, so a rename renames both.
@@ -122,7 +125,7 @@ interface TabAlteration extends TabTraits<MappedTabName> {
 }
 
 // A `newTabs` entry's title, which isn't in the map until the run that creates it.
-type NewTabTitle = string & Record<never, never>;
+type NewTabTitle = UnmappedName;
 
 // Its `before` is sent after every addSheet of the run, so it may name another `newTabs` entry by title.
 interface NewTab extends TabTraits<MappedTabName | NewTabTitle> {

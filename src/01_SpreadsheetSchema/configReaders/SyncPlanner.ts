@@ -344,6 +344,17 @@ interface PlannedNewTabTrait {
   intended: IntendedTrait;
 }
 
+// How a `newTabs` entry's trait reads on the plan and landed lists.
+const newTabTraitLines = {
+  // Names the tab by title, as the tab's own line does, and shows the value as alterations.ts writes it.
+  sendLine({ title, written, intended }: PlannedNewTabTrait): SyncSendLine {
+    return {
+      subject: { tab: title, path: intended.trait },
+      what: `set to ${valueText(written)}`,
+    };
+  },
+};
+
 interface HeldBackValue {
   intended: IntendedTrait;
   agreed: TraitValue;
@@ -374,6 +385,8 @@ const stopWords = {
 } as const;
 
 const absentText = "(none)";
+
+const schema = new SpreadsheetBaseSchema();
 
 // Pure: the three-way comparison of intended state against the previous configs and the live sheet.
 export class SyncPlanner {
@@ -548,7 +561,7 @@ export class SyncPlanner {
     );
     sends.push(...newTableSends(newTables));
     const newTabTraits = this._newTabTraits;
-    sends.push(...newTabTraitSends(newTabTraits));
+    sends.push(...effectlessSends(newTabTraits, newTabTraitLines));
     // A Table a person deleted took its rules with it.
     const ruleRemovals = onLiveTables(this.ruleRemovals, live);
     sends.push(...effectlessSends(ruleRemovals, ruleRemovalLines));
@@ -560,6 +573,10 @@ export class SyncPlanner {
     const sentIfUnstopped = isStopped ? [] : sentTraits;
     const newColumnsIfUnstopped = isStopped ? [] : newColumns;
     const newTablesIfUnstopped = isStopped ? [] : newTables;
+    let newTabTraitsIfUnstopped: IntendedTrait[] = [];
+    if (!isStopped) {
+      newTabTraitsIfUnstopped = newTabTraits.map(({ intended }) => intended);
+    }
     const forcedNotHeld = new Set(
       forced.map((trait) => addressKey({ kind: "column", ...trait })),
     );
@@ -591,9 +608,7 @@ export class SyncPlanner {
       sentTraits: sentIfUnstopped,
       newColumns: newColumnsIfUnstopped,
       newTables: newTablesIfUnstopped,
-      newTabTraits: isStopped
-        ? []
-        : newTabTraits.map(({ intended }) => intended),
+      newTabTraits: newTabTraitsIfUnstopped,
       ruleRemovals: isStopped ? [] : ruleRemovals,
       ruleReplacements: isStopped ? [] : ruleReplacements,
       ruleAdditions: isStopped ? [] : ruleAdditions,
@@ -602,15 +617,14 @@ export class SyncPlanner {
   // Sent with no three-way comparison: a tab the run creates has no previous or live reading.
   private get _newTabTraits(): PlannedNewTabTrait[] {
     const newTabs = this.alterations.newTabs ?? [];
-    const schema = new SpreadsheetBaseSchema();
     const newTitles = new Set(newTabs.map(({ title }) => title));
     function tabNamed(value: TraitValue): TraitValue {
       if (typeof value !== "string" || !newTitles.has(value)) return value;
       return schema.titleToName(value);
     }
+    const traits = tabTraits.filter((trait) => trait !== "title");
     return newTabs.flatMap((newTab) => {
       const tab = schema.titleToName(newTab.title);
-      const traits = tabTraits.filter((trait) => trait !== "title");
       return pickTraits(newTab, traits).map(({ trait, value }) => ({
         title: newTab.title,
         written: value,
@@ -715,7 +729,7 @@ export function unplacedNewTable({
   conditionalFormats,
 }: WideNewTable): Omit<PlannedNewTable, "placement"> {
   return {
-    table: new SpreadsheetBaseSchema().titleToName(name),
+    table: schema.titleToName(name),
     name,
     rules: conditionalFormats?.add ?? [],
     columns: columns.map(
@@ -761,15 +775,6 @@ function newTableSends(newTables: PlannedNewTable[]): SyncPlanItem[] {
     lines.push(newTableLines.sendLine(newTable));
     return lines.map((line) => ({ ...line, effects: [] }));
   });
-}
-
-// Its line names the tab by title, as the tab's own line does, and shows the value as alterations.ts writes it.
-function newTabTraitSends(newTabTraits: PlannedNewTabTrait[]): SyncPlanItem[] {
-  return newTabTraits.map(({ title, written, intended }) => ({
-    subject: { tab: title, path: intended.trait },
-    what: `set to ${valueText(written)}`,
-    effects: [],
-  }));
 }
 
 interface ComparedSides {
