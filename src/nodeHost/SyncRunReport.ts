@@ -187,14 +187,31 @@ export class SyncRunReport {
   }
   private get _sendSections(): string[] {
     const { result } = this;
-    if (result.mode === "dry run") return [];
-    const { landed, notSent, didntLand } = result;
+    const metLines = result.alreadyMet.map(sendLine);
+    if (result.mode === "dry run") {
+      return section(
+        "Already met: --send removes from alterations.ts",
+        metLines,
+      );
+    }
+    const { landed, notSent, didntLand, outcome } = result;
     const landedLines = landed.map(landedLine);
+    // A stopped send, even one stopped partway, leaves its met alterations pending.
+    const isMetRemoved = outcome.kind === "sent";
+    const removedLines = isMetRemoved ? metLines : [];
     const isAlterationsEmpty =
-      landedLines.length > 0 && notSent.length === 0 && didntLand.length === 0;
-    if (isAlterationsEmpty) landedLines.push("alterations.ts is now empty.");
+      landedLines.length + removedLines.length > 0 &&
+      removedLines.length === metLines.length &&
+      notSent.length === 0 &&
+      didntLand.length === 0;
+    const lastRemovedLines = removedLines.length > 0 ? metLines : landedLines;
+    if (isAlterationsEmpty) {
+      lastRemovedLines.push("alterations.ts is now empty.");
+    }
+    const metTitle = isMetRemoved ? "removed from" : "still in";
     return [
       ...section("Landed: removed from alterations.ts", landedLines),
+      ...section(`Already met: ${metTitle} alterations.ts`, metLines),
       ...section("Not sent: still in alterations.ts", notSent.map(sendLine)),
       ...section(
         "Didn't land: still in alterations.ts",

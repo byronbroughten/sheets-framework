@@ -138,6 +138,7 @@ export class SyncRunResultBuilder {
           sentCount: planned.plan.length,
           didntLandCount: didntLand.length,
           rowIdsSendCount: rowIds.plan.length,
+          alreadyMetCount: planned.alreadyMet.length,
         }),
       }),
       landed,
@@ -182,6 +183,7 @@ export class SyncRunResultBuilder {
         ...(planned?.plan ?? []).map((item) => asRewritten(item, nameRewriter)),
         ...(rowIds?.plan ?? []),
       ],
+      alreadyMet: planned?.alreadyMet ?? [],
       forcedTraits: planned?.forcedTraits ?? [],
       notices: rowIds?.notices ?? [],
       configs: {
@@ -210,6 +212,7 @@ interface SentCounts {
   sentCount: number;
   didntLandCount: number;
   rowIdsSendCount: number;
+  alreadyMetCount: number;
 }
 
 // A pending entry's line under the name sync rewrote it to, once the regen renamed what it names.
@@ -250,11 +253,18 @@ function sendResult(
   };
 }
 
-function sentSummary({
+function sentSummary({ alreadyMetCount, ...counts }: SentCounts): string {
+  const sends = sendsSummary(counts);
+  if (alreadyMetCount === 0) return sends;
+  const alterations = alreadyMetCount === 1 ? "alteration" : "alterations";
+  return `${sends}; ${alreadyMetCount} ${alterations} already met`;
+}
+
+function sendsSummary({
   sentCount,
   didntLandCount,
   rowIdsSendCount,
-}: SentCounts): string {
+}: Omit<SentCounts, "alreadyMetCount">): string {
   const rowIdsSends = `${rowIdsSendCount} ${fillRowIdsName} ${rowIdsSendCount === 1 ? "send" : "sends"}`;
   if (sentCount === 0) {
     if (rowIdsSendCount === 0) return "nothing to send";

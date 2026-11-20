@@ -525,7 +525,10 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       this._applyPlan(applied);
       this._flushPlan(applied);
     }
-    const landed = sent.filter(hasLanded(didntLand));
+    const metSubjects = isApplying
+      ? planned.alreadyMet.map(({ subject }) => subject)
+      : [];
+    const landed = [...sent.filter(hasLanded(didntLand)), ...metSubjects];
     const nameRewriter = SyncNameRewriter.init({
       alterations: remainingAlterations(alterations, landed),
       configs: regeneration.configs,

@@ -126,7 +126,7 @@ export interface PlannedRuleRespan {
 
 export interface SyncPlannerResult extends Pick<
   SyncRunResult,
-  "checks" | "stops" | "plan"
+  "checks" | "stops" | "plan" | "alreadyMet"
 > {
   isStopped: boolean;
   configs: { heldBack: SyncHeldBackTrait[] };
@@ -467,6 +467,7 @@ export class SyncPlanner {
     const forced: ForcedTrait[] = [];
     const sentTraits: IntendedTrait[] = [];
     const heldBack: HeldBackValue[] = [];
+    const alreadyMet: SyncSendLine[] = [];
     this._alterationDeclarations.forEach((intended) => {
       const sides = comparedSides(intended, previous, live);
       if (sides === undefined) return;
@@ -475,8 +476,16 @@ export class SyncPlanner {
         sends.push({ subject: subjectOf(intended), what, effects });
         sentTraits.push(intended);
       }
+      function meet(): void {
+        alreadyMet.push({
+          subject: subjectOf(intended),
+          what: `already ${valueText(intended.value)}`,
+        });
+      }
       if (isOrderTrait(intended)) {
-        if (!isSameValue(intended.value, sides.live)) {
+        if (isSameValue(intended.value, sides.live)) {
+          meet();
+        } else {
           send(`set to ${valueText(intended.value)}`);
         }
         return;
@@ -493,6 +502,10 @@ export class SyncPlanner {
       }
       const stop = stopOf(intended, sides);
       if (stop === undefined) {
+        if (isMetOnBothSides(intended.value, sides)) {
+          meet();
+          return;
+        }
         if (!sendsIntended(intended.value, sides)) return;
         if (isColumnDeletion(intended)) {
           send(deletionWhat.column);
@@ -549,6 +562,7 @@ export class SyncPlanner {
       stops: [...sheetStops, ...stops],
       isStopped,
       plan: sends,
+      alreadyMet,
       configs: {
         heldBack: heldBackTraits.map(({ intended, agreed }) => ({
           subject: subjectOf(intended),
@@ -802,6 +816,14 @@ function stopOf(
   }
   if (isSameValue(intended.value, live)) return undefined;
   return { ...base, ...stopWords.bothChanged };
+}
+
+// Counted as landed, since the configs and the sheet already hold it: a person converging only on the sheet leaves it for the next run, once the configs agree.
+function isMetOnBothSides(
+  value: TraitValue,
+  { agreed, live }: ComparedSides,
+): boolean {
+  return isSameValue(value, agreed) && isSameValue(value, live);
 }
 
 function sendsIntended(
