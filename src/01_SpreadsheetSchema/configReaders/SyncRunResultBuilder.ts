@@ -146,7 +146,7 @@ export class SyncRunResultBuilder {
         asRewritten(heldBackLine(rule), nameRewriter),
       ),
       didntLand: didntLand.map((line) => asRewritten(line, nameRewriter)),
-      isAlterationsEmpty: Object.keys(nameRewriter.alterations).length === 0,
+      isAlterationsEmpty: nameRewriter.isAlterationsEmpty,
     };
   }
   // A send the host held or Google refused at a flush; nothing after it was sent.

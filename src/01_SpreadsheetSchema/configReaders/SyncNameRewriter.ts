@@ -84,6 +84,9 @@ export class SyncNameRewriter {
   static init(props: SyncNameRewriterProps): SyncNameRewriter {
     return new SyncNameRewriter(props);
   }
+  get isAlterationsEmpty(): boolean {
+    return Object.keys(this.alterations).length === 0;
+  }
   // A landed entry left the file rather than being rewritten, so its subject keeps the name it was sent under.
   asRewritten(subject: SyncSubject): SyncSubject {
     if (this.landedKeys.has(subjectKey(subject))) return subject;
