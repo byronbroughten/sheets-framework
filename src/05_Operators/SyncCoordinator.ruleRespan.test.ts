@@ -301,7 +301,7 @@ describe("SyncCoordinator.run rule re-span beside a column insert on the same ta
     };
   }
 
-  it("re-spans a short rule on the Table beside against the layout the insert leaves, and rewrites the inserted Table's short rule to its last body row", () => {
+  it("holds back a short rule on the Table the insert shifts, leaving it where Sheets moved it, and rewrites the inserted Table's short rule to its last body row", () => {
     const shortLeft = amountRule({
       tableKey: "layoutLeft",
       startColIndex: layoutLeft.startColumnIndex,
@@ -344,7 +344,7 @@ describe("SyncCoordinator.run rule re-span beside a column insert on the same ta
         tableKey: "layoutRight",
         startColIndex: layoutRight.startColumnIndex + 1,
         columnNamesLeftToRight: ["entry", "amount"],
-        ruleEndRowIndex: rightEndRowIndex,
+        ruleEndRowIndex: rightEndRowIndex - 1,
       }),
     ]);
     expect(result).toMatchObject({

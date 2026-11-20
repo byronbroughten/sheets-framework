@@ -3,7 +3,6 @@ import { Val } from "@byronbroughten/utils/val";
 
 import type { ModelableConditionalFormatRule } from "../00_Source/RawSource/ConditionalFormat";
 import { rangesShareCell } from "../00_Source/RawSource/RawSource";
-import { SheetIndex } from "../00_Source/RawSource/SheetIndex";
 import {
   BraceFormula,
   type RuleLayout,
@@ -242,20 +241,6 @@ interface CompiledOnPlan {
   plannedTable: RuleRecordsTable;
 }
 
-interface RulesShiftedByInsertsProps {
-  table: string;
-  rules: TableRules;
-  rulesByTable: Map<string, TableRules>;
-  newColumns: MintedNewColumn[];
-}
-
-interface ShiftedByOtherProps {
-  table: string;
-  rules: TableRules;
-  other: string;
-  rulesByTable: Map<string, TableRules>;
-}
-
 interface PlannedLayoutOfProps {
   table: string;
   layout: RuleLayout;
@@ -482,7 +467,7 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
       };
     });
   }
-  // Every rule over a Table ending short of its last body row, as rows typed below the Table leave it; one a pending replace or remove names is left to it, and one a column insert, delete or move rewrites is stretched by its rewrite.
+  // Every rule over a Table ending short of its last body row, as rows typed below the Table leave it; one a pending replace or remove names is left to it, one a column insert, delete or move rewrites is stretched by its rewrite, and one on a Table a neighbour's change shifts waits for the next run, as a held-back add does.
   compiledRuleRespans({
     replacements,
     moves,
@@ -492,21 +477,21 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
     const rulesByTable = this._tableRulesByTable(this._identifiedTables());
     const reshapedGids = reshapedSheetGids(rulesByTable, columnChanges);
     const changedTables = columnChangesByTable(columnChanges, moves);
+    const shifts: TableShifts = {
+      shifting: shiftingTables(columnChanges),
+      rulesByTable,
+    };
     const named = namedRuleKeys([...removals, ...replacements]);
     return [...rulesByTable].flatMap(([table, rules]) => {
       const { tableId, sheetGid, tab } = rules;
       if (reshapedGids.has(sheetGid) || changedTables.has(table)) return [];
+      if (shiftedByOf(table, shifts) !== undefined) return [];
       return RuleRecords.shortRules(tab, rules.table).flatMap(
         ({ handle, index, record, endRowIndex }): CompiledRuleRespan[] => {
           if (named.has(ruleKey(table, handle))) return [];
           const { compiled, plannedTable } = compiledOnPlan({
             tableKey: table,
-            rules: rulesShiftedByInserts({
-              table,
-              rules,
-              rulesByTable,
-              newColumns: columnChanges.newColumns,
-            }),
+            rules,
             rule: IntendedRule.ofRecord(record),
             columnChanges,
             moves: [],
@@ -851,48 +836,6 @@ function compiledOnPlan({
   };
 }
 
-// A re-span skips a tab with a delete, so only a neighbour's inserts and appends move the Table, and Sheets has moved its rules with it before the re-span lands.
-function rulesShiftedByInserts({
-  table,
-  rules,
-  rulesByTable,
-  newColumns,
-}: RulesShiftedByInsertsProps): TableRules {
-  const shift = newColumns.filter(({ table: other }) =>
-    isShiftedByOther({ table, rules, other, rulesByTable }),
-  ).length;
-  if (shift === 0) return rules;
-  const { layout } = rules.table;
-  const { headerTopLeft } = layout;
-  return {
-    ...rules,
-    table: {
-      ...rules.table,
-      layout: {
-        ...layout,
-        headerTopLeft: {
-          ...headerTopLeft,
-          colIndex: SheetIndex.col(headerTopLeft.colIndex + shift),
-        },
-      },
-    },
-  };
-}
-
-function isShiftedByOther({
-  table,
-  rules,
-  other,
-  rulesByTable,
-}: ShiftedByOtherProps): boolean {
-  const neighbour = rulesByTable.get(other);
-  return (
-    other !== table &&
-    neighbour !== undefined &&
-    isShiftedBy({ rules, neighbour })
-  );
-}
-
 function plannedLayoutOf({
   table,
   layout,
@@ -957,9 +900,14 @@ function shiftedByOf(
 ): string | undefined {
   const rules = rulesByTable.get(table);
   if (rules === undefined) return undefined;
-  return [...shifting].find((other) =>
-    isShiftedByOther({ table, rules, other, rulesByTable }),
-  );
+  return [...shifting].find((other) => {
+    const neighbour = rulesByTable.get(other);
+    return (
+      other !== table &&
+      neighbour !== undefined &&
+      isShiftedBy({ rules, neighbour })
+    );
+  });
 }
 
 function heldBackOf(
