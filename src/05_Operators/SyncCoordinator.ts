@@ -476,7 +476,9 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         };
       }
     }
-    const sent = isApplying ? planned.plan.map(({ subject }) => subject) : [];
+    const [sent, metSubjects] = isApplying
+      ? [subjectsOf(planned.plan), subjectsOf(planned.alreadyMet)]
+      : [[], []];
     const { tableConfigs, valueConfigs } = installedConfigs();
     const previous: ConfigSnapshot = {
       idNameMap: props.previousIdNameMap,
@@ -525,9 +527,6 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       this._applyPlan(applied);
       this._flushPlan(applied);
     }
-    const metSubjects = isApplying
-      ? planned.alreadyMet.map(({ subject }) => subject)
-      : [];
     const landed = [...sent.filter(hasLanded(didntLand)), ...metSubjects];
     const nameRewriter = SyncNameRewriter.init({
       alterations: remainingAlterations(alterations, landed),
@@ -899,6 +898,10 @@ interface ColumnChangeRuleEffectsProps {
   plan: SyncPlanItem[];
   rules: ColumnChangeRules;
   newColumns: MintedNewColumn[];
+}
+
+function subjectsOf(lines: { subject: SyncSubject }[]): SyncSubject[] {
+  return lines.map(({ subject }) => subject);
 }
 
 function isHeldBackOf(

@@ -37,6 +37,18 @@ const metNoteAlteration: PendingAlterations = {
   },
 };
 
+// optionalNote already met, requiredCount still to send.
+const metNoteAndCountAlterations: PendingAlterations = {
+  tables: {
+    item: {
+      columns: {
+        optionalNote: { emptyValueAllowed: true },
+        requiredCount: { emptyValueAllowed: true },
+      },
+    },
+  },
+};
+
 describe("SyncCoordinator already-met alterations", () => {
   it("removes an alteration already met on both sides when nothing else is sent", () => {
     seedFixture();
@@ -68,16 +80,7 @@ describe("SyncCoordinator already-met alterations", () => {
 
     const { result, files } = runItem({
       isSending: true,
-      alterations: {
-        tables: {
-          item: {
-            columns: {
-              optionalNote: { emptyValueAllowed: true },
-              requiredCount: { emptyValueAllowed: true },
-            },
-          },
-        },
-      },
+      alterations: metNoteAndCountAlterations,
     });
 
     expect(Val.assert(files, "emitted files").alterations).toBe(
@@ -127,16 +130,7 @@ describe("SyncCoordinator already-met alterations", () => {
 
     const { result, files } = runItem({
       isSending: true,
-      alterations: {
-        tables: {
-          item: {
-            columns: {
-              optionalNote: { emptyValueAllowed: true },
-              requiredCount: { emptyValueAllowed: true },
-            },
-          },
-        },
-      },
+      alterations: metNoteAndCountAlterations,
     });
 
     expect(Val.assert(files, "emitted files").alterations).toBeUndefined();

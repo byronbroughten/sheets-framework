@@ -254,13 +254,12 @@ function sendResult(
 }
 
 function sentSummary({ alreadyMetCount, ...counts }: SentCounts): string {
-  const sends = sendsSummary(counts);
+  const sends = landedAndRowIdsSummary(counts);
   if (alreadyMetCount === 0) return sends;
-  const alterations = alreadyMetCount === 1 ? "alteration" : "alterations";
-  return `${sends}; ${alreadyMetCount} ${alterations} already met`;
+  return `${sends}; ${alterationCount(alreadyMetCount)} already met`;
 }
 
-function sendsSummary({
+function landedAndRowIdsSummary({
   sentCount,
   didntLandCount,
   rowIdsSendCount,
@@ -280,7 +279,11 @@ function alterationsSummary(sentCount: number, didntLandCount: number): string {
   const landed =
     landedCount === 0
       ? "nothing landed"
-      : `${landedCount} ${landedCount === 1 ? "alteration" : "alterations"} landed`;
+      : `${alterationCount(landedCount)} landed`;
   if (didntLandCount === 0) return landed;
   return `${landed}; ${didntLandCount} didn't land`;
+}
+
+function alterationCount(count: number): string {
+  return `${count} ${count === 1 ? "alteration" : "alterations"}`;
 }
