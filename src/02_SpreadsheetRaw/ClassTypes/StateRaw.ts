@@ -336,10 +336,16 @@ export type AddedSheetCell = Required<
 > &
   ({ value: CellValue } | { formula: string });
 
-// A tab the same flush adds, or right of the rightmost Table on a tab already there, `gap` empty columns between.
+// A tab the same flush adds, or right of the rightmost Table on a tab already there or added earlier in the flush, `gap` empty columns between.
 export type CreatedTablePlacement =
   | { kind: "newTab"; sheetGid: number; title: string }
   | { kind: "besideTables"; sheetGid: number; gap?: 0 | 1 };
+
+// The exclusive end row and column a grid must reach.
+export interface GridEnd {
+  endRowIndex: number;
+  endColumnIndex: number;
+}
 
 export interface CreatedTableColumn {
   header: string;

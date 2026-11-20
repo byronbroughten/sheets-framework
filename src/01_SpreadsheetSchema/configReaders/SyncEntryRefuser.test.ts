@@ -304,7 +304,7 @@ describe("SyncEntryRefuser, traits not sendable yet", () => {
     ).toEqual([]);
   });
 
-  it("refuses every new Table on a tab after its first, and a new tab with none", () => {
+  it("lets several new Tables on one tab through, and refuses a new tab with none", () => {
     const table = { name: "Extra", columns: [{ header: "Note" }] };
     expect(
       refusals({
@@ -317,13 +317,34 @@ describe("SyncEntryRefuser, traits not sendable yet", () => {
         },
       }),
     ).toEqual([
-      { kind: "notSendableYet", table: "items", path: "newTables[1]" },
+      { kind: "notSendableYet", table: "Empty", path: "newTabs[1].tables" },
+    ]);
+  });
+
+  it("refuses a later new Table's unsendable traits at its own index", () => {
+    const table = { name: "Extra", columns: [{ header: "Note" }] };
+    const bold = {
+      ...table,
+      conditionalFormats: {
+        add: [
+          {
+            columns: "all" as const,
+            condition: { type: "NOT_BLANK" as const },
+            format: { bold: true },
+          },
+        ],
+      },
+    };
+    expect(
+      refusals({
+        alterations: { tabs: { items: { newTables: [table, bold] } } },
+      }),
+    ).toEqual([
       {
         kind: "notSendableYet",
-        table: "Vendors",
-        path: "newTabs[0].tables[1]",
+        table: "items",
+        path: "newTables[1].conditionalFormats.add[0].format.bold",
       },
-      { kind: "notSendableYet", table: "Empty", path: "newTabs[1].tables" },
     ]);
   });
 

@@ -102,20 +102,49 @@ export class SpreadsheetTableCreatorRaw extends SpreadsheetBaseRaw {
     }
     const origin = this._originBeside(name, placement);
     const end = tableEnd(origin, size);
-    const sheet = this.ss.sheet(placement.sheetGid);
+    const { sheetGid } = placement;
+    if (this.ss.sheetIsAdded(sheetGid)) {
+      this.ss.growAddedSheetThrough(sheetGid, end);
+      return origin;
+    }
+    const sheet = this.ss.sheet(sheetGid);
     sheet.queueGridRowsThrough(end.endRowIndex);
     sheet.queueGridColumnsThrough(end.endColumnIndex);
     return origin;
   }
-  // Only a full properties fetch lists every Table on the tab; a grid fetch lists only those its ranges overlap.
   private _originBeside(
     name: string,
     { sheetGid, gap = 0 }: BesideTablesPlacement,
   ): TableOrigin {
+    const expected = TableOrigin.expected();
+    const rightmostEnd = this._rightmostEndBeside(name, sheetGid);
+    if (rightmostEnd === undefined) return expected;
+    return new TableOrigin({
+      headerRowIndex: expected.headerRowIndex,
+      startColIndex: SheetIndex.col(rightmostEnd + gap),
+    });
+  }
+  // The rightmost end of the Tables fetched onto the tab and those this flush adds there.
+  private _rightmostEndBeside(
+    name: string,
+    sheetGid: number,
+  ): number | undefined {
+    const addedEnd = this.ss.addedTablesEndColIndex(sheetGid);
+    if (this.ss.sheetIsAdded(sheetGid)) return addedEnd;
+    const fetchedEnd = this._fetchedTablesEndBeside(name, sheetGid);
+    const ends = [fetchedEnd, addedEnd].filter((end) => end !== undefined);
+    if (ends.length === 0) return undefined;
+    return Math.max(...ends);
+  }
+  // Only a full properties fetch lists every Table on the tab; a grid fetch lists only those its ranges overlap.
+  private _fetchedTablesEndBeside(
+    name: string,
+    sheetGid: number,
+  ): number | undefined {
     this.ss.ensureAllSheetPropertiesAreFetched();
     if (!this.ss.gidIsActive(sheetGid)) {
       throw new Error(
-        `Table "${name}" can't be placed beside the Tables on GID ${sheetGid}: no fetched tab has it.`,
+        `Table "${name}" can't be placed beside the Tables on GID ${sheetGid}: no fetched tab or queued addSheet has it.`,
       );
     }
     const sheet = this.ss.sheet(sheetGid);
@@ -125,13 +154,7 @@ export class SpreadsheetTableCreatorRaw extends SpreadsheetBaseRaw {
         `Table "${name}" can't be placed on ${sheet.label} while a Table there has column changes queued: flush them first.`,
       );
     }
-    const expected = TableOrigin.expected();
-    const rightmostEnd = sheet.rightmostTableEndColIndex;
-    if (rightmostEnd === undefined) return expected;
-    return new TableOrigin({
-      headerRowIndex: expected.headerRowIndex,
-      startColIndex: SheetIndex.col(rightmostEnd + gap),
-    });
+    return sheet.rightmostTableEndColIndex;
   }
   private _fillCells(
     sheetId: number,

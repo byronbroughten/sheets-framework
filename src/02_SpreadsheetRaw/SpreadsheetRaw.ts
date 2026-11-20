@@ -18,6 +18,7 @@ import type {
   CreatedTable,
   CreateTableProps,
   FindReplaceProps,
+  GridEnd,
 } from "./ClassTypes/StateRaw";
 import { SheetRaw } from "./SheetRaw";
 import { SpreadsheetFetcherRaw } from "./SpreadsheetRaw/SpreadsheetFetcherRaw";
@@ -149,6 +150,31 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
     this.writeOperations.addSheet.push({ kind: "addSheet", ...props });
     return this;
   }
+  // A tab this flush adds has no sheet state until fetched, so its queued addSheet is what puts it in the working view.
+  sheetIsAdded(sheetGid: number): boolean {
+    return this._queuedAddSheet(sheetGid) !== undefined;
+  }
+  // So a further Table this flush adds on the tab fits its grid.
+  growAddedSheetThrough(
+    sheetGid: number,
+    { endRowIndex, endColumnIndex }: GridEnd,
+  ): this {
+    const addSheet = Val.assert(
+      this._queuedAddSheet(sheetGid),
+      `queued addSheet for GID ${sheetGid}`,
+    );
+    addSheet.rowCount = Math.max(addSheet.rowCount, endRowIndex);
+    addSheet.columnCount = Math.max(addSheet.columnCount, endColumnIndex);
+    return this;
+  }
+  // The exclusive end column of the rightmost Table this flush adds on the sheet.
+  addedTablesEndColIndex(sheetGid: number): number | undefined {
+    const ends = this.writeOperations.addTable
+      .filter(({ range }) => range.sheetId === sheetGid)
+      .map(({ range }) => range.endColumnIndex);
+    if (ends.length === 0) return undefined;
+    return Math.max(...ends);
+  }
   // A created Table starts with a blank body row, the model growth copies from.
   gatherAddTableOperation({ tableId, ...props }: AddTableProps): this {
     const { startRowIndex, endRowIndex } = props.range;
@@ -164,7 +190,7 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
     });
     return this;
   }
-  // A Table with its ID, prefix, column IDs and body, on a tab this flush adds or beside the Tables on one already there.
+  // A Table with its ID, prefix, column IDs and body, on a tab this flush adds or beside the Tables on a tab, those this flush adds included.
   createTable(props: CreateTableProps): CreatedTable {
     return this.tableCreator.createTable(props);
   }
@@ -227,10 +253,13 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
     });
     return this;
   }
+  private _queuedAddSheet(sheetGid: number): AddSheetOperation | undefined {
+    return this.writeOperations.addSheet.find(
+      ({ sheetId }) => sheetId === sheetGid,
+    );
+  }
   private _validateAddSheetQueued(sheetId: number, write: string): void {
-    if (this.writeOperations.addSheet.some((op) => op.sheetId === sheetId)) {
-      return;
-    }
+    if (this.sheetIsAdded(sheetId)) return;
     throw new Error(
       `Added-sheet ${write} refused: no addSheet for GID ${sheetId} is queued in this flush.`,
     );
