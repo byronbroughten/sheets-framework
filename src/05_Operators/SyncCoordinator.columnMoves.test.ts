@@ -296,6 +296,36 @@ describe("SyncCoordinator.run column moves", () => {
       );
     });
 
+    it("moves a group after the same run's newColumns group lands before another column, counting from the columns the insert leaves", () => {
+      const service = seedFixture();
+      const [first, second, third, ...rest] = headers;
+
+      const { result, files } = runItem({
+        isSending: true,
+        alterations: {
+          tables: {
+            item: {
+              newColumns: [{ columns: [{ header: "Ref" }], before: nameAt(1) }],
+              moves: [{ columns: [nameAt(2)], before: nameAt(0) }],
+            },
+          },
+        },
+      });
+
+      expect(headersOf(itemSheetRows(service))).toEqual([
+        third,
+        first,
+        "Ref",
+        second,
+        ...rest,
+      ]);
+      expect(files?.alterations).toContain("makePendingAlterations({})");
+      expect(result).toMatchObject({
+        outcome: { kind: "sent" },
+        didntLand: [],
+      });
+    });
+
     function refusalsOf(alterations: PendingAlterations): unknown {
       const service = seedFixture();
       const { result, files } = runItem({ isSending: true, alterations });
