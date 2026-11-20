@@ -30,6 +30,7 @@ const appDryRun = {
   refusals: [],
   stops: [],
   plan: [],
+  alreadyMet: [],
   forcedTraits: [],
   notices: [],
   configs: noConfigChanges,
@@ -1256,6 +1257,71 @@ describe("SyncRunReport, a dry run holding back a rule change", () => {
     expect(lines).toContain(
       "occPayment › conditionalFormats.add[0]: held back: occCharge's column change shifts occPayment's columns this run, so it is sent next run.",
     );
+  });
+});
+
+describe("SyncRunReport, an alteration already met", () => {
+  const alreadyMet = [
+    {
+      subject: { table: "unit", column: "rent", path: "header" },
+      what: "already Monthly rent",
+    },
+  ];
+  const sentLanded = [
+    {
+      kind: "send" as const,
+      subject: { table: "unit", column: "notes", path: "header" },
+      what: "set to Remarks",
+    },
+  ];
+
+  it("lists it on its own line, apart from the alterations sent, on a send", () => {
+    const lines = render({
+      ...appSend,
+      outcome: {
+        kind: "sent",
+        summary: "1 alteration landed; 1 alteration already met",
+      },
+      landed: sentLanded,
+      alreadyMet,
+    });
+    expect(sections(lines)).toEqual([
+      "Landed",
+      "Already met",
+      "Configs",
+      "Next",
+    ]);
+    expect(lines.join("\n")).toContain(
+      [
+        "== Landed: removed from alterations.ts ==",
+        "unit › notes › header: set to Remarks",
+        "",
+        "== Already met: removed from alterations.ts ==",
+        "unit › rent › header: already Monthly rent",
+        "alterations.ts is now empty.",
+      ].join("\n"),
+    );
+  });
+
+  it("says --send removes it, on a dry run", () => {
+    const lines = render({
+      ...appDryRun,
+      outcome: { kind: "ready" },
+      alreadyMet,
+    });
+    expect(lines).toContain(
+      "== Already met: --send removes from alterations.ts ==",
+    );
+  });
+
+  it("keeps it in alterations.ts on a stopped send", () => {
+    const lines = render({
+      ...appSend,
+      outcome: { kind: "stopped" },
+      alreadyMet,
+    });
+    expect(lines).toContain("== Already met: still in alterations.ts ==");
+    expect(lines).not.toContain("alterations.ts is now empty.");
   });
 });
 

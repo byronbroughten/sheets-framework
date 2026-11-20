@@ -92,6 +92,7 @@ const dryRunResult = {
   refusals: [],
   stops: [],
   plan: [],
+  alreadyMet: [],
   forcedTraits: [],
   notices: [],
   configs: {

@@ -32,6 +32,8 @@ export interface SyncRunCommon {
   refusals: SyncRefusal[];
   stops: SyncStop[];
   plan: SyncPlanItem[];
+  // Alterations the configs and the live sheet both already hold: never sent, and removed from alterations.ts by an unstopped send as if landed.
+  alreadyMet: SyncSendLine[];
   // The stops this run's --force turned into sends; the entered-data gate holds each.
   forcedTraits: ForcedTrait[];
   notices: SyncNotice[];
