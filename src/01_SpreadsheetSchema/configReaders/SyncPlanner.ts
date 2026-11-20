@@ -547,9 +547,9 @@ export class SyncPlanner {
     const sentTraits: IntendedTrait[] = [];
     const heldBack: HeldBackValue[] = [];
     const alreadyMet: SyncSendLine[] = [];
-    this._alterationDeclarations.forEach((intended) => {
+    for (const intended of this._alterationDeclarations) {
       const sides = comparedSides(intended, previous, live);
-      if (sides === undefined) return;
+      if (sides === undefined) continue;
       const effects = this._dropdownResetEffects(intended, live);
       function send(what: string): void {
         sends.push({ subject: subjectOf(intended), what, effects });
@@ -567,31 +567,31 @@ export class SyncPlanner {
         } else {
           send(`set to ${valueText(intended.value)}`);
         }
-        return;
+        continue;
       }
       // comparedSides already left out a Table a person deleted, so a live Table is always deleted.
       if (isTableDeletion(intended)) {
         send(deletionWhat.table);
-        return;
+        continue;
       }
       // Likewise a tab a person deleted.
       if (isTabDeletion(intended)) {
         send(deletionWhat.tab);
-        return;
+        continue;
       }
       const stop = stopOf(intended, sides);
       if (stop === undefined) {
         if (isMetOnBothSides(intended.value, sides)) {
           meet();
-          return;
+          continue;
         }
-        if (!sendsIntended(intended.value, sides)) return;
+        if (!sendsIntended(intended.value, sides)) continue;
         if (isColumnDeletion(intended)) {
           send(deletionWhat.column);
         } else {
           send(`set to ${valueText(intended.value)}`);
         }
-        return;
+        continue;
       }
       const forcedTrait = sides.isColumnGone
         ? undefined
@@ -608,7 +608,7 @@ export class SyncPlanner {
       if (stop.agreed !== undefined) {
         heldBack.push({ intended, agreed: stop.agreed });
       }
-    });
+    }
     // A Table a person deleted has nowhere to put one.
     const newColumns = onLiveTables(this.newColumns, live);
     sends.push(...effectlessSends(newColumns, newColumnLines));
