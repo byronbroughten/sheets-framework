@@ -881,6 +881,26 @@ describe("SyncRunReport, case F: two refusals, then a head-row stop", () => {
   });
 });
 
+describe("SyncRunReport's head-row overlap stop", () => {
+  const stopped = render({
+    ...appDryRun,
+    outcome: { kind: "stopped" },
+    stops: [
+      { kind: "headRows", table: "vendor", tab: "Vendors", neighbour: "Notes" },
+    ],
+  });
+  const stoppedText = stopped.join("\n");
+
+  it("names the granted Table and the Table its head rows would sit on", () => {
+    expect(resultLine(stopped)).toBe(
+      "STOPPED: 1 Table can't take head rows. Nothing was sent, and nothing will be until it is resolved.",
+    );
+    expect(stoppedText).toContain(
+      `STOP 1 · vendor › letApiAccess\n  vendor's head rows, rows 1 to 3 of its tab, Vendors, would sit on Table "Notes".\n  Move vendor or "Notes" so the 3 rows above vendor's header sit clear of it, then rerun.\n  The entry stays in alterations.ts.`,
+    );
+  });
+});
+
 describe("SyncRunReport's header-taken stop", () => {
   const stopped = render({
     ...appDryRun,

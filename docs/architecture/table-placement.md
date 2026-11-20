@@ -45,6 +45,8 @@ Google refuses one Table's range over another's, but it can't see head rows, so 
 
 So a regen checks it, in `SyncCoordinator._readLive`, before anything is flushed or a config file is returned. Each Table on the live sheet has its head rows compared with the range of every other Table on its sheet, managed or not. The comparison uses geometry alone and reads no cells. A managed Table's head rows on another managed Table's head rows also sit on that Table's range, since a range starts at its header row, so one message covers both. Every overlap goes into one throw, naming the Table, its head rows' 1-based rows and the Table under them.
 
+A Table being granted API access has no head rows yet, so the plan checks where they would go (sheets-framework#327). `TableConfigsOperator.grantHeadRowStops` compares the grant's rows 1 to 3 with every other Table on its sheet (`TableRaw.neighboursUnderHeadRows`), and each Table under them is a `headRows` stop naming the granted Table and that neighbour. A dry run reports it, and a send stops before writing. The throw above runs again inside the send's API-access step, now with the grants counted, as a guard only.
+
 The head rows' extent runs from `tableLayout`'s largest offset down to just above the header (`headRows.topIndex`, `TableOrigin.topHeadSheetRowIndex`). The column insert's shift and split check uses the same extent.
 
 **Accepted gap:** an unmanaged Table added on top of a managed Table's head rows, with no regeneration since, isn't caught.

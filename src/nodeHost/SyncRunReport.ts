@@ -621,17 +621,27 @@ function stopBlock<SK extends StopKind>(
   return words.block(stop, number);
 }
 
-function headRowsBlock(
-  { table, tab, headerRow }: SyncHeadRowsStop,
-  number: number,
-): string[] {
+function headRowsBlock(stop: SyncHeadRowsStop, number: number): string[] {
   return [
-    `STOP ${number} · ${table} › letApiAccess`,
-    ...indent(2, [
-      `${table}'s header row is on row ${headerRow} of its tab, ${tab}. A Table needs its header on row 4 to take head rows`,
-      `(rows 1 to 3: column IDs, action row, heading). Move ${table} so its header sits on row 4, then rerun.`,
+    `STOP ${number} · ${stop.table} › letApiAccess`,
+    ...indent(2, headRowsReason(stop)),
+  ];
+}
+
+function headRowsReason(stop: SyncHeadRowsStop): string[] {
+  const { table, tab } = stop;
+  if ("neighbour" in stop) {
+    return [
+      `${table}'s head rows, rows 1 to 3 of its tab, ${tab}, would sit on Table "${stop.neighbour}".`,
+      `Move ${table} or "${stop.neighbour}" so the 3 rows above ${table}'s header sit clear of it, then rerun.`,
       entryStaysText,
-    ]),
+    ];
+  }
+  const { headerRow } = stop;
+  return [
+    `${table}'s header row is on row ${headerRow} of its tab, ${tab}. A Table needs its header on row 4 to take head rows`,
+    `(rows 1 to 3: column IDs, action row, heading). Move ${table} so its header sits on row 4, then rerun.`,
+    entryStaysText,
   ];
 }
 

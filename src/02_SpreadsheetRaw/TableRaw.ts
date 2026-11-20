@@ -1145,6 +1145,10 @@ export class TableRaw extends TableCommonRaw {
       .filter((tableId) => tableId !== this.tableId)
       .map((tableId) => this.ss.table(tableId));
   }
+  // By geometry alone: the column ID row may give way to metadata on the header row.
+  get neighboursUnderHeadRows(): TableRaw[] {
+    return this.neighbourTables.filter((other) => this.headRowsSitOn(other));
+  }
   private _queuedSheetConditionalFormatRules(): ModelableConditionalFormatRule[] {
     const origin = this.tableOrigin();
     return this.writes.conditionalFormatRules.map((rule) =>
