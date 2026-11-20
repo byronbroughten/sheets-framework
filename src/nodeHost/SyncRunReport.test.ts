@@ -1203,6 +1203,27 @@ describe("SyncRunReport, a Table a person deleted", () => {
   });
 });
 
+describe("SyncRunReport, a dry run holding back a rule change", () => {
+  const lines = render({
+    ...appDryRun,
+    outcome: { kind: "ready" },
+    notices: [
+      {
+        kind: "ruleHeldBack",
+        subject: { table: "occPayment", path: "conditionalFormats.add[0]" },
+        shiftedBy: "occCharge",
+      },
+    ],
+  });
+
+  it("names the rule change by its path under Notices, and the Table whose change shifts it", () => {
+    expect(sections(lines)).toContain("Notices");
+    expect(lines).toContain(
+      "occPayment › conditionalFormats.add[0]: held back: occCharge's column change shifts occPayment's columns this run, so it is sent next run.",
+    );
+  });
+});
+
 describe("SyncRunReport, a tab a person deleted", () => {
   const lines = render({
     ...appSend,

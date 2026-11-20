@@ -2,6 +2,7 @@ import { sendableTraits } from "../01_SpreadsheetSchema/configReaders/SyncEntryR
 import {
   beforeFirstColumnText,
   fillRowIdsName,
+  heldBackRuleWhat,
   type SyncBeforeFirstColumnStop,
   type SyncCheck,
   type SyncConfigs,
@@ -874,6 +875,9 @@ function noticeLine(notice: SyncNotice): string {
   if (notice.kind === "text") return notice.text;
   if (notice.kind === "tabGone") {
     return `${notice.tab}: a person deleted this tab from the sheet, so sync dropped it from the configs.`;
+  }
+  if (notice.kind === "ruleHeldBack") {
+    return `${subjectLabel(notice.subject)}: ${heldBackRuleWhat(notice)}.`;
   }
   const { table } = notice;
   if (notice.kind === "tableGone") {

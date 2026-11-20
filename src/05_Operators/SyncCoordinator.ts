@@ -60,6 +60,7 @@ import type {
   SyncCreatedColumn,
   SyncCreatedTable,
   SyncFlushStoppedOutcome,
+  SyncHeldBackRule,
   SyncNotice,
   SyncOutsideReferencesCheck,
   SyncPlanEffect,
@@ -70,6 +71,7 @@ import type {
   SyncSubject,
   SyncTabGoneNotice,
   SyncTableGoneNotice,
+  SyncTableSubject,
   SyncTypedTraitChange,
 } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
 import { SyncRunResultBuilder } from "../01_SpreadsheetSchema/configReaders/SyncRunResultBuilder";
@@ -344,6 +346,21 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       namesAtTableCreation(withDeletions.sentTraits, withDeletions.newTables),
     );
     const columnChanges = { sentTraits: withDeletions.sentTraits, newColumns };
+    // Planned from the live read rather than an alteration, so a stopped run holds none back.
+    const plannedRuleChanges = {
+      additions: withDeletions.ruleAdditions,
+      replacements: withDeletions.ruleReplacements,
+    };
+    const sentRuleChanges = withDeletions.isStopped
+      ? { ...plannedRuleChanges, heldBack: [] }
+      : this.conditionalFormatConfigOperator.sentRuleChanges({
+          ...plannedRuleChanges,
+          columnChanges,
+        });
+    const heldBackRules = sentRuleChanges.heldBack;
+    const isHeldBack = isHeldBackOf(heldBackRules);
+    const sentRuleAdditions = sentRuleChanges.additions;
+    const sentRuleReplacements = sentRuleChanges.replacements;
     const columnMoves = this.columnConfigOperator.planColumnMoves(
       withDeletions.sentTraits,
       newColumns,
@@ -368,18 +385,18 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       ]);
     const ruleSends: BatchRuleSends = {
       removals: ruleRemovals,
-      additions: withDeletions.ruleAdditions,
+      additions: sentRuleAdditions,
       dropped: columnChangeRules.dropped,
       columnChanges,
     };
     const ruleReplacements =
       this.conditionalFormatConfigOperator.compiledRuleReplacements({
         ...ruleSends,
-        replacements: withDeletions.ruleReplacements,
+        replacements: sentRuleReplacements,
       });
     const ruleAdditions =
       this.conditionalFormatConfigOperator.compiledRuleAdditions({
-        additions: withDeletions.ruleAdditions,
+        additions: sentRuleAdditions,
         removals: ruleRemovals,
         replacements: ruleReplacements,
         columnChanges,
@@ -413,7 +430,10 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       ...withDeletions,
       plan: [
         ...withColumnChangeRuleEffects({
-          plan: this._withAddedFirstEffects(withDeletions.plan, ruleAdditions),
+          plan: this._withAddedFirstEffects(
+            withDeletions.plan.filter(({ subject }) => !isHeldBack(subject)),
+            ruleAdditions,
+          ),
           rules: columnChangeRules,
           newColumns,
         }),
@@ -531,6 +551,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         createdTables,
         rowIds: { plan: [...checkboxPlan, ...fillPlan], notices },
         nameRewriter,
+        heldBackRules,
       }),
       files,
     };
@@ -875,6 +896,18 @@ interface ColumnChangeRuleEffectsProps {
   plan: SyncPlanItem[];
   rules: ColumnChangeRules;
   newColumns: MintedNewColumn[];
+}
+
+function isHeldBackOf(
+  heldBackRules: SyncHeldBackRule[],
+): (subject: SyncSubject) => boolean {
+  const keys = new Set(heldBackRules.map(({ subject }) => subjectKey(subject)));
+  return (subject) => "table" in subject && keys.has(subjectKey(subject));
+}
+
+// By the Table and path a plan line and its alterations.ts entry share.
+function subjectKey({ table, path }: SyncTableSubject): string {
+  return JSON.stringify([table, path]);
 }
 
 // Each deleted column's item lists the rules going with it; a Table's rewrites go on its first move item when it moves, else its first delete item, else its first insert's, never an append's.
