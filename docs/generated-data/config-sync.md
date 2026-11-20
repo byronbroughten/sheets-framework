@@ -4,7 +4,18 @@ Part of [generated data](../generated-data.md). `sync` plans the pending alterat
 
 ## The three sides of the plan
 
-`SyncCoordinator.run()` takes API access from a Table's presence in the previous configs, changed by a `letApiAccess` alteration ([granting and revoking](./table-configs.md#granting-and-revoking-api-access)), and `emptyValueAllowed`, a column's `header`, `formula` and `deleted`, a Table's `name` and `deleted` and a tab's `deleted` from the three-way plan over pending alterations, the previous configs and the live sheet. Only an unstopped send writes: the planned sends and the missing column IDs on business sheets' header rows, in one flush, then any column deletions in a flush of their own ([why](../architecture/table-columns.md)). A dry run on a host that withholds flushes them too, for the entered-data gate ([sync's gate](../how-it-runs/sync.md#syncs-entered-data-gate-and---confirm)). A bare or stopped run mints no column ID and leaves a column without one out of its configs.
+`SyncCoordinator.run()` takes API access from a Table's presence in the previous configs, changed by a `letApiAccess` alteration ([granting and revoking](./table-configs.md#granting-and-revoking-api-access)), and `emptyValueAllowed`, a column's `header`, `formula` and `deleted`, a Table's `name` and `deleted` and a tab's `deleted` from the three-way plan over pending alterations, the previous configs and the live sheet. A bare or stopped run mints no column ID and leaves a column without one out of its configs.
+
+## Which flush sends what
+
+Only an unstopped send writes, in these flushes in order, each alone because every later write is indexed by the layout the one before leaves ([why](../architecture/table-columns.md)):
+
+1. The planned sends and the missing column IDs on business sheets' header rows.
+2. Column deletions and inserts, then the rules replaced, re-spanned, rewritten or added, compiled against the layout they leave.
+3. Column moves, then the moved Tables' rule rewrites.
+4. New Tables.
+
+A dry run on a host that withholds flushes them too, for the entered-data gate ([sync's gate](../how-it-runs/sync.md#syncs-entered-data-gate-and---confirm)).
 
 A live ID prefix that differs from the configs stops the run before any write (`idPrefixGuard`, run over every Table, sharing the retired prefixes with the title-derived prefix).
 
