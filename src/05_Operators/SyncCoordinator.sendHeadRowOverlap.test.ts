@@ -1,6 +1,8 @@
 import { Val } from "@byronbroughten/utils/val";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { type IdNameMapGeneric } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
+import { type PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState";
 import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
@@ -9,8 +11,14 @@ import {
   type FakeCellValue,
   type FakeSheetProperties,
 } from "../testSupport/fakeSheetsService";
-import { type ConfigRegeneration } from "./SyncCoordinator";
 import {
+  type ConfigRegeneration,
+  SyncCoordinator,
+  type SyncRun,
+} from "./SyncCoordinator";
+import {
+  frame,
+  previousItemMap,
   seedFixture,
   sendWithNoAlterations,
 } from "./syncCoordinatorTestSupport";
@@ -287,5 +295,119 @@ describe("SyncCoordinator send with no alterations head-row overlap", () => {
     const parsed = sendWithNoAlterations();
     expect(parsed.tableConfigs).toContain('"tenants"');
     expect(parsed.tableConfigs).toContain('"leases"');
+  });
+
+  describe("granting API access", () => {
+    // Tenants, ungranted, with its header on row 4.
+    const tenants: RecordsTable = {
+      name: "Tenants",
+      headerRowIndex: 3,
+      startColumnIndex: 0,
+      endColumnIndex: 3,
+      endRowIndex: 5,
+      isManaged: false,
+    };
+
+    // The previous map holds Tenants with no columns: it has no API access.
+    function previousMapWithTenants(): IdNameMapGeneric {
+      const map = previousItemMap();
+      const tableId = recordsTableId(tenants);
+      map.tables[tableId] = { name: "tenants", sheetGid: recordsGid };
+      map.tabs[String(recordsGid)] = {
+        name: "records",
+        title: "Records",
+        tableIds: [tableId],
+      };
+      return map;
+    }
+
+    function runGrant(isSending: boolean): SyncRun {
+      return SyncCoordinator.init().run({
+        isSending,
+        intendedState: {
+          alterations: {
+            tables: { tenants: { letApiAccess: true } },
+          } as PendingAlterations,
+        },
+        previousIdNameMap: previousMapWithTenants(),
+        forcedTraits: [],
+        frame,
+      });
+    }
+
+    // Notes sits in rows 1–2, under Tenants' head rows.
+    const notesUnderHeadRows: RecordsTable = {
+      name: "Notes",
+      headerRowIndex: 0,
+      startColumnIndex: 2,
+      endColumnIndex: 4,
+      endRowIndex: 2,
+      isManaged: false,
+    };
+
+    const overlapStop = {
+      kind: "headRows",
+      table: "tenants",
+      tab: "Records",
+      neighbour: "Notes",
+    };
+
+    it("stops a grant whose head rows would sit on another Table on a dry run, naming both", () => {
+      const { batchUpdateCount } = seedRecords([tenants, notesUnderHeadRows]);
+
+      const { result } = runGrant(false);
+
+      expect(batchUpdateCount()).toBe(0);
+      expect(result).toMatchObject({
+        outcome: { kind: "stopped" },
+        stops: [overlapStop],
+      });
+    });
+
+    it("stops the same grant on a send, sending nothing", () => {
+      const { grid, batchUpdateCount } = seedRecords([
+        tenants,
+        notesUnderHeadRows,
+      ]);
+      const before = grid.sheet(recordsGid).values();
+
+      const { result, files } = runGrant(true);
+
+      expect(batchUpdateCount()).toBe(0);
+      expect(grid.sheet(recordsGid).values()).toEqual(before);
+      expect(files?.tableConfigs).not.toContain('"tenants"');
+      expect(result).toMatchObject({
+        outcome: { kind: "stopped" },
+        landed: [],
+        stops: [overlapStop],
+      });
+    });
+
+    it("plans a grant whose head rows sit clear of every other Table", () => {
+      seedRecords([
+        tenants,
+        {
+          name: "Notes",
+          headerRowIndex: 0,
+          startColumnIndex: 3,
+          endColumnIndex: 5,
+          endRowIndex: 2,
+          isManaged: false,
+        },
+      ]);
+
+      const { result } = runGrant(false);
+
+      expect(result).toMatchObject({
+        outcome: { kind: "ready" },
+        stops: [],
+        plan: [
+          {
+            subject: { table: "tenants", path: "letApiAccess" },
+            what: "set to true",
+          },
+        ],
+      });
+    });
   });
 });

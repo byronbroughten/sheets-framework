@@ -881,6 +881,41 @@ describe("SyncRunReport, case F: two refusals, then a head-row stop", () => {
   });
 });
 
+describe("SyncRunReport's head-row overlap stop", () => {
+  const stopped = render({
+    ...appDryRun,
+    outcome: { kind: "stopped" },
+    stops: [
+      { kind: "headRows", table: "vendor", tab: "Vendors", neighbour: "Notes" },
+    ],
+  });
+  const stoppedText = stopped.join("\n");
+
+  it("names the granted Table and the Table its head rows would sit on", () => {
+    expect(resultLine(stopped)).toBe(
+      "STOPPED: 1 Table can't take head rows. Nothing was sent, and nothing will be until it is resolved.",
+    );
+    expect(stoppedText).toContain(
+      `STOP 1 · vendor › letApiAccess\n  vendor's head rows, the 3 rows above its header on its tab, Vendors, would sit on Table "Notes".\n  Move vendor or "Notes" so that vendor's head rows sit clear of it, then rerun.\n  The entry stays in alterations.ts.`,
+    );
+  });
+
+  it("counts a grant whose head rows sit on two Tables as one Table", () => {
+    const twoNeighbours = render({
+      ...appDryRun,
+      outcome: { kind: "stopped" },
+      stops: [
+        { kind: "headRows", table: "vendor", tab: "Vendors", neighbour: "A" },
+        { kind: "headRows", table: "vendor", tab: "Vendors", neighbour: "B" },
+      ],
+    });
+
+    expect(resultLine(twoNeighbours)).toBe(
+      "STOPPED: 1 Table can't take head rows. Nothing was sent, and nothing will be until they are resolved.",
+    );
+  });
+});
+
 describe("SyncRunReport's header-taken stop", () => {
   const stopped = render({
     ...appDryRun,

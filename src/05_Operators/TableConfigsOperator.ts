@@ -91,21 +91,23 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
     this.configSyncState.apiAccessSync = changes;
     return this;
   }
-  // A grant writes head rows above the header, so its header must sit where they fit.
+  // A grant writes head rows above the header, so its header must sit where they fit, clear of every other Table.
   grantHeadRowStops(grants: ApiAccessGrant[]): SyncHeadRowsStop[] {
     const { raw } = this.ss;
     return grants.flatMap(({ tableId, table }): SyncHeadRowsStop[] => {
       if (!raw.tableIdIsActive(tableId)) return [];
-      const { startRowIndex, sheetGid } = raw.table(tableId);
-      if (headerZone.holdsHeaderRow(startRowIndex)) return [];
-      return [
-        {
-          kind: "headRows",
-          table,
-          tab: raw.sheet(sheetGid).title,
-          headerRow: startRowIndex + 1,
-        },
-      ];
+      const granted = raw.table(tableId);
+      const { startRowIndex } = granted;
+      const tab = raw.sheet(granted.sheetGid).title;
+      if (!headerZone.holdsHeaderRow(startRowIndex)) {
+        return [{ kind: "headRows", table, tab, headerRow: startRowIndex + 1 }];
+      }
+      return granted.neighboursUnderHeadRows.map((neighbour) => ({
+        kind: "headRows",
+        table,
+        tab,
+        neighbour: neighbour.name,
+      }));
     });
   }
   // Matched by the codebase name the regen would give, since two Tables or tabs giving one name can't both be configured.

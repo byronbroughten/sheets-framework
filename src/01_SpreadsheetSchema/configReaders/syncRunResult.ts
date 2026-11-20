@@ -277,11 +277,22 @@ export interface SyncConflict {
   isColumnGone?: true;
 }
 
-export interface SyncHeadRowsStop {
+// A grant whose Table can't take head rows: its header sits off the header zone, or its head rows would sit on another Table.
+export type SyncHeadRowsStop = SyncHeaderOffZoneStop | SyncHeadRowsOverlapStop;
+
+interface SyncHeadRowsStopBase {
   kind: "headRows";
   table: string;
   tab: string;
+}
+
+export interface SyncHeaderOffZoneStop extends SyncHeadRowsStopBase {
   headerRow: number;
+}
+
+// `neighbour` is the live name of the Table the head rows would sit on.
+export interface SyncHeadRowsOverlapStop extends SyncHeadRowsStopBase {
+  neighbour: string;
 }
 
 // A `newColumns` entry whose header names a column the Table already has: `column` and `columnId` are that column's.

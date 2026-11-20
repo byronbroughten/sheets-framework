@@ -15,13 +15,13 @@ export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
     if (sentences.length === 0) return;
     throw new Error(sentences.join(" "));
   }
-  // By geometry alone: the column ID row may give way to metadata on the header row.
+  // A grant's overlap is a stop found before the plan; this guard catches any Table that slips past it.
   validateHeadRowsClear(managedTableIds: string[]): void {
     const sentences = managedTableIds.flatMap((tableId) => {
       const table = this.ss.table(tableId);
-      return table.neighbourTables
-        .filter((other) => table.headRowsSitOn(other))
-        .map((other) => table.headRowsOverlapFix(other));
+      return table.neighboursUnderHeadRows.map((other) =>
+        table.headRowsOverlapFix(other),
+      );
     });
     if (sentences.length === 0) return;
     throw new Error(sentences.join(" "));
