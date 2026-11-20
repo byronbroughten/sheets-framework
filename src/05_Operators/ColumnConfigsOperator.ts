@@ -440,12 +440,20 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
     newColumns: PlannedNewColumn[],
   ): SyncBeforeFirstColumnStop[] {
     return newColumns.flatMap(
-      ({ table, path, header, before }): SyncBeforeFirstColumnStop[] => {
+      ({ table, beforePath, header, before }): SyncBeforeFirstColumnStop[] => {
         if (before === undefined) return [];
         const placedBefore = this._liveColumnNamed(table, before);
         if (placedBefore === undefined) return [];
         if (!this._isFirstColumn(placedBefore)) return [];
-        return [{ kind: "beforeFirstColumn", table, path, header, before }];
+        return [
+          {
+            kind: "beforeFirstColumn",
+            table,
+            path: beforePath,
+            header,
+            before,
+          },
+        ];
       },
     );
   }

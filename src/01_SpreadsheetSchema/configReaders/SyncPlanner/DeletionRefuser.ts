@@ -5,11 +5,11 @@ import {
   entriesOf,
   moveBeforePath,
   moveColumnPath,
-  newColumnPath,
+  newColumnsBeforesOf,
+  newColumnsOf,
   type WideAlterations,
   type WideColumnEntry,
   type WideColumnGroupMove,
-  type WideNewColumn,
   type WideNewTable,
   type WideTableEntry,
 } from "./wideAlterations";
@@ -128,12 +128,12 @@ export class DeletionRefuser {
       ...entriesOf(entry.columns).flatMap(([column, columnEntry]) =>
         this._columnEntryTouches(table, column, columnEntry),
       ),
-      ...(entry.newColumns ?? []).flatMap((newColumn, index) =>
-        this._placedColumnTouches(
-          table,
-          newColumn,
-          `${at}.${newColumnPath(index)}`,
-        ),
+      ...newColumnsBeforesOf(entry).map(({ before, path }) => ({
+        targets: this._columnTargets(table, before),
+        touchedBy: `${at}.${path}`,
+      })),
+      ...newColumnsOf(entry).flatMap(({ newColumn, path }) =>
+        this._formulaTouches(table, newColumn, `${at}.${path}`),
       ),
       ...this._moveTouches(table, entry.moves ?? []),
       ...this._ruleTouches(table, entry.conditionalFormats, at),
@@ -169,24 +169,6 @@ export class DeletionRefuser {
     const targets = this._tabTargets(table);
     if (targets.length === 0) return [];
     return [{ targets, touchedBy, takenTable: table }];
-  }
-  private _placedColumnTouches(
-    table: string,
-    newColumn: WideNewColumn,
-    at: string,
-  ): Touch[] {
-    const { before } = newColumn;
-    return [
-      ...(before === undefined
-        ? []
-        : [
-            {
-              targets: this._columnTargets(table, before),
-              touchedBy: `${at}.before`,
-            },
-          ]),
-      ...this._formulaTouches(table, newColumn, at),
-    ];
   }
   private _formulaTouches(
     table: string,

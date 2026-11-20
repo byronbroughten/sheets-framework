@@ -233,10 +233,16 @@ export type SyncRefusal =
       takenTable?: string;
     };
 
-// Two `moves` paths that can't both hold: one `before` twice, one column in two groups, or a `before` some group moves.
+// Two `moves` or `newColumns` paths that can't both hold: one `before` twice, one column in two groups, or a `before` some group moves.
 export interface SyncClashingMoves {
   kind: "clashingMoves";
-  clash: "sameBefore" | "repeatedColumn" | "movedBefore";
+  clash:
+    | "sameBefore"
+    | "repeatedColumn"
+    | "movedBefore"
+    | "sameNewColumnsBefore"
+    | "newColumnsBeforeMoveTarget"
+    | "newColumnsBeforeMovedColumn";
   table: string;
   path: string;
   otherPath: string;

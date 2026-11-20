@@ -513,6 +513,12 @@ const clashingMovesText: Record<
     `${path} moves ${column}, as ${otherPath} does: a column can sit in only one group.`,
   movedBefore: ({ path, otherPath, column }) =>
     `${path} puts its group before ${column}, which ${otherPath} moves: a group's target can't itself move.`,
+  sameNewColumnsBefore: ({ path, otherPath, column }) =>
+    `${path} puts new columns before ${column}, as ${otherPath} does: write them as one group, in the order they go.`,
+  newColumnsBeforeMoveTarget: ({ path, otherPath, column }) =>
+    `${path} puts new columns before ${column}, as ${otherPath} puts its group: only one can sit right before it.`,
+  newColumnsBeforeMovedColumn: ({ path, otherPath, column }) =>
+    `${path} puts new columns before ${column}, which ${otherPath} moves: new columns' before can't itself move.`,
 };
 
 // The one phrase for two entries that can't both land.

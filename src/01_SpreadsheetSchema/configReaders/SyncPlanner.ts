@@ -8,7 +8,7 @@ import {
   entriesOf,
   isMovePath,
   movePath,
-  newColumnPath,
+  newColumnsOf,
   type WideAlterations,
   type WideColumnGroupMove,
   type WideNewTable,
@@ -63,11 +63,13 @@ export interface PlanProps extends PlanReadings {
   sheetStops?: SyncSheetStop[];
 }
 
-// One `newColumns` entry, by its Table's codebase name; `column` is the name the regen gives its header.
+// One column a `newColumns` item creates, by its Table's codebase name; `column` is the name the regen gives its header.
 export interface PlannedNewColumn {
   table: string;
-  // The entry's path in its Table entry, as `newColumns[0]`.
+  // The column's path in its Table entry, as `newColumns[0]` or `newColumns[0].columns[1]`.
   path: string;
+  // Its item's `before`'s path, as `newColumns[0].before`.
+  beforePath: string;
   column: string;
   header: string;
   before?: string;
@@ -460,13 +462,15 @@ export class SyncPlanner {
   // From intended state alone, so the run can check each header against the sheet before planning.
   get newColumns(): PlannedNewColumn[] {
     return entriesOf(this.alterations.tables).flatMap(([table, entry]) =>
-      (entry.newColumns ?? []).flatMap(
-        ({ header, before, emptyValueAllowed }, index): PlannedNewColumn[] => {
+      newColumnsOf(entry).flatMap(
+        ({ newColumn, path, beforePath }): PlannedNewColumn[] => {
+          const { header, before, emptyValueAllowed } = newColumn;
           if (header === undefined) return [];
           return [
             {
               table,
-              path: newColumnPath(index),
+              path,
+              beforePath,
               column: columnNameOfHeader(header),
               header,
               ...(before === undefined ? {} : { before }),

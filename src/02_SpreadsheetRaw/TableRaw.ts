@@ -861,6 +861,10 @@ export class TableRaw extends TableCommonRaw {
       this.rowStates.set(rowIndex, rekey(rowState));
     }
     this.tableState.working.columnStates = rekey(this.columnStates);
+    // An earlier change's new head cells are queued by colIndex, so a later change in the same gather carries them.
+    for (const rowWrites of this.tableState.writeQueue.rows.values()) {
+      rowWrites.fillCells = rekey(rowWrites.fillCells);
+    }
   }
   private get _namedTableOnSheet(): string {
     return `Table "${this.name}" on sheet "${this.sheetTitle}"`;

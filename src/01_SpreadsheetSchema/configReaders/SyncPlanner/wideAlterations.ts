@@ -27,6 +27,13 @@ export interface WideNewColumn extends WideColumnEntry {
   before?: string;
 }
 
+export interface WideNewColumnGroup {
+  columns: WideNewTableColumn[];
+  before?: string;
+}
+
+export type WideNewColumnItem = WideNewColumn | WideNewColumnGroup;
+
 export interface WideColumnGroupMove {
   columns: string[];
   before: string;
@@ -37,7 +44,7 @@ export interface WideTableEntry {
   name?: string;
   letApiAccess?: boolean;
   columns?: Record<string, WideColumnEntry | undefined>;
-  newColumns?: WideNewColumn[];
+  newColumns?: WideNewColumnItem[];
   moves?: WideColumnGroupMove[];
   conditionalFormats?: {
     add?: WideRule[];
@@ -89,9 +96,59 @@ export interface WideRuleAt {
   rule: WideRule;
 }
 
-// A `newColumns` entry's path in its Table entry, as `newColumns[0]`.
+// A new column with the `before` its `newColumns` item gives it, by where it sits in its Table entry.
+export interface WideNewColumnAt {
+  newColumn: WideNewColumn;
+  // As `newColumns[0]`, or `newColumns[0].columns[1]` in a group.
+  path: string;
+  // Its item's `before`'s path, as `newColumns[0].before`, its group's in a group.
+  beforePath: string;
+}
+
+// A `newColumns` item's `before`, by its path, as `newColumns[0].before`.
+export interface WideNewColumnsBefore {
+  before: string;
+  path: string;
+}
+
+// A `newColumns` item's path in its Table entry, as `newColumns[0]`.
 export function newColumnPath(index: number): string {
   return `newColumns[${index}]`;
+}
+
+export function isNewColumnGroup(
+  item: WideNewColumnItem,
+): item is WideNewColumnGroup {
+  return "columns" in item;
+}
+
+// Each column a Table entry's `newColumns` create, in order, a group's taking its group's `before`.
+export function newColumnsOf({
+  newColumns,
+}: WideTableEntry): WideNewColumnAt[] {
+  return (newColumns ?? []).flatMap((item, index): WideNewColumnAt[] => {
+    const path = newColumnPath(index);
+    const beforePath = `${path}.before`;
+    if (!isNewColumnGroup(item)) {
+      return [{ newColumn: item, path, beforePath }];
+    }
+    const { columns, before } = item;
+    return columns.map((column, columnIndex) => ({
+      newColumn: { ...column, ...(before === undefined ? {} : { before }) },
+      path: `${path}.columns[${columnIndex}]`,
+      beforePath,
+    }));
+  });
+}
+
+// One per `newColumns` item that has a `before`, a group's once.
+export function newColumnsBeforesOf({
+  newColumns,
+}: WideTableEntry): WideNewColumnsBefore[] {
+  return (newColumns ?? []).flatMap(({ before }, index) => {
+    if (before === undefined) return [];
+    return [{ before, path: `${newColumnPath(index)}.before` }];
+  });
 }
 
 // A `moves` group's path in its Table entry, as `moves[0]`.

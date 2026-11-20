@@ -164,6 +164,271 @@ describe("SyncCoordinator.run new columns", () => {
     expect(emptyValueAllowedOf(emitted, "ref")).toBe(true);
   });
 
+  it("creates a group's columns together, in order, before the column it names", () => {
+    const service = seedFixture();
+    const [, secondColumn] = Object.keys(itemColumns) as ItemColumnName[];
+    const before = itemSheetRows(service);
+    const endBefore = itemTableEnd(service);
+
+    const { result, files } = runItem({
+      isSending: true,
+      alterations: {
+        tables: {
+          item: {
+            newColumns: [
+              {
+                columns: [
+                  { header: "Ref" },
+                  { header: "Late fee", emptyValueAllowed: true },
+                ],
+                before: Val.assert(secondColumn, "second column"),
+              },
+            ],
+          },
+        },
+      },
+    });
+
+    const emitted = Val.assert(files, "emitted files");
+    const [firstHeader, ...restHeaders] = headersOf(before);
+    expect(headersOf(itemSheetRows(service))).toEqual([
+      firstHeader,
+      "Ref",
+      "Late fee",
+      ...restHeaders,
+    ]);
+    expect(itemTableEnd(service)).toBe(endBefore + 2);
+    expect(emptyValueAllowedOf(emitted, "ref")).toBe(false);
+    expect(emptyValueAllowedOf(emitted, "lateFee")).toBe(true);
+    expect(emitted.alterations).toContain("makePendingAlterations({})");
+    expect(result).toMatchObject({
+      outcome: { kind: "sent" },
+      landed: [
+        { kind: "createdColumn", column: "ref" },
+        { kind: "createdColumn", column: "lateFee" },
+      ],
+    });
+  });
+
+  it("appends a group's columns in order at the Table's end", () => {
+    const service = seedFixture();
+    const before = itemSheetRows(service);
+
+    runItem({
+      isSending: true,
+      alterations: {
+        tables: {
+          item: {
+            newColumns: [
+              { columns: [{ header: "Late fee" }, { header: "Ref" }] },
+            ],
+          },
+        },
+      },
+    });
+
+    expect(headersOf(itemSheetRows(service))).toEqual([
+      ...headersOf(before),
+      "Late fee",
+      "Ref",
+    ]);
+  });
+
+  describe("refusals naming a group's paths", () => {
+    const [, secondColumn, thirdColumn] = Object.keys(
+      itemColumns,
+    ) as ItemColumnName[];
+    const secondName = Val.assert(secondColumn, "second column");
+    const thirdName = Val.assert(thirdColumn, "third column");
+
+    function refusalsOf(alterations: PendingAlterations): unknown {
+      const service = seedFixture();
+      const { result, files } = runItem({ isSending: true, alterations });
+      expect(files).toBeUndefined();
+      expect(service.batchUpdateCount()).toBe(0);
+      expect(result.outcome).toEqual({ kind: "refused" });
+      return result.refusals;
+    }
+
+    it("refuses two items with the same before, naming both", () => {
+      expect(
+        refusalsOf({
+          tables: {
+            item: {
+              newColumns: [
+                { header: "Ref", before: secondName },
+                { columns: [{ header: "Late fee" }], before: secondName },
+              ],
+            },
+          },
+        }),
+      ).toEqual([
+        {
+          kind: "clashingMoves",
+          clash: "sameNewColumnsBefore",
+          table: "item",
+          path: "newColumns[1].before",
+          otherPath: "newColumns[0].before",
+          column: secondName,
+        },
+      ]);
+    });
+
+    it("refuses a before a moves group also puts its group before, naming both", () => {
+      expect(
+        refusalsOf({
+          tables: {
+            item: {
+              newColumns: [
+                { columns: [{ header: "Ref" }], before: secondName },
+              ],
+              moves: [{ columns: [thirdName], before: secondName }],
+            },
+          },
+        }),
+      ).toEqual([
+        {
+          kind: "clashingMoves",
+          clash: "newColumnsBeforeMoveTarget",
+          table: "item",
+          path: "newColumns[0].before",
+          otherPath: "moves[0].before",
+          column: secondName,
+        },
+      ]);
+    });
+
+    it("refuses a before a moves group moves, naming both", () => {
+      expect(
+        refusalsOf({
+          tables: {
+            item: {
+              newColumns: [{ columns: [{ header: "Ref" }], before: thirdName }],
+              moves: [{ columns: [thirdName], before: secondName }],
+            },
+          },
+        }),
+      ).toEqual([
+        {
+          kind: "clashingMoves",
+          clash: "newColumnsBeforeMovedColumn",
+          table: "item",
+          path: "newColumns[0].before",
+          otherPath: "moves[0].columns[0]",
+          column: thirdName,
+        },
+      ]);
+    });
+
+    it("refuses two headers giving one name, one in a group, by the group column's path", () => {
+      expect(
+        refusalsOf({
+          tables: {
+            item: {
+              newColumns: [
+                { header: "Late fee" },
+                { columns: [{ header: "Ref" }, { header: "Late Fee" }] },
+              ],
+            },
+          },
+        }),
+      ).toEqual([
+        {
+          kind: "repeatedNewColumn",
+          table: "item",
+          path: "newColumns[1].columns[1].header",
+          firstPath: "newColumns[0].header",
+          column: "lateFee",
+        },
+      ]);
+    });
+
+    it("refuses a group column's trait not sendable yet by its path", () => {
+      expect(
+        refusalsOf({
+          tables: {
+            item: {
+              newColumns: [
+                {
+                  columns: [{ header: "Ref" }, { header: "Fee", formula: "1" }],
+                },
+              ],
+            },
+          },
+        }),
+      ).toEqual([
+        {
+          kind: "notSendableYet",
+          table: "item",
+          path: "newColumns[0].columns[1].formula",
+        },
+      ]);
+    });
+  });
+
+  it("stops on a group placed before the Table's first column, naming the group's before", () => {
+    const service = seedFixture();
+    const [firstColumn] = Object.keys(itemColumns) as ItemColumnName[];
+    const firstName = Val.assert(firstColumn, "first column");
+
+    const { result } = runItem({
+      isSending: true,
+      alterations: {
+        tables: {
+          item: {
+            newColumns: [
+              {
+                columns: [{ header: "Ref" }, { header: "Late fee" }],
+                before: firstName,
+              },
+            ],
+          },
+        },
+      },
+    });
+
+    expect(service.batchUpdateCount()).toBe(0);
+    expect(result).toMatchObject({
+      outcome: { kind: "stopped" },
+      stops: [
+        {
+          kind: "beforeFirstColumn",
+          path: "newColumns[0].before",
+          header: "Ref",
+          before: firstName,
+        },
+        {
+          kind: "beforeFirstColumn",
+          path: "newColumns[0].before",
+          header: "Late fee",
+          before: firstName,
+        },
+      ],
+    });
+  });
+
+  it("stops on a group column whose header the Table already has", () => {
+    const service = seedFixture();
+    const { header, columnId } = itemColumns.optionalNote;
+
+    const { result } = runItem({
+      isSending: true,
+      alterations: {
+        tables: {
+          item: { newColumns: [{ columns: [{ header: "Ref" }, { header }] }] },
+        },
+      },
+    });
+
+    expect(service.batchUpdateCount()).toBe(0);
+    expect(result).toMatchObject({
+      outcome: { kind: "stopped" },
+      stops: [
+        { kind: "headerTaken", header, column: "optionalNote", columnId },
+      ],
+    });
+  });
+
   describe("an entry placed before the Table's first column", () => {
     const [firstColumn] = Object.keys(itemColumns) as ItemColumnName[];
     const firstName = Val.assert(firstColumn, "first column");
@@ -180,7 +445,7 @@ describe("SyncCoordinator.run new columns", () => {
     const stop = {
       kind: "beforeFirstColumn",
       table: "item",
-      path: "newColumns[1]",
+      path: "newColumns[1].before",
       header: "Ref",
       before: firstName,
     };

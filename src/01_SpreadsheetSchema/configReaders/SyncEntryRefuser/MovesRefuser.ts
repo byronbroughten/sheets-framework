@@ -1,6 +1,7 @@
 import {
   moveBeforePath,
   moveColumnPath,
+  newColumnsBeforesOf,
   type WideTableEntry,
 } from "../SyncPlanner/wideAlterations";
 import type { SyncClashingMoves, SyncRefusal } from "../syncRunResult";
@@ -16,7 +17,7 @@ interface ClashProps {
   otherPath: string;
 }
 
-// Refuses a Table entry's `moves` groups that can't all hold at once, naming both paths of each clash.
+// Refuses a Table entry's `moves` groups and `newColumns` placements that can't all hold at once, naming both paths of each clash.
 export class MovesRefuser {
   private table: string;
   private entry: WideTableEntry;
@@ -29,7 +30,38 @@ export class MovesRefuser {
       ...this._sameBeforeRefusals,
       ...this._repeatedColumnRefusals,
       ...this._movedBeforeRefusals,
+      ...this._repeatRefusals(this._newColumnsBefores, "sameNewColumnsBefore"),
+      ...this._newColumnsBeforeRefusals,
     ];
+  }
+  // New columns go in before the moves, so a move to or of their `before` leaves them no longer right before it.
+  private get _newColumnsBeforeRefusals(): SyncClashingMoves[] {
+    const moveBefores = this._befores;
+    const movedColumns = this._movedColumns;
+    return this._newColumnsBefores.flatMap((named) => {
+      const target = moveBefores.find(({ column }) => column === named.column);
+      const moved = movedColumns.find(({ column }) => column === named.column);
+      return [
+        ...(target === undefined
+          ? []
+          : [
+              this._clash({
+                clash: "newColumnsBeforeMoveTarget",
+                named,
+                otherPath: target.path,
+              }),
+            ]),
+        ...(moved === undefined
+          ? []
+          : [
+              this._clash({
+                clash: "newColumnsBeforeMovedColumn",
+                named,
+                otherPath: moved.path,
+              }),
+            ]),
+      ];
+    });
   }
   private get _sameBeforeRefusals(): SyncClashingMoves[] {
     return this._repeatRefusals(this._befores, "sameBefore");
@@ -75,6 +107,12 @@ export class MovesRefuser {
     return (this.entry.moves ?? []).map(({ before }, index) => ({
       column: before,
       path: moveBeforePath(index),
+    }));
+  }
+  private get _newColumnsBefores(): NamedAt[] {
+    return newColumnsBeforesOf(this.entry).map(({ before, path }) => ({
+      column: before,
+      path,
     }));
   }
   private get _movedColumns(): NamedAt[] {

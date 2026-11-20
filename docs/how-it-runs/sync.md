@@ -8,7 +8,7 @@
 
 ## Adding columns with newColumns
 
-**`newColumns` is sendable, and `sync` mints each new column's ID.** An entry takes only `header`, `before` and `emptyValueAllowed`; `formula` and `columnType` are refused as not sendable yet, since they need a write after the insert (`sendableTraits.newColumn`).
+**`newColumns` is sendable, and `sync` mints each new column's ID.** An entry is a single new column or a group, `{ columns, before? }`, whose columns are inserted together, in order, before its `before`, or appended in order when it has none. A column takes only `header`, `before` (a single entry's own) and `emptyValueAllowed`; `formula` and `columnType` are refused as not sendable yet, since they need a write after the insert (`sendableTraits.newColumn`). Two entries with the same `before`, or a `before` that a `moves` group on the same Table also names, are refused before the read; a refusal or stop on a group's column names it by `newColumns[i].columns[j]`, and on its `before` by `newColumns[i].before`.
 
 ## Creating Tables with newTabs and newTables
 

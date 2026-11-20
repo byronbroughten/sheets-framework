@@ -8,6 +8,7 @@ import { RuleRefuser } from "./SyncEntryRefuser/RuleRefuser";
 import { sheetTraits, tabTraits } from "./SyncPlanner";
 import {
   entriesOf,
+  isNewColumnGroup,
   newColumnPath,
   rulesOf,
   type WideAlterations,
@@ -38,6 +39,7 @@ export const sendableTraits = {
   column: new Set<string>([...sheetTraits.column, "emptyValueAllowed"]),
   // A new column's own traits: a formula or column type would need a write after the insert.
   newColumn: new Set<string>(["header", "before", "emptyValueAllowed"]),
+  newColumnGroup: new Set<string>(["columns", "before"]),
   tab: new Set<string>([...tabTraits, ...sheetTraits.tab, "newTables"]),
   newTab: new Set<string>([...tabTraits, "tables"]),
   newTable: new Set<string>([
@@ -270,9 +272,16 @@ function ruleTextFormatPaths(entry: WideTableEntry): string[] {
 }
 
 function newColumnTraitPaths({ newColumns }: WideTableEntry): TraitPath[] {
-  return (newColumns ?? []).flatMap((newColumn, index) =>
-    traitPathsAt("newColumn", newColumn, `${newColumnPath(index)}.`),
-  );
+  return (newColumns ?? []).flatMap((item, index) => {
+    const at = `${newColumnPath(index)}.`;
+    if (!isNewColumnGroup(item)) return traitPathsAt("newColumn", item, at);
+    return [
+      ...traitPathsAt("newColumnGroup", item, at),
+      ...item.columns.flatMap((column, columnIndex) =>
+        traitPathsAt("newColumn", column, `${at}columns[${columnIndex}].`),
+      ),
+    ];
+  });
 }
 
 // A grant takes its own run, since a column entry needs the column IDs the grant writes.

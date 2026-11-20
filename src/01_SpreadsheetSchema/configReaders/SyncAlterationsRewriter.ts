@@ -6,13 +6,14 @@ import type { NamesNow, TableNow } from "./namesNow";
 import { type Rename, SyncFormulaRewriter } from "./SyncFormulaRewriter";
 import {
   entriesOf,
+  isNewColumnGroup,
   moveBeforePath,
   moveColumnPath,
   newColumnPath,
   type WideAlterations,
   type WideColumnEntry,
   type WideColumnGroupMove,
-  type WideNewColumn,
+  type WideNewColumnItem,
   type WideNewTable,
   type WideTabEntry,
   type WideTableEntry,
@@ -152,12 +153,22 @@ export class SyncAlterationsRewriter {
       });
     }
     if (newColumns !== undefined) {
-      rewritten.newColumns = newColumns.map((newColumn, index) => {
+      rewritten.newColumns = newColumns.map((item, index) => {
         const at = `${tableName}.${newColumnPath(index)}`;
+        if (!isNewColumnGroup(item)) {
+          return {
+            ...item,
+            ...this._columnBefore(item, at, table),
+            ...formulas.formulaTexts(item, at),
+          };
+        }
         return {
-          ...newColumn,
-          ...this._columnBefore(newColumn, at, table),
-          ...formulas.formulaTexts(newColumn, at),
+          ...item,
+          ...this._columnBefore(item, at, table),
+          columns: item.columns.map((column, columnIndex) => ({
+            ...column,
+            ...formulas.formulaTexts(column, `${at}.columns[${columnIndex}]`),
+          })),
         };
       });
     }
@@ -217,10 +228,10 @@ export class SyncAlterationsRewriter {
     );
   }
   private _columnBefore(
-    entry: WideNewColumn,
+    entry: WideNewColumnItem,
     at: string,
     table: TableNow | undefined,
-  ): Pick<WideNewColumn, "before"> {
+  ): Pick<WideNewColumnItem, "before"> {
     return this._before({
       before: entry.before,
       at,

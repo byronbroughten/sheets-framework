@@ -38,8 +38,17 @@ interface ColumnTraits {
   emptyValueAllowed?: boolean;
 }
 
-interface NewColumn<CN extends string> extends ColumnTraits {
+interface HeadedColumn extends ColumnTraits {
   header: string;
+}
+
+interface NewColumn<CN extends string> extends HeadedColumn {
+  before?: CN;
+}
+
+// Its columns, in order, sit together immediately before `before`, or at the Table's end without one; no two `newColumns` items, nor a `moves` group, may name one `before`.
+interface NewColumnGroup<CN extends string> {
+  columns: HeadedColumn[];
   before?: CN;
 }
 
@@ -47,10 +56,6 @@ interface NewColumn<CN extends string> extends ColumnTraits {
 interface ColumnGroupMove<CN extends string> {
   columns: CN[];
   before: CN;
-}
-
-interface NewTableColumn extends ColumnTraits {
-  header: string;
 }
 
 // Colours as hex text an agent writes, where the Source's `ConditionalFormat` holds RGB channels.
@@ -94,7 +99,7 @@ interface TableTraits<CN extends string, CE extends object> {
   name?: string;
   letApiAccess?: boolean;
   columns?: { [C in CN]?: CE };
-  newColumns?: NewColumn<CN>[];
+  newColumns?: (NewColumn<CN> | NewColumnGroup<CN>)[];
   // Applied in list order.
   moves?: ColumnGroupMove<CN>[];
   conditionalFormats?: ConditionalFormatAlterations<CN | NewColumnName>;
@@ -107,7 +112,7 @@ type TableAlteration<TN extends MappedTableName> = Deletable<
 // Its columns are named by header, since none is in the map until the run that adds it.
 interface NewTable {
   name: string;
-  columns: NewTableColumn[];
+  columns: HeadedColumn[];
   conditionalFormats?: Pick<ConditionalFormatAlterations<string>, "add">;
 }
 
