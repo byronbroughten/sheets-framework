@@ -6,10 +6,12 @@ import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import type { FakeSheetsService } from "../testSupport/fakeSheetsService";
 import { parseIdNameMapFileSource } from "./parseIdNameMapFileSource";
-import type { ConfigRegeneration } from "./SyncCoordinator";
+import { type ConfigRegeneration, SyncCoordinator } from "./SyncCoordinator";
 import {
+  frame,
   itemColumns,
   itemGid,
+  previousItemMap,
   runItem,
   seedFixture,
 } from "./syncCoordinatorTestSupport";
@@ -92,6 +94,59 @@ describe("SyncCoordinator.run new tabs and Tables", () => {
         },
       ],
     });
+  });
+
+  it("plans a Table beside Item on a withheld dry run, carrying its minted IDs and leaving the grid as it was", () => {
+    const service = seedFixture({ service: { isDryRun: true } });
+    const itemEnd = itemTableEnd(service);
+    const before = service.grid.sheet(itemGid);
+    const valuesBefore = before.values();
+    const tablesBefore = structuredClone(before.tables);
+    const withheld = vi.spyOn(service.sheets.Spreadsheets, "batchUpdate");
+
+    const { result } = SyncCoordinator.init().run({
+      isSending: false,
+      intendedState: {
+        alterations: { tabs: { item: { newTables: [paymentLog] } } },
+      },
+      previousIdNameMap: previousItemMap(),
+      forcedTraits: [],
+      frame,
+      isHostWithholding: true,
+    });
+
+    expect(service.grid.sheet(itemGid).values()).toEqual(valuesBefore);
+    expect(service.grid.sheet(itemGid).tables).toEqual(tablesBefore);
+    expect(result).toMatchObject({
+      mode: "dry run",
+      outcome: { kind: "ready" },
+    });
+    // The dry-run wire is what the host's gate judges, so the minted IDs are read off it.
+    const requests = withheld.mock.calls.flatMap(
+      ([batch]) => batch.requests ?? [],
+    );
+    expect(requests).toContainEqual({
+      addTable: {
+        table: {
+          name: "Payment Log",
+          tableId: expect.stringMatching(mintedTableId),
+          range: expect.objectContaining({
+            startRowIndex: tableHeaderRowIndex,
+            startColumnIndex: itemEnd,
+            endColumnIndex: itemEnd + 2,
+          }),
+        },
+      },
+    });
+    const mintedColumnIds = requests.flatMap(({ updateCells }) =>
+      (updateCells?.rows ?? []).flatMap(({ values = [] }) =>
+        values.map(({ userEnteredValue }) => userEnteredValue?.stringValue),
+      ),
+    );
+    expect(mintedColumnIds).toEqual([
+      expect.stringMatching(/^c:plg:/),
+      expect.stringMatching(/^c:plg:/),
+    ]);
   });
 
   it("adds a new tab holding its Table, with API access on in the configs and the ID-name map, and lists it as created", () => {

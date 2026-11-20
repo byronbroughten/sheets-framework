@@ -9,6 +9,12 @@ import {
   type SyncRunFrame,
 } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
 import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
+import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
+import {
+  layoutGid,
+  layoutTableId,
+  managedLayoutTableNames,
+} from "../02_SpreadsheetRaw/spreadsheetRawTestSupport";
 import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
 import {
   type FakeSheetProperties,
@@ -267,6 +273,45 @@ export function runItem({
     forcedTraits,
     frame,
     dropdownStyleReset,
+  });
+}
+
+const layoutIdPrefixes = { layoutLeft: "lyl", layoutRight: "lyr" } as const;
+
+// The Layout tab's two managed Tables as the previous ID-name map records them.
+export function previousLayoutMap(): IdNameMapGeneric {
+  const tables = Object.fromEntries(
+    Object.entries(layoutIdPrefixes).map(([table, idPrefix]) => [
+      table,
+      {
+        name: table,
+        sheetGid: layoutGid,
+        columns: {
+          entry: dimensionIds.col(idPrefix, "entry"),
+          amount: dimensionIds.col(idPrefix, "amount"),
+        },
+      },
+    ]),
+  );
+  return {
+    tables,
+    tabs: {
+      [String(layoutGid)]: {
+        name: "layout",
+        title: "Layout",
+        tableIds: managedLayoutTableNames.map(layoutTableId),
+      },
+    },
+  };
+}
+
+export function runLayout(alterations: PendingAlterations): SyncRun {
+  return SyncCoordinator.init().run({
+    isSending: true,
+    intendedState: { alterations },
+    previousIdNameMap: previousLayoutMap(),
+    forcedTraits: [],
+    frame,
   });
 }
 

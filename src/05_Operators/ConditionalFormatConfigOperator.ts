@@ -3,6 +3,7 @@ import { Val } from "@byronbroughten/utils/val";
 
 import type { ModelableConditionalFormatRule } from "../00_Source/RawSource/ConditionalFormat";
 import { rangesShareCell } from "../00_Source/RawSource/RawSource";
+import { SheetIndex } from "../00_Source/RawSource/SheetIndex";
 import {
   BraceFormula,
   type RuleLayout,
@@ -239,6 +240,13 @@ interface CompiledOnPlanProps {
 interface CompiledOnPlan {
   compiled: ModelableConditionalFormatRule;
   plannedTable: RuleRecordsTable;
+}
+
+interface RulesShiftedByInsertsProps {
+  table: string;
+  rules: TableRules;
+  rulesByTable: Map<string, TableRules>;
+  newColumns: MintedNewColumn[];
 }
 
 interface PlannedLayoutOfProps {
@@ -486,7 +494,12 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
           if (named.has(ruleKey(table, handle))) return [];
           const { compiled, plannedTable } = compiledOnPlan({
             tableKey: table,
-            rules,
+            rules: rulesShiftedByInserts({
+              table,
+              rules,
+              rulesByTable,
+              newColumns: columnChanges.newColumns,
+            }),
             rule: IntendedRule.ofRecord(record),
             columnChanges,
             moves: [],
@@ -828,6 +841,39 @@ function compiledOnPlan({
       rule,
     }),
     plannedTable,
+  };
+}
+
+// A re-span skips a tab with a delete, so only a neighbour's inserts and appends move the Table, and Sheets has moved its rules with it before the re-span lands.
+function rulesShiftedByInserts({
+  table,
+  rules,
+  rulesByTable,
+  newColumns,
+}: RulesShiftedByInsertsProps): TableRules {
+  const shift = newColumns.filter(({ table: other }) => {
+    const neighbour = rulesByTable.get(other);
+    return (
+      other !== table &&
+      neighbour !== undefined &&
+      isShiftedBy({ rules, neighbour })
+    );
+  }).length;
+  if (shift === 0) return rules;
+  const { layout } = rules.table;
+  const { headerTopLeft } = layout;
+  return {
+    ...rules,
+    table: {
+      ...rules.table,
+      layout: {
+        ...layout,
+        headerTopLeft: {
+          ...headerTopLeft,
+          colIndex: SheetIndex.col(headerTopLeft.colIndex + shift),
+        },
+      },
+    },
   };
 }
 

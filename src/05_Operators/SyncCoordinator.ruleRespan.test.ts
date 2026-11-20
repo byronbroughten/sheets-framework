@@ -7,6 +7,12 @@ import {
   type RuleLayout,
 } from "../01_SpreadsheetSchema/configReaders/BraceFormula";
 import { type PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState";
+import {
+  layoutBodyRows,
+  layoutGid,
+  layoutOrigins,
+  layoutSheet,
+} from "../02_SpreadsheetRaw/spreadsheetRawTestSupport";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {
   type FakeSheetsService,
@@ -17,6 +23,7 @@ import {
   itemGid,
   itemSheet,
   runItem,
+  runLayout,
 } from "./syncCoordinatorTestSupport";
 
 type SheetsRule = GoogleAppsScript.Sheets.Schema.ConditionalFormatRule;
@@ -231,5 +238,119 @@ describe("SyncCoordinator.run conditional-format rule re-span", () => {
         effects.filter(({ kind }) => kind === "ruleRespanned"),
       ),
     ).toEqual([]);
+  });
+});
+
+describe("SyncCoordinator.run rule re-span beside a column insert on the same tab", () => {
+  // No column references: a compiled reference is $-anchored, whose shift under an insert the fake doesn't replay in a moved rule.
+  const amountFormula = "=TRUE";
+  const { layoutLeft, layoutRight } = layoutOrigins;
+  const headerRowIndex = layoutLeft.startRowIndex;
+  const leftEndRowIndex = headerRowIndex + 1 + layoutBodyRows.layoutLeft.length;
+  const rightEndRowIndex =
+    headerRowIndex + 1 + layoutBodyRows.layoutRight.length;
+
+  interface AmountRuleProps {
+    tableKey: "layoutLeft" | "layoutRight";
+    startColIndex: number;
+    columnNamesLeftToRight: string[];
+    ruleEndRowIndex: number;
+  }
+
+  // The amount rule as a layout compiles it: its range and formula both follow the Table's start column and end row.
+  function amountRule({
+    tableKey,
+    startColIndex,
+    columnNamesLeftToRight,
+    ruleEndRowIndex,
+  }: AmountRuleProps): SheetsRule {
+    const amountColIndex =
+      startColIndex + columnNamesLeftToRight.indexOf("amount");
+    return {
+      ranges: [
+        {
+          sheetId: layoutGid,
+          startRowIndex: headerRowIndex + 1,
+          endRowIndex: ruleEndRowIndex,
+          startColumnIndex: amountColIndex,
+          endColumnIndex: amountColIndex + 1,
+        },
+      ],
+      booleanRule: {
+        condition: {
+          type: "CUSTOM_FORMULA",
+          values: [
+            {
+              userEnteredValue: BraceFormula.compileForRule({
+                tableKey,
+                formula: amountFormula,
+                layout: {
+                  headerTopLeft: {
+                    rowIndex: SheetIndex.row(headerRowIndex),
+                    colIndex: SheetIndex.col(startColIndex),
+                  },
+                  endRowIndex: SheetIndex.row(ruleEndRowIndex),
+                  columnNamesLeftToRight,
+                },
+              }),
+            },
+          ],
+        },
+        format: { backgroundColor: { red: 1, green: 0, blue: 0 } },
+      },
+    };
+  }
+
+  it("re-spans a short rule on the Table beside against the layout the insert leaves, and rewrites the inserted Table's short rule to its last body row", () => {
+    const shortLeft = amountRule({
+      tableKey: "layoutLeft",
+      startColIndex: layoutLeft.startColumnIndex,
+      columnNamesLeftToRight: ["entry", "amount"],
+      ruleEndRowIndex: leftEndRowIndex - 1,
+    });
+    const shortRight = amountRule({
+      tableKey: "layoutRight",
+      startColIndex: layoutRight.startColumnIndex,
+      columnNamesLeftToRight: ["entry", "amount"],
+      ruleEndRowIndex: rightEndRowIndex - 1,
+    });
+    const service = stubSheetsService({
+      sheets: [
+        { ...layoutSheet(), conditionalFormats: [shortLeft, shortRight] },
+      ],
+    });
+
+    const { result } = runLayout({
+      tables: {
+        layoutLeft: {
+          newColumns: [{ columns: [{ header: "Note" }], before: "amount" }],
+        },
+      },
+    });
+
+    expect(
+      service.grid
+        .sheet(layoutGid)
+        .tables.find(({ tableId }) => tableId === "layoutRight")?.range,
+    ).toMatchObject({ startColumnIndex: layoutRight.startColumnIndex + 1 });
+    expect(service.grid.sheet(layoutGid).conditionalFormats).toEqual([
+      amountRule({
+        tableKey: "layoutLeft",
+        startColIndex: layoutLeft.startColumnIndex,
+        columnNamesLeftToRight: ["entry", "note", "amount"],
+        ruleEndRowIndex: leftEndRowIndex,
+      }),
+      amountRule({
+        tableKey: "layoutRight",
+        startColIndex: layoutRight.startColumnIndex + 1,
+        columnNamesLeftToRight: ["entry", "amount"],
+        ruleEndRowIndex: rightEndRowIndex,
+      }),
+    ]);
+    expect(result).toMatchObject({
+      outcome: { kind: "sent" },
+      stops: [],
+      didntLand: [],
+    });
   });
 });

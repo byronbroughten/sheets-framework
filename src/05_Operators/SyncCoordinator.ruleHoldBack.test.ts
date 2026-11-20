@@ -1,22 +1,23 @@
 import { Val } from "@byronbroughten/utils/val";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { type IdNameMapGeneric } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
 import { type PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState";
-import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
 import {
   layoutGid,
   layoutOrigins,
   layoutSheet,
-  layoutTableId,
 } from "../02_SpreadsheetRaw/spreadsheetRawTestSupport";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {
   type FakeSheetsService,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
-import { SyncCoordinator, type SyncRun } from "./SyncCoordinator";
-import { frame } from "./syncCoordinatorTestSupport";
+import { SyncCoordinator } from "./SyncCoordinator";
+import {
+  frame,
+  previousLayoutMap,
+  runLayout,
+} from "./syncCoordinatorTestSupport";
 
 type SheetsRule = GoogleAppsScript.Sheets.Schema.ConditionalFormatRule;
 
@@ -27,47 +28,6 @@ beforeEach(() => {
 afterEach(() => {
   vi.restoreAllMocks();
 });
-
-const idPrefixes = { layoutLeft: "lyl", layoutRight: "lyr" } as const;
-type LayoutTable = keyof typeof idPrefixes;
-
-function previousLayoutMap(): IdNameMapGeneric {
-  const tables = Object.fromEntries(
-    Object.entries(idPrefixes).map(([table, idPrefix]) => [
-      table,
-      {
-        name: table,
-        sheetGid: layoutGid,
-        columns: {
-          entry: dimensionIds.col(idPrefix, "entry"),
-          amount: dimensionIds.col(idPrefix, "amount"),
-        },
-      },
-    ]),
-  );
-  return {
-    tables,
-    tabs: {
-      [String(layoutGid)]: {
-        name: "layout",
-        title: "Layout",
-        tableIds: Object.keys(idPrefixes).map((table) =>
-          layoutTableId(table as LayoutTable),
-        ),
-      },
-    },
-  };
-}
-
-function runLayout(alterations: PendingAlterations): SyncRun {
-  return SyncCoordinator.init().run({
-    isSending: true,
-    intendedState: { alterations },
-    previousIdNameMap: previousLayoutMap(),
-    forcedTraits: [],
-    frame,
-  });
-}
 
 function tabRules(service: FakeSheetsService): SheetsRule[] {
   return service.grid.sheet(layoutGid).conditionalFormats ?? [];
