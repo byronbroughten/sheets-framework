@@ -403,21 +403,21 @@ export type SyncNotice =
   | { kind: "text"; text: string };
 
 // A rule add or replace, or a column change with its rule rewrites, on a Table whose columns `shiftedBy`'s column insert or delete shifts this run; it stays in alterations.ts and is sent next run.
-export interface SyncHeldBackRule {
+export interface SyncHeldBackChange {
   subject: SyncTableSubject;
   shiftedBy: string;
 }
 
 // A dry run's word for a held-back rule or column change, which a send lists as not sent.
-export interface SyncRuleHeldBackNotice extends SyncHeldBackRule {
+export interface SyncRuleHeldBackNotice extends SyncHeldBackChange {
   kind: "ruleHeldBack";
 }
 
 // One phrase for the not-sent line and the dry run's notice.
-export function heldBackRuleWhat({
+export function heldBackChangeWhat({
   subject,
   shiftedBy,
-}: SyncHeldBackRule): string {
+}: SyncHeldBackChange): string {
   return `held back: ${shiftedBy}'s column change shifts ${subject.table}'s columns this run, so it is sent next run`;
 }
 

@@ -83,6 +83,12 @@ const insertOnRight: PendingAlterations = {
 const deleteOnRight: PendingAlterations = {
   tables: { layoutRight: { columns: { entry: { deleted: true } } } },
 };
+// Held, so never sent: moving a Table's last column to its front is unmeasured, and Right has two columns.
+const moveOnRight: PendingAlterations = {
+  tables: {
+    layoutRight: { moves: [{ columns: ["amount"], before: "entry" }] },
+  },
+};
 const heldBackWhat =
   "held back: layoutLeft's column change shifts layoutRight's columns this run, so it is sent next run";
 
@@ -152,6 +158,44 @@ describe("SyncCoordinator.run holds back a Table's own column changes a left nei
     expect(tabRules(service)).toEqual([
       rightRule(right.startColumnIndex + 1, 3),
     ]);
+  });
+
+  it("sends the held-back column delete and its rule rewrite on the next run, on the shifted origin", () => {
+    const service = seedWith([rightRule(right.startColumnIndex, 2)]);
+    runLayout({ tables: { ...insertOnLeft.tables, ...deleteOnRight.tables } });
+
+    const { result } = runLayout(deleteOnRight);
+
+    expect(result).toMatchObject({
+      outcome: { kind: "sent" },
+      didntLand: [],
+      notSent: [],
+    });
+    expect(tabRules(service)).toEqual([
+      rightRule(right.startColumnIndex + 1, 1),
+    ]);
+  });
+
+  it("holds back the right Table's column move beside a left Table's insert", () => {
+    seedWith([rightRule(right.startColumnIndex, 2)]);
+
+    const { result, files } = runLayout({
+      tables: { ...insertOnLeft.tables, ...moveOnRight.tables },
+    });
+
+    expect(result).toMatchObject({
+      outcome: { kind: "sent" },
+      notSent: [
+        {
+          subject: { table: "layoutRight", path: "moves[0]" },
+          what: heldBackWhat,
+        },
+      ],
+    });
+    expect(result.plan.map(({ subject }) => subject)).toEqual([
+      { table: "layoutLeft", path: "newColumns" },
+    ]);
+    expect(Val.assert(files, "emitted files").alterations).toContain("moves");
   });
 
   it("sends a Table's insert and its rule rewrite in the same run when no left neighbour shifts it", () => {

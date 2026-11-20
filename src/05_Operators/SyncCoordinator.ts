@@ -62,7 +62,7 @@ import type {
   SyncCreatedColumn,
   SyncCreatedTable,
   SyncFlushStoppedOutcome,
-  SyncHeldBackRule,
+  SyncHeldBackChange,
   SyncNotice,
   SyncOutsideReferencesCheck,
   SyncPlanEffect,
@@ -373,11 +373,11 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
           ...plannedRuleChanges,
           columnChanges,
         });
-    const heldBackRules = [
+    const heldBackChanges = [
       ...heldBackColumnChangesOf(withDeletions.plan, shiftedTables),
       ...sentRuleChanges.heldBack,
     ];
-    const isHeldBack = isHeldBackOf(heldBackRules);
+    const isHeldBack = isHeldBackOf(heldBackChanges);
     const sentRuleAdditions = sentRuleChanges.additions;
     const sentRuleReplacements = sentRuleChanges.replacements;
     const columnMoves = this.columnConfigOperator.planColumnMoves({
@@ -575,7 +575,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         createdTables,
         rowIds: { plan: [...checkboxPlan, ...fillPlan], notices },
         nameRewriter,
-        heldBackRules,
+        heldBackChanges,
       }),
       files,
     };
@@ -938,9 +938,11 @@ function subjectsOf(lines: { subject: SyncSubject }[]): SyncSubject[] {
 }
 
 function isHeldBackOf(
-  heldBackRules: SyncHeldBackRule[],
+  heldBackChanges: SyncHeldBackChange[],
 ): (subject: SyncSubject) => boolean {
-  const keys = new Set(heldBackRules.map(({ subject }) => subjectKey(subject)));
+  const keys = new Set(
+    heldBackChanges.map(({ subject }) => subjectKey(subject)),
+  );
   return (subject) => "table" in subject && keys.has(subjectKey(subject));
 }
 
@@ -975,11 +977,11 @@ function withoutColumnChangesOf(
 function heldBackColumnChangesOf(
   plan: SyncPlanItem[],
   shiftedTables: ShiftedTable[],
-): SyncHeldBackRule[] {
+): SyncHeldBackChange[] {
   const shiftedByOfTable = new Map(
     shiftedTables.map(({ table, shiftedBy }) => [table, shiftedBy]),
   );
-  const heldBack = plan.flatMap(({ subject }): SyncHeldBackRule[] => {
+  const heldBack = plan.flatMap(({ subject }): SyncHeldBackChange[] => {
     if (!("table" in subject)) return [];
     const shiftedBy = shiftedByOfTable.get(subject.table);
     if (shiftedBy === undefined || !isColumnChangeSubject(subject)) return [];
@@ -994,7 +996,7 @@ function heldBackColumnChangesOf(
 
 function isColumnChangeSubject(subject: SyncTableSubject): boolean {
   return (
-    (subject.column !== undefined && subject.path === "deleted") ||
+    isDeletedColumn(subject) ||
     newColumnLines.isSubject(subject) ||
     columnGroupMoveLines.isSubject(subject)
   );

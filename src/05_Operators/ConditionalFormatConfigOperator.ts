@@ -36,7 +36,7 @@ import {
 import type { WideRule } from "../01_SpreadsheetSchema/configReaders/SyncPlanner/wideAlterations";
 import type {
   SyncCheck,
-  SyncHeldBackRule,
+  SyncHeldBackChange,
   SyncNoSuchRuleStop,
   SyncPlanEffect,
   SyncSendLine,
@@ -200,7 +200,7 @@ export interface SentRuleChangesProps {
 export interface SentRuleChanges {
   additions: PlannedRuleAddition[];
   replacements: PlannedRuleReplacement[];
-  heldBack: SyncHeldBackRule[];
+  heldBack: SyncHeldBackChange[];
 }
 
 // The column changes the planner would send, before the run mints IDs or plans moves.
@@ -209,7 +209,7 @@ export interface PlannedColumnSends {
   newColumns: PlannedNewColumn[];
 }
 
-export interface ShiftedTablesProps extends PlannedColumnSends {
+export interface HeldBackColumnChangesProps extends PlannedColumnSends {
   moves: Pick<PlannedColumnMove, "table">[];
 }
 
@@ -437,7 +437,7 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
     };
   }
   // A rewrite is worked out only from the column changes sent with it, so a shifted Table's column changes wait with its rewrites; left to right, so a held Table shifts no Table to its right.
-  heldBackColumnChanges(props: ShiftedTablesProps): ShiftedTable[] {
+  heldBackColumnChanges(props: HeldBackColumnChangesProps): ShiftedTable[] {
     const changed = columnChangesByTable(props, props.moves);
     const shifting = shiftingTables(props);
     if (changed.size === 0 || shifting.size === 0) return [];
@@ -960,7 +960,7 @@ function shiftedByOf(
 function heldBackOf(
   { subject }: SyncSendLine,
   shifts: TableShifts,
-): SyncHeldBackRule[] {
+): SyncHeldBackChange[] {
   if (!("table" in subject)) return [];
   const shiftedBy = shiftedByOf(subject.table, shifts);
   if (shiftedBy === undefined) return [];
