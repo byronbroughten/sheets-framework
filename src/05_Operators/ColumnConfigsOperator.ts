@@ -250,8 +250,7 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
   // emptyValueAllowed isn't a sheet trait, so its live side carries the previous configs and only a deleted column can stop it.
   // `before` is read live only, as a tab's is: order is never in the configs, so it can't conflict.
   traitReadings(): PlanReadings {
-    const configs = installedBraceConfigs();
-    const liveConfigs = this._liveBraceConfigs(configs);
+    const liveConfigs = this._liveBraceConfigs();
     const identities = this._namedColumnIdentities();
     const namesByColumnId = new Map(
       identities.map(({ columnId, columnName }) => [columnId, columnName]),
@@ -271,7 +270,7 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
         reading.columns[columnName] = {
           header,
           emptyValueAllowed: identity.previousEmptyValueAllowed,
-          formula: this._bracedTopFormula(configs, identity),
+          formula: this._bracedTopFormula(liveConfigs, identity),
           // Against live names under previous keys, so a person renaming a Table a rule names reads as no change.
           columnType: BraceFormula.decompileColumnType({
             configs: liveConfigs,
@@ -289,13 +288,16 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
       {},
     );
     return {
-      previous: { tables: previousTraitTables(configs), tabs: {} },
+      previous: {
+        tables: previousTraitTables(installedBraceConfigs()),
+        tabs: {},
+      },
       live: { tables: live, tabs: {} },
     };
   }
   // The live formula as traitReadings brace it, not the installed configs' text, so a person's edit since the last sync is what's checked.
   formulaColumns(): FormulaColumn[] {
-    const configs = installedBraceConfigs();
+    const configs = this._liveBraceConfigs();
     return this._namedColumnIdentities().flatMap((identity) => {
       const { tableId, tableKey, columnId } = identity;
       const formula = this._bracedTopFormula(configs, identity);
@@ -306,7 +308,7 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
       return [{ tableKey, cell, formula }];
     });
   }
-  // In brace form against the previous configs, the names an alteration's formula uses.
+  // In brace form against the configs its callers pass, live configs for a live formula.
   private _bracedTopFormula(
     configs: BraceConfigs,
     identity: NamedColumnIdentity,
@@ -320,11 +322,9 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
       }) ?? undefined
     );
   }
-  // The previous configs with each API-access Table's live name and each live column's header.
-  private _liveBraceConfigs({
-    tableConfigs,
-    columnConfigs,
-  }: BraceConfigs): BraceConfigs {
+  // The previous configs with each API-access Table's live name and each live column's header: live names under previous keys, the keys an alteration uses, so a person renaming a Table a formula or rule names reads as no change.
+  private _liveBraceConfigs(): BraceConfigs {
+    const { tableConfigs, columnConfigs } = installedBraceConfigs();
     const apiTableIds = this.tableIdsApiAccesses;
     return Object.entries(tableConfigs).reduce<BraceConfigs>(
       (live, [tableKey, tableConfig]) => {

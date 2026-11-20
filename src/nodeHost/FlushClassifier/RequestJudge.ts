@@ -14,6 +14,8 @@ import { Grid } from "./Grid";
 import type { ReadValue, RunReads } from "./RunReads";
 
 type GoogleTable = GoogleAppsScript.Sheets.Schema.Table;
+type GoogleTableColumnProperties =
+  GoogleAppsScript.Sheets.Schema.TableColumnProperties;
 
 export interface CellWrite {
   cell: GridCell;
@@ -113,8 +115,8 @@ export class RequestJudge {
     const readTable = this.reads.table(tableId);
     if (
       readTable !== undefined &&
-      !hasDropdown(readTable) &&
-      !hasDropdown(table)
+      !dropdowns.isLeftOut(readTable, table) &&
+      !dropdowns.isIn(table)
     ) {
       return this;
     }
@@ -218,13 +220,28 @@ interface JudgedCell {
 const notReadAfter: CellAfter = { kind: "unknown", label: "(not read)" };
 const deletedAfter: CellAfter = { kind: "deleted" };
 
-function hasDropdown(table: GoogleTable): boolean {
-  return (table.columnProperties ?? []).some(
-    (column) =>
+const dropdowns = {
+  isIn(table: GoogleTable): boolean {
+    return (table.columnProperties ?? []).some(dropdowns.isColumn);
+  },
+  // A read dropdown the sent Table retypes is being removed, with no style to keep; one it leaves out is held, since this judge doesn't model what a partial list does to it.
+  isLeftOut(read: GoogleTable, sent: GoogleTable): boolean {
+    const sentColumns = sent.columnProperties ?? [];
+    return (read.columnProperties ?? []).some(
+      (column) =>
+        dropdowns.isColumn(column) &&
+        !sentColumns.some(
+          ({ columnIndex }) => columnIndex === column.columnIndex,
+        ),
+    );
+  },
+  isColumn(column: GoogleTableColumnProperties): boolean {
+    return (
       column.columnType === "DROPDOWN" ||
-      column.dataValidationRule !== undefined,
-  );
-}
+      column.dataValidationRule !== undefined
+    );
+  },
+};
 
 const emptyLabel = "(empty)";
 

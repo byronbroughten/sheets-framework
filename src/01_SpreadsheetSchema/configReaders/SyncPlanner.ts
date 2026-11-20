@@ -587,6 +587,7 @@ export class SyncPlanner {
     };
   }
   // Google resets every dropdown on a Table its column list is sent to, a newly set one included: docs/sheets-behaviour.md#creating-and-updating-tables.
+  // A dropdown the send removes has no style to keep, so a column this run retypes counts by its intended rule alone.
   private _dropdownResetEffects(
     intended: IntendedTrait,
     live: TraitReadings,
@@ -594,19 +595,29 @@ export class SyncPlanner {
     if (intended.kind !== "column" || intended.trait !== "columnType") {
       return [];
     }
+    const intendedTypes = this._intendedColumnTypes(intended.table);
     const columns = entriesOf(live.tables[intended.table]?.columns).flatMap(
       ([column, traits]) => {
-        if (hasRule(traits.columnType)) return [column];
-        if (column === intended.column && hasRule(intended.value)) {
-          return [column];
-        }
-        return [];
+        const columnType = intendedTypes.get(column) ?? traits.columnType;
+        return hasRule(columnType) ? [column] : [];
       },
     );
     if (columns.length === 0) return [];
     return [
       { kind: "dropdownReset", columns, setting: this.dropdownStyleReset },
     ];
+  }
+  private _intendedColumnTypes(table: string): Map<string, TraitValue> {
+    return this._alterationDeclarations.reduce((byColumn, declared) => {
+      if (
+        declared.kind === "column" &&
+        declared.trait === "columnType" &&
+        declared.table === table
+      ) {
+        byColumn.set(declared.column, declared.value);
+      }
+      return byColumn;
+    }, new Map<string, TraitValue>());
   }
   private _forcedTraitFor(intended: IntendedTrait): ForcedTrait | undefined {
     const key = addressKey(intended);

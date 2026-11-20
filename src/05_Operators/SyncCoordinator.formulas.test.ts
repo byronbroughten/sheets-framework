@@ -9,14 +9,17 @@ import {
   type FakeSheetsService,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
+import { SyncCoordinator } from "./SyncCoordinator";
 import {
   emittedItemColumn,
   itemAtEachFlush,
   itemColumns,
   itemGid,
+  itemRowId,
   itemSheet,
   noteColIndex,
   runItem,
+  runWithNoAlterations,
   seedFixture,
 } from "./syncCoordinatorTestSupport";
 
@@ -112,5 +115,67 @@ describe("SyncCoordinator.run formulas", () => {
       expect.objectContaining({ kind: "unknownBrace", brace: "${@nope}" }),
     ]);
     expect(service.getCalls).toEqual([]);
+  });
+});
+
+describe("SyncCoordinator formula readings", () => {
+  const idHeader = itemColumns.id.header;
+  const configsName = getTableTraitByName("item", "tableName");
+
+  function liveNoteFormula(): unknown {
+    const coordinator = SyncCoordinator.init();
+    runWithNoAlterations(coordinator);
+    return coordinator.columnConfigOperator.traitReadings().live.tables.item
+      ?.columns.optionalNote?.formula;
+  }
+
+  // Item's note column holding a formula that names Item by the given name.
+  function seedNaming(itemTableName: string): void {
+    seedFixture({
+      item: {
+        name: itemTableName,
+        bodyRows: [
+          {
+            id: itemRowId,
+            optionalNote: {
+              value: itemRowId,
+              isFormula: true,
+              formula: `=SINGLE(${itemTableName}[${idHeader}])`,
+            },
+          },
+        ],
+      },
+    });
+  }
+
+  it("reads a formula naming a renamed Table as unchanged, in brace form", () => {
+    seedNaming(configsName);
+    const underConfigsName = liveNoteFormula();
+    seedNaming("Stock");
+
+    expect(underConfigsName).toBe("=${@id}");
+    expect(liveNoteFormula()).toBe("=${@id}");
+  });
+
+  it("reads a formula sent beside a Table rename as the alteration's brace form", () => {
+    const service = seedFixture({ item: { name: configsName } });
+
+    const { result } = runItem({
+      isSending: true,
+      alterations: {
+        tables: {
+          item: {
+            name: "Stock",
+            columns: { optionalNote: { formula: "=${@id}" } },
+          },
+        },
+      },
+    });
+
+    expect(result.outcome.kind).toBe("sent");
+    expect(noteCellsOf(service)).toEqual([
+      { isFormula: true, value: `=SINGLE(Stock[${idHeader}])` },
+    ]);
+    expect(liveNoteFormula()).toBe("=${@id}");
   });
 });
