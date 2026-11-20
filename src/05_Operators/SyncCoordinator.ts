@@ -98,6 +98,7 @@ import {
   type CompiledRuleRewrite,
   ConditionalFormatConfigOperator,
   type IndexedRuleRemoval,
+  type ShiftedTable,
 } from "./ConditionalFormatConfigOperator";
 import {
   alterationsFileSource,
@@ -313,12 +314,24 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     });
     const deletedTables = deletionsOf(plannedSends.plan, deletedTableOf);
     const deletedTabs = deletionsOf(plannedSends.plan, deletedTabOf);
-    const withDeletions = this._withDeletionEffects({
+    const plannedWithDeletions = this._withDeletionEffects({
       planned: plannedSends,
       deletedTables,
       deletedTabs,
       previousIdNameMap: props.previousIdNameMap,
     });
+    // Planned from the live read rather than an alteration, so a stopped run holds none back.
+    const shiftedTables = plannedWithDeletions.isStopped
+      ? []
+      : this.conditionalFormatConfigOperator.heldBackColumnChanges({
+          sentTraits: plannedWithDeletions.sentTraits,
+          newColumns: plannedWithDeletions.newColumns,
+          moves: plannedWithDeletions.columnGroupMoves,
+        });
+    const withDeletions = withoutColumnChangesOf(
+      plannedWithDeletions,
+      shiftedTables,
+    );
     const notices: SyncNotice[] = [
       ...goneNotices({
         tabsGone: this.tabConfigOperator.goneTabNotices(
@@ -360,7 +373,10 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
           ...plannedRuleChanges,
           columnChanges,
         });
-    const heldBackRules = sentRuleChanges.heldBack;
+    const heldBackRules = [
+      ...heldBackColumnChangesOf(withDeletions.plan, shiftedTables),
+      ...sentRuleChanges.heldBack,
+    ];
     const isHeldBack = isHeldBackOf(heldBackRules);
     const sentRuleAdditions = sentRuleChanges.additions;
     const sentRuleReplacements = sentRuleChanges.replacements;
@@ -928,9 +944,60 @@ function isHeldBackOf(
   return (subject) => "table" in subject && keys.has(subjectKey(subject));
 }
 
-// By the Table and path a plan line and its alterations.ts entry share.
-function subjectKey({ table, path }: SyncTableSubject): string {
-  return JSON.stringify([table, path]);
+// By the Table, column and path a plan line and its alterations.ts entry share.
+function subjectKey({ table, column, path }: SyncTableSubject): string {
+  return JSON.stringify([table, column, path]);
+}
+
+// Every new column of a held Table waits, appends too: they share one subject path, so an append's landing would drop the held insert from alterations.ts.
+function withoutColumnChangesOf(
+  planned: SyncPlannerResult,
+  shiftedTables: ShiftedTable[],
+): SyncPlannerResult {
+  if (shiftedTables.length === 0) return planned;
+  const held = new Set(shiftedTables.map(({ table }) => table));
+  return {
+    ...planned,
+    sentTraits: planned.sentTraits.filter(
+      (intended) =>
+        intended.kind !== "column" ||
+        intended.trait !== "deleted" ||
+        !held.has(intended.table),
+    ),
+    newColumns: planned.newColumns.filter(({ table }) => !held.has(table)),
+    columnGroupMoves: planned.columnGroupMoves.filter(
+      ({ table }) => !held.has(table),
+    ),
+  };
+}
+
+// The plan lines of each held Table's column deletes, new columns and moves, one per alterations.ts entry.
+function heldBackColumnChangesOf(
+  plan: SyncPlanItem[],
+  shiftedTables: ShiftedTable[],
+): SyncHeldBackRule[] {
+  const shiftedByOfTable = new Map(
+    shiftedTables.map(({ table, shiftedBy }) => [table, shiftedBy]),
+  );
+  const heldBack = plan.flatMap(({ subject }): SyncHeldBackRule[] => {
+    if (!("table" in subject)) return [];
+    const shiftedBy = shiftedByOfTable.get(subject.table);
+    if (shiftedBy === undefined || !isColumnChangeSubject(subject)) return [];
+    return [{ subject, shiftedBy }];
+  });
+  return [
+    ...new Map(
+      heldBack.map((rule) => [subjectKey(rule.subject), rule]),
+    ).values(),
+  ];
+}
+
+function isColumnChangeSubject(subject: SyncTableSubject): boolean {
+  return (
+    (subject.column !== undefined && subject.path === "deleted") ||
+    newColumnLines.isSubject(subject) ||
+    columnGroupMoveLines.isSubject(subject)
+  );
 }
 
 // Each deleted column's item lists the rules going with it; a Table's rewrites go on its first move item when it moves, else its first delete item, else its first insert's, never an append's.

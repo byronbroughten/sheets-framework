@@ -23,6 +23,7 @@ import {
 } from "../01_SpreadsheetSchema/configReaders/RuleRecords";
 import {
   type IntendedTrait,
+  type PlannedNewColumn,
   type PlannedRuleAddition,
   type PlannedRuleRemoval,
   type PlannedRuleReplacement,
@@ -200,6 +201,22 @@ export interface SentRuleChanges {
   additions: PlannedRuleAddition[];
   replacements: PlannedRuleReplacement[];
   heldBack: SyncHeldBackRule[];
+}
+
+// The column changes the planner would send, before the run mints IDs or plans moves.
+export interface PlannedColumnSends {
+  sentTraits: IntendedTrait[];
+  newColumns: PlannedNewColumn[];
+}
+
+export interface ShiftedTablesProps extends PlannedColumnSends {
+  moves: Pick<PlannedColumnMove, "table">[];
+}
+
+// A Table whose own column changes wait for the next run, since `shiftedBy`'s column change shifts it this run.
+export interface ShiftedTable {
+  table: string;
+  shiftedBy: string;
 }
 
 // The Tables whose column changes shift a neighbour, and the rule layouts of every Table the check reads.
@@ -418,6 +435,36 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
         ),
       ],
     };
+  }
+  // A rewrite is worked out only from the column changes sent with it, so a shifted Table's column changes wait with its rewrites; left to right, so a held Table shifts no Table to its right.
+  heldBackColumnChanges(props: ShiftedTablesProps): ShiftedTable[] {
+    const changed = columnChangesByTable(props, props.moves);
+    const shifting = shiftingTables(props);
+    if (changed.size === 0 || shifting.size === 0) return [];
+    const rulesByTable = this._tableRulesByTable(
+      [...changed.keys(), ...shifting].map((table) => ({ table })),
+    );
+    const leftToRight = [...changed.keys()]
+      .flatMap((table) => {
+        const rules = rulesByTable.get(table);
+        return rules === undefined ? [] : [{ table, rules }];
+      })
+      .sort(
+        (a, b) =>
+          a.rules.table.layout.headerTopLeft.colIndex -
+          b.rules.table.layout.headerTopLeft.colIndex,
+      );
+    return leftToRight.reduce<ShiftedTable[]>((held, { table }) => {
+      const heldTables = new Set(held.map((shifted) => shifted.table));
+      const shiftedBy = shiftedByOf(table, {
+        shifting: new Set(
+          [...shifting].filter((other) => !heldTables.has(other)),
+        ),
+        rulesByTable,
+      });
+      if (shiftedBy !== undefined) held.push({ table, shiftedBy });
+      return held;
+    }, []);
   }
   // Compiled before any send, so a bad colour or brace throws with nothing sent; indexed for the flush after the removals', past the adds sent ahead of it.
   compiledRuleReplacements({
@@ -884,7 +931,7 @@ function reshapedSheetGids(
 function shiftingTables({
   sentTraits,
   newColumns,
-}: PlannedColumnChanges): Set<string> {
+}: PlannedColumnSends): Set<string> {
   const deleting = sentTraits.flatMap((intended) =>
     intended.kind === "column" && intended.trait === "deleted"
       ? [intended.table]
@@ -934,8 +981,8 @@ function isShiftedBy({ rules, neighbour }: TableShiftProps): boolean {
 
 // An append leaves every rule where it was, so only a column placed before another counts as an insert; a move, flushed last, names the change on a Table it touches.
 function columnChangesByTable(
-  { sentTraits, newColumns }: PlannedColumnChanges,
-  moves: PlannedColumnMove[],
+  { sentTraits, newColumns }: PlannedColumnSends,
+  moves: Pick<PlannedColumnMove, "table">[],
 ): Map<string, TableColumnChange> {
   const deletes = sentTraits.reduce((byTable, intended) => {
     if (intended.kind !== "column" || intended.trait !== "deleted") {
