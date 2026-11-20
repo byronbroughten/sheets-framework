@@ -116,11 +116,13 @@ describe("SyncEntryRefuser, traits not sendable yet", () => {
     ).toEqual([]);
   });
 
-  it("lets a column's before through", () => {
+  it("lets a moves group through", () => {
     expect(
       refusals({
         alterations: {
-          tables: { item: { columns: { count: { before: "name" } } } },
+          tables: {
+            item: { moves: [{ columns: ["count"], before: "name" }] },
+          },
         },
       }),
     ).toEqual([]);

@@ -596,22 +596,13 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
     );
     // One order per Table, so each move is indexed in the layout the earlier ones leave.
     const orders = new Map<string, TableColumnOrder>();
-    const columnMoves = this._sentColumnTraits(sent, "before").map(
-      ({ tableId, tableKey, columnName, value }) => ({
-        tableId,
-        tableKey,
-        columns: [columnName],
-        before: String(value),
-      }),
-    );
-    // After the per-column moves, so each group is indexed in the layout those leave.
     const columnGroupMoves = groupMoves.map(({ table, columns, before }) => ({
       tableId: this.tableConfigOperator.tableIdOf(table),
       tableKey: table,
       columns,
       before,
     }));
-    return [...columnMoves, ...columnGroupMoves].flatMap((ordered) => {
+    return columnGroupMoves.flatMap((ordered) => {
       const { tableId, tableKey } = ordered;
       const order =
         orders.get(tableId) ??
@@ -698,7 +689,7 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
       `live column ${tableKey}.${columnName}`,
     ).columnId;
   }
-  // By previous names, as an alteration's `before` gives them.
+  // By previous names, as a `before` gives them.
   private _liveColumnNamed(
     tableKey: string,
     columnName: string,
@@ -710,7 +701,7 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
   }
   private _sentColumnTraits(
     sent: IntendedTrait[],
-    trait: "header" | "columnType" | "formula" | "deleted" | "before",
+    trait: "header" | "columnType" | "formula" | "deleted",
   ): SentColumnTrait[] {
     const identities = this._namedColumnIdentities();
     return sent.flatMap((intended) => {

@@ -202,13 +202,7 @@ export const tabTraits = [
 // The sent traits the run refetches after sending, so the refetch can show whether each landed; a tab's other traits land in the working view.
 export const sheetTraits = {
   table: new Set<string>(["name", "deleted"]),
-  column: new Set<string>([
-    "header",
-    "columnType",
-    "formula",
-    "before",
-    "deleted",
-  ]),
+  column: new Set<string>(["header", "columnType", "formula", "deleted"]),
   tab: new Set<string>(["deleted"]),
 } as const;
 
@@ -760,7 +754,6 @@ export class SyncPlanner {
             "header",
             "columnType",
             "formula",
-            "before",
             "emptyValueAllowed",
             "deleted",
           ]).map((trait) => ({
@@ -909,7 +902,7 @@ function pickTraits<EN extends object, KY extends keyof EN & string>(
 
 // Order is never in the configs, so live alone decides it: sent unless live already has it.
 function isOrderTrait(intended: IntendedTrait): boolean {
-  return intended.kind !== "table" && intended.trait === "before";
+  return intended.kind === "tab" && intended.trait === "before";
 }
 
 export function isColumnDeletion(address: TraitAddress): boolean {

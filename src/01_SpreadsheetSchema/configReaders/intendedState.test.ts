@@ -11,6 +11,7 @@ type ItemEntry = NonNullable<TableEntries["item"]>;
 type ItemColumnEntries = NonNullable<ItemEntry["columns"]>;
 type ItemNameEntry = NonNullable<ItemColumnEntries["name"]>;
 type ItemNewColumn = NonNullable<ItemEntry["newColumns"]>[number];
+type ItemMove = NonNullable<ItemEntry["moves"]>[number];
 type ItemRuleColumn = Exclude<
   NonNullable<
     NonNullable<ItemEntry["conditionalFormats"]>["add"]
@@ -42,7 +43,6 @@ describe("makePendingAlterations", () => {
                 rule: { condition: "ONE_OF_LIST", values: ["a", "b"] },
               },
               emptyValueAllowed: true,
-              before: "name",
             },
             requiredCount: { formula: "=${log[amount]} * 2" },
             id: { deleted: true },
@@ -54,6 +54,7 @@ describe("makePendingAlterations", () => {
               emptyValueAllowed: true,
             },
           ],
+          moves: [{ columns: ["optionalNote"], before: "name" }],
         },
         log: {
           conditionalFormats: {
@@ -106,9 +107,8 @@ describe("makePendingAlterations", () => {
 describe("PendingAlterations' keys", () => {
   it("are exactly the map's names", () => {
     assertType<IsExactly<keyof ItemColumnEntries, ItemColumnName>>(true);
-    assertType<IsExactly<NonNullable<ItemNameEntry["before"]>, ItemColumnName>>(
-      true,
-    );
+    assertType<IsExactly<ItemMove["before"], ItemColumnName>>(true);
+    assertType<IsExactly<ItemMove["columns"][number], ItemColumnName>>(true);
   });
 
   it("reject a name the ID-name map doesn't hold", () => {
@@ -137,10 +137,16 @@ describe("PendingAlterations' keys", () => {
 
   it("place a column only before another column of its own Table", () => {
     // @ts-expect-error entry is a log column, not an item one
-    const otherTable: ItemNameEntry = { before: "entry" };
+    const otherTable: ItemMove = { columns: ["id"], before: "entry" };
     // @ts-expect-error a new column too
     const newColumn: ItemNewColumn = { header: "X", before: "entry" };
     expect([otherTable, newColumn]).toHaveLength(2);
+  });
+
+  it("place an existing column only through moves", () => {
+    // @ts-expect-error a column entry takes no before
+    const ownBefore: ItemNameEntry = { before: "id" };
+    expect(ownBefore).toBeDefined();
   });
 
   it("let a Table's rules name a column its newColumns create, by the name its header gives", () => {
@@ -194,19 +200,12 @@ describe("deleted: true", () => {
     const tableColumns: ItemEntry = { deleted: true, columns: {} };
     // @ts-expect-error a deleted column takes no header
     const column: ItemNameEntry = { deleted: true, header: "Name" };
-    // @ts-expect-error nor a place
-    const movedColumn: ItemNameEntry = { deleted: true, before: "id" };
     // @ts-expect-error a deleted tab takes no title
     const tab: ItemTabEntry = { deleted: true, title: "Items" };
     // @ts-expect-error nor a new Table
     const tabTables: ItemTabEntry = { deleted: true, newTables: [] };
-    expect([
-      renamedTable,
-      tableColumns,
-      column,
-      movedColumn,
-      tab,
-      tabTables,
-    ]).toHaveLength(6);
+    expect([renamedTable, tableColumns, column, tab, tabTables]).toHaveLength(
+      5,
+    );
   });
 });

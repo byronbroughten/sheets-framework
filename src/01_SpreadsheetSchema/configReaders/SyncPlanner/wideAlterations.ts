@@ -17,11 +17,14 @@ export interface WideRuleFormat {
 
 export interface WideColumnEntry {
   deleted?: true;
-  before?: string;
   formula?: string;
   header?: string;
   columnType?: ColumnTypeBaseline;
   emptyValueAllowed?: boolean;
+}
+
+export interface WideNewColumn extends WideColumnEntry {
+  before?: string;
 }
 
 export interface WideColumnGroupMove {
@@ -34,7 +37,7 @@ export interface WideTableEntry {
   name?: string;
   letApiAccess?: boolean;
   columns?: Record<string, WideColumnEntry | undefined>;
-  newColumns?: WideColumnEntry[];
+  newColumns?: WideNewColumn[];
   moves?: WideColumnGroupMove[];
   conditionalFormats?: {
     add?: WideRule[];
