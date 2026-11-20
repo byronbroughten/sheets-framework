@@ -17,7 +17,6 @@ One line per principle. A principle's argument and instances, where it has them,
 | A claim about cost, types or live Sheets behaviour | [`docs/design/falsifiable-claims.md`](./design/falsifiable-claims.md) |
 | Which case gets the unmarked name | [`docs/design/unmarked-common-case.md`](./design/unmarked-common-case.md) |
 | A gap that looks like an oversight | [`docs/design/deliberate-absence.md`](./design/deliberate-absence.md) |
-| Adding a column to a config sheet | [`docs/design/config-sheet-columns.md`](./design/config-sheet-columns.md) |
 | Declaring a shape in code or reading it from the sheet | [`docs/design/structure-vs-identity.md`](./design/structure-vs-identity.md) |
 ## Principles
 
@@ -30,7 +29,6 @@ One line per principle. A principle's argument and instances, where it has them,
 - **Make the claim falsifiable before believing it.** Run the cheap check on a claim about cost, types or live Sheets behaviour, then record the number or the assertion beside the conclusion.
 - **Give the common case the unmarked name.** The reflexive name is the one wanted most of the time, decided by counting call sites; the rare case costs exactly one word.
 - **Record a deliberate absence as deliberate.** In an AI-assisted codebase the riskiest gap is one that looks like an oversight: an unexplained gap reads as a to-do and gets filled in; a documented one carries its reason and survives.
-- **A live config-sheet column must identify a row or serve a human on that sheet.** Sampled generated traits do not earn a cell.
 - **Structure is declared in code; identity is recorded from the sheet.** Headers, head rows and ID shape are declared; GID, `tableId`, column ID and prefix are read.
 
 ## Adding a principle
