@@ -115,8 +115,8 @@ export class RequestJudge {
     const readTable = this.reads.table(tableId);
     if (
       readTable !== undefined &&
-      !hasSurvivingDropdown(readTable, table) &&
-      !hasDropdown(table)
+      !dropdowns.isLeftOut(readTable, table) &&
+      !dropdowns.isIn(table)
     ) {
       return this;
     }
@@ -220,27 +220,28 @@ interface JudgedCell {
 const notReadAfter: CellAfter = { kind: "unknown", label: "(not read)" };
 const deletedAfter: CellAfter = { kind: "deleted" };
 
-function hasDropdown(table: GoogleTable): boolean {
-  return (table.columnProperties ?? []).some(isDropdown);
-}
-
-// A read dropdown the sent Table retypes to a non-dropdown is being removed, so it has no style to keep.
-function hasSurvivingDropdown(read: GoogleTable, sent: GoogleTable): boolean {
-  const sentColumns = sent.columnProperties ?? [];
-  return (read.columnProperties ?? []).some((column) => {
-    if (!isDropdown(column)) return false;
-    const sentColumn = sentColumns.find(
-      ({ columnIndex }) => columnIndex === column.columnIndex,
+const dropdowns = {
+  isIn(table: GoogleTable): boolean {
+    return (table.columnProperties ?? []).some(dropdowns.isColumn);
+  },
+  // A read dropdown the sent Table retypes is being removed, with no style to keep; one it leaves out is held, since this judge doesn't model what a partial list does to it.
+  isLeftOut(read: GoogleTable, sent: GoogleTable): boolean {
+    const sentColumns = sent.columnProperties ?? [];
+    return (read.columnProperties ?? []).some(
+      (column) =>
+        dropdowns.isColumn(column) &&
+        !sentColumns.some(
+          ({ columnIndex }) => columnIndex === column.columnIndex,
+        ),
     );
-    return sentColumn === undefined || isDropdown(sentColumn);
-  });
-}
-
-function isDropdown(column: GoogleTableColumnProperties): boolean {
-  return (
-    column.columnType === "DROPDOWN" || column.dataValidationRule !== undefined
-  );
-}
+  },
+  isColumn(column: GoogleTableColumnProperties): boolean {
+    return (
+      column.columnType === "DROPDOWN" ||
+      column.dataValidationRule !== undefined
+    );
+  },
+};
 
 const emptyLabel = "(empty)";
 

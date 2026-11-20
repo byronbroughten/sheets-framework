@@ -194,6 +194,36 @@ describe("SyncCoordinator column types", () => {
     });
   });
 
+  it("lists no reset for two dropdowns one run removes", () => {
+    seed({
+      dropdownColIndexes: [countColIndex, otherColIndex],
+      service: { dropdownStyleReset: "ask" },
+    });
+    const removed: ColumnTypeBaseline = { type: "TEXT", rule: null };
+
+    const { result } = runItem({
+      isSending: true,
+      alterations: {
+        tables: {
+          item: {
+            columns: {
+              requiredCount: { columnType: removed },
+              [otherColumn]: { columnType: removed },
+            },
+          },
+        },
+      },
+      forcedTraits: [
+        { table: "item", column: "requiredCount", trait: "columnType" },
+        { table: "item", column: otherColumn, trait: "columnType" },
+      ],
+      dropdownStyleReset: "ask",
+    });
+
+    expect(result.plan.map(({ effects }) => effects)).toEqual([[], []]);
+    expect(result.outcome.kind).toBe("sent");
+  });
+
   it('holds a dropdown\'s removal under "ask" when another dropdown survives it', () => {
     seed({
       dropdownColIndexes: [countColIndex, otherColIndex],
