@@ -63,7 +63,7 @@ export interface PlanProps extends PlanReadings {
   sheetStops?: SyncSheetStop[];
 }
 
-// One column a `newColumns` item creates, by its Table's codebase name; `column` is the name the regen gives its header.
+// One column a `newColumns` group creates, by its Table's codebase name; `column` is the name the regen gives its header.
 export interface PlannedNewColumn {
   table: string;
   // The column's path in its Table entry, as `newColumns[0].columns[1]`.
