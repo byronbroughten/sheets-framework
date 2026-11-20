@@ -34,6 +34,7 @@ import {
   type SyncTabTitleTakenStop,
   type SyncUnmodelableRuleStop,
 } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
+import { headRows } from "../01_SpreadsheetSchema/headRows";
 
 const layout = {
   rowLabelWidth: 30,
@@ -122,11 +123,7 @@ export class SyncRunReport {
   private get _stoppedText(): OutcomeText {
     const { stops, command } = this.result;
     const why = stopKinds
-      .flatMap((kind) => {
-        const count = stops.filter((stop) => stop.kind === kind).length;
-        if (count === 0) return [];
-        return [stopWords[kind].reason(count)];
-      })
+      .flatMap((kind) => stopReason(kind, stops))
       .join(" and ");
     const until = stops.length === 1 ? "it is resolved" : "they are resolved";
     return {
@@ -528,7 +525,7 @@ interface StopWords<SK extends StopKind> {
   // What the resolve line calls one.
   name: string;
   // Why the run stopped, for the result line.
-  reason(count: number): string;
+  reason(stops: StopOf<SK>[]): string;
   block(stop: StopOf<SK>, number: number): string[];
 }
 
@@ -547,57 +544,59 @@ const stopKinds: StopKind[] = [
 const stopWords: { [SK in StopKind]: StopWords<SK> } = {
   conflict: {
     name: "conflict",
-    reason(count) {
-      return counted(count, "conflict", "conflicts");
+    reason({ length }) {
+      return counted(length, "conflict", "conflicts");
     },
     block: conflictBlock,
   },
   headRows: {
     name: "stop",
-    reason(count) {
-      return `${counted(count, "Table", "Tables")} can't take head rows`;
+    // A grant stops once per Table its head rows would sit on, but counts as one Table.
+    reason(stops) {
+      const tables = new Set(stops.map(({ table }) => table));
+      return `${counted(tables.size, "Table", "Tables")} can't take head rows`;
     },
     block: headRowsBlock,
   },
   headerTaken: {
     name: "stop",
-    reason(count) {
-      return `${counted(count, "new column", "new columns")} taken`;
+    reason({ length }) {
+      return `${counted(length, "new column", "new columns")} taken`;
     },
     block: headerTakenBlock,
   },
   beforeFirstColumn: {
     name: "stop",
-    reason(count) {
-      return `${counted(count, "new column", "new columns")} before a first column`;
+    reason({ length }) {
+      return `${counted(length, "new column", "new columns")} before a first column`;
     },
     block: beforeFirstColumnBlock,
   },
   tableNameTaken: {
     name: "stop",
-    reason(count) {
-      return `${counted(count, "new Table name", "new Table names")} taken`;
+    reason({ length }) {
+      return `${counted(length, "new Table name", "new Table names")} taken`;
     },
     block: tableNameTakenBlock,
   },
   tabTitleTaken: {
     name: "stop",
-    reason(count) {
-      return `${counted(count, "new tab title", "new tab titles")} taken`;
+    reason({ length }) {
+      return `${counted(length, "new tab title", "new tab titles")} taken`;
     },
     block: tabTitleTakenBlock,
   },
   noSuchRule: {
     name: "stop",
-    reason(count) {
-      return `${counted(count, "rule", "rules")} not found`;
+    reason({ length }) {
+      return `${counted(length, "rule", "rules")} not found`;
     },
     block: noSuchRuleBlock,
   },
   unmodelableRule: {
     name: "stop",
-    reason(count) {
-      return `${counted(count, "unmodelable rule", "unmodelable rules")} to replace`;
+    reason({ length }) {
+      return `${counted(length, "unmodelable rule", "unmodelable rules")} to replace`;
     },
     block: unmodelableRuleBlock,
   },
@@ -605,6 +604,16 @@ const stopWords: { [SK in StopKind]: StopWords<SK> } = {
 
 // The one phrase for a stop's entry left pending.
 const entryStaysText = "The entry stays in alterations.ts.";
+
+function stopReason<SK extends StopKind>(
+  kind: SK,
+  stops: SyncStop[],
+): string[] {
+  const ofKind = stops.filter((stop): stop is StopOf<SK> => stop.kind === kind);
+  if (ofKind.length === 0) return [];
+  const words: StopWords<SK> = stopWords[kind];
+  return [words.reason(ofKind)];
+}
 
 function stopBlocks(stops: SyncStop[]): string[] {
   return stops.flatMap((stop, index) => [
@@ -632,8 +641,8 @@ function headRowsReason(stop: SyncHeadRowsStop): string[] {
   const { table, tab } = stop;
   if ("neighbour" in stop) {
     return [
-      `${table}'s head rows, rows 1 to 3 of its tab, ${tab}, would sit on Table "${stop.neighbour}".`,
-      `Move ${table} or "${stop.neighbour}" so the 3 rows above ${table}'s header sit clear of it, then rerun.`,
+      `${table}'s head rows, ${headRows.aboveHeaderLabel} on its tab, ${tab}, would sit on Table "${stop.neighbour}".`,
+      `Move ${table} or "${stop.neighbour}" so that ${table}'s head rows sit clear of it, then rerun.`,
       entryStaysText,
     ];
   }

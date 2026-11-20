@@ -45,6 +45,7 @@ const headRowIndexes: ReadonlySet<number> = new Set(
 
 export const headRows = {
   countAboveHeader,
+  aboveHeaderLabel: `the ${countAboveHeader} rows above its header`,
   topIndex: indexAtOffset(countAboveHeader),
   lastAboveHeaderIndex: indexAtOffset(1),
   index: headRowIndex,

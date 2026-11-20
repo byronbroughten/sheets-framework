@@ -73,7 +73,7 @@ export abstract class TableCommonRaw extends TableBaseRaw {
   headRowsOverlapFix(other: TableCommonRaw): string {
     const { origin } = this;
     const rows = `${origin.rowNumber(headRows.topIndex)}–${origin.rowNumber(headRows.lastAboveHeaderIndex)}`;
-    return `Table "${this.name}" on sheet "${this.sheetTitle}" has head rows in rows ${rows} that sit on Table "${other.name}". Move "${this.name}" so that the ${headRows.countAboveHeader} rows above its header sit clear of "${other.name}".`;
+    return `Table "${this.name}" on sheet "${this.sheetTitle}" has head rows in rows ${rows} that sit on Table "${other.name}". Move "${this.name}" so that ${headRows.aboveHeaderLabel} sit clear of "${other.name}".`;
   }
   get dataRowCount(): number {
     this.assertRowIndexesNotStale();

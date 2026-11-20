@@ -896,7 +896,22 @@ describe("SyncRunReport's head-row overlap stop", () => {
       "STOPPED: 1 Table can't take head rows. Nothing was sent, and nothing will be until it is resolved.",
     );
     expect(stoppedText).toContain(
-      `STOP 1 · vendor › letApiAccess\n  vendor's head rows, rows 1 to 3 of its tab, Vendors, would sit on Table "Notes".\n  Move vendor or "Notes" so the 3 rows above vendor's header sit clear of it, then rerun.\n  The entry stays in alterations.ts.`,
+      `STOP 1 · vendor › letApiAccess\n  vendor's head rows, the 3 rows above its header on its tab, Vendors, would sit on Table "Notes".\n  Move vendor or "Notes" so that vendor's head rows sit clear of it, then rerun.\n  The entry stays in alterations.ts.`,
+    );
+  });
+
+  it("counts a grant whose head rows sit on two Tables as one Table", () => {
+    const twoNeighbours = render({
+      ...appDryRun,
+      outcome: { kind: "stopped" },
+      stops: [
+        { kind: "headRows", table: "vendor", tab: "Vendors", neighbour: "A" },
+        { kind: "headRows", table: "vendor", tab: "Vendors", neighbour: "B" },
+      ],
+    });
+
+    expect(resultLine(twoNeighbours)).toBe(
+      "STOPPED: 1 Table can't take head rows. Nothing was sent, and nothing will be until they are resolved.",
     );
   });
 });
