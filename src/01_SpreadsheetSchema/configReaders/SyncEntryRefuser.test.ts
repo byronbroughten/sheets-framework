@@ -276,7 +276,7 @@ describe("SyncEntryRefuser, traits not sendable yet", () => {
     ]);
   });
 
-  it("lets a new tab's title and Tables through, refusing its other traits by its title", () => {
+  it("lets a new tab's title, traits and Tables through", () => {
     expect(
       refusals({
         alterations: {
@@ -284,6 +284,10 @@ describe("SyncEntryRefuser, traits not sendable yet", () => {
             {
               title: "Vendors",
               color: "#ff0000",
+              before: "item",
+              frozenRows: 1,
+              frozenColumns: 1,
+              hidden: true,
               tables: [
                 {
                   name: "Vendor",
@@ -297,9 +301,7 @@ describe("SyncEntryRefuser, traits not sendable yet", () => {
           ],
         },
       }),
-    ).toEqual([
-      { kind: "notSendableYet", table: "Vendors", path: "newTabs[0].color" },
-    ]);
+    ).toEqual([]);
   });
 
   it("refuses every new Table on a tab after its first, and a new tab with none", () => {

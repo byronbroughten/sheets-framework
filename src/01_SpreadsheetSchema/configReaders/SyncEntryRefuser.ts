@@ -37,8 +37,7 @@ export const sendableTraits = {
   // A new column's own traits: a formula or column type would need a write after the insert.
   newColumn: new Set<string>(["header", "before", "emptyValueAllowed"]),
   tab: new Set<string>([...tabTraits, ...sheetTraits.tab, "newTables"]),
-  // A new tab's other traits would need sheet-property updates after its addSheet.
-  newTab: new Set<string>(["title", "tables"]),
+  newTab: new Set<string>([...tabTraits, "tables"]),
   newTable: new Set<string>([
     "name",
     "columns",

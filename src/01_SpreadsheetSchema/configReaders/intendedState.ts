@@ -107,21 +107,25 @@ interface NewTable {
   conditionalFormats?: Pick<ConditionalFormatAlterations<string>, "add">;
 }
 
-interface TabTraits {
+interface TabTraits<TB extends string> {
   title?: string;
   color?: string;
-  before?: MappedTabName;
+  before?: TB;
   frozenRows?: number;
   frozenColumns?: number;
   hidden?: boolean;
 }
 
-interface TabAlteration extends TabTraits {
+interface TabAlteration extends TabTraits<MappedTabName> {
   // Placed right of the tab's rightmost Table, with `gap` empty columns between.
   newTables?: (NewTable & { gap?: 0 | 1 })[];
 }
 
-interface NewTab extends TabTraits {
+// A `newTabs` entry's title, which isn't in the map until the run that creates it.
+type NewTabTitle = string & Record<never, never>;
+
+// Its `before` is sent after every addSheet of the run, so it may name another `newTabs` entry by title.
+interface NewTab extends TabTraits<MappedTabName | NewTabTitle> {
   title: string;
   tables: NewTable[];
 }
