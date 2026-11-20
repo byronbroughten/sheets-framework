@@ -24,9 +24,9 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     });
   }
   static init(): SyncCoordinator {
-    return new SyncCoordinator(
-      SpreadsheetBaseNamed.initSpreadsheetNamedProps(),
-    );
+    const props = SpreadsheetBaseNamed.initSpreadsheetNamedProps();
+    props.spreadsheetStateIdentified.isRegeneratingConfigs = true;
+    return new SyncCoordinator(props);
   }
   get ss(): SpreadsheetNamed {
     return new SpreadsheetNamed(this.spreadsheetNamedProps);

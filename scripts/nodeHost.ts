@@ -336,7 +336,7 @@ export async function importConstNamedAfterFile<MX>(
   return value;
 }
 
-// The framework's own dev configs: enough to read any spreadsheet's config floor.
+// The framework's own dev configs: the previous configs a package's first sync reads with, before it has generated files of its own.
 export async function loadFrameworkConfigs(): Promise<Configs> {
   return (await import("../dev/generated/appConfigs.ts")).appConfigs;
 }
