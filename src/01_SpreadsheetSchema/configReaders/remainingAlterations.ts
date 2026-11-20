@@ -6,13 +6,14 @@ import {
 } from "./SyncPlanner";
 import {
   entriesOf,
+  movePath,
   type WideAlterations,
   type WideColumnEntry,
   type WideTableEntry,
 } from "./SyncPlanner/wideAlterations";
 import type { SyncSubject } from "./syncRunResult";
 
-// The alterations still pending once `landed` went out; the refuser lets only a Table's, a column's or a tab's trait, a rule removal or replacement, or a created Table or tab through, so any other subject is a bug.
+// The alterations still pending once `landed` went out; the refuser lets only a Table's, a column's or a tab's trait, a `moves` group, a rule removal or replacement, or a created Table or tab through, so any other subject is a bug.
 export function remainingAlterations(
   alterations: WideAlterations,
   landed: SyncSubject[],
@@ -111,6 +112,13 @@ function remainingTableEntry(
           key,
           remainingColumns(tableName, entry.columns, landedKeys),
         );
+      }
+      // Each group lands on its own, so only the landed ones leave the list.
+      if (key === "moves") {
+        const remaining = (entry.moves ?? []).filter(
+          (_, index) => !landedKeys.has(traitKey(tableName, movePath(index))),
+        );
+        return remaining.length === 0 ? [] : [[key, remaining]];
       }
       if (key === "conditionalFormats") {
         return keepIfNotEmpty(

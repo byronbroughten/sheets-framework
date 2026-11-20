@@ -1,10 +1,12 @@
 import {
+  columnGroupMoveLines,
   type IntendedTrait,
   isColumnDeletion,
   isSameValue,
   isSheetTrait,
   isTabDeletion,
   isTableDeletion,
+  type PlannedColumnGroupMove,
   subjectOf,
   type TraitReadings,
   type TraitValue,
@@ -46,6 +48,18 @@ export function didntLandOf({
     const what = whatBySubject.get(subjectKey(subject));
     if (what === undefined) return [];
     return [{ subject, what: `${what}; Sheets kept ${valueText(kept)}` }];
+  });
+}
+
+// The sent `moves` groups the refetch doesn't show in place.
+export function groupMovesDidntLand(
+  groupMoves: PlannedColumnGroupMove[],
+  live: TraitReadings,
+): SyncSendLine[] {
+  return groupMoves.flatMap((group) => {
+    if (columnGroupMoveLines.isInPlace(group, live)) return [];
+    const { subject, what } = columnGroupMoveLines.sendLine(group);
+    return [{ subject, what: `${what}; Sheets kept another order` }];
   });
 }
 

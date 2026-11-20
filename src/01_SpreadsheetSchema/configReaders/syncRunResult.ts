@@ -215,6 +215,15 @@ export type SyncRefusal =
       path: string;
       removedAt: string;
     }
+  // Two `moves` paths that can't both hold: one `before` twice, one column in two groups, a `before` some group moves, or a group's column with its own `before`.
+  | {
+      kind: "clashingMoves";
+      clash: "sameBefore" | "repeatedColumn" | "movedBefore" | "ownBefore";
+      table: string;
+      path: string;
+      otherPath: string;
+      column: string;
+    }
   // A rule naming a column by the name a rename in this run gives it, while alterations key it by `oldName` (ADR 0035).
   | {
       kind: "renamedColumn";

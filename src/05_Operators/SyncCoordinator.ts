@@ -20,6 +20,7 @@ import type {
 } from "../01_SpreadsheetSchema/configReaders/configSnapshots";
 import {
   didntLandOf,
+  groupMovesDidntLand,
   hasLanded,
 } from "../01_SpreadsheetSchema/configReaders/didntLand";
 import {
@@ -43,6 +44,7 @@ import { remainingAlterations } from "../01_SpreadsheetSchema/configReaders/rema
 import { SyncEntryRefuser } from "../01_SpreadsheetSchema/configReaders/SyncEntryRefuser";
 import { SyncNameRewriter } from "../01_SpreadsheetSchema/configReaders/SyncNameRewriter";
 import {
+  columnGroupMoveLines,
   deletedTableOf,
   deletedTabOf,
   isSheetTrait,
@@ -362,10 +364,11 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     const isHeldBack = isHeldBackOf(heldBackRules);
     const sentRuleAdditions = sentRuleChanges.additions;
     const sentRuleReplacements = sentRuleChanges.replacements;
-    const columnMoves = this.columnConfigOperator.planColumnMoves(
-      withDeletions.sentTraits,
-      newColumns,
-    );
+    const columnMoves = this.columnConfigOperator.planColumnMoves({
+      sent: withDeletions.sentTraits,
+      minted: newColumns,
+      groupMoves: withDeletions.columnGroupMoves,
+    });
     // Planned from the live read rather than an alteration, so a stopped run plans none.
     const columnChangeRules = withDeletions.isStopped
       ? noColumnChangeRules
@@ -490,10 +493,11 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     };
     let refetched: SyncCoordinator | undefined;
     let regeneration: Regeneration;
-    // A fresh read, since Raw's state has no reset; only a sent sheet trait, a new column or Table or a removed, replaced, added, re-spanned or rewritten rule changes what it would read.
+    // A fresh read, since Raw's state has no reset; only a sent sheet trait, a moved group, a new column or Table or a removed, replaced, added, re-spanned or rewritten rule changes what it would read.
     if (
       isApplying &&
       (planned.sentTraits.some(isSheetTrait) ||
+        planned.columnGroupMoves.length > 0 ||
         applied.newColumns.length > 0 ||
         applied.newTables.length > 0 ||
         applied.ruleRemovals.length > 0 ||
@@ -654,11 +658,11 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     });
     this._readLive();
     this.columnConfigOperator.recordEmptyValueAllowed(configTraits);
-    const traitsDidntLand = didntLandOf({
-      sentTraits: plan.sentTraits,
-      plan: plan.plan,
-      live: this._traitReadings().live,
-    });
+    const { live } = this._traitReadings();
+    const traitsDidntLand = [
+      ...didntLandOf({ sentTraits: plan.sentTraits, plan: plan.plan, live }),
+      ...groupMovesDidntLand(plan.columnGroupMoves, live),
+    ];
     const notes = this._recordUntypedColumns();
     const columns = this.columnConfigOperator.landedColumns(newColumns);
     const tables = this.columnConfigOperator.landedTables(newTables);
@@ -945,8 +949,10 @@ function withColumnChangeRuleEffects({
         ({ subject }) => "table" in subject && subject.table === table,
       );
       if (movedTables.has(table)) {
-        const move = ofTable.find(({ subject }) =>
-          isColumnTrait(subject, "before"),
+        const move = ofTable.find(
+          ({ subject }) =>
+            isColumnTrait(subject, "before") ||
+            columnGroupMoveLines.isSubject(subject),
         );
         return move === undefined ? [] : [move];
       }

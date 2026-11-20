@@ -20,6 +20,8 @@
 
 **A column entry's `before` is sendable: `sync` moves the column to before the named one, unless live already has that order**, through `TableRaw.moveColumns` after the run's column deletions and inserts have flushed (`ColumnConfigsOperator.planColumnMoves`). Live's reading of a column's `before` is the next column on the sheet, and the configs never record it. A move to the first position goes as the columns before it moving right, since an insert at a Table's first column lands outside it ([observed](../sheets-behaviour.md#moving-columns-within-a-table)); moving the last column to the front is unmeasured, so it is refused before anything is sent.
 
+**A Table entry's `moves` list is sendable too: each `{ columns, before }` group goes, in list order, to sit together in its order immediately before its target**, planned after the per-column moves on the same layout. A group already in place is met, not moved, and a group lands when the refetch shows it in place. The entry refuser refuses two groups with one `before`, a column in two groups, a `before` some group moves, and a group's column with its own `before`, so every group can hold at once.
+
 ## sync's entered-data gate and --confirm
 
 **A formula alteration is sent by `--send`**: its brace text ([forms](../architecture/cell-writes.md)) is compiled to live Table references and filled into every body row through `pasteData`, by `ColumnConfigsOperator.updateFormulas`. `SyncEntryRefuser` refuses a malformed brace before any send.

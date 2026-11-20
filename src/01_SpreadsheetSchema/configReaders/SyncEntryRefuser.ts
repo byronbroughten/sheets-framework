@@ -1,6 +1,7 @@
 import { hasApiAccess } from "./apiAccessChanges";
 import type { IdNameMapGeneric } from "./idNameMapTypes";
 import { BraceRefuser, type NewTableAt } from "./SyncEntryRefuser/BraceRefuser";
+import { MovesRefuser } from "./SyncEntryRefuser/MovesRefuser";
 import { NewColumnNames } from "./SyncEntryRefuser/NewColumnNames";
 import { RenamedColumnNames } from "./SyncEntryRefuser/RenamedColumnNames";
 import { RuleRefuser } from "./SyncEntryRefuser/RuleRefuser";
@@ -29,6 +30,7 @@ export const sendableTraits = {
     ...sheetTraits.table,
     "letApiAccess",
     "newColumns",
+    "moves",
     "conditionalFormats.remove",
     "conditionalFormats.replace",
     "conditionalFormats.add",
@@ -101,6 +103,7 @@ export class SyncEntryRefuser {
         return [
           ...tableTraitRefusals(table, entry),
           ...new NewColumnNames(entry).repeatRefusals(table),
+          ...new MovesRefuser(table, entry).refusals,
           ...braceRefuser.tableEntryRefusals(table, entry),
           ...RuleRefuser.ofTableEntry({
             table,

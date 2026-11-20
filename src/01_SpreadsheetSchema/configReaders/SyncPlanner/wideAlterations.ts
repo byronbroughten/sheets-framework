@@ -24,12 +24,18 @@ export interface WideColumnEntry {
   emptyValueAllowed?: boolean;
 }
 
+export interface WideColumnGroupMove {
+  columns: string[];
+  before: string;
+}
+
 export interface WideTableEntry {
   deleted?: true;
   name?: string;
   letApiAccess?: boolean;
   columns?: Record<string, WideColumnEntry | undefined>;
   newColumns?: WideColumnEntry[];
+  moves?: WideColumnGroupMove[];
   conditionalFormats?: {
     add?: WideRule[];
     remove?: string[];
@@ -77,6 +83,15 @@ export interface WideRuleAt {
 // A `newColumns` entry's path in its Table entry, as `newColumns[0]`.
 export function newColumnPath(index: number): string {
   return `newColumns[${index}]`;
+}
+
+// A `moves` group's path in its Table entry, as `moves[0]`.
+export function movePath(index: number): string {
+  return `moves[${index}]`;
+}
+
+export function isMovePath(path: string): boolean {
+  return /^moves\[\d+\]$/.test(path);
 }
 
 export function rulesOf({ conditionalFormats }: WideTableEntry): WideRuleAt[] {
