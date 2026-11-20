@@ -281,12 +281,7 @@ describe("SyncCoordinator.run rules after a column insert, delete or move", () =
         alterations: {
           tables: {
             item: {
-              moves: [
-                {
-                  columns: [countBeforeName.column],
-                  before: countBeforeName.before,
-                },
-              ],
+              moves: [{ columns: ["requiredCount"], before: "name" }],
             },
           },
         },
