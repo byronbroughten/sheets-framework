@@ -1,6 +1,7 @@
 import { hasApiAccess } from "./apiAccessChanges";
 import type { IdNameMapGeneric } from "./idNameMapTypes";
 import { BraceRefuser } from "./SyncEntryRefuser/BraceRefuser";
+import { NewColumnNames } from "./SyncEntryRefuser/NewColumnNames";
 import { RuleRefuser } from "./SyncEntryRefuser/RuleRefuser";
 import { sheetTraits, tabTraits } from "./SyncPlanner";
 import {
@@ -97,6 +98,7 @@ export class SyncEntryRefuser {
         }
         return [
           ...tableTraitRefusals(table, entry),
+          ...new NewColumnNames(entry).repeatRefusals(table),
           ...braceRefuser.tableEntryRefusals(table, entry),
           ...RuleRefuser.ofTableEntry({ table, entry, columnNamesByTable })
             .refusals,

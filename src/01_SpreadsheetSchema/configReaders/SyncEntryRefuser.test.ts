@@ -420,15 +420,25 @@ describe("SyncEntryRefuser, a rule's columns and braces", () => {
     });
   }
 
+  // The fixture's two ref headers are refused themselves, beside whatever a rule's names add.
+  const repeated = {
+    kind: "repeatedNewColumn",
+    table: "item",
+    path: "newColumns[2].header",
+    firstPath: "newColumns[1].header",
+    column: "ref",
+  };
+
   it("lets through a rule naming mapped columns and ones the run's newColumns create", () => {
     expect(ruleRefusals(["name", "lateFee"], "=${@lateFee}>${@count}")).toEqual(
-      [],
+      [repeated],
     );
   });
 
   it("refuses a column or brace naming neither, listing both kinds of column", () => {
     const columns = ["name", "count", "lateFee", "ref"];
     expect(ruleRefusals(["lateFees"], "=${@cost}>0")).toEqual([
+      repeated,
       {
         kind: "unknownColumn",
         table: "item",
@@ -455,6 +465,7 @@ describe("SyncEntryRefuser, a rule's columns and braces", () => {
       headers: ["Ref", "ref"],
     };
     expect(ruleRefusals(["ref"], "=${@ref}>0")).toEqual([
+      repeated,
       { ...ambiguous, path: "conditionalFormats.add[0].columns" },
       { ...ambiguous, path: "conditionalFormats.add[0].condition.values[0]" },
     ]);
@@ -488,6 +499,120 @@ describe("SyncEntryRefuser, a rule's columns and braces", () => {
         columns: ["name", "count"],
       },
     ]);
+  });
+});
+
+describe("SyncEntryRefuser, entries that can't all hold", () => {
+  const rule = {
+    columns: ["name"],
+    condition: { type: "NOT_BLANK" },
+    format: { backgroundColor: "#000000" },
+  };
+
+  it("refuses a new column whose header gives the column name an earlier one's does, naming both", () => {
+    expect(
+      refusals({
+        alterations: {
+          tables: {
+            item: {
+              newColumns: [
+                { header: "Ref" },
+                { header: "Note" },
+                { header: "ref" },
+              ],
+            },
+          },
+        },
+      }),
+    ).toEqual([
+      {
+        kind: "repeatedNewColumn",
+        table: "item",
+        path: "newColumns[2].header",
+        firstPath: "newColumns[0].header",
+        column: "ref",
+      },
+    ]);
+  });
+
+  it("refuses a rule handle both removed and replaced, naming both", () => {
+    expect(
+      refusals({
+        alterations: {
+          tables: {
+            item: {
+              conditionalFormats: {
+                remove: ["other", "name | =TRUE"],
+                replace: { "name | =TRUE": rule },
+              },
+            },
+          },
+        },
+      }),
+    ).toEqual([
+      {
+        kind: "removedAndReplaced",
+        table: "item",
+        path: 'conditionalFormats.replace["name | =TRUE"]',
+        removedAt: "conditionalFormats.remove[1]",
+      },
+    ]);
+  });
+
+  function renamedRuleRefusals(columns: string[], formula: string) {
+    return refusals({
+      alterations: {
+        tables: {
+          item: {
+            columns: { count: { header: "Total" } },
+            conditionalFormats: {
+              add: [
+                {
+                  columns,
+                  condition: { type: "CUSTOM_FORMULA", values: [formula] },
+                  format: {},
+                },
+              ],
+            },
+          },
+        },
+      },
+    });
+  }
+
+  it("refuses a rule naming a column by the name a rename in the same run gives it", () => {
+    const renamed = {
+      kind: "renamedColumn",
+      table: "item",
+      column: "total",
+      oldName: "count",
+    };
+    expect(renamedRuleRefusals(["total"], "=${@total}>0")).toEqual([
+      { ...renamed, path: "conditionalFormats.add[0].columns" },
+      { ...renamed, path: "conditionalFormats.add[0].condition.values[0]" },
+    ]);
+  });
+
+  it("lets through a rule naming a renamed column by its old name", () => {
+    expect(renamedRuleRefusals(["count"], "=${@count}>0")).toEqual([]);
+  });
+
+  it("reads a name two renames swap as the old name it still is", () => {
+    expect(
+      refusals({
+        alterations: {
+          tables: {
+            item: {
+              columns: {
+                name: { header: "Count" },
+                count: { header: "Name" },
+              },
+              conditionalFormats: { add: [rule] },
+            },
+          },
+        },
+      }),
+    ).toEqual([]);
   });
 });
 

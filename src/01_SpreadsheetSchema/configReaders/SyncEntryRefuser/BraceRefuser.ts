@@ -77,13 +77,14 @@ export class BraceRefuser {
       tableKey: ownTableKey,
       formula,
     }).flatMap(({ brace, tableKey, columnName }): SyncRefusal[] => {
-      const ambiguous =
-        this.newColumnsByTable
-          .get(tableKey)
-          ?.ambiguousRefusals({ table, path, column: columnName }) ?? [];
+      const newColumns = this.newColumnsByTable.get(tableKey);
+      const at = { table, path, column: columnName };
+      const ambiguous = newColumns?.ambiguousRefusals(at) ?? [];
       if (ambiguous.length > 0) return ambiguous;
       const columnNames = this.columnNamesByTable.get(tableKey);
       if (columnNames?.includes(columnName)) return [];
+      const renamed = newColumns?.renamedRefusals(at) ?? [];
+      if (renamed.length > 0) return renamed;
       return [
         {
           kind: "unknownBrace",

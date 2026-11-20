@@ -198,6 +198,29 @@ export type SyncRefusal =
       column: string;
       headers: string[];
     }
+  // A `newColumns` header giving the column name an earlier one's does, at `firstPath`: the refetch can't tell the two apart.
+  | {
+      kind: "repeatedNewColumn";
+      table: string;
+      path: string;
+      firstPath: string;
+      column: string;
+    }
+  // A `conditionalFormats.replace` handle the Table's `remove` also names, at `removedAt`.
+  | {
+      kind: "removedAndReplaced";
+      table: string;
+      path: string;
+      removedAt: string;
+    }
+  // A rule naming a column by the name a rename in this run gives it, while alterations key it by `oldName` (ADR 0035).
+  | {
+      kind: "renamedColumn";
+      table: string;
+      path: string;
+      column: string;
+      oldName: string;
+    }
   | {
       kind: "touchesDeletion";
       deleted: SyncSubject;
@@ -219,6 +242,7 @@ export type SyncStop = SyncConflict | SyncSheetStop;
 export type SyncSheetStop =
   | SyncHeadRowsStop
   | SyncHeaderTakenStop
+  | SyncBeforeFirstColumnStop
   | SyncNoSuchRuleStop
   | SyncUnmodelableRuleStop
   | SyncNewTableStop;
@@ -267,6 +291,24 @@ export interface SyncHeaderTakenStop {
   header: string;
   column: string;
   columnId: string;
+}
+
+// A `newColumns` entry whose `before` names its Table's first column by the live order: an insert there lands outside the Table.
+export interface SyncBeforeFirstColumnStop {
+  kind: "beforeFirstColumn";
+  table: string;
+  path: string;
+  header: string;
+  before: string;
+}
+
+// The one phrase for it, in the stop's block and in the throw guarding the insert.
+export function beforeFirstColumnText({
+  table,
+  header,
+  before,
+}: Omit<SyncBeforeFirstColumnStop, "kind" | "path">): string {
+  return `Table ${table} can't take "${header}" before ${before}, its first column: a column inserted there lands outside the Table.`;
 }
 
 // A `conditionalFormats.remove` or `replace` handle no rule on the Table has on this run's read; `handles` are the Table's rules' now.
