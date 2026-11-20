@@ -35,6 +35,7 @@ import {
   type SyncTabTitleTakenStop,
   type SyncUnmodelableRuleStop,
 } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
+import { headerZone } from "../01_SpreadsheetSchema/headerZone";
 import { headRows } from "../01_SpreadsheetSchema/headRows";
 
 const layout = {
@@ -689,9 +690,10 @@ function headRowsReason(stop: SyncHeadRowsStop): string[] {
     ];
   }
   const { headerRow } = stop;
+  const headerPlace = headerZone.headerRowsLabel;
   return [
-    `${table}'s header row is on row ${headerRow} of its tab, ${tab}. A Table needs its header on row 4 to take head rows`,
-    `(rows 1 to 3: column IDs, action row, heading). Move ${table} so its header sits on row 4, then rerun.`,
+    `${table}'s header row is on row ${headerRow} of its tab, ${tab}. A Table needs its header on ${headerPlace} to take head rows,`,
+    `${headRows.aboveHeaderLabel}. Move ${table} so its header sits on ${headerPlace}, then rerun.`,
     entryStaysText,
   ];
 }
