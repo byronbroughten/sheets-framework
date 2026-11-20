@@ -315,7 +315,7 @@ describe("SyncCoordinator.run column moves", () => {
         ),
       ).toEqual([
         {
-          kind: "clashingMoves",
+          kind: "clashingPlacements",
           clash: "sameBefore",
           table: "item",
           path: "moves[1].before",
@@ -335,7 +335,7 @@ describe("SyncCoordinator.run column moves", () => {
         ),
       ).toEqual([
         {
-          kind: "clashingMoves",
+          kind: "clashingPlacements",
           clash: "repeatedColumn",
           table: "item",
           path: "moves[1].columns[1]",
@@ -356,7 +356,7 @@ describe("SyncCoordinator.run column moves", () => {
         ),
       ).toEqual([
         {
-          kind: "clashingMoves",
+          kind: "clashingPlacements",
           clash: "movedBefore",
           table: "item",
           path: "moves[1].before",
@@ -364,7 +364,7 @@ describe("SyncCoordinator.run column moves", () => {
           column: nameAt(2),
         },
         {
-          kind: "clashingMoves",
+          kind: "clashingPlacements",
           clash: "movedBefore",
           table: "item",
           path: "moves[2].before",

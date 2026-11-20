@@ -868,7 +868,7 @@ describe("SyncRunReport, case F: two refusals, then a head-row stop", () => {
         outcome: { kind: "refused" },
         refusals: [
           {
-            kind: "clashingMoves",
+            kind: "clashingPlacements",
             clash,
             table: "occCharge",
             path,
@@ -1009,7 +1009,7 @@ describe("SyncRunReport's before-first-column stop", () => {
       {
         kind: "beforeFirstColumn",
         table: "occCharge",
-        path: "newColumns[1]",
+        path: "newColumns[1].before",
         header: "Ref",
         before: "id",
       },
@@ -1019,7 +1019,7 @@ describe("SyncRunReport's before-first-column stop", () => {
 
   it("names the entry and words it as the insert's guard does", () => {
     expect(stoppedText).toContain(
-      "STOP 1 · occCharge › newColumns[1]\n  Table occCharge can't take \"Ref\" before id, its first column: a column inserted there lands outside the Table.\n  Name a later column in before, or leave before out to add it at the Table's end.\n  The entry stays in alterations.ts.",
+      "STOP 1 · occCharge › newColumns[1].before\n  Table occCharge can't take \"Ref\" before id, its first column: a column inserted there lands outside the Table.\n  Name a later column in before, or leave before out to add it at the Table's end.\n  The entry stays in alterations.ts.",
     );
   });
 

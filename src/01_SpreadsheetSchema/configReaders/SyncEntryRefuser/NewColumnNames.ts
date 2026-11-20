@@ -1,6 +1,6 @@
 import { columnNameOfHeader } from "../columnConfigsTypes";
 import {
-  newColumnPath,
+  newColumnsOf,
   type WideTableEntry,
 } from "../SyncPlanner/wideAlterations";
 import type { SyncRefusal } from "../syncRunResult";
@@ -13,19 +13,19 @@ export interface ColumnNamedAt {
 
 interface NewHeader {
   header: string;
-  // The header's path in the Table entry, as `newColumns[0].header`.
+  // The header's path in the Table entry, as `newColumns[0].header` or `newColumns[0].columns[1].header`.
   path: string;
 }
 
 // The columns a Table entry's `newColumns` create, each by the name the regen will give its header.
 export class NewColumnNames {
   private headersByColumn: Map<string, NewHeader[]>;
-  constructor({ newColumns }: WideTableEntry) {
-    this.headersByColumn = (newColumns ?? []).reduce(
-      (byColumn, { header }, index) => {
+  constructor(entry: WideTableEntry) {
+    this.headersByColumn = newColumnsOf(entry).reduce(
+      (byColumn, { newColumn: { header }, path }) => {
         if (header === undefined) return byColumn;
         const column = columnNameOfHeader(header);
-        const newHeader = { header, path: `${newColumnPath(index)}.header` };
+        const newHeader = { header, path: `${path}.header` };
         byColumn.set(column, [...(byColumn.get(column) ?? []), newHeader]);
         return byColumn;
       },

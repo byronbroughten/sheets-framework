@@ -404,6 +404,31 @@ describe("TableRaw.appendColumn, insertColumn and deleteColumn", () => {
       expect(tableColumnNames(grid)).toEqual(["ID", "New", "Left", "Right"]);
     });
 
+    it("keeps each column's head cells when two are inserted at one index, the later landing left of the earlier", () => {
+      const { grid } = stubBodyTable();
+
+      const raw = fetchedBodyRaw();
+      raw
+        .table(tableId111)
+        .insertColumn(1, { columnId: "c:lse:second", header: "Second" })
+        .insertColumn(1, { columnId: "c:lse:first", header: "First" });
+      raw.batchUpdateGSheets();
+
+      expect(tableColumnNames(grid)).toEqual([
+        "ID",
+        "First",
+        "Second",
+        "Left",
+        "Right",
+      ]);
+      expect(grid.sheet(111).values(tableBand)[0]).toEqual([
+        "c:lse:aaa",
+        "c:lse:first",
+        "c:lse:second",
+        "c:lse:bbb",
+      ]);
+    });
+
     it("leaves the working view one column wider, with the fetched cells moved alongside the sheet's", () => {
       stubBodyTable();
 
