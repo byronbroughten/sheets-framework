@@ -111,6 +111,7 @@ const sendResult = {
   landed: [],
   notSent: [],
   didntLand: [],
+  isAlterationsEmpty: false,
 } as const satisfies Omit<SyncSendResult, "outcome">;
 
 interface ScriptRun {

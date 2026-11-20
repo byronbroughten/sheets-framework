@@ -71,6 +71,7 @@ describe("SyncCoordinator already-met alterations", () => {
       plan: [],
       landed: [],
       alreadyMet: [metNote],
+      isAlterationsEmpty: true,
     });
   });
 
@@ -104,6 +105,43 @@ describe("SyncCoordinator already-met alterations", () => {
         },
       ],
       alreadyMet: [metNote],
+      isAlterationsEmpty: true,
+    });
+  });
+
+  it("leaves alterations.ts holding an entry only the sheet holds, beside a landed one", () => {
+    seedFixture({
+      item: {
+        columns: {
+          optionalNote: { ...itemColumns.optionalNote, header: "Remark" },
+        },
+      },
+    });
+
+    const { result, files } = runItem({
+      isSending: true,
+      alterations: {
+        tables: {
+          item: {
+            columns: {
+              optionalNote: { header: "Remark" },
+              requiredCount: { emptyValueAllowed: true },
+            },
+          },
+        },
+      },
+    });
+
+    const written = Val.assert(files, "emitted files").alterations;
+    expect(written).toContain('"header": "Remark"');
+    expect(written).not.toContain("requiredCount");
+    expect(result).toMatchObject({
+      mode: "send",
+      outcome: { kind: "sent", summary: "1 alteration landed" },
+      alreadyMet: [],
+      notSent: [],
+      didntLand: [],
+      isAlterationsEmpty: false,
     });
   });
 

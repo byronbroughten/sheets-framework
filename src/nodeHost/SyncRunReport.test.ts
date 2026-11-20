@@ -42,6 +42,7 @@ const appSend = {
   landed: [],
   notSent: [],
   didntLand: [],
+  isAlterationsEmpty: false,
 } as const satisfies Omit<SyncSendResult, "outcome">;
 
 function render(result: SyncRunResult): string[] {
@@ -1337,6 +1338,7 @@ describe("SyncRunReport, an alteration already met", () => {
       },
       landed: sentLanded,
       alreadyMet,
+      isAlterationsEmpty: true,
     });
     expect(sections(lines)).toEqual([
       "Landed",
@@ -1375,6 +1377,59 @@ describe("SyncRunReport, an alteration already met", () => {
     });
     expect(lines).toContain("== Already met: still in alterations.ts ==");
     expect(lines).not.toContain("alterations.ts is now empty.");
+  });
+});
+
+describe("SyncRunReport, an entry the planner skipped", () => {
+  const landed = [
+    {
+      kind: "send" as const,
+      subject: { table: "unit", column: "notes", path: "header" },
+      what: "set to Remarks",
+    },
+  ];
+
+  // Sides it can't compare, or a value only the sheet holds: the entry stays in the file yet lists in no section.
+  it("doesn't say alterations.ts is empty while the skipped entry is left in it", () => {
+    const lines = render({
+      ...appSend,
+      outcome: { kind: "sent", summary: "1 alteration landed" },
+      landed,
+      isAlterationsEmpty: false,
+    });
+    expect(lines).toContain("unit › notes › header: set to Remarks");
+    expect(lines).not.toContain("alterations.ts is now empty.");
+  });
+
+  it("doesn't say it when a skipped entry is the only one, beside an already-met one", () => {
+    const lines = render({
+      ...appSend,
+      outcome: {
+        kind: "sent",
+        summary: "nothing to send; 1 alteration already met",
+      },
+      alreadyMet: [
+        {
+          subject: { table: "unit", column: "rent", path: "header" },
+          what: "already Monthly rent",
+        },
+      ],
+      isAlterationsEmpty: false,
+    });
+    expect(lines).toContain("== Already met: removed from alterations.ts ==");
+    expect(lines).not.toContain("alterations.ts is now empty.");
+  });
+
+  it("says it once the file holds no entries", () => {
+    const lines = render({
+      ...appSend,
+      outcome: { kind: "sent", summary: "1 alteration landed" },
+      landed,
+      isAlterationsEmpty: true,
+    });
+    expect(lines.join("\n")).toContain(
+      "unit › notes › header: set to Remarks\nalterations.ts is now empty.",
+    );
   });
 });
 
@@ -1431,6 +1486,7 @@ describe("SyncRunReport, case H: a clean send", () => {
         columnId: "c:opy:Xw3nB7d",
       },
     ],
+    isAlterationsEmpty: true,
     plan: [
       {
         subject: { table: "occPayment" },
