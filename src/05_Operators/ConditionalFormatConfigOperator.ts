@@ -114,6 +114,7 @@ interface IndexedUpdatesProps<RE extends PlannedRuleRemoval> {
 }
 
 // The run's column deletes and inserts, which move the layout a rule compiles against.
+// Moves stay out of PlannedColumnChanges: replacements, additions and re-spans are sent before the move, so they compile on the layout without it.
 export interface PlannedColumnChanges {
   sentTraits: IntendedTrait[];
   newColumns: MintedNewColumn[];
