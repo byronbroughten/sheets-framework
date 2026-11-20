@@ -6,6 +6,7 @@ import type { PendingAlterations } from "./intendedState";
 import { DeletionRefuser } from "./SyncPlanner/DeletionRefuser";
 import {
   entriesOf,
+  newColumnPath,
   type WideAlterations,
   type WideNewTable,
   type WideRule,
@@ -62,6 +63,8 @@ export interface PlanProps extends PlanReadings {
 // One `newColumns` entry, by its Table's codebase name; `column` is the name the regen gives its header.
 export interface PlannedNewColumn {
   table: string;
+  // The entry's path in its Table entry, as `newColumns[0]`.
+  path: string;
   column: string;
   header: string;
   before?: string;
@@ -266,7 +269,7 @@ export const newTableLines = {
 
 // How a `conditionalFormats.remove` handle reads on the plan, stop, landed and didntLand lists.
 export const ruleRemovalLines = {
-  path({ handle }: PlannedRuleRemoval): string {
+  path({ handle }: Pick<PlannedRuleRemoval, "handle">): string {
     return `conditionalFormats.remove["${handle}"]`;
   },
   sendLine(removal: PlannedRuleRemoval): SyncSendLine {
@@ -393,11 +396,12 @@ export class SyncPlanner {
   get newColumns(): PlannedNewColumn[] {
     return entriesOf(this.alterations.tables).flatMap(([table, entry]) =>
       (entry.newColumns ?? []).flatMap(
-        ({ header, before, emptyValueAllowed }): PlannedNewColumn[] => {
+        ({ header, before, emptyValueAllowed }, index): PlannedNewColumn[] => {
           if (header === undefined) return [];
           return [
             {
               table,
+              path: newColumnPath(index),
               column: columnNameOfHeader(header),
               header,
               ...(before === undefined ? {} : { before }),

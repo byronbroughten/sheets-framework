@@ -1,10 +1,13 @@
 import { hasApiAccess } from "./apiAccessChanges";
 import type { IdNameMapGeneric } from "./idNameMapTypes";
 import { BraceRefuser } from "./SyncEntryRefuser/BraceRefuser";
+import { NewColumnNames } from "./SyncEntryRefuser/NewColumnNames";
+import { RenamedColumnNames } from "./SyncEntryRefuser/RenamedColumnNames";
 import { RuleRefuser } from "./SyncEntryRefuser/RuleRefuser";
 import { sheetTraits, tabTraits } from "./SyncPlanner";
 import {
   entriesOf,
+  newColumnPath,
   rulesOf,
   type WideAlterations,
   type WideNewTable,
@@ -86,6 +89,7 @@ export class SyncEntryRefuser {
       }),
     );
     const columnNamesByTable = this._columnNamesByTable;
+    const renamedColumnsByTable = RenamedColumnNames.byTable(this.alterations);
     const braceRefuser = this._braceRefuser;
     return entryRefusals({
       entry: "tables",
@@ -97,15 +101,20 @@ export class SyncEntryRefuser {
         }
         return [
           ...tableTraitRefusals(table, entry),
+          ...new NewColumnNames(entry).repeatRefusals(table),
           ...braceRefuser.tableEntryRefusals(table, entry),
-          ...RuleRefuser.ofTableEntry({ table, entry, columnNamesByTable })
-            .refusals,
+          ...RuleRefuser.ofTableEntry({
+            table,
+            entry,
+            columnNamesByTable,
+            renamedColumnsByTable,
+          }).refusals,
         ];
       },
     });
   }
   private get _braceRefuser(): BraceRefuser {
-    return new BraceRefuser(this._columnNamesByTable, new Map());
+    return new BraceRefuser({ columnNamesByTable: this._columnNamesByTable });
   }
   private get _columnNamesByTable(): Map<string, string[]> {
     return new Map(
@@ -166,6 +175,7 @@ export class SyncEntryRefuser {
         newTable: first,
         at,
         columnNamesByTable: this._columnNamesByTable,
+        renamedColumnsByTable: RenamedColumnNames.byTable(this.alterations),
       }).refusals,
       ...ruleTextFormatPaths({
         conditionalFormats: first.conditionalFormats,
@@ -261,7 +271,7 @@ function ruleTextFormatPaths(entry: WideTableEntry): string[] {
 
 function newColumnTraitPaths({ newColumns }: WideTableEntry): TraitPath[] {
   return (newColumns ?? []).flatMap((newColumn, index) =>
-    traitPathsAt("newColumn", newColumn, `newColumns[${index}].`),
+    traitPathsAt("newColumn", newColumn, `${newColumnPath(index)}.`),
   );
 }
 

@@ -3,6 +3,7 @@ import type { TabsByTable } from "../SyncPlanner";
 import type { SyncRefusal, SyncSubject } from "../syncRunResult";
 import {
   entriesOf,
+  newColumnPath,
   type WideAlterations,
   type WideColumnEntry,
   type WideNewTable,
@@ -127,7 +128,7 @@ export class DeletionRefuser {
         this._placedColumnTouches(
           table,
           newColumn,
-          `${at}.newColumns[${index}]`,
+          `${at}.${newColumnPath(index)}`,
         ),
       ),
       ...this._ruleTouches(table, entry.conditionalFormats, at),

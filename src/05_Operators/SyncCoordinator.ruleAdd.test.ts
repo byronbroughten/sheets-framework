@@ -400,6 +400,13 @@ describe("SyncCoordinator.run conditional-format rule add", () => {
     expect(service.batchUpdateCount()).toBe(0);
     expect(result.refusals).toEqual([
       {
+        kind: "repeatedNewColumn",
+        table: "item",
+        path: "newColumns[1].header",
+        firstPath: "newColumns[0].header",
+        column: "lateFee",
+      },
+      {
         kind: "ambiguousColumn",
         table: "item",
         path: "conditionalFormats.add[0].columns",

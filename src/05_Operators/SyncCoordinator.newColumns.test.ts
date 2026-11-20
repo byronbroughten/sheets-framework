@@ -1,6 +1,7 @@
 import { Val } from "@byronbroughten/utils/val";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { type PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState";
 import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {
@@ -163,27 +164,57 @@ describe("SyncCoordinator.run new columns", () => {
     expect(emptyValueAllowedOf(emitted, "ref")).toBe(true);
   });
 
-  it("throws before sending anything on an entry placed before the Table's first column", () => {
-    const service = seedFixture();
+  describe("an entry placed before the Table's first column", () => {
     const [firstColumn] = Object.keys(itemColumns) as ItemColumnName[];
     const firstName = Val.assert(firstColumn, "first column");
-
-    expect(() =>
-      runItem({
-        isSending: true,
-        alterations: {
-          tables: {
-            item: {
-              newColumns: [
-                { header: "Late fee" },
-                { header: "Ref", before: firstName },
-              ],
-            },
-          },
+    const beforeFirst: PendingAlterations = {
+      tables: {
+        item: {
+          newColumns: [
+            { header: "Late fee" },
+            { header: "Ref", before: firstName },
+          ],
         },
-      }),
-    ).toThrow(/its first column/);
-    expect(service.batchUpdateCount()).toBe(0);
+      },
+    };
+    const stop = {
+      kind: "beforeFirstColumn",
+      table: "item",
+      path: "newColumns[1]",
+      header: "Ref",
+      before: firstName,
+    };
+
+    it("stops a dry run, which reports it", () => {
+      const service = seedFixture();
+
+      const { result } = runItem({
+        isSending: false,
+        alterations: beforeFirst,
+      });
+
+      expect(service.batchUpdateCount()).toBe(0);
+      expect(result).toMatchObject({
+        outcome: { kind: "stopped" },
+        stops: [stop],
+      });
+    });
+
+    it("stops a send before sending anything", () => {
+      const service = seedFixture();
+
+      const { result, files } = runItem({
+        isSending: true,
+        alterations: beforeFirst,
+      });
+
+      expect(service.batchUpdateCount()).toBe(0);
+      expect(files?.alterations).toBeUndefined();
+      expect(result).toMatchObject({
+        outcome: { kind: "stopped" },
+        stops: [stop],
+      });
+    });
   });
 
   it("stops before sending on an entry whose header the Table already has, naming the column and its ID", () => {

@@ -792,6 +792,62 @@ describe("SyncRunReport, case F: two refusals, then a head-row stop", () => {
     );
   });
 
+  it("names both newColumns headers that give one column name", () => {
+    const text = render({
+      ...appDryRun,
+      outcome: { kind: "refused" },
+      refusals: [
+        {
+          kind: "repeatedNewColumn",
+          table: "occCharge",
+          path: "newColumns[1].header",
+          firstPath: "newColumns[0].header",
+          column: "lateFee",
+        },
+      ],
+    }).join("\n");
+    expect(text).toContain(
+      "REFUSED 1 · occCharge › newColumns[1].header\n  newColumns[1].header gives the column name lateFee, as newColumns[0].header does: the two columns can't both be named it.\n  Give each a header whose column name is its own, then rerun.",
+    );
+  });
+
+  it("names both the removal and the replace of one handle", () => {
+    const text = render({
+      ...appDryRun,
+      outcome: { kind: "refused" },
+      refusals: [
+        {
+          kind: "removedAndReplaced",
+          table: "occCharge",
+          path: 'conditionalFormats.replace["amount | =TRUE"]',
+          removedAt: 'conditionalFormats.remove["amount | =TRUE"]',
+        },
+      ],
+    }).join("\n");
+    expect(text).toContain(
+      'REFUSED 1 · occCharge › conditionalFormats.replace["amount | =TRUE"]\n  conditionalFormats.remove["amount | =TRUE"] removes the rule this handle names, and conditionalFormats.replace["amount | =TRUE"] replaces it in the same run.\n  Keep one of the two, then rerun.',
+    );
+  });
+
+  it("says to name a renamed column by its old name this run", () => {
+    const text = render({
+      ...appDryRun,
+      outcome: { kind: "refused" },
+      refusals: [
+        {
+          kind: "renamedColumn",
+          table: "occCharge",
+          path: "conditionalFormats.add[0].columns",
+          column: "fee",
+          oldName: "amount",
+        },
+      ],
+    }).join("\n");
+    expect(text).toContain(
+      "REFUSED 1 · occCharge › conditionalFormats.add[0].columns\n  fee is the name this run's rename gives amount, and alterations.ts names a column by its old name until the run lands.\n  Use the column's old name, amount, this run, then rerun.",
+    );
+  });
+
   it("says a misplaced @ isn't a brace, with the four forms", () => {
     const text = render({
       ...appDryRun,
@@ -853,6 +909,35 @@ describe("SyncRunReport's header-taken stop", () => {
       "STOPPED: 1 Table can't take head rows and 1 new column taken. Nothing was sent, and nothing will be until they are resolved.",
     );
     expect(stoppedText).toContain("Resolve each stop above, then rerun");
+  });
+});
+
+describe("SyncRunReport's before-first-column stop", () => {
+  const stopped = render({
+    ...appDryRun,
+    outcome: { kind: "stopped" },
+    stops: [
+      {
+        kind: "beforeFirstColumn",
+        table: "occCharge",
+        path: "newColumns[1]",
+        header: "Ref",
+        before: "id",
+      },
+    ],
+  });
+  const stoppedText = stopped.join("\n");
+
+  it("names the entry and words it as the insert's guard does", () => {
+    expect(stoppedText).toContain(
+      "STOP 1 · occCharge › newColumns[1]\n  Table occCharge can't take \"Ref\" before id, its first column: a column inserted there lands outside the Table.\n  Name a later column in before, or leave before out to add it at the Table's end.\n  The entry stays in alterations.ts.",
+    );
+  });
+
+  it("counts it in the result line", () => {
+    expect(resultLine(stopped)).toBe(
+      "STOPPED: 1 new column before a first column. Nothing was sent, and nothing will be until it is resolved.",
+    );
   });
 });
 

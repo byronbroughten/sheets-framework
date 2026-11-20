@@ -26,11 +26,13 @@ import {
   type PlanReadings,
   type TraitReadings,
 } from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
-import type {
-  SyncCreatedColumn,
-  SyncCreatedTable,
-  SyncHeaderTakenStop,
-  SyncSendLine,
+import {
+  beforeFirstColumnText,
+  type SyncBeforeFirstColumnStop,
+  type SyncCreatedColumn,
+  type SyncCreatedTable,
+  type SyncHeaderTakenStop,
+  type SyncSendLine,
 } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
 import { tableConfigsByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { type ValueName } from "../01_SpreadsheetSchema/configReaders/valueSchemas";
@@ -419,6 +421,20 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
       ];
     });
   }
+  // From the live column order, which the previous ID-name map doesn't hold, so the entry refuser can't catch it before the read.
+  beforeFirstColumnStops(
+    newColumns: PlannedNewColumn[],
+  ): SyncBeforeFirstColumnStop[] {
+    return newColumns.flatMap(
+      ({ table, path, header, before }): SyncBeforeFirstColumnStop[] => {
+        if (before === undefined) return [];
+        const placedBefore = this._liveColumnNamed(table, before);
+        if (placedBefore === undefined) return [];
+        if (!this._isFirstColumn(placedBefore)) return [];
+        return [{ kind: "beforeFirstColumn", table, path, header, before }];
+      },
+    );
+  }
   // Minted before any queue, so a dry run's withheld flush and the report carry the same IDs.
   mintColumnIds(newColumns: PlannedNewColumn[]): MintedNewColumn[] {
     const idPrefixesByTableId = this.tableConfigOperator.idPrefixesByTableId();
@@ -429,18 +445,15 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
       return { ...newColumn, tableId, columnId: dimensionIds.col(idPrefix) };
     });
   }
-  // Before anything is queued, so the throw sends nothing.
+  // A guard only: beforeFirstColumnStops stops the run first. Before anything is queued, so the throw sends nothing.
   private _validateInsertable(
     tableId: string,
     { table, header, before }: PlannedNewColumn,
   ): void {
     if (before === undefined) return;
-    if (this._colIndexOf(tableId, this._columnIdOf(table, before)) !== 0) {
-      return;
-    }
-    throw new Error(
-      `Table ${table} can't take "${header}" before ${before}, its first column: a column inserted there lands outside the Table.`,
-    );
+    const columnId = this._columnIdOf(table, before);
+    if (!this._isFirstColumn({ tableId, columnId })) return;
+    throw new Error(beforeFirstColumnText({ table, header, before }));
   }
   // At the end, a new column shifts none of the plan's other writes, so it joins their flush.
   appendColumns(minted: MintedNewColumn[]): this {
@@ -634,15 +647,27 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
   private _colIndexOf(tableId: string, columnId: string): number {
     return this.ss.raw.table(tableId).columnResolver.colIndexOf(columnId);
   }
-  // By previous names, as an alteration's `before` gives them.
+  private _isFirstColumn({
+    tableId,
+    columnId,
+  }: Pick<NamedColumnIdentity, "tableId" | "columnId">): boolean {
+    return this._colIndexOf(tableId, columnId) === 0;
+  }
   private _columnIdOf(tableKey: string, columnName: string): string {
     return Val.assert(
-      this._namedColumnIdentities().find(
-        (identity) =>
-          identity.tableKey === tableKey && identity.columnName === columnName,
-      ),
+      this._liveColumnNamed(tableKey, columnName),
       `live column ${tableKey}.${columnName}`,
     ).columnId;
+  }
+  // By previous names, as an alteration's `before` gives them.
+  private _liveColumnNamed(
+    tableKey: string,
+    columnName: string,
+  ): NamedColumnIdentity | undefined {
+    return this._namedColumnIdentities().find(
+      (identity) =>
+        identity.tableKey === tableKey && identity.columnName === columnName,
+    );
   }
   private _sentColumnTraits(
     sent: IntendedTrait[],

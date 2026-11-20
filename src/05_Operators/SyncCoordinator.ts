@@ -295,6 +295,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       sheetStops: [
         ...this.tableConfigOperator.grantHeadRowStops(accessChanges.grants),
         ...this.columnConfigOperator.headerTakenStops(planner.newColumns),
+        ...this.columnConfigOperator.beforeFirstColumnStops(planner.newColumns),
         ...this.tableConfigOperator.newTableStops(planner.newTables),
         ...this.conditionalFormatConfigOperator.noSuchRuleStops(
           planner.ruleRemovals,

@@ -6,6 +6,7 @@ import type { NamesNow, TableNow } from "./namesNow";
 import { type Rename, SyncFormulaRewriter } from "./SyncFormulaRewriter";
 import {
   entriesOf,
+  newColumnPath,
   type WideAlterations,
   type WideColumnEntry,
   type WideNewTable,
@@ -127,7 +128,7 @@ export class SyncAlterationsRewriter {
     }
     if (newColumns !== undefined) {
       rewritten.newColumns = newColumns.map((newColumn, index) => {
-        const at = `${tableName}.newColumns[${index}]`;
+        const at = `${tableName}.${newColumnPath(index)}`;
         return {
           ...newColumn,
           ...this._columnBefore(newColumn, at, table),

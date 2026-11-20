@@ -1,6 +1,8 @@
 import { sendableTraits } from "../01_SpreadsheetSchema/configReaders/SyncEntryRefuser";
 import {
+  beforeFirstColumnText,
   fillRowIdsName,
+  type SyncBeforeFirstColumnStop,
   type SyncCheck,
   type SyncConfigs,
   type SyncConflict,
@@ -458,11 +460,33 @@ function tableRefusalText(
   if (refusal.kind === "ambiguousColumn") {
     return [
       `${refusal.column} could be any of the columns these newColumns headers create: ${refusal.headers.join(", ")}.`,
-      "Give each a header whose column name is its own, then rerun.",
+      newColumnNameOwnText,
+    ];
+  }
+  if (refusal.kind === "repeatedNewColumn") {
+    return [
+      `${refusal.path} gives the column name ${refusal.column}, as ${refusal.firstPath} does: the two columns can't both be named it.`,
+      newColumnNameOwnText,
+    ];
+  }
+  if (refusal.kind === "removedAndReplaced") {
+    return [
+      `${refusal.removedAt} removes the rule this handle names, and ${refusal.path} replaces it in the same run.`,
+      "Keep one of the two, then rerun.",
+    ];
+  }
+  if (refusal.kind === "renamedColumn") {
+    return [
+      `${refusal.column} is the name this run's rename gives ${refusal.oldName}, and alterations.ts names a column by its old name until the run lands.`,
+      `Use the column's old name, ${refusal.oldName}, this run, then rerun.`,
     ];
   }
   return unknownBraceText(refusal);
 }
+
+// The one phrase for two new headers giving one column name.
+const newColumnNameOwnText =
+  "Give each a header whose column name is its own, then rerun.";
 
 // The one phrase for a name the previous ID-name map lacks.
 function noMapEntryText(noun: string, name: string): string {
@@ -512,6 +536,7 @@ const stopKinds: StopKind[] = [
   "conflict",
   "headRows",
   "headerTaken",
+  "beforeFirstColumn",
   "tableNameTaken",
   "tabTitleTaken",
   "noSuchRule",
@@ -539,6 +564,13 @@ const stopWords: { [SK in StopKind]: StopWords<SK> } = {
       return `${counted(count, "new column", "new columns")} taken`;
     },
     block: headerTakenBlock,
+  },
+  beforeFirstColumn: {
+    name: "stop",
+    reason(count) {
+      return `${counted(count, "new column", "new columns")} before a first column`;
+    },
+    block: beforeFirstColumnBlock,
   },
   tableNameTaken: {
     name: "stop",
@@ -610,6 +642,20 @@ function headerTakenBlock(
     `STOP ${number} · ${table} › newColumns`,
     ...indent(2, [
       `${table} already has a column headed "${header}": ${column}, ${columnId}.`,
+      entryStaysText,
+    ]),
+  ];
+}
+
+function beforeFirstColumnBlock(
+  stop: SyncBeforeFirstColumnStop,
+  number: number,
+): string[] {
+  return [
+    `STOP ${number} · ${stop.table} › ${stop.path}`,
+    ...indent(2, [
+      beforeFirstColumnText(stop),
+      "Name a later column in before, or leave before out to add it at the Table's end.",
       entryStaysText,
     ]),
   ];

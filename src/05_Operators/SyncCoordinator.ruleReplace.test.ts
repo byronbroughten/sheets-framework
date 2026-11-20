@@ -20,6 +20,7 @@ type ItemReplace = NonNullable<
     NonNullable<NonNullable<PendingAlterations["tables"]>["item"]>
   >["conditionalFormats"]
 >["replace"];
+type ItemRuleColumns = NonNullable<NonNullable<ItemReplace>[string]>["columns"];
 
 beforeEach(() => {
   stubLogger();
@@ -246,6 +247,94 @@ describe("SyncCoordinator.run conditional-format rule replacement", () => {
           handles: [firstHandle, gradientHandle, secondHandle],
         },
       ],
+    });
+  });
+
+  it("refuses before any read a handle both removed and replaced", () => {
+    const service = seedWithRules();
+
+    const { result, files } = runItem({
+      isSending: true,
+      alterations: {
+        tables: {
+          item: {
+            conditionalFormats: {
+              remove: [firstHandle],
+              replace: { [firstHandle]: greenWhenFalse },
+            },
+          },
+        },
+      },
+    });
+
+    expect(files).toBeUndefined();
+    expect(service.batchUpdateCount()).toBe(0);
+    expect(result).toMatchObject({
+      outcome: { kind: "refused" },
+      refusals: [
+        {
+          kind: "removedAndReplaced",
+          table: "item",
+          path: `conditionalFormats.replace["${firstHandle}"]`,
+          removedAt: `conditionalFormats.remove["${firstHandle}"]`,
+        },
+      ],
+    });
+  });
+
+  function renamingFirstAndReplacing(
+    columns: ItemRuleColumns,
+  ): PendingAlterations {
+    return {
+      tables: {
+        item: {
+          columns: { [firstColumn]: { header: "Renamed" } },
+          conditionalFormats: {
+            replace: { [secondHandle]: { ...greenWhenFalse, columns } },
+          },
+        },
+      },
+    };
+  }
+
+  it("refuses before any read a rule naming a column by the name the run's rename gives it", () => {
+    const service = seedWithRules();
+
+    const { result, files } = runItem({
+      isSending: true,
+      alterations: renamingFirstAndReplacing(["renamed"]),
+    });
+
+    expect(files).toBeUndefined();
+    expect(service.batchUpdateCount()).toBe(0);
+    expect(result.refusals).toEqual([
+      {
+        kind: "renamedColumn",
+        table: "item",
+        path: `conditionalFormats.replace["${secondHandle}"].columns`,
+        column: "renamed",
+        oldName: firstColumn,
+      },
+    ]);
+  });
+
+  it("compiles a rule naming a renamed column by its old name", () => {
+    const service = seedWithRules();
+
+    const { result } = runItem({
+      isSending: true,
+      alterations: renamingFirstAndReplacing([firstColumn]),
+    });
+
+    expect(rulesLeft(service)).toEqual([
+      trueRule(0),
+      gradientRule,
+      greenWhenFalseRule(bodyRange(0)),
+    ]);
+    expect(result).toMatchObject({
+      outcome: { kind: "sent" },
+      refusals: [],
+      didntLand: [],
     });
   });
 
