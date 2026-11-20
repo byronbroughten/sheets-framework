@@ -1578,6 +1578,165 @@ describe("stubSheetsService replays rules under a Table-bounded column move as m
   });
 });
 
+const edgeGid = 337;
+
+function edgeTable(
+  tableId: string,
+  startColumnIndex: number,
+  headers: string[],
+): FakeTable {
+  return {
+    tableId,
+    name: tableId,
+    startRowIndex: 3,
+    startColumnIndex,
+    endRowIndex: 6,
+    endColumnIndex: startColumnIndex + headers.length,
+    headRows: { 0: headers },
+  };
+}
+
+function edgeRange(a1: string): GoogleAppsScript.Sheets.Schema.GridRange {
+  return { ...measuredRange(a1), sheetId: edgeGid };
+}
+
+function edgeTableRanges(
+  grid: FakeGridView,
+): GoogleAppsScript.Sheets.Schema.GridRange[] {
+  return grid
+    .sheet(edgeGid)
+    .tables.map((table) => ({ sheetId: edgeGid, ...table.range }));
+}
+
+describe("stubSheetsService replays the grid-edge measurements (sheets-framework#337)", () => {
+  it("grows a Table on the grid's last row by every appended row, blank, and leaves no row outside it (Scratch337A)", () => {
+    const { grid } = stubSheetsService({
+      sheets: [
+        {
+          sheetId: edgeGid,
+          title: "Scratch337A",
+          rows: buildGridRows({ 4: ["a", 1], 5: ["b", 2] }),
+          tables: [edgeTable("s337a", 0, ["Name", "Amount"])],
+        },
+      ],
+    });
+
+    send({
+      appendDimension: { sheetId: edgeGid, dimension: "ROWS", length: 2 },
+    });
+
+    const sheet = grid.sheet(edgeGid);
+    expect(sheet.rowCount).toBe(8);
+    expect(edgeTableRanges(grid)).toEqual([edgeRange("A4:B8")]);
+    expect(
+      sheet.values({ startRowIndex: 6, endRowIndex: 8, endColumnIndex: 2 }),
+    ).toEqual([
+      [null, null],
+      [null, null],
+    ]);
+  });
+
+  it("grows a side-by-side neighbour ending on the grid's last row by a blank row when only one Table is appended to (Scratch337B)", () => {
+    const { grid } = stubSheetsService({
+      sheets: [
+        {
+          sheetId: edgeGid,
+          title: "Scratch337B",
+          rows: buildGridRows({
+            4: ["a", 1, null, "x", 10],
+            5: ["b", 2, null, "y", 20],
+          }),
+          tables: [
+            edgeTable("s337l", 0, ["Name", "Amount"]),
+            edgeTable("s337r", 3, ["Label", "Count"]),
+          ],
+        },
+      ],
+    });
+
+    send(
+      { appendDimension: { sheetId: edgeGid, dimension: "ROWS", length: 1 } },
+      {
+        updateTable: {
+          table: { tableId: "s337l", range: edgeRange("A4:B7") },
+          fields: "range",
+        },
+      },
+      {
+        updateCells: {
+          range: edgeRange("A7:B7"),
+          rows: [values("c", 3)],
+          fields: "userEnteredValue",
+        },
+      },
+    );
+
+    const sheet = grid.sheet(edgeGid);
+    expect(sheet.rowCount).toBe(7);
+    expect(edgeTableRanges(grid)).toEqual([
+      edgeRange("A4:B7"),
+      edgeRange("D4:E7"),
+    ]);
+    expect(sheet.values({ startRowIndex: 6 })).toEqual([
+      ["c", 3, null, null, null],
+    ]);
+  });
+
+  it("keeps the cells a move's insert pushes past the grid's last column, leaving the grid a blank column wider (Scratch337C)", () => {
+    const { grid } = stubSheetsService({
+      sheets: [
+        {
+          sheetId: edgeGid,
+          title: "Scratch337C",
+          rows: buildGridRows({
+            4: ["a1", "b1", "c1", "d1"],
+            5: ["a2", "b2", "c2", "d2"],
+            6: ["a3", "b3", "c3", "d3"],
+          }),
+          tables: [
+            {
+              ...edgeTable("s337c", 0, ["One", "Two", "Three", "Four"]),
+              endRowIndex: 7,
+              headRows: {
+                3: ["c:1", "c:2", "c:3", "c:4"],
+                0: ["One", "Two", "Three", "Four"],
+              },
+            },
+          ],
+        },
+      ],
+    });
+
+    send(
+      {
+        insertRange: { range: edgeRange("B1:B7"), shiftDimension: "COLUMNS" },
+      },
+      {
+        cutPaste: {
+          source: edgeRange("E1:E7"),
+          destination: { sheetId: edgeGid, rowIndex: 0, columnIndex: 1 },
+          pasteType: "PASTE_NORMAL",
+        },
+      },
+      {
+        deleteRange: { range: edgeRange("E1:E7"), shiftDimension: "COLUMNS" },
+      },
+    );
+
+    const sheet = grid.sheet(edgeGid);
+    expect(sheet.columnCount).toBe(5);
+    expect(edgeTableRanges(grid)).toEqual([edgeRange("A4:D7")]);
+    expect(sheet.values({ endRowIndex: 1, endColumnIndex: 5 })).toEqual([
+      ["c:1", "c:4", "c:2", "c:3", null],
+    ]);
+    expect(sheet.values({ startRowIndex: 4, endColumnIndex: 5 })).toEqual([
+      ["a1", "d1", "b1", "c1", null],
+      ["a2", "d2", "b2", "c2", null],
+      ["a3", "d3", "b3", "c3", null],
+    ]);
+  });
+});
+
 describe("stubSheetsService replays copyPaste of format and validation", () => {
   const modelRow = bandRange({
     startRowIndex: 5,

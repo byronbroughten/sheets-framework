@@ -163,7 +163,7 @@ export const dimensionReplays = {
   },
 };
 
-// Measured live (sheets-framework#292), for one row: a Table ending on the grid's last row grows into it, its formulas filled.
+// Measured live (sheets-framework#292, #337): every Table ending on the grid's last row grows by the full count, a side-by-side neighbour too.
 function growTablesOnGridEdge(sheet: FakeSheetState, length: number): void {
   const edgeTables = sheet.tables.filter(
     (table) => table.endRowIndex === sheet.rowCount,
