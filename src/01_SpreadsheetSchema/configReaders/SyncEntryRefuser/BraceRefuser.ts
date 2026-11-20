@@ -16,7 +16,7 @@ interface BraceRefuserProps {
   renamedColumnsByTable?: Map<string, RenamedColumnNames>;
 }
 
-interface NewTableBraceProps {
+export interface NewTableAt {
   tab: string;
   newTable: WideNewTable;
   at: string;
@@ -56,7 +56,7 @@ export class BraceRefuser {
     });
   }
   // A brace naming the new Table resolves against its planned columns, each named as the regen will name its header.
-  newTableRefusals({ tab, newTable, at }: NewTableBraceProps): SyncRefusal[] {
+  newTableRefusals({ tab, newTable, at }: NewTableAt): SyncRefusal[] {
     const { table: tableKey, columns } = unplacedNewTable(newTable);
     const withPlanned = new BraceRefuser({
       columnNamesByTable: new Map(this.columnNamesByTable).set(

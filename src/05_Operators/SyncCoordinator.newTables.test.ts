@@ -33,6 +33,11 @@ describe("SyncCoordinator.run new tabs and Tables", () => {
       { header: "Amount", emptyValueAllowed: true },
     ],
   };
+  const deskLogColumns = [
+    { header: "Desk" },
+    { header: "Note" },
+    { header: "Day" },
+  ];
 
   function mapOf(files: ConfigRegeneration | undefined): IdNameMapGeneric {
     return parseIdNameMapFileSource(
@@ -194,6 +199,92 @@ describe("SyncCoordinator.run new tabs and Tables", () => {
       });
     },
   );
+
+  it("adds a new tab holding two Tables in one run, the second beside the first", () => {
+    const service = seedFixture();
+
+    const { result, files } = runItem({
+      isSending: true,
+      alterations: {
+        newTabs: [
+          {
+            title: "Payments",
+            tables: [paymentLog, { name: "Desk Log", columns: deskLogColumns }],
+          },
+        ],
+      },
+    });
+
+    const gid = tabGidOf(mapOf(files), "Payments");
+    expect(service.grid.sheetTitles()).toEqual(["Item", "Payments"]);
+    const tables = service.grid.sheet(gid).tables;
+    expect(tables.map(({ name }) => name)).toEqual(["Payment Log", "Desk Log"]);
+    expect(tables.map(({ range }) => range)).toMatchObject([
+      {
+        startRowIndex: tableHeaderRowIndex,
+        startColumnIndex: startTableColIndex,
+        endColumnIndex: startTableColIndex + 2,
+      },
+      {
+        startRowIndex: tableHeaderRowIndex,
+        startColumnIndex: startTableColIndex + 2,
+        endColumnIndex: startTableColIndex + 5,
+      },
+    ]);
+    expect(result).toMatchObject({
+      outcome: { kind: "sent" },
+      landed: [
+        { kind: "send", subject: { tab: "Payments", path: "newTabs" } },
+        { kind: "createdTable", table: "paymentLog", tab: "Payments" },
+        { kind: "createdTable", table: "deskLog", tab: "Payments" },
+      ],
+    });
+  });
+
+  it("adds two Tables right of Item in one run, the second beside the first", () => {
+    const service = seedFixture();
+    const itemEnd = itemTableEnd(service);
+
+    const { result } = runItem({
+      isSending: true,
+      alterations: {
+        tabs: {
+          item: {
+            newTables: [
+              paymentLog,
+              { name: "Desk Log", columns: deskLogColumns, gap: 1 },
+            ],
+          },
+        },
+      },
+    });
+
+    const tables = service.grid.sheet(itemGid).tables;
+    expect(tables.map(({ name }) => name)).toEqual([
+      "Item",
+      "Payment Log",
+      "Desk Log",
+    ]);
+    expect(tables.slice(1).map(({ range }) => range)).toMatchObject([
+      {
+        startRowIndex: tableHeaderRowIndex,
+        startColumnIndex: itemEnd,
+        endColumnIndex: itemEnd + 2,
+      },
+      {
+        startRowIndex: tableHeaderRowIndex,
+        startColumnIndex: itemEnd + 3,
+        endColumnIndex: itemEnd + 6,
+      },
+    ]);
+    expect(result).toMatchObject({
+      outcome: { kind: "sent" },
+      landed: [
+        { kind: "createdTable", table: "paymentLog", tab: "Item" },
+        { kind: "createdTable", table: "deskLog", tab: "Item" },
+      ],
+    });
+  });
 
   it("stops before sending on a new Table whose name a live Table gives, naming it", () => {
     const service = seedFixture();

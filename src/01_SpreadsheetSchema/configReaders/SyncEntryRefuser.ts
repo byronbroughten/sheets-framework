@@ -1,6 +1,6 @@
 import { hasApiAccess } from "./apiAccessChanges";
 import type { IdNameMapGeneric } from "./idNameMapTypes";
-import { BraceRefuser } from "./SyncEntryRefuser/BraceRefuser";
+import { BraceRefuser, type NewTableAt } from "./SyncEntryRefuser/BraceRefuser";
 import { NewColumnNames } from "./SyncEntryRefuser/NewColumnNames";
 import { RenamedColumnNames } from "./SyncEntryRefuser/RenamedColumnNames";
 import { RuleRefuser } from "./SyncEntryRefuser/RuleRefuser";
@@ -157,31 +157,29 @@ export class SyncEntryRefuser {
       ];
     });
   }
-  // The working view doesn't list a Table its flush adds, so a second on the same tab would be placed over the first.
   private _newTablesRefusals({
     tab,
     newTables,
     tablesAt,
   }: NewTablesRefusalsProps): SyncRefusal[] {
-    const [first, ...others] = newTables;
-    if (first === undefined) return [];
-    const at = `${tablesAt}[0]`;
+    return newTables.flatMap((newTable, index) =>
+      this._newTableRefusals({ tab, newTable, at: `${tablesAt}[${index}]` }),
+    );
+  }
+  private _newTableRefusals({ tab, newTable, at }: NewTableAt): SyncRefusal[] {
     return [
-      ...refusedPaths(tab, newTableTraitPaths(first, at)),
-      ...this._braceRefuser.newTableRefusals({ tab, newTable: first, at }),
+      ...refusedPaths(tab, newTableTraitPaths(newTable, at)),
+      ...this._braceRefuser.newTableRefusals({ tab, newTable, at }),
       ...RuleRefuser.ofNewTable({
         tab,
-        newTable: first,
+        newTable,
         at,
         columnNamesByTable: this._columnNamesByTable,
         renamedColumnsByTable: RenamedColumnNames.byTable(this.alterations),
       }).refusals,
       ...ruleTextFormatPaths({
-        conditionalFormats: first.conditionalFormats,
+        conditionalFormats: newTable.conditionalFormats,
       }).map((path) => notSendableYet(tab, `${at}.${path}`)),
-      ...others.map((_, index) =>
-        notSendableYet(tab, `${tablesAt}[${index + 1}]`),
-      ),
     ];
   }
 }

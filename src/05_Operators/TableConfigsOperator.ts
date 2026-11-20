@@ -149,6 +149,7 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
     const prefixesInUse = new Set(this.idPrefixesByTableId().idPrefixes());
     const retiredPrefixes = this._retiredOrGoneIdPrefixes();
     const sheetGidsInUse = new Set(this.ss.raw.activeSheetGids);
+    const newTabGidsByTitle = new Map<string, number>();
     return newTables.map((newTable) => {
       const idPrefix = idPrefixes.fromTitle({
         title: newTable.name,
@@ -156,11 +157,18 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
         retiredPrefixes,
       });
       prefixesInUse.add(idPrefix);
-      const createdPlacement = this._createdPlacement(
-        newTable.placement,
+      const createdPlacement = this._createdPlacement({
+        placement: newTable.placement,
         sheetGidsInUse,
-      );
+        newTabGidsByTitle,
+      });
       sheetGidsInUse.add(createdPlacement.sheetGid);
+      if (createdPlacement.kind === "newTab") {
+        newTabGidsByTitle.set(
+          createdPlacement.title,
+          createdPlacement.sheetGid,
+        );
+      }
       const mintedTable = {
         ...newTable,
         tableId: randomTableId(),
@@ -180,11 +188,16 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
       return mintedTable;
     });
   }
-  private _createdPlacement(
-    placement: PlannedNewTablePlacement,
-    sheetGidsInUse: Set<number>,
-  ): CreatedTablePlacement {
+  private _createdPlacement({
+    placement,
+    sheetGidsInUse,
+    newTabGidsByTitle,
+  }: CreatedPlacementProps): CreatedTablePlacement {
     if (placement.kind === "newTab") {
+      const newTabGid = newTabGidsByTitle.get(placement.title);
+      if (newTabGid !== undefined) {
+        return { kind: "besideTables", sheetGid: newTabGid };
+      }
       return {
         kind: "newTab",
         sheetGid: randomSheetGid(sheetGidsInUse),
@@ -403,6 +416,12 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
       ``,
     ].join("\n");
   }
+}
+
+interface CreatedPlacementProps {
+  placement: PlannedNewTablePlacement;
+  sheetGidsInUse: Set<number>;
+  newTabGidsByTitle: Map<string, number>;
 }
 
 // Each of a new Table's rules over the body rows of `range`, its columns left to right as its headers give them.
