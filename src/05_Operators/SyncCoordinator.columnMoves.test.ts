@@ -74,7 +74,7 @@ describe("SyncCoordinator.run column moves", () => {
     column: ItemColumnName,
     before: ItemColumnName,
   ): PendingAlterations {
-    return { tables: { item: { columns: { [column]: { before } } } } };
+    return { tables: { item: { moves: [{ columns: [column], before }] } } };
   }
 
   it("moves a column to before one in the middle, keeping its column ID and data", () => {
@@ -104,13 +104,11 @@ describe("SyncCoordinator.run column moves", () => {
       outcome: { kind: "sent" },
       plan: [
         {
-          subject: { table: "item", column: nameAt(moved), path: "before" },
-          what: `set to ${nameAt(1)}`,
+          subject: { table: "item", path: "moves[0]" },
+          what: `move ${nameAt(moved)} before ${nameAt(1)}`,
         },
       ],
-      landed: [
-        { subject: { table: "item", column: nameAt(moved), path: "before" } },
-      ],
+      landed: [{ subject: { table: "item", path: "moves[0]" } }],
     });
   });
 
@@ -135,9 +133,7 @@ describe("SyncCoordinator.run column moves", () => {
       expectedSheetLayout.startTableColIndex,
     );
     expect(result).toMatchObject({
-      landed: [
-        { subject: { table: "item", column: nameAt(2), path: "before" } },
-      ],
+      landed: [{ subject: { table: "item", path: "moves[0]" } }],
     });
   });
 
@@ -152,10 +148,8 @@ describe("SyncCoordinator.run column moves", () => {
       alterations: {
         tables: {
           item: {
-            columns: {
-              optionalNote: { deleted: true },
-              [moved]: { before: target },
-            },
+            columns: { optionalNote: { deleted: true } },
+            moves: [{ columns: [moved], before: target }],
           },
         },
       },
@@ -168,7 +162,7 @@ describe("SyncCoordinator.run column moves", () => {
     );
   });
 
-  it("skips a before the live order already satisfies", () => {
+  it("skips a group the live order already satisfies", () => {
     const service = seedFixture();
     const before = itemSheetRows(service);
 
@@ -178,7 +172,11 @@ describe("SyncCoordinator.run column moves", () => {
     });
 
     expect(itemSheetRows(service)).toEqual(before);
-    expect(result).toMatchObject({ plan: [], landed: [] });
+    expect(result).toMatchObject({
+      plan: [],
+      landed: [],
+      alreadyMet: [{ subject: { table: "item", path: "moves[0]" } }],
+    });
   });
 
   it("stops partway when Google refuses the move's batch over a taller Table beside it, the deletion before it landed", () => {
@@ -214,10 +212,8 @@ describe("SyncCoordinator.run column moves", () => {
       alterations: {
         tables: {
           item: {
-            columns: {
-              optionalNote: { deleted: true },
-              [moved]: { before: target },
-            },
+            columns: { optionalNote: { deleted: true } },
+            moves: [{ columns: [moved], before: target }],
           },
         },
       },
@@ -374,28 +370,6 @@ describe("SyncCoordinator.run column moves", () => {
           path: "moves[2].before",
           otherPath: "moves[2].columns[0]",
           column: nameAt(1),
-        },
-      ]);
-    });
-
-    it("refuses a group's column that carries its own before, naming both", () => {
-      expect(
-        refusalsOf({
-          tables: {
-            item: {
-              columns: { [nameAt(2)]: { before: nameAt(1) } },
-              moves: [{ columns: [nameAt(2)], before: nameAt(0) }],
-            },
-          },
-        }),
-      ).toEqual([
-        {
-          kind: "clashingMoves",
-          clash: "ownBefore",
-          table: "item",
-          path: "moves[0].columns[0]",
-          otherPath: `${nameAt(2)}.before`,
-          column: nameAt(2),
         },
       ]);
     });

@@ -1,5 +1,4 @@
 import {
-  entriesOf,
   moveBeforePath,
   moveColumnPath,
   type WideTableEntry,
@@ -30,7 +29,6 @@ export class MovesRefuser {
       ...this._sameBeforeRefusals,
       ...this._repeatedColumnRefusals,
       ...this._movedBeforeRefusals,
-      ...this._ownBeforeRefusals,
     ];
   }
   private get _sameBeforeRefusals(): SyncClashingMoves[] {
@@ -47,24 +45,6 @@ export class MovesRefuser {
       if (moved === undefined) return [];
       return [
         this._clash({ clash: "movedBefore", named, otherPath: moved.path }),
-      ];
-    });
-  }
-  // A column placed twice can't sit in both places.
-  private get _ownBeforeRefusals(): SyncClashingMoves[] {
-    const ownBefores = new Set(
-      entriesOf(this.entry.columns).flatMap(([column, { before }]) =>
-        before === undefined ? [] : [column],
-      ),
-    );
-    return this._movedColumns.flatMap((named) => {
-      if (!ownBefores.has(named.column)) return [];
-      return [
-        this._clash({
-          clash: "ownBefore",
-          named,
-          otherPath: `${named.column}.before`,
-        }),
       ];
     });
   }

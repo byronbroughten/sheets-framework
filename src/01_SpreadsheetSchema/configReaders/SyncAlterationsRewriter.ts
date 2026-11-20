@@ -6,9 +6,13 @@ import type { NamesNow, TableNow } from "./namesNow";
 import { type Rename, SyncFormulaRewriter } from "./SyncFormulaRewriter";
 import {
   entriesOf,
+  moveBeforePath,
+  moveColumnPath,
   newColumnPath,
   type WideAlterations,
   type WideColumnEntry,
+  type WideColumnGroupMove,
+  type WideNewColumn,
   type WideNewTable,
   type WideTabEntry,
   type WideTableEntry,
@@ -30,9 +34,23 @@ interface BeforeRename {
   nowOf: (name: string) => string | undefined;
 }
 
+interface ColumnRename {
+  written: string;
+  // Where the name sits, as the rewrite line names it.
+  at: string;
+  table: TableNow | undefined;
+}
+
 interface TableEntryRewrite {
   tableName: string;
   entry: WideTableEntry;
+  table: TableNow | undefined;
+}
+
+interface MoveRewrite {
+  move: WideColumnGroupMove;
+  index: number;
+  tableName: string;
   table: TableNow | undefined;
 }
 
@@ -115,7 +133,7 @@ export class SyncAlterationsRewriter {
     entry,
     table,
   }: TableEntryRewrite): WideTableEntry {
-    const { columns, newColumns, conditionalFormats } = entry;
+    const { columns, newColumns, moves, conditionalFormats } = entry;
     const rewritten: WideTableEntry = { ...entry };
     const formulas = this._formulaRewriter(tableName, table);
     if (columns !== undefined) {
@@ -135,6 +153,11 @@ export class SyncAlterationsRewriter {
           ...formulas.formulaTexts(newColumn, at),
         };
       });
+    }
+    if (moves !== undefined) {
+      rewritten.moves = moves.map((move, index) =>
+        this._move({ move, index, tableName, table }),
+      );
     }
     if (conditionalFormats !== undefined) {
       rewritten.conditionalFormats = formulas.rules(
@@ -179,7 +202,6 @@ export class SyncAlterationsRewriter {
         byName[name] = {
           ...byName[name],
           ...columnEntry,
-          ...this._columnBefore(columnEntry, at, table),
           ...formulas.formulaTexts(columnEntry, at),
         };
         return byName;
@@ -188,14 +210,43 @@ export class SyncAlterationsRewriter {
     );
   }
   private _columnBefore(
-    entry: WideColumnEntry,
+    entry: WideNewColumn,
     at: string,
     table: TableNow | undefined,
-  ): Pick<WideColumnEntry, "before"> {
+  ): Pick<WideNewColumn, "before"> {
     return this._before({
       before: entry.before,
       at,
       nowOf: (name) => table?.columns.get(name)?.name,
+    });
+  }
+  private _move({
+    move,
+    index,
+    tableName,
+    table,
+  }: MoveRewrite): WideColumnGroupMove {
+    return {
+      ...move,
+      columns: move.columns.map((written, columnIndex) =>
+        this._columnRenamed({
+          written,
+          at: `${tableName}.${moveColumnPath({ index, columnIndex })}`,
+          table,
+        }),
+      ),
+      before: this._columnRenamed({
+        written: move.before,
+        at: `${tableName}.${moveBeforePath(index)}`,
+        table,
+      }),
+    };
+  }
+  private _columnRenamed({ written, at, table }: ColumnRename): string {
+    return this._renamed({
+      written,
+      now: table?.columns.get(written)?.name,
+      rewrite: (now) => ({ from: `${at} "${written}"`, to: `"${now}"` }),
     });
   }
   private _tabs(

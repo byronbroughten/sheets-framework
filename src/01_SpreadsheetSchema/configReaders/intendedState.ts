@@ -38,10 +38,6 @@ interface ColumnTraits {
   emptyValueAllowed?: boolean;
 }
 
-interface ColumnAlteration<CN extends string> extends ColumnTraits {
-  before?: CN;
-}
-
 interface NewColumn<CN extends string> extends ColumnTraits {
   header: string;
   before?: CN;
@@ -105,10 +101,7 @@ interface TableTraits<CN extends string, CE extends object> {
 }
 
 type TableAlteration<TN extends MappedTableName> = Deletable<
-  TableTraits<
-    MappedColumnName<TN>,
-    Deletable<ColumnAlteration<MappedColumnName<TN>>>
-  >
+  TableTraits<MappedColumnName<TN>, Deletable<ColumnTraits>>
 >;
 
 // Its columns are named by header, since none is in the map until the run that adds it.

@@ -377,17 +377,18 @@ describe("SyncPlanner.refusals", () => {
   it.each<{ row: string; props: Partial<SyncPlannerProps>; touchedBy: string }>(
     [
       {
-        row: "a sibling's before",
+        row: "a moves group's before",
         props: {
           alterations: {
             tables: {
               item: {
-                columns: { name: { deleted: true }, id: { before: "name" } },
+                columns: { name: { deleted: true } },
+                moves: [{ columns: ["id"], before: "name" }],
               },
             },
           },
         },
-        touchedBy: "tables.item.columns.id.before",
+        touchedBy: "tables.item.moves[0].before",
       },
       {
         row: "a new column's before",

@@ -234,57 +234,29 @@ describe("SyncCoordinator.run rules after a column insert, delete or move", () =
     }
 
     // Leaves the note column, under the hand-drawn rule, uncut.
-    const countBeforeName = { column: "requiredCount", before: "name" };
+    const countBeforeName = {
+      column: "requiredCount",
+      before: "name",
+    } as const;
     const moveAlterations: PendingAlterations = {
       tables: {
         item: {
-          columns: {
-            [countBeforeName.column]: { before: countBeforeName.before },
-          },
+          moves: [
+            {
+              columns: [countBeforeName.column],
+              before: countBeforeName.before,
+            },
+          ],
         },
       },
     };
 
-    it("rewrites a whole-Table rule back inside the Table, in the move's batch", () => {
+    it("rewrites a whole-Table rule back inside the Table, in the move's batch, on the group's line", () => {
       const service = seedWith([idReadingRule(columnNames), handDrawnRule]);
 
       const { result } = runItem({
         isSending: true,
         alterations: moveAlterations,
-      });
-
-      expect(rulesLeft(service)).toEqual([
-        idReadingRule(namesMoved(columnNames, countBeforeName)),
-        handDrawnRule,
-      ]);
-      expect(result).toMatchObject({
-        outcome: { kind: "sent" },
-        stops: [],
-        didntLand: [],
-      });
-      expect(result.plan).toEqual([
-        {
-          subject: { table: "item", column: "requiredCount", path: "before" },
-          what: "set to name",
-          effects: [
-            { kind: "rulesRewritten", table: "item", count: 1, after: "move" },
-          ],
-        },
-      ]);
-    });
-
-    it("rewrites a whole-Table rule after a `moves` group, on the group's line", () => {
-      const service = seedWith([idReadingRule(columnNames), handDrawnRule]);
-
-      const { result } = runItem({
-        isSending: true,
-        alterations: {
-          tables: {
-            item: {
-              moves: [{ columns: ["requiredCount"], before: "name" }],
-            },
-          },
-        },
       });
 
       expect(rulesLeft(service)).toEqual([
@@ -309,17 +281,20 @@ describe("SyncCoordinator.run rules after a column insert, delete or move", () =
 
     it("rewrites after a move that follows a delete, on the layout both leave", () => {
       const service = seedWith([idReadingRule(columnNames), handDrawnRule]);
-      const idBeforeCount = { column: "id", before: "requiredCount" };
+      const idBeforeCount = { column: "id", before: "requiredCount" } as const;
 
       const { result } = runItem({
         isSending: true,
         alterations: {
           tables: {
             item: {
-              columns: {
-                name: { deleted: true },
-                [idBeforeCount.column]: { before: idBeforeCount.before },
-              },
+              columns: { name: { deleted: true } },
+              moves: [
+                {
+                  columns: [idBeforeCount.column],
+                  before: idBeforeCount.before,
+                },
+              ],
             },
           },
         },

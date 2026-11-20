@@ -101,6 +101,36 @@ describe("SyncCoordinator.run name rewrites", () => {
     );
   });
 
+  it("rewrites retitled columns inside a pending moves group, in its columns and its before", () => {
+    seedFixture({
+      item: {
+        columns: {
+          requiredCount: { ...requiredCount, header: "Tally" },
+          optionalNote: { ...optionalNote, header: "Remark" },
+        },
+      },
+    });
+
+    const { result, files } = runItem({
+      isSending: false,
+      alterations: {
+        tables: {
+          item: {
+            moves: [{ columns: ["requiredCount"], before: "optionalNote" }],
+          },
+        },
+      },
+    });
+
+    expect(Val.assert(files, "emitted files").alterations).toContain(
+      '"moves": [{"columns":["tally"],"before":"remark"}]',
+    );
+    expect(result.configs?.rewrites).toEqual([
+      { from: 'item.moves[0].columns[0] "requiredCount"', to: '"tally"' },
+      { from: 'item.moves[0].before "optionalNote"', to: '"remark"' },
+    ]);
+  });
+
   // The conflict holds back the header the configs record, but the column's name still follows the live one.
   it("rewrites a Table and a column a person renamed on a stopped run", () => {
     seedFixture({

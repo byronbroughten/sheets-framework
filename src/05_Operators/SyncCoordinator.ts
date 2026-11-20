@@ -949,10 +949,8 @@ function withColumnChangeRuleEffects({
         ({ subject }) => "table" in subject && subject.table === table,
       );
       if (movedTables.has(table)) {
-        const move = ofTable.find(
-          ({ subject }) =>
-            isColumnTrait(subject, "before") ||
-            columnGroupMoveLines.isSubject(subject),
+        const move = ofTable.find(({ subject }) =>
+          columnGroupMoveLines.isSubject(subject),
         );
         return move === undefined ? [] : [move];
       }

@@ -9,6 +9,7 @@ import {
   type WideAlterations,
   type WideColumnEntry,
   type WideColumnGroupMove,
+  type WideNewColumn,
   type WideNewTable,
   type WideTableEntry,
 } from "./wideAlterations";
@@ -160,7 +161,7 @@ export class DeletionRefuser {
     if (entry.deleted === true) return this._takenTableTouches(table, at);
     return [
       { targets: this._columnTargets(table, column), touchedBy: at },
-      ...this._placedColumnTouches(table, entry, at),
+      ...this._formulaTouches(table, entry, at),
     ];
   }
   // A Table or column deletion touches only its tab, whose deletion already takes the Table.
@@ -171,10 +172,10 @@ export class DeletionRefuser {
   }
   private _placedColumnTouches(
     table: string,
-    entry: WideColumnEntry,
+    newColumn: WideNewColumn,
     at: string,
   ): Touch[] {
-    const { before, formula } = entry;
+    const { before } = newColumn;
     return [
       ...(before === undefined
         ? []
@@ -184,10 +185,16 @@ export class DeletionRefuser {
               touchedBy: `${at}.before`,
             },
           ]),
-      ...(formula === undefined
-        ? []
-        : this._braceTouches(table, formula, `${at}.formula`)),
+      ...this._formulaTouches(table, newColumn, at),
     ];
+  }
+  private _formulaTouches(
+    table: string,
+    { formula }: WideColumnEntry,
+    at: string,
+  ): Touch[] {
+    if (formula === undefined) return [];
+    return this._braceTouches(table, formula, `${at}.formula`);
   }
   private _ruleTouches(
     table: string,
