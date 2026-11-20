@@ -179,7 +179,7 @@ const logFormulaLetter = a1Notation.columnLetters(
 // The top body cell of Log's formula column, as an outside-references check lists it.
 export const logFormulaCell = `Log!${logFormulaLetter}5:${logFormulaLetter}5`;
 
-// The dev Log Table with one formula in its last column; a brace decompile matches the Sheets name the previous configs record, which for item is "item".
+// The dev Log Table with one formula in its last column; a brace decompile matches each Table's live name.
 function logSheet(formula: string): FakeSheetProperties {
   return fakeTableSheet.build({
     sheetId: logGid,
@@ -229,12 +229,15 @@ interface BesideLogProps {
   logFormula: string;
 }
 
-// A dry run on Item and Log, Log's formula column holding logFormula.
+// A dry run on Item and Log, Log's formula column holding logFormula; Item carries the name the previous configs record, which a live formula names it by.
 export function dryRunBesideLog({
   alterations,
   logFormula,
 }: BesideLogProps): SyncRun {
-  seedFixture({ extraSheets: [logSheet(logFormula)] });
+  seedFixture({
+    item: { name: getTableTraitByName("item", "tableName") },
+    extraSheets: [logSheet(logFormula)],
+  });
   return SyncCoordinator.init().run({
     isSending: false,
     intendedState: { alterations },
