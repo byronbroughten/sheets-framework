@@ -9,6 +9,7 @@ import {
   isNewColumnGroup,
   moveBeforePath,
   moveColumnPath,
+  newColumnGroupColumnPath,
   newColumnPath,
   type WideAlterations,
   type WideColumnEntry,
@@ -167,7 +168,10 @@ export class SyncAlterationsRewriter {
           ...this._columnBefore(item, at, table),
           columns: item.columns.map((column, columnIndex) => ({
             ...column,
-            ...formulas.formulaTexts(column, `${at}.columns[${columnIndex}]`),
+            ...formulas.formulaTexts(
+              column,
+              `${tableName}.${newColumnGroupColumnPath({ index, columnIndex })}`,
+            ),
           })),
         };
       });

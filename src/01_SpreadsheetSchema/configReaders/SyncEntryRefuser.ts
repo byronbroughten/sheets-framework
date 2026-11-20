@@ -1,14 +1,15 @@
 import { hasApiAccess } from "./apiAccessChanges";
 import type { IdNameMapGeneric } from "./idNameMapTypes";
 import { BraceRefuser, type NewTableAt } from "./SyncEntryRefuser/BraceRefuser";
-import { MovesRefuser } from "./SyncEntryRefuser/MovesRefuser";
 import { NewColumnNames } from "./SyncEntryRefuser/NewColumnNames";
+import { PlacementsRefuser } from "./SyncEntryRefuser/PlacementsRefuser";
 import { RenamedColumnNames } from "./SyncEntryRefuser/RenamedColumnNames";
 import { RuleRefuser } from "./SyncEntryRefuser/RuleRefuser";
 import { sheetTraits, tabTraits } from "./SyncPlanner";
 import {
   entriesOf,
   isNewColumnGroup,
+  newColumnGroupColumnPath,
   newColumnPath,
   rulesOf,
   type WideAlterations,
@@ -105,7 +106,7 @@ export class SyncEntryRefuser {
         return [
           ...tableTraitRefusals(table, entry),
           ...new NewColumnNames(entry).repeatRefusals(table),
-          ...new MovesRefuser(table, entry).refusals,
+          ...new PlacementsRefuser(table, entry).refusals,
           ...braceRefuser.tableEntryRefusals(table, entry),
           ...RuleRefuser.ofTableEntry({
             table,
@@ -278,7 +279,11 @@ function newColumnTraitPaths({ newColumns }: WideTableEntry): TraitPath[] {
     return [
       ...traitPathsAt("newColumnGroup", item, at),
       ...item.columns.flatMap((column, columnIndex) =>
-        traitPathsAt("newColumn", column, `${at}columns[${columnIndex}].`),
+        traitPathsAt(
+          "newColumn",
+          column,
+          `${newColumnGroupColumnPath({ index, columnIndex })}.`,
+        ),
       ),
     ];
   });

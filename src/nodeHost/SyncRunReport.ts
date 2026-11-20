@@ -5,7 +5,7 @@ import {
   heldBackRuleWhat,
   type SyncBeforeFirstColumnStop,
   type SyncCheck,
-  type SyncClashingMoves,
+  type SyncClashingPlacements,
   type SyncConfigs,
   type SyncConflict,
   type SyncCreatedTable,
@@ -490,8 +490,8 @@ function tableRefusalText(
       keepOneText,
     ];
   }
-  if (refusal.kind === "clashingMoves") {
-    return [clashingMovesText[refusal.clash](refusal), keepOneText];
+  if (refusal.kind === "clashingPlacements") {
+    return [clashingPlacementsText[refusal.clash](refusal), keepOneText];
   }
   if (refusal.kind === "renamedColumn") {
     return [
@@ -502,10 +502,10 @@ function tableRefusalText(
   return unknownBraceText(refusal);
 }
 
-// Why the two paths of a `moves` clash can't both hold.
-const clashingMovesText: Record<
-  SyncClashingMoves["clash"],
-  (refusal: SyncClashingMoves) => string
+// Why the two paths of a `moves` or `newColumns` clash can't both hold.
+const clashingPlacementsText: Record<
+  SyncClashingPlacements["clash"],
+  (refusal: SyncClashingPlacements) => string
 > = {
   sameBefore: ({ path, otherPath, column }) =>
     `${path} puts its group before ${column}, as ${otherPath} does: only one group can sit right before it.`,

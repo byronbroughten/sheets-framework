@@ -84,8 +84,8 @@ export interface WideAlterations {
   newTabs?: (WideTabEntry & { title: string; tables: WideNewTable[] })[];
 }
 
-// A `moves` group's column by its group's index and its own within the group.
-export interface MoveColumnAt {
+// A `moves` or `newColumns` group's column by its group's index and its own within the group.
+export interface GroupColumnAt {
   index: number;
   columnIndex: number;
 }
@@ -116,6 +116,19 @@ export function newColumnPath(index: number): string {
   return `newColumns[${index}]`;
 }
 
+// A `newColumns` item's `before`'s path in its Table entry, as `newColumns[0].before`.
+export function newColumnBeforePath(index: number): string {
+  return `${newColumnPath(index)}.before`;
+}
+
+// A `newColumns` group's column's path in its Table entry, as `newColumns[0].columns[1]`.
+export function newColumnGroupColumnPath({
+  index,
+  columnIndex,
+}: GroupColumnAt): string {
+  return `${newColumnPath(index)}.columns[${columnIndex}]`;
+}
+
 export function isNewColumnGroup(
   item: WideNewColumnItem,
 ): item is WideNewColumnGroup {
@@ -127,15 +140,14 @@ export function newColumnsOf({
   newColumns,
 }: WideTableEntry): WideNewColumnAt[] {
   return (newColumns ?? []).flatMap((item, index): WideNewColumnAt[] => {
-    const path = newColumnPath(index);
-    const beforePath = `${path}.before`;
+    const beforePath = newColumnBeforePath(index);
     if (!isNewColumnGroup(item)) {
-      return [{ newColumn: item, path, beforePath }];
+      return [{ newColumn: item, path: newColumnPath(index), beforePath }];
     }
     const { columns, before } = item;
     return columns.map((column, columnIndex) => ({
       newColumn: { ...column, ...(before === undefined ? {} : { before }) },
-      path: `${path}.columns[${columnIndex}]`,
+      path: newColumnGroupColumnPath({ index, columnIndex }),
       beforePath,
     }));
   });
@@ -147,7 +159,7 @@ export function newColumnsBeforesOf({
 }: WideTableEntry): WideNewColumnsBefore[] {
   return (newColumns ?? []).flatMap(({ before }, index) => {
     if (before === undefined) return [];
-    return [{ before, path: `${newColumnPath(index)}.before` }];
+    return [{ before, path: newColumnBeforePath(index) }];
   });
 }
 
@@ -157,7 +169,7 @@ export function movePath(index: number): string {
 }
 
 // A `moves` group's column's path in its Table entry, as `moves[0].columns[1]`.
-export function moveColumnPath({ index, columnIndex }: MoveColumnAt): string {
+export function moveColumnPath({ index, columnIndex }: GroupColumnAt): string {
   return `${movePath(index)}.columns[${columnIndex}]`;
 }
 

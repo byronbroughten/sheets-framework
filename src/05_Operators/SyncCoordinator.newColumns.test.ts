@@ -264,7 +264,7 @@ describe("SyncCoordinator.run new columns", () => {
         }),
       ).toEqual([
         {
-          kind: "clashingMoves",
+          kind: "clashingPlacements",
           clash: "sameNewColumnsBefore",
           table: "item",
           path: "newColumns[1].before",
@@ -288,7 +288,7 @@ describe("SyncCoordinator.run new columns", () => {
         }),
       ).toEqual([
         {
-          kind: "clashingMoves",
+          kind: "clashingPlacements",
           clash: "newColumnsBeforeMoveTarget",
           table: "item",
           path: "newColumns[0].before",
@@ -310,7 +310,7 @@ describe("SyncCoordinator.run new columns", () => {
         }),
       ).toEqual([
         {
-          kind: "clashingMoves",
+          kind: "clashingPlacements",
           clash: "newColumnsBeforeMovedColumn",
           table: "item",
           path: "newColumns[0].before",

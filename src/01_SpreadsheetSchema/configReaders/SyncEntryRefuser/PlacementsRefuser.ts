@@ -4,7 +4,7 @@ import {
   newColumnsBeforesOf,
   type WideTableEntry,
 } from "../SyncPlanner/wideAlterations";
-import type { SyncClashingMoves, SyncRefusal } from "../syncRunResult";
+import type { SyncClashingPlacements, SyncRefusal } from "../syncRunResult";
 
 interface NamedAt {
   column: string;
@@ -12,13 +12,19 @@ interface NamedAt {
 }
 
 interface ClashProps {
-  clash: SyncClashingMoves["clash"];
+  clash: SyncClashingPlacements["clash"];
   named: NamedAt;
   otherPath: string;
 }
 
+interface SameColumnClashProps {
+  clash: SyncClashingPlacements["clash"];
+  named: NamedAt;
+  others: NamedAt[];
+}
+
 // Refuses a Table entry's `moves` groups and `newColumns` placements that can't all hold at once, naming both paths of each clash.
-export class MovesRefuser {
+export class PlacementsRefuser {
   private table: string;
   private entry: WideTableEntry;
   constructor(table: string, entry: WideTableEntry) {
@@ -35,55 +41,52 @@ export class MovesRefuser {
     ];
   }
   // New columns go in before the moves, so a move to or of their `before` leaves them no longer right before it.
-  private get _newColumnsBeforeRefusals(): SyncClashingMoves[] {
+  private get _newColumnsBeforeRefusals(): SyncClashingPlacements[] {
     const moveBefores = this._befores;
     const movedColumns = this._movedColumns;
-    return this._newColumnsBefores.flatMap((named) => {
-      const target = moveBefores.find(({ column }) => column === named.column);
-      const moved = movedColumns.find(({ column }) => column === named.column);
-      return [
-        ...(target === undefined
-          ? []
-          : [
-              this._clash({
-                clash: "newColumnsBeforeMoveTarget",
-                named,
-                otherPath: target.path,
-              }),
-            ]),
-        ...(moved === undefined
-          ? []
-          : [
-              this._clash({
-                clash: "newColumnsBeforeMovedColumn",
-                named,
-                otherPath: moved.path,
-              }),
-            ]),
-      ];
-    });
+    return this._newColumnsBefores.flatMap((named) => [
+      ...this._sameColumnClashes({
+        clash: "newColumnsBeforeMoveTarget",
+        named,
+        others: moveBefores,
+      }),
+      ...this._sameColumnClashes({
+        clash: "newColumnsBeforeMovedColumn",
+        named,
+        others: movedColumns,
+      }),
+    ]);
   }
-  private get _sameBeforeRefusals(): SyncClashingMoves[] {
+  private get _sameBeforeRefusals(): SyncClashingPlacements[] {
     return this._repeatRefusals(this._befores, "sameBefore");
   }
-  private get _repeatedColumnRefusals(): SyncClashingMoves[] {
+  private get _repeatedColumnRefusals(): SyncClashingPlacements[] {
     return this._repeatRefusals(this._movedColumns, "repeatedColumn");
   }
   // A group's target can't move, its own group's included, or one group's landing would undo another's.
-  private get _movedBeforeRefusals(): SyncClashingMoves[] {
+  private get _movedBeforeRefusals(): SyncClashingPlacements[] {
     const movedColumns = this._movedColumns;
-    return this._befores.flatMap((named) => {
-      const moved = movedColumns.find(({ column }) => column === named.column);
-      if (moved === undefined) return [];
-      return [
-        this._clash({ clash: "movedBefore", named, otherPath: moved.path }),
-      ];
-    });
+    return this._befores.flatMap((named) =>
+      this._sameColumnClashes({
+        clash: "movedBefore",
+        named,
+        others: movedColumns,
+      }),
+    );
+  }
+  private _sameColumnClashes({
+    clash,
+    named,
+    others,
+  }: SameColumnClashProps): SyncClashingPlacements[] {
+    const other = others.find(({ column }) => column === named.column);
+    if (other === undefined) return [];
+    return [this._clash({ clash, named, otherPath: other.path })];
   }
   private _repeatRefusals(
     named: NamedAt[],
-    clash: SyncClashingMoves["clash"],
-  ): SyncClashingMoves[] {
+    clash: SyncClashingPlacements["clash"],
+  ): SyncClashingPlacements[] {
     return named.flatMap((repeat, index) => {
       const firstIndex = named.findIndex(
         ({ column }) => column === repeat.column,
@@ -93,9 +96,13 @@ export class MovesRefuser {
       return [this._clash({ clash, named: repeat, otherPath: first.path })];
     });
   }
-  private _clash({ clash, named, otherPath }: ClashProps): SyncClashingMoves {
+  private _clash({
+    clash,
+    named,
+    otherPath,
+  }: ClashProps): SyncClashingPlacements {
     return {
-      kind: "clashingMoves",
+      kind: "clashingPlacements",
       clash,
       table: this.table,
       path: named.path,

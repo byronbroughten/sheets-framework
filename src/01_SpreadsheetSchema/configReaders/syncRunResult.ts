@@ -215,7 +215,7 @@ export type SyncRefusal =
       path: string;
       removedAt: string;
     }
-  | SyncClashingMoves
+  | SyncClashingPlacements
   // A rule naming a column by the name a rename in this run gives it, while alterations key it by `oldName` (ADR 0035).
   | {
       kind: "renamedColumn";
@@ -234,8 +234,8 @@ export type SyncRefusal =
     };
 
 // Two `moves` or `newColumns` paths that can't both hold: one `before` twice, one column in two groups, or a `before` some group moves.
-export interface SyncClashingMoves {
-  kind: "clashingMoves";
+export interface SyncClashingPlacements {
+  kind: "clashingPlacements";
   clash:
     | "sameBefore"
     | "repeatedColumn"
