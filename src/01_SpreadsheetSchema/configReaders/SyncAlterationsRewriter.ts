@@ -41,6 +41,13 @@ interface ColumnRename {
   table: TableNow | undefined;
 }
 
+interface RenameAt {
+  written: string;
+  // Where the name sits, as the rewrite line names it.
+  at: string;
+  now: string | undefined;
+}
+
 interface TableEntryRewrite {
   tableName: string;
   entry: WideTableEntry;
@@ -243,10 +250,10 @@ export class SyncAlterationsRewriter {
     };
   }
   private _columnRenamed({ written, at, table }: ColumnRename): string {
-    return this._renamed({
+    return this._renamedAt({
       written,
+      at,
       now: table?.columns.get(written)?.name,
-      rewrite: (now) => ({ from: `${at} "${written}"`, to: `"${now}"` }),
     });
   }
   private _tabs(
@@ -339,15 +346,22 @@ export class SyncAlterationsRewriter {
   private _before({ before, at, nowOf }: BeforeRename): { before?: string } {
     if (before === undefined) return {};
     return {
-      before: this._renamed({
+      before: this._renamedAt({
         written: before,
+        at: `${at}.before`,
         now: nowOf(before),
-        rewrite: (now) => ({
-          from: `${at}.before "${before}"`,
-          to: `"${now}"`,
-        }),
       }),
     };
+  }
+  private _renamedAt({ written, at, now }: RenameAt): string {
+    return this._renamed({
+      written,
+      now,
+      rewrite: (renamed) => ({
+        from: `${at} "${written}"`,
+        to: `"${renamed}"`,
+      }),
+    });
   }
   // The name an entry takes, recording the rewrite when the regen renamed it.
   private _renamed({ written, now, rewrite }: Rename): string {

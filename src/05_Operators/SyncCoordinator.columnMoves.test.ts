@@ -70,11 +70,17 @@ describe("SyncCoordinator.run column moves", () => {
     );
   }
 
+  function groupAlterations(
+    moves: { columns: ItemColumnName[]; before: ItemColumnName }[],
+  ): PendingAlterations {
+    return { tables: { item: { moves } } };
+  }
+
   function moveAlterations(
     column: ItemColumnName,
     before: ItemColumnName,
   ): PendingAlterations {
-    return { tables: { item: { moves: [{ columns: [column], before }] } } };
+    return groupAlterations([{ columns: [column], before }]);
   }
 
   it("moves a column to before one in the middle, keeping its column ID and data", () => {
@@ -233,12 +239,6 @@ describe("SyncCoordinator.run column moves", () => {
   });
 
   describe("a moves group", () => {
-    function groupAlterations(
-      moves: { columns: ItemColumnName[]; before: ItemColumnName }[],
-    ): PendingAlterations {
-      return { tables: { item: { moves } } };
-    }
-
     it("moves a two-column group, in its order, to sit before its target, and a rerun moves nothing", () => {
       const service = seedFixture();
       const [first, second, third, fourth, ...rest] = columnNames;
