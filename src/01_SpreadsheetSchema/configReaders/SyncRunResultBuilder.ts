@@ -222,10 +222,7 @@ function asRewritten<IT extends { subject: SyncSubject }>(
 }
 
 function heldBackLine(rule: SyncHeldBackRule): SyncSendLine {
-  return {
-    subject: { table: rule.table, path: rule.path },
-    what: heldBackRuleWhat(rule),
-  };
+  return { subject: rule.subject, what: heldBackRuleWhat(rule) };
 }
 
 function landedSend({ subject, what }: SyncSendLine): SyncLandedItem {

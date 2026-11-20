@@ -189,10 +189,28 @@ interface RuleFateProps {
   owned: OwnedTableRule;
 }
 
-export interface HeldBackRuleChangesProps {
+export interface SentRuleChangesProps {
   additions: PlannedRuleAddition[];
   replacements: PlannedRuleReplacement[];
   columnChanges: PlannedColumnChanges;
+}
+
+// The adds and replaces this run sends, and those a left neighbour's column change holds back to the next run.
+export interface SentRuleChanges {
+  additions: PlannedRuleAddition[];
+  replacements: PlannedRuleReplacement[];
+  heldBack: SyncHeldBackRule[];
+}
+
+// The Tables whose column changes shift a neighbour, and the rule layouts of every Table the check reads.
+interface TableShifts {
+  shifting: Set<string>;
+  rulesByTable: Map<string, TableRules>;
+}
+
+interface TableShiftProps {
+  rules: TableRules;
+  neighbour: TableRules;
 }
 
 // An add compiled against the planned layout; `copiesAfter` is how many rules with its shared handle the Table holds once the run's sends land.
@@ -369,41 +387,37 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
     });
   }
   // Not compiled on a shift sync doesn't compute: the change waits for the next run, whose read has the shifted layout.
-  heldBackRuleChanges({
+  sentRuleChanges({
     additions,
     replacements,
     columnChanges,
-  }: HeldBackRuleChangesProps): SyncHeldBackRule[] {
+  }: SentRuleChangesProps): SentRuleChanges {
     const shifting = shiftingTables(columnChanges);
-    if (shifting.size === 0) return [];
-    const changes = [
-      ...additions.map(({ table, ...addition }) => ({
-        table,
-        path: ruleAdditionLines.path(addition),
-      })),
-      ...replacements.map(({ table, ...replacement }) => ({
-        table,
-        path: ruleReplacementLines.path(replacement),
-      })),
-    ];
-    const rulesByTable = this._tableRulesByTable([
-      ...changes,
-      ...[...shifting].map((table) => ({ table })),
-    ]);
-    return changes.flatMap(({ table, path }): SyncHeldBackRule[] => {
-      const rules = rulesByTable.get(table);
-      if (rules === undefined) return [];
-      const shiftedBy = [...shifting].find((other) => {
-        const neighbour = rulesByTable.get(other);
-        return (
-          other !== table &&
-          neighbour !== undefined &&
-          isShiftedBy(rules, neighbour)
-        );
-      });
-      if (shiftedBy === undefined) return [];
-      return [{ table, path, shiftedBy }];
-    });
+    if (shifting.size === 0) return { additions, replacements, heldBack: [] };
+    const shifts: TableShifts = {
+      shifting,
+      rulesByTable: this._tableRulesByTable([
+        ...additions,
+        ...replacements,
+        ...[...shifting].map((table) => ({ table })),
+      ]),
+    };
+    return {
+      additions: additions.filter(
+        ({ table }) => shiftedByOf(table, shifts) === undefined,
+      ),
+      replacements: replacements.filter(
+        ({ table }) => shiftedByOf(table, shifts) === undefined,
+      ),
+      heldBack: [
+        ...additions.flatMap((addition) =>
+          heldBackOf(ruleAdditionLines.sendLine(addition), shifts),
+        ),
+        ...replacements.flatMap((replacement) =>
+          heldBackOf(ruleReplacementLines.sendLine(replacement), shifts),
+        ),
+      ],
+    };
   }
   // Compiled before any send, so a bad colour or brace throws with nothing sent; indexed for the flush after the removals', past the adds sent ahead of it.
   compiledRuleReplacements({
@@ -874,8 +888,35 @@ function shiftingTables({
   return new Set([...deleting, ...newColumns.map(({ table }) => table)]);
 }
 
+// The first Table whose column change shifts `table`'s columns this run.
+function shiftedByOf(
+  table: string,
+  { shifting, rulesByTable }: TableShifts,
+): string | undefined {
+  const rules = rulesByTable.get(table);
+  if (rules === undefined) return undefined;
+  return [...shifting].find((other) => {
+    const neighbour = rulesByTable.get(other);
+    return (
+      other !== table &&
+      neighbour !== undefined &&
+      isShiftedBy({ rules, neighbour })
+    );
+  });
+}
+
+function heldBackOf(
+  { subject }: SyncSendLine,
+  shifts: TableShifts,
+): SyncHeldBackRule[] {
+  if (!("table" in subject)) return [];
+  const shiftedBy = shiftedByOf(subject.table, shifts);
+  if (shiftedBy === undefined) return [];
+  return [{ subject, shiftedBy }];
+}
+
 // A neighbour to the left on the same tab sharing any of the Table's rows; one sharing only some is refused when its change is gathered.
-function isShiftedBy(rules: TableRules, neighbour: TableRules): boolean {
+function isShiftedBy({ rules, neighbour }: TableShiftProps): boolean {
   if (neighbour.sheetGid !== rules.sheetGid) return false;
   const { layout } = rules.table;
   const neighbourLayout = neighbour.table.layout;

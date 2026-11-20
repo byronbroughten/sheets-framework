@@ -876,10 +876,10 @@ function noticeLine(notice: SyncNotice): string {
   if (notice.kind === "tabGone") {
     return `${notice.tab}: a person deleted this tab from the sheet, so sync dropped it from the configs.`;
   }
-  const { table } = notice;
   if (notice.kind === "ruleHeldBack") {
-    return `${subjectLabel({ table, path: notice.path })}: ${heldBackRuleWhat(notice)}.`;
+    return `${subjectLabel(notice.subject)}: ${heldBackRuleWhat(notice)}.`;
   }
+  const { table } = notice;
   if (notice.kind === "tableGone") {
     return `${table}: a person deleted this Table from the sheet, so sync dropped it from the configs and retired its ID prefix.`;
   }

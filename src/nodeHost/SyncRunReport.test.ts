@@ -1210,8 +1210,7 @@ describe("SyncRunReport, a dry run holding back a rule change", () => {
     notices: [
       {
         kind: "ruleHeldBack",
-        table: "occPayment",
-        path: "conditionalFormats.add[0]",
+        subject: { table: "occPayment", path: "conditionalFormats.add[0]" },
         shiftedBy: "occCharge",
       },
     ],

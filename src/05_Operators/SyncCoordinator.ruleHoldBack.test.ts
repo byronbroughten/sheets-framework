@@ -69,7 +69,7 @@ function runLayout(alterations: PendingAlterations): SyncRun {
   });
 }
 
-function rulesLeft(service: FakeSheetsService): SheetsRule[] {
+function tabRules(service: FakeSheetsService): SheetsRule[] {
   return service.grid.sheet(layoutGid).conditionalFormats ?? [];
 }
 
@@ -95,7 +95,7 @@ const heldBackLine = {
 };
 
 function amountColIndexes(service: FakeSheetsService): number[] {
-  return rulesLeft(service).flatMap(({ ranges = [] }) =>
+  return tabRules(service).flatMap(({ ranges = [] }) =>
     ranges.map((range) => Val.assert(range.startColumnIndex, "rule column")),
   );
 }
@@ -108,7 +108,7 @@ describe("SyncCoordinator.run holds back a rule change a left neighbour's column
       tables: { ...insertOnLeft.tables, ...addOnRight.tables },
     });
 
-    expect(rulesLeft(service)).toEqual([]);
+    expect(tabRules(service)).toEqual([]);
     expect(result).toMatchObject({
       outcome: { kind: "sent" },
       stops: [],
@@ -129,7 +129,7 @@ describe("SyncCoordinator.run holds back a rule change a left neighbour's column
       tables: { ...deleteOnLeft.tables, ...addOnRight.tables },
     });
 
-    expect(rulesLeft(service)).toEqual([]);
+    expect(tabRules(service)).toEqual([]);
     expect(result).toMatchObject({ notSent: [heldBackLine] });
   });
 
@@ -180,8 +180,7 @@ describe("SyncCoordinator.run holds back a rule change a left neighbour's column
 
     expect(result.notices).toContainEqual({
       kind: "ruleHeldBack",
-      table: "layoutRight",
-      path: "conditionalFormats.add[0]",
+      subject: heldBackLine.subject,
       shiftedBy: "layoutLeft",
     });
     expect(result.plan.map(({ subject }) => subject)).not.toContainEqual(
