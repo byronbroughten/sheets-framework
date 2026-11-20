@@ -125,7 +125,9 @@ describe("SyncCoordinator.run rules after a column insert, delete or move", () =
   };
   const insertRef: PendingAlterations = {
     tables: {
-      item: { newColumns: [{ header: "Ref", before: "requiredCount" }] },
+      item: {
+        newColumns: [{ columns: [{ header: "Ref" }], before: "requiredCount" }],
+      },
     },
   };
 

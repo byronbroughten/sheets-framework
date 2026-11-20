@@ -325,7 +325,7 @@ describe("SyncCoordinator.run conditional-format rule add", () => {
       alterations: {
         tables: {
           item: {
-            newColumns: [{ header: "Late fee" }],
+            newColumns: [{ columns: [{ header: "Late fee" }] }],
             conditionalFormats: {
               add: [{ ...blackWhenFalse, columns: ["lateFee"] }],
             },
@@ -359,7 +359,7 @@ describe("SyncCoordinator.run conditional-format rule add", () => {
       alterations: {
         tables: {
           item: {
-            newColumns: [{ header: "Late fee" }],
+            newColumns: [{ columns: [{ header: "Late fee" }] }],
             conditionalFormats: {
               add: [{ ...blackWhenFalse, columns: ["lateFees"] }],
             },
@@ -388,7 +388,9 @@ describe("SyncCoordinator.run conditional-format rule add", () => {
       alterations: {
         tables: {
           item: {
-            newColumns: [{ header: "Late fee" }, { header: "late Fee" }],
+            newColumns: [
+              { columns: [{ header: "Late fee" }, { header: "late Fee" }] },
+            ],
             conditionalFormats: {
               add: [{ ...blackWhenFalse, columns: ["lateFee"] }],
             },
@@ -402,8 +404,8 @@ describe("SyncCoordinator.run conditional-format rule add", () => {
       {
         kind: "repeatedNewColumn",
         table: "item",
-        path: "newColumns[1].header",
-        firstPath: "newColumns[0].header",
+        path: "newColumns[0].columns[1].header",
+        firstPath: "newColumns[0].columns[0].header",
         column: "lateFee",
       },
       {

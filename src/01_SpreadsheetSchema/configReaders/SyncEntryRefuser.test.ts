@@ -146,7 +146,7 @@ describe("SyncEntryRefuser, traits not sendable yet", () => {
             item: {
               name: "thing",
               deleted: true,
-              newColumns: [{ header: "New" }],
+              newColumns: [{ columns: [{ header: "New" }] }],
               conditionalFormats: { add: [], remove: [] },
             },
           },
@@ -162,11 +162,18 @@ describe("SyncEntryRefuser, traits not sendable yet", () => {
           tables: {
             item: {
               newColumns: [
-                { header: "New", before: "count", emptyValueAllowed: true },
                 {
-                  header: "Total",
-                  formula: "=1",
-                  columnType: { type: "TEXT", rule: null },
+                  columns: [{ header: "New", emptyValueAllowed: true }],
+                  before: "count",
+                },
+                {
+                  columns: [
+                    {
+                      header: "Total",
+                      formula: "=1",
+                      columnType: { type: "TEXT", rule: null },
+                    },
+                  ],
                 },
               ],
             },
@@ -174,11 +181,15 @@ describe("SyncEntryRefuser, traits not sendable yet", () => {
         },
       }),
     ).toEqual([
-      { kind: "notSendableYet", table: "item", path: "newColumns[1].formula" },
       {
         kind: "notSendableYet",
         table: "item",
-        path: "newColumns[1].columnType",
+        path: "newColumns[1].columns[0].formula",
+      },
+      {
+        kind: "notSendableYet",
+        table: "item",
+        path: "newColumns[1].columns[0].columnType",
       },
     ]);
   });
@@ -426,9 +437,9 @@ describe("SyncEntryRefuser, a rule's columns and braces", () => {
         tables: {
           item: {
             newColumns: [
-              { header: "Late fee" },
-              { header: "Ref" },
-              { header: "ref" },
+              { columns: [{ header: "Late fee" }] },
+              { columns: [{ header: "Ref" }] },
+              { columns: [{ header: "ref" }] },
             ],
             conditionalFormats: {
               add: [
@@ -449,8 +460,8 @@ describe("SyncEntryRefuser, a rule's columns and braces", () => {
   const repeated = {
     kind: "repeatedNewColumn",
     table: "item",
-    path: "newColumns[2].header",
-    firstPath: "newColumns[1].header",
+    path: "newColumns[2].columns[0].header",
+    firstPath: "newColumns[1].columns[0].header",
     column: "ref",
   };
 
@@ -541,9 +552,9 @@ describe("SyncEntryRefuser, entries that can't all hold", () => {
           tables: {
             item: {
               newColumns: [
-                { header: "Ref" },
-                { header: "Note" },
-                { header: "ref" },
+                { columns: [{ header: "Ref" }] },
+                { columns: [{ header: "Note" }] },
+                { columns: [{ header: "ref" }] },
               ],
             },
           },
@@ -553,8 +564,8 @@ describe("SyncEntryRefuser, entries that can't all hold", () => {
       {
         kind: "repeatedNewColumn",
         table: "item",
-        path: "newColumns[2].header",
-        firstPath: "newColumns[0].header",
+        path: "newColumns[2].columns[0].header",
+        firstPath: "newColumns[0].columns[0].header",
         column: "ref",
       },
     ]);
