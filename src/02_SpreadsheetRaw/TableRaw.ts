@@ -964,19 +964,17 @@ export class TableRaw extends TableCommonRaw {
     return columnTypes;
   }
   // Google resets every dropdown's style and colours on a columnProperties send; observed: docs/sheets-behaviour.md#creating-and-updating-tables.
+  // Counted as sent, so a dropdown the send removes, which has no style to keep, isn't.
   assertDropdownStyleResetAllowed(): void {
-    if (this.writes.columnTypes.size === 0) return;
+    const { columnTypes } = this.writes;
+    if (columnTypes.size === 0) return;
     if (!this.spreadsheetStateRaw.rawSource.refusesDropdownStyleReset) return;
-    const dropdowns = this.columnProperties.filter(
-      (column) =>
-        validationRuleOf(column) !== undefined ||
-        queuedColumnType.ruleOf(
-          this.writes.columnTypes.get(column.columnIndex),
-        ) !== undefined,
+    const dropdowns = this._columnTypesColumnProperties(columnTypes).filter(
+      ({ dataValidationRule }) => dataValidationRule !== undefined,
     );
     if (dropdowns.length === 0) return;
     throw new Error(
-      `Refusing to set column types on ${this._tableLabel()} under dropdownStyleReset: "ask": it would reset the style and colours of its dropdowns ${dropdowns.map(columnLabel).join(", ")}.`,
+      `Refusing to set column types on ${this._tableLabel()} under dropdownStyleReset: "ask": it would reset the style and colours of its dropdowns ${dropdowns.map(({ columnName }) => columnName).join(", ")}.`,
     );
   }
   gatherSetTableColumnPropertiesOperation(): void {
@@ -1290,10 +1288,6 @@ function validationRuleOf(
     condition: dataValidationConditionType,
     values: dataValidationValues,
   };
-}
-
-function columnLabel(column: TableColumnSnapshot): string {
-  return column.columnName ?? tableColumnLabel(column.columnIndex);
 }
 
 function tableColumnLabel(columnIndex: number): string {

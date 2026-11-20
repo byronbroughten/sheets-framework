@@ -51,18 +51,24 @@ describe("SyncCoordinator column types", () => {
 
   function seed(
     options: {
-      isOtherADropdown?: boolean;
+      dropdownColIndexes?: number[];
       service?: Omit<FakeSheetsServiceOptions, "sheets">;
     } = {},
   ): void {
-    const dropdown = options.isOtherADropdown
-      ? {
-          columnTypes: { ...recordedTypes, [otherColIndex]: "DROPDOWN" },
-          columnValidationConditionTypes: { [otherColIndex]: "ONE_OF_LIST" },
-          columnValidationValues: { [otherColIndex]: listRule.values },
-        }
-      : { columnTypes: recordedTypes };
-    seedFixture({ item: dropdown, service: options.service });
+    const dropdownColIndexes = options.dropdownColIndexes ?? [];
+    function eachDropdown<VL>(value: VL): Record<number, VL> {
+      return Object.fromEntries(
+        dropdownColIndexes.map((colIndex) => [colIndex, value]),
+      );
+    }
+    seedFixture({
+      item: {
+        columnTypes: { ...recordedTypes, ...eachDropdown("DROPDOWN") },
+        columnValidationConditionTypes: eachDropdown("ONE_OF_LIST"),
+        columnValidationValues: eachDropdown(listRule.values),
+      },
+      service: options.service,
+    });
   }
 
   function liveColumnType(columnName: string): unknown {
@@ -116,7 +122,7 @@ describe("SyncCoordinator column types", () => {
 
   it('lists each dropdown the send resets and holds it under "ask"', () => {
     seed({
-      isOtherADropdown: true,
+      dropdownColIndexes: [otherColIndex],
       service: {
         // The fake stands in for the Node host's gate, which holds the flush the planner listed.
         dropdownStyleReset: "allow",
@@ -140,7 +146,7 @@ describe("SyncCoordinator column types", () => {
 
   it('sends a type change free under "allow", keeping the other dropdown', () => {
     seed({
-      isOtherADropdown: true,
+      dropdownColIndexes: [otherColIndex],
       service: { dropdownStyleReset: "allow" },
     });
 
@@ -155,6 +161,54 @@ describe("SyncCoordinator column types", () => {
       rule: null,
     });
     expect(liveColumnType(otherColumn)).toEqual({
+      type: "DROPDOWN",
+      rule: listRule,
+    });
+  });
+
+  // The count is a dropdown only on the sheet, so its retype is forced over it.
+  function removeCountDropdown() {
+    return runItem({
+      isSending: true,
+      alterations: retype({ type: "DOUBLE", rule: null }),
+      forcedTraits: [
+        { table: "item", column: "requiredCount", trait: "columnType" },
+      ],
+      dropdownStyleReset: "ask",
+    }).result;
+  }
+
+  it('sends a dropdown\'s removal under "ask", listing no reset', () => {
+    seed({
+      dropdownColIndexes: [countColIndex],
+      service: { dropdownStyleReset: "ask" },
+    });
+
+    const result = removeCountDropdown();
+
+    expect(result.plan[0]?.effects).toEqual([]);
+    expect(result.outcome.kind).toBe("sent");
+    expect(liveColumnType("requiredCount")).toEqual({
+      type: "DOUBLE",
+      rule: null,
+    });
+  });
+
+  it('holds a dropdown\'s removal under "ask" when another dropdown survives it', () => {
+    seed({
+      dropdownColIndexes: [countColIndex, otherColIndex],
+      service: { dropdownStyleReset: "ask" },
+    });
+
+    const otherHeader = Val.assert(
+      itemColumns[otherColumn as keyof typeof itemColumns],
+      "the other column's config",
+    ).header;
+
+    expect(() => removeCountDropdown()).toThrow(
+      `would reset the style and colours of its dropdowns ${otherHeader}.`,
+    );
+    expect(liveColumnType("requiredCount")).toEqual({
       type: "DROPDOWN",
       rule: listRule,
     });

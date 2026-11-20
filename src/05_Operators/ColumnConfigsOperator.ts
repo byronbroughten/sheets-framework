@@ -271,7 +271,7 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
         reading.columns[columnName] = {
           header,
           emptyValueAllowed: identity.previousEmptyValueAllowed,
-          formula: this._bracedTopFormula(configs, identity),
+          formula: this._bracedTopFormula(liveConfigs, identity),
           // Against live names under previous keys, so a person renaming a Table a rule names reads as no change.
           columnType: BraceFormula.decompileColumnType({
             configs: liveConfigs,
@@ -295,7 +295,7 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
   }
   // The live formula as traitReadings brace it, not the installed configs' text, so a person's edit since the last sync is what's checked.
   formulaColumns(): FormulaColumn[] {
-    const configs = installedBraceConfigs();
+    const configs = this._liveBraceConfigs(installedBraceConfigs());
     return this._namedColumnIdentities().flatMap((identity) => {
       const { tableId, tableKey, columnId } = identity;
       const formula = this._bracedTopFormula(configs, identity);
@@ -306,7 +306,7 @@ export class ColumnConfigsOperator extends SpreadsheetBaseOperator {
       return [{ tableKey, cell, formula }];
     });
   }
-  // In brace form against the previous configs, the names an alteration's formula uses.
+  // Against live names under previous keys, the keys an alteration's formula uses, so a person renaming a Table a formula names reads as no change.
   private _bracedTopFormula(
     configs: BraceConfigs,
     identity: NamedColumnIdentity,

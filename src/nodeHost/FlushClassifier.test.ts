@@ -58,7 +58,10 @@ const paymentsRows: GoogleCellData[][] = [
   [text("Deposit"), empty, empty, formula("=C7*2", 0)],
 ];
 
-function paymentsRead(rows: GoogleCellData[][] = paymentsRows): FlushRead {
+function paymentsRead(
+  rows: GoogleCellData[][] = paymentsRows,
+  amountType = "DOUBLE",
+): FlushRead {
   return {
     gridRanges: [
       {
@@ -91,7 +94,11 @@ function paymentsRead(rows: GoogleCellData[][] = paymentsRows): FlushRead {
               columnProperties: [
                 { columnIndex: 0, columnName: "Name" },
                 { columnIndex: 1, columnName: "ID" },
-                { columnIndex: 2, columnName: "Amount", columnType: "DOUBLE" },
+                {
+                  columnIndex: 2,
+                  columnName: "Amount",
+                  columnType: amountType,
+                },
                 { columnIndex: 3, columnName: "Total", columnType: "DOUBLE" },
               ],
             },
@@ -658,6 +665,24 @@ describe("FlushClassifier.heldItems", () => {
 
     it("frees a column-properties update on a Table with no dropdown, as read or as sent", () => {
       expect(heldItems([updateTable("tbl-pay", "DOUBLE")])).toEqual([]);
+    });
+
+    it("frees a column-properties update removing the only dropdown read", () => {
+      expect(
+        heldItems([updateTable("tbl-pay", "DOUBLE")], {
+          reads: [paymentsRead(paymentsRows, "DROPDOWN")],
+        }),
+      ).toEqual([]);
+    });
+
+    it("holds a dropdown reset when a read dropdown survives the update", () => {
+      expect(
+        heldItems([updateTable("tbl-pay", "DROPDOWN")], {
+          reads: [paymentsRead(paymentsRows, "DROPDOWN")],
+        }),
+      ).toEqual([
+        { kind: "dropdownReset", requestIndex: 0, table: "Payments" },
+      ]);
     });
 
     it("frees a dropdown reset on a Table the same flush added", () => {

@@ -587,6 +587,7 @@ export class SyncPlanner {
     };
   }
   // Google resets every dropdown on a Table its column list is sent to, a newly set one included: docs/sheets-behaviour.md#creating-and-updating-tables.
+  // A dropdown the send removes has no style to keep, so the retyped column counts by its intended rule alone.
   private _dropdownResetEffects(
     intended: IntendedTrait,
     live: TraitReadings,
@@ -596,11 +597,10 @@ export class SyncPlanner {
     }
     const columns = entriesOf(live.tables[intended.table]?.columns).flatMap(
       ([column, traits]) => {
-        if (hasRule(traits.columnType)) return [column];
-        if (column === intended.column && hasRule(intended.value)) {
-          return [column];
+        if (column === intended.column) {
+          return hasRule(intended.value) ? [column] : [];
         }
-        return [];
+        return hasRule(traits.columnType) ? [column] : [];
       },
     );
     if (columns.length === 0) return [];

@@ -14,6 +14,8 @@ import { Grid } from "./Grid";
 import type { ReadValue, RunReads } from "./RunReads";
 
 type GoogleTable = GoogleAppsScript.Sheets.Schema.Table;
+type GoogleTableColumnProperties =
+  GoogleAppsScript.Sheets.Schema.TableColumnProperties;
 
 export interface CellWrite {
   cell: GridCell;
@@ -113,7 +115,7 @@ export class RequestJudge {
     const readTable = this.reads.table(tableId);
     if (
       readTable !== undefined &&
-      !hasDropdown(readTable) &&
+      !hasSurvivingDropdown(readTable, table) &&
       !hasDropdown(table)
     ) {
       return this;
@@ -219,10 +221,24 @@ const notReadAfter: CellAfter = { kind: "unknown", label: "(not read)" };
 const deletedAfter: CellAfter = { kind: "deleted" };
 
 function hasDropdown(table: GoogleTable): boolean {
-  return (table.columnProperties ?? []).some(
-    (column) =>
-      column.columnType === "DROPDOWN" ||
-      column.dataValidationRule !== undefined,
+  return (table.columnProperties ?? []).some(isDropdown);
+}
+
+// A read dropdown the sent Table retypes to a non-dropdown is being removed, so it has no style to keep.
+function hasSurvivingDropdown(read: GoogleTable, sent: GoogleTable): boolean {
+  const sentColumns = sent.columnProperties ?? [];
+  return (read.columnProperties ?? []).some((column) => {
+    if (!isDropdown(column)) return false;
+    const sentColumn = sentColumns.find(
+      ({ columnIndex }) => columnIndex === column.columnIndex,
+    );
+    return sentColumn === undefined || isDropdown(sentColumn);
+  });
+}
+
+function isDropdown(column: GoogleTableColumnProperties): boolean {
+  return (
+    column.columnType === "DROPDOWN" || column.dataValidationRule !== undefined
   );
 }
 
