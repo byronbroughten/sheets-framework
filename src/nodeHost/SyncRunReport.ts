@@ -196,19 +196,14 @@ export class SyncRunReport {
         metLines,
       );
     }
-    const { landed, notSent, didntLand, outcome } = result;
+    const { landed, notSent, didntLand, outcome, isAlterationsEmpty } = result;
     const landedLines = landed.map(landedLine);
-    // A stopped send, even one stopped partway, leaves its met alterations pending.
-    const isMetRemoved = outcome.kind === "sent";
-    const isAlterationsEmpty =
-      landedLines.length + metLines.length > 0 &&
-      (isMetRemoved || metLines.length === 0) &&
-      notSent.length === 0 &&
-      didntLand.length === 0;
-    if (isAlterationsEmpty) {
+    if (isAlterationsEmpty && landedLines.length + metLines.length > 0) {
       const lastSectionLines = metLines.length > 0 ? metLines : landedLines;
       lastSectionLines.push("alterations.ts is now empty.");
     }
+    // A stopped send, even one stopped partway, leaves its met alterations pending.
+    const isMetRemoved = outcome.kind === "sent";
     const metTitle = isMetRemoved ? "removed from" : "still in";
     return [
       ...section("Landed: removed from alterations.ts", landedLines),

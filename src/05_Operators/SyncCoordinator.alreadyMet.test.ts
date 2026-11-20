@@ -3,8 +3,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
+import { SyncCoordinator } from "./SyncCoordinator";
 import {
+  frame,
   itemColumns,
+  itemGid,
+  previousItemMap,
   runItem,
   seedFixture,
 } from "./syncCoordinatorTestSupport";
@@ -71,6 +75,7 @@ describe("SyncCoordinator already-met alterations", () => {
       plan: [],
       landed: [],
       alreadyMet: [metNote],
+      isAlterationsEmpty: true,
     });
   });
 
@@ -104,6 +109,82 @@ describe("SyncCoordinator already-met alterations", () => {
         },
       ],
       alreadyMet: [metNote],
+      isAlterationsEmpty: true,
+    });
+  });
+
+  it("leaves alterations.ts holding an entry only the sheet holds, beside a landed one", () => {
+    seedFixture({
+      item: {
+        columns: {
+          optionalNote: { ...itemColumns.optionalNote, header: "Remark" },
+        },
+      },
+    });
+
+    const { result, files } = runItem({
+      isSending: true,
+      alterations: {
+        tables: {
+          item: {
+            columns: {
+              optionalNote: { header: "Remark" },
+              requiredCount: { emptyValueAllowed: true },
+            },
+          },
+        },
+      },
+    });
+
+    const written = Val.assert(files, "emitted files").alterations;
+    expect(written).toContain('"header": "Remark"');
+    expect(written).not.toContain("requiredCount");
+    expect(result).toMatchObject({
+      mode: "send",
+      outcome: { kind: "sent", summary: "1 alteration landed" },
+      alreadyMet: [],
+      notSent: [],
+      didntLand: [],
+      isAlterationsEmpty: false,
+    });
+  });
+
+  it("leaves alterations.ts holding an entry on a tab a person deleted, beside a landed one", () => {
+    seedFixture();
+    const previous = previousItemMap();
+    const logGid = itemGid + 1;
+
+    const { result, files } = SyncCoordinator.init().run({
+      isSending: true,
+      intendedState: {
+        alterations: {
+          tabs: { log: { title: "Logbook" } },
+          tables: {
+            item: { columns: { requiredCount: { emptyValueAllowed: true } } },
+          },
+        },
+      },
+      previousIdNameMap: {
+        tables: previous.tables,
+        tabs: {
+          ...previous.tabs,
+          [String(logGid)]: { name: "log", title: "Log", tableIds: [] },
+        },
+      },
+      forcedTraits: [],
+      frame,
+    });
+
+    const written = Val.assert(files, "emitted files").alterations;
+    expect(written).toContain('"title": "Logbook"');
+    expect(written).not.toContain("requiredCount");
+    expect(result).toMatchObject({
+      mode: "send",
+      outcome: { kind: "sent", summary: "1 alteration landed" },
+      alreadyMet: [],
+      notSent: [],
+      didntLand: [],
+      isAlterationsEmpty: false,
     });
   });
 
