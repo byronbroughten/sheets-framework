@@ -10,6 +10,7 @@ import {
   movePath,
   newColumnPath,
   type WideAlterations,
+  type WideColumnGroupMove,
   type WideNewTable,
   type WideRule,
 } from "./SyncPlanner/wideAlterations";
@@ -74,12 +75,10 @@ export interface PlannedNewColumn {
 }
 
 // One `moves` group, by its Table's codebase name and its columns' previous names.
-export interface PlannedColumnGroupMove {
+export interface PlannedColumnGroupMove extends WideColumnGroupMove {
   table: string;
   // The group's path in its Table entry, as `moves[0]`.
   path: string;
-  columns: string[];
-  before: string;
 }
 
 // A tab the run adds, or one already there by its codebase name, with `gap` empty columns right of its rightmost Table.
@@ -428,6 +427,11 @@ const stopWords = {
     label: "a person deleted this column",
     cause: "The column is in the configs but no longer on the sheet.",
   },
+  groupColumnDeleted: {
+    label: "a person deleted a column this group names",
+    cause:
+      "A column the group names is in the configs but no longer on the sheet.",
+  },
 } as const;
 
 const absentText = "(none)";
@@ -610,7 +614,7 @@ export class SyncPlanner {
     // A Table a person deleted has nowhere to put one.
     const newColumns = onLiveTables(this.newColumns, live);
     sends.push(...effectlessSends(newColumns, newColumnLines));
-    const groupMoves = sortedGroupMoves(
+    const groupMoves = groupMovesByOutcome(
       onLiveTables(this.columnGroupMoves, live),
       live,
     );
@@ -816,45 +820,6 @@ function onLiveTables<EN extends { table: string }>(
   return entries.filter(({ table }) => live.tables[table] !== undefined);
 }
 
-interface SortedGroupMoves {
-  toSend: PlannedColumnGroupMove[];
-  inPlace: SyncSendLine[];
-  stops: SyncConflict[];
-}
-
-// A group naming a column a person deleted stops the run; one already in place is met, so a rerun moves nothing.
-function sortedGroupMoves(
-  groups: PlannedColumnGroupMove[],
-  live: TraitReadings,
-): SortedGroupMoves {
-  return groups.reduce<SortedGroupMoves>(
-    (sorted, group) => {
-      const line = columnGroupMoveLines.sendLine(group);
-      const liveColumns = live.tables[group.table]?.columns ?? {};
-      const gone = [...group.columns, group.before].filter(
-        (column) => liveColumns[column] === undefined,
-      );
-      if (gone.length > 0) {
-        sorted.stops.push({
-          kind: "conflict",
-          subject: line.subject,
-          ...stopWords.columnDeleted,
-          yours: line.what,
-          agreed: line.what,
-          live: `no ${gone.join(", ")}`,
-          isColumnGone: true,
-        });
-      } else if (columnGroupMoveLines.isInPlace(group, live)) {
-        sorted.inPlace.push({ ...line, what: "already in place" });
-      } else {
-        sorted.toSend.push(group);
-      }
-      return sorted;
-    },
-    { toSend: [], inPlace: [], stops: [] },
-  );
-}
-
 interface SendLines<EN> {
   sendLine(entry: EN): SyncSendLine;
 }
@@ -864,6 +829,46 @@ function effectlessSends<EN>(
   lines: SendLines<EN>,
 ): SyncPlanItem[] {
   return entries.map((entry) => ({ ...lines.sendLine(entry), effects: [] }));
+}
+
+interface GroupMovesByOutcome {
+  toSend: PlannedColumnGroupMove[];
+  inPlace: SyncSendLine[];
+  stops: SyncConflict[];
+}
+
+// A group naming a column a person deleted stops the run; one already in place is met, so a rerun moves nothing.
+function groupMovesByOutcome(
+  groups: PlannedColumnGroupMove[],
+  live: TraitReadings,
+): GroupMovesByOutcome {
+  return groups.reduce<GroupMovesByOutcome>(
+    (byOutcome, group) => {
+      const line = columnGroupMoveLines.sendLine(group);
+      const liveColumns = live.tables[group.table]?.columns ?? {};
+      const gone = [...group.columns, group.before].filter(
+        (column) => liveColumns[column] === undefined,
+      );
+      if (gone.length > 0) {
+        byOutcome.stops.push({
+          kind: "conflict",
+          subject: line.subject,
+          ...stopWords.groupColumnDeleted,
+          yours: line.what,
+          // Order is never in the configs, so they hold no agreed group.
+          agreed: absentText,
+          live: `no ${gone.join(", ")}`,
+          isColumnGone: true,
+        });
+      } else if (columnGroupMoveLines.isInPlace(group, live)) {
+        byOutcome.inPlace.push({ ...line, what: "already in place" });
+      } else {
+        byOutcome.toSend.push(group);
+      }
+      return byOutcome;
+    },
+    { toSend: [], inPlace: [], stops: [] },
+  );
 }
 
 // A new tab's own line comes once, before its first Table's.

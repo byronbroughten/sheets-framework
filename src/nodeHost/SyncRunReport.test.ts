@@ -656,6 +656,17 @@ describe("SyncRunReport's force way out", () => {
     ).not.toContain("force");
   });
 
+  it("leaves adopt only removing the entry for a deleted column, which has no live value to take", () => {
+    const text = conflictText(
+      { table: "item", path: "moves[0]" },
+      { isColumnGone: true },
+    );
+    expect(text).toContain(
+      "adopt  Remove the entry. Free, but your change is given up.",
+    );
+    expect(text).not.toContain("set it to");
+  });
+
   it("is offered for a column's trait", () => {
     expect(
       conflictText({ table: "item", column: "name", path: "header" }),

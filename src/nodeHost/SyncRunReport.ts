@@ -5,6 +5,7 @@ import {
   heldBackRuleWhat,
   type SyncBeforeFirstColumnStop,
   type SyncCheck,
+  type SyncClashingMoves,
   type SyncConfigs,
   type SyncConflict,
   type SyncCreatedTable,
@@ -501,12 +502,10 @@ function tableRefusalText(
   return unknownBraceText(refusal);
 }
 
-type ClashingMoves = Extract<SyncRefusal, { kind: "clashingMoves" }>;
-
 // Why the two paths of a `moves` clash can't both hold.
 const clashingMovesText: Record<
-  ClashingMoves["clash"],
-  (refusal: ClashingMoves) => string
+  SyncClashingMoves["clash"],
+  (refusal: SyncClashingMoves) => string
 > = {
   sameBefore: ({ path, otherPath, column }) =>
     `${path} puts its group before ${column}, as ${otherPath} does: only one group can sit right before it.`,
@@ -800,9 +799,12 @@ const forceNeeds =
 
 function waysOut(conflict: SyncConflict): [string, string][] {
   const { yours, live } = conflict;
+  // A deleted column leaves no live value to set the entry to.
   const adopt: [string, string] = [
     "adopt",
-    `Remove the entry, or set it to ${live}. Free, but your change to this trait is given up.`,
+    conflict.isColumnGone === true
+      ? "Remove the entry. Free, but your change is given up."
+      : `Remove the entry, or set it to ${live}. Free, but your change to this trait is given up.`,
   ];
   const ask: [string, string] = [
     "ask",

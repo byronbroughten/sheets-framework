@@ -27,6 +27,7 @@ import {
   type PlanReadings,
   type TraitReadings,
 } from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
+import type { WideColumnGroupMove } from "../01_SpreadsheetSchema/configReaders/SyncPlanner/wideAlterations";
 import {
   beforeFirstColumnText,
   type SyncBeforeFirstColumnStop,
@@ -120,11 +121,9 @@ interface ColumnMovesProps {
 }
 
 // Columns to sit together, in order, immediately before `before`, all by previous names.
-interface OrderedColumns {
+interface OrderedColumns extends WideColumnGroupMove {
   tableId: string;
   tableKey: string;
-  columns: string[];
-  before: string;
 }
 
 interface ColumnOrderProps {

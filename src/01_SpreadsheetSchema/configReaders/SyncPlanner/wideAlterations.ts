@@ -74,6 +74,12 @@ export interface WideAlterations {
   newTabs?: (WideTabEntry & { title: string; tables: WideNewTable[] })[];
 }
 
+// A `moves` group's column by its group's index and its own within the group.
+export interface MoveColumnAt {
+  index: number;
+  columnIndex: number;
+}
+
 // A rule a Table entry adds or writes over a handle, by where it sits in the entry.
 export interface WideRuleAt {
   path: string;
@@ -88,6 +94,16 @@ export function newColumnPath(index: number): string {
 // A `moves` group's path in its Table entry, as `moves[0]`.
 export function movePath(index: number): string {
   return `moves[${index}]`;
+}
+
+// A `moves` group's column's path in its Table entry, as `moves[0].columns[1]`.
+export function moveColumnPath({ index, columnIndex }: MoveColumnAt): string {
+  return `${movePath(index)}.columns[${columnIndex}]`;
+}
+
+// A `moves` group's target's path in its Table entry, as `moves[0].before`.
+export function moveBeforePath(index: number): string {
+  return `${movePath(index)}.before`;
 }
 
 export function isMovePath(path: string): boolean {
