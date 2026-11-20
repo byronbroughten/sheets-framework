@@ -140,6 +140,8 @@ export interface SyncPlannerResult extends Pick<
   newColumns: PlannedNewColumn[];
   // The Tables the plan creates, for the run to queue; empty when stopped.
   newTables: PlannedNewTable[];
+  // The traits of the tabs the plan creates, each `tab` and tab `before` named as the regen will name it; empty when stopped.
+  newTabTraits: IntendedTrait[];
   // The rules the plan removes, for the run to queue; empty when stopped.
   ruleRemovals: PlannedRuleRemoval[];
   // The rules the plan replaces, for the run to queue; empty when stopped.
@@ -336,6 +338,23 @@ export function isSheetTrait(intended: IntendedTrait): boolean {
   return sheetTraits[intended.kind].has(intended.trait);
 }
 
+interface PlannedNewTabTrait {
+  title: string;
+  written: TraitValue;
+  intended: IntendedTrait;
+}
+
+// How a `newTabs` entry's trait reads on the plan and landed lists.
+const newTabTraitLines = {
+  // Names the tab by title, as the tab's own line does, and shows the value as alterations.ts writes it.
+  sendLine({ title, written, intended }: PlannedNewTabTrait): SyncSendLine {
+    return {
+      subject: { tab: title, path: intended.trait },
+      what: `set to ${valueText(written)}`,
+    };
+  },
+};
+
 interface HeldBackValue {
   intended: IntendedTrait;
   agreed: TraitValue;
@@ -366,6 +385,8 @@ const stopWords = {
 } as const;
 
 const absentText = "(none)";
+
+const schema = new SpreadsheetBaseSchema();
 
 // Pure: the three-way comparison of intended state against the previous configs and the live sheet.
 export class SyncPlanner {
@@ -539,6 +560,8 @@ export class SyncPlanner {
         placement.kind === "newTab" || live.tabs[placement.tab] !== undefined,
     );
     sends.push(...newTableSends(newTables));
+    const newTabTraits = this._newTabTraits;
+    sends.push(...effectlessSends(newTabTraits, newTabTraitLines));
     // A Table a person deleted took its rules with it.
     const ruleRemovals = onLiveTables(this.ruleRemovals, live);
     sends.push(...effectlessSends(ruleRemovals, ruleRemovalLines));
@@ -550,6 +573,10 @@ export class SyncPlanner {
     const sentIfUnstopped = isStopped ? [] : sentTraits;
     const newColumnsIfUnstopped = isStopped ? [] : newColumns;
     const newTablesIfUnstopped = isStopped ? [] : newTables;
+    let newTabTraitsIfUnstopped: IntendedTrait[] = [];
+    if (!isStopped) {
+      newTabTraitsIfUnstopped = newTabTraits.map(({ intended }) => intended);
+    }
     const forcedNotHeld = new Set(
       forced.map((trait) => addressKey({ kind: "column", ...trait })),
     );
@@ -581,10 +608,34 @@ export class SyncPlanner {
       sentTraits: sentIfUnstopped,
       newColumns: newColumnsIfUnstopped,
       newTables: newTablesIfUnstopped,
+      newTabTraits: newTabTraitsIfUnstopped,
       ruleRemovals: isStopped ? [] : ruleRemovals,
       ruleReplacements: isStopped ? [] : ruleReplacements,
       ruleAdditions: isStopped ? [] : ruleAdditions,
     };
+  }
+  // Sent with no three-way comparison: a tab the run creates has no previous or live reading.
+  private get _newTabTraits(): PlannedNewTabTrait[] {
+    const newTabs = this.alterations.newTabs ?? [];
+    const newTitles = new Set(newTabs.map(({ title }) => title));
+    function tabNamed(value: TraitValue): TraitValue {
+      if (typeof value !== "string" || !newTitles.has(value)) return value;
+      return schema.titleToName(value);
+    }
+    const traits = tabTraits.filter((trait) => trait !== "title");
+    return newTabs.flatMap((newTab) => {
+      const tab = schema.titleToName(newTab.title);
+      return pickTraits(newTab, traits).map(({ trait, value }) => ({
+        title: newTab.title,
+        written: value,
+        intended: {
+          kind: "tab" as const,
+          tab,
+          trait,
+          value: trait === "before" ? tabNamed(value) : value,
+        },
+      }));
+    });
   }
   // Google resets every dropdown on a Table its column list is sent to, a newly set one included: docs/sheets-behaviour.md#creating-and-updating-tables.
   // A dropdown the send removes has no style to keep, so a column this run retypes counts by its intended rule alone.
@@ -678,7 +729,7 @@ export function unplacedNewTable({
   conditionalFormats,
 }: WideNewTable): Omit<PlannedNewTable, "placement"> {
   return {
-    table: new SpreadsheetBaseSchema().titleToName(name),
+    table: schema.titleToName(name),
     name,
     rules: conditionalFormats?.add ?? [],
     columns: columns.map(

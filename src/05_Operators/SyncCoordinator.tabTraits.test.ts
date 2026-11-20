@@ -132,6 +132,79 @@ describe("SyncCoordinator.run tab traits", () => {
     expect(result).toMatchObject({ landed: [] });
   });
 
+  describe("on a new tab", () => {
+    function newTabOf(title: string) {
+      return {
+        title,
+        tables: [{ name: `${title} Log`, columns: [{ header: "Note" }] }],
+      };
+    }
+
+    function gidOf(files: SyncRun["files"], title: string): number {
+      const { tabs } = parseIdNameMapFileSource(
+        Val.assert(files, "emitted files").idNameMap,
+      );
+      const found = Object.entries(tabs).find(([, tab]) => tab.title === title);
+      return Number(Val.assert(found, `mapped tab ${title}`)[0]);
+    }
+
+    it("sets its colour, frozen counts and hidden in its creating run, and the configs record them", () => {
+      const service = seedFixture();
+
+      const { result, files } = runTabs({
+        newTabs: [
+          {
+            ...newTabOf("Payments"),
+            color: "#ff0000",
+            frozenRows: 2,
+            frozenColumns: 1,
+            hidden: true,
+          },
+        ],
+      });
+
+      const gid = gidOf(files, "Payments");
+      expect(service.grid.sheet(gid).tabProperties).toEqual({
+        hidden: true,
+        tabColorStyle: { rgbColor: { red: 1, green: 0, blue: 0 } },
+        frozenRowCount: 2,
+        frozenColumnCount: 1,
+      });
+      expect(Val.assert(files, "emitted files").tabConfigs).toContain(
+        `"payments": { "sheetGid": ${gid}, "title": "Payments", "color": "#ff0000", "hidden": true, "frozenRows": 2, "frozenColumns": 1 }`,
+      );
+      expect(result).toMatchObject({
+        outcome: { kind: "sent" },
+        landed: expect.arrayContaining([
+          expect.objectContaining({
+            subject: { tab: "Payments", path: "color" },
+          }),
+          expect.objectContaining({
+            subject: { tab: "Payments", path: "hidden" },
+          }),
+        ]),
+      });
+    });
+
+    it("places it before a tab already there or another new tab, named by its title", () => {
+      const service = seedFixture({ extraSheets: [testTabSheet] });
+
+      runTabs({
+        newTabs: [
+          { ...newTabOf("Ledger"), before: "item" },
+          { ...newTabOf("Payments"), before: "Ledger" },
+        ],
+      });
+
+      expect(service.grid.sheetTitles()).toEqual([
+        "Payments",
+        "Ledger",
+        "Item",
+        "Test",
+      ]);
+    });
+  });
+
   it("stops on a person's tab edit since the last sync, sending nothing", () => {
     const service = stubSheetsService({
       sheets: [{ ...itemSheet(), frozenRowCount: 3 }],

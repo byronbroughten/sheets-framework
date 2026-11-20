@@ -159,6 +159,7 @@ interface AppliedPlan {
   sentTraits: SyncPlannerResult["sentTraits"];
   newColumns: MintedNewColumn[];
   newTables: MintedNewTable[];
+  newTabTraits: SyncPlannerResult["newTabTraits"];
   columnMoves: PlannedColumnMove[];
   ruleRemovals: IndexedRuleRemoval[];
   ruleReplacements: CompiledRuleReplacement[];
@@ -446,6 +447,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       sentTraits: planned.sentTraits,
       newColumns,
       newTables,
+      newTabTraits: planned.newTabTraits,
       columnMoves,
       ruleRemovals,
       ruleReplacements,
@@ -774,6 +776,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
   ): SyncFlushStoppedOutcome | undefined {
     try {
       this._flushPlan(applied);
+      this._flushNewTabTraits(applied.newTabTraits);
       return undefined;
     } catch (error) {
       if (error instanceof HeldFlushRefusal) return heldStoppedOutcome(error);
@@ -813,6 +816,16 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     this.ss.batchUpdateGSheets();
     if (newTables.length === 0) return;
     this.tableConfigOperator.createTables(newTables);
+    this.ss.batchUpdateGSheets();
+  }
+  // After every addSheet, so a `before` may name any tab the run created; only on a send, since a refetch can't find a tab a dry run withheld.
+  // Raw has no sheet state for a tab before its addSheet lands, so the sheet properties are refetched to reach it.
+  private _flushNewTabTraits(
+    newTabTraits: SyncPlannerResult["newTabTraits"],
+  ): void {
+    if (newTabTraits.length === 0) return;
+    this.ss.fetchAllSheetProperties();
+    this.tabConfigOperator.updateTabTraits(newTabTraits);
     this.ss.batchUpdateGSheets();
   }
   private _applyApiAccessChanges(accessChanges: ApiAccessChanges): void {
