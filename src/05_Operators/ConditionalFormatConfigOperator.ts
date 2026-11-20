@@ -249,6 +249,13 @@ interface RulesShiftedByInsertsProps {
   newColumns: MintedNewColumn[];
 }
 
+interface ShiftedByOtherProps {
+  table: string;
+  rules: TableRules;
+  other: string;
+  rulesByTable: Map<string, TableRules>;
+}
+
 interface PlannedLayoutOfProps {
   table: string;
   layout: RuleLayout;
@@ -851,14 +858,9 @@ function rulesShiftedByInserts({
   rulesByTable,
   newColumns,
 }: RulesShiftedByInsertsProps): TableRules {
-  const shift = newColumns.filter(({ table: other }) => {
-    const neighbour = rulesByTable.get(other);
-    return (
-      other !== table &&
-      neighbour !== undefined &&
-      isShiftedBy({ rules, neighbour })
-    );
-  }).length;
+  const shift = newColumns.filter(({ table: other }) =>
+    isShiftedByOther({ table, rules, other, rulesByTable }),
+  ).length;
   if (shift === 0) return rules;
   const { layout } = rules.table;
   const { headerTopLeft } = layout;
@@ -875,6 +877,20 @@ function rulesShiftedByInserts({
       },
     },
   };
+}
+
+function isShiftedByOther({
+  table,
+  rules,
+  other,
+  rulesByTable,
+}: ShiftedByOtherProps): boolean {
+  const neighbour = rulesByTable.get(other);
+  return (
+    other !== table &&
+    neighbour !== undefined &&
+    isShiftedBy({ rules, neighbour })
+  );
 }
 
 function plannedLayoutOf({
@@ -941,14 +957,9 @@ function shiftedByOf(
 ): string | undefined {
   const rules = rulesByTable.get(table);
   if (rules === undefined) return undefined;
-  return [...shifting].find((other) => {
-    const neighbour = rulesByTable.get(other);
-    return (
-      other !== table &&
-      neighbour !== undefined &&
-      isShiftedBy({ rules, neighbour })
-    );
-  });
+  return [...shifting].find((other) =>
+    isShiftedByOther({ table, rules, other, rulesByTable }),
+  );
 }
 
 function heldBackOf(

@@ -102,7 +102,7 @@ describe("SyncCoordinator.run new tabs and Tables", () => {
     const before = service.grid.sheet(itemGid);
     const valuesBefore = before.values();
     const tablesBefore = before.tables;
-    const withheld = vi.spyOn(service.sheets.Spreadsheets, "batchUpdate");
+    const batchUpdates = vi.spyOn(service.sheets.Spreadsheets, "batchUpdate");
 
     const { result } = SyncCoordinator.init().run({
       isSending: false,
@@ -120,9 +120,15 @@ describe("SyncCoordinator.run new tabs and Tables", () => {
     expect(result).toMatchObject({
       mode: "dry run",
       outcome: { kind: "ready" },
+      plan: [
+        {
+          subject: { tab: "item", path: "newTables" },
+          what: expect.stringMatching(/^create Table "Payment Log"/),
+        },
+      ],
     });
     // The dry-run wire is what the host's gate judges, so the minted IDs are read off it.
-    const requests = withheld.mock.calls.flatMap(
+    const requests = batchUpdates.mock.calls.flatMap(
       ([batch]) => batch.requests ?? [],
     );
     expect(requests).toContainEqual({
