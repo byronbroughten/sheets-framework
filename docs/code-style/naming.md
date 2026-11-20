@@ -41,6 +41,7 @@ This is the list's one home. **A framework method takes its verb from it**, each
 - `update` — writes a local/queued change, not yet flushed
 - `queue` — stages a write on a sheet's or row's write queue; the flusher gathers it into an operation. Internal to the queue layer, which never says `update`
 - `append` — adds a new row
+- `create` — builds something new on the sheet, a tab or a Table, with the IDs it needs
 - `ensure` — idempotent guard: make this true, no-op if it already is
 - `validate` — asserts an invariant, throws on failure
 - `init` — factory setup
