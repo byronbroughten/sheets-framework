@@ -466,6 +466,27 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
       ]);
     });
 
+    it("leaves a side-by-side neighbour on the grid's last row a blank row longer, as live", () => {
+      const { grid } = stubSideBySideTables();
+
+      const raw = SpreadsheetRaw.init();
+      raw.fetchAllSheetProperties();
+      raw.table("left").appendDataRow().updateValue(0, "r3");
+      raw.batchUpdateGSheets();
+
+      expect(
+        grid.sheet(111).values({ startRowIndex: topDataRowIndex }),
+      ).toEqual([
+        ["r1", "a", "loose", "c1", 5],
+        ["r2", "b", "", "c2", 6],
+        ["r3", null, null, null, null],
+      ]);
+      expect(tableEndRowIndexes(grid)).toEqual([
+        topDataRowIndex + 3,
+        topDataRowIndex + 3,
+      ]);
+    });
+
     it("grows two Tables on one sheet each by its own rows, not as one merged append", () => {
       const { grid } = stubSideBySideTables();
 
