@@ -101,7 +101,7 @@ describe("SyncCoordinator.run new tabs and Tables", () => {
     const itemEnd = itemTableEnd(service);
     const before = service.grid.sheet(itemGid);
     const valuesBefore = before.values();
-    const tablesBefore = structuredClone(before.tables);
+    const tablesBefore = before.tables;
     const withheld = vi.spyOn(service.sheets.Spreadsheets, "batchUpdate");
 
     const { result } = SyncCoordinator.init().run({
