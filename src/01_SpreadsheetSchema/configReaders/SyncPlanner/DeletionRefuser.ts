@@ -7,6 +7,7 @@ import {
   moveColumnPath,
   newColumnsBeforesOf,
   newColumnsOf,
+  rulesOf,
   type WideAlterations,
   type WideColumnEntry,
   type WideColumnGroupMove,
@@ -142,7 +143,7 @@ export class DeletionRefuser {
         this._formulaTouches(table, newColumn, `${at}.${path}`),
       ),
       ...this._moveTouches(table, entry.moves ?? []),
-      ...this._ruleTouches(table, entry.conditionalFormats, at),
+      ...this._ruleTouches(table, entry, at),
     ];
   }
   // A column entry's touch already reaches its Table and tab, so a Table entry of only columns adds a second refusal for the same conflict.
@@ -195,28 +196,23 @@ export class DeletionRefuser {
   }
   private _ruleTouches(
     table: string,
-    formats: WideTableEntry["conditionalFormats"],
+    entry: WideTableEntry,
     tableAt: string,
   ): Touch[] {
-    if (formats === undefined) return [];
-    const at = `${tableAt}.conditionalFormats`;
-    const added = (formats.add ?? []).map(
-      (rule, index) => [`${at}.add[${index}]`, rule] as const,
-    );
-    const replaced = entriesOf(formats.replace).map(
-      ([handle, rule]) => [`${at}.replace["${handle}"]`, rule] as const,
-    );
-    return [...added, ...replaced].flatMap(([ruleAt, rule]) => [
-      ...(rule.columns === "all"
-        ? []
-        : rule.columns.map((column) => ({
-            targets: this._columnTargets(table, column),
-            touchedBy: `${ruleAt}.columns`,
-          }))),
-      ...(rule.condition.values ?? []).flatMap((value) =>
-        this._braceTouches(table, value, `${ruleAt}.condition`),
-      ),
-    ]);
+    return rulesOf(entry).flatMap(({ path, rule }) => {
+      const ruleAt = `${tableAt}.${path}`;
+      return [
+        ...(rule.columns === "all"
+          ? []
+          : rule.columns.map((column) => ({
+              targets: this._columnTargets(table, column),
+              touchedBy: `${ruleAt}.columns`,
+            }))),
+        ...(rule.condition.values ?? []).flatMap((value) =>
+          this._braceTouches(table, value, `${ruleAt}.condition`),
+        ),
+      ];
+    });
   }
   private _newTablesTouches(
     newTables: WideNewTable[],

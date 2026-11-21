@@ -170,6 +170,11 @@ export function isMovePath(path: string): boolean {
   return /^moves\[\d+\]$/.test(path);
 }
 
+// A `conditionalFormats.replace` entry's path in its Table entry, as `conditionalFormats.replace["amount | =TRUE"]`.
+export function ruleReplacementPath(handle: string): string {
+  return `conditionalFormats.replace["${handle}"]`;
+}
+
 export function rulesOf({ conditionalFormats }: WideTableEntry): WideRuleAt[] {
   return [
     ...(conditionalFormats?.add ?? []).map((rule, index) => ({
@@ -177,7 +182,7 @@ export function rulesOf({ conditionalFormats }: WideTableEntry): WideRuleAt[] {
       rule,
     })),
     ...entriesOf(conditionalFormats?.replace).map(([handle, rule]) => ({
-      path: `conditionalFormats.replace["${handle}"]`,
+      path: ruleReplacementPath(handle),
       rule,
     })),
   ];

@@ -9,6 +9,7 @@ import {
   isMovePath,
   movePath,
   newColumnsOf,
+  ruleReplacementPath,
   type WideAlterations,
   type WideColumnGroupMove,
   type WideNewTable,
@@ -325,7 +326,7 @@ export const ruleRemovalLines = {
 // How a `conditionalFormats.replace` entry reads on the plan, stop, landed and didntLand lists.
 export const ruleReplacementLines = {
   path({ handle }: Pick<PlannedRuleRemoval, "handle">): string {
-    return `conditionalFormats.replace["${handle}"]`;
+    return ruleReplacementPath(handle);
   },
   sendLine(replacement: PlannedRuleReplacement): SyncSendLine {
     return {
