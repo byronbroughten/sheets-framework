@@ -558,7 +558,10 @@ describe("SyncEntryRefuser, a rule's columns and braces", () => {
                 replace: {
                   "name | =TRUE": {
                     columns: ["cost"],
-                    condition: { type: "NUMBER_GREATER", values: ["${cost}"] },
+                    condition: {
+                      type: "CUSTOM_FORMULA",
+                      values: ["=${name}>0"],
+                    },
                     format: {},
                   },
                 },
@@ -574,6 +577,106 @@ describe("SyncEntryRefuser, a rule's columns and braces", () => {
         path: 'conditionalFormats.replace["name | =TRUE"].columns',
         column: "cost",
         columns: ["name", "count"],
+      },
+    ]);
+  });
+});
+
+describe("SyncEntryRefuser, a NUMBER_* rule's value", () => {
+  function numberRuleRefusals(type: string, values: string[]) {
+    return refusals({
+      alterations: {
+        tables: {
+          item: {
+            conditionalFormats: {
+              add: [
+                { columns: ["count"], condition: { type, values }, format: {} },
+              ],
+            },
+          },
+        },
+      },
+    });
+  }
+
+  it("lets through a number, however written", () => {
+    expect(numberRuleRefusals("NUMBER_EQ", ["0"])).toEqual([]);
+    expect(numberRuleRefusals("NUMBER_GREATER", ["1.50"])).toEqual([]);
+    expect(numberRuleRefusals("NUMBER_LESS", [" -2 "])).toEqual([]);
+  });
+
+  it("refuses a value that isn't a number, at its condition.values[0] path", () => {
+    for (const value of ["Yes", "TRUE", "FALSE", "", "  ", "1,5", "Infinity"]) {
+      expect(numberRuleRefusals("NUMBER_EQ", [value])).toEqual([
+        {
+          kind: "notANumber",
+          table: "item",
+          path: "conditionalFormats.add[0].condition.values[0]",
+          conditionType: "NUMBER_EQ",
+          value,
+        },
+      ]);
+    }
+  });
+
+  it("leaves a TEXT_EQ value and a custom formula alone", () => {
+    expect(numberRuleRefusals("TEXT_EQ", ["TRUE"])).toEqual([]);
+    expect(numberRuleRefusals("CUSTOM_FORMULA", ["=TRUE"])).toEqual([]);
+  });
+
+  it("checks a replace's rule and a new Table's rule by their paths", () => {
+    expect(
+      refusals({
+        alterations: {
+          tables: {
+            item: {
+              conditionalFormats: {
+                replace: {
+                  "count | >0": {
+                    columns: ["count"],
+                    condition: { type: "NUMBER_GREATER", values: ["Yes"] },
+                    format: {},
+                  },
+                },
+              },
+            },
+          },
+          newTabs: [
+            {
+              title: "Orders",
+              tables: [
+                {
+                  name: "order",
+                  columns: [{ header: "Ref" }],
+                  conditionalFormats: {
+                    add: [
+                      {
+                        columns: ["ref"],
+                        condition: { type: "NUMBER_LESS", values: ["FALSE"] },
+                        format: {},
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      }),
+    ).toEqual([
+      {
+        kind: "notANumber",
+        table: "item",
+        path: 'conditionalFormats.replace["count | >0"].condition.values[0]',
+        conditionType: "NUMBER_GREATER",
+        value: "Yes",
+      },
+      {
+        kind: "notANumber",
+        table: "Orders",
+        path: "newTabs[0].tables[0].conditionalFormats.add[0].condition.values[0]",
+        conditionType: "NUMBER_LESS",
+        value: "FALSE",
       },
     ]);
   });

@@ -472,7 +472,7 @@ describe("SyncCoordinator.run new tabs and Tables", () => {
   describe("a new Table's rules", () => {
     const overThree = {
       columns: ["amount"],
-      condition: { type: "NUMBER_GREATER" as const, values: ["3"] },
+      condition: { type: "NUMBER_GREATER" as const, values: ["3"] as ["3"] },
       format: { foregroundColor: "#0000ff" },
     };
     const withRule = {

@@ -86,7 +86,7 @@ describe("SyncCoordinator.run conditional-format rule add", () => {
 
   const allOverThree = {
     columns: "all" as const,
-    condition: { type: "NUMBER_GREATER" as const, values: ["3"] },
+    condition: { type: "NUMBER_GREATER" as const, values: ["3"] as ["3"] },
     format: { foregroundColor: "#0000ff" },
   };
   const allOverThreeRule: SheetsRule = {

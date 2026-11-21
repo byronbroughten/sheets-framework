@@ -967,6 +967,25 @@ describe("SyncRunReport, case F: two refusals, then a head-row stop", () => {
     );
   });
 
+  it("says a NUMBER_* rule's value isn't a number, naming the value and the type", () => {
+    const text = render({
+      ...appDryRun,
+      outcome: { kind: "refused" },
+      refusals: [
+        {
+          kind: "notANumber",
+          table: "occCharge",
+          path: "conditionalFormats.add[0].condition.values[0]",
+          conditionType: "NUMBER_EQ",
+          value: "FALSE",
+        },
+      ],
+    }).join("\n");
+    expect(text).toContain(
+      "REFUSED 1 · occCharge › conditionalFormats.add[0].condition.values[0]\n  FALSE isn't a number, which a NUMBER_EQ condition takes: Sheets refuses the whole batch over it.\n  Write a number there, then rerun.",
+    );
+  });
+
   it("stops when a grant's Table can't take head rows on row 4", () => {
     expect(resultLine(stopped)).toBe(
       "STOPPED: 1 Table can't take head rows. Nothing was sent, and nothing will be until it is resolved.",

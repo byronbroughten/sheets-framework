@@ -1,4 +1,7 @@
-import type { ModelledConditionType } from "../../00_Source/RawSource/ConditionalFormat";
+import type {
+  ModelledConditionType,
+  NumberConditionType,
+} from "../../00_Source/RawSource/ConditionalFormat";
 import type { ColumnTypeBaseline } from "../columnBaseline";
 import type { IdNameMapRegistered } from "./configRegister";
 
@@ -63,11 +66,19 @@ interface ConditionalFormatIntended {
   strikethrough?: boolean;
 }
 
-interface ConditionIntended {
-  type: ModelledConditionType;
+interface NumberConditionIntended {
+  type: NumberConditionType;
+  // Sheets refuses the batch over a value that isn't a number, "TRUE" included.
+  values?: [`${number}`];
+}
+
+interface NonNumberConditionIntended {
+  type: Exclude<ModelledConditionType, NumberConditionType>;
   // Each value in brace form, as a formula column's is.
   values?: string[];
 }
+
+type ConditionIntended = NumberConditionIntended | NonNumberConditionIntended;
 
 // Spans the body rows of the columns named, so a rule never needs a column letter.
 interface ConditionalFormatRuleIntended<CN extends string> {
