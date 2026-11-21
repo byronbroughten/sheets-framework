@@ -16,7 +16,7 @@ The literal has two groups:
 Within a group each record is keyed by its rule handle, and each record is one of two kinds:
 
 - **A boolean record** (`kind: "boolean"`) holds its `condition` and its `format` (`backgroundColor` and `foregroundColor` as hex). A Table record names its `columns`, a list of column names or `"all"`, and writes a custom formula in brace form; a tab record names its A1 `ranges`.
-- **An unmodelable record** (`kind: "unmodelable"`) holds its A1 `ranges` and its `rawContent`, the JSON of the rule without its ranges. A Table's boolean rule becomes one when a range doesn't start on the Table's first body row or leaves its body, or when its formula has no brace form.
+- **An unmodelable record** (`kind: "unmodelable"`) holds its A1 `ranges` and its `rawContent`, the JSON of the rule without its ranges. A rule the read can't model becomes one ([which](../architecture/conditional-format-rules.md#unmodelable-rules-reads-and-rule-handles)), and a Table's boolean rule does when a range doesn't start on the Table's first body row or leaves its body, or when its formula has no brace form.
 
 ## The rule handle
 

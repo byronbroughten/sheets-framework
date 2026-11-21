@@ -45,10 +45,10 @@ export interface SyncRunFlushStopped {
   rowIds: SyncRunRowIds;
 }
 
-// The Fill Row IDs send that threw after the regen, and its plan lines, which never landed.
-export interface SyncRunFillStop {
+// A send that stopped after its flushes landed in part, with the Row ID plan lines that never landed: Google's refusal of a rule flush, or the Fill Row IDs send that threw after the regen.
+export interface SyncRunSendStop {
   outcome: FlushStoppedOutcome;
-  unfilled: SyncPlanItem[];
+  unlanded: SyncPlanItem[];
 }
 
 export interface SyncRunPlanned {
@@ -65,7 +65,7 @@ export interface SyncRunPlanned {
   nameRewriter: SyncNameRewriter;
   // Left out of the plan, so a send lists each as not sent and a dry run as a notice.
   heldBackChanges: SyncHeldBackChange[];
-  fillStop?: SyncRunFillStop;
+  sendStop?: SyncRunSendStop;
 }
 
 interface SyncRunCommonProps {
@@ -103,7 +103,7 @@ export class SyncRunResultBuilder {
     rowIds,
     nameRewriter,
     heldBackChanges,
-    fillStop,
+    sendStop,
   }: SyncRunPlanned): SyncRunResult {
     const common = this._common({
       refusals: [],
@@ -140,7 +140,7 @@ export class SyncRunResultBuilder {
     ];
     const metOrLandedCount =
       landedAlterations.length + planned.alreadyMet.length;
-    const outcome: SyncSendOutcome = fillStop?.outcome ?? {
+    const outcome: SyncSendOutcome = sendStop?.outcome ?? {
       kind: "sent",
       summary: sentSummary({
         sentCount: planned.plan.length,
@@ -149,8 +149,8 @@ export class SyncRunResultBuilder {
         alreadyMetCount: planned.alreadyMet.length,
       }),
     };
-    const unfilled = new Set(fillStop?.unfilled);
-    const landedRowIds = rowIds.plan.filter((item) => !unfilled.has(item));
+    const unlanded = new Set(sendStop?.unlanded);
+    const landedRowIds = rowIds.plan.filter((item) => !unlanded.has(item));
     return {
       ...sendResult(common, outcome),
       landed: [...landedAlterations, ...landedRowIds.map(landedSend)],

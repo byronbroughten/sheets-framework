@@ -2,17 +2,22 @@ import type { CellValue } from "../CellValues/cellValues";
 import { type GridRangeProps, rangeEqual } from "./RawSource";
 import { type RgbChannels, rgbChannelsEqual } from "./RgbColor";
 
-export const modelledConditionTypes = [
+const numberConditionTypes = [
   "NUMBER_EQ",
   "NUMBER_NOT_EQ",
   "NUMBER_GREATER",
   "NUMBER_GREATER_THAN_EQ",
   "NUMBER_LESS",
   "NUMBER_LESS_THAN_EQ",
+] as const;
+
+export const modelledConditionTypes = [
+  ...numberConditionTypes,
   "TEXT_EQ",
   "CUSTOM_FORMULA",
 ] as const;
 
+type NumberConditionType = (typeof numberConditionTypes)[number];
 export type ModelledConditionType = (typeof modelledConditionTypes)[number];
 export type ComparisonConditionType = Exclude<
   ModelledConditionType,
@@ -67,6 +72,12 @@ export function isModelledConditionType(
   type: string,
 ): type is ModelledConditionType {
   return modelledConditionTypes.some((modelledType) => modelledType === type);
+}
+
+export function isNumberConditionType(
+  type: ModelledConditionType,
+): type is NumberConditionType {
+  return numberConditionTypes.some((numberType) => numberType === type);
 }
 
 export function conditionalFormatRulesEqual(

@@ -6,6 +6,7 @@ import {
   defaultDropdownStyleReset,
   type DropdownStyleReset,
 } from "../00_Source/RawSource/RawSource";
+import { RuleFlushRefusal } from "../00_Source/RawSource/RuleFlushRefusal";
 import {
   type ApiAccessChanges,
   apiAccessChanges,
@@ -77,8 +78,8 @@ import type {
   SyncTypedTraitChange,
 } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
 import {
-  type SyncRunFillStop,
   SyncRunResultBuilder,
+  type SyncRunSendStop,
 } from "../01_SpreadsheetSchema/configReaders/SyncRunResultBuilder";
 import { typedTraitChanges } from "../01_SpreadsheetSchema/configReaders/typedTraitChanges";
 import {
@@ -194,6 +195,12 @@ interface RegenerationProps {
   notes: string[];
   sent: SyncSubject[];
   previous: ConfigSnapshot;
+}
+
+// A flush that stopped the send, and whether the run still writes its files from a refetch.
+interface FlushStop {
+  outcome: FlushStoppedOutcome;
+  writesFiles: boolean;
 }
 
 // The fill's plan lines, and its flush's error message when it threw.
@@ -495,21 +502,24 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     // Column IDs only on an unstopped send: one minted by any other run would reach the configs but never the sheet.
     if (isApplying) this._applyPlan(applied);
     const notes = this._recordUntypedColumns();
+    let refetchedStop: FlushStoppedOutcome | undefined;
     if (isApplying) {
       const stopped = this._flushUnlessStopped(
         applied,
         props.previousIdNameMap,
       );
       // No files: column IDs already recorded would reach the configs but not the sheet.
-      if (stopped !== undefined) {
+      if (stopped !== undefined && !stopped.writesFiles) {
         return {
           result: resultBuilder.flushStopped({
             planned,
-            outcome: stopped,
+            outcome: stopped.outcome,
             rowIds: { plan: checkboxPlan, notices },
           }),
         };
       }
+      // A refused rule flush still writes the files, from a refetch that reads what landed before it.
+      refetchedStop = stopped?.outcome;
     }
     const [sent, metSubjects] = isApplying
       ? [subjectsOf(planned.plan), subjectsOf(planned.alreadyMet)]
@@ -574,18 +584,22 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       files.alterations = alterationsFileSource(nameRewriter.alterations);
     }
     let fillPlan: SyncPlanItem[];
-    let fillStop: SyncRunFillStop | undefined;
-    if (isApplying) {
+    let sendStop: SyncRunSendStop | undefined;
+    if (refetchedStop !== undefined) {
+      // Nothing after the refused flush is sent, the fill included.
+      fillPlan = [];
+      sendStop = { outcome: refetchedStop, unlanded: [] };
+    } else if (isApplying) {
       const fill = regenerator._fillBlankIds();
       fillPlan = fill.filled;
       // A refetch is a fresh coordinator, so the flushes that landed are counted on this one.
       if (fill.failure !== undefined) {
-        fillStop = {
+        sendStop = {
           outcome: fillFailedStoppedOutcome(
             this.ss.raw.landedFlushCount,
             fill.failure,
           ),
-          unfilled: fill.filled,
+          unlanded: fill.filled,
         };
       }
     } else {
@@ -602,7 +616,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         rowIds: { plan: [...checkboxPlan, ...fillPlan], notices },
         nameRewriter,
         heldBackChanges,
-        fillStop,
+        sendStop,
       }),
       files,
     };
@@ -847,22 +861,30 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     }
     identified.fetchAllGathered();
   }
-  // The Node host's gate refuses a held flush by throwing, as Google refuses a batch over part of a Table; any other error goes on up.
+  // The Node host's gate refuses a held flush by throwing, as Google refuses a batch over part of a Table or over a rule's value; any other error goes on up.
   private _flushUnlessStopped(
     applied: AppliedPlan,
     previousIdNameMap: IdNameMapGeneric,
-  ): FlushStoppedOutcome | undefined {
+  ): FlushStop | undefined {
     try {
       this._flushPlan(applied);
       this._flushNewTabTraits(applied.newTabTraits, previousIdNameMap);
       return undefined;
     } catch (error) {
-      if (error instanceof HeldFlushRefusal) return heldStoppedOutcome(error);
-      if (error instanceof PartialTableRefusal) {
-        return refusedStoppedOutcome(
-          this.ss.raw.landedFlushCount,
-          error.message,
-        );
+      if (error instanceof HeldFlushRefusal) {
+        return { outcome: heldStoppedOutcome(error), writesFiles: false };
+      }
+      if (
+        error instanceof PartialTableRefusal ||
+        error instanceof RuleFlushRefusal
+      ) {
+        return {
+          outcome: refusedStoppedOutcome(
+            this.ss.raw.landedFlushCount,
+            error.message,
+          ),
+          writesFiles: error instanceof RuleFlushRefusal,
+        };
       }
       throw error;
     }
