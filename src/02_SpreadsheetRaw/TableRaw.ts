@@ -12,8 +12,6 @@ import type {
 } from "../00_Source/RawSource/EditProtection";
 import type {
   BoundedGridRange,
-  CopyPasteOperation,
-  CopyPasteType,
   FindReplaceTerms,
   GridBlockSnapshot,
   GridCellSnapshot,
@@ -27,14 +25,13 @@ import {
 import { type HeadRole, headRows } from "../01_SpreadsheetSchema/headRows";
 import { assertValueAndFormulaExclusive } from "./CellRaw";
 import type { RowCommonRaw } from "./ClassBases/RowCommonRaw";
-import { originOf } from "./ClassBases/TableBaseRaw";
+import { columnRun, originOf } from "./ClassBases/TableBaseRaw";
 import { TableCommonRaw } from "./ClassBases/TableCommonRaw";
 import type {
   ChangeTableColumns,
   ColumnFill,
   ColumnMoveSpan,
   NewColumnHeadCells,
-  RowStateRaw,
   SortParameters,
   TableCell,
   TableFindReplace,
@@ -50,6 +47,7 @@ import { TableColumnQueuerRaw } from "./TableRaw/TableColumnQueuerRaw";
 import { TableColumnResolverRaw } from "./TableRaw/TableColumnResolverRaw";
 import { TableColumnTypeGathererRaw } from "./TableRaw/TableColumnTypeGathererRaw";
 import { TableConditionalFormatAndProtectionQueuerRaw } from "./TableRaw/TableConditionalFormatAndProtectionQueuerRaw";
+import { TableRowAppenderRaw } from "./TableRaw/TableRowAppenderRaw";
 
 /**
  * One Table's state by Table-relative index: rows, columns, pruning, queued
@@ -81,6 +79,9 @@ export class TableRaw extends TableCommonRaw {
   }
   private get columnTypeGatherer(): TableColumnTypeGathererRaw {
     return new TableColumnTypeGathererRaw(this.tableRawProps);
+  }
+  private get rowAppender(): TableRowAppenderRaw {
+    return new TableRowAppenderRaw(this.tableRawProps);
   }
   get conditionalFormatAndProtectionQueuer(): TableConditionalFormatAndProtectionQueuerRaw {
     return new TableConditionalFormatAndProtectionQueuerRaw(this.tableRawProps);
@@ -598,114 +599,11 @@ export class TableRaw extends TableCommonRaw {
   gatherColumnChangesOperation(): void {
     this.columnQueuer.gatherColumnChangesOperation();
   }
-  // Before the Table-end column inserts are counted, since growth is sent ahead of them.
   gatherAppendTableRowsOperation(): void {
-    const appendedRowIndexes = this._queuedRowAppendIndexes();
-    if (appendedRowIndexes.length === 0) return;
-    const appendedRowCount = appendedRowIndexes.length;
-    // Not dataRowCount: a same-run re-fetch resets the Table's end but keeps the queued appends.
-    const modelRow = this.dataRowGridRange(Math.min(...appendedRowIndexes) - 1);
-    const newRows: BoundedGridRange = {
-      ...modelRow,
-      startRowIndex: modelRow.endRowIndex,
-      endRowIndex: SheetIndex.row(modelRow.endRowIndex + appendedRowCount),
-    };
-    // The appendDimension sent first already grows a Table ending on the grid's last row; an insert would push that row out of it.
-    // Less the rows the grid grew it by, which that appendDimension also sends.
-    const endsOnGridEdge =
-      newRows.startRowIndex - this.writes.gridGrownRowCount ===
-      this.sheet.rowCountBeforeFlush;
-    this.sheet.queueGridRowsThrough(newRows.endRowIndex);
-    const insert: InsertRangeOperation[] = endsOnGridEdge
-      ? []
-      : [{ kind: "insertRange", range: newRows, shiftDimension: "ROWS" }];
-    this.writeOperations.appendTableRows.push({
-      tableId: this.tableId,
-      newRows,
-      operations: [
-        ...insert,
-        {
-          kind: "updateTableRange",
-          tableId: this.tableId,
-          range: { ...newRows, startRowIndex: this.startRowIndex },
-        },
-        {
-          kind: "copyPaste",
-          source: modelRow,
-          destination: newRows,
-          pasteType: "PASTE_FORMAT",
-        },
-        ...columnRunCopies(
-          modelRow,
-          newRows,
-          this._untypedColumnRuns(),
-          "PASTE_DATA_VALIDATION",
-        ),
-        ...columnRunCopies(
-          modelRow,
-          newRows,
-          this._appendedFormulaColumnRuns(),
-          "PASTE_FORMULA",
-        ),
-      ],
-    });
+    this.rowAppender.gatherAppendTableRowsOperation();
   }
-  // An appended row deleted this flush still grows, then goes with the deletes, so the rows after it keep their place.
-  private _queuedRowAppendIndexes(): number[] {
-    return Array.from(this.rowWrites).flatMap(([rowIndex, writes]) =>
-      writes.appendRow ? [rowIndex] : [],
-    );
-  }
-  // A typed column's validation is the Table's own, so only Automatic columns get theirs copied.
-  private _untypedColumnRuns(): ColumnRun[] {
-    const columnTypes = this.columnTypeGatherer.columnTypesAfterFlush();
-    return columnRuns(
-      this.fullTableColIndexes.filter(
-        (colIndex) => columnTypes.get(colIndex) === undefined,
-      ),
-    );
-  }
-  // Only the named columns, so the paste never reaches a plain value the append left unwritten.
-  private _appendedFormulaColumnRuns(): ColumnRun[] {
-    const { appendedFormulaColIndexes } = this.writes;
-    return columnRuns(
-      this.fullTableColIndexes.filter((colIndex) =>
-        appendedFormulaColIndexes.has(colIndex),
-      ),
-    );
-  }
-  // Matches Sheets, which grows a Table ending on the grid's last row with the grid; one with appends queued sets its own range as they gather.
   growWithGridEdge(addedRowCount: number): void {
-    if (!this._endsOnWorkingGridEdge) return;
-    if (this._queuedRowAppendIndexes().length > 0) return;
-    const lastRowIndex = this.dataRowCount - 1;
-    const lastRowState =
-      lastRowIndex < 0 ? undefined : this.rowStates.get(lastRowIndex);
-    for (let offset = 1; offset <= addedRowCount; offset++) {
-      this.growDataRowCount();
-      if (lastRowState === undefined) continue;
-      this.rowStates.set(
-        lastRowIndex + offset,
-        this._carriedDownRowState(lastRowState),
-      );
-    }
-    this.writes.gridGrownRowCount += addedRowCount;
-  }
-  // A Table whose rows have moved can't say where it ends, and every row read on it throws anyway.
-  private get _endsOnWorkingGridEdge(): boolean {
-    const properties = this.tableProperties;
-    if (properties === undefined || properties.rowIndexesAreStale) return false;
-    return properties.endRowIndex === this.sheet.rowCount;
-  }
-  // As Sheets fills a grown row: each formula column's formula carried down, every other cell blank.
-  // Sheets and the fake decide per cell; row state holds no per-cell formula fact, so a column's sampled top row stands in for it.
-  private _carriedDownRowState(lastRowState: RowStateRaw): RowStateRaw {
-    return new Map(
-      Array.from(lastRowState, ([colIndex, { value }]) => {
-        const { isSampledFormula } = this.column(colIndex).profile;
-        return [colIndex, { value: isSampledFormula ? value : "" }];
-      }),
-    );
+    this.rowAppender.growWithGridEdge(addedRowCount);
   }
   assertDropdownStyleResetAllowed(): void {
     this.columnTypeGatherer.assertDropdownStyleResetAllowed();
@@ -766,45 +664,4 @@ export class TableRaw extends TableCommonRaw {
     }
     return row;
   }
-}
-
-type ColumnRun = [startColIndex: number, endColIndex: number];
-
-// Ascending indexes, so each run of neighbours becomes one range.
-function columnRuns(colIndexes: number[]): ColumnRun[] {
-  return colIndexes.reduce<ColumnRun[]>((runs, colIndex) => {
-    const lastRun = runs.at(-1);
-    if (lastRun !== undefined && lastRun[1] === colIndex) {
-      lastRun[1] = colIndex + 1;
-    } else {
-      runs.push([colIndex, colIndex + 1]);
-    }
-    return runs;
-  }, []);
-}
-
-function columnRunCopies(
-  source: BoundedGridRange,
-  destination: BoundedGridRange,
-  runs: ColumnRun[],
-  pasteType: CopyPasteType,
-): CopyPasteOperation[] {
-  return runs.map(([startColIndex, endColIndex]) => ({
-    kind: "copyPaste",
-    source: columnRun(source, startColIndex, endColIndex),
-    destination: columnRun(destination, startColIndex, endColIndex),
-    pasteType,
-  }));
-}
-
-function columnRun(
-  rows: BoundedGridRange,
-  startColIndex: number,
-  endColIndex: number,
-): BoundedGridRange {
-  return {
-    ...rows,
-    startColumnIndex: SheetIndex.col(rows.startColumnIndex + startColIndex),
-    endColumnIndex: SheetIndex.col(rows.startColumnIndex + endColIndex),
-  };
 }
