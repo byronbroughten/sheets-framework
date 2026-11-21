@@ -1,6 +1,6 @@
 import { Arr, type BlockMove } from "@byronbroughten/utils/arr";
 
-import type { ColumnMoveSpan } from "../02_SpreadsheetRaw/ClassTypes/StateRaw";
+import type { ColumnMoveSpan } from "../../02_SpreadsheetRaw/ClassTypes/StateRaw";
 
 export interface ColumnOrderMove {
   columnId: string;
