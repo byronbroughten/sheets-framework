@@ -1,5 +1,6 @@
-import { a1Notation } from "./a1Notation";
+import { a1Notation, type CellReference } from "./a1Notation";
 import type { BandChange, DimensionShift } from "./fakeGrid";
+import { ruleFormulas } from "./ruleFormulas";
 import { unreplayed } from "./unreplayed";
 
 type ConditionalFormatRule =
@@ -27,13 +28,14 @@ export interface BandColumnRuleShift extends BandRuleShift {
 // Beside the band left of the change, moved with its columns, across the change point over a whole Table, or out of the band.
 type RulePlacement = "before" | "moved" | "spanning" | "outside";
 
-interface PlacedRule extends BandColumnRuleShift {
+interface PlacedRule extends BandRuleShift {
   placement: RulePlacement;
+  // The range a relative reference reads from; empty for a rule outside the band with several ranges.
+  range: GridRange;
 }
 
 export const ruleOwner = "conditional-format rule";
 
-const cellReferences = new RegExp(a1Notation.cellReference, "g");
 // A whole-column (D:D) or whole-row (5:5) range, or a reference qualified by a sheet name.
 const unmeasuredReference =
   /(?<![A-Za-z0-9_])\$?[A-Z]{1,3}:\$?[A-Z]{1,3}(?![0-9A-Za-z_(])|(?<![A-Za-z0-9_])\$?\d+:\$?\d+|!/;
@@ -86,12 +88,7 @@ export const bandColumnRules = {
     // Several ranges give a relative reference no one origin, so one reaching the band throws, as over no bounds.
     let range: GridRange = {};
     if (ranges.length === 1) range = ranges[0] ?? {};
-    return withFormulasShifted({
-      ...ruleShift,
-      range,
-      tableColumnSpans: [],
-      placement: "outside",
-    });
+    return withFormulasShifted({ ...ruleShift, range, placement: "outside" });
   },
 };
 
@@ -125,40 +122,22 @@ function isOverWholeTable({
 }
 
 function withFormulasShifted(placed: PlacedRule): ConditionalFormatRule {
-  const { rule } = placed;
-  const condition = rule.booleanRule?.condition;
-  if (condition?.values === undefined) return rule;
-  const values = condition.values.map((value) => {
-    const formula = value.userEnteredValue;
-    if (formula?.startsWith("=") !== true) return value;
-    return { ...value, userEnteredValue: shiftedFormula(formula, placed) };
-  });
-  return {
-    ...rule,
-    booleanRule: { ...rule.booleanRule, condition: { ...condition, values } },
-  };
+  return ruleFormulas.mapped(placed.rule, (formula) =>
+    shiftedFormula(formula, placed),
+  );
 }
 
 // Measured: an $-anchored column stays as written; a relative one moves with its column unless deleted.
 function shiftedFormula(formula: string, placed: PlacedRule): string {
-  return a1Notation.mapOutsideLiterals(formula, (part) => {
+  for (const part of a1Notation.outsideLiterals(formula)) {
     const unmeasured = unmeasuredReference.exec(part);
     if (unmeasured !== null) {
       throw unreplayedReference(unmeasured[0], placed);
     }
-    return part.replace(
-      cellReferences,
-      (reference, anchor: string, letters: string, row: string) =>
-        shiftedReference({ reference, anchor, letters, row }, placed),
-    );
-  });
-}
-
-interface CellReference {
-  reference: string;
-  anchor: string;
-  letters: string;
-  row: string;
+  }
+  return a1Notation.mapCellReferences(formula, (cellReference) =>
+    shiftedReference(cellReference, placed),
+  );
 }
 
 function shiftedReference(
@@ -168,7 +147,7 @@ function shiftedReference(
   const { reference, anchor, letters, row } = cellReference;
   const { change, shift, placement } = placed;
   if (placement === "before" || placement === "outside") {
-    return outsideReference(cellReference, placed);
+    return referenceFollowingBand(cellReference, placed);
   }
   const colIndex = a1Notation.columnIndex(letters);
   if (colIndex < change.startIndex) return reference;
@@ -187,7 +166,7 @@ function shiftedReference(
 }
 
 // Measured (Scratch353F and G): a reference into the band follows its column, whatever its anchors, unless deleted.
-function outsideReference(
+function referenceFollowingBand(
   { reference, anchor, letters, row }: CellReference,
   placed: PlacedRule,
 ): string {

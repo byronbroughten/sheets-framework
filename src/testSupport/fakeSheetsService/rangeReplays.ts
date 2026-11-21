@@ -11,6 +11,7 @@ import {
   fakeSpreadsheet,
   type FakeTableState,
 } from "./fakeSpreadsheet";
+import { ruleFormulas } from "./ruleFormulas";
 
 type Response = GoogleAppsScript.Sheets.Schema.Response;
 type GridRange = GoogleAppsScript.Sheets.Schema.GridRange;
@@ -213,8 +214,6 @@ interface PasteRanges {
   destination: BoundedRange;
 }
 
-const cellReferences = new RegExp(a1Notation.cellReference, "g");
-
 const ruleCutRefusal =
   "The fake Sheets service does not replay a cutPaste under a conditional-format rule, other than a sideways cut inside a whole-Table rule naming no cut or pasted column, or naming one on a one-column cut to the right, the pasted column only $-anchored.";
 
@@ -269,37 +268,25 @@ function withPasteReferencesShifted(
   const isOneColumnRight =
     width === 1 && source.endColumnIndex <= destination.startColumnIndex;
   if (!isOneColumnRight) throw new Error(ruleCutRefusal);
-  const condition = rule.booleanRule?.condition;
-  const values = (condition?.values ?? []).map((value) => {
-    const formula = value.userEnteredValue;
-    if (formula === undefined) return value;
-    return {
-      ...value,
-      userEnteredValue: a1Notation.mapOutsideLiterals(formula, (part) =>
-        part.replace(
-          cellReferences,
-          (reference, anchor: string, letters: string, row: string) => {
-            const colIndex = a1Notation.columnIndex(letters);
-            if (!isInColumns(destination, colIndex)) return reference;
-            if (anchor !== "$") throw new Error(ruleCutRefusal);
-            return `$${a1Notation.columnLetters(colIndex + width)}${row}`;
-          },
-        ),
-      ),
-    };
-  });
-  return {
-    ...rule,
-    booleanRule: { ...rule.booleanRule, condition: { ...condition, values } },
-  };
+  return ruleFormulas.mapped(rule, (formula) =>
+    a1Notation.mapCellReferences(
+      formula,
+      ({ reference, anchor, letters, row }) => {
+        const colIndex = a1Notation.columnIndex(letters);
+        if (!isInColumns(destination, colIndex)) return reference;
+        if (anchor !== "$") throw new Error(ruleCutRefusal);
+        return `$${a1Notation.columnLetters(colIndex + width)}${row}`;
+      },
+    ),
+  );
 }
 
 function ruleColumnIndexes(rule: ConditionalFormatRule): number[] {
   const values = rule.booleanRule?.condition?.values ?? [];
   return values.flatMap((value) =>
-    [...(value.userEnteredValue ?? "").matchAll(cellReferences)].map(
-      ([, , letters = "A"]) => a1Notation.columnIndex(letters),
-    ),
+    a1Notation
+      .cellReferencesIn(value.userEnteredValue ?? "")
+      .map(({ letters }) => a1Notation.columnIndex(letters)),
   );
 }
 
