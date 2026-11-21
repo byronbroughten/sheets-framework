@@ -1615,6 +1615,39 @@ describe("stubSheetsService replays rules under a Table-bounded column move as m
     );
   });
 
+  it.each(["=A5>0", "=E5>0"])(
+    "throws on a rule outside the cut whose formula %s names a cut or pasted column",
+    (formula) => {
+      stubSheetsService({
+        sheets: [
+          {
+            ...measuredRuleSheet(),
+            conditionalFormats: [formulaRule("B5:B7", formula)],
+          },
+        ],
+      });
+
+      expect(() => send(cutFirstColumnOntoLast)).toThrowError(
+        "The fake Sheets service does not replay a cutPaste under a conditional-format rule outside the cut whose formula names a cut or pasted column, a shape not yet measured.",
+      );
+    },
+  );
+
+  it("leaves a rule outside the cut whose formula names neither the cut nor the pasted columns as written", () => {
+    const { grid } = stubSheetsService({
+      sheets: [
+        {
+          ...measuredRuleSheet(),
+          conditionalFormats: [formulaRule("B5:B7", "=C5>0")],
+        },
+      ],
+    });
+
+    send(cutFirstColumnOntoLast);
+
+    expect(measuredRules(grid)).toEqual([formulaRule("B5:B7", "=C5>0")]);
+  });
+
   it("leaves all four rules matching the columns' new places once the whole-row rule is updated at its index (Scratch217K)", () => {
     const { grid } = stubSheetsService({ sheets: [measuredRuleSheet()] });
 

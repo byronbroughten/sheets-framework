@@ -214,8 +214,11 @@ interface PasteRanges {
   destination: BoundedRange;
 }
 
-const ruleCutRefusal =
-  "The fake Sheets service does not replay a cutPaste under a conditional-format rule, other than a sideways cut inside a whole-Table rule naming no cut or pasted column, or naming one on a one-column cut to the right, the pasted column only $-anchored.";
+const ruleCutRefusals = {
+  cut: "The fake Sheets service does not replay a cutPaste under a conditional-format rule, other than a sideways cut inside a whole-Table rule naming no cut or pasted column, or naming one on a one-column cut to the right, the pasted column only $-anchored.",
+  outside:
+    "The fake Sheets service does not replay a cutPaste under a conditional-format rule outside the cut whose formula names a cut or pasted column, a shape not yet measured.",
+} as const;
 
 function cutRules(
   sheet: FakeSheetState,
@@ -225,15 +228,17 @@ function cutRules(
     const isCut = (rule.ranges ?? []).some((range) =>
       overlaps(fakeGrid.boundedRange(sheet, range), move.source),
     );
-    if (!isCut) return rule;
-    if (!isSidewaysInWholeTable(sheet, rule, move)) {
-      throw new Error(ruleCutRefusal);
-    }
     const isNamingMove = ruleColumnIndexes(rule).some(
       (colIndex) =>
         isInColumns(move.source, colIndex) ||
         isInColumns(move.destination, colIndex),
     );
+    // Unmeasured: no scratch has cut a column a rule outside the cut names, so throw rather than guess.
+    if (!isCut && isNamingMove) throw new Error(ruleCutRefusals.outside);
+    if (!isCut) return rule;
+    if (!isSidewaysInWholeTable(sheet, rule, move)) {
+      throw new Error(ruleCutRefusals.cut);
+    }
     if (!isNamingMove) return rule;
     return withPasteReferencesShifted(rule, move);
   });
@@ -267,14 +272,14 @@ function withPasteReferencesShifted(
   const width = destination.endColumnIndex - destination.startColumnIndex;
   const isOneColumnRight =
     width === 1 && source.endColumnIndex <= destination.startColumnIndex;
-  if (!isOneColumnRight) throw new Error(ruleCutRefusal);
+  if (!isOneColumnRight) throw new Error(ruleCutRefusals.cut);
   return ruleFormulas.mapped(rule, (formula) =>
     a1Notation.mapCellReferences(
       formula,
       ({ reference, anchor, letters, row }) => {
         const colIndex = a1Notation.columnIndex(letters);
         if (!isInColumns(destination, colIndex)) return reference;
-        if (anchor !== "$") throw new Error(ruleCutRefusal);
+        if (anchor !== "$") throw new Error(ruleCutRefusals.cut);
         return `$${a1Notation.columnLetters(colIndex + width)}${row}`;
       },
     ),
