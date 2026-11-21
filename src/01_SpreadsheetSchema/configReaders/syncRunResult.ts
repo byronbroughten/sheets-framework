@@ -1,11 +1,12 @@
 // What one `sync` run did or would do, as `SyncRunReport` prints it. Facts, apart from the few phrases a producer words: a stop's label and cause, a send's what, a sent summary.
+import type { FlushStoppedOutcome } from "./flushStoppedOutcome";
 
 export type SyncRunResult = SyncDryRunResult | SyncSendResult;
 
 export interface SyncDryRunResult extends SyncRunCommon {
   mode: "dry run";
   outcome: SyncDryRunOutcome;
-  held?: SyncHeld;
+  held?: DryRunHeld;
 }
 
 export interface SyncSendResult extends SyncRunCommon {
@@ -49,46 +50,12 @@ export type SyncSendOutcome =
   | { kind: "stopped" }
   | { kind: "refused" }
   | SyncSentOutcome
-  | SyncFlushStoppedOutcome;
-
-// A send stopped at a flush the entered-data gate held, Google refused or, for the fill's own send, failed.
-export type SyncFlushStoppedOutcome =
-  SyncStoppedBeforeSendingOutcome | SyncStoppedPartwayOutcome;
+  | FlushStoppedOutcome;
 
 export interface SyncSentOutcome {
   kind: "sent";
   summary: string;
 }
-
-export type SyncStoppedBeforeSendingOutcome = {
-  kind: "stoppedBeforeSending";
-} & SyncStopCause;
-
-export type SyncStoppedPartwayOutcome = {
-  kind: "stoppedPartway";
-} & SyncLandedFlushes &
-  SyncStopCause;
-
-export interface SyncLandedFlushes {
-  // At least 1 on a partway stop: a send stopped at its first flush is stoppedBeforeSending, since nothing in it landed.
-  landedFlushes: number;
-  // The dry run's flush count, from its held file; absent when the send had none to read.
-  flushCount?: number;
-}
-
-export type SyncStopCause = SyncRefusedCause | SyncFillFailedCause;
-
-// The gate held the flush, or Google refused its batch whole, in the reworded text that names the Tables.
-export type SyncRefusedCause =
-  { heldBy: SyncHeldBy } | { googleRefusal: string };
-
-// The Fill Row IDs send after the regen threw, by its error's message; the run still writes its files.
-export interface SyncFillFailedCause {
-  fillFailure: string;
-}
-
-// "uncovered": the send had no --confirm; "mismatched": the sheet or plan changed since the dry run.
-export type SyncHeldBy = "uncovered" | "mismatched";
 
 // Names a Table, a column or a tab by codebase name, as alterations.ts keys it.
 export type SyncSubject = SyncTableSubject | SyncTabSubject;
@@ -384,13 +351,14 @@ export interface SyncUnmodelableRuleStop {
   handle: string;
 }
 
-export interface SyncHeld {
-  groups: SyncHeldGroup[];
+// A dry run's held items, sync's or a chore's: what the entered-data gate holds until --confirm names the token.
+export interface DryRunHeld {
+  groups: HeldGroup[];
   token: string;
   fullListPath: string;
 }
 
-export interface SyncHeldGroup {
+export interface HeldGroup {
   // Absent for a held item no Table or tab names, such as a find-and-replace.
   subject?: SyncSubject;
   what: string;

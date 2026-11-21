@@ -1,6 +1,6 @@
 import { Val } from "@byronbroughten/utils/val";
 
-import type { SyncHeldGroup } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
+import type { HeldGroup } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
 import type {
   HeldCell,
   HeldItem,
@@ -18,7 +18,7 @@ type OtherItemOf<KN extends OtherItem["kind"]> = Extract<
 const listedCellLimit = 20;
 
 // The dry run's held items as the report groups them: cells per Table, column and kind, and one group per other item.
-export function heldGroups(flushes: HeldItem[][]): SyncHeldGroup[] {
+export function heldGroups(flushes: HeldItem[][]): HeldGroup[] {
   const items = flushes.flat();
   const cellGroups = items
     .filter(isCellItem)
@@ -34,7 +34,7 @@ export function heldGroups(flushes: HeldItem[][]): SyncHeldGroup[] {
     }, new Map());
   return [
     ...[...cellGroups.values()].map(cellGroup),
-    ...items.flatMap((item): SyncHeldGroup[] =>
+    ...items.flatMap((item): HeldGroup[] =>
       isCellItem(item) ? [] : [otherGroup(item)],
     ),
   ];
@@ -54,7 +54,7 @@ const cellGroupWhat: Record<
     `the send writes ${cells} ${cellWord} no read covered, so they may hold entered data:`,
 };
 
-function cellGroup(items: CellItem[]): SyncHeldGroup {
+function cellGroup(items: CellItem[]): HeldGroup {
   const { cell, kind } = Val.assert(items[0], "held cell group's first cell");
   const cells = items.length;
   const cellWord = cells === 1 ? "cell" : "cells";
@@ -80,7 +80,7 @@ function cellSubject({
   table,
   column,
   sheetGid,
-}: HeldCell): Pick<SyncHeldGroup, "subject"> {
+}: HeldCell): Pick<HeldGroup, "subject"> {
   if (table === undefined) {
     return { subject: { tab: `gid ${sheetGid}`, path: column } };
   }
@@ -102,7 +102,7 @@ function rowLabel(row: HeldRow): string {
 }
 
 const otherGroupByKind: {
-  [KN in OtherItem["kind"]]: (item: OtherItemOf<KN>) => SyncHeldGroup;
+  [KN in OtherItem["kind"]]: (item: OtherItemOf<KN>) => HeldGroup;
 } = {
   dropdownReset: ({ table }) => ({
     subject: { table },
@@ -130,8 +130,8 @@ const otherGroupByKind: {
 
 function otherGroup<KN extends OtherItem["kind"]>(
   item: OtherItemOf<KN> & { kind: KN },
-): SyncHeldGroup {
-  const build: (item: OtherItemOf<KN>) => SyncHeldGroup =
+): HeldGroup {
+  const build: (item: OtherItemOf<KN>) => HeldGroup =
     otherGroupByKind[item.kind];
   return build(item);
 }

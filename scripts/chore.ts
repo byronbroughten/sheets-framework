@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import type { SheetsHttpTransport } from "../src/00_Source/GoogleSheets/GoogleSheetsAPI.ts";
 import type { HeldFlushRefusal } from "../src/00_Source/RawSource/HeldFlushRefusal.ts";
 import type { Configs } from "../src/01_SpreadsheetSchema/configReaders/configRegister.ts";
-import type { SyncHeld } from "../src/01_SpreadsheetSchema/configReaders/syncRunResult.ts";
+import type { DryRunHeld } from "../src/01_SpreadsheetSchema/configReaders/syncRunResult.ts";
 import type { Chore } from "../src/chores/Chore.ts";
 import type { NodeHost } from "../src/nodeHost/NodeHost.ts";
 import { ChoreIndex } from "./choreIndex.ts";
@@ -158,11 +158,11 @@ export class ChoreRunner {
     return path;
   }
   // Only a dry run prints the held list and its token, and writes every held item with its value to the held file.
-  async _dryRunHeld({ heldList }: NodeHost): Promise<SyncHeld | undefined> {
+  async _dryRunHeld({ heldList }: NodeHost): Promise<DryRunHeld | undefined> {
     if (this.isSending || heldList === undefined) return undefined;
     return this.heldFile.dryRunHeld(heldList, this.target);
   }
-  _report({ summary }: NodeHost, held: SyncHeld | undefined): void {
+  _report({ summary }: NodeHost, held: DryRunHeld | undefined): void {
     if (summary.isEmpty) {
       console.log("\nThis chore wrote nothing.");
       return;
@@ -175,24 +175,25 @@ export class ChoreRunner {
     console.log(`\n${summary.count} request(s).${this._nextStep(held)}`);
   }
   // A dry run that held items points at the held section's rerun instead, since a plain --send would be refused.
-  _nextStep(held: SyncHeld | undefined): string {
+  _nextStep(held: DryRunHeld | undefined): string {
     if (this.isSending || held !== undefined) return "";
     return " Re-run with `-- --send` to apply.";
   }
   async _reportRefusal(refusal: HeldFlushRefusal): Promise<void> {
     const { heldStoppedOutcome } =
       await import("../src/01_SpreadsheetSchema/configReaders/flushStoppedOutcome.ts");
-    const { flushStoppedLine, rerunDryRunLine } =
-      await import("../src/nodeHost/SyncRunReport.ts");
-    console.log(`\n${flushStoppedLine(heldStoppedOutcome(refusal))}`);
-    console.log(rerunDryRunLine(`npm run chore ${this.choreName}`));
+    const { GateReport } = await import("../src/nodeHost/GateReport.ts");
+    console.log(
+      `\n${GateReport.flushStoppedLine(heldStoppedOutcome(refusal))}`,
+    );
+    console.log(GateReport.rerunDryRunLine(`npm run chore ${this.choreName}`));
     process.exitCode = 1;
   }
 }
 
-async function reportHeld(held: SyncHeld): Promise<void> {
-  const { heldSection } = await import("../src/nodeHost/SyncRunReport.ts");
-  console.log(heldSection(held).join("\n"));
+async function reportHeld(held: DryRunHeld): Promise<void> {
+  const { GateReport } = await import("../src/nodeHost/GateReport.ts");
+  console.log(GateReport.heldSection(held).join("\n"));
 }
 
 export async function runChore(
