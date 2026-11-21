@@ -1066,9 +1066,20 @@ describe("SyncRunReport's new-Table and new-tab stops", () => {
         existing: "charges",
         gid: 4217,
       },
+      {
+        kind: "tabTitleRepeated",
+        title: "Ledger",
+        paths: ["newTabs[0]", "newTabs[2]"],
+      },
     ],
   });
   const stoppedText = stopped.join("\n");
+
+  it("names the repeated tab title and each entry giving it", () => {
+    expect(stoppedText).toContain(
+      'STOP 3 · new tab "Ledger"\n  newTabs[0], newTabs[2] give one title\'s codebase name. Give each new tab its own title, or merge the entries.\n  The entries stay in alterations.ts.',
+    );
+  });
 
   it("names the new Table, the live one and its ID", () => {
     expect(stoppedText).toContain(
@@ -1084,7 +1095,7 @@ describe("SyncRunReport's new-Table and new-tab stops", () => {
 
   it("counts each kind of stop", () => {
     expect(resultLine(stopped)).toBe(
-      "STOPPED: 1 new Table name taken and 1 new tab title taken. Nothing was sent, and nothing will be until they are resolved.",
+      "STOPPED: 1 new Table name taken and 1 new tab title taken and 1 new tab title repeated. Nothing was sent, and nothing will be until they are resolved.",
     );
   });
 });

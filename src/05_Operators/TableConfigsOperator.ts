@@ -143,7 +143,7 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
     });
     return [...perTable, ...this._tabTitleRepeatedStops(newTables)];
   }
-  // Since #331 a new tab's Tables are placed by its title, so a repeated title would quietly merge two entries into one tab.
+  // Since #331 a new tab's Tables are placed by its title, so a repeated title would quietly merge two entries into one tab, and a case-only difference would make two tabs with one codebase name.
   private _tabTitleRepeatedStops(
     newTables: PlannedNewTable[],
   ): SyncTabTitleRepeatedStop[] {
