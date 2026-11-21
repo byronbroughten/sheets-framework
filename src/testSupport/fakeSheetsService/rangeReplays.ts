@@ -155,67 +155,183 @@ export const rangeReplays = {
         ] ?? null,
       );
     });
-    for (const table of sheet.tables) {
-      moveTableColumnFacts({ table, source, colOffset });
+    for (const table of tablesWithColumnsLifted(sheet, source)) {
+      carryTableColumns({
+        spreadsheet,
+        sheet,
+        table,
+        move: { source, destination },
+      });
     }
     return {};
   },
 };
-
-interface TableColumnCut {
-  table: FakeTableState;
-  source: BoundedRange;
-  colOffset: number;
-}
-
-// Only a cut lifting a Table's whole columns was measured; it carries their column facts.
-function moveTableColumnFacts({
-  table,
-  source,
-  colOffset,
-}: TableColumnCut): void {
-  const holdsColumns =
-    source.startRowIndex <= table.startRowIndex &&
-    table.endRowIndex <= source.endRowIndex &&
-    table.startColumnIndex <= source.startColumnIndex &&
-    source.endColumnIndex <= table.endColumnIndex;
-  if (!holdsColumns) return;
-  function isLifted(colIndex: number): boolean {
-    return (
-      source.startColumnIndex <= colIndex && colIndex < source.endColumnIndex
-    );
-  }
-  function moved<FT>(
-    byColumn: Record<number, FT> | undefined,
-  ): Record<number, FT> | undefined {
-    if (byColumn === undefined) return undefined;
-    const entries = Object.entries(byColumn).map(
-      ([key, fact]): [number, FT] => [Number(key), fact],
-    );
-    const kept = entries.filter(([colIndex]) => !isLifted(colIndex));
-    const carried = entries
-      .filter(([colIndex]) => isLifted(colIndex))
-      .map(([colIndex, fact]): [number, FT] => [colIndex + colOffset, fact]);
-    const carriedIndexes = new Set(carried.map(([colIndex]) => colIndex));
-    return Object.fromEntries([
-      ...kept.filter(([colIndex]) => !carriedIndexes.has(colIndex)),
-      ...carried,
-    ]);
-  }
-  table.columnTypes = moved(table.columnTypes);
-  table.columnValidationValues = moved(table.columnValidationValues);
-  table.columnValidationConditionTypes = moved(
-    table.columnValidationConditionTypes,
-  );
-}
 
 interface PasteRanges {
   source: BoundedRange;
   destination: BoundedRange;
 }
 
+interface TableColumnCut {
+  spreadsheet: FakeSpreadsheet;
+  sheet: FakeSheetState;
+  table: FakeTableState;
+  move: PasteRanges;
+}
+
+// Only a cut lifting a Table's whole columns was measured.
+function tablesWithColumnsLifted(
+  sheet: FakeSheetState,
+  source: BoundedRange,
+): FakeTableState[] {
+  return sheet.tables.filter(
+    (table) => coversRows(source, table) && coversColumns(table, source),
+  );
+}
+
+// Measured live: a cut inside a Table carries its columns' facts; Scratch353D's paste out of the Table made a new one-column Table over it.
+function carryTableColumns({
+  spreadsheet,
+  sheet,
+  table,
+  move,
+}: TableColumnCut): void {
+  const facts = tableColumnFacts(table, move);
+  if (coversColumns(table, move.destination)) {
+    Object.assign(table, facts.merged);
+    return;
+  }
+  if (!isLastColumnToBefore(table, move)) {
+    throw new Error(
+      "The fake Sheets service does not replay a cutPaste of a Table's columns out of the Table, other than its last column to just before it.",
+    );
+  }
+  Object.assign(table, facts.kept);
+  sheet.tables.push({
+    tableId: `fake-table-${sheet.sheetId}-cut-${sheet.tables.length}`,
+    name: newTableName(spreadsheet),
+    startRowIndex: table.startRowIndex,
+    endRowIndex: table.endRowIndex,
+    startColumnIndex: move.destination.startColumnIndex,
+    endColumnIndex: move.destination.endColumnIndex,
+    ...facts.carried,
+  });
+}
+
+type ColumnFacts = Pick<
+  FakeTableState,
+  "columnTypes" | "columnValidationValues" | "columnValidationConditionTypes"
+>;
+
+// The facts the cut leaves, those it carries, and both together where the paste lands inside the Table.
+interface TableColumnFacts {
+  kept: ColumnFacts;
+  carried: ColumnFacts;
+  merged: ColumnFacts;
+}
+
+function tableColumnFacts(
+  table: FakeTableState,
+  { source, destination }: PasteRanges,
+): TableColumnFacts {
+  const colOffset = destination.startColumnIndex - source.startColumnIndex;
+  const types = splitColumnFacts(table.columnTypes, source, colOffset);
+  const values = splitColumnFacts(
+    table.columnValidationValues,
+    source,
+    colOffset,
+  );
+  const conditionTypes = splitColumnFacts(
+    table.columnValidationConditionTypes,
+    source,
+    colOffset,
+  );
+  return {
+    kept: {
+      columnTypes: types?.kept,
+      columnValidationValues: values?.kept,
+      columnValidationConditionTypes: conditionTypes?.kept,
+    },
+    carried: {
+      columnTypes: types?.carried,
+      columnValidationValues: values?.carried,
+      columnValidationConditionTypes: conditionTypes?.carried,
+    },
+    merged: {
+      columnTypes: mergedColumnFacts(types),
+      columnValidationValues: mergedColumnFacts(values),
+      columnValidationConditionTypes: mergedColumnFacts(conditionTypes),
+    },
+  };
+}
+
+// Inferred: Scratch353D's one existing Table gave Table2, so n is one past the spreadsheet's Table count.
+function newTableName(spreadsheet: FakeSpreadsheet): string {
+  const name = `Table${tableCount(spreadsheet) + 1}`;
+  const isTaken = spreadsheet.sheets.some((sheet) =>
+    sheet.tables.some((table) => table.name === name),
+  );
+  if (isTaken) {
+    throw new Error(
+      `The fake Sheets service does not replay a cutPaste making a new Table when ${name} is already taken, a name no scratch has measured.`,
+    );
+  }
+  return name;
+}
+
+// A one-column cut of a span's last column onto the column just left of it, as Scratch353D did.
+function isLastColumnToBefore(span: BoundedRange, move: PasteRanges): boolean {
+  const { source, destination } = move;
+  return (
+    source.endColumnIndex - source.startColumnIndex === 1 &&
+    source.endColumnIndex === span.endColumnIndex &&
+    destination.endColumnIndex === span.startColumnIndex &&
+    source.startRowIndex === destination.startRowIndex
+  );
+}
+
+function tableCount(spreadsheet: FakeSpreadsheet): number {
+  return spreadsheet.sheets.reduce(
+    (count, sheet) => count + sheet.tables.length,
+    0,
+  );
+}
+
+interface SplitColumnFacts<FT> {
+  kept: Record<number, FT>;
+  carried: Record<number, FT>;
+}
+
+function splitColumnFacts<FT>(
+  byColumn: Record<number, FT> | undefined,
+  source: BoundedRange,
+  colOffset: number,
+): SplitColumnFacts<FT> | undefined {
+  if (byColumn === undefined) return undefined;
+  return Object.entries(byColumn).reduce<SplitColumnFacts<FT>>(
+    (split, [key, fact]) => {
+      const colIndex = Number(key);
+      if (isInColumns(source, colIndex)) {
+        split.carried[colIndex + colOffset] = fact;
+      } else {
+        split.kept[colIndex] = fact;
+      }
+      return split;
+    },
+    { kept: {}, carried: {} },
+  );
+}
+
+// A carried fact replaces the one its destination column held.
+function mergedColumnFacts<FT>(
+  split: SplitColumnFacts<FT> | undefined,
+): Record<number, FT> | undefined {
+  if (split === undefined) return undefined;
+  return { ...split.kept, ...split.carried };
+}
+
 const ruleCutRefusals = {
-  cut: "The fake Sheets service does not replay a cutPaste under a conditional-format rule, other than a sideways cut inside a whole-Table rule naming no cut or pasted column, or naming one on a one-column cut to the right, the pasted column only $-anchored.",
+  cut: "The fake Sheets service does not replay a cutPaste under a conditional-format rule, other than a sideways cut inside a whole-Table rule naming no cut or pasted column, or naming one on a one-column cut to the right, the pasted column only $-anchored, or a whole-Table rule's last column cut to just before it, naming neither.",
   outside:
     "The fake Sheets service does not replay a cutPaste under a conditional-format rule outside the cut source, over the destination or not, whose formula names a cut or pasted column, a shape not yet measured.",
 } as const;
@@ -236,32 +352,57 @@ function cutRules(
     // Unmeasured: no scratch has cut a column a rule outside the cut source names, one over the destination included, so throw rather than guess.
     if (!isCut && isNamingMove) throw new Error(ruleCutRefusals.outside);
     if (!isCut) return rule;
-    if (!isSidewaysInWholeTable(sheet, rule, move)) {
-      throw new Error(ruleCutRefusals.cut);
-    }
+    const range = wholeTableRange(sheet, rule);
+    if (range === undefined) throw new Error(ruleCutRefusals.cut);
+    const isLeavingTable =
+      isLastColumnToBefore(range, move) && coversRows(move.source, range);
+    if (isLeavingTable && !isNamingMove) return withRangeOverPaste(rule, range);
+    if (!isSidewaysInRange(range, move)) throw new Error(ruleCutRefusals.cut);
     if (!isNamingMove) return rule;
     return withPasteReferencesShifted(rule, move);
   });
 }
 
-// Measured live (sheets-framework#217, Scratch217A; #353, Scratch353A to C): only this shape was seen.
-function isSidewaysInWholeTable(
+// The one range of a rule over a whole Table's columns.
+function wholeTableRange(
   sheet: FakeSheetState,
   rule: ConditionalFormatRule,
-  move: PasteRanges,
-): boolean {
-  const { source, destination } = move;
+): BoundedRange | undefined {
   const [range] = rule.ranges ?? [];
-  if (range === undefined || (rule.ranges ?? []).length > 1) return false;
-  if (source.startRowIndex !== destination.startRowIndex) return false;
+  if (range === undefined || (rule.ranges ?? []).length > 1) return undefined;
   const bounded = fakeGrid.boundedRange(sheet, range);
   const isOverWholeTable = sheet.tables.some(
     (table) =>
       table.startColumnIndex === bounded.startColumnIndex &&
       table.endColumnIndex === bounded.endColumnIndex,
   );
-  if (!isOverWholeTable) return false;
-  return coversColumns(bounded, source) && coversColumns(bounded, destination);
+  if (!isOverWholeTable) return undefined;
+  return bounded;
+}
+
+// Measured live (sheets-framework#217, Scratch217A; #353, Scratch353A to C): only this shape was seen.
+function isSidewaysInRange(range: BoundedRange, move: PasteRanges): boolean {
+  const { source, destination } = move;
+  if (source.startRowIndex !== destination.startRowIndex) return false;
+  return coversColumns(range, source) && coversColumns(range, destination);
+}
+
+// Inferred from Scratch353D's whole batch: the rule moves one column left, over the paste and off the emptied column, its formula as written.
+function withRangeOverPaste(
+  rule: ConditionalFormatRule,
+  range: BoundedRange,
+): ConditionalFormatRule {
+  const [gridRange] = rule.ranges ?? [];
+  return {
+    ...rule,
+    ranges: [
+      {
+        ...gridRange,
+        startColumnIndex: range.startColumnIndex - 1,
+        endColumnIndex: range.endColumnIndex - 1,
+      },
+    ],
+  };
 }
 
 // Measured (Scratch353A to C): a cut column's references stay as written; one into the paste takes the band insert's shift, which the fake's insert leaves out.

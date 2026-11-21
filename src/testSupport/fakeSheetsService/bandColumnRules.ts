@@ -25,7 +25,7 @@ export interface BandColumnRuleShift extends BandRuleShift {
   tableColumnSpans: [number, number][];
 }
 
-// Beside the band left of the change, moved with its columns, across the change point over a whole Table, or out of the band.
+// Beside the band left of the change, moved with its columns, over a whole Table across the change point or at an insert's column, or out of the band.
 type RulePlacement = "before" | "moved" | "spanning" | "outside";
 
 interface PlacedRule extends BandRuleShift {
@@ -68,7 +68,13 @@ export const bandColumnRules = {
         `a column delete over part of a ${ruleOwner} (${a1Notation.range(range)})`,
       );
     }
-    const moved = withFormulasShifted({ ...ruleShift, placement: "moved" });
+    // Inferred from Scratch353D's whole batch: an insert at a whole-Table rule's first column moves it with the Table, its anchored references as written.
+    const isInsertAtTableStart =
+      ruleShift.kind === "insert" &&
+      startColumnIndex === change.startIndex &&
+      isOverWholeTable(ruleShift);
+    const placement = isInsertAtTableStart ? "spanning" : "moved";
+    const moved = withFormulasShifted({ ...ruleShift, placement });
     return [
       {
         ...moved,
