@@ -1708,58 +1708,99 @@ describe("stubSheetsService replays the grid-edge measurements (sheets-framework
     ]);
   });
 
-  it("keeps the cells a move's insert pushes past the grid's last column, leaving the grid a blank column wider (Scratch337C)", () => {
-    const { grid } = stubSheetsService({
-      sheets: [
-        {
-          sheetId: edgeGid,
-          title: "Scratch337C",
-          rows: buildGridRows({
-            4: ["a1", "b1", "c1", "d1"],
-            5: ["a2", "b2", "c2", "d2"],
-            6: ["a3", "b3", "c3", "d3"],
-          }),
-          tables: [
-            edgeTable({
-              tableId: "s337c",
-              endRowIndex: 7,
-              headers: ["One", "Two", "Three", "Four"],
-              columnIds: ["c:1", "c:2", "c:3", "c:4"],
-            }),
-          ],
-        },
-      ],
-    });
+  it.each([
+    {
+      title: "Scratch364E",
+      place:
+        "on the grid's last column, keeping the cells its insert pushes past the edge and leaving the grid a blank column wider",
+      emptyColumnsPast: 0,
+      columnCount: 5,
+    },
+    {
+      title: "Scratch364R",
+      place: "with room past the Table, leaving the grid's size unchanged",
+      emptyColumnsPast: 6,
+      columnCount: 10,
+    },
+  ])(
+    "moves a Table's last column to second $place, the moved column keeping its header ($title)",
+    ({ title, emptyColumnsPast, columnCount }) => {
+      const { grid } = stubSheetsService({
+        sheets: [moveSheet(title, emptyColumnsPast)],
+      });
 
-    send(
-      {
-        insertRange: { range: edgeRange("B1:B7"), shiftDimension: "COLUMNS" },
-      },
-      {
-        cutPaste: {
-          source: edgeRange("E1:E7"),
-          destination: { sheetId: edgeGid, rowIndex: 0, columnIndex: 1 },
-          pasteType: "PASTE_NORMAL",
-        },
-      },
-      {
-        deleteRange: { range: edgeRange("E1:E7"), shiftDimension: "COLUMNS" },
-      },
-    );
+      sendLastColumnToSecond();
 
-    const sheet = grid.sheet(edgeGid);
-    expect(sheet.columnCount).toBe(5);
-    expect(edgeTableRanges(grid)).toEqual([edgeRange("A4:D7")]);
-    expect(sheet.values({ endRowIndex: 1, endColumnIndex: 5 })).toEqual([
-      ["c:1", "c:4", "c:2", "c:3", null],
-    ]);
-    expect(sheet.values({ startRowIndex: 4, endColumnIndex: 5 })).toEqual([
-      ["a1", "d1", "b1", "c1", null],
-      ["a2", "d2", "b2", "c2", null],
-      ["a3", "d3", "b3", "c3", null],
-    ]);
-  });
+      const sheet = grid.sheet(edgeGid);
+      expect(sheet.columnCount).toBe(columnCount);
+      expect(edgeTableRanges(grid)).toEqual([edgeRange("A4:D7")]);
+      expect(sheet.values({ endRowIndex: 1, endColumnIndex: 5 })).toEqual([
+        ["c:1", "c:4", "c:2", "c:3", null],
+      ]);
+      expect(sheet.values({ startRowIndex: 3, endColumnIndex: 5 })).toEqual([
+        ["One", "Four", "Two", "Three", null],
+        ["a1", "d1", "b1", "c1", null],
+        ["a2", "d2", "b2", "c2", null],
+        ["a3", "d3", "b3", "c3", null],
+      ]);
+      expect(edgeTableColumnNames(grid)).toEqual([
+        "One",
+        "Four",
+        "Two",
+        "Three",
+      ]);
+    },
+  );
 });
+
+// The Table #364 measured after putting back the header addTable had overwritten.
+function moveSheet(
+  title: string,
+  emptyColumnsPast: number,
+): FakeSheetProperties {
+  const empty = Array.from({ length: emptyColumnsPast }, () => null);
+  return {
+    sheetId: edgeGid,
+    title,
+    rows: buildGridRows({
+      4: ["a1", "b1", "c1", "d1", ...empty],
+      5: ["a2", "b2", "c2", "d2"],
+      6: ["a3", "b3", "c3", "d3"],
+    }),
+    tables: [
+      edgeTable({
+        tableId: "s364",
+        endRowIndex: 7,
+        headers: ["One", "Two", "Three", "Four"],
+        columnIds: ["c:1", "c:2", "c:3", "c:4"],
+      }),
+    ],
+  };
+}
+
+function sendLastColumnToSecond(): void {
+  send(
+    {
+      insertRange: { range: edgeRange("B1:B7"), shiftDimension: "COLUMNS" },
+    },
+    {
+      cutPaste: {
+        source: edgeRange("E1:E7"),
+        destination: { sheetId: edgeGid, rowIndex: 0, columnIndex: 1 },
+        pasteType: "PASTE_NORMAL",
+      },
+    },
+    {
+      deleteRange: { range: edgeRange("E1:E7"), shiftDimension: "COLUMNS" },
+    },
+  );
+}
+
+function edgeTableColumnNames(grid: FakeGridView): (string | undefined)[] {
+  return (grid.sheet(edgeGid).tables[0]?.columnProperties ?? []).map(
+    (column) => column.columnName,
+  );
+}
 
 describe("stubSheetsService replays copyPaste of format and validation", () => {
   const modelRow = bandRange({
