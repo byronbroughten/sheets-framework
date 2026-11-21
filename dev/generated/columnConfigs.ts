@@ -1,26 +1,6 @@
 import { makeColumnConfigs } from "@byronbroughten/sheets-framework";
 
 export const columnConfigs = makeColumnConfigs({
-  "spreadsheetConfig": {
-    "tableMenuSpace": { "columnId": "c:sscf:0xzKfv_", "header": "Table menu space", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null, "formula": null, "columnType": {"type":"TEXT","rule":null}, "actionRowCell": null, "groupHeading1": null },
-    "fillRowIdsTimeLastRan": { "columnId": "c:sscf:eV73Th5", "header": "Fill row IDs, time last ran", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null, "formula": null, "columnType": {"type":"TEXT","rule":null}, "actionRowCell": null, "groupHeading1": "Fill Row IDs" },
-    "fillRowIdsRunStatus": { "columnId": "c:sscf:ebB4-9S", "header": "Fill row IDs, run status", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null, "formula": null, "columnType": {"type":"TEXT","rule":null}, "actionRowCell": null, "groupHeading1": "Fill Row IDs" },
-    "syncConfigSheetRowsTimeLastRan": { "columnId": "c:sscf:pLBSdae", "header": "Sync config sheet rows, time last ran", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null, "formula": null, "columnType": {"type":"TEXT","rule":null}, "actionRowCell": null, "groupHeading1": "Sync Config Sheet Rows" },
-    "syncConfigSheetRowsRunStatus": { "columnId": "c:sscf:W-JABu_", "header": "Sync config sheet rows, run status", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null, "formula": null, "columnType": {"type":"TEXT","rule":null}, "actionRowCell": null, "groupHeading1": "Sync Config Sheet Rows" }
-  },
-  "tableConfig": {
-    "sheetTitle": { "columnId": "c:scf:0Ctj9xZ", "header": "Sheet title", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null, "formula": null, "columnType": {"type":"TEXT","rule":null}, "actionRowCell": null, "groupHeading1": null },
-    "letApiAccess": { "columnId": "c:scf:GOJ0ixi", "header": "Let api access", "valueName": "checkbox", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null, "formula": null, "columnType": {"type":"BOOLEAN","rule":null}, "actionRowCell": null, "groupHeading1": null },
-    "tableId": { "columnId": "c:scf:tableId", "header": "Table ID", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null, "formula": null, "columnType": {"type":"TEXT","rule":null}, "actionRowCell": null, "groupHeading1": null },
-    "tableName": { "columnId": "c:scf:tableName", "header": "Table name", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null, "formula": null, "columnType": {"type":"TEXT","rule":null}, "actionRowCell": null, "groupHeading1": null }
-  },
-  "columnConfig": {
-    "columnId": { "columnId": "c:ccf:vj9_rre", "header": "Column ID", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null, "formula": null, "columnType": {"type":"TEXT","rule":null}, "actionRowCell": null, "groupHeading1": null },
-    "header": { "columnId": "c:ccf:kqA31oK", "header": "Header", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null, "formula": null, "columnType": {"type":"TEXT","rule":null}, "actionRowCell": null, "groupHeading1": null },
-    "emptyValueAllowed": { "columnId": "c:ccf:volkLl6", "header": "Empty value allowed", "valueName": "checkbox", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null, "formula": null, "columnType": {"type":"BOOLEAN","rule":null}, "actionRowCell": null, "groupHeading1": null },
-    "tableId": { "columnId": "c:ccf:tableId", "header": "Table ID", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null, "formula": null, "columnType": {"type":"TEXT","rule":null}, "actionRowCell": null, "groupHeading1": null },
-    "tableName": { "columnId": "c:ccf:tableName", "header": "Table name", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null, "formula": null, "columnType": {"type":"TEXT","rule":null}, "actionRowCell": null, "groupHeading1": null }
-  },
   "valueConfig": {
     "exampleValue": { "columnId": "c:vcf:AYSrgZf", "header": "Example value", "valueName": "string", "isFormula": false, "emptyValueAllowed": false, "customDefaultValue": null, "formula": null, "columnType": {"type":"TEXT","rule":null}, "actionRowCell": null, "groupHeading1": null }
   },

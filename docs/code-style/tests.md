@@ -20,7 +20,7 @@ The fake replays every request kind onto its fixture and hands the test a `grid`
 
 ## Real schema data over invented literals
 
-A draft rule, proposed like the general ones. Use real, already-committed schema data over invented literals wherever the code under test resolves identifiers through the actual schema (column IDs via `columnConfigs.sheetConfig.x.columnId`, real sheet gids). This stops a test from passing against a shape that doesn't exist in production.
+A draft rule, proposed like the general ones. Use real, already-committed schema data over invented literals wherever the code under test resolves identifiers through the actual schema (column IDs via `columnConfigs.item.x.columnId`, real sheet gids). This stops a test from passing against a shape that doesn't exist in production.
 
 ## Exemplar columns for type-level tests
 

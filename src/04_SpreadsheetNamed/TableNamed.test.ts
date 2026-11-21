@@ -882,8 +882,8 @@ describe("TableNamed.rowIdByName", () => {
       ss.table("valueTypes").rowIdByName("Widget B");
       // @ts-expect-error log has neither.
       ss.table("log").rowIdByName("Widget B");
-      // @ts-expect-error spreadsheetConfig has neither.
-      ss.table("spreadsheetConfig").prepFetchRowIdAndName();
+      // @ts-expect-error log has neither.
+      ss.table("log").prepFetchRowIdAndName();
     }
     expect(neverCalled).toBeTypeOf("function");
   });
