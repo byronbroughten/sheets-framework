@@ -1,9 +1,9 @@
 import type {
   ModelledConditionType,
   NumberConditionType,
-} from "../../00_Source/RawSource/ConditionalFormat";
-import type { ColumnTypeBaseline } from "../columnBaseline";
-import type { IdNameMapRegistered } from "./configRegister";
+} from "../../00_Source/RawSource/ConditionalFormat.ts";
+import type { ColumnTypeBaseline } from "../columnBaseline.ts";
+import type { IdNameMapRegistered } from "./configRegister.ts";
 
 type MapTables = IdNameMapRegistered["tables"];
 type MapTabs = IdNameMapRegistered["tabs"];

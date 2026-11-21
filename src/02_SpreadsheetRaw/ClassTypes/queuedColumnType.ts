@@ -1,9 +1,9 @@
 import type {
   TableColumnPropertiesAdd,
   TableColumnValidationRule,
-} from "../../00_Source/RawSource/RawSource";
-import type { ColumnTypeBaseline } from "../../01_SpreadsheetSchema/columnBaseline";
-import type { ColumnStateRaw, QueuedColumnType } from "./StateRaw";
+} from "../../00_Source/RawSource/RawSource.ts";
+import type { ColumnTypeBaseline } from "../../01_SpreadsheetSchema/columnBaseline.ts";
+import type { ColumnStateRaw, QueuedColumnType } from "./StateRaw.ts";
 
 // A queued column type is a bare type, which keeps the column's fetched rule, or a baseline, which sends its own.
 export const queuedColumnType = {

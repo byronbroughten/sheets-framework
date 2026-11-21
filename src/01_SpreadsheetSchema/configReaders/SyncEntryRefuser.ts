@@ -1,11 +1,14 @@
-import { hasApiAccess } from "./apiAccessChanges";
-import type { IdNameMapGeneric } from "./idNameMapTypes";
-import { BraceRefuser, type NewTableAt } from "./SyncEntryRefuser/BraceRefuser";
-import { NewColumnNames } from "./SyncEntryRefuser/NewColumnNames";
-import { PlacementsRefuser } from "./SyncEntryRefuser/PlacementsRefuser";
-import { RenamedColumnNames } from "./SyncEntryRefuser/RenamedColumnNames";
-import { RuleRefuser } from "./SyncEntryRefuser/RuleRefuser";
-import { sheetTraits, tabTraits } from "./SyncPlanner";
+import { hasApiAccess } from "./apiAccessChanges.ts";
+import type { IdNameMapGeneric } from "./idNameMapTypes.ts";
+import {
+  BraceRefuser,
+  type NewTableAt,
+} from "./SyncEntryRefuser/BraceRefuser.ts";
+import { NewColumnNames } from "./SyncEntryRefuser/NewColumnNames.ts";
+import { PlacementsRefuser } from "./SyncEntryRefuser/PlacementsRefuser.ts";
+import { RenamedColumnNames } from "./SyncEntryRefuser/RenamedColumnNames.ts";
+import { RuleRefuser } from "./SyncEntryRefuser/RuleRefuser.ts";
+import { sheetTraits, tabTraits } from "./SyncPlanner.ts";
 import {
   entriesOf,
   newColumnGroupColumnPath,
@@ -14,8 +17,8 @@ import {
   type WideAlterations,
   type WideNewTable,
   type WideTableEntry,
-} from "./SyncPlanner/wideAlterations";
-import type { SyncEntry, SyncRefusal } from "./syncRunResult";
+} from "./SyncPlanner/wideAlterations.ts";
+import type { SyncEntry, SyncRefusal } from "./syncRunResult.ts";
 
 export interface SyncEntryRefuserProps {
   alterations: WideAlterations;

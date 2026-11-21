@@ -1,11 +1,11 @@
-import type { SheetEdit } from "../00_Source/PlatformEvents/sheetEdit";
-import { SpreadsheetSchema } from "../01_SpreadsheetSchema/configReaders/SpreadsheetSchema";
-import { TableSchema } from "../01_SpreadsheetSchema/configReaders/TableSchema";
-import { SpreadsheetRaw } from "../02_SpreadsheetRaw/SpreadsheetRaw";
-import { SpreadsheetBaseIdentified } from "./ClassBases/SpreadsheetBaseIdentified";
-import { SpreadsheetTableValidatorIdentified } from "./SpreadsheetIdentified/SpreadsheetTableValidatorIdentified";
-import { TableIdentified } from "./TableIdentified";
-import type { GatherDataPrerequisitesProps } from "./TableIdentified/TableColumnResolverIdentified";
+import type { SheetEdit } from "../00_Source/PlatformEvents/sheetEdit.ts";
+import { SpreadsheetSchema } from "../01_SpreadsheetSchema/configReaders/SpreadsheetSchema.ts";
+import { TableSchema } from "../01_SpreadsheetSchema/configReaders/TableSchema.ts";
+import { SpreadsheetRaw } from "../02_SpreadsheetRaw/SpreadsheetRaw.ts";
+import { SpreadsheetBaseIdentified } from "./ClassBases/SpreadsheetBaseIdentified.ts";
+import { SpreadsheetTableValidatorIdentified } from "./SpreadsheetIdentified/SpreadsheetTableValidatorIdentified.ts";
+import { TableIdentified } from "./TableIdentified.ts";
+import type { GatherDataPrerequisitesProps } from "./TableIdentified/TableColumnResolverIdentified.ts";
 
 export class SpreadsheetIdentified extends SpreadsheetBaseIdentified {
   get schema(): SpreadsheetSchema {

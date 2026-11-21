@@ -1,19 +1,19 @@
 import { describe, expect, it } from "vitest";
 
-import { googleRawRequest } from "../00_Source/GoogleSheets/GoogleSheetsAPI";
-import { installedRawSource } from "../00_Source/RawSource/installedRawSource";
-import { expectedSheetLayout } from "./expectedSheetLayout";
+import { googleRawRequest } from "../00_Source/GoogleSheets/GoogleSheetsAPI.ts";
+import { installedRawSource } from "../00_Source/RawSource/installedRawSource.ts";
+import { expectedSheetLayout } from "./expectedSheetLayout.ts";
 import {
   buildGridRows,
   type FakeSheetProperties,
   type FakeTable,
   stubSheetsService,
-} from "./fakeSheetsService";
-import { a1Notation } from "./fakeSheetsService/a1Notation";
-import type { BoundedRange } from "./fakeSheetsService/fakeGrid";
-import type { FakeTablePlacement } from "./fakeSheetsService/fakeTables";
-import { fakeTableSheet } from "./fakeSheetsService/fakeTableSheet";
-import type { FakeGridView } from "./fakeSheetsService/gridView";
+} from "./fakeSheetsService.ts";
+import { a1Notation } from "./fakeSheetsService/a1Notation.ts";
+import type { BoundedRange } from "./fakeSheetsService/fakeGrid.ts";
+import type { FakeTablePlacement } from "./fakeSheetsService/fakeTables.ts";
+import { fakeTableSheet } from "./fakeSheetsService/fakeTableSheet.ts";
+import type { FakeGridView } from "./fakeSheetsService/gridView.ts";
 
 type Request = GoogleAppsScript.Sheets.Schema.Request;
 

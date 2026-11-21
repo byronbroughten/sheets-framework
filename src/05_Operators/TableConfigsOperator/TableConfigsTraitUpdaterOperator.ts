@@ -1,11 +1,11 @@
 import {
   type IntendedTrait,
   isTableDeletion,
-} from "../../01_SpreadsheetSchema/configReaders/SyncPlanner";
-import { previousTableIdOf } from "../../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
-import type { TableRaw } from "../../02_SpreadsheetRaw/TableRaw";
-import { SpreadsheetNamed } from "../../04_SpreadsheetNamed/SpreadsheetNamed";
-import { SpreadsheetBaseOperator } from "../SpreadsheetBaseOperator";
+} from "../../01_SpreadsheetSchema/configReaders/SyncPlanner.ts";
+import { previousTableIdOf } from "../../01_SpreadsheetSchema/configReaders/tableConfigsTypes.ts";
+import type { TableRaw } from "../../02_SpreadsheetRaw/TableRaw.ts";
+import { SpreadsheetNamed } from "../../04_SpreadsheetNamed/SpreadsheetNamed.ts";
+import { SpreadsheetBaseOperator } from "../SpreadsheetBaseOperator.ts";
 
 export class TableConfigsTraitUpdaterOperator extends SpreadsheetBaseOperator {
   get ss(): SpreadsheetNamed {

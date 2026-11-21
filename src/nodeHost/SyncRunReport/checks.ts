@@ -1,8 +1,8 @@
 import type {
   SyncCheck,
   SyncOutsideReferenceEffect,
-} from "../../01_SpreadsheetSchema/configReaders/syncRunResult";
-import { ReportText } from "../ReportText";
+} from "../../01_SpreadsheetSchema/configReaders/syncRunResult.ts";
+import { ReportText } from "../ReportText.ts";
 
 const { indent, counted, subjectLabel } = ReportText;
 

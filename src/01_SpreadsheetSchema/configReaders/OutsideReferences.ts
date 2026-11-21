@@ -1,11 +1,11 @@
-import { BraceFormula } from "./BraceFormula";
+import { BraceFormula } from "./BraceFormula.ts";
 import type {
   SyncNotice,
   SyncOutsideReferenceEffect,
   SyncOutsideReferencesCheck,
   SyncPlanEffect,
   SyncSubject,
-} from "./syncRunResult";
+} from "./syncRunResult.ts";
 
 // One API-access Table's formula column, as this run reads it.
 export interface FormulaColumn {

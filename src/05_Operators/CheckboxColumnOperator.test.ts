@@ -3,21 +3,21 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   type ColumnValueName,
   getColumnTraitByName,
-} from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
-import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
-import type { ColumnNamedProps } from "../04_SpreadsheetNamed/ClassBases/ColumnBaseNamed";
-import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
-import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
+} from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes.ts";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes.ts";
+import type { ColumnNamedProps } from "../04_SpreadsheetNamed/ClassBases/ColumnBaseNamed.ts";
+import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed.ts";
+import { stubLogger } from "../testSupport/fakeAppsScriptGlobals.ts";
 import {
   buildGridRows,
   type FakeCell,
   stubSheetsService,
-} from "../testSupport/fakeSheetsService";
-import { assertType, type IsExactly } from "../testSupport/typeAssertions";
+} from "../testSupport/fakeSheetsService.ts";
+import { assertType, type IsExactly } from "../testSupport/typeAssertions.ts";
 import {
   type CheckboxColumnName,
   CheckboxColumnOperator,
-} from "./CheckboxColumnOperator";
+} from "./CheckboxColumnOperator.ts";
 
 const runItemGid = getTableTraitByName("runItem", "sheetGid");
 const columnIds = [

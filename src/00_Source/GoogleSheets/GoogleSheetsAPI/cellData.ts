@@ -1,13 +1,13 @@
 import { Obj } from "@byronbroughten/utils/obj";
 
-import type { CellValue } from "../../CellValues/cellValues";
+import type { CellValue } from "../../CellValues/cellValues.ts";
 import type {
   FillCellOperation,
   FillColumnOperation,
-} from "../../RawSource/RawSource";
-import type { RgbColor } from "../../RawSource/RgbColor";
-import type { ModeledRequest } from "../GoogleSheetsAPI";
-import { googleColor } from "./googleColor";
+} from "../../RawSource/RawSource.ts";
+import type { RgbColor } from "../../RawSource/RgbColor.ts";
+import type { ModeledRequest } from "../GoogleSheetsAPI.ts";
+import { googleColor } from "./googleColor.ts";
 
 type GoogleCellData = GoogleAppsScript.Sheets.Schema.CellData;
 type UserEnteredValue = NonNullable<

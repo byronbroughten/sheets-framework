@@ -2,9 +2,9 @@ import {
   type BraceConfigs,
   BraceFormula,
   type ColumnTypeProps,
-} from "./BraceFormula";
-import type { ColumnConfigStored } from "./makeConfigs";
-import type { TableReading, TraitReadings } from "./SyncPlanner";
+} from "./BraceFormula.ts";
+import type { ColumnConfigStored } from "./makeConfigs.ts";
+import type { TableReading, TraitReadings } from "./SyncPlanner.ts";
 
 // The previous side of the comparison, read from the configs the last run wrote.
 export function previousTraitTables(

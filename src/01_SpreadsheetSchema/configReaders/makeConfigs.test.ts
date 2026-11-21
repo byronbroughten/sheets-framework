@@ -4,7 +4,7 @@ import {
   type ColumnConfigStored,
   makeColumnConfigs,
   makeTableConfigs,
-} from "./makeConfigs";
+} from "./makeConfigs.ts";
 
 describe("makeTableConfigs", () => {
   const tableConfig = {

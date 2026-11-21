@@ -1,4 +1,4 @@
-import { unreplayed } from "./unreplayed";
+import { unreplayed } from "./unreplayed.ts";
 
 export const fieldMasks = {
   replay(

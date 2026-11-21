@@ -1,4 +1,4 @@
-import type { SyncSubject } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
+import type { SyncSubject } from "../01_SpreadsheetSchema/configReaders/syncRunResult.ts";
 
 // The plain-text pieces every section of sync's and a chore's report is built from.
 export const ReportText = {

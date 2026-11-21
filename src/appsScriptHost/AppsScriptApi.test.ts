@@ -1,18 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getColumnTraitByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
-import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister";
-import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
-import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
+import { getColumnTraitByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes.ts";
+import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister.ts";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes.ts";
+import { expectedSheetLayout } from "../testSupport/expectedSheetLayout.ts";
 import {
   stubLogger,
   stubScriptAndSpreadsheetApp,
-} from "../testSupport/fakeAppsScriptGlobals";
+} from "../testSupport/fakeAppsScriptGlobals.ts";
 import {
   buildGridRows,
   stubSheetsService,
-} from "../testSupport/fakeSheetsService";
-import { AppsScriptApi } from "./AppsScriptApi";
+} from "../testSupport/fakeSheetsService.ts";
+import { AppsScriptApi } from "./AppsScriptApi.ts";
 
 const runItemGid = getTableTraitByName("runItem", "sheetGid");
 const resultColIndex = 1;
@@ -121,7 +121,7 @@ describe("AppsScriptApi.handleSheetEdit", () => {
 describe("AppsScriptApi.handleSheetEdit, with no source installed", () => {
   it("reaches for the Google Sheets source on an action-row tick", async () => {
     vi.resetModules();
-    const fresh = await import("./AppsScriptApi");
+    const fresh = await import("./AppsScriptApi.ts");
     stubScriptAndSpreadsheetApp({ spreadsheetId: null });
     expect(() =>
       fresh.AppsScriptApi.handleSheetEdit(

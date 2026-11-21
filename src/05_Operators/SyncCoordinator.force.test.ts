@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { type PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState";
-import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
+import { type PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState.ts";
+import { stubLogger } from "../testSupport/fakeAppsScriptGlobals.ts";
 import {
   itemColumns,
   runItem,
   seedFixture,
-} from "./syncCoordinatorTestSupport";
+} from "./syncCoordinatorTestSupport.ts";
 
 beforeEach(() => {
   stubLogger();

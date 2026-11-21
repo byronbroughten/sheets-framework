@@ -6,8 +6,8 @@ import type {
   SyncDryRunResult,
   SyncRunResult,
   SyncSendResult,
-} from "../01_SpreadsheetSchema/configReaders/syncRunResult";
-import { SyncRunReport } from "./SyncRunReport";
+} from "../01_SpreadsheetSchema/configReaders/syncRunResult.ts";
+import { SyncRunReport } from "./SyncRunReport.ts";
 
 // The eight cases sheets-framework#216 retested on fresh agents; names and IDs are illustrative.
 

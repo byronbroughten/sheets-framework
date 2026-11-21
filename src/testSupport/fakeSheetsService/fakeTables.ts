@@ -1,8 +1,8 @@
-import { SheetIndex } from "../../00_Source/RawSource/SheetIndex";
-import { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin";
-import type { FakeCell, FakeTable } from "../fakeSheetsService";
-import { fakeCells } from "./fakeCells";
-import { type FakeSheetState, type FakeTableState } from "./fakeSpreadsheet";
+import { SheetIndex } from "../../00_Source/RawSource/SheetIndex.ts";
+import { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin.ts";
+import type { FakeCell, FakeTable } from "../fakeSheetsService.ts";
+import { fakeCells } from "./fakeCells.ts";
+import { type FakeSheetState, type FakeTableState } from "./fakeSpreadsheet.ts";
 
 export type FakeTablePlacement = Pick<
   FakeTable,

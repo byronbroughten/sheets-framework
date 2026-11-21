@@ -1,9 +1,9 @@
-import type { ApiAccessChanges } from "../01_SpreadsheetSchema/configReaders/apiAccessChanges";
-import type { TableColumnReference } from "../02_SpreadsheetRaw/ColumnProfileRaw";
+import type { ApiAccessChanges } from "../01_SpreadsheetSchema/configReaders/apiAccessChanges.ts";
+import type { TableColumnReference } from "../02_SpreadsheetRaw/ColumnProfileRaw.ts";
 import {
   SpreadsheetBaseNamed,
   type SpreadsheetNamedProps,
-} from "../04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
+} from "../04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed.ts";
 
 export type UntypedHeadersByTableName = Map<string, string[]>;
 // Table ID, then column ID.

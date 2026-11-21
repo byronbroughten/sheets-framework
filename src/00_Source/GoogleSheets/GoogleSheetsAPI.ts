@@ -1,6 +1,6 @@
 import { Val } from "@byronbroughten/utils/val";
 
-import { PartialTableRefusal } from "../RawSource/PartialTableRefusal";
+import { PartialTableRefusal } from "../RawSource/PartialTableRefusal.ts";
 import {
   type DropdownStyleReset,
   type GridFetchOptions,
@@ -13,14 +13,14 @@ import {
   type SheetEditProtectionSnapshot,
   type SheetPropertiesFetchOptions,
   type SpreadsheetSnapshot,
-} from "../RawSource/RawSource";
-import { RuleFlushRefusal } from "../RawSource/RuleFlushRefusal";
-import { AppsScript } from "./AppsScript";
-import { googleConditionalFormatRule } from "./GoogleSheetsAPI/conditionalFormats";
-import { googleGrid } from "./GoogleSheetsAPI/gridSnapshots";
-import { httpSheetsTransport } from "./GoogleSheetsAPI/httpSheetsTransport";
-import { localOperationToGoogleRequests } from "./GoogleSheetsAPI/operationRequests";
-import { googleProtectedRange } from "./GoogleSheetsAPI/protectedRanges";
+} from "../RawSource/RawSource.ts";
+import { RuleFlushRefusal } from "../RawSource/RuleFlushRefusal.ts";
+import { AppsScript } from "./AppsScript.ts";
+import { googleConditionalFormatRule } from "./GoogleSheetsAPI/conditionalFormats.ts";
+import { googleGrid } from "./GoogleSheetsAPI/gridSnapshots.ts";
+import { httpSheetsTransport } from "./GoogleSheetsAPI/httpSheetsTransport.ts";
+import { localOperationToGoogleRequests } from "./GoogleSheetsAPI/operationRequests.ts";
+import { googleProtectedRange } from "./GoogleSheetsAPI/protectedRanges.ts";
 
 export type GoogleRequest = GoogleAppsScript.Sheets.Schema.Request;
 

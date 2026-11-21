@@ -1,6 +1,6 @@
-import type { CellValue } from "../../00_Source/CellValues/cellValues";
-import type { RowStateRaw } from "../ClassTypes/StateRaw";
-import { TableBaseRaw, type TableRawProps } from "./TableBaseRaw";
+import type { CellValue } from "../../00_Source/CellValues/cellValues.ts";
+import type { RowStateRaw } from "../ClassTypes/StateRaw.ts";
+import { TableBaseRaw, type TableRawProps } from "./TableBaseRaw.ts";
 
 export type RowRawProps = TableRawProps & { rowIndex: number };
 

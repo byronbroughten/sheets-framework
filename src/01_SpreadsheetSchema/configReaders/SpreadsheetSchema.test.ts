@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { SheetIndex } from "../../00_Source/RawSource/SheetIndex";
-import { assertType, type IsExactly } from "../../testSupport/typeAssertions";
+import { SheetIndex } from "../../00_Source/RawSource/SheetIndex.ts";
+import {
+  assertType,
+  type IsExactly,
+} from "../../testSupport/typeAssertions.ts";
 import {
   type ColumnFullName,
   type ColumnName,
@@ -14,12 +17,12 @@ import {
   type TableNameOf,
   type ValueNameOf,
   type ValueOf,
-} from "./columnConfigsTypes";
-import { ColumnSchema } from "./ColumnSchema";
-import { SpreadsheetSchema } from "./SpreadsheetSchema";
-import { tableKeysByGid, type TableName } from "./tableConfigsTypes";
-import { TableSchema } from "./TableSchema";
-import type { ValueName } from "./valueSchemas";
+} from "./columnConfigsTypes.ts";
+import { ColumnSchema } from "./ColumnSchema.ts";
+import { SpreadsheetSchema } from "./SpreadsheetSchema.ts";
+import { tableKeysByGid, type TableName } from "./tableConfigsTypes.ts";
+import { TableSchema } from "./TableSchema.ts";
+import type { ValueName } from "./valueSchemas.ts";
 
 describe("SpreadsheetSchema", () => {
   const schema = new SpreadsheetSchema();

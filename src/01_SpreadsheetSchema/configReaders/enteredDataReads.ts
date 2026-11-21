@@ -2,9 +2,12 @@ import {
   type ColumnReference,
   type IdNameMapGeneric,
   tableIdsByName,
-} from "./idNameMapTypes";
-import type { IntendedTrait } from "./SyncPlanner";
-import { entriesOf, type WideAlterations } from "./SyncPlanner/wideAlterations";
+} from "./idNameMapTypes.ts";
+import type { IntendedTrait } from "./SyncPlanner.ts";
+import {
+  entriesOf,
+  type WideAlterations,
+} from "./SyncPlanner/wideAlterations.ts";
 
 // What sync reads before its flush, so the entered-data gate can judge each cell a deletion or a formula would overwrite.
 export interface EnteredDataReads {

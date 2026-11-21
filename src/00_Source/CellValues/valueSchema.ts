@@ -1,4 +1,4 @@
-import type { NotEmpty } from "./cellValues";
+import type { NotEmpty } from "./cellValues.ts";
 
 export interface ValueSchemaBase<VL = unknown> {
   type: VL;

@@ -2,30 +2,30 @@ import { Arr } from "@byronbroughten/utils/arr";
 import { Obj } from "@byronbroughten/utils/obj";
 import { Val } from "@byronbroughten/utils/val";
 
-import type { ConditionalFormatDeclaration } from "../00_Source/RawSource/ConditionalFormat";
+import type { ConditionalFormatDeclaration } from "../00_Source/RawSource/ConditionalFormat.ts";
 import type {
   EditLockDeclaration,
   EditWarningDeclaration,
-} from "../00_Source/RawSource/EditProtection";
-import type { FindReplaceTerms } from "../00_Source/RawSource/RawSource";
+} from "../00_Source/RawSource/EditProtection.ts";
+import type { FindReplaceTerms } from "../00_Source/RawSource/RawSource.ts";
 import type {
   ColumnName,
   ColumnValue,
   SheetDataValues,
   SheetDataValuesAll,
-} from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
-import type { TableName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
-import type { HeadRole } from "../01_SpreadsheetSchema/headRows";
-import type { TableRaw } from "../02_SpreadsheetRaw/TableRaw";
-import { ColumnIdentified } from "../03_SpreadsheetIdentified/ColumnIdentified";
-import type { HeadRowIdentified } from "../03_SpreadsheetIdentified/HeadRowIdentified";
-import { TableIdentified } from "../03_SpreadsheetIdentified/TableIdentified";
-import { TableCommonNamed } from "./ClassBases/TableCommonNamed";
-import { ColumnNamed } from "./ColumnNamed";
-import { RowNamed } from "./RowNamed";
-import { SheetNamed } from "./SheetNamed";
-import type { SheetNameWithIdAndNameColumn } from "./TableNameGroups";
-import type { RowIdByName } from "./Types/RowIdByName";
+} from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes.ts";
+import type { TableName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes.ts";
+import type { HeadRole } from "../01_SpreadsheetSchema/headRows.ts";
+import type { TableRaw } from "../02_SpreadsheetRaw/TableRaw.ts";
+import { ColumnIdentified } from "../03_SpreadsheetIdentified/ColumnIdentified.ts";
+import type { HeadRowIdentified } from "../03_SpreadsheetIdentified/HeadRowIdentified.ts";
+import { TableIdentified } from "../03_SpreadsheetIdentified/TableIdentified.ts";
+import { TableCommonNamed } from "./ClassBases/TableCommonNamed.ts";
+import { ColumnNamed } from "./ColumnNamed.ts";
+import { RowNamed } from "./RowNamed.ts";
+import { SheetNamed } from "./SheetNamed.ts";
+import type { SheetNameWithIdAndNameColumn } from "./TableNameGroups.ts";
+import type { RowIdByName } from "./Types/RowIdByName.ts";
 
 /**
  * Name-addressed Table: data rows, append, named columns.

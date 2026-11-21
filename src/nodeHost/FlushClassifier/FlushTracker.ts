@@ -5,8 +5,8 @@ import type {
   GridSize,
   IndexSpan,
   ShiftDimension,
-} from "./flushClassifierTypes";
-import { Grid } from "./Grid";
+} from "./flushClassifierTypes.ts";
+import { Grid } from "./Grid.ts";
 
 export type CellOrigin =
   | { kind: "read"; cell: GridCell }

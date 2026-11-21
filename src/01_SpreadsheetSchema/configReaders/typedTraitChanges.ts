@@ -1,11 +1,11 @@
-import type { ConfigSnapshots } from "./configSnapshots";
+import type { ConfigSnapshots } from "./configSnapshots.ts";
 import type {
   ColumnConfigsGeneric,
   ColumnConfigStored,
   ValueConfigBase,
   ValueConfigsBase,
-} from "./makeConfigs";
-import type { SyncSubject, SyncTypedTraitChange } from "./syncRunResult";
+} from "./makeConfigs.ts";
+import type { SyncSubject, SyncTypedTraitChange } from "./syncRunResult.ts";
 
 export interface TypedTraitChangesProps extends ConfigSnapshots {
   // What the run itself sent: those columns aren't a person's change.

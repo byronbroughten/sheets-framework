@@ -1,15 +1,15 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
-import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes.ts";
+import { stubLogger } from "../testSupport/fakeAppsScriptGlobals.ts";
 import {
   buildGridRows,
   type FakeSheetProperties,
   stubSheetsService,
-} from "../testSupport/fakeSheetsService";
-import { ColumnConfigsOperator } from "./ColumnConfigsOperator";
-import { TabConfigOperator } from "./TabConfigOperator";
-import type { TableConfigsOperator } from "./TableConfigsOperator";
+} from "../testSupport/fakeSheetsService.ts";
+import { ColumnConfigsOperator } from "./ColumnConfigsOperator.ts";
+import { TabConfigOperator } from "./TabConfigOperator.ts";
+import type { TableConfigsOperator } from "./TableConfigsOperator.ts";
 
 // The previous configs grant API access, so the fixtures reuse Table IDs the installed configs hold.
 const itemTableId = getTableTraitByName("item", "tableId");

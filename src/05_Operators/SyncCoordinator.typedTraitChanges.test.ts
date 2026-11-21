@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
+import { stubLogger } from "../testSupport/fakeAppsScriptGlobals.ts";
 import {
   optionalNoteAlteration,
   runItem,
   seedFixture,
-} from "./syncCoordinatorTestSupport";
+} from "./syncCoordinatorTestSupport.ts";
 
 beforeEach(() => {
   stubLogger();

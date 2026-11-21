@@ -1,6 +1,6 @@
-import type { CellValue } from "../CellValues/cellValues";
-import { type GridRangeProps, rangeEqual } from "./RawSource";
-import { type RgbChannels, rgbChannelsEqual } from "./RgbColor";
+import type { CellValue } from "../CellValues/cellValues.ts";
+import { type GridRangeProps, rangeEqual } from "./RawSource.ts";
+import { type RgbChannels, rgbChannelsEqual } from "./RgbColor.ts";
 
 const numberConditionTypes = [
   "NUMBER_EQ",

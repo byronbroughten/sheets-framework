@@ -1,18 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
-import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes.ts";
+import { stubLogger } from "../testSupport/fakeAppsScriptGlobals.ts";
 import {
   buildGridRows,
   type FakeSheetProperties,
-} from "../testSupport/fakeSheetsService";
-import { fakeTableSheet } from "../testSupport/fakeSheetsService/fakeTableSheet";
-import { SyncCoordinator } from "./SyncCoordinator";
+} from "../testSupport/fakeSheetsService.ts";
+import { fakeTableSheet } from "../testSupport/fakeSheetsService/fakeTableSheet.ts";
+import { SyncCoordinator } from "./SyncCoordinator.ts";
 import {
   columnsByHeader,
   seedFixture,
   sendWithNoAlterations,
-} from "./syncCoordinatorTestSupport";
+} from "./syncCoordinatorTestSupport.ts";
 
 type GridRange = GoogleAppsScript.Sheets.Schema.GridRange;
 

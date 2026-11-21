@@ -1,4 +1,4 @@
-import type { TableColumnValidationRule } from "../00_Source/RawSource/RawSource";
+import type { TableColumnValidationRule } from "../00_Source/RawSource/RawSource.ts";
 
 export type ColumnValidationRule = TableColumnValidationRule;
 export interface ColumnTypeBaseline {

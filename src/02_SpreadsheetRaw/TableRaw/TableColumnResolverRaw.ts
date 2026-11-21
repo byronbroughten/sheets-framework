@@ -1,8 +1,8 @@
 import { Val } from "@byronbroughten/utils/val";
 
-import { dimensionIds } from "../../01_SpreadsheetSchema/dimensionIds";
-import { TableBaseRaw } from "../ClassBases/TableBaseRaw";
-import { TableRaw } from "../TableRaw";
+import { dimensionIds } from "../../01_SpreadsheetSchema/dimensionIds.ts";
+import { TableBaseRaw } from "../ClassBases/TableBaseRaw.ts";
+import { TableRaw } from "../TableRaw.ts";
 
 export class TableColumnResolverRaw extends TableBaseRaw {
   get table(): TableRaw {

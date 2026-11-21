@@ -1,15 +1,15 @@
 import { Val } from "@byronbroughten/utils/val";
 
-import type { ModelableConditionalFormatRule } from "../00_Source/RawSource/ConditionalFormat";
+import type { ModelableConditionalFormatRule } from "../00_Source/RawSource/ConditionalFormat.ts";
 import type {
   AddSheetOperation,
   BoundedGridRange,
   OpaqueRawRequest,
   SheetPropertiesFetchOptions,
-} from "../00_Source/RawSource/RawSource";
-import { validateFormulaString } from "./CellRaw";
-import { SpreadsheetBaseRaw } from "./ClassBases/SpreadsheetBaseRaw";
-import { emptyStateRaw } from "./ClassTypes/emptyStateRaw";
+} from "../00_Source/RawSource/RawSource.ts";
+import { validateFormulaString } from "./CellRaw.ts";
+import { SpreadsheetBaseRaw } from "./ClassBases/SpreadsheetBaseRaw.ts";
+import { emptyStateRaw } from "./ClassTypes/emptyStateRaw.ts";
 import type {
   AddedSheetCell,
   AddTableProps,
@@ -17,17 +17,17 @@ import type {
   CreateTableProps,
   FindReplaceProps,
   GridEnd,
-} from "./ClassTypes/StateRaw";
-import { SheetRaw } from "./SheetRaw";
-import { SpreadsheetAddedSheetQueueRaw } from "./SpreadsheetRaw/SpreadsheetAddedSheetQueueRaw";
-import { SpreadsheetFetcherRaw } from "./SpreadsheetRaw/SpreadsheetFetcherRaw";
-import { SpreadsheetFlusherRaw } from "./SpreadsheetRaw/SpreadsheetFlusherRaw";
+} from "./ClassTypes/StateRaw.ts";
+import { SheetRaw } from "./SheetRaw.ts";
+import { SpreadsheetAddedSheetQueueRaw } from "./SpreadsheetRaw/SpreadsheetAddedSheetQueueRaw.ts";
+import { SpreadsheetFetcherRaw } from "./SpreadsheetRaw/SpreadsheetFetcherRaw.ts";
+import { SpreadsheetFlusherRaw } from "./SpreadsheetRaw/SpreadsheetFlusherRaw.ts";
 import {
   randomTableId,
   SpreadsheetTableCreatorRaw,
-} from "./SpreadsheetRaw/SpreadsheetTableCreatorRaw";
-import { SpreadsheetTableValidatorRaw } from "./SpreadsheetRaw/SpreadsheetTableValidatorRaw";
-import { TableRaw } from "./TableRaw";
+} from "./SpreadsheetRaw/SpreadsheetTableCreatorRaw.ts";
+import { SpreadsheetTableValidatorRaw } from "./SpreadsheetRaw/SpreadsheetTableValidatorRaw.ts";
+import { TableRaw } from "./TableRaw.ts";
 
 /**
  * Spreadsheet-level Raw: GID+index fetch and the two Sheets chokepoints

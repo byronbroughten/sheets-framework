@@ -3,8 +3,8 @@ import {
   moveColumnPath,
   newColumnsBeforesOf,
   type WideTableEntry,
-} from "../SyncPlanner/wideAlterations";
-import type { SyncClashingPlacements, SyncRefusal } from "../syncRunResult";
+} from "../SyncPlanner/wideAlterations.ts";
+import type { SyncClashingPlacements, SyncRefusal } from "../syncRunResult.ts";
 
 interface NamedAt {
   column: string;

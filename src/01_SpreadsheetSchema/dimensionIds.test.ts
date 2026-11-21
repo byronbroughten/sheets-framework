@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { dimensionIds } from "./dimensionIds";
+import { dimensionIds } from "./dimensionIds.ts";
 
 describe("dimensionIds.col / dimensionIds.row", () => {
   it("builds a column ID and a row ID with a given suffix", () => {

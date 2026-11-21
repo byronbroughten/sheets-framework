@@ -3,7 +3,7 @@ import type {
   GoogleSheetsAPIHttpProps,
   SheetsAdvancedTransport,
   SheetsHttpRequest,
-} from "../GoogleSheetsAPI";
+} from "../GoogleSheetsAPI.ts";
 
 type GoogleSpreadsheet = GoogleAppsScript.Sheets.Schema.Spreadsheet;
 

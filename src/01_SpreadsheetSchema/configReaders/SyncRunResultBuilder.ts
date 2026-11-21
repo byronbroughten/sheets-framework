@@ -1,11 +1,11 @@
-import { hasLanded } from "./didntLand";
-import type { FlushStoppedOutcome } from "./flushStoppedOutcome";
-import type { SyncNameRewriter } from "./SyncNameRewriter";
+import { hasLanded } from "./didntLand.ts";
+import type { FlushStoppedOutcome } from "./flushStoppedOutcome.ts";
+import type { SyncNameRewriter } from "./SyncNameRewriter.ts";
 import {
   newColumnLines,
   newTableLines,
   type SyncPlannerResult,
-} from "./SyncPlanner";
+} from "./SyncPlanner.ts";
 import {
   fillRowIdsName,
   heldBackChangeWhat,
@@ -26,7 +26,7 @@ import {
   type SyncSendResult,
   type SyncSubject,
   type SyncTypedTraitChange,
-} from "./syncRunResult";
+} from "./syncRunResult.ts";
 
 export interface SyncRunResultBuilderProps {
   isSending: boolean;

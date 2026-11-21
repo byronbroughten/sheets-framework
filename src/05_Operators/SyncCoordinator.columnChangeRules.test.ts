@@ -1,24 +1,24 @@
 import { Val } from "@byronbroughten/utils/val";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { SheetIndex } from "../00_Source/RawSource/SheetIndex";
+import { SheetIndex } from "../00_Source/RawSource/SheetIndex.ts";
 import {
   BraceFormula,
   type RuleLayout,
-} from "../01_SpreadsheetSchema/configReaders/BraceFormula";
-import { type PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState";
-import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
+} from "../01_SpreadsheetSchema/configReaders/BraceFormula.ts";
+import { type PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState.ts";
+import { stubLogger } from "../testSupport/fakeAppsScriptGlobals.ts";
 import {
   type FakeSheetsService,
   stubSheetsService,
-} from "../testSupport/fakeSheetsService";
+} from "../testSupport/fakeSheetsService.ts";
 import {
   itemColumns,
   itemGid,
   itemSheet,
   noteColIndex,
   runItem,
-} from "./syncCoordinatorTestSupport";
+} from "./syncCoordinatorTestSupport.ts";
 
 type SheetsRule = GoogleAppsScript.Sheets.Schema.ConditionalFormatRule;
 type GridRange = GoogleAppsScript.Sheets.Schema.GridRange;

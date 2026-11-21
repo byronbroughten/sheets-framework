@@ -3,9 +3,16 @@ import {
   type IdNameMapTable,
   mapTablesByLiveness,
   tableIdsByName,
-} from "./idNameMapTypes";
-import type { PlanReadings, TableReading, TraitReadings } from "./SyncPlanner";
-import { entriesOf, type WideAlterations } from "./SyncPlanner/wideAlterations";
+} from "./idNameMapTypes.ts";
+import type {
+  PlanReadings,
+  TableReading,
+  TraitReadings,
+} from "./SyncPlanner.ts";
+import {
+  entriesOf,
+  type WideAlterations,
+} from "./SyncPlanner/wideAlterations.ts";
 
 export interface ApiAccessGrant {
   tableId: string;

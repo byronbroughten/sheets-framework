@@ -1,23 +1,23 @@
-import type { DryRunHeld } from "../01_SpreadsheetSchema/configReaders/dryRunHeld";
+import type { DryRunHeld } from "../01_SpreadsheetSchema/configReaders/dryRunHeld.ts";
 import {
   type FlushStoppedOutcome,
   isFillFailed,
-} from "../01_SpreadsheetSchema/configReaders/flushStoppedOutcome";
+} from "../01_SpreadsheetSchema/configReaders/flushStoppedOutcome.ts";
 import type {
   SyncDryRunOutcome,
   SyncRunResult,
   SyncSendOutcome,
   SyncSentOutcome,
-} from "../01_SpreadsheetSchema/configReaders/syncRunResult";
-import { GateReport, heldSectionName } from "./GateReport";
-import { ReportText } from "./ReportText";
-import { checkLines, checkSectionName } from "./SyncRunReport/checks";
-import { configsLines } from "./SyncRunReport/configs";
-import { noticeLines } from "./SyncRunReport/notices";
-import { planLines } from "./SyncRunReport/plan";
-import { refusalLines } from "./SyncRunReport/refusals";
-import { sendLines } from "./SyncRunReport/sends";
-import { stopLines } from "./SyncRunReport/stops";
+} from "../01_SpreadsheetSchema/configReaders/syncRunResult.ts";
+import { GateReport, heldSectionName } from "./GateReport.ts";
+import { ReportText } from "./ReportText.ts";
+import { checkLines, checkSectionName } from "./SyncRunReport/checks.ts";
+import { configsLines } from "./SyncRunReport/configs.ts";
+import { noticeLines } from "./SyncRunReport/notices.ts";
+import { planLines } from "./SyncRunReport/plan.ts";
+import { refusalLines } from "./SyncRunReport/refusals.ts";
+import { sendLines } from "./SyncRunReport/sends.ts";
+import { stopLines } from "./SyncRunReport/stops.ts";
 
 const { section, formatCount, counted } = ReportText;
 

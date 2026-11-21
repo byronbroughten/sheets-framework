@@ -1,4 +1,4 @@
-import { type FakeSpreadsheet, fakeSpreadsheet } from "./fakeSpreadsheet";
+import { type FakeSpreadsheet, fakeSpreadsheet } from "./fakeSpreadsheet.ts";
 
 type Response = GoogleAppsScript.Sheets.Schema.Response;
 

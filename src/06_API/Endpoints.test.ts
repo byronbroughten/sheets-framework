@@ -3,10 +3,10 @@ import { describe, it } from "vitest";
 import type {
   ColumnFullName,
   ColumnNameFiltered,
-} from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
-import type { TableNameSimple } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
-import { assertType, type IsExactly } from "../testSupport/typeAssertions";
-import type { Endpoint, Endpoints, EndpointsAll } from "./Endpoints";
+} from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes.ts";
+import type { TableNameSimple } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes.ts";
+import { assertType, type IsExactly } from "../testSupport/typeAssertions.ts";
+import type { Endpoint, Endpoints, EndpointsAll } from "./Endpoints.ts";
 
 type SelectorColumnOf<TN extends TableNameSimple> = NonNullable<
   Endpoint<TN>["selector"]

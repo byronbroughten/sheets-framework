@@ -1,16 +1,16 @@
 import { Val } from "@byronbroughten/utils/val";
 
-import { TableSchema } from "../../01_SpreadsheetSchema/configReaders/TableSchema";
-import { SheetRaw } from "../../02_SpreadsheetRaw/SheetRaw";
+import { TableSchema } from "../../01_SpreadsheetSchema/configReaders/TableSchema.ts";
+import { SheetRaw } from "../../02_SpreadsheetRaw/SheetRaw.ts";
 import {
   emptyTableStateIdentified,
   type FetchTargetIdentified,
   type TableStateIdentified,
-} from "../ClassTypes/StateIdentified";
+} from "../ClassTypes/StateIdentified.ts";
 import {
   SpreadsheetBaseIdentified,
   type SpreadsheetIdentifiedProps,
-} from "./SpreadsheetBaseIdentified";
+} from "./SpreadsheetBaseIdentified.ts";
 
 // Always the recorded ID: a Table deleted and inserted again reads as missing until the configs are regenerated.
 export interface TableAddressIdentified {

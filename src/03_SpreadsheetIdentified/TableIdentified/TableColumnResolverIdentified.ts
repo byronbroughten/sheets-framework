@@ -1,5 +1,5 @@
-import { TableColumnResolverRaw } from "../../02_SpreadsheetRaw/TableRaw/TableColumnResolverRaw";
-import { TableCommonIdentified } from "../ClassBases/TableCommonIdentified";
+import { TableColumnResolverRaw } from "../../02_SpreadsheetRaw/TableRaw/TableColumnResolverRaw.ts";
+import { TableCommonIdentified } from "../ClassBases/TableCommonIdentified.ts";
 
 export interface GatherDataPrerequisitesProps {
   skipFetchingProperties?: boolean;

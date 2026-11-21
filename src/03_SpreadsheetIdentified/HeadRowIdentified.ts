@@ -1,20 +1,20 @@
-import type { CellValue } from "../00_Source/CellValues/cellValues";
+import type { CellValue } from "../00_Source/CellValues/cellValues.ts";
 import type {
   EditLockDeclaration,
   EditProtection,
   EditWarningDeclaration,
-} from "../00_Source/RawSource/EditProtection";
+} from "../00_Source/RawSource/EditProtection.ts";
 import {
   type HeadRole,
   type HeadRowRoles,
   headRows,
   type HeadRowValue,
   type HeadRowValueName,
-} from "../01_SpreadsheetSchema/headRows";
-import { HeadRowRaw } from "../02_SpreadsheetRaw/HeadRowRaw";
-import { RowCommonIdentified } from "./ClassBases/RowCommonIdentified";
-import type { TableIdentifiedProps } from "./ClassBases/TableBaseIdentified";
-import { TableIdentified } from "./TableIdentified";
+} from "../01_SpreadsheetSchema/headRows.ts";
+import { HeadRowRaw } from "../02_SpreadsheetRaw/HeadRowRaw.ts";
+import { RowCommonIdentified } from "./ClassBases/RowCommonIdentified.ts";
+import type { TableIdentifiedProps } from "./ClassBases/TableBaseIdentified.ts";
+import { TableIdentified } from "./TableIdentified.ts";
 
 export type HeadRowIdentifiedProps<HR extends HeadRole> =
   TableIdentifiedProps & { headRole: HR };

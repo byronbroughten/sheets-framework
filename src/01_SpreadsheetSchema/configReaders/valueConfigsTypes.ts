@@ -1,7 +1,7 @@
 import { Obj } from "@byronbroughten/utils/obj";
 
-import { type Configs, installedConfigs } from "./configRegister";
-import type { FixedList, ValueConfigBase } from "./makeConfigs";
+import { type Configs, installedConfigs } from "./configRegister.ts";
+import type { FixedList, ValueConfigBase } from "./makeConfigs.ts";
 
 export type ValueConfigs = Configs["valueConfigs"];
 export type ValueConfigName = keyof ValueConfigs;

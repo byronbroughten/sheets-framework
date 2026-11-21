@@ -1,13 +1,13 @@
 import {
   type BraceConfigs,
   BraceFormula,
-} from "../../01_SpreadsheetSchema/configReaders/BraceFormula";
-import { columnConfigsByName } from "../../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
-import type { ColumnConfigStored } from "../../01_SpreadsheetSchema/configReaders/makeConfigs";
-import type { IntendedTrait } from "../../01_SpreadsheetSchema/configReaders/SyncPlanner";
-import { tableConfigsByName } from "../../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
-import type { SpreadsheetRaw } from "../../02_SpreadsheetRaw/SpreadsheetRaw";
-import type { TableRaw } from "../../02_SpreadsheetRaw/TableRaw";
+} from "../../01_SpreadsheetSchema/configReaders/BraceFormula.ts";
+import { columnConfigsByName } from "../../01_SpreadsheetSchema/configReaders/columnConfigsTypes.ts";
+import type { ColumnConfigStored } from "../../01_SpreadsheetSchema/configReaders/makeConfigs.ts";
+import type { IntendedTrait } from "../../01_SpreadsheetSchema/configReaders/SyncPlanner.ts";
+import { tableConfigsByName } from "../../01_SpreadsheetSchema/configReaders/tableConfigsTypes.ts";
+import type { SpreadsheetRaw } from "../../02_SpreadsheetRaw/SpreadsheetRaw.ts";
+import type { TableRaw } from "../../02_SpreadsheetRaw/TableRaw.ts";
 
 // The installed configs, and the names a formula or rule is braced or compiled against: each the installed configs with Table names swapped.
 export class InstalledBraceConfigs {

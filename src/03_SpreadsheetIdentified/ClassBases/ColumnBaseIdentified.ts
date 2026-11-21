@@ -1,9 +1,9 @@
-import type { ColumnSchema } from "../../01_SpreadsheetSchema/configReaders/ColumnSchema";
-import type { ValueName } from "../../01_SpreadsheetSchema/configReaders/valueSchemas";
+import type { ColumnSchema } from "../../01_SpreadsheetSchema/configReaders/ColumnSchema.ts";
+import type { ValueName } from "../../01_SpreadsheetSchema/configReaders/valueSchemas.ts";
 import {
   TableBaseIdentified,
   type TableIdentifiedProps,
-} from "./TableBaseIdentified";
+} from "./TableBaseIdentified.ts";
 
 export type ColumnIdentifiedProps<VN extends ValueName = ValueName> =
   TableIdentifiedProps & { columnId: string; valueName?: VN };

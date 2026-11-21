@@ -1,5 +1,5 @@
-import type { TableName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
-import type { Chore } from "./Chore";
+import type { TableName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes.ts";
+import type { Chore } from "./Chore.ts";
 
 export const addMissingColumnIds: Chore = {
   description:

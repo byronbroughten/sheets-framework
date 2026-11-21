@@ -1,18 +1,18 @@
 import { Val } from "@byronbroughten/utils/val";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes.ts";
 import {
   layoutSheet,
   layoutTableId,
-} from "../02_SpreadsheetRaw/spreadsheetRawTestSupport";
-import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
+} from "../02_SpreadsheetRaw/spreadsheetRawTestSupport.ts";
+import { stubLogger } from "../testSupport/fakeAppsScriptGlobals.ts";
 import {
   type FakeSheetsService,
   stubSheetsService,
-} from "../testSupport/fakeSheetsService";
-import { parseIdNameMapFileSource } from "./parseIdNameMapFileSource";
-import { SyncCoordinator } from "./SyncCoordinator";
+} from "../testSupport/fakeSheetsService.ts";
+import { parseIdNameMapFileSource } from "./parseIdNameMapFileSource.ts";
+import { SyncCoordinator } from "./SyncCoordinator.ts";
 import {
   emittedItemColumn,
   frame,
@@ -22,7 +22,7 @@ import {
   previousLayoutMap,
   runItem,
   seedFixture,
-} from "./syncCoordinatorTestSupport";
+} from "./syncCoordinatorTestSupport.ts";
 
 beforeEach(() => {
   stubLogger();

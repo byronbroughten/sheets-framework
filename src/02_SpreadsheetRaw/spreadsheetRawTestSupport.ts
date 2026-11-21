@@ -1,8 +1,8 @@
 import { Val } from "@byronbroughten/utils/val";
 
-import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
-import { headRows } from "../01_SpreadsheetSchema/headRows";
-import { TableOrigin } from "../01_SpreadsheetSchema/TableOrigin";
+import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds.ts";
+import { headRows } from "../01_SpreadsheetSchema/headRows.ts";
+import { TableOrigin } from "../01_SpreadsheetSchema/TableOrigin.ts";
 import {
   buildGridRows,
   type FakeCell,
@@ -10,9 +10,9 @@ import {
   type FakeSheetProperties,
   type FakeTable,
   type stubSheetsService,
-} from "../testSupport/fakeSheetsService";
-import { defaultTableId } from "../testSupport/fakeSheetsService/fakeSpreadsheet";
-import { SpreadsheetRaw } from "./SpreadsheetRaw";
+} from "../testSupport/fakeSheetsService.ts";
+import { defaultTableId } from "../testSupport/fakeSheetsService/fakeSpreadsheet.ts";
+import { SpreadsheetRaw } from "./SpreadsheetRaw.ts";
 
 export const lightGreen = { red: 0.851, green: 0.918, blue: 0.827 };
 

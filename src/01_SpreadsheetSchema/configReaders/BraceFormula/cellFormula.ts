@@ -1,12 +1,12 @@
-import type { ColumnTypeBaseline } from "../../columnBaseline";
-import type { ConfigSetBase } from "../configRegister";
-import type { ColumnConfigStored, TableConfigStored } from "../makeConfigs";
+import type { ColumnTypeBaseline } from "../../columnBaseline.ts";
+import type { ConfigSetBase } from "../configRegister.ts";
+import type { ColumnConfigStored, TableConfigStored } from "../makeConfigs.ts";
 import {
   type Brace,
   braces,
   formulaPatterns,
   type FormulaText,
-} from "./braces";
+} from "./braces.ts";
 
 export type BraceConfigs = Pick<
   ConfigSetBase,

@@ -7,7 +7,10 @@ export interface IdPrefixLabel {
 }
 
 export class IdPrefixesByTableId {
-  constructor(private readonly byTableId: ReadonlyMap<string, string>) {}
+  private readonly byTableId: ReadonlyMap<string, string>;
+  constructor(byTableId: ReadonlyMap<string, string>) {
+    this.byTableId = byTableId;
+  }
   assertIdPrefix(tableId: string): string {
     return Val.assert(this.byTableId.get(tableId), "ID prefix");
   }

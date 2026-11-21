@@ -1,20 +1,20 @@
 import type {
   GoogleRequest,
   ModeledRequestVerb,
-} from "../../00_Source/GoogleSheets/GoogleSheetsAPI";
-import { Rfc4180 } from "../Rfc4180";
+} from "../../00_Source/GoogleSheets/GoogleSheetsAPI.ts";
+import { Rfc4180 } from "../Rfc4180.ts";
 import type {
   BoundedRange,
   CellAfter,
   GoogleGridRange,
   IndexSpan,
   ShiftDimension,
-} from "./flushClassifierTypes";
-import type { DimensionShift, FlushTracker } from "./FlushTracker";
-import { Grid } from "./Grid";
-import type { CellWrite, RequestJudge } from "./RequestJudge";
-import { cellAfter } from "./requestJudgements/cellAfter";
-import { fieldMask } from "./requestJudgements/fieldMask";
+} from "./flushClassifierTypes.ts";
+import type { DimensionShift, FlushTracker } from "./FlushTracker.ts";
+import { Grid } from "./Grid.ts";
+import type { CellWrite, RequestJudge } from "./RequestJudge.ts";
+import { cellAfter } from "./requestJudgements/cellAfter.ts";
+import { fieldMask } from "./requestJudgements/fieldMask.ts";
 
 type DimensionRange = GoogleAppsScript.Sheets.Schema.DimensionRange;
 

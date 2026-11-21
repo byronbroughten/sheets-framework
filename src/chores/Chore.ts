@@ -1,4 +1,4 @@
-import type { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
+import type { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed.ts";
 
 // What the runner knows about this run that the tiers don't.
 export interface ChoreRun {

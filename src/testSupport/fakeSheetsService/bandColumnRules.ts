@@ -1,7 +1,7 @@
-import { a1Notation, type CellReference } from "./a1Notation";
-import type { BandChange, DimensionShift } from "./fakeGrid";
-import { ruleFormulas } from "./ruleFormulas";
-import { unreplayed } from "./unreplayed";
+import { a1Notation, type CellReference } from "./a1Notation.ts";
+import type { BandChange, DimensionShift } from "./fakeGrid.ts";
+import { ruleFormulas } from "./ruleFormulas.ts";
+import { unreplayed } from "./unreplayed.ts";
 
 type ConditionalFormatRule =
   GoogleAppsScript.Sheets.Schema.ConditionalFormatRule;

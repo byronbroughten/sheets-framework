@@ -1,6 +1,6 @@
 import { Obj } from "@byronbroughten/utils/obj";
 
-import type { NotEmpty } from "../00_Source/CellValues/cellValues";
+import type { NotEmpty } from "../00_Source/CellValues/cellValues.ts";
 import type {
   ColumnName,
   ColumnValue,
@@ -8,13 +8,13 @@ import type {
   SheetDataValues,
   SheetDataValuesDeclared,
   SheetDataValuesNotEmpty,
-} from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
-import type { TableName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
-import type { RowRaw } from "../02_SpreadsheetRaw/RowRaw";
-import { RowIdentified } from "../03_SpreadsheetIdentified/RowIdentified";
-import { blankColumnsMessage, type CellNamed } from "./CellNamed";
-import { RowBaseNamed } from "./ClassBases/RowBaseNamed";
-import { TableNamed } from "./TableNamed";
+} from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes.ts";
+import type { TableName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes.ts";
+import type { RowRaw } from "../02_SpreadsheetRaw/RowRaw.ts";
+import { RowIdentified } from "../03_SpreadsheetIdentified/RowIdentified.ts";
+import { blankColumnsMessage, type CellNamed } from "./CellNamed.ts";
+import { RowBaseNamed } from "./ClassBases/RowBaseNamed.ts";
+import { TableNamed } from "./TableNamed.ts";
 
 export class RowNamed<TN extends TableName> extends RowBaseNamed<TN> {
   get table(): TableNamed<TN> {

@@ -1,13 +1,13 @@
-import { installedRawSource } from "../../00_Source/RawSource/installedRawSource";
-import type { GridRangeProps } from "../../00_Source/RawSource/RawSource";
-import { SpreadsheetBaseSchema } from "../../01_SpreadsheetSchema/SpreadsheetBaseSchema";
-import { emptyStateRaw } from "../ClassTypes/emptyStateRaw";
+import { installedRawSource } from "../../00_Source/RawSource/installedRawSource.ts";
+import type { GridRangeProps } from "../../00_Source/RawSource/RawSource.ts";
+import { SpreadsheetBaseSchema } from "../../01_SpreadsheetSchema/SpreadsheetBaseSchema.ts";
+import { emptyStateRaw } from "../ClassTypes/emptyStateRaw.ts";
 import type {
   SheetsStateRaw,
   StateRaw,
   TablesStateRaw,
   WriteOperations,
-} from "../ClassTypes/StateRaw";
+} from "../ClassTypes/StateRaw.ts";
 
 export interface SpreadsheetRawProps {
   spreadsheetStateRaw: StateRaw;

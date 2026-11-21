@@ -1,22 +1,22 @@
 import { Val } from "@byronbroughten/utils/val";
 
-import { dimensionIds } from "../dimensionIds";
-import { SpreadsheetBaseSchema } from "../SpreadsheetBaseSchema";
+import { dimensionIds } from "../dimensionIds.ts";
+import { SpreadsheetBaseSchema } from "../SpreadsheetBaseSchema.ts";
 import {
   type ColumnName,
   getColumnTraitById,
   getColumnTraitByName,
   getSheetColumnNames,
   getTableColumnIds,
-} from "./columnConfigsTypes";
-import { ColumnSchema } from "./ColumnSchema";
+} from "./columnConfigsTypes.ts";
+import { ColumnSchema } from "./ColumnSchema.ts";
 import {
   getTableTraitByName,
   type TableConfig,
   tableConfigsByTableId,
   tableKeysByGid,
   type TableName,
-} from "./tableConfigsTypes";
+} from "./tableConfigsTypes.ts";
 
 function tableNameFromGid(sheetGid: number): TableName {
   const byGid = tableKeysByGid();

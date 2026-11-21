@@ -1,4 +1,4 @@
-import { tableLayout } from "./tableLayout";
+import { tableLayout } from "./tableLayout.ts";
 
 type DimensionKind = "c" | "r";
 

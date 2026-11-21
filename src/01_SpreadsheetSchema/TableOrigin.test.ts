@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { SheetIndex } from "../00_Source/RawSource/SheetIndex";
-import { TableOrigin } from "./TableOrigin";
+import { SheetIndex } from "../00_Source/RawSource/SheetIndex.ts";
+import { TableOrigin } from "./TableOrigin.ts";
 
 describe("TableOrigin", () => {
   const lowerOrigin = new TableOrigin({

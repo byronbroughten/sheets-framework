@@ -3,11 +3,11 @@ import { Obj } from "@byronbroughten/utils/obj";
 import type {
   GoogleRequest,
   ModeledRequestVerb,
-} from "../00_Source/GoogleSheets/GoogleSheetsAPI";
-import { loneTableConfigOnGid } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
-import { colLetters } from "./colLetters";
-import { ExtVal } from "./ExtVal";
-import { Rfc4180 } from "./Rfc4180";
+} from "../00_Source/GoogleSheets/GoogleSheetsAPI.ts";
+import { loneTableConfigOnGid } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes.ts";
+import { colLetters } from "./colLetters.ts";
+import { ExtVal } from "./ExtVal.ts";
+import { Rfc4180 } from "./Rfc4180.ts";
 
 type GoogleUpdateRequest = GoogleRequest;
 type GoogleGridRange = GoogleAppsScript.Sheets.Schema.GridRange;

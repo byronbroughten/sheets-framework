@@ -1,4 +1,4 @@
-import { installConfigs } from "../src/01_SpreadsheetSchema/configReaders/configRegister";
-import { appConfigs } from "./appConfigs";
+import { installConfigs } from "../src/01_SpreadsheetSchema/configReaders/configRegister.ts";
+import { appConfigs } from "./appConfigs.ts";
 
 installConfigs(appConfigs);

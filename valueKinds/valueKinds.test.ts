@@ -3,19 +3,22 @@ import { describe, expect, it } from "vitest";
 import type {
   ColumnValueDeclared,
   ColumnValueName,
-} from "../src/01_SpreadsheetSchema/configReaders/columnConfigsTypes";
-import type { VnToCvn } from "../src/01_SpreadsheetSchema/configReaders/valueSchemas";
-import { SpreadsheetNamed } from "../src/04_SpreadsheetNamed/SpreadsheetNamed";
+} from "../src/01_SpreadsheetSchema/configReaders/columnConfigsTypes.ts";
+import type { VnToCvn } from "../src/01_SpreadsheetSchema/configReaders/valueSchemas.ts";
+import { SpreadsheetNamed } from "../src/04_SpreadsheetNamed/SpreadsheetNamed.ts";
 import {
   type FakeSheetsService,
   stubSheetsService,
-} from "../src/testSupport/fakeSheetsService";
+} from "../src/testSupport/fakeSheetsService.ts";
 import {
   type FakeBodyRow,
   fakeTableSheet,
-} from "../src/testSupport/fakeSheetsService/fakeTableSheet";
-import { assertType, type IsExactly } from "../src/testSupport/typeAssertions";
-import { appConfigs } from "./appConfigs";
+} from "../src/testSupport/fakeSheetsService/fakeTableSheet.ts";
+import {
+  assertType,
+  type IsExactly,
+} from "../src/testSupport/typeAssertions.ts";
+import { appConfigs } from "./appConfigs.ts";
 
 const widgetGid = appConfigs.tableConfigs.widget.sheetGid;
 const widgetColumnNames = ["status", "itemName", "optionalItemName"] as const;

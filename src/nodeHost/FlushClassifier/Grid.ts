@@ -6,7 +6,7 @@ import type {
   GridSize,
   IndexSpan,
   ShiftDimension,
-} from "./flushClassifierTypes";
+} from "./flushClassifierTypes.ts";
 
 // The fields each dimension reads and writes, so one shift, move or range serves rows and columns.
 const dimensionKeys = {

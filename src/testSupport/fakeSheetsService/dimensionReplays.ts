@@ -1,12 +1,12 @@
-import type { FakeCell, FakeCellValue } from "../fakeSheetsService";
-import { fakeCells } from "./fakeCells";
-import { type DimensionChange, fakeGrid } from "./fakeGrid";
+import type { FakeCell, FakeCellValue } from "../fakeSheetsService.ts";
+import { fakeCells } from "./fakeCells.ts";
+import { type DimensionChange, fakeGrid } from "./fakeGrid.ts";
 import {
   type FakeSheetState,
   type FakeSpreadsheet,
   fakeSpreadsheet,
-} from "./fakeSpreadsheet";
-import { unreplayed } from "./unreplayed";
+} from "./fakeSpreadsheet.ts";
+import { unreplayed } from "./unreplayed.ts";
 
 type Response = GoogleAppsScript.Sheets.Schema.Response;
 type DimensionRange = GoogleAppsScript.Sheets.Schema.DimensionRange;

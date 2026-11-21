@@ -1,15 +1,15 @@
 import { Val } from "@byronbroughten/utils/val";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { type PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState";
-import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
-import { SpreadsheetRaw } from "../02_SpreadsheetRaw/SpreadsheetRaw";
-import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
+import { type PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState.ts";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes.ts";
+import { SpreadsheetRaw } from "../02_SpreadsheetRaw/SpreadsheetRaw.ts";
+import { stubLogger } from "../testSupport/fakeAppsScriptGlobals.ts";
 import {
   type FakeSheetsService,
   stubSheetsService,
-} from "../testSupport/fakeSheetsService";
-import { SyncCoordinator } from "./SyncCoordinator";
+} from "../testSupport/fakeSheetsService.ts";
+import { SyncCoordinator } from "./SyncCoordinator.ts";
 import {
   emittedItemColumn,
   itemAtEachFlush,
@@ -21,7 +21,7 @@ import {
   runItem,
   runWithNoAlterations,
   seedFixture,
-} from "./syncCoordinatorTestSupport";
+} from "./syncCoordinatorTestSupport.ts";
 
 beforeEach(() => {
   stubLogger();

@@ -1,11 +1,14 @@
-import type { CellValue } from "../CellValues/cellValues";
+import type { CellValue } from "../CellValues/cellValues.ts";
 import type {
   ConditionalFormatRule,
   ModelableConditionalFormatRule,
-} from "./ConditionalFormat";
-import type { EditProtection, EditProtectionContent } from "./EditProtection";
-import type { HexColor, RgbColor } from "./RgbColor";
-import type { SheetColIndex, SheetRowIndex } from "./SheetIndex";
+} from "./ConditionalFormat.ts";
+import type {
+  EditProtection,
+  EditProtectionContent,
+} from "./EditProtection.ts";
+import type { HexColor, RgbColor } from "./RgbColor.ts";
+import type { SheetColIndex, SheetRowIndex } from "./SheetIndex.ts";
 
 export interface GridRangeProps {
   sheetId: number;

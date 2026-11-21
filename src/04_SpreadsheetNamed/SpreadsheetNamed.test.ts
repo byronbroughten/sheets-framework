@@ -4,29 +4,29 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   type ColumnIsFormula,
   getColumnTraitByName,
-} from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
+} from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes.ts";
 import {
   getTableTraitByName,
   type TableName,
-} from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
-import { SheetRaw } from "../02_SpreadsheetRaw/SheetRaw";
-import { placedTableSheet } from "../02_SpreadsheetRaw/spreadsheetRawTestSupport";
-import { CellIdentified } from "../03_SpreadsheetIdentified/CellIdentified";
-import { HeadRowIdentified } from "../03_SpreadsheetIdentified/HeadRowIdentified";
-import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
-import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
+} from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes.ts";
+import { SheetRaw } from "../02_SpreadsheetRaw/SheetRaw.ts";
+import { placedTableSheet } from "../02_SpreadsheetRaw/spreadsheetRawTestSupport.ts";
+import { CellIdentified } from "../03_SpreadsheetIdentified/CellIdentified.ts";
+import { HeadRowIdentified } from "../03_SpreadsheetIdentified/HeadRowIdentified.ts";
+import { expectedSheetLayout } from "../testSupport/expectedSheetLayout.ts";
+import { stubLogger } from "../testSupport/fakeAppsScriptGlobals.ts";
 import {
   buildGridRows,
   type FakeCellValue,
   type FakeSheetProperties,
   type FakeSheetsService,
   stubSheetsService,
-} from "../testSupport/fakeSheetsService";
+} from "../testSupport/fakeSheetsService.ts";
 import {
   assertNotType,
   assertType,
   type IsExactly,
-} from "../testSupport/typeAssertions";
+} from "../testSupport/typeAssertions.ts";
 import {
   blankValueTypesRow,
   filledValueTypesRow,
@@ -34,13 +34,13 @@ import {
   valueTypesColumnNames,
   valueTypesGid,
   valueTypesTableSheet,
-} from "../testSupport/valueTypesTableSheet";
-import type { SpreadsheetNamedProps } from "./ClassBases/SpreadsheetBaseNamed";
-import { ColumnNamed } from "./ColumnNamed";
-import { RowNamed } from "./RowNamed";
-import { SheetNamed } from "./SheetNamed";
-import { SpreadsheetNamed } from "./SpreadsheetNamed";
-import { TableNamed } from "./TableNamed";
+} from "../testSupport/valueTypesTableSheet.ts";
+import type { SpreadsheetNamedProps } from "./ClassBases/SpreadsheetBaseNamed.ts";
+import { ColumnNamed } from "./ColumnNamed.ts";
+import { RowNamed } from "./RowNamed.ts";
+import { SheetNamed } from "./SheetNamed.ts";
+import { SpreadsheetNamed } from "./SpreadsheetNamed.ts";
+import { TableNamed } from "./TableNamed.ts";
 
 describe("SpreadsheetNamed props", () => {
   it("have no Named-state member", () => {

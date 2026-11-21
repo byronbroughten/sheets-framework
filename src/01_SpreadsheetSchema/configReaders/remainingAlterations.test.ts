@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { remainingAlterations } from "./remainingAlterations";
-import type { WideAlterations } from "./SyncPlanner/wideAlterations";
+import { remainingAlterations } from "./remainingAlterations.ts";
+import type { WideAlterations } from "./SyncPlanner/wideAlterations.ts";
 
 function landedTrait(table: string, column: string, path: string) {
   return { table, column, path };

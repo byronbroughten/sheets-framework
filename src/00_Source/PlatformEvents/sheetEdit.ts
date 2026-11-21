@@ -1,4 +1,4 @@
-import type { SheetColIndex, SheetRowIndex } from "../RawSource/SheetIndex";
+import type { SheetColIndex, SheetRowIndex } from "../RawSource/SheetIndex.ts";
 
 export interface SheetEdit {
   sheetGid: number;

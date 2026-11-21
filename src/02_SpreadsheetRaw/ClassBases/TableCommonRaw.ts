@@ -5,16 +5,16 @@ import type {
   BoundedGridRange,
   DeleteTableRowsOperation,
   TableColumnSnapshot,
-} from "../../00_Source/RawSource/RawSource";
+} from "../../00_Source/RawSource/RawSource.ts";
 import {
   type SheetColIndex,
   SheetIndex,
   type SheetRowIndex,
-} from "../../00_Source/RawSource/SheetIndex";
-import { headRows } from "../../01_SpreadsheetSchema/headRows";
-import type { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin";
-import type { SheetGridRangeProps } from "../ClassTypes/AccessorsRaw";
-import { emptyStateRaw } from "../ClassTypes/emptyStateRaw";
+} from "../../00_Source/RawSource/SheetIndex.ts";
+import { headRows } from "../../01_SpreadsheetSchema/headRows.ts";
+import type { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin.ts";
+import type { SheetGridRangeProps } from "../ClassTypes/AccessorsRaw.ts";
+import { emptyStateRaw } from "../ClassTypes/emptyStateRaw.ts";
 import type {
   AppendTableRows,
   CellFill,
@@ -26,9 +26,9 @@ import type {
   TableWriteProps,
   TableWriteQueueRaw,
   TableWrites,
-} from "../ClassTypes/StateRaw";
-import type { SpreadsheetRaw } from "../SpreadsheetRaw";
-import { originOf, TableBaseRaw, tableOnSheetLabel } from "./TableBaseRaw";
+} from "../ClassTypes/StateRaw.ts";
+import type { SpreadsheetRaw } from "../SpreadsheetRaw.ts";
+import { originOf, TableBaseRaw, tableOnSheetLabel } from "./TableBaseRaw.ts";
 
 export const columnCountChange = {
   insertRange: 1,

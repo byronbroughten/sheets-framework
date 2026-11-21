@@ -4,10 +4,10 @@ import {
   type EditProtection,
   type EditProtectionContent,
   type ProtectionGridRange,
-} from "../../RawSource/EditProtection";
-import { isWholeSheetGridRange } from "../../RawSource/RawSource";
-import type { GoogleRequest } from "../GoogleSheetsAPI";
-import { googleGrid } from "./gridSnapshots";
+} from "../../RawSource/EditProtection.ts";
+import { isWholeSheetGridRange } from "../../RawSource/RawSource.ts";
+import type { GoogleRequest } from "../GoogleSheetsAPI.ts";
+import { googleGrid } from "./gridSnapshots.ts";
 
 type GoogleProtectedRange = GoogleAppsScript.Sheets.Schema.ProtectedRange;
 type GoogleGridRange = GoogleAppsScript.Sheets.Schema.GridRange;

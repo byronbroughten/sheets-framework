@@ -1,5 +1,5 @@
-import type { CellValue } from "../../00_Source/CellValues/cellValues";
-import { RowBaseIdentified } from "./RowBaseIdentified";
+import type { CellValue } from "../../00_Source/CellValues/cellValues.ts";
+import { RowBaseIdentified } from "./RowBaseIdentified.ts";
 
 export abstract class RowCommonIdentified extends RowBaseIdentified {
   abstract get workingValueArr(): CellValue[];

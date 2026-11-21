@@ -1,10 +1,10 @@
-import { SpreadsheetSchema } from "../../01_SpreadsheetSchema/configReaders/SpreadsheetSchema";
+import { SpreadsheetSchema } from "../../01_SpreadsheetSchema/configReaders/SpreadsheetSchema.ts";
 import type {
   FakeCell,
   FakeSheetProperties,
   FakeTable,
-} from "../fakeSheetsService";
-import { fakeTables } from "./fakeTables";
+} from "../fakeSheetsService.ts";
+import { fakeTables } from "./fakeTables.ts";
 
 export interface FakeTableState extends FakeTable {
   tableId: string;

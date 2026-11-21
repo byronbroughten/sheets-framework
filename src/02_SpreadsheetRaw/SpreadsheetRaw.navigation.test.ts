@@ -1,29 +1,29 @@
 import { describe, expect, it } from "vitest";
 
-import { type CellValue } from "../00_Source/CellValues/cellValues";
-import { type RgbColor } from "../00_Source/RawSource/RgbColor";
-import { type HeadRowValueName } from "../01_SpreadsheetSchema/headRows";
-import { stubSheetsService } from "../testSupport/fakeSheetsService";
-import { assertType, type IsExactly } from "../testSupport/typeAssertions";
-import { CellRaw } from "./CellRaw";
-import { type ColumnBaseRaw } from "./ClassBases/ColumnBaseRaw";
-import { type RowCommonRaw } from "./ClassBases/RowCommonRaw";
-import { type TableBaseRaw } from "./ClassBases/TableBaseRaw";
-import { type CellFill, type CellStateRaw } from "./ClassTypes/StateRaw";
-import { ColumnProfileRaw } from "./ColumnProfileRaw";
-import { ColumnRaw } from "./ColumnRaw";
-import { HeadRowRaw } from "./HeadRowRaw";
-import { RowRaw } from "./RowRaw";
-import { SheetRaw } from "./SheetRaw";
-import { SpreadsheetRaw } from "./SpreadsheetRaw";
+import { type CellValue } from "../00_Source/CellValues/cellValues.ts";
+import { type RgbColor } from "../00_Source/RawSource/RgbColor.ts";
+import { type HeadRowValueName } from "../01_SpreadsheetSchema/headRows.ts";
+import { stubSheetsService } from "../testSupport/fakeSheetsService.ts";
+import { assertType, type IsExactly } from "../testSupport/typeAssertions.ts";
+import { CellRaw } from "./CellRaw.ts";
+import { type ColumnBaseRaw } from "./ClassBases/ColumnBaseRaw.ts";
+import { type RowCommonRaw } from "./ClassBases/RowCommonRaw.ts";
+import { type TableBaseRaw } from "./ClassBases/TableBaseRaw.ts";
+import { type CellFill, type CellStateRaw } from "./ClassTypes/StateRaw.ts";
+import { ColumnProfileRaw } from "./ColumnProfileRaw.ts";
+import { ColumnRaw } from "./ColumnRaw.ts";
+import { HeadRowRaw } from "./HeadRowRaw.ts";
+import { RowRaw } from "./RowRaw.ts";
+import { SheetRaw } from "./SheetRaw.ts";
+import { SpreadsheetRaw } from "./SpreadsheetRaw.ts";
 import {
   itemGid,
   itemTableId,
   placedTableSheet,
   tableId111,
-} from "./spreadsheetRawTestSupport";
-import { TableProfileRaw } from "./TableProfileRaw";
-import { TableRaw } from "./TableRaw";
+} from "./spreadsheetRawTestSupport.ts";
+import { TableProfileRaw } from "./TableProfileRaw.ts";
+import { TableRaw } from "./TableRaw.ts";
 
 describe("SpreadsheetRaw navigation", () => {
   it("gives each accessor the class its return type names", () => {

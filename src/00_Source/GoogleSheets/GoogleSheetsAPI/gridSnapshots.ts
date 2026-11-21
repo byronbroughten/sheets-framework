@@ -1,7 +1,7 @@
 import { Val } from "@byronbroughten/utils/val";
 
-import type { CellValue } from "../../CellValues/cellValues";
-import type { ConditionalFormatRule } from "../../RawSource/ConditionalFormat";
+import type { CellValue } from "../../CellValues/cellValues.ts";
+import type { ConditionalFormatRule } from "../../RawSource/ConditionalFormat.ts";
 import type {
   GridCellSnapshot,
   GridRangeProps,
@@ -9,9 +9,9 @@ import type {
   SpreadsheetSnapshot,
   TableColumnSnapshot,
   TableSnapshot,
-} from "../../RawSource/RawSource";
-import { SheetIndex } from "../../RawSource/SheetIndex";
-import { googleColor } from "./googleColor";
+} from "../../RawSource/RawSource.ts";
+import { SheetIndex } from "../../RawSource/SheetIndex.ts";
+import { googleColor } from "./googleColor.ts";
 
 type GoogleSpreadsheet = GoogleAppsScript.Sheets.Schema.Spreadsheet;
 type GoogleSheet = GoogleAppsScript.Sheets.Schema.Sheet;

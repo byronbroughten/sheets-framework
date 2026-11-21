@@ -1,23 +1,23 @@
 import { Val } from "@byronbroughten/utils/val";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { type PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState";
+import { type PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState.ts";
 import {
   layoutGid,
   layoutOrigins,
   layoutSheet,
-} from "../02_SpreadsheetRaw/spreadsheetRawTestSupport";
-import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
+} from "../02_SpreadsheetRaw/spreadsheetRawTestSupport.ts";
+import { stubLogger } from "../testSupport/fakeAppsScriptGlobals.ts";
 import {
   type FakeSheetsService,
   stubSheetsService,
-} from "../testSupport/fakeSheetsService";
-import { SyncCoordinator } from "./SyncCoordinator";
+} from "../testSupport/fakeSheetsService.ts";
+import { SyncCoordinator } from "./SyncCoordinator.ts";
 import {
   frame,
   previousLayoutMap,
   runLayout,
-} from "./syncCoordinatorTestSupport";
+} from "./syncCoordinatorTestSupport.ts";
 
 type SheetsRule = GoogleAppsScript.Sheets.Schema.ConditionalFormatRule;
 

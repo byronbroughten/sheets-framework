@@ -1,8 +1,8 @@
-import type { ValueName } from "../../01_SpreadsheetSchema/configReaders/valueSchemas";
+import type { ValueName } from "../../01_SpreadsheetSchema/configReaders/valueSchemas.ts";
 import {
   ColumnBaseIdentified,
   type ColumnIdentifiedProps,
-} from "./ColumnBaseIdentified";
+} from "./ColumnBaseIdentified.ts";
 
 export type CellIdentifiedProps<VN extends ValueName = ValueName> =
   ColumnIdentifiedProps<VN> & { rowIndex: number };

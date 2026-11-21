@@ -1,6 +1,6 @@
-import type { SpreadsheetNamed } from "../../src/04_SpreadsheetNamed/SpreadsheetNamed";
-import type { Chore } from "../../src/chores/Chore";
-import { devSpreadsheetId } from "./devFixtures/devFixtureSheets";
+import type { SpreadsheetNamed } from "../../src/04_SpreadsheetNamed/SpreadsheetNamed.ts";
+import type { Chore } from "../../src/chores/Chore.ts";
+import { devSpreadsheetId } from "./devFixtures/devFixtureSheets.ts";
 
 const layoutTableNames = ["layoutLeft", "layoutRight"] as const;
 const noteColumnId = "c:lyl:note";

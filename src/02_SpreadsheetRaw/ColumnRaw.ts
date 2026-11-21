@@ -3,39 +3,39 @@ import { Arr, type IndexRange } from "@byronbroughten/utils/arr";
 import type {
   CellValue,
   CellValueName,
-} from "../00_Source/CellValues/cellValues";
+} from "../00_Source/CellValues/cellValues.ts";
 import type {
   ConditionalFormatDeclaration,
   ConditionalFormatRule,
-} from "../00_Source/RawSource/ConditionalFormat";
+} from "../00_Source/RawSource/ConditionalFormat.ts";
 import type {
   EditLockDeclaration,
   EditProtection,
   EditWarningDeclaration,
-} from "../00_Source/RawSource/EditProtection";
+} from "../00_Source/RawSource/EditProtection.ts";
 import type {
   FindReplaceTerms,
   GridRangeProps,
   TableColumnType,
-} from "../00_Source/RawSource/RawSource";
-import type { ColumnTypeBaseline } from "../01_SpreadsheetSchema/columnBaseline";
+} from "../00_Source/RawSource/RawSource.ts";
+import type { ColumnTypeBaseline } from "../01_SpreadsheetSchema/columnBaseline.ts";
 import {
   type HeadRole,
   headRows,
   type HeadRowValueName,
-} from "../01_SpreadsheetSchema/headRows";
-import { CellRaw, validateFormulaString } from "./CellRaw";
-import { ColumnBaseRaw } from "./ClassBases/ColumnBaseRaw";
-import { queuedColumnType } from "./ClassTypes/queuedColumnType";
+} from "../01_SpreadsheetSchema/headRows.ts";
+import { CellRaw, validateFormulaString } from "./CellRaw.ts";
+import { ColumnBaseRaw } from "./ClassBases/ColumnBaseRaw.ts";
+import { queuedColumnType } from "./ClassTypes/queuedColumnType.ts";
 import type {
   CellFill,
   NewColumnHeadCells,
   QueuedColumnType,
   TableGridRange,
-} from "./ClassTypes/StateRaw";
-import { ColumnProfileRaw } from "./ColumnProfileRaw";
-import { SpreadsheetRaw } from "./SpreadsheetRaw";
-import { TableRaw } from "./TableRaw";
+} from "./ClassTypes/StateRaw.ts";
+import { ColumnProfileRaw } from "./ColumnProfileRaw.ts";
+import { SpreadsheetRaw } from "./SpreadsheetRaw.ts";
+import { TableRaw } from "./TableRaw.ts";
 
 export class ColumnRaw<
   VN extends CellValueName = CellValueName,

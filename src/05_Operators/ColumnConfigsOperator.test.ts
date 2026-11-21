@@ -1,17 +1,17 @@
 import type { StrictOmit } from "@byronbroughten/utils/obj";
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister";
-import type { ColumnConfigStored } from "../01_SpreadsheetSchema/configReaders/makeConfigs";
-import type { TableReading } from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
-import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
-import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
+import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister.ts";
+import type { ColumnConfigStored } from "../01_SpreadsheetSchema/configReaders/makeConfigs.ts";
+import type { TableReading } from "../01_SpreadsheetSchema/configReaders/SyncPlanner.ts";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes.ts";
+import { stubLogger } from "../testSupport/fakeAppsScriptGlobals.ts";
 import {
   buildGridRows,
   type FakeCell,
   stubSheetsService,
-} from "../testSupport/fakeSheetsService";
-import { ColumnConfigsOperator } from "./ColumnConfigsOperator";
+} from "../testSupport/fakeSheetsService.ts";
+import { ColumnConfigsOperator } from "./ColumnConfigsOperator.ts";
 
 const { columnConfigs } = installedConfigs();
 

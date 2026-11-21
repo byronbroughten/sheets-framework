@@ -1,8 +1,8 @@
 import { Val } from "@byronbroughten/utils/val";
 import { describe, expect, it } from "vitest";
 
-import { getColumnTraitByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
-import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
+import { getColumnTraitByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes.ts";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes.ts";
 import {
   layoutBodyRows,
   layoutGid,
@@ -11,16 +11,16 @@ import {
   layoutTableId,
   type LayoutTableName,
   managedLayoutTableNames,
-} from "../02_SpreadsheetRaw/spreadsheetRawTestSupport";
-import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
+} from "../02_SpreadsheetRaw/spreadsheetRawTestSupport.ts";
+import { expectedSheetLayout } from "../testSupport/expectedSheetLayout.ts";
 import {
   buildGridRows,
   type FakeCell,
   type FakeSheetProperties,
   type FakeSheetsService,
   stubSheetsService,
-} from "../testSupport/fakeSheetsService";
-import { SpreadsheetNamed } from "./SpreadsheetNamed";
+} from "../testSupport/fakeSheetsService.ts";
+import { SpreadsheetNamed } from "./SpreadsheetNamed.ts";
 
 const topDataRowIndex = expectedSheetLayout.tableHeaderRowIndex + 1;
 const runItemGid = getTableTraitByName("runItem", "sheetGid");

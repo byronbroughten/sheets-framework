@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import type { PendingAlterations } from "./intendedState";
+import type { PendingAlterations } from "./intendedState.ts";
 import {
   SyncPlanner,
   type SyncPlannerProps,
   type TraitReadings,
-} from "./SyncPlanner";
+} from "./SyncPlanner.ts";
 
 const subject = { table: "item", column: "name", path: "header" };
 const formulaSubject = {

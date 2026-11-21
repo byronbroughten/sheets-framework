@@ -1,10 +1,10 @@
 import { describe, it } from "vitest";
 
-import type { TableNameSimple } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
-import type { SheetNameWithIdColumn } from "../04_SpreadsheetNamed/TableNameGroups";
-import { assertType, type IsExactly } from "../testSupport/typeAssertions";
-import type { Endpoint, EndpointsAll } from "./Endpoints";
-import type { FillRowIdsEndpoints } from "./frameworkEndpoints";
+import type { TableNameSimple } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes.ts";
+import type { SheetNameWithIdColumn } from "../04_SpreadsheetNamed/TableNameGroups.ts";
+import { assertType, type IsExactly } from "../testSupport/typeAssertions.ts";
+import type { Endpoint, EndpointsAll } from "./Endpoints.ts";
+import type { FillRowIdsEndpoints } from "./frameworkEndpoints.ts";
 
 describe("FillRowIdsEndpoints", () => {
   it("is keyed by the ID column of every Table with one, and nothing else", () => {

@@ -1,15 +1,15 @@
 import { Val } from "@byronbroughten/utils/val";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { IdNameMapGeneric } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
-import type { PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState";
-import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
-import { parseIdNameMapFileSource } from "./parseIdNameMapFileSource";
+import type { IdNameMapGeneric } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes.ts";
+import type { PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState.ts";
+import { stubLogger } from "../testSupport/fakeAppsScriptGlobals.ts";
+import { parseIdNameMapFileSource } from "./parseIdNameMapFileSource.ts";
 import {
   emittedItemColumn,
   runItem,
   seedFixture,
-} from "./syncCoordinatorTestSupport";
+} from "./syncCoordinatorTestSupport.ts";
 
 beforeEach(() => {
   stubLogger();

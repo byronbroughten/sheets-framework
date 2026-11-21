@@ -3,15 +3,15 @@ import {
   ruleAdditionLines,
   ruleRemovalLines,
   ruleReplacementLines,
-} from "./SyncPlanner";
+} from "./SyncPlanner.ts";
 import {
   entriesOf,
   movePath,
   type WideAlterations,
   type WideColumnEntry,
   type WideTableEntry,
-} from "./SyncPlanner/wideAlterations";
-import type { SyncSubject } from "./syncRunResult";
+} from "./SyncPlanner/wideAlterations.ts";
+import type { SyncSubject } from "./syncRunResult.ts";
 
 // The alterations still pending once `landed` went out; the refuser lets only a Table's, a column's or a tab's trait, a `moves` group, a rule removal or replacement, or a created Table or tab through, so any other subject is a bug.
 export function remainingAlterations(

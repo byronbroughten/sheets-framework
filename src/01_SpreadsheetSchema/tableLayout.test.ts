@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { headRows } from "./headRows";
-import { tableLayout } from "./tableLayout";
+import { headRows } from "./headRows.ts";
+import { tableLayout } from "./tableLayout.ts";
 
 const headRowOffsets = Object.values(tableLayout.headRowOffsets);
 

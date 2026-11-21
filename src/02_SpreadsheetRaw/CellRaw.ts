@@ -1,25 +1,25 @@
 import type {
   CellValue,
   CellValueName,
-} from "../00_Source/CellValues/cellValues";
+} from "../00_Source/CellValues/cellValues.ts";
 import type {
   ConditionalFormatDeclaration,
   ConditionalFormatRule,
-} from "../00_Source/RawSource/ConditionalFormat";
+} from "../00_Source/RawSource/ConditionalFormat.ts";
 import type {
   EditLockDeclaration,
   EditProtection,
   EditWarningDeclaration,
-} from "../00_Source/RawSource/EditProtection";
+} from "../00_Source/RawSource/EditProtection.ts";
 import type {
   BoundedGridRange,
   GridCellSnapshot,
-} from "../00_Source/RawSource/RawSource";
-import type { RgbColor } from "../00_Source/RawSource/RgbColor";
-import { CellBaseRaw } from "./ClassBases/CellBaseRaw";
-import type { RowCommonRaw } from "./ClassBases/RowCommonRaw";
-import type { BoundedTableGridRange, CellFill } from "./ClassTypes/StateRaw";
-import { TableRaw } from "./TableRaw";
+} from "../00_Source/RawSource/RawSource.ts";
+import type { RgbColor } from "../00_Source/RawSource/RgbColor.ts";
+import { CellBaseRaw } from "./ClassBases/CellBaseRaw.ts";
+import type { RowCommonRaw } from "./ClassBases/RowCommonRaw.ts";
+import type { BoundedTableGridRange, CellFill } from "./ClassTypes/StateRaw.ts";
+import { TableRaw } from "./TableRaw.ts";
 
 export class CellRaw<
   VN extends CellValueName = CellValueName,

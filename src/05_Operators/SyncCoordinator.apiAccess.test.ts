@@ -1,14 +1,14 @@
 import { Val } from "@byronbroughten/utils/val";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { type IdNameMapGeneric } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
-import { type PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState";
-import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
-import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
-import { type FakeSheetProperties } from "../testSupport/fakeSheetsService";
-import { fakeTableSheet } from "../testSupport/fakeSheetsService/fakeTableSheet";
-import { parseIdNameMapFileSource } from "./parseIdNameMapFileSource";
-import { SyncCoordinator, type SyncRun } from "./SyncCoordinator";
+import { type IdNameMapGeneric } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes.ts";
+import { type PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState.ts";
+import { expectedSheetLayout } from "../testSupport/expectedSheetLayout.ts";
+import { stubLogger } from "../testSupport/fakeAppsScriptGlobals.ts";
+import { type FakeSheetProperties } from "../testSupport/fakeSheetsService.ts";
+import { fakeTableSheet } from "../testSupport/fakeSheetsService/fakeTableSheet.ts";
+import { parseIdNameMapFileSource } from "./parseIdNameMapFileSource.ts";
+import { SyncCoordinator, type SyncRun } from "./SyncCoordinator.ts";
 import {
   columnsByHeader,
   frame,
@@ -20,7 +20,7 @@ import {
   runItem,
   type RunOptions,
   seedFixture,
-} from "./syncCoordinatorTestSupport";
+} from "./syncCoordinatorTestSupport.ts";
 
 beforeEach(() => {
   stubLogger();

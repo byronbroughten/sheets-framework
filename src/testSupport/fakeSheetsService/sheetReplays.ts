@@ -1,5 +1,5 @@
-import { type FakeSpreadsheet, fakeSpreadsheet } from "./fakeSpreadsheet";
-import { fieldMasks } from "./fieldMasks";
+import { type FakeSpreadsheet, fakeSpreadsheet } from "./fakeSpreadsheet.ts";
+import { fieldMasks } from "./fieldMasks.ts";
 
 type Response = GoogleAppsScript.Sheets.Schema.Response;
 

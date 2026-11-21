@@ -1,63 +1,63 @@
 import { Val } from "@byronbroughten/utils/val";
 
-import type { ModelableConditionalFormatRule } from "../00_Source/RawSource/ConditionalFormat";
-import type { BoundedGridRange } from "../00_Source/RawSource/RawSource";
+import type { ModelableConditionalFormatRule } from "../00_Source/RawSource/ConditionalFormat.ts";
+import type { BoundedGridRange } from "../00_Source/RawSource/RawSource.ts";
 import {
   type ApiAccessChanges,
   type ApiAccessGrant,
   hasApiAccess,
-} from "../01_SpreadsheetSchema/configReaders/apiAccessChanges";
+} from "../01_SpreadsheetSchema/configReaders/apiAccessChanges.ts";
 import {
   BraceFormula,
   type BraceNames,
-} from "../01_SpreadsheetSchema/configReaders/BraceFormula";
+} from "../01_SpreadsheetSchema/configReaders/BraceFormula.ts";
 import {
   type ColumnReference,
   type IdNameMapGeneric,
   mapTablesByLiveness,
-} from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
-import { IntendedRule } from "../01_SpreadsheetSchema/configReaders/IntendedRule";
+} from "../01_SpreadsheetSchema/configReaders/idNameMapTypes.ts";
+import { IntendedRule } from "../01_SpreadsheetSchema/configReaders/IntendedRule.ts";
 import {
   makeImportLine,
   type TableConfigsBase,
-} from "../01_SpreadsheetSchema/configReaders/makeConfigs";
+} from "../01_SpreadsheetSchema/configReaders/makeConfigs.ts";
 import type {
   IntendedTrait,
   PlannedNewTable,
   PlannedNewTableColumn,
   PlannedNewTablePlacement,
-} from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
+} from "../01_SpreadsheetSchema/configReaders/SyncPlanner.ts";
 import type {
   SyncHeadRowsStop,
   SyncNewTableStop,
   SyncTableGoneNotice,
   SyncTabTitleRepeatedStop,
-} from "../01_SpreadsheetSchema/configReaders/syncRunResult";
+} from "../01_SpreadsheetSchema/configReaders/syncRunResult.ts";
 import {
   configRetiredIdPrefixes,
   previousTableIdOf,
   tableConfigsByTableId,
-} from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
-import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
-import { headerZone } from "../01_SpreadsheetSchema/headerZone";
+} from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes.ts";
+import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds.ts";
+import { headerZone } from "../01_SpreadsheetSchema/headerZone.ts";
 import {
   idPrefixes,
   IdPrefixesByTableId,
   type IdPrefixLabel,
-} from "../01_SpreadsheetSchema/idPrefixes";
-import { TableOrigin } from "../01_SpreadsheetSchema/TableOrigin";
-import type { CreatedTablePlacement } from "../02_SpreadsheetRaw/ClassTypes/StateRaw";
-import type { SheetRaw } from "../02_SpreadsheetRaw/SheetRaw";
+} from "../01_SpreadsheetSchema/idPrefixes.ts";
+import { TableOrigin } from "../01_SpreadsheetSchema/TableOrigin.ts";
+import type { CreatedTablePlacement } from "../02_SpreadsheetRaw/ClassTypes/StateRaw.ts";
+import type { SheetRaw } from "../02_SpreadsheetRaw/SheetRaw.ts";
 import {
   randomSheetGid,
   randomTableId,
-} from "../02_SpreadsheetRaw/SpreadsheetRaw/SpreadsheetTableCreatorRaw";
-import type { TableRaw } from "../02_SpreadsheetRaw/TableRaw";
-import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
-import { oneLinePerEntryFileSource } from "./configFileSource";
-import { validateIdPrefixesUnchanged } from "./idPrefixGuard";
-import { SpreadsheetBaseOperator } from "./SpreadsheetBaseOperator";
-import { TableConfigsTraitUpdaterOperator } from "./TableConfigsOperator/TableConfigsTraitUpdaterOperator";
+} from "../02_SpreadsheetRaw/SpreadsheetRaw/SpreadsheetTableCreatorRaw.ts";
+import type { TableRaw } from "../02_SpreadsheetRaw/TableRaw.ts";
+import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed.ts";
+import { oneLinePerEntryFileSource } from "./configFileSource.ts";
+import { validateIdPrefixesUnchanged } from "./idPrefixGuard.ts";
+import { SpreadsheetBaseOperator } from "./SpreadsheetBaseOperator.ts";
+import { TableConfigsTraitUpdaterOperator } from "./TableConfigsOperator/TableConfigsTraitUpdaterOperator.ts";
 
 // A planned new Table with the IDs the run settled for it, its tab's GID in its created placement, and each column's formula and type compiled to the names on the sheet.
 export interface MintedNewTable extends PlannedNewTable {

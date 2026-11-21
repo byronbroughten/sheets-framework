@@ -1,20 +1,20 @@
 import { Val } from "@byronbroughten/utils/val";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { HeldFlushRefusal } from "../00_Source/RawSource/HeldFlushRefusal";
-import type { DropdownStyleReset } from "../00_Source/RawSource/RawSource";
-import type { ColumnTypeBaseline } from "../01_SpreadsheetSchema/columnBaseline";
-import type { PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState";
-import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
-import type { FakeSheetsServiceOptions } from "../testSupport/fakeSheetsService";
-import { SyncCoordinator } from "./SyncCoordinator";
+import { HeldFlushRefusal } from "../00_Source/RawSource/HeldFlushRefusal.ts";
+import type { DropdownStyleReset } from "../00_Source/RawSource/RawSource.ts";
+import type { ColumnTypeBaseline } from "../01_SpreadsheetSchema/columnBaseline.ts";
+import type { PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState.ts";
+import { stubLogger } from "../testSupport/fakeAppsScriptGlobals.ts";
+import type { FakeSheetsServiceOptions } from "../testSupport/fakeSheetsService.ts";
+import { SyncCoordinator } from "./SyncCoordinator.ts";
 import {
   itemColumns,
   noteColIndex,
   runItem,
   runWithNoAlterations,
   seedFixture,
-} from "./syncCoordinatorTestSupport";
+} from "./syncCoordinatorTestSupport.ts";
 
 beforeEach(() => {
   stubLogger();

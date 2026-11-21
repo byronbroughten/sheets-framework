@@ -3,20 +3,20 @@ import {
   type GoogleRequest,
   GoogleSheetsAPI,
   type SheetsHttpTransport,
-} from "../00_Source/GoogleSheets/GoogleSheetsAPI";
-import { installRawSource } from "../00_Source/RawSource/installedRawSource";
+} from "../00_Source/GoogleSheets/GoogleSheetsAPI.ts";
+import { installRawSource } from "../00_Source/RawSource/installedRawSource.ts";
 import {
   type Configs,
   installConfigs,
-} from "../01_SpreadsheetSchema/configReaders/configRegister";
-import type { Endpoints } from "../06_API/Endpoints";
-import { installEndpoints } from "../06_API/feedbackColumnIds";
+} from "../01_SpreadsheetSchema/configReaders/configRegister.ts";
+import type { Endpoints } from "../06_API/Endpoints.ts";
+import { installEndpoints } from "../06_API/feedbackColumnIds.ts";
 import {
   EnteredDataGate,
   type EnteredDataGateProps,
   type HeldList,
-} from "./EnteredDataGate";
-import { UpdateRequestSummary } from "./UpdateRequestSummary";
+} from "./EnteredDataGate.ts";
+import { UpdateRequestSummary } from "./UpdateRequestSummary.ts";
 
 export interface NodeHostProps {
   configs: Configs;

@@ -1,10 +1,10 @@
-import { columnNameOfHeader } from "../columnConfigsTypes";
+import { columnNameOfHeader } from "../columnConfigsTypes.ts";
 import {
   newColumnsOf,
   type WideNewTable,
   type WideTableEntry,
-} from "../SyncPlanner/wideAlterations";
-import type { SyncRefusal } from "../syncRunResult";
+} from "../SyncPlanner/wideAlterations.ts";
+import type { SyncRefusal } from "../syncRunResult.ts";
 
 interface NewHeader {
   header: string | undefined;

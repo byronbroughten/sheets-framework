@@ -1,18 +1,18 @@
 import { Val } from "@byronbroughten/utils/val";
 
-import type { FormulaRenames } from "./BraceFormula";
-import type { ConfigSnapshots } from "./configSnapshots";
-import { subjectKey } from "./didntLand";
-import type { ColumnConfigsGeneric, TableConfigsBase } from "./makeConfigs";
-import { movedNames, type NamesNow, namesNow } from "./namesNow";
-import { SyncAlterationsRewriter } from "./SyncAlterationsRewriter";
-import type { WideAlterations } from "./SyncPlanner/wideAlterations";
+import type { FormulaRenames } from "./BraceFormula.ts";
+import type { ConfigSnapshots } from "./configSnapshots.ts";
+import { subjectKey } from "./didntLand.ts";
+import type { ColumnConfigsGeneric, TableConfigsBase } from "./makeConfigs.ts";
+import { movedNames, type NamesNow, namesNow } from "./namesNow.ts";
+import { SyncAlterationsRewriter } from "./SyncAlterationsRewriter.ts";
+import type { WideAlterations } from "./SyncPlanner/wideAlterations.ts";
 import type {
   SyncMovedName,
   SyncRename,
   SyncRewrite,
   SyncSubject,
-} from "./syncRunResult";
+} from "./syncRunResult.ts";
 
 export interface SyncNameRewriterProps {
   // The alterations still pending after this run's landed ones left.

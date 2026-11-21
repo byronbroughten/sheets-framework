@@ -4,7 +4,7 @@ import {
   assertNotType,
   assertType,
   type IsExactly,
-} from "../../testSupport/typeAssertions";
+} from "../../testSupport/typeAssertions.ts";
 import {
   type Configs,
   type ConfigSetBase,
@@ -12,13 +12,13 @@ import {
   type ConfigsOf,
   installConfigs,
   installedConfigs,
-} from "./configRegister";
+} from "./configRegister.ts";
 import type {
   ColumnConfigsGeneric,
   makeColumnConfigs,
   TableConfigsBase,
-} from "./makeConfigs";
-import type { TableConfigs } from "./tableConfigsTypes";
+} from "./makeConfigs.ts";
+import type { TableConfigs } from "./tableConfigsTypes.ts";
 
 type ColumnConfigsWithValueName<VN extends string> = ReturnType<
   typeof makeColumnConfigs<
@@ -70,7 +70,7 @@ describe("Register", () => {
 describe("installedConfigs", () => {
   it("throws until the entry call installs configs", async () => {
     vi.resetModules();
-    const fresh = await import("./configRegister");
+    const fresh = await import("./configRegister.ts");
     expect(() => fresh.installedConfigs()).toThrow(
       "Configs have not been installed",
     );

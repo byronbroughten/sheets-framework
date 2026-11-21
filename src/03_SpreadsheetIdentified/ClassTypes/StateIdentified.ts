@@ -1,8 +1,8 @@
-import type { RgbColor } from "../../00_Source/RawSource/RgbColor";
+import type { RgbColor } from "../../00_Source/RawSource/RgbColor.ts";
 import type {
   Value,
   ValueName,
-} from "../../01_SpreadsheetSchema/configReaders/valueSchemas";
+} from "../../01_SpreadsheetSchema/configReaders/valueSchemas.ts";
 
 // Mirrors the raw queued entry's optional pair, so a run can write either or both.
 export interface CellChange<VN extends ValueName = ValueName> {

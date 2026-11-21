@@ -1,23 +1,23 @@
 import { Val } from "@byronbroughten/utils/val";
 
-import type { SheetTabProperties } from "../00_Source/RawSource/RawSource";
-import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister";
-import type { IdNameMapGeneric } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
+import type { SheetTabProperties } from "../00_Source/RawSource/RawSource.ts";
+import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister.ts";
+import type { IdNameMapGeneric } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes.ts";
 import {
   makeImportLine,
   type TabConfigsBase,
   type TabConfigStored,
-} from "../01_SpreadsheetSchema/configReaders/makeConfigs";
+} from "../01_SpreadsheetSchema/configReaders/makeConfigs.ts";
 import {
   type IntendedTrait,
   isTabDeletion,
   type TraitReadings,
-} from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
-import type { SyncTabGoneNotice } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
-import type { SheetRaw } from "../02_SpreadsheetRaw/SheetRaw";
-import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
-import { oneLinePerEntryFileSource } from "./configFileSource";
-import { SpreadsheetBaseOperator } from "./SpreadsheetBaseOperator";
+} from "../01_SpreadsheetSchema/configReaders/SyncPlanner.ts";
+import type { SyncTabGoneNotice } from "../01_SpreadsheetSchema/configReaders/syncRunResult.ts";
+import type { SheetRaw } from "../02_SpreadsheetRaw/SheetRaw.ts";
+import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed.ts";
+import { oneLinePerEntryFileSource } from "./configFileSource.ts";
+import { SpreadsheetBaseOperator } from "./SpreadsheetBaseOperator.ts";
 
 type TabReadings = TraitReadings["tabs"];
 type TabReading = NonNullable<TabReadings[string]>;

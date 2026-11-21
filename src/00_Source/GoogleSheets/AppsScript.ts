@@ -1,7 +1,7 @@
 import { Val } from "@byronbroughten/utils/val";
 
-import type { SheetEdit } from "../PlatformEvents/sheetEdit";
-import { SheetIndex } from "../RawSource/SheetIndex";
+import type { SheetEdit } from "../PlatformEvents/sheetEdit.ts";
+import { SheetIndex } from "../RawSource/SheetIndex.ts";
 
 export class AppsScript {
   // A standalone script has no active spreadsheet; the framework's is always bound to its own.

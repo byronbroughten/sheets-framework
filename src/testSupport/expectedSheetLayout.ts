@@ -1,4 +1,4 @@
-import { TableOrigin } from "../01_SpreadsheetSchema/TableOrigin";
+import { TableOrigin } from "../01_SpreadsheetSchema/TableOrigin.ts";
 
 const origin = TableOrigin.expected();
 

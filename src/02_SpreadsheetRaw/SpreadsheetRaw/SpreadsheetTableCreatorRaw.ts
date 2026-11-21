@@ -1,23 +1,23 @@
 import { Arr } from "@byronbroughten/utils/arr";
 
-import type { CellValue } from "../../00_Source/CellValues/cellValues";
+import type { CellValue } from "../../00_Source/CellValues/cellValues.ts";
 import {
   SheetIndex,
   type SheetRowIndex,
-} from "../../00_Source/RawSource/SheetIndex";
-import { dimensionIds } from "../../01_SpreadsheetSchema/dimensionIds";
-import { idPrefixes } from "../../01_SpreadsheetSchema/idPrefixes";
-import { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin";
-import { SpreadsheetBaseRaw } from "../ClassBases/SpreadsheetBaseRaw";
-import { queuedColumnType } from "../ClassTypes/queuedColumnType";
+} from "../../00_Source/RawSource/SheetIndex.ts";
+import { dimensionIds } from "../../01_SpreadsheetSchema/dimensionIds.ts";
+import { idPrefixes } from "../../01_SpreadsheetSchema/idPrefixes.ts";
+import { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin.ts";
+import { SpreadsheetBaseRaw } from "../ClassBases/SpreadsheetBaseRaw.ts";
+import { queuedColumnType } from "../ClassTypes/queuedColumnType.ts";
 import type {
   CreatedTable,
   CreatedTableColumn,
   CreatedTablePlacement,
   CreateTableProps,
   GridEnd,
-} from "../ClassTypes/StateRaw";
-import { SpreadsheetRaw } from "../SpreadsheetRaw";
+} from "../ClassTypes/StateRaw.ts";
+import { SpreadsheetRaw } from "../SpreadsheetRaw.ts";
 
 // A created Table holds one empty body row unless it is seeded.
 const minBodyRowCount = 1;

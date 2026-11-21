@@ -1,11 +1,11 @@
-import { columnNameOfHeader } from "../columnConfigsTypes";
+import { columnNameOfHeader } from "../columnConfigsTypes.ts";
 import {
   entriesOf,
   type WideAlterations,
   type WideTableEntry,
-} from "../SyncPlanner/wideAlterations";
-import type { SyncRefusal } from "../syncRunResult";
-import type { ColumnNamedAt } from "./namedColumnRefusals";
+} from "../SyncPlanner/wideAlterations.ts";
+import type { SyncRefusal } from "../syncRunResult.ts";
+import type { ColumnNamedAt } from "./namedColumnRefusals.ts";
 
 // The names a Table entry's renames give its columns, each to the column's old name.
 export class RenamedColumnNames {

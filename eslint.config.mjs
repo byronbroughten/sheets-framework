@@ -37,7 +37,7 @@ const aboveTierFolders = [
 ];
 function layerImportPattern(layer) {
   return {
-    regex: `(^|/)(${[...layerFolders.slice(layer + 1), ...aboveTierFolders].join("|")})(/|(\\.js)?$)`,
+    regex: `(^|/)(${[...layerFolders.slice(layer + 1), ...aboveTierFolders].join("|")})(/|(\\.ts)?$)`,
     message: `Dependencies only point downward: ${layerFolders[layer]} imports nothing from a higher tier or from ${aboveTierFolders.join(", ")} (packages/framework/src/AGENTS.md).`,
   };
 }

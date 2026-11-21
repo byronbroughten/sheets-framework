@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type * as RegisterModule from "./feedbackColumnRegister";
+import type * as RegisterModule from "./feedbackColumnRegister.ts";
 
 type Register = typeof RegisterModule;
 
 async function freshRegister(): Promise<Register> {
   vi.resetModules();
-  return import("./feedbackColumnRegister");
+  return import("./feedbackColumnRegister.ts");
 }
 
 describe("installFeedbackColumnIds", () => {

@@ -1,38 +1,38 @@
-import type { NotEmpty } from "../00_Source/CellValues/cellValues";
+import type { NotEmpty } from "../00_Source/CellValues/cellValues.ts";
 import type {
   ConditionalFormatDeclaration,
   ConditionalFormatRule,
-} from "../00_Source/RawSource/ConditionalFormat";
+} from "../00_Source/RawSource/ConditionalFormat.ts";
 import type {
   EditLockDeclaration,
   EditProtection,
   EditWarningDeclaration,
-} from "../00_Source/RawSource/EditProtection";
+} from "../00_Source/RawSource/EditProtection.ts";
 import type {
   FindReplaceTerms,
   GridRangeProps,
   TableColumnType,
-} from "../00_Source/RawSource/RawSource";
+} from "../00_Source/RawSource/RawSource.ts";
 import type {
   ColumnIsFormula,
   ColumnName,
   ColumnValue,
   ColumnValueDeclared,
   ColumnValueName,
-} from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
-import type { TableName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
-import type { VnToCvn } from "../01_SpreadsheetSchema/configReaders/valueSchemas";
+} from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes.ts";
+import type { TableName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes.ts";
+import type { VnToCvn } from "../01_SpreadsheetSchema/configReaders/valueSchemas.ts";
 import type {
   HeadRole,
   HeadRowValueName,
-} from "../01_SpreadsheetSchema/headRows";
-import type { ColumnRaw } from "../02_SpreadsheetRaw/ColumnRaw";
-import type { CellIdentified } from "../03_SpreadsheetIdentified/CellIdentified";
-import type { CellChange } from "../03_SpreadsheetIdentified/ClassTypes/StateIdentified";
-import { ColumnIdentified } from "../03_SpreadsheetIdentified/ColumnIdentified";
-import { CellNamed } from "./CellNamed";
-import { ColumnCommonNamed } from "./ClassBases/ColumnCommonNamed";
-import { TableNamed } from "./TableNamed";
+} from "../01_SpreadsheetSchema/headRows.ts";
+import type { ColumnRaw } from "../02_SpreadsheetRaw/ColumnRaw.ts";
+import type { CellIdentified } from "../03_SpreadsheetIdentified/CellIdentified.ts";
+import type { CellChange } from "../03_SpreadsheetIdentified/ClassTypes/StateIdentified.ts";
+import { ColumnIdentified } from "../03_SpreadsheetIdentified/ColumnIdentified.ts";
+import { CellNamed } from "./CellNamed.ts";
+import { ColumnCommonNamed } from "./ClassBases/ColumnCommonNamed.ts";
+import { TableNamed } from "./TableNamed.ts";
 
 export class ColumnNamed<
   TN extends TableName,

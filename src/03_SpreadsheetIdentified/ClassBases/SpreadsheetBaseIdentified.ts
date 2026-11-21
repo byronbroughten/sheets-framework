@@ -1,12 +1,12 @@
 import {
   SpreadsheetBaseRaw,
   type SpreadsheetRawProps,
-} from "../../02_SpreadsheetRaw/ClassBases/SpreadsheetBaseRaw";
-import type { StateIdentified } from "../ClassTypes/StateIdentified";
+} from "../../02_SpreadsheetRaw/ClassBases/SpreadsheetBaseRaw.ts";
+import type { StateIdentified } from "../ClassTypes/StateIdentified.ts";
 import {
   type FeedbackColumnIds,
   installedFeedbackColumnIds,
-} from "../feedbackColumnRegister";
+} from "../feedbackColumnRegister.ts";
 
 export interface SpreadsheetIdentifiedProps extends SpreadsheetRawProps {
   spreadsheetStateIdentified: StateIdentified;

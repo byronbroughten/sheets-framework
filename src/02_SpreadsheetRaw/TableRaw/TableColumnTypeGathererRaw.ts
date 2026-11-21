@@ -2,11 +2,11 @@ import type {
   TableColumnPropertiesUpdate,
   TableColumnSnapshot,
   TableColumnValidationRule,
-} from "../../00_Source/RawSource/RawSource";
-import { TableBaseRaw, tableColumnLabel } from "../ClassBases/TableBaseRaw";
-import { queuedColumnType } from "../ClassTypes/queuedColumnType";
-import type { TableWrites } from "../ClassTypes/StateRaw";
-import { TableRaw } from "../TableRaw";
+} from "../../00_Source/RawSource/RawSource.ts";
+import { TableBaseRaw, tableColumnLabel } from "../ClassBases/TableBaseRaw.ts";
+import { queuedColumnType } from "../ClassTypes/queuedColumnType.ts";
+import type { TableWrites } from "../ClassTypes/StateRaw.ts";
+import { TableRaw } from "../TableRaw.ts";
 
 type ColumnTypes = TableWrites["columnTypes"];
 

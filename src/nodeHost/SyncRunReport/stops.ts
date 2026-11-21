@@ -10,10 +10,10 @@ import {
   type SyncTabTitleRepeatedStop,
   type SyncTabTitleTakenStop,
   type SyncUnmodelableRuleStop,
-} from "../../01_SpreadsheetSchema/configReaders/syncRunResult";
-import { headerZone } from "../../01_SpreadsheetSchema/headerZone";
-import { headRows } from "../../01_SpreadsheetSchema/headRows";
-import { ReportText } from "../ReportText";
+} from "../../01_SpreadsheetSchema/configReaders/syncRunResult.ts";
+import { headerZone } from "../../01_SpreadsheetSchema/headerZone.ts";
+import { headRows } from "../../01_SpreadsheetSchema/headRows.ts";
+import { ReportText } from "../ReportText.ts";
 
 const { indent, counted, subjectLabel } = ReportText;
 

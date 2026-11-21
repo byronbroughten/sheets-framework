@@ -1,13 +1,13 @@
-import { BraceFormula } from "../BraceFormula";
-import { unplacedNewTable } from "../SyncPlanner";
+import { BraceFormula } from "../BraceFormula.ts";
+import { unplacedNewTable } from "../SyncPlanner.ts";
 import {
   entriesOf,
   type WideNewTable,
   type WideTableEntry,
-} from "../SyncPlanner/wideAlterations";
-import type { SyncRefusal } from "../syncRunResult";
-import { namedColumnRefusals } from "./namedColumnRefusals";
-import type { RenamedColumnNames } from "./RenamedColumnNames";
+} from "../SyncPlanner/wideAlterations.ts";
+import type { SyncRefusal } from "../syncRunResult.ts";
+import { namedColumnRefusals } from "./namedColumnRefusals.ts";
+import type { RenamedColumnNames } from "./RenamedColumnNames.ts";
 
 interface BraceRefuserProps {
   columnNamesByTable: Map<string, string[]>;

@@ -2,9 +2,9 @@ import {
   type SheetColIndex,
   SheetIndex,
   type SheetRowIndex,
-} from "../../../00_Source/RawSource/SheetIndex";
-import { SpreadsheetBaseSchema } from "../../SpreadsheetBaseSchema";
-import { braces, formulaPatterns, type FormulaText } from "./braces";
+} from "../../../00_Source/RawSource/SheetIndex.ts";
+import { SpreadsheetBaseSchema } from "../../SpreadsheetBaseSchema.ts";
+import { braces, formulaPatterns, type FormulaText } from "./braces.ts";
 
 const schema = new SpreadsheetBaseSchema();
 

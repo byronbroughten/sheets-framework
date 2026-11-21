@@ -1,6 +1,6 @@
-import { Api } from "../src/framework";
-import { devEndpoints } from "./devEndpoints";
-import { appConfigs } from "./generated/appConfigs";
+import { Api } from "../src/framework.ts";
+import { devEndpoints } from "./devEndpoints.ts";
+import { appConfigs } from "./generated/appConfigs.ts";
 
 const app = { configs: appConfigs, endpoints: devEndpoints };
 

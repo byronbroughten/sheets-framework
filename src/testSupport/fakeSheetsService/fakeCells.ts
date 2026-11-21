@@ -2,8 +2,8 @@ import type {
   FakeCell,
   FakeCellValue,
   FakeRichCellValue,
-} from "../fakeSheetsService";
-import { unreplayed } from "./unreplayed";
+} from "../fakeSheetsService.ts";
+import { unreplayed } from "./unreplayed.ts";
 
 type GoogleCellData = GoogleAppsScript.Sheets.Schema.CellData;
 type ExtendedValue = GoogleAppsScript.Sheets.Schema.ExtendedValue;

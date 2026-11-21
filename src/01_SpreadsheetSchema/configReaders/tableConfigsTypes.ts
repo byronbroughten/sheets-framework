@@ -6,8 +6,8 @@ import {
   type Configs,
   type ConfigSetBase,
   installedConfigs,
-} from "./configRegister";
-import type { TableConfigsBase, TableConfigStored } from "./makeConfigs";
+} from "./configRegister.ts";
+import type { TableConfigsBase, TableConfigStored } from "./makeConfigs.ts";
 
 export type TableConfigs = Configs["tableConfigs"];
 export type TableNameSimple = keyof TableConfigs & string;

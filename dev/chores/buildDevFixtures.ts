@@ -1,6 +1,6 @@
-import type { Chore } from "../../src/chores/Chore";
-import { DevFixtureBuilder } from "./devFixtures/DevFixtureBuilder";
-import { devSpreadsheetId } from "./devFixtures/devFixtureSheets";
+import type { Chore } from "../../src/chores/Chore.ts";
+import { DevFixtureBuilder } from "./devFixtures/DevFixtureBuilder.ts";
+import { devSpreadsheetId } from "./devFixtures/devFixtureSheets.ts";
 
 export const buildDevFixtures: Chore = {
   description:

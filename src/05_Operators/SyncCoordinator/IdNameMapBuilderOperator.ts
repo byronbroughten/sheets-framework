@@ -1,8 +1,8 @@
-import type { IdNameMapGeneric } from "../../01_SpreadsheetSchema/configReaders/idNameMapTypes";
-import { SpreadsheetNamed } from "../../04_SpreadsheetNamed/SpreadsheetNamed";
-import { ColumnConfigsOperator } from "../ColumnConfigsOperator";
-import { columnIdsByName } from "../configFileSource";
-import { SpreadsheetBaseOperator } from "../SpreadsheetBaseOperator";
+import type { IdNameMapGeneric } from "../../01_SpreadsheetSchema/configReaders/idNameMapTypes.ts";
+import { SpreadsheetNamed } from "../../04_SpreadsheetNamed/SpreadsheetNamed.ts";
+import { ColumnConfigsOperator } from "../ColumnConfigsOperator.ts";
+import { columnIdsByName } from "../configFileSource.ts";
+import { SpreadsheetBaseOperator } from "../SpreadsheetBaseOperator.ts";
 
 export class IdNameMapBuilderOperator extends SpreadsheetBaseOperator {
   get ss(): SpreadsheetNamed {

@@ -1,4 +1,4 @@
-import type { RawSource } from "./RawSource";
+import type { RawSource } from "./RawSource.ts";
 
 let installed: RawSource | undefined;
 

@@ -4,29 +4,29 @@ import {
   GoogleSheetsAPI,
   type ModeledRequestVerb,
   type SheetsAdvancedTransport,
-} from "../00_Source/GoogleSheets/GoogleSheetsAPI";
-import { installRawSource } from "../00_Source/RawSource/installedRawSource";
+} from "../00_Source/GoogleSheets/GoogleSheetsAPI.ts";
+import { installRawSource } from "../00_Source/RawSource/installedRawSource.ts";
 import {
   type DropdownStyleReset,
   refusesDropdownStyleReset,
-} from "../00_Source/RawSource/RawSource";
-import { cellReplays } from "./fakeSheetsService/cellReplays";
-import { dimensionReplays } from "./fakeSheetsService/dimensionReplays";
-import { FakeGoogleRefusal } from "./fakeSheetsService/FakeGoogleRefusal";
-import { FakeGridPayload } from "./fakeSheetsService/FakeGridPayload";
+} from "../00_Source/RawSource/RawSource.ts";
+import { cellReplays } from "./fakeSheetsService/cellReplays.ts";
+import { dimensionReplays } from "./fakeSheetsService/dimensionReplays.ts";
+import { FakeGoogleRefusal } from "./fakeSheetsService/FakeGoogleRefusal.ts";
+import { FakeGridPayload } from "./fakeSheetsService/FakeGridPayload.ts";
 import {
   type FakeSheetState,
   type FakeSpreadsheet,
   fakeSpreadsheet,
   loneTableId,
-} from "./fakeSheetsService/fakeSpreadsheet";
-import { fakeTables } from "./fakeSheetsService/fakeTables";
-import { type FakeGridView, gridView } from "./fakeSheetsService/gridView";
-import { rangeReplays } from "./fakeSheetsService/rangeReplays";
-import { ruleReplays } from "./fakeSheetsService/ruleReplays";
-import { sheetReplays } from "./fakeSheetsService/sheetReplays";
-import { tableReplays } from "./fakeSheetsService/tableReplays";
-import { unreplayed } from "./fakeSheetsService/unreplayed";
+} from "./fakeSheetsService/fakeSpreadsheet.ts";
+import { fakeTables } from "./fakeSheetsService/fakeTables.ts";
+import { type FakeGridView, gridView } from "./fakeSheetsService/gridView.ts";
+import { rangeReplays } from "./fakeSheetsService/rangeReplays.ts";
+import { ruleReplays } from "./fakeSheetsService/ruleReplays.ts";
+import { sheetReplays } from "./fakeSheetsService/sheetReplays.ts";
+import { tableReplays } from "./fakeSheetsService/tableReplays.ts";
+import { unreplayed } from "./fakeSheetsService/unreplayed.ts";
 
 type BatchUpdateRequest =
   GoogleAppsScript.Sheets.Schema.BatchUpdateSpreadsheetRequest;

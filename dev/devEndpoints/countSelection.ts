@@ -1,4 +1,4 @@
-import type { Endpoint } from "../../src/framework";
+import type { Endpoint } from "../../src/framework.ts";
 
 export const countSelection: Endpoint<"runItem"> = {
   timeLastRan: "startTime",

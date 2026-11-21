@@ -9,9 +9,9 @@ import {
   protectionRangeHasRowCoordinates,
   type WholeSheetEditLockDeclaration,
   type WholeSheetEditWarningDeclaration,
-} from "../../00_Source/RawSource/EditProtection";
-import { SheetBaseRaw } from "../ClassBases/SheetBaseRaw";
-import { SheetRaw } from "../SheetRaw";
+} from "../../00_Source/RawSource/EditProtection.ts";
+import { SheetBaseRaw } from "../ClassBases/SheetBaseRaw.ts";
+import { SheetRaw } from "../SheetRaw.ts";
 
 export class SheetEditProtectionsRaw extends SheetBaseRaw {
   get sheet(): SheetRaw {

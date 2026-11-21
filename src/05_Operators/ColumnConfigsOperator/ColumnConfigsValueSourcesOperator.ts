@@ -1,17 +1,17 @@
 import { Val } from "@byronbroughten/utils/val";
 
-import { isFrameworkValueName } from "../../00_Source/CellValues/frameworkValueSchemas";
-import { columnNameOfHeader } from "../../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
+import { isFrameworkValueName } from "../../00_Source/CellValues/frameworkValueSchemas.ts";
+import { columnNameOfHeader } from "../../01_SpreadsheetSchema/configReaders/columnConfigsTypes.ts";
 import type {
   ColumnProfileRaw,
   TableColumnReference,
-} from "../../02_SpreadsheetRaw/ColumnProfileRaw";
-import { ColumnConfigsBaseOperator } from "../ClassBases/ColumnConfigsBaseOperator";
+} from "../../02_SpreadsheetRaw/ColumnProfileRaw.ts";
+import { ColumnConfigsBaseOperator } from "../ClassBases/ColumnConfigsBaseOperator.ts";
 import {
   type SourceColumn,
   sourceLabel,
   type ValueSource,
-} from "../SpreadsheetBaseOperator";
+} from "../SpreadsheetBaseOperator.ts";
 
 export class ColumnConfigsValueSourcesOperator extends ColumnConfigsBaseOperator {
   valueSources(): ValueSource[] {

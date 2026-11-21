@@ -1,11 +1,11 @@
 import { Val } from "@byronbroughten/utils/val";
 
-import type { HeldGroup } from "../01_SpreadsheetSchema/configReaders/dryRunHeld";
+import type { HeldGroup } from "../01_SpreadsheetSchema/configReaders/dryRunHeld.ts";
 import type {
   HeldCell,
   HeldItem,
   HeldRow,
-} from "./FlushClassifier/flushClassifierTypes";
+} from "./FlushClassifier/flushClassifierTypes.ts";
 
 type CellItem = Extract<HeldItem, { kind: "enteredData" | "unreadCell" }>;
 type OtherItem = Exclude<HeldItem, CellItem>;

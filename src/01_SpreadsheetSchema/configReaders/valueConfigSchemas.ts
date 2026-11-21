@@ -1,18 +1,18 @@
 import { Val, validationError } from "@byronbroughten/utils/val";
 
-import { frameworkValueSchemas } from "../../00_Source/CellValues/frameworkValueSchemas";
+import { frameworkValueSchemas } from "../../00_Source/CellValues/frameworkValueSchemas.ts";
 import {
   type ValueSchemaBase,
   vsc,
-} from "../../00_Source/CellValues/valueSchema";
-import type { FixedList, FixedListMember } from "./makeConfigs";
+} from "../../00_Source/CellValues/valueSchema.ts";
+import type { FixedList, FixedListMember } from "./makeConfigs.ts";
 import {
   getValueConfig,
   isFixedList,
   type ValueConfigName,
   valueConfigNames,
   type ValueConfigValue,
-} from "./valueConfigsTypes";
+} from "./valueConfigsTypes.ts";
 
 type ValueConfigSchemas = {
   [K in ValueConfigName]: ValueSchemaBase<ValueConfigValue<K>>;

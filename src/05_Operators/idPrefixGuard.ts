@@ -1,4 +1,4 @@
-import type { IdPrefixesByTableId } from "../01_SpreadsheetSchema/idPrefixes";
+import type { IdPrefixesByTableId } from "../01_SpreadsheetSchema/idPrefixes.ts";
 
 export interface IdPrefixGuardProps {
   previousByTableId: IdPrefixesByTableId;

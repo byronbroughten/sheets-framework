@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import type { ColumnConfigStored, ValueConfigsBase } from "./makeConfigs";
-import { typedTraitChanges } from "./typedTraitChanges";
+import type { ColumnConfigStored, ValueConfigsBase } from "./makeConfigs.ts";
+import { typedTraitChanges } from "./typedTraitChanges.ts";
 
 function statusColumn(valueName: string): ColumnConfigStored {
   return {

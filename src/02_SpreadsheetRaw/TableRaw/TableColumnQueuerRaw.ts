@@ -1,21 +1,21 @@
 import type {
   BoundedGridRange,
   InsertRangeOperation,
-} from "../../00_Source/RawSource/RawSource";
+} from "../../00_Source/RawSource/RawSource.ts";
 import {
   hasQueuedWrites,
   TableBaseRaw,
   tableColumnLabel,
-} from "../ClassBases/TableBaseRaw";
-import { columnCountChange } from "../ClassBases/TableCommonRaw";
+} from "../ClassBases/TableBaseRaw.ts";
+import { columnCountChange } from "../ClassBases/TableCommonRaw.ts";
 import type {
   ChangeTableColumns,
   ColumnMoveSpan,
   NewColumnHeadCells,
   TableColumnChange,
   TableColumnChangeOperation,
-} from "../ClassTypes/StateRaw";
-import { TableRaw } from "../TableRaw";
+} from "../ClassTypes/StateRaw.ts";
+import { TableRaw } from "../TableRaw.ts";
 
 const columnChangeRequests = {
   insertColumn: { kind: "insertRange", action: "Inserting a column inside" },

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { alterationsFileSource } from "./configFileSource";
+import { alterationsFileSource } from "./configFileSource.ts";
 
 const header =
   "// sync rewrites this file: each alteration that lands is removed, and comments here won't survive a run.";

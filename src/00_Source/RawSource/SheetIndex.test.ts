@@ -3,13 +3,13 @@ import { describe, expect, it } from "vitest";
 import {
   assertNotType,
   type IsExactly,
-} from "../../testSupport/typeAssertions";
-import type { FillCellOperation, GridRangeProps } from "./RawSource";
+} from "../../testSupport/typeAssertions.ts";
+import type { FillCellOperation, GridRangeProps } from "./RawSource.ts";
 import {
   type SheetColIndex,
   SheetIndex,
   type SheetRowIndex,
-} from "./SheetIndex";
+} from "./SheetIndex.ts";
 
 describe("SheetIndex", () => {
   it("brands a sheet row and column apart from a plain, Table-relative number", () => {

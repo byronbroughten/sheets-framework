@@ -1,10 +1,10 @@
 import type {
   SyncPlanEffect,
   SyncPlanItem,
-} from "../../01_SpreadsheetSchema/configReaders/syncRunResult";
-import { ReportText } from "../ReportText";
-import { checkLines } from "./checks";
-import { sendLines } from "./sends";
+} from "../../01_SpreadsheetSchema/configReaders/syncRunResult.ts";
+import { ReportText } from "../ReportText.ts";
+import { checkLines } from "./checks.ts";
+import { sendLines } from "./sends.ts";
 
 const { indent, formatCount, counted } = ReportText;
 

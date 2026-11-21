@@ -1,22 +1,22 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { stubScriptAndSpreadsheetApp } from "../../testSupport/fakeAppsScriptGlobals";
+import { stubScriptAndSpreadsheetApp } from "../../testSupport/fakeAppsScriptGlobals.ts";
 import type {
   AddCheckboxValidationOperation,
   AddSheetOperation,
   AddTableOperation,
   BoundedGridRange,
   LocalWriteOperation,
-} from "../RawSource/RawSource";
-import type { RgbColor } from "../RawSource/RgbColor";
-import { SheetIndex } from "../RawSource/SheetIndex";
+} from "../RawSource/RawSource.ts";
+import type { RgbColor } from "../RawSource/RgbColor.ts";
+import { SheetIndex } from "../RawSource/SheetIndex.ts";
 import {
   googleRawRequest,
   type GoogleRequest,
   GoogleSheetsAPI,
   type SheetsHttpRead,
   type SheetsHttpRequest,
-} from "./GoogleSheetsAPI";
+} from "./GoogleSheetsAPI.ts";
 
 const spreadsheetId = "spreadsheet-under-test";
 const lightGreen: RgbColor = { red: 0.851, green: 0.918, blue: 0.827 };

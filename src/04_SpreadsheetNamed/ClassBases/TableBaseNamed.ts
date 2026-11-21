@@ -1,8 +1,8 @@
-import type { TableName } from "../../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
+import type { TableName } from "../../01_SpreadsheetSchema/configReaders/tableConfigsTypes.ts";
 import {
   SpreadsheetBaseNamed,
   type SpreadsheetNamedProps,
-} from "./SpreadsheetBaseNamed";
+} from "./SpreadsheetBaseNamed.ts";
 
 export interface TableNamedProps<
   TN extends TableName,

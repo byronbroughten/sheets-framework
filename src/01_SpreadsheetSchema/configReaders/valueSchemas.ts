@@ -4,24 +4,24 @@ import type { Merge } from "@byronbroughten/utils/obj";
 import type {
   CellValue,
   CellValueName,
-} from "../../00_Source/CellValues/cellValues";
+} from "../../00_Source/CellValues/cellValues.ts";
 import {
   type BlankOf,
   type FrameworkValueName,
   type FrameworkValues,
   frameworkValueSchemas,
-} from "../../00_Source/CellValues/frameworkValueSchemas";
+} from "../../00_Source/CellValues/frameworkValueSchemas.ts";
 import type {
   ValueSchemaBase,
   ValueSchemaKey,
-} from "../../00_Source/CellValues/valueSchema";
-import type { FixedListMember } from "./makeConfigs";
-import { makeSchemasFromValueConfig } from "./valueConfigSchemas";
+} from "../../00_Source/CellValues/valueSchema.ts";
+import type { FixedListMember } from "./makeConfigs.ts";
+import { makeSchemasFromValueConfig } from "./valueConfigSchemas.ts";
 import type {
   ValueConfigName,
   ValueConfigValue,
   ValueConfigValues,
-} from "./valueConfigsTypes";
+} from "./valueConfigsTypes.ts";
 
 type ValueNameSimple = FrameworkValueName | ValueConfigName;
 
