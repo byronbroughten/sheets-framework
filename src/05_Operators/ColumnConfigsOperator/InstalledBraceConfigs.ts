@@ -3,19 +3,11 @@ import {
   BraceFormula,
 } from "../../01_SpreadsheetSchema/configReaders/BraceFormula";
 import { columnConfigsByName } from "../../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
-import type {
-  ColumnConfigsGeneric,
-  ColumnConfigStored,
-} from "../../01_SpreadsheetSchema/configReaders/makeConfigs";
+import type { ColumnConfigStored } from "../../01_SpreadsheetSchema/configReaders/makeConfigs";
 import type { IntendedTrait } from "../../01_SpreadsheetSchema/configReaders/SyncPlanner";
 import { tableConfigsByName } from "../../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import type { SpreadsheetRaw } from "../../02_SpreadsheetRaw/SpreadsheetRaw";
 import type { TableRaw } from "../../02_SpreadsheetRaw/TableRaw";
-
-interface NewBraceConfigs {
-  tableConfigs: BraceConfigs["tableConfigs"];
-  columnConfigs: ColumnConfigsGeneric;
-}
 
 // The installed configs, and the names a formula or rule is braced or compiled against: each the installed configs with Table names swapped.
 export class InstalledBraceConfigs {
@@ -63,33 +55,6 @@ export class InstalledBraceConfigs {
           return [[intended.table, String(intended.value)]];
         }),
       ),
-    );
-  }
-  // A second pass, because a brace names a column by the name this run gives it.
-  inBraceForm(configs: NewBraceConfigs): ColumnConfigsGeneric {
-    return Object.entries(configs.columnConfigs).reduce<ColumnConfigsGeneric>(
-      (braced, [tableKey, tableColumnConfigs]) => {
-        braced[tableKey] = Object.entries(tableColumnConfigs).reduce<
-          ColumnConfigsGeneric[string]
-        >((bracedTable, [columnName, columnConfig]) => {
-          bracedTable[columnName] = {
-            ...columnConfig,
-            formula: bracedFormula({
-              configs,
-              tableKey,
-              formula: columnConfig.formula,
-            }),
-            columnType: BraceFormula.decompileColumnType({
-              configs,
-              tableKey,
-              columnType: columnConfig.columnType,
-            }),
-          };
-          return bracedTable;
-        }, {});
-        return braced;
-      },
-      {},
     );
   }
   private _withTableNames(

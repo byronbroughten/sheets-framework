@@ -1,5 +1,9 @@
 import { Val } from "@byronbroughten/utils/val";
 
+import {
+  type BraceConfigs,
+  BraceFormula,
+} from "../../01_SpreadsheetSchema/configReaders/BraceFormula";
 import { columnNameOfHeader } from "../../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
 import {
   type ColumnConfigsGeneric,
@@ -10,10 +14,16 @@ import { ColumnConfigsBaseOperator } from "../ClassBases/ColumnConfigsBaseOperat
 import { oneLinePerLeafFileSource } from "../configFileSource";
 import { PreviousColumnConfigs } from "../PreviousColumnConfigs";
 import { ColumnConfigsValueSourcesOperator } from "./ColumnConfigsValueSourcesOperator";
+import { bracedFormula } from "./InstalledBraceConfigs";
 
 export interface ApiTableColumns {
   tableKey: string;
   columnConfigs: ColumnConfigsGeneric[string];
+}
+
+interface NewBraceConfigs {
+  tableConfigs: BraceConfigs["tableConfigs"];
+  columnConfigs: ColumnConfigsGeneric;
 }
 
 export class ColumnConfigsOutputOperator extends ColumnConfigsBaseOperator {
@@ -66,7 +76,7 @@ export class ColumnConfigsOutputOperator extends ColumnConfigsBaseOperator {
         groupHeading1: describedColumn.groupHeading1 || null,
       };
     }
-    return this.installedBraceConfigs.inBraceForm({
+    return inBraceForm({
       tableConfigs: this.tableConfigOperator.newTableConfigs(),
       columnConfigs,
     });
@@ -102,4 +112,32 @@ export class ColumnConfigsOutputOperator extends ColumnConfigsBaseOperator {
       ``,
     ].join("\n");
   }
+}
+
+// A second pass, because a brace names a column by the name this run gives it.
+function inBraceForm(configs: NewBraceConfigs): ColumnConfigsGeneric {
+  return Object.entries(configs.columnConfigs).reduce<ColumnConfigsGeneric>(
+    (braced, [tableKey, tableColumnConfigs]) => {
+      braced[tableKey] = Object.entries(tableColumnConfigs).reduce<
+        ColumnConfigsGeneric[string]
+      >((bracedTable, [columnName, columnConfig]) => {
+        bracedTable[columnName] = {
+          ...columnConfig,
+          formula: bracedFormula({
+            configs,
+            tableKey,
+            formula: columnConfig.formula,
+          }),
+          columnType: BraceFormula.decompileColumnType({
+            configs,
+            tableKey,
+            columnType: columnConfig.columnType,
+          }),
+        };
+        return bracedTable;
+      }, {});
+      return braced;
+    },
+    {},
+  );
 }
