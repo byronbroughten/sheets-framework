@@ -187,6 +187,14 @@ export type SyncRefusal =
       column: string;
       columns: string[];
     }
+  // A NUMBER_* rule's value that parses to no finite number, which Sheets refuses the whole batch over.
+  | {
+      kind: "notANumber";
+      table: string;
+      path: string;
+      conditionType: string;
+      value: string;
+    }
   // A `newColumns` or new Table header giving the column name an earlier one's does, at `firstPath`: the refetch can't tell the two apart.
   | {
       kind: "repeatedNewColumn";

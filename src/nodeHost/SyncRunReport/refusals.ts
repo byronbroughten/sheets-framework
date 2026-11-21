@@ -112,6 +112,12 @@ const refusalWords: {
       `${refusal.column} names no column of ${refusal.table}, nor one its newColumns create. Its columns: ${refusal.columns.join(", ")}.`,
     ]);
   },
+  notANumber(refusal) {
+    return tableRefusal(refusal, [
+      `${refusal.value} isn't a number, which a ${refusal.conditionType} condition takes: Sheets refuses the whole batch over it.`,
+      "Write a number there, then rerun.",
+    ]);
+  },
   repeatedNewColumn(refusal) {
     return tableRefusal(refusal, [
       `${refusal.path} gives the column name ${refusal.column}, as ${refusal.firstPath} does: the two columns can't both be named it.`,

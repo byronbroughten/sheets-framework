@@ -1,3 +1,4 @@
+import { numberConditionHoldsText } from "../../../00_Source/RawSource/ConditionalFormat";
 import {
   ruleRemovalLines,
   ruleReplacementLines,
@@ -42,7 +43,7 @@ interface RuleRefuserConstructorProps extends RuleRefuserProps {
   pathPrefix: string;
 }
 
-// Refuses a Table entry's rule naming a column neither mapped nor created by its `newColumns`, or one by its same-run new name; and a handle both removed and replaced.
+// Refuses a Table entry's rule naming a column neither mapped nor created by its `newColumns`, or one by its same-run new name; a NUMBER_* value that isn't a number; and a handle both removed and replaced.
 export class RuleRefuser {
   private refusedAs: string;
   private tableKey: string;
@@ -127,6 +128,11 @@ export class RuleRefuser {
               formula,
             }),
           ),
+          ...numberRefusals({
+            table,
+            path: `${path}.condition.values[0]`,
+            rule,
+          }),
         ];
       },
     );
@@ -162,6 +168,27 @@ export class RuleRefuser {
 function ruleColumnNames({ columns }: WideRule): string[] {
   if (columns === "all") return [];
   return columns;
+}
+
+interface NumberRefusalsProps {
+  table: string;
+  path: string;
+  rule: WideRule;
+}
+
+// A NUMBER_* rule sends one value, so only the first is read, as `compiledCondition` reads it.
+function numberRefusals({
+  table,
+  path,
+  rule: { condition },
+}: NumberRefusalsProps): SyncRefusal[] {
+  const value = condition.values?.[0];
+  if (value === undefined || !numberConditionHoldsText(condition.type, value)) {
+    return [];
+  }
+  return [
+    { kind: "notANumber", table, path, conditionType: condition.type, value },
+  ];
 }
 
 // Only a custom formula's value compiles its braces; any other value is a literal.

@@ -18,6 +18,9 @@ type ItemRuleColumn = Exclude<
   >[number]["columns"],
   "all"
 >[number];
+type ItemRule = NonNullable<
+  NonNullable<ItemEntry["conditionalFormats"]>["add"]
+>[number];
 type ItemColumnName = "optionalNote" | "requiredCount" | "id" | "name";
 type TabEntries = NonNullable<PendingAlterations["tabs"]>;
 type ItemTabEntry = NonNullable<TabEntries["item"]>;
@@ -187,6 +190,47 @@ describe("PendingAlterations' keys", () => {
     // @ts-expect-error a new tab needs its title
     const untitled: NewTabs = [{ tables: [] }];
     expect([headerless, untitled]).toHaveLength(2);
+  });
+});
+
+describe("a rule's condition", () => {
+  function ruleOf(condition: ItemRule["condition"]): ItemRule {
+    return { columns: "all", condition, format: {} };
+  }
+
+  it("takes a number as the one value of a NUMBER_* type", () => {
+    const rules = [
+      ruleOf({ type: "NUMBER_EQ", values: ["0"] }),
+      ruleOf({ type: "NUMBER_GREATER", values: ["1.50"] }),
+      ruleOf({ type: "NUMBER_LESS", values: ["-2"] }),
+    ];
+    expect(rules).toHaveLength(3);
+  });
+
+  it("refuses a boolean or a word as the value of a NUMBER_* type", () => {
+    // @ts-expect-error a boolean's text isn't a number
+    const boolean = ruleOf({ type: "NUMBER_EQ", values: ["TRUE"] });
+    // @ts-expect-error nor is Yes
+    const word = ruleOf({ type: "NUMBER_NOT_EQ", values: ["Yes"] });
+    // @ts-expect-error a NUMBER_* type takes one value
+    const two = ruleOf({ type: "NUMBER_LESS", values: ["1", "2"] });
+    expect([boolean, word, two]).toHaveLength(3);
+  });
+
+  it("leaves TEXT_EQ and CUSTOM_FORMULA their string values", () => {
+    const rules = [
+      ruleOf({ type: "TEXT_EQ", values: ["TRUE"] }),
+      ruleOf({ type: "CUSTOM_FORMULA", values: ["=${@count}>0"] }),
+    ];
+    expect(rules).toHaveLength(2);
+  });
+
+  it("types a NUMBER_* value as a number string and the others as a string", () => {
+    type Condition = ItemRule["condition"];
+    type NumberValues = (Condition & { type: "NUMBER_EQ" })["values"];
+    type TextValues = (Condition & { type: "TEXT_EQ" })["values"];
+    assertType<IsExactly<NumberValues, [`${number}`] | undefined>>(true);
+    assertType<IsExactly<TextValues, string[] | undefined>>(true);
   });
 });
 

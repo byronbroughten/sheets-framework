@@ -17,7 +17,7 @@ export const modelledConditionTypes = [
   "CUSTOM_FORMULA",
 ] as const;
 
-type NumberConditionType = (typeof numberConditionTypes)[number];
+export type NumberConditionType = (typeof numberConditionTypes)[number];
 export type ModelledConditionType = (typeof modelledConditionTypes)[number];
 export type ComparisonConditionType = Exclude<
   ModelledConditionType,
@@ -75,9 +75,19 @@ export function isModelledConditionType(
 }
 
 export function isNumberConditionType(
-  type: ModelledConditionType,
+  type: string,
 ): type is NumberConditionType {
   return numberConditionTypes.some((numberType) => numberType === type);
+}
+
+// The GUI saves a NUMBER_* rule holding text that updateConditionalFormatRule refuses; observed: docs/sheets-behaviour.md#reading-conditional-formats and #writing-conditional-formats.
+export function numberConditionHoldsText(
+  type: string,
+  userEnteredValue: string,
+): boolean {
+  if (!isNumberConditionType(type)) return false;
+  const trimmed = userEnteredValue.trim();
+  return trimmed === "" || !Number.isFinite(Number(trimmed));
 }
 
 export function conditionalFormatRulesEqual(

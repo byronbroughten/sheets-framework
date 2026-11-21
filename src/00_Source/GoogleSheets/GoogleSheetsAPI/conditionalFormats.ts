@@ -4,9 +4,9 @@ import {
   type ConditionalFormatRule,
   conditionLiteral,
   isModelledConditionType,
-  isNumberConditionType,
   type ModelableConditionalFormatRule,
   type ModelledConditionType,
+  numberConditionHoldsText,
 } from "../../RawSource/ConditionalFormat";
 import type { GridRangeProps } from "../../RawSource/RawSource";
 import { googleColor } from "./googleColor";
@@ -140,16 +140,6 @@ function toModelableRule(
     condition,
     format: googleCellFormat.toConditionalFormat(booleanRule.format),
   };
-}
-
-// The GUI saves a NUMBER_* rule holding text that updateConditionalFormatRule refuses; observed: docs/sheets-behaviour.md#reading-conditional-formats and #writing-conditional-formats.
-function numberConditionHoldsText(
-  type: ModelledConditionType,
-  userEnteredValue: string,
-): boolean {
-  if (!isNumberConditionType(type)) return false;
-  const trimmed = userEnteredValue.trim();
-  return trimmed === "" || !Number.isFinite(Number(trimmed));
 }
 
 function cellFormatHasUnmodelledFields(
