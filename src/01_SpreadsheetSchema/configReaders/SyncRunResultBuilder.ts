@@ -1,4 +1,5 @@
 import { hasLanded } from "./didntLand";
+import type { FlushStoppedOutcome } from "./flushStoppedOutcome";
 import type { SyncNameRewriter } from "./SyncNameRewriter";
 import {
   newColumnLines,
@@ -12,7 +13,6 @@ import {
   type SyncCreatedTable,
   type SyncDryRunOutcome,
   type SyncDryRunResult,
-  type SyncFlushStoppedOutcome,
   type SyncHeldBackChange,
   type SyncLandedItem,
   type SyncNotice,
@@ -41,13 +41,13 @@ export interface SyncRunRowIds {
 
 export interface SyncRunFlushStopped {
   planned: SyncPlannerResult;
-  outcome: SyncFlushStoppedOutcome;
+  outcome: FlushStoppedOutcome;
   rowIds: SyncRunRowIds;
 }
 
 // The Fill Row IDs send that threw after the regen, and its plan lines, which never landed.
 export interface SyncRunFillStop {
-  outcome: SyncFlushStoppedOutcome;
+  outcome: FlushStoppedOutcome;
   unfilled: SyncPlanItem[];
 }
 

@@ -29,6 +29,7 @@ import {
 } from "../01_SpreadsheetSchema/configReaders/enteredDataReads";
 import {
   fillFailedStoppedOutcome,
+  type FlushStoppedOutcome,
   heldStoppedOutcome,
   refusedStoppedOutcome,
 } from "../01_SpreadsheetSchema/configReaders/flushStoppedOutcome";
@@ -62,7 +63,6 @@ import type {
   ForcedTrait,
   SyncCreatedColumn,
   SyncCreatedTable,
-  SyncFlushStoppedOutcome,
   SyncHeldBackChange,
   SyncNotice,
   SyncOutsideReferencesCheck,
@@ -824,7 +824,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
   private _flushUnlessStopped(
     applied: AppliedPlan,
     previousIdNameMap: IdNameMapGeneric,
-  ): SyncFlushStoppedOutcome | undefined {
+  ): FlushStoppedOutcome | undefined {
     try {
       this._flushPlan(applied);
       this._flushNewTabTraits(applied.newTabTraits, previousIdNameMap);

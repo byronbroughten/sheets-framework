@@ -2,7 +2,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 
-import type { SyncHeld } from "../src/01_SpreadsheetSchema/configReaders/syncRunResult.ts";
+import type { DryRunHeld } from "../src/01_SpreadsheetSchema/configReaders/syncRunResult.ts";
 import type {
   ConfirmedList,
   HeldList,
@@ -70,7 +70,7 @@ export class HeldFile {
   async dryRunHeld(
     { token, flushes }: HeldList,
     target: string,
-  ): Promise<SyncHeld | undefined> {
+  ): Promise<DryRunHeld | undefined> {
     if (flushes.every((items) => items.length === 0)) return undefined;
     const { heldGroups } = await import("../src/nodeHost/heldGroups.ts");
     this._write({ target, token, flushes });

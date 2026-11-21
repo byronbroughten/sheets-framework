@@ -1,58 +1,22 @@
-import { sendableTraits } from "../01_SpreadsheetSchema/configReaders/SyncEntryRefuser";
-import {
-  beforeFirstColumnText,
-  fillRowIdsName,
-  heldBackChangeWhat,
-  type SyncBeforeFirstColumnStop,
-  type SyncCheck,
-  type SyncClashingPlacements,
-  type SyncConfigs,
-  type SyncConflict,
-  type SyncCreatedTable,
-  type SyncCreatedTableColumn,
-  type SyncDryRunOutcome,
-  type SyncEntry,
-  type SyncFillFailedCause,
-  type SyncFlushStoppedOutcome,
-  type SyncHeaderTakenStop,
-  type SyncHeadRowsStop,
-  type SyncHeld,
-  type SyncHeldBy,
-  type SyncHeldGroup,
-  type SyncLandedFlushes,
-  type SyncLandedItem,
-  type SyncMovedName,
-  type SyncNoSuchRuleStop,
-  type SyncNotice,
-  type SyncOutsideReferenceEffect,
-  type SyncPlanEffect,
-  type SyncPlanItem,
-  type SyncRefusal,
-  type SyncRefusedCause,
-  type SyncRunResult,
-  type SyncSendLine,
-  type SyncSendOutcome,
-  type SyncSentOutcome,
-  type SyncStop,
-  type SyncSubject,
-  type SyncTableNameTakenStop,
-  type SyncTabTitleRepeatedStop,
-  type SyncTabTitleTakenStop,
-  type SyncUnmodelableRuleStop,
+import type { FlushStoppedOutcome } from "../01_SpreadsheetSchema/configReaders/flushStoppedOutcome";
+import type {
+  DryRunHeld,
+  SyncDryRunOutcome,
+  SyncRunResult,
+  SyncSendOutcome,
+  SyncSentOutcome,
 } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
-import { headerZone } from "../01_SpreadsheetSchema/headerZone";
-import { headRows } from "../01_SpreadsheetSchema/headRows";
+import { gateReport, heldSectionName } from "./gateReport";
+import { reportText } from "./reportText";
+import { checkLines, checkSectionName } from "./SyncRunReport/checks";
+import { configsLines } from "./SyncRunReport/configs";
+import { noticeLines } from "./SyncRunReport/notices";
+import { planLines } from "./SyncRunReport/plan";
+import { refusalLines } from "./SyncRunReport/refusals";
+import { sendLines } from "./SyncRunReport/sends";
+import { stopLines } from "./SyncRunReport/stops";
 
-const layout = {
-  rowLabelWidth: 30,
-  wayOutWidth: 6,
-  cellWidth: 16,
-} as const;
-
-const sectionNames = {
-  check: "Check before sending",
-  held: "Held",
-} as const;
+const { section, formatCount, counted } = reportText;
 
 const planTitles = {
   stopped: "Plan: what --send would send once nothing stops it",
@@ -90,17 +54,17 @@ export class SyncRunReport {
       `sync · ${result.target} · ${result.mode}`,
       outcomeText.resultLine,
       ...section(
-        `${sectionNames.check}: harm the gate doesn't hold`,
-        result.checks.flatMap(checkLines),
+        `${checkSectionName}: harm the gate doesn't hold`,
+        result.checks.flatMap(checkLines.of),
       ),
-      ...section("Refused", refusalBlocks(result.refusals)),
-      ...section("Stops", stopBlocks(result.stops)),
+      ...section("Refused", refusalLines.blocks(result.refusals)),
+      ...section("Stops", stopLines.blocks(result.stops)),
       ...this._sendSections,
       ...this._heldSection,
-      ...section(outcomeText.planTitle, planLines(result.plan)),
+      ...section(outcomeText.planTitle, planLines.of(result.plan)),
       ...section(
         "Notices: nothing to do unless your task needs it",
-        result.notices.map(noticeLine),
+        result.notices.map(noticeLines.of),
       ),
       ...section("Configs", this._configsLines),
       ...section("Next", [outcomeText.next]),
@@ -115,7 +79,7 @@ export class SyncRunReport {
   }
   private _dryRunText(
     outcome: SyncDryRunOutcome,
-    held: SyncHeld | undefined,
+    held: DryRunHeld | undefined,
   ): OutcomeText {
     if (outcome.kind === "stopped") return this._stoppedText;
     if (outcome.kind === "refused") return this._refusedText;
@@ -129,14 +93,12 @@ export class SyncRunReport {
   }
   private get _stoppedText(): OutcomeText {
     const { stops, command } = this.result;
-    const why = stopKinds
-      .flatMap((kind) => stopReason(kind, stops))
-      .join(" and ");
+    const why = stopLines.why(stops);
     const until = stops.length === 1 ? "it is resolved" : "they are resolved";
     return {
       resultLine: `STOPPED: ${why}${this._checkClause}. Nothing was sent, and nothing will be until ${until}.`,
       planTitle: planTitles.stopped,
-      next: resolveLine(stops, command),
+      next: stopLines.resolveLine(stops, command),
     };
   }
   private get _refusedText(): OutcomeText {
@@ -148,15 +110,15 @@ export class SyncRunReport {
       next: `Fix each refused entry, then rerun ${command}.`,
     };
   }
-  private _readyText(held: SyncHeld | undefined): OutcomeText {
+  private _readyText(held: DryRunHeld | undefined): OutcomeText {
     const { checks, command } = this.result;
     const dryRun = "This was a dry run: nothing was sent.";
     const planTitle = planTitles.dryRun;
     if (held !== undefined) {
-      const count = heldCount(held);
+      const count = gateReport.heldCount(held);
       const items = count === 1 ? "item" : "items";
       return {
-        resultLine: `READY, ${formatCount(count)} HELD: --send sends only with --confirm (see ${sectionNames.held})${this._checkClause}. ${dryRun}`,
+        resultLine: `READY, ${formatCount(count)} HELD: --send sends only with --confirm (see ${heldSectionName})${this._checkClause}. ${dryRun}`,
         planTitle,
         next: `--send refuses this plan without --confirm ${held.token}, because of the held ${items}.`,
       };
@@ -167,7 +129,7 @@ export class SyncRunReport {
       return {
         resultLine,
         planTitle,
-        next: `Nothing held, but read ${sectionNames.check} first: ${send}`,
+        next: `Nothing held, but read ${checkSectionName} first: ${send}`,
       };
     }
     return { resultLine, planTitle, next: `Nothing held: ${send}` };
@@ -179,14 +141,14 @@ export class SyncRunReport {
       next: this._wroteLine,
     };
   }
-  private _flushStoppedText(outcome: SyncFlushStoppedOutcome): OutcomeText {
+  private _flushStoppedText(outcome: FlushStoppedOutcome): OutcomeText {
     const { command } = this.result;
-    let next = rerunDryRunLine(command);
-    if (isFillFailed(outcome)) {
+    let next = gateReport.rerunDryRunLine(command);
+    if (gateReport.isFillFailed(outcome)) {
       next = `${this._wroteLine} Then rerun the dry run to fill the blank IDs: ${command}`;
     }
     return {
-      resultLine: flushStoppedLine(outcome),
+      resultLine: gateReport.flushStoppedLine(outcome),
       planTitle: planTitles.send,
       next,
     };
@@ -198,11 +160,11 @@ export class SyncRunReport {
   private get _checkClause(): string {
     const { checks } = this.result;
     if (checks.length === 0) return "";
-    return `; ${counted(checks.length, "thing", "things")} to check (see ${sectionNames.check})`;
+    return `; ${counted(checks.length, "thing", "things")} to check (see ${checkSectionName})`;
   }
   private get _sendSections(): string[] {
     const { result } = this;
-    const metLines = result.alreadyMet.map(sendLine);
+    const metLines = result.alreadyMet.map(sendLines.of);
     if (result.mode === "dry run") {
       return section(
         "Already met: --send removes from alterations.ts",
@@ -211,895 +173,41 @@ export class SyncRunReport {
     }
     const { landed, notSent, didntLand, outcome, hasEmptiedAlterations } =
       result;
-    const landedLines = landed.map(landedLine);
+    const landedLines = landed.map(sendLines.landed);
     if (hasEmptiedAlterations) {
       const lastSectionLines = metLines.length > 0 ? metLines : landedLines;
       lastSectionLines.push("alterations.ts is now empty.");
     }
     // A stopped send, even one stopped partway, leaves its met alterations pending, unless only its fill failed, after the files were built.
-    const isMetRemoved = outcome.kind === "sent" || isFillFailed(outcome);
+    const isMetRemoved =
+      outcome.kind === "sent" || gateReport.isFillFailed(outcome);
     const metTitle = isMetRemoved ? "removed from" : "still in";
     return [
       ...section("Landed: removed from alterations.ts", landedLines),
       ...section(`Already met: ${metTitle} alterations.ts`, metLines),
-      ...section("Not sent: still in alterations.ts", notSent.map(sendLine)),
+      ...section(
+        "Not sent: still in alterations.ts",
+        notSent.map(sendLines.of),
+      ),
       ...section(
         "Didn't land: still in alterations.ts",
-        didntLand.map(sendLine),
+        didntLand.map(sendLines.of),
       ),
     ];
   }
   private get _heldSection(): string[] {
     const { result } = this;
     if (result.mode === "send" || result.held === undefined) return [];
-    return heldSection(result.held);
+    return gateReport.heldSection(result.held);
   }
   // A refusal reads nothing, so there is nothing to refresh the configs from.
   private get _configsLines(): string[] {
     const { outcome, configs, generatedDir } = this.result;
     if (outcome.kind === "refused") return [];
-    const changes = [
-      ...heldBackLines(configs),
-      ...renamedLines(configs),
-      ...namesMovedLines(configs, generatedDir),
-      ...rewriteLines(configs),
-      ...typedTraitLines(configs),
-      ...configs.notes,
-    ];
+    const changes = configsLines.changes(configs, generatedDir);
     if (changes.length === 0) {
       return ["Refreshed from the live sheet. No changes."];
     }
     return ["Refreshed from the live sheet.", ...changes];
   }
-}
-
-// A dry run's held items, their full list's path and the token covering them; a chore's dry run prints it too.
-export function heldSection(held: SyncHeld): string[] {
-  return section(heldTitle(held), [
-    ...held.groups.flatMap(heldGroupLines),
-    `Full list, every cell with its value: ${held.fullListPath}`,
-    `Token ${held.token}: binds this target and exactly this list.`,
-    `Rerun with --send --confirm ${held.token} to send these.`,
-  ]);
-}
-
-type SyncFillFailedOutcome = SyncFlushStoppedOutcome & SyncFillFailedCause;
-
-function isFillFailed(
-  outcome: SyncSendOutcome,
-): outcome is SyncFillFailedOutcome {
-  return "fillFailure" in outcome;
-}
-
-// The result line of a send the gate or Google refused, sync's or a chore's, or whose fill failed.
-export function flushStoppedLine(outcome: SyncFlushStoppedOutcome): string {
-  if (isFillFailed(outcome)) return fillFailedLine(outcome);
-  const refused = refusedWords(outcome);
-  if (outcome.kind === "stoppedBeforeSending") {
-    return `STOPPED: the send was refused before any flush landed${refused} Nothing was sent.`;
-  }
-  return stoppedPartwayLine(
-    outcome,
-    ` was refused${refused} Nothing after it was sent.`,
-  );
-}
-
-// The fill is the send's last flush, after the files are built.
-function fillFailedLine(outcome: SyncFillFailedOutcome): string {
-  const failed = `the ${fillRowIdsName} send, failed: "${outcome.fillFailure}". The blank IDs stay blank; the configs were still written.`;
-  if (outcome.kind === "stoppedBeforeSending") {
-    return `STOPPED: no flush landed; flush 1, ${failed}`;
-  }
-  return stoppedPartwayLine(outcome, `, ${failed}`);
-}
-
-// Google's reworded refusal ends in its own full stop.
-function refusedWords(cause: SyncRefusedCause): string {
-  if ("heldBy" in cause) return `, because ${heldByReason[cause.heldBy]}.`;
-  return `: Google refused its batch and applied none of it. ${cause.googleRefusal}`;
-}
-
-// The stopping flush is the one after the last that landed; its cause's words follow it.
-function stoppedPartwayLine(
-  { landedFlushes, flushCount }: SyncLandedFlushes,
-  stoppedWords: string,
-): string {
-  const landed = flushSpan(landedFlushes, flushCount);
-  return `STOPPED PARTWAY: ${landed}; flush ${landedFlushes + 1}${stoppedWords}`;
-}
-
-export function rerunDryRunLine(command: string): string {
-  return `Rerun the dry run: ${command}`;
-}
-
-function section(title: string, lines: string[]): string[] {
-  if (lines.length === 0) return [];
-  return ["", `== ${title} ==`, ...lines];
-}
-
-function indent(depth: number, lines: string[]): string[] {
-  return lines.map((line) => `${" ".repeat(depth)}${line}`);
-}
-
-function formatCount(count: number): string {
-  return count.toLocaleString("en-US");
-}
-
-function counted(count: number, one: string, many: string): string {
-  return `${formatCount(count)} ${count === 1 ? one : many}`;
-}
-
-function ruleCount(count: number): string {
-  return counted(count, "conditional-format rule", "conditional-format rules");
-}
-
-function readsVerb(count: number): string {
-  return count === 1 ? "reads" : "read";
-}
-
-const outsideReferenceWords: Record<
-  SyncOutsideReferenceEffect,
-  { where: string; afterOne: string; afterMany: string; inPlan: string }
-> = {
-  blank: {
-    where: "outside this Table",
-    afterOne: "it reads blank cells, with no error",
-    afterMany: "they read blank cells, with no error",
-    inPlan: "read blank cells",
-  },
-  ref: {
-    where: "on another tab",
-    afterOne: "it shows #REF!",
-    afterMany: "they show #REF!",
-    inPlan: "show #REF!",
-  },
-};
-
-function subjectLabel(subject: SyncSubject): string {
-  if ("tab" in subject) {
-    const gid = subject.gid === undefined ? "" : ` (gid ${subject.gid})`;
-    const trait = subject.path === undefined ? "" : ` › ${subject.path}`;
-    return `tab ${subject.tab}${gid}${trait}`;
-  }
-  const { table, column, rewrittenFrom, path } = subject;
-  let columnLabel = column;
-  if (column !== undefined && rewrittenFrom !== undefined) {
-    const { wrote, columnId } = rewrittenFrom;
-    columnLabel = `${column} (you wrote ${wrote}; ${columnId})`;
-  }
-  return [table, columnLabel, path]
-    .filter((part) => part !== undefined)
-    .join(" › ");
-}
-
-function heldCount(held: SyncHeld): number {
-  return held.groups.reduce((count, group) => count + (group.cells ?? 1), 0);
-}
-
-function flushSpan(
-  landedFlushes: number,
-  flushCount: number | undefined,
-): string {
-  const ofCount = flushCount === undefined ? "" : ` of ${flushCount}`;
-  if (landedFlushes === 1) return `flush 1${ofCount} landed`;
-  return `flushes 1 to ${landedFlushes}${ofCount} landed`;
-}
-
-const heldByReason: Record<SyncHeldBy, string> = {
-  uncovered: "it holds items and the send had no --confirm",
-  mismatched:
-    "the sheet or the plan changed after the dry run, so --confirm doesn't cover its held items",
-};
-
-function resolveLine(stops: SyncStop[], command: string): string {
-  const [stop] = stops;
-  if (stops.length !== 1 || stop === undefined) {
-    return `Resolve each stop above, then rerun ${command}.`;
-  }
-  return `Resolve ${stopWords[stop.kind].name} 1, then rerun ${command}.`;
-}
-
-function checkLines(check: SyncCheck): string[] {
-  if (check.kind === "outsideReferences") {
-    const { subject, effect, references } = check;
-    const count = references.length;
-    const words = outsideReferenceWords[effect];
-    const after = count === 1 ? words.afterOne : words.afterMany;
-    return [
-      `${subjectLabel(subject)}: ${counted(count, "formula", "formulas")} ${words.where} ${readsVerb(count)} it. After the deletion ${after}:`,
-      ...indent(
-        2,
-        references.map(
-          ({ cell, formula }) => `${cell.padEnd(layout.cellWidth)} ${formula}`,
-        ),
-      ),
-    ];
-  }
-  if (check.kind === "followedSwap") {
-    return [
-      `${subjectLabel(check.subject)}: sync rewrote this entry across a swap, so it still names the column it named before, now headed "${check.header}". Check that column is the one your task means.`,
-    ];
-  }
-  if (check.kind === "handDrawnRule") {
-    const { table, tab, range, formula, handle, cause } = check;
-    return [
-      `${table}: 1 hand-drawn rule ${cause}: on tab ${tab}, ${range}, ${formula}. Its handle: ${handle}. Fix it by hand in Sheets, or remove it with a conditionalFormats.remove entry naming that handle.`,
-    ];
-  }
-  return [check.text];
-}
-
-function refusalBlocks(refusals: SyncRefusal[]): string[] {
-  return refusals.flatMap((refusal, index) => {
-    const { heading, lines } = refusalWords(refusal);
-    return [`REFUSED ${index + 1} · ${heading}`, ...indent(2, lines)];
-  });
-}
-
-interface RefusalWords {
-  heading: string;
-  lines: string[];
-}
-
-function refusalWords(refusal: SyncRefusal): RefusalWords {
-  if (refusal.kind === "touchesDeletion") {
-    const { deleted, deletedAt, touchedBy, takenTable } = refusal;
-    return {
-      heading: subjectLabel(deleted),
-      lines: [
-        `${deletedAt} deletes ${subjectLabel(deleted)}, and ${touchedBy} touches it in the same run.`,
-        ...(takenTable === undefined
-          ? []
-          : [`The tab's deletion already takes the Table ${takenTable}.`]),
-        "Take one of the two out, then rerun.",
-      ],
-    };
-  }
-  if (refusal.kind === "noSuchTable") {
-    const { entry, name } = refusal;
-    const noun = entryNouns[entry];
-    return {
-      heading: `${entry} › ${name}`,
-      lines: [
-        `no such ${noun}: adopt by removing the entry.`,
-        `${noMapEntryText(noun, name)}, so it is gone from the sheet or went by another name at the last sync.`,
-      ],
-    };
-  }
-  if (refusal.kind === "notSendableYet") {
-    const { entry, name, path } = refusal;
-    return {
-      heading: `${entryNouns[entry]} ${name} › ${path}`,
-      lines: [
-        `sync can't send ${path} yet: for now it sends only a Table's ${[...sendableTraits.table].join(", ")}, a column's ${[...sendableTraits.column].join(", ")} and a tab's ${[...sendableTraits.tab].join(", ")}.`,
-        "Take this entry out, then rerun.",
-      ],
-    };
-  }
-  return {
-    heading: `${refusal.table} › ${refusal.path}`,
-    lines: tableRefusalText(refusal),
-  };
-}
-
-const entryNouns: Record<SyncEntry, string> = {
-  tables: "Table",
-  tabs: "tab",
-  newTabs: "new tab",
-};
-
-function tableRefusalText(
-  refusal: Exclude<
-    SyncRefusal,
-    { kind: "touchesDeletion" | "noSuchTable" | "notSendableYet" }
-  >,
-): string[] {
-  if (refusal.kind === "noSuchBeforeTab") {
-    return [
-      `${refusal.path} names ${refusal.before}, which is neither a tab at the last sync nor a newTabs title.`,
-      "Name a tab the ID-name map holds or a newTabs title, then rerun.",
-    ];
-  }
-  const { table } = refusal;
-  if (refusal.kind === "noApiAccess") {
-    return [
-      `${table} has no API access, so sync has nothing to compare it against: grant \`letApiAccess\` first.`,
-      ...grantRunLines(
-        table,
-        `take this entry out, put letApiAccess: true on ${table}`,
-      ),
-    ];
-  }
-  if (refusal.kind === "besideGrant") {
-    return [
-      `${table} has no API access yet, so sync has nothing to compare its columns against.`,
-      ...grantRunLines(
-        table,
-        `keep letApiAccess: true on ${table}, take this entry out`,
-      ),
-    ];
-  }
-  if (refusal.kind === "malformedBrace") {
-    return [
-      `${refusal.brace} isn't a brace: write \${@column} or \${table[@column]} for this row, \${column} or \${table[column]} for the whole column.`,
-    ];
-  }
-  if (refusal.kind === "unknownColumn") {
-    return [
-      `${refusal.column} names no column of ${table}, nor one its newColumns create. Its columns: ${refusal.columns.join(", ")}.`,
-    ];
-  }
-  if (refusal.kind === "repeatedNewColumn") {
-    return [
-      `${refusal.path} gives the column name ${refusal.column}, as ${refusal.firstPath} does: the two columns can't both be named it.`,
-      newColumnNameOwnText,
-    ];
-  }
-  if (refusal.kind === "removedAndReplaced") {
-    return [
-      `${refusal.removedAt} removes the rule this handle names, and ${refusal.path} replaces it in the same run.`,
-      keepOneText,
-    ];
-  }
-  if (refusal.kind === "clashingPlacements") {
-    return [clashingPlacementsText[refusal.clash](refusal), keepOneText];
-  }
-  if (refusal.kind === "renamedColumn") {
-    return [
-      `${refusal.column} is the name this run's rename gives ${refusal.oldName}, and alterations.ts names a column by its old name until the run lands.`,
-      `Use the column's old name, ${refusal.oldName}, this run, then rerun.`,
-    ];
-  }
-  if (refusal.kind === "unknownBraceTable") {
-    return [
-      `${refusal.brace} names no Table: ${noMapEntryText("Table", refusal.braceTable)}.`,
-    ];
-  }
-  return [
-    `${refusal.brace} names no column of ${refusal.braceTable}. Its columns: ${refusal.columns.join(", ")}.`,
-  ];
-}
-
-// Why the two paths of a `moves` or `newColumns` clash can't both hold.
-const clashingPlacementsText: Record<
-  SyncClashingPlacements["clash"],
-  (refusal: SyncClashingPlacements) => string
-> = {
-  sameBefore: ({ path, otherPath, column }) =>
-    `${path} puts its group before ${column}, as ${otherPath} does: only one group can sit right before it.`,
-  repeatedColumn: ({ path, otherPath, column }) =>
-    `${path} moves ${column}, as ${otherPath} does: a column can sit in only one group.`,
-  movedBefore: ({ path, otherPath, column }) =>
-    `${path} puts its group before ${column}, which ${otherPath} moves: a group's target can't itself move.`,
-  sameNewColumnsBefore: ({ path, otherPath, column }) =>
-    `${path} puts new columns before ${column}, as ${otherPath} does: write them as one group, in the order they go.`,
-  newColumnsBeforeMoveTarget: ({ path, otherPath, column }) =>
-    `${path} puts new columns before ${column}, as ${otherPath} puts its group: only one can sit right before it.`,
-  newColumnsBeforeMovedColumn: ({ path, otherPath, column }) =>
-    `${path} puts new columns before ${column}, which ${otherPath} moves: new columns' before can't itself move.`,
-};
-
-// The one phrase for two entries that can't both land.
-const keepOneText = "Keep one of the two, then rerun.";
-
-// The one phrase for two new headers giving one column name.
-const newColumnNameOwnText =
-  "Give each a header whose column name is its own, then rerun.";
-
-// The one phrase for a name the previous ID-name map lacks.
-function noMapEntryText(noun: string, name: string): string {
-  return `idNameMap.ts holds no ${noun} named ${name}`;
-}
-
-function grantRunLines(table: string, steps: string): string[] {
-  return [
-    `Granting access takes its own run: ${steps}, and run sync.`,
-    "Other Tables' entries may share that run.",
-    `Put this entry back in a later run, once ${table}'s columns are in idNameMap.ts.`,
-  ];
-}
-
-function ruleHandleLines(table: string, handles: string[]): string[] {
-  if (handles.length === 0) return [`${table} has no rules now.`];
-  return [`${table}'s rules now, by handle:`, ...indent(2, handles)];
-}
-
-type StopKind = SyncStop["kind"];
-
-type StopOf<SK extends StopKind> = Extract<SyncStop, { kind: SK }>;
-
-interface StopWords<SK extends StopKind> {
-  // What the resolve line calls one.
-  name: string;
-  // Why the run stopped, for the result line.
-  reason(stops: StopOf<SK>[]): string;
-  block(stop: StopOf<SK>, number: number): string[];
-}
-
-// The result line's order.
-const stopKinds: StopKind[] = [
-  "conflict",
-  "headRows",
-  "headerTaken",
-  "beforeFirstColumn",
-  "tableNameTaken",
-  "tabTitleTaken",
-  "tabTitleRepeated",
-  "noSuchRule",
-  "unmodelableRule",
-];
-
-const stopWords: { [SK in StopKind]: StopWords<SK> } = {
-  conflict: {
-    name: "conflict",
-    reason({ length }) {
-      return counted(length, "conflict", "conflicts");
-    },
-    block: conflictBlock,
-  },
-  headRows: {
-    name: "stop",
-    // A grant stops once per Table its head rows would sit on, but counts as one Table.
-    reason(stops) {
-      const tables = new Set(stops.map(({ table }) => table));
-      return `${counted(tables.size, "Table", "Tables")} can't take head rows`;
-    },
-    block: headRowsBlock,
-  },
-  headerTaken: {
-    name: "stop",
-    reason({ length }) {
-      return `${counted(length, "new column", "new columns")} taken`;
-    },
-    block: headerTakenBlock,
-  },
-  beforeFirstColumn: {
-    name: "stop",
-    reason({ length }) {
-      return `${counted(length, "new column", "new columns")} before a first column`;
-    },
-    block: beforeFirstColumnBlock,
-  },
-  tableNameTaken: {
-    name: "stop",
-    reason({ length }) {
-      return `${counted(length, "new Table name", "new Table names")} taken`;
-    },
-    block: tableNameTakenBlock,
-  },
-  tabTitleTaken: {
-    name: "stop",
-    reason({ length }) {
-      return `${counted(length, "new tab title", "new tab titles")} taken`;
-    },
-    block: tabTitleTakenBlock,
-  },
-  tabTitleRepeated: {
-    name: "stop",
-    reason({ length }) {
-      return `${counted(length, "new tab title", "new tab titles")} repeated`;
-    },
-    block: tabTitleRepeatedBlock,
-  },
-  noSuchRule: {
-    name: "stop",
-    reason({ length }) {
-      return `${counted(length, "rule", "rules")} not found`;
-    },
-    block: noSuchRuleBlock,
-  },
-  unmodelableRule: {
-    name: "stop",
-    reason({ length }) {
-      return `${counted(length, "unmodelable rule", "unmodelable rules")} to replace`;
-    },
-    block: unmodelableRuleBlock,
-  },
-};
-
-// The one phrase for a stop's entry left pending.
-const entryStaysText = "The entry stays in alterations.ts.";
-
-function stopReason<SK extends StopKind>(
-  kind: SK,
-  stops: SyncStop[],
-): string[] {
-  const ofKind = stops.filter((stop): stop is StopOf<SK> => stop.kind === kind);
-  if (ofKind.length === 0) return [];
-  const words: StopWords<SK> = stopWords[kind];
-  return [words.reason(ofKind)];
-}
-
-function stopBlocks(stops: SyncStop[]): string[] {
-  return stops.flatMap((stop, index) => [
-    ...(index === 0 ? [] : [""]),
-    ...stopBlock(stop, index + 1),
-  ]);
-}
-
-function stopBlock<SK extends StopKind>(
-  stop: StopOf<SK>,
-  number: number,
-): string[] {
-  const words: StopWords<SK> = stopWords[stop.kind];
-  return words.block(stop, number);
-}
-
-function headRowsBlock(stop: SyncHeadRowsStop, number: number): string[] {
-  return [
-    `STOP ${number} · ${stop.table} › letApiAccess`,
-    ...indent(2, headRowsReason(stop)),
-  ];
-}
-
-function headRowsReason(stop: SyncHeadRowsStop): string[] {
-  const { table, tab } = stop;
-  if ("neighbour" in stop) {
-    return [
-      `${table}'s head rows, ${headRows.aboveHeaderLabel} on its tab, ${tab}, would sit on Table "${stop.neighbour}".`,
-      `Move ${table} or "${stop.neighbour}" so that ${table}'s head rows sit clear of it, then rerun.`,
-      entryStaysText,
-    ];
-  }
-  const { headerRow } = stop;
-  const headerPlace = headerZone.headerRowsLabel;
-  return [
-    `${table}'s header row is on row ${headerRow} of its tab, ${tab}. A Table needs its header on ${headerPlace} to take head rows,`,
-    `${headRows.aboveHeaderLabel}. Move ${table} so its header sits on ${headerPlace}, then rerun.`,
-    entryStaysText,
-  ];
-}
-
-function headerTakenBlock(
-  { table, header, column, columnId }: SyncHeaderTakenStop,
-  number: number,
-): string[] {
-  return [
-    `STOP ${number} · ${table} › newColumns`,
-    ...indent(2, [
-      `${table} already has a column headed "${header}": ${column}, ${columnId}.`,
-      entryStaysText,
-    ]),
-  ];
-}
-
-function beforeFirstColumnBlock(
-  stop: SyncBeforeFirstColumnStop,
-  number: number,
-): string[] {
-  return [
-    `STOP ${number} · ${stop.table} › ${stop.path}`,
-    ...indent(2, [
-      beforeFirstColumnText(stop),
-      "Name a later column in before, or leave before out to add it at the Table's end.",
-      entryStaysText,
-    ]),
-  ];
-}
-
-function tableNameTakenBlock(
-  { name, existing, tableId }: SyncTableNameTakenStop,
-  number: number,
-): string[] {
-  return [
-    `STOP ${number} · new Table "${name}"`,
-    ...indent(2, [
-      `A Table already gives its name's codebase name: "${existing}", ${tableId}.`,
-      entryStaysText,
-    ]),
-  ];
-}
-
-function tabTitleTakenBlock(
-  { title, existing, gid }: SyncTabTitleTakenStop,
-  number: number,
-): string[] {
-  return [
-    `STOP ${number} · new tab "${title}"`,
-    ...indent(2, [
-      `A tab already gives its title's codebase name: "${existing}", GID ${gid}.`,
-      entryStaysText,
-    ]),
-  ];
-}
-
-function tabTitleRepeatedBlock(
-  { title, paths }: SyncTabTitleRepeatedStop,
-  number: number,
-): string[] {
-  return [
-    `STOP ${number} · new tab "${title}"`,
-    ...indent(2, [
-      `${paths.join(", ")} give one title's codebase name. Give each new tab its own title, or merge the entries.`,
-      "The entries stay in alterations.ts.",
-    ]),
-  ];
-}
-
-function noSuchRuleBlock(
-  { table, path, handles }: SyncNoSuchRuleStop,
-  number: number,
-): string[] {
-  return [
-    `STOP ${number} · ${table} › ${path}`,
-    ...indent(2, [
-      "no such rule: adopt by removing the entry.",
-      `No rule on ${table} has this handle now: a person changed the rule after the last sync`,
-      "(a handle comes from its columns, formula, condition and format).",
-      ...ruleHandleLines(table, handles),
-      entryStaysText,
-    ]),
-  ];
-}
-
-function unmodelableRuleBlock(
-  { table, path, handle }: SyncUnmodelableRuleStop,
-  number: number,
-): string[] {
-  return [
-    `STOP ${number} · ${table} › ${path}`,
-    ...indent(2, [
-      `The rule ${handle} is unmodelable: sync can't write a rule like it, so it can only be removed.`,
-      "Move the handle to conditionalFormats.remove and add the rule you want instead.",
-      entryStaysText,
-    ]),
-  ];
-}
-
-function conflictBlock(conflict: SyncConflict, number: number): string[] {
-  const { subject, label, cause, yours, agreed, live } = conflict;
-  const rows = [
-    ["alterations.ts (yours)", yours],
-    ["configs (last agreed)", agreed],
-    ["live sheet", live],
-  ].map(([name = "", value = ""]) => name.padEnd(layout.rowLabelWidth) + value);
-  return [
-    `CONFLICT ${number} · ${subjectLabel(subject)} · ${label}`,
-    ...indent(2, [...rows, cause, "Ways out:"]),
-    ...indent(
-      4,
-      waysOut(conflict).map(
-        ([way, text]) => `${way.padEnd(layout.wayOutWidth)} ${text}`,
-      ),
-    ),
-  ];
-}
-
-const forceNeeds =
-  "Needs the developer's yes for this trait; the yes covers one run.";
-
-function waysOut(conflict: SyncConflict): [string, string][] {
-  const { yours, live } = conflict;
-  // A deleted column leaves no live value to set the entry to.
-  const adopt: [string, string] = [
-    "adopt",
-    conflict.isColumnGone === true
-      ? "Remove the entry. Free, but your change is given up."
-      : `Remove the entry, or set it to ${live}. Free, but your change to this trait is given up.`,
-  ];
-  const ask: [string, string] = [
-    "ask",
-    "Change nothing and ask the developer which value they want.",
-  ];
-  const forceFlag = forceFlagOf(conflict);
-  if (forceFlag === undefined) return [adopt, ask];
-  return [
-    adopt,
-    [
-      "force",
-      `Send ${yours} over the sheet's ${live}. ${forceNeeds} ${forceFlag}`,
-    ],
-    ask,
-  ];
-}
-
-// --force addresses <table>/<column>/<trait>, so a Table's or tab's own trait, or a deleted column's, has no force to offer.
-function forceFlagOf({
-  subject,
-  isColumnGone,
-}: SyncConflict): string | undefined {
-  if (isColumnGone === true) return undefined;
-  if (!("column" in subject)) return undefined;
-  const { table, column, path } = subject;
-  if (column === undefined || path === undefined) return undefined;
-  return `Flag: --force ${table}/${column}/${path}`;
-}
-
-function landedLine(item: SyncLandedItem): string {
-  if (item.kind === "send") return sendLine(item);
-  if (item.kind === "createdTable") return createdTableLine(item);
-  const { table, header, column, columnId } = item;
-  return `${table}: ${createdColumnText({ header, column, columnId })}.`;
-}
-
-function createdColumnText({
-  header,
-  column,
-  columnId,
-}: SyncCreatedTableColumn): string {
-  return `created "${header}" as ${column}, ${columnId}`;
-}
-
-function createdTableLine({
-  table,
-  tab,
-  tableId,
-  columns,
-}: SyncCreatedTable): string {
-  const columnTexts = columns.map(createdColumnText).join("; ");
-  return `${tab}: created Table ${table}, ${tableId}; ${columnTexts}.`;
-}
-
-function sendLine({ subject, what }: SyncSendLine): string {
-  return `${subjectLabel(subject)}: ${what}`;
-}
-
-function heldTitle(held: SyncHeld): string {
-  const confirm = "sent only with --confirm";
-  const cellCounts = held.groups.flatMap(({ cells }) =>
-    cells === undefined ? [] : [cells],
-  );
-  const count = heldCount(held);
-  if (cellCounts.length < held.groups.length) {
-    return `${sectionNames.held}: ${counted(count, "item", "items")}, ${confirm}`;
-  }
-  let sum = "";
-  if (cellCounts.length > 1) {
-    sum = `: ${cellCounts.map(formatCount).join(" + ")}`;
-  }
-  return `${sectionNames.held}: ${counted(count, "cell", "cells")}${sum}, ${confirm}`;
-}
-
-function heldGroupLines({ subject, what, lines }: SyncHeldGroup): string[] {
-  const heading =
-    subject === undefined ? what : `${subjectLabel(subject)}  ${what}`;
-  return [heading, ...indent(2, lines)];
-}
-
-function planLines(plan: SyncPlanItem[]): string[] {
-  return plan.flatMap((item, index) => [
-    `${String(index + 1).padStart(2)}. ${sendLine(item)}`,
-    ...indent(4, item.effects.map(effectLine)),
-  ]);
-}
-
-function effectLine(effect: SyncPlanEffect): string {
-  if (effect.kind === "dropdownReset") {
-    const { columns, setting } = effect;
-    const dropdowns = counted(columns.length, "dropdown", "dropdowns");
-    const why =
-      setting === "ask"
-        ? 'dropdownStyleReset: "ask", so held, above'
-        : 'dropdownStyleReset: "allow"';
-    return `Resets the style and colours of ${dropdowns}: ${columns.join(", ")} (${why}). This is a quirk of Google's API: setting any column's type resends the Table's column list, which resets every dropdown on it.`;
-  }
-  if (effect.kind === "addedFirst") {
-    const { outranks } = effect;
-    if (outranks.length === 0) {
-      return "Added first; it outranks no rule on these cells.";
-    }
-    return `Added first; it outranks ${counted(outranks.length, "rule", "rules")} on these cells: ${outranks.join(", ")}.`;
-  }
-  if (effect.kind === "rulesRewritten") {
-    return `Rewrites ${ruleCount(effect.count)} over ${effect.table} after the ${effect.after}, since Sheets leaves them wrong.`;
-  }
-  if (effect.kind === "ruleRespanned") {
-    return `Re-spans 1 rule that ended at row ${effect.fromRow} to the Table's last body row, ${effect.toRow}: ${effect.handle}.`;
-  }
-  if (effect.kind === "rulesRemoved") {
-    const { handles } = effect;
-    return `Removes ${ruleCount(handles.length)} wholly over it: ${handles.join(", ")}.`;
-  }
-  if (effect.kind === "rulePartlyOver") {
-    return `Leaves 1 rule partly over it, on ${effect.tab} ${effect.range} (${effect.formula}); Sheets keeps it over the blank cells.`;
-  }
-  if (effect.kind === "outsideReferences") {
-    const { count } = effect;
-    const formulas = counted(count, "formula", "formulas");
-    const after = outsideReferenceWords[effect.effect].inPlan;
-    return `${formulas} elsewhere ${readsVerb(count)} it and will ${after} after the deletion (see ${sectionNames.check}).`;
-  }
-  return `Overwrites ${counted(effect.cells, "cell", "cells")} of entered data (held, above); the other ${formatCount(effect.blank)} are blank.`;
-}
-
-function noticeLine(notice: SyncNotice): string {
-  if (notice.kind === "text") return notice.text;
-  if (notice.kind === "tabGone") {
-    return `${notice.tab}: a person deleted this tab from the sheet, so sync dropped it from the configs.`;
-  }
-  if (notice.kind === "ruleHeldBack") {
-    return `${subjectLabel(notice.subject)}: ${heldBackChangeWhat(notice)}.`;
-  }
-  const { table } = notice;
-  if (notice.kind === "tableGone") {
-    return `${table}: a person deleted this Table from the sheet, so sync dropped it from the configs and retired its ID prefix.`;
-  }
-  return `${table}: ID is the first column. Sheets' Table name chip covers the cell above it, so ${table}'s ${fillRowIdsName} checkbox can't be clicked. Moving ID out of first place fixes it.`;
-}
-
-function heldBackLines({ heldBack }: SyncConfigs): string[] {
-  if (heldBack.length === 0) return [];
-  return [
-    "Held back while a conflict is open, so the next run still sees it:",
-    ...indent(
-      2,
-      heldBack.map(
-        ({ subject, value }) =>
-          `${subjectLabel(subject)}: the configs keep ${value} for this trait until the conflict is resolved.`,
-      ),
-    ),
-  ];
-}
-
-function renamedLines({ renamed }: SyncConfigs): string[] {
-  if (renamed.length === 0) return [];
-  return [
-    "Renamed by a person since the last sync; the codebase name follows the header:",
-    ...indent(
-      2,
-      renamed.map(
-        ({ table, from, to, headerFrom, headerTo }) =>
-          `${table} › ${from} → ${to}    header "${headerFrom}" → "${headerTo}"`,
-      ),
-    ),
-  ];
-}
-
-function namesMovedLines(
-  { namesMoved }: SyncConfigs,
-  generatedDir: string,
-): string[] {
-  if (namesMoved.length === 0) return [];
-  return [
-    `Names that now point at a different ID than at the last sync. Reread ${generatedDir}idNameMap.ts before writing another entry:`,
-    ...indent(
-      2,
-      namesMoved.map(
-        (moved) =>
-          `${movedNameLabel(moved)}    was ${moved.wasId}, now ${moved.nowId}`,
-      ),
-    ),
-  ];
-}
-
-const movedNameKinds: Record<SyncMovedName["kind"], string> = {
-  table: "Table",
-  tab: "tab",
-  column: "column",
-};
-
-function movedNameLabel(moved: SyncMovedName): string {
-  const kind = movedNameKinds[moved.kind];
-  if (moved.kind === "column") {
-    return `${kind} ${moved.table} › ${moved.column}`;
-  }
-  return `${kind} ${moved.name}`;
-}
-
-function rewriteLines({ rewrites }: SyncConfigs): string[] {
-  if (rewrites.length === 0) return [];
-  return [
-    "Rewritten in alterations.ts, so each entry still names the column it named before:",
-    ...indent(
-      2,
-      rewrites.map(({ from, to, why }) => {
-        const reason = why === undefined ? "" : `    (${why})`;
-        return `${from} → ${to}${reason}`;
-      }),
-    ),
-  ];
-}
-
-function typedTraitLines({ typedTraitChanges }: SyncConfigs): string[] {
-  if (typedTraitChanges.length === 0) return [];
-  return [
-    "Typed traits a person changed since the last sync, on Tables with API access. tsc fails where code relied on the old ones:",
-    ...indent(
-      2,
-      typedTraitChanges.map(
-        ({ table, column, trait, from, to }) =>
-          `${table} › ${column}    ${trait} ${from} → ${to}`,
-      ),
-    ),
-  ];
 }
