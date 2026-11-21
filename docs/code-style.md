@@ -36,8 +36,8 @@ One line per rule. The reasoning and worked examples are one file away. Open a r
 - **A sheet takes the unmarked name and a row is marked with a spelled-out `Row` suffix.**
 - **Google's API names stay at the wire; framework names follow the glossary.**
 - **A method that deletes more than one row takes a `SHOUTING_SNAKE_CASE` name**, and keeps it once a guard makes the operation safe.
-- **A collaborator's role is the agent noun of a verb on the controlled verb list, and its name ends on the tier word**, never "Handler" or "Manager".
-- **A framework method takes its verb from the controlled verb list in the reasoning file**, never a new verb for a meaning already on it.
+- **A collaborator's role is the agent noun of its verb, and its name ends on the tier word**, never "Handler" or "Manager".
+- **A verb on the controlled verb list in the reasoning file means only its listed meaning, and a listed meaning takes only its listed verb**; any other plain verb is free in its everyday sense.
 
 ## Comments
 

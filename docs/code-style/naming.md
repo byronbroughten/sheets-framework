@@ -30,11 +30,11 @@ One heading per naming rule, in docs/code-style.md's order: grep `^## ` for the 
 
 ## Collaborator names: `<Subject><Role><Tier>`
 
-**A collaborator's role is the agent noun of a verb from the list below, and its tier word comes last, like every other tier class's** (#67); the subject and the descriptive-noun fallback are `@byronbroughten/config`'s `docs/code-style/naming.md`, "A collaborator is `<Subject><Role>`". `SpreadsheetFlusherRaw` is named for `flush`, not `update`, because `update` means a local change and the flusher sends the batch; `SpreadsheetTableValidatorRaw` is named for `validate` because it throws on failure. "Handler" and "Manager" are never allowed: they fit any class, so they tell the reader nothing about which job this one does.
+**A collaborator's role is the agent noun of its verb, a listed verb's only in its listed meaning, and its tier word comes last, like every other tier class's** (#67); the subject and the descriptive-noun fallback are `@byronbroughten/config`'s `docs/code-style/naming.md`, "A collaborator is `<Subject><Role>`". `SpreadsheetFlusherRaw` is named for `flush`, not `update`, because `update` means a local change and the flusher sends the batch; `SpreadsheetTableValidatorRaw` is named for `validate` because it throws on failure. "Handler" and "Manager" are never allowed: they fit any class, so they tell the reader nothing about which job this one does.
 
 ## The controlled verb list
 
-This is the list's one home. **A framework method takes its verb from it**, each verb with a distinct meaning — don't invent a new verb for a meaning already on it:
+This is the list's one home. **It reserves each listed verb for its meaning, and each listed meaning for its verb**: a framework method never uses a listed verb for anything else, nor a new verb for a meaning already on it. A verb the list doesn't name is free in its everyday sense, as `build` in `IdNameMapBuilderOperator` and `rewrite` in `SpreadsheetRefusalRewriterRaw` are, so the list grows only when a meaning needs reserving, not with each new job (sheets-framework#347's review list). A closed list made every new job claim another bare English word:
 - `fetch` — actually hits the live Sheets API
 - `integrate` — merges a fetched snapshot into local state; no API call, so it is never `fetch`
 - `prep`/`gather` — queue state locally before a fetch (`prepFetchX` queues only; `gatherFetchX` queues *and* fetches)
