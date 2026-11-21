@@ -341,7 +341,7 @@ function partialTableRefusal(
   return new PartialTableRefusal(error.message, operation);
 }
 
-// Observed: docs/sheets-behaviour.md#reading-conditional-formats.
+// Observed: docs/sheets-behaviour.md#writing-conditional-formats.
 function ruleFlushRefusal(error: unknown): RuleFlushRefusal | undefined {
   if (!(error instanceof Error)) return undefined;
   if (!ruleRequestRefusal.test(error.message)) return undefined;

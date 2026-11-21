@@ -200,7 +200,7 @@ interface RegenerationProps {
 // A flush that stopped the send, and whether the run still writes its files from a refetch.
 interface FlushStop {
   outcome: FlushStoppedOutcome;
-  isRefetched: boolean;
+  writesFiles: boolean;
 }
 
 // The fill's plan lines, and its flush's error message when it threw.
@@ -502,14 +502,14 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     // Column IDs only on an unstopped send: one minted by any other run would reach the configs but never the sheet.
     if (isApplying) this._applyPlan(applied);
     const notes = this._recordUntypedColumns();
-    let ruleRefusal: FlushStoppedOutcome | undefined;
+    let refetchedStop: FlushStoppedOutcome | undefined;
     if (isApplying) {
       const stopped = this._flushUnlessStopped(
         applied,
         props.previousIdNameMap,
       );
       // No files: column IDs already recorded would reach the configs but not the sheet.
-      if (stopped !== undefined && !stopped.isRefetched) {
+      if (stopped !== undefined && !stopped.writesFiles) {
         return {
           result: resultBuilder.flushStopped({
             planned,
@@ -519,7 +519,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         };
       }
       // A refused rule flush still writes the files, from a refetch that reads what landed before it.
-      ruleRefusal = stopped?.outcome;
+      refetchedStop = stopped?.outcome;
     }
     const [sent, metSubjects] = isApplying
       ? [subjectsOf(planned.plan), subjectsOf(planned.alreadyMet)]
@@ -585,10 +585,10 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     }
     let fillPlan: SyncPlanItem[];
     let sendStop: SyncRunSendStop | undefined;
-    if (ruleRefusal !== undefined) {
+    if (refetchedStop !== undefined) {
       // Nothing after the refused flush is sent, the fill included.
       fillPlan = [];
-      sendStop = { outcome: ruleRefusal, unlanded: [] };
+      sendStop = { outcome: refetchedStop, unlanded: [] };
     } else if (isApplying) {
       const fill = regenerator._fillBlankIds();
       fillPlan = fill.filled;
@@ -872,24 +872,18 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       return undefined;
     } catch (error) {
       if (error instanceof HeldFlushRefusal) {
-        return { outcome: heldStoppedOutcome(error), isRefetched: false };
+        return { outcome: heldStoppedOutcome(error), writesFiles: false };
       }
-      if (error instanceof PartialTableRefusal) {
+      if (
+        error instanceof PartialTableRefusal ||
+        error instanceof RuleFlushRefusal
+      ) {
         return {
           outcome: refusedStoppedOutcome(
             this.ss.raw.landedFlushCount,
             error.message,
           ),
-          isRefetched: false,
-        };
-      }
-      if (error instanceof RuleFlushRefusal) {
-        return {
-          outcome: refusedStoppedOutcome(
-            this.ss.raw.landedFlushCount,
-            error.message,
-          ),
-          isRefetched: true,
+          writesFiles: error instanceof RuleFlushRefusal,
         };
       }
       throw error;

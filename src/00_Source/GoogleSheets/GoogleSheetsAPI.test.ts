@@ -1398,7 +1398,7 @@ describe("GoogleSheetsAPI conditional format read", () => {
       booleanRule: {
         condition: {
           type: "NUMBER_EQ",
-          values: [{ userEnteredValue: "TRUE" }],
+          values: [{ userEnteredValue: "1" }],
         },
         format,
       },
@@ -1424,6 +1424,46 @@ describe("GoogleSheetsAPI conditional format read", () => {
     expect(
       api.fetchConditionalFormatRules()[0]?.rules.map((read) => read.kind),
     ).toEqual(["unmodelable", "unmodelable"]);
+  });
+
+  it("reads a NUMBER_* rule holding text as unmodelable with its raw content, and one holding any number form as boolean", () => {
+    const numberRule = (type: string, userEnteredValue: string) => ({
+      ranges: [{ sheetId: 111, startRowIndex: 4 }],
+      booleanRule: {
+        condition: { type, values: [{ userEnteredValue }] },
+        format: { backgroundColor: { red: 1, green: 0, blue: 0 } },
+      },
+    });
+    const textRule = numberRule("NUMBER_EQ", "Yes");
+    const { api } = recordingSheets({
+      sheets: [
+        {
+          properties: { sheetId: 111 },
+          conditionalFormats: [
+            textRule,
+            numberRule("NUMBER_GREATER", "FALSE"),
+            numberRule("NUMBER_EQ", "1.50"),
+            numberRule("NUMBER_LESS", "-2"),
+            numberRule("TEXT_EQ", "Yes"),
+          ],
+        },
+      ],
+    });
+
+    const rules = api.fetchConditionalFormatRules()[0]?.rules ?? [];
+
+    expect(rules[0]).toMatchObject({
+      kind: "unmodelable",
+      index: 0,
+      rawContent: JSON.stringify({ ...textRule, ranges: undefined }),
+    });
+    expect(rules.map((read) => read.kind)).toEqual([
+      "unmodelable",
+      "unmodelable",
+      "boolean",
+      "boolean",
+      "boolean",
+    ]);
   });
 
   it("reads a sheet whose rule list Google omitted as having no rules", () => {

@@ -28,7 +28,7 @@ A column insert before another column, a column delete or a column move shifts t
 
 ## Unmodelable rules, reads and rule handles
 
-Every rule the payload holds is mapped, one for one, in order. A condition or format outside the modelled slice becomes an explicit unmodelable value that still occupies its index, so deletes by index cannot silently target a neighbour, and that keeps its raw content: the JSON of the Google rule without its ranges. Content equality against an unmodelable rule is always false; a range-scoped removal of one is allowed because the caller named the range.
+Every rule the payload holds is mapped, one for one, in order. A condition or format outside the modelled slice, a `NUMBER_*` condition whose value isn't a number among them, since `updateConditionalFormatRule` refuses one ([observed](../sheets-behaviour.md#writing-conditional-formats)), becomes an explicit unmodelable value that still occupies its index, so deletes by index cannot silently target a neighbour, and that keeps its raw content: the JSON of the Google rule without its ranges. Content equality against an unmodelable rule is always false; a range-scoped removal of one is allowed because the caller named the range.
 
 Rule writes embed row and column coordinates. Their refusal on stale row indexes, and the stale flag a rule-mutating flush sets: [stale row indexes](./stale-row-indexes.md).
 

@@ -159,7 +159,6 @@ Write-ups sourced from Google's docs live on `research/*` branches, listed by `g
 - Observed: A REST API v4 `getByDataFilter` returned no `conditionalFormats` for sheets holding rules, and a plain `spreadsheets.get` with the fields mask `sheets(properties(sheetId),conditionalFormats)` returned them; live spreadsheet, the sheets not recorded; 2026-09-16; [recorded in 62abd855](https://github.com/byronbroughten/byro-repo/commit/62abd85537ae0110cd80e3311e00c2aa298f9eb0), [recorded in 613de032](https://github.com/byronbroughten/byro-repo/commit/613de032e7a8310dd19277de344f51caca4e4ce2).
 - Observed: A REST API v4 read of conditional-format rules returned each colour as a `*ColorStyle` (`backgroundColorStyle`, `foregroundColorStyle`) beside the plain colour field; live spreadsheet, the sheets not recorded; 2026-09-16; [recorded in 62abd855](https://github.com/byronbroughten/byro-repo/commit/62abd85537ae0110cd80e3311e00c2aa298f9eb0), [recorded in 613de032](https://github.com/byronbroughten/byro-repo/commit/613de032e7a8310dd19277de344f51caca4e4ce2).
 - Observed: A REST API v4 read of conditional-format rules returned `NUMBER_EQ` with a `userEnteredValue` of `"FALSE"` on rules over two tabs and `"Yes"` on four rules over two others; app spreadsheet, read by `sheets-framework probe`, the tabs not recorded; 2026-11-21; [#373](https://github.com/byronbroughten/sheets-framework/issues/373).
-- Observed: A `sync --send` batch holding an `updateConditionalFormatRule` that re-spanned a rule read as `NUMBER_EQ` with `"FALSE"` was refused whole, `Invalid requests[7].updateConditionalFormatRule: Invalid ConditionValue.userEnteredValue: FALSE for ConditionType: NUMBER_EQ`; app spreadsheet; 2026-11-21; [sheets-real-estate#16](https://github.com/byronbroughten/sheets-real-estate/issues/16), [#373](https://github.com/byronbroughten/sheets-framework/issues/373).
 
 ### Reading tab properties
 
@@ -185,6 +184,10 @@ Write-ups sourced from Google's docs live on `research/*` branches, listed by `g
 ### Checkbox cells
 
 - Observed: `Add Property Expense`'s one body row held an explicit `FALSE` in a just-added checkbox column and nothing anywhere else; live spreadsheet, a Table, how the column was added and the read's surface not recorded; 2026-09-11; [recorded in 4e93f46f](https://github.com/byronbroughten/byro-repo/commit/4e93f46f392780ef5fc25ecd87364776269f4ef2).
+
+### Writing conditional formats
+
+- Observed: A `sync --send` batch holding an `updateConditionalFormatRule` that re-spanned a rule read as `NUMBER_EQ` with `"FALSE"` was refused whole, `Invalid requests[7].updateConditionalFormatRule: Invalid ConditionValue.userEnteredValue: FALSE for ConditionType: NUMBER_EQ`; app spreadsheet; 2026-11-21; [sheets-real-estate#16](https://github.com/byronbroughten/sheets-real-estate/issues/16), [#373](https://github.com/byronbroughten/sheets-framework/issues/373).
 
 ### Deleting conditional formats
 

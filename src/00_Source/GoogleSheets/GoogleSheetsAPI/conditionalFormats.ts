@@ -4,6 +4,7 @@ import {
   type ConditionalFormatRule,
   conditionLiteral,
   isModelledConditionType,
+  isNumberConditionType,
   type ModelableConditionalFormatRule,
   type ModelledConditionType,
 } from "../../RawSource/ConditionalFormat";
@@ -141,13 +142,14 @@ function toModelableRule(
   };
 }
 
-// The GUI saves a NUMBER_* rule holding text that updateConditionalFormatRule refuses; observed: docs/sheets-behaviour.md#reading-conditional-formats.
+// The GUI saves a NUMBER_* rule holding text that updateConditionalFormatRule refuses; observed: docs/sheets-behaviour.md#reading-conditional-formats and #writing-conditional-formats.
 function numberConditionHoldsText(
   type: ModelledConditionType,
   userEnteredValue: string,
 ): boolean {
-  if (!type.startsWith("NUMBER_")) return false;
-  return typeof conditionLiteral.toCellValue(userEnteredValue) !== "number";
+  if (!isNumberConditionType(type)) return false;
+  const trimmed = userEnteredValue.trim();
+  return trimmed === "" || !Number.isFinite(Number(trimmed));
 }
 
 function cellFormatHasUnmodelledFields(

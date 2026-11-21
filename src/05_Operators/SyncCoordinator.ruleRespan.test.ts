@@ -202,20 +202,30 @@ describe("SyncCoordinator.run conditional-format rule re-span", () => {
     expect(result.plan).toEqual([]);
   });
 
-  function numberEqualsRule(range: GridRange, userEnteredValue: string) {
+  function numberRule(
+    type: string,
+    range: GridRange,
+    userEnteredValue: string,
+  ): SheetsRule {
     return {
       ranges: [range],
       booleanRule: {
-        condition: { type: "NUMBER_EQ", values: [{ userEnteredValue }] },
+        condition: { type, values: [{ userEnteredValue }] },
         format: { backgroundColor: { red: 1, green: 0, blue: 0 } },
       },
-    } satisfies SheetsRule;
+    };
   }
 
-  it.each(["FALSE", "Yes"])(
-    "leaves a short NUMBER_EQ rule holding %s as it is, since Google refuses to rewrite it",
-    (userEnteredValue) => {
-      const textRule = numberEqualsRule(
+  it.each([
+    ["NUMBER_EQ", "FALSE"],
+    ["NUMBER_EQ", "Yes"],
+    ["NUMBER_NOT_EQ", "Yes"],
+    ["NUMBER_GREATER", "FALSE"],
+  ])(
+    "leaves a short %s rule holding %s as it is, since Google refuses to rewrite it",
+    (type, userEnteredValue) => {
+      const textRule = numberRule(
+        type,
         bodyRange(1, shortEndRowIndex),
         userEnteredValue,
       );
@@ -229,18 +239,28 @@ describe("SyncCoordinator.run conditional-format rule re-span", () => {
     },
   );
 
-  it("still re-spans a short NUMBER_EQ rule holding 0", () => {
-    const service = seedWith([
-      numberEqualsRule(bodyRange(1, shortEndRowIndex), "0"),
-    ]);
+  it.each(["0", "1.50"])(
+    "still re-spans a short NUMBER_EQ rule holding %s",
+    (userEnteredValue) => {
+      const service = seedWith([
+        numberRule(
+          "NUMBER_EQ",
+          bodyRange(1, shortEndRowIndex),
+          userEnteredValue,
+        ),
+      ]);
 
-    const { result } = runWith();
+      const { result } = runWith();
 
-    expect(rulesLeft(service)).toEqual([
-      numberEqualsRule(bodyRange(1, endRowIndex), "0"),
-    ]);
-    expect(result).toMatchObject({ outcome: { kind: "sent" }, didntLand: [] });
-  });
+      expect(rulesLeft(service)).toEqual([
+        numberRule("NUMBER_EQ", bodyRange(1, endRowIndex), userEnteredValue),
+      ]);
+      expect(result).toMatchObject({
+        outcome: { kind: "sent" },
+        didntLand: [],
+      });
+    },
+  );
 
   it("stops partway when Google refuses the rule flush, the checkbox's flush before it landed, and still returns the files", () => {
     const googleRefusal =
@@ -276,6 +296,35 @@ describe("SyncCoordinator.run conditional-format rule re-span", () => {
       kind: "stoppedPartway",
       landedFlushes: 1,
       googleRefusal,
+    });
+  });
+
+  it("records a column deletion in the refused rule flush's batch as not landed, keeping the column in the configs", () => {
+    const service = stubSheetsService({
+      sheets: [
+        {
+          ...sheet,
+          conditionalFormats: [duplicateRuleEndingAt(shortEndRowIndex)],
+        },
+      ],
+      beforeEachBatchUpdate() {
+        throw new Error(
+          "Invalid requests[1].updateConditionalFormatRule: Invalid ConditionValue.userEnteredValue: FALSE for ConditionType: NUMBER_EQ",
+        );
+      },
+    });
+
+    const { result, files } = runWith({
+      tables: { item: { columns: { optionalNote: { deleted: true } } } },
+    });
+
+    const headerRow =
+      service.grid.sheet(itemGid).values()[headerRowIndex] ?? [];
+    expect(headerRow).toContain(itemColumns.optionalNote.header);
+    expect(files?.columnConfigs).toContain(itemColumns.optionalNote.columnId);
+    expect(result).toMatchObject({
+      outcome: { kind: "stoppedBeforeSending" },
+      didntLand: [{ subject: { table: "item", path: "deleted" } }],
     });
   });
 
