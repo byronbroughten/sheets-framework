@@ -68,7 +68,13 @@ export const bandColumnRules = {
         `a column delete over part of a ${ruleOwner} (${a1Notation.range(range)})`,
       );
     }
-    const moved = withFormulasShifted({ ...ruleShift, placement: "moved" });
+    // Inferred from Scratch353D's whole batch: an insert at a whole-Table rule's first column moves it with the Table, its anchored references as written.
+    const isInsertAtTableStart =
+      ruleShift.kind === "insert" &&
+      startColumnIndex === change.startIndex &&
+      isOverWholeTable(ruleShift);
+    const placement = isInsertAtTableStart ? "spanning" : "moved";
+    const moved = withFormulasShifted({ ...ruleShift, placement });
     return [
       {
         ...moved,

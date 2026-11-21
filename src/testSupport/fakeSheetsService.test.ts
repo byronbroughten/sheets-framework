@@ -1358,7 +1358,7 @@ function measuredBandColumns(
 }
 
 const cutUnderRuleMessage =
-  "The fake Sheets service does not replay a cutPaste under a conditional-format rule, other than a sideways cut inside a whole-Table rule naming no cut or pasted column, or naming one on a one-column cut to the right, the pasted column only $-anchored.";
+  "The fake Sheets service does not replay a cutPaste under a conditional-format rule, other than a sideways cut inside a whole-Table rule naming no cut or pasted column, or naming one on a one-column cut to the right, the pasted column only $-anchored, or a whole-Table rule's last column cut to just before it, naming neither.";
 
 function measuredRules(
   grid: FakeGridView,
@@ -1570,6 +1570,67 @@ describe("stubSheetsService replays rules under a Table-bounded column move as m
       expect(measuredRules(grid)).toEqual([formulaRule("A5:F7", formulaAfter)]);
     },
   );
+
+  // Scratch353D (sheets-framework#353): only the batch's end state was measured.
+  it("leaves a whole-row rule naming the last column as written when the batch moves that column first, and makes it a Table of its own", () => {
+    const { grid } = stubSheetsService({
+      sheets: [
+        {
+          ...measuredRuleSheet(),
+          conditionalFormats: [formulaRule("A5:E7", '=$E5="x"')],
+        },
+      ],
+    });
+
+    send(
+      {
+        insertRange: {
+          range: measuredBandColumns(0),
+          shiftDimension: "COLUMNS",
+        },
+      },
+      {
+        cutPaste: {
+          source: measuredBandColumns(5),
+          destination: { sheetId: measuredGid, rowIndex: 0, columnIndex: 0 },
+          pasteType: "PASTE_NORMAL",
+        },
+      },
+      {
+        deleteRange: {
+          range: measuredBandColumns(5),
+          shiftDimension: "COLUMNS",
+        },
+      },
+    );
+
+    const tables = grid.sheet(measuredGid).tables;
+    expect(
+      tables.map((table) => [table.name, a1Notation.range(table.range ?? {})]),
+    ).toEqual([
+      ["M", "B4:E7"],
+      ["Table2", "A4:A7"],
+    ]);
+    expect(measuredRules(grid)).toEqual([formulaRule("A5:E7", '=$E5="x"')]);
+  });
+
+  it("throws on a Table's columns cut out of it in any other shape", () => {
+    stubSheetsService({
+      sheets: [{ ...measuredRuleSheet(), conditionalFormats: [] }],
+    });
+
+    expect(() =>
+      send({
+        cutPaste: {
+          source: measuredBandColumns(0),
+          destination: { sheetId: measuredGid, rowIndex: 0, columnIndex: 5 },
+          pasteType: "PASTE_NORMAL",
+        },
+      }),
+    ).toThrowError(
+      "The fake Sheets service does not replay a cutPaste of a Table's columns out of the Table, other than its last column to just before it.",
+    );
+  });
 
   it("throws on a whole-row rule naming a column a cut moves left", () => {
     stubSheetsService({
