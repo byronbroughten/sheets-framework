@@ -47,18 +47,18 @@ import type { SheetRaw } from "../02_SpreadsheetRaw/SheetRaw";
 import type { TableRaw } from "../02_SpreadsheetRaw/TableRaw";
 import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
 import {
-  type ApiTableColumns,
   ColumnConfigsOperator,
   type MintedNewColumn,
   type PlannedColumnMove,
 } from "./ColumnConfigsOperator";
+import type { ApiTableColumns } from "./ColumnConfigsOperator/ColumnConfigsOutputOperator";
+import { blockMoveOf } from "./ColumnConfigsOperator/TableColumnOrder";
 import {
   columnNamesByColumnId,
   oneLinePerLeafFileSource,
   tablesAndTabsFileSource,
 } from "./configFileSource";
 import { SpreadsheetBaseOperator } from "./SpreadsheetBaseOperator";
-import { blockMoveOf } from "./TableColumnOrder";
 import { TableConfigsOperator } from "./TableConfigsOperator";
 
 // A Table a plan deletes: its codebase name and its ID.
