@@ -6,12 +6,6 @@ import {
 } from "../SyncPlanner/wideAlterations";
 import type { SyncRefusal } from "../syncRunResult";
 
-export interface ColumnNamedAt {
-  table: string;
-  path: string;
-  column: string;
-}
-
 interface NewHeader {
   header: string | undefined;
   // The header's path in its alterations, as `newColumns[0].columns[1].header`.

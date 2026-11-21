@@ -1,6 +1,11 @@
 import type { SyncRefusal } from "../syncRunResult";
-import type { ColumnNamedAt } from "./NewColumnNames";
 import type { RenamedColumnNames } from "./RenamedColumnNames";
+
+export interface ColumnNamedAt {
+  table: string;
+  path: string;
+  column: string;
+}
 
 // What a Table entry lets a rule or brace name: its columns, the ones its `newColumns` create, and its renames.
 export interface NameableColumns {

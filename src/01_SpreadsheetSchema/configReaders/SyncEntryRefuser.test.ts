@@ -703,6 +703,34 @@ describe("SyncEntryRefuser, entries that can't all hold", () => {
     ]);
   });
 
+  it("refuses a new tab's new Table whose headers repeat a column name, naming both paths", () => {
+    expect(
+      refusals({
+        alterations: {
+          newTabs: [
+            {
+              title: "Orders",
+              tables: [
+                {
+                  name: "order",
+                  columns: [{ header: "Ref" }, { header: "ref" }],
+                },
+              ],
+            },
+          ],
+        },
+      }),
+    ).toEqual([
+      {
+        kind: "repeatedNewColumn",
+        table: "Orders",
+        path: "newTabs[0].tables[0].columns[1].header",
+        firstPath: "newTabs[0].tables[0].columns[0].header",
+        column: "ref",
+      },
+    ]);
+  });
+
   it("lets through a rule naming a renamed column by its old name", () => {
     expect(renamedRuleRefusals(["count"], "=${@count}>0")).toEqual([]);
   });
