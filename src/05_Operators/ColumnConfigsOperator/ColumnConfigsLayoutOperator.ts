@@ -54,7 +54,6 @@ interface ColumnOrderProps {
   minted: MintedNewColumn[];
 }
 
-// Plans and queues a run's column deletions, inserts, appends and moves.
 export class ColumnConfigsLayoutOperator extends ColumnConfigsBaseOperator {
   // Minted before any queue, so a dry run's withheld flush and the report carry the same IDs.
   mintColumnIds(newColumns: PlannedNewColumn[]): MintedNewColumn[] {
@@ -72,9 +71,9 @@ export class ColumnConfigsLayoutOperator extends ColumnConfigsBaseOperator {
     { table, header, before }: PlannedNewColumn,
   ): void {
     if (before === undefined) return;
-    const { liveColumnFinder } = this;
-    const columnId = liveColumnFinder.columnIdOf(table, before);
-    if (!liveColumnFinder.isFirstColumn({ tableId, columnId })) return;
+    const { apiColumnIdentities } = this;
+    const columnId = apiColumnIdentities.columnIdOf(table, before);
+    if (!apiColumnIdentities.isFirstColumn({ tableId, columnId })) return;
     throw new Error(beforeFirstColumnText({ table, header, before }));
   }
   // At the end, a new column shifts none of the plan's other writes, so it joins their flush.
@@ -91,12 +90,12 @@ export class ColumnConfigsLayoutOperator extends ColumnConfigsBaseOperator {
     sent: IntendedTrait[],
     minted: MintedNewColumn[],
   ): this {
-    const { liveColumnFinder } = this;
-    const deletions = liveColumnFinder
+    const { apiColumnIdentities } = this;
+    const deletions = apiColumnIdentities
       .sentColumnTraits(sent, "deleted")
       .map(({ tableId, columnId }) => ({
         tableId,
-        colIndex: liveColumnFinder.colIndexOf(tableId, columnId),
+        colIndex: apiColumnIdentities.colIndexOf(tableId, columnId),
       }));
     deletions.sort((first, second) => second.colIndex - first.colIndex);
     for (const { tableId, colIndex } of deletions) {
@@ -115,13 +114,13 @@ export class ColumnConfigsLayoutOperator extends ColumnConfigsBaseOperator {
     minted: MintedNewColumn[],
     deletions: ColumnAt[],
   ): ColumnInsert[] {
-    const { liveColumnFinder } = this;
+    const { apiColumnIdentities } = this;
     const inserts = minted.flatMap(
       ({ tableId, table, columnId, header, before }): ColumnInsert[] => {
         if (before === undefined) return [];
-        const beforeIndex = liveColumnFinder.colIndexOf(
+        const beforeIndex = apiColumnIdentities.colIndexOf(
           tableId,
-          liveColumnFinder.columnIdOf(table, before),
+          apiColumnIdentities.columnIdOf(table, before),
         );
         const deletedLeft = deletions.filter(
           (deletion) =>
@@ -147,7 +146,7 @@ export class ColumnConfigsLayoutOperator extends ColumnConfigsBaseOperator {
     groupMoves,
   }: ColumnMovesProps): PlannedColumnMove[] {
     const deleted = new Set(
-      this.liveColumnFinder
+      this.apiColumnIdentities
         .sentColumnTraits(sent, "deleted")
         .map(({ columnId }) => columnId),
     );
@@ -173,7 +172,7 @@ export class ColumnConfigsLayoutOperator extends ColumnConfigsBaseOperator {
     order: TableColumnOrder,
     { tableId, tableKey, columns, before }: OrderedColumns,
   ): PlannedColumnMove[] {
-    const { liveColumnFinder } = this;
+    const { apiColumnIdentities } = this;
     const sequence = [...columns, before];
     return columns
       .map((column, index) => ({
@@ -183,8 +182,8 @@ export class ColumnConfigsLayoutOperator extends ColumnConfigsBaseOperator {
       .reverse()
       .flatMap(({ column, before: target }): PlannedColumnMove[] => {
         const span = order.moveSpan({
-          columnId: liveColumnFinder.columnIdOf(tableKey, column),
-          beforeColumnId: liveColumnFinder.columnIdOf(tableKey, target),
+          columnId: apiColumnIdentities.columnIdOf(tableKey, column),
+          beforeColumnId: apiColumnIdentities.columnIdOf(tableKey, target),
           column,
           before: target,
         });
@@ -219,7 +218,7 @@ export class ColumnConfigsLayoutOperator extends ColumnConfigsBaseOperator {
       if (mintedTableId !== tableId) continue;
       let beforeColumnId: string | undefined;
       if (before !== undefined) {
-        beforeColumnId = this.liveColumnFinder.columnIdOf(key, before);
+        beforeColumnId = this.apiColumnIdentities.columnIdOf(key, before);
       }
       order.insert(columnId, beforeColumnId);
     }

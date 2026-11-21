@@ -184,7 +184,7 @@ export class ColumnConfigsOperator extends ColumnConfigsBaseOperator {
         if (formula === undefined) return [];
         const cell = this.ss.raw
           .table(tableId)
-          .columnBodyA1(this.liveColumnFinder.colIndexOf(tableId, columnId));
+          .columnBodyA1(this.apiColumnIdentities.colIndexOf(tableId, columnId));
         return [{ tableKey, cell, formula }];
       });
   }
@@ -214,7 +214,7 @@ export class ColumnConfigsOperator extends ColumnConfigsBaseOperator {
       tableId,
       columnId,
       value,
-    } of this.liveColumnFinder.sentColumnTraits(sent, "header")) {
+    } of this.apiColumnIdentities.sentColumnTraits(sent, "header")) {
       this.ss.raw.table(tableId).updateHeader(columnId, String(value));
     }
     return this;
@@ -227,7 +227,7 @@ export class ColumnConfigsOperator extends ColumnConfigsBaseOperator {
       columnId,
       tableKey,
       value,
-    } of this.liveColumnFinder.sentColumnTraits(sent, "formula")) {
+    } of this.apiColumnIdentities.sentColumnTraits(sent, "formula")) {
       const table = this.ss.raw.table(tableId);
       table.column(table.columnResolver.colIndexOf(columnId)).updateAllFormulas(
         BraceFormula.compileForCell({
@@ -247,7 +247,7 @@ export class ColumnConfigsOperator extends ColumnConfigsBaseOperator {
       columnId,
       tableKey,
       value,
-    } of this.liveColumnFinder.sentColumnTraits(sent, "columnType")) {
+    } of this.apiColumnIdentities.sentColumnTraits(sent, "columnType")) {
       if (typeof value !== "object") {
         throw new Error(
           `The columnType sent to ${tableKey} column ${columnId} isn't a type and rule.`,
@@ -289,13 +289,13 @@ export class ColumnConfigsOperator extends ColumnConfigsBaseOperator {
   beforeFirstColumnStops(
     newColumns: PlannedNewColumn[],
   ): SyncBeforeFirstColumnStop[] {
-    const { liveColumnFinder } = this;
+    const { apiColumnIdentities } = this;
     return newColumns.flatMap(
       ({ table, beforePath, header, before }): SyncBeforeFirstColumnStop[] => {
         if (before === undefined) return [];
-        const placedBefore = liveColumnFinder.columnNamed(table, before);
+        const placedBefore = apiColumnIdentities.identityNamed(table, before);
         if (placedBefore === undefined) return [];
-        if (!liveColumnFinder.isFirstColumn(placedBefore)) return [];
+        if (!apiColumnIdentities.isFirstColumn(placedBefore)) return [];
         return [
           {
             kind: "beforeFirstColumn",
