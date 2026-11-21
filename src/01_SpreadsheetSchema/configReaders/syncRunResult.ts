@@ -166,17 +166,19 @@ export type SyncCheck =
     }
   | { kind: "runNotice"; text: string };
 
+export type SyncEntry = "tables" | "tabs" | "newTabs";
+
 export type SyncRefusal =
   // An entry on a Table without API access that this run doesn't grant it.
   | { kind: "noApiAccess"; table: string; path: string }
   // Any other entry on a Table this run grants API access.
   | { kind: "besideGrant"; table: string; path: string }
   // A `tables` or `tabs` entry naming one the previous ID-name map doesn't hold.
-  | { kind: "noSuchTable"; entry: "tables" | "tabs"; name: string }
+  | { kind: "noSuchTable"; entry: Exclude<SyncEntry, "newTabs">; name: string }
   // `name` is the Table's, the tab's or the new tab's title, as `entry` says; `path` is the trait's, with its column in front for a column's.
   | {
       kind: "notSendableYet";
-      entry: "tables" | "tabs" | "newTabs";
+      entry: SyncEntry;
       name: string;
       path: string;
     }

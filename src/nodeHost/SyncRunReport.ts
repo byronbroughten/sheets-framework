@@ -11,6 +11,7 @@ import {
   type SyncCreatedTable,
   type SyncCreatedTableColumn,
   type SyncDryRunOutcome,
+  type SyncEntry,
   type SyncFlushStoppedOutcome,
   type SyncHeaderTakenStop,
   type SyncHeadRowsStop,
@@ -442,11 +443,7 @@ function refusalWords(refusal: SyncRefusal): RefusalWords {
   };
 }
 
-// What a refusal heading or line calls the thing an entry names.
-const entryNouns: Record<
-  Extract<SyncRefusal, { kind: "notSendableYet" }>["entry"],
-  string
-> = {
+const entryNouns: Record<SyncEntry, string> = {
   tables: "Table",
   tabs: "tab",
   newTabs: "new tab",

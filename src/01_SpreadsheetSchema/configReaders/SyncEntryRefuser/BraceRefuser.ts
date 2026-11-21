@@ -91,11 +91,11 @@ export class BraceRefuser {
           renamedColumns: this.renamedColumnsByTable.get(tableKey),
         },
         () => {
-          const at = { table, path, brace, braceTable: tableKey };
+          const braceSite = { table, path, brace, braceTable: tableKey };
           if (columnNames === undefined) {
-            return { kind: "unknownBraceTable", ...at };
+            return { kind: "unknownBraceTable", ...braceSite };
           }
-          return { kind: "unknownBrace", ...at, columns: columnNames };
+          return { kind: "unknownBrace", ...braceSite, columns: columnNames };
         },
       );
     });
