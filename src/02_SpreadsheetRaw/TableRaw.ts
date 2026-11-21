@@ -25,7 +25,7 @@ import {
 import { type HeadRole, headRows } from "../01_SpreadsheetSchema/headRows";
 import { assertValueAndFormulaExclusive } from "./CellRaw";
 import type { RowCommonRaw } from "./ClassBases/RowCommonRaw";
-import { originOf } from "./ClassBases/TableBaseRaw";
+import { columnRun, originOf } from "./ClassBases/TableBaseRaw";
 import { TableCommonRaw } from "./ClassBases/TableCommonRaw";
 import type {
   ChangeTableColumns,
@@ -47,7 +47,7 @@ import { TableColumnQueuerRaw } from "./TableRaw/TableColumnQueuerRaw";
 import { TableColumnResolverRaw } from "./TableRaw/TableColumnResolverRaw";
 import { TableColumnTypeGathererRaw } from "./TableRaw/TableColumnTypeGathererRaw";
 import { TableConditionalFormatAndProtectionQueuerRaw } from "./TableRaw/TableConditionalFormatAndProtectionQueuerRaw";
-import { columnRun, TableRowAppenderRaw } from "./TableRaw/TableRowAppenderRaw";
+import { TableRowAppenderRaw } from "./TableRaw/TableRowAppenderRaw";
 
 /**
  * One Table's state by Table-relative index: rows, columns, pruning, queued

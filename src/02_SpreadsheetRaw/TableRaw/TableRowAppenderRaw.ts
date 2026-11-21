@@ -5,7 +5,7 @@ import type {
   InsertRangeOperation,
 } from "../../00_Source/RawSource/RawSource";
 import { SheetIndex } from "../../00_Source/RawSource/SheetIndex";
-import { TableBaseRaw } from "../ClassBases/TableBaseRaw";
+import { columnRun, TableBaseRaw } from "../ClassBases/TableBaseRaw";
 import type { RowStateRaw } from "../ClassTypes/StateRaw";
 import { TableRaw } from "../TableRaw";
 import { TableColumnTypeGathererRaw } from "./TableColumnTypeGathererRaw";
@@ -160,16 +160,4 @@ function columnRunCopies(
     destination: columnRun(destination, startColIndex, endColIndex),
     pasteType,
   }));
-}
-
-export function columnRun(
-  rows: BoundedGridRange,
-  startColIndex: number,
-  endColIndex: number,
-): BoundedGridRange {
-  return {
-    ...rows,
-    startColumnIndex: SheetIndex.col(rows.startColumnIndex + startColIndex),
-    endColumnIndex: SheetIndex.col(rows.startColumnIndex + endColIndex),
-  };
 }

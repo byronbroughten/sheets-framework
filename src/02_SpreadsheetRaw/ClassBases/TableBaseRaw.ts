@@ -4,6 +4,7 @@ import type {
   BoundedGridRange,
   TableSnapshot,
 } from "../../00_Source/RawSource/RawSource";
+import { SheetIndex } from "../../00_Source/RawSource/SheetIndex";
 import { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin";
 import { emptyStateRaw } from "../ClassTypes/emptyStateRaw";
 import { queuedColumnType } from "../ClassTypes/queuedColumnType";
@@ -191,6 +192,18 @@ export function originOf(properties: TablePropertiesRaw): TableOrigin {
     headerRowIndex: properties.startRowIndex,
     startColIndex: properties.startColumnIndex,
   });
+}
+
+export function columnRun(
+  rows: BoundedGridRange,
+  startColIndex: number,
+  endColIndex: number,
+): BoundedGridRange {
+  return {
+    ...rows,
+    startColumnIndex: SheetIndex.col(rows.startColumnIndex + startColIndex),
+    endColumnIndex: SheetIndex.col(rows.startColumnIndex + endColIndex),
+  };
 }
 
 export function integrateColumnProperties(
