@@ -102,7 +102,7 @@ export const rangeReplays = {
     }
     return {};
   },
-  // Measured live (sheets-framework#204): the whole cell moves, its Table column's type and rule with it, and the source is left empty.
+  // Measured live (sheets-framework#204, #364): the whole cell moves, its Table column's name, type and rule with it, at the grid's edge too, and the source is left empty.
   cutPaste(
     spreadsheet: FakeSpreadsheet,
     request: GoogleAppsScript.Sheets.Schema.CutPasteRequest,
