@@ -377,6 +377,25 @@ describe("SyncCoordinator.run tab deletion", () => {
       },
     );
 
+    it("lists a formula column on another tab naming a Table without API access on the tab by its live name", () => {
+      const logFormula = "=SUM(Vendor_Bills[Amount])";
+
+      const { result } = dryRunBesideLog({
+        alterations: deleteItemTab,
+        logFormula,
+        unmanagedItemTabTable: "Vendor_Bills",
+      });
+
+      expect(result.checks).toEqual([
+        {
+          kind: "outsideReferences",
+          subject: { tab: "item" },
+          effect: "ref",
+          references: [{ cell: logFormulaCell, formula: logFormula }],
+        },
+      ]);
+    });
+
     it("leaves out a referencing formula in a Table deleted in the same run", () => {
       const { result } = dryRunBesideLog({
         alterations: { ...deleteItemTab, tables: { log: { deleted: true } } },

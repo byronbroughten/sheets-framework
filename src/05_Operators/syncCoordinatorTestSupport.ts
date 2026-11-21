@@ -233,24 +233,73 @@ export const uncheckedOutsideFormulasNotice = {
 interface BesideLogProps {
   alterations: PendingAlterations;
   logFormula: string;
+  // A Table without API access beside Item on its tab, by its live Sheets name.
+  unmanagedItemTabTable?: string;
 }
+
+const unmanagedTableId = "unmanaged";
 
 // A dry run on Item and Log, Log's formula column holding logFormula; Item carries the name the previous configs record, which a live formula names it by.
 export function dryRunBesideLog({
   alterations,
   logFormula,
+  unmanagedItemTabTable,
 }: BesideLogProps): SyncRun {
-  seedFixture({
-    item: { name: getTableTraitByName("item", "tableName") },
-    extraSheets: [logSheet(logFormula)],
-  });
+  let itemTab = itemSheet({ name: getTableTraitByName("item", "tableName") });
+  const previousIdNameMap = previousItemAndLogMap();
+  if (unmanagedItemTabTable !== undefined) {
+    itemTab = withUnmanagedTable(itemTab, unmanagedItemTabTable);
+    addUnmanagedTable(previousIdNameMap);
+  }
+  stubSheetsService({ sheets: [itemTab, logSheet(logFormula)] });
   return SyncCoordinator.init().run({
     isSending: false,
     intendedState: { alterations },
-    previousIdNameMap: previousItemAndLogMap(),
+    previousIdNameMap,
     forcedTraits: [],
     frame,
   });
+}
+
+// Right of Item, past its columns, so the two Tables share no cell.
+function withUnmanagedTable(
+  item: FakeSheetProperties,
+  name: string,
+): FakeSheetProperties {
+  const unmanaged = fakeTableSheet.build({
+    sheetId: itemGid,
+    title: "Item",
+    tableId: unmanagedTableId,
+    name,
+    columnConfigs: columnsByHeader(["Amount"]),
+    columnNames: ["Amount"],
+    bodyRows: [{ Amount: 1 }],
+    startColumnIndex: Object.keys(itemColumns).length + 2,
+  });
+  const itemRows = item.rows ?? [];
+  const unmanagedRows = unmanaged.rows ?? [];
+  const rowCount = Math.max(itemRows.length, unmanagedRows.length);
+  const rows = Array.from({ length: rowCount }, (_, rowIndex) => {
+    const itemRow = itemRows[rowIndex] ?? [];
+    const unmanagedRow = unmanagedRows[rowIndex] ?? [];
+    const colCount = Math.max(itemRow.length, unmanagedRow.length);
+    return Array.from(
+      { length: colCount },
+      (_, colIndex) => itemRow[colIndex] ?? unmanagedRow[colIndex] ?? null,
+    );
+  });
+  return {
+    ...item,
+    rows,
+    tables: [...(item.tables ?? []), ...(unmanaged.tables ?? [])],
+  };
+}
+
+// Its map key isn't its live name, as for any Table without API access the sync's titleToName reshapes.
+function addUnmanagedTable(map: IdNameMapGeneric): void {
+  map.tables[unmanagedTableId] = { name: unmanagedTableId, sheetGid: itemGid };
+  const itemTab = Val.assert(map.tabs[String(itemGid)], "the item tab");
+  itemTab.tableIds.push(unmanagedTableId);
 }
 
 export interface RunOptions {

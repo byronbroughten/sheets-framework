@@ -11,7 +11,6 @@ import {
   apiAccessChanges,
   withApiAccessReadings,
 } from "../01_SpreadsheetSchema/configReaders/apiAccessChanges";
-import type { BraceNames } from "../01_SpreadsheetSchema/configReaders/BraceFormula";
 import { columnConfigsByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
 import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister";
 import type {
@@ -82,6 +81,7 @@ import {
   SyncRunResultBuilder,
 } from "../01_SpreadsheetSchema/configReaders/SyncRunResultBuilder";
 import { typedTraitChanges } from "../01_SpreadsheetSchema/configReaders/typedTraitChanges";
+import type { SpreadsheetRaw } from "../02_SpreadsheetRaw/SpreadsheetRaw";
 import {
   SpreadsheetBaseNamed,
   type SpreadsheetNamedProps,
@@ -618,7 +618,11 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     const checks = OutsideReferences.checks({
       deletedTables,
       deletedTabs: [...deletedTabs].map((tab) =>
-        deletedTabOfMap(previousIdNameMap, tab),
+        deletedTabOfMap({
+          idNameMap: previousIdNameMap,
+          tab,
+          raw: this.ss.raw,
+        }),
       ),
       formulaColumns: this.columnConfigOperator.formulaColumns(),
     });
@@ -1111,17 +1115,22 @@ function goneNotices({
   ];
 }
 
-// The entry refuser and the planner already hold the tab to the map; its Tables' Sheets names come from the previous configs.
-function deletedTabOfMap(
-  { tables, tabs }: IdNameMapGeneric,
-  tab: string,
-): DeletedTab {
+interface DeletedTabOfMapProps {
+  idNameMap: IdNameMapGeneric;
+  tab: string;
+  raw: SpreadsheetRaw;
+}
+
+// The entry refuser and the planner already hold the tab to the map; its Tables' Sheets names come from the live read, the one source holding a Table without API access by its live name.
+function deletedTabOfMap({
+  idNameMap: { tables, tabs },
+  tab,
+  raw,
+}: DeletedTabOfMapProps): DeletedTab {
   const mapTab = Val.assert(
     Object.values(tabs).find(({ name }) => name === tab),
     `the ID-name map's tab ${tab}`,
   );
-  const tableConfigs: BraceNames["tableConfigs"] =
-    installedConfigs().tableConfigs;
   return {
     tab,
     title: mapTab.title,
@@ -1130,9 +1139,11 @@ function deletedTabOfMap(
         tables[tableId],
         `the ID-name map's Table ${tableId}`,
       ).name;
-      // A Table without API access is in the map but not the Table configs.
-      const tableName = tableConfigs[tableKey]?.tableName ?? tableKey;
-      return { tableKey, tableName };
+      // A Table already gone from the sheet has no live name, and no live formula can name it.
+      if (!raw.tableIdIsActive(tableId)) {
+        return { tableKey, tableName: tableKey };
+      }
+      return { tableKey, tableName: raw.table(tableId).name };
     }),
   };
 }
