@@ -1,7 +1,5 @@
-import {
-  type GridRangeProps,
-  installedRawSource,
-} from "../../00_Source/RawSource/RawSource";
+import { installedRawSource } from "../../00_Source/RawSource/installedRawSource";
+import type { GridRangeProps } from "../../00_Source/RawSource/RawSource";
 import { SpreadsheetBaseSchema } from "../../01_SpreadsheetSchema/SpreadsheetBaseSchema";
 import { emptyStateRaw } from "../ClassTypes/emptyStateRaw";
 import type {

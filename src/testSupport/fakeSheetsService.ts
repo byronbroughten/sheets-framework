@@ -5,9 +5,9 @@ import {
   type ModeledRequestVerb,
   type SheetsAdvancedTransport,
 } from "../00_Source/GoogleSheets/GoogleSheetsAPI";
+import { installRawSource } from "../00_Source/RawSource/installedRawSource";
 import {
   type DropdownStyleReset,
-  installRawSource,
   refusesDropdownStyleReset,
 } from "../00_Source/RawSource/RawSource";
 import { cellReplays } from "./fakeSheetsService/cellReplays";

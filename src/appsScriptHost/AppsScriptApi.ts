@@ -1,10 +1,10 @@
 import { AppsScript } from "../00_Source/GoogleSheets/AppsScript";
 import { GoogleSheetsAPI } from "../00_Source/GoogleSheets/GoogleSheetsAPI";
 import {
-  type DropdownStyleReset,
   hasInstalledRawSource,
   installRawSource,
-} from "../00_Source/RawSource/RawSource";
+} from "../00_Source/RawSource/installedRawSource";
+import type { DropdownStyleReset } from "../00_Source/RawSource/RawSource";
 import { Api, type AppSetup } from "../06_API/Api";
 
 // The Apps Script host's trigger glue, so an app's globals are one-liners. See docs/how-it-runs/apps-script-host.md.

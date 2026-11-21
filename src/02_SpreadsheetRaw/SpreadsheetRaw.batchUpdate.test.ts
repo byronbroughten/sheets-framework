@@ -1,9 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
-import {
-  installedRawSource,
-  type LocalWriteOperation,
-} from "../00_Source/RawSource/RawSource";
+import { installedRawSource } from "../00_Source/RawSource/installedRawSource";
+import type { LocalWriteOperation } from "../00_Source/RawSource/RawSource";
 import { SheetIndex } from "../00_Source/RawSource/SheetIndex";
 import {
   buildGridRows,
