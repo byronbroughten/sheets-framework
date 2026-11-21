@@ -21,12 +21,11 @@ import {
   makeImportLine,
   type TableConfigsBase,
 } from "../01_SpreadsheetSchema/configReaders/makeConfigs";
-import {
-  type IntendedTrait,
-  isTableDeletion,
-  type PlannedNewTable,
-  type PlannedNewTableColumn,
-  type PlannedNewTablePlacement,
+import type {
+  IntendedTrait,
+  PlannedNewTable,
+  PlannedNewTableColumn,
+  PlannedNewTablePlacement,
 } from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
 import type {
   SyncHeadRowsStop,
@@ -36,7 +35,6 @@ import type {
 } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
 import {
   configRetiredIdPrefixes,
-  tableConfigsByName,
   tableConfigsByTableId,
 } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
@@ -58,6 +56,7 @@ import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
 import { oneLinePerEntryFileSource } from "./configFileSource";
 import { validateIdPrefixesUnchanged } from "./idPrefixGuard";
 import { SpreadsheetBaseOperator } from "./SpreadsheetBaseOperator";
+import { TableConfigsTraitSenderOperator } from "./TableConfigsOperator/TableConfigsTraitSenderOperator";
 
 // A planned new Table with the IDs the run settled for it, its tab's GID in its created placement, and each column's formula and type compiled to the names on the sheet.
 export interface MintedNewTable extends PlannedNewTable {
@@ -75,6 +74,9 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
   }
   get ss(): SpreadsheetNamed {
     return new SpreadsheetNamed(this.spreadsheetNamedProps);
+  }
+  get traitSender(): TableConfigsTraitSenderOperator {
+    return new TableConfigsTraitSenderOperator(this.operatorProps);
   }
   // The previous configs' order, then this run's grants, so a quiet run leaves the generated files unchanged.
   tableIdsApiAccesses(): string[] {
@@ -388,32 +390,16 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
       `${columnReferenceLabel(reference)} names no managed Table "${tableName}".`,
     );
   }
-  // A renamed Table is addressed by its previous key, which the refuser guarantees the previous configs hold.
   updateTableNames(sent: IntendedTrait[]): this {
-    for (const intended of sent) {
-      if (intended.kind !== "table" || intended.trait !== "name") continue;
-      this._previousTable(intended.table).updateTableName(
-        String(intended.value),
-      );
-    }
+    this.traitSender.updateTableNames(sent);
     return this;
   }
   deleteTables(sent: IntendedTrait[]): this {
-    for (const intended of sent) {
-      if (intended.kind !== "table" || !isTableDeletion(intended)) continue;
-      this._previousTable(intended.table).queueDelete();
-    }
+    this.traitSender.deleteTables(sent);
     return this;
   }
-  // By the previous configs' name, the one an alteration addresses a Table by.
   tableIdOf(tableKey: string): string {
-    return Val.assert(
-      tableConfigsByName()[tableKey],
-      `previous Table ${tableKey}`,
-    ).tableId;
-  }
-  private _previousTable(tableKey: string): TableRaw {
-    return this.ss.raw.table(this.tableIdOf(tableKey));
+    return this.traitSender.tableIdOf(tableKey);
   }
   tableKeysByTableId(): Map<string, string> {
     const map = new Map<string, string>();
