@@ -18,7 +18,7 @@ import type {
 } from "../ClassTypes/StateRaw";
 import { TableRaw } from "../TableRaw";
 
-export class TableRuleQueuerRaw extends TableBaseRaw {
+export class TableConditionalFormatAndProtectionQueuerRaw extends TableBaseRaw {
   get table(): TableRaw {
     return new TableRaw(this.tableRawProps);
   }
@@ -26,7 +26,7 @@ export class TableRuleQueuerRaw extends TableBaseRaw {
   addConditionalFormatRuleAt(
     range: TableGridRange,
     declaration: ConditionalFormatDeclaration,
-  ): void {
+  ): this {
     const { table } = this;
     table.sheet.assertRowIndexesNotStale();
     table.sheet.assertConditionalFormatIndexesNotStale();
@@ -34,28 +34,34 @@ export class TableRuleQueuerRaw extends TableBaseRaw {
       { range, ...declaration },
       this.tableOrigin(),
     );
-    const queued = table.tablesOnSheet.flatMap((other) =>
-      new TableRuleQueuerRaw(
-        other.tableRawProps,
-      )._queuedSheetConditionalFormatRules(),
+    const queued = this._queuedOnSheet((queuer) =>
+      queuer._queuedSheetConditionalFormatRules(),
     );
-    if (table.sheet.hasPendingConditionalFormatRule(rule, queued)) return;
+    if (table.sheet.hasPendingConditionalFormatRule(rule, queued)) return this;
     table.queueTableWrite({
       action: "addConditionalFormatRule",
       range,
       ...declaration,
     });
+    return this;
   }
-  removeConditionalFormatRulesAt(range: TableGridRange): void {
+  private _queuedSheetConditionalFormatRules(): ModelableConditionalFormatRule[] {
+    const origin = this.tableOrigin();
+    return this.table.writes.conditionalFormatRules.map((rule) =>
+      this._sheetConditionalFormatRule(rule, origin),
+    );
+  }
+  removeConditionalFormatRulesAt(range: TableGridRange): this {
     this.table.sheet.removeConditionalFormatRulesAt(
       this._sheetGridRange(range, this.tableOrigin()),
     );
+    return this;
   }
   addEditWarningAt(
     range: TableGridRange,
     declaration: EditWarningDeclaration,
-  ): void {
-    this._queueEditProtection({
+  ): this {
+    return this._queueEditProtection({
       kind: "warning",
       range,
       description: declaration.description ?? "",
@@ -64,8 +70,8 @@ export class TableRuleQueuerRaw extends TableBaseRaw {
       unprotectedRanges: [],
     });
   }
-  addEditLockAt(range: TableGridRange, declaration: EditLockDeclaration): void {
-    this._queueEditProtection({
+  addEditLockAt(range: TableGridRange, declaration: EditLockDeclaration): this {
+    return this._queueEditProtection({
       kind: "lock",
       range,
       description: declaration.description ?? "",
@@ -74,10 +80,11 @@ export class TableRuleQueuerRaw extends TableBaseRaw {
       unprotectedRanges: [],
     });
   }
-  removeEditProtectionsAt(range: TableGridRange): void {
+  removeEditProtectionsAt(range: TableGridRange): this {
     this.table.sheet.removeEditProtectionsAt(
       this._sheetGridRange(range, this.tableOrigin()),
     );
+    return this;
   }
   gatherConditionalFormatRuleOperation(rule: TableConditionalFormatRule): void {
     const { table } = this;
@@ -95,6 +102,13 @@ export class TableRuleQueuerRaw extends TableBaseRaw {
       kind: "addProtectedRange",
       protection: this._sheetEditProtection(protection, origin),
     });
+  }
+  private _queuedOnSheet<VL>(
+    queuedOf: (queuer: TableConditionalFormatAndProtectionQueuerRaw) => VL[],
+  ): VL[] {
+    return this.table.tablesOnSheet.flatMap((other) =>
+      queuedOf(other.conditionalFormatAndProtectionQueuer),
+    );
   }
   private _sheetConditionalFormatRule(
     { range, condition, format }: TableConditionalFormatRule,
@@ -136,14 +150,14 @@ export class TableRuleQueuerRaw extends TableBaseRaw {
     }
     return range;
   }
-  private _queueEditProtection(protection: TableEditProtection): void {
+  private _queueEditProtection(protection: TableEditProtection): this {
     const { table } = this;
     // A same-batch shift carries only a Table whose properties have arrived.
     table.assertTableIsKnown();
     if (hasTableRows(protection.range)) table.sheet.assertRowIndexesNotStale();
     table.sheet.assertEditProtectionsNotStale();
-    const queued = table.tablesOnSheet.flatMap((other) =>
-      new TableRuleQueuerRaw(other.tableRawProps)._queuedSheetEditProtections(),
+    const queued = this._queuedOnSheet((queuer) =>
+      queuer._queuedSheetEditProtections(),
     );
     if (
       table.sheet.hasPendingEditProtection(
@@ -151,15 +165,10 @@ export class TableRuleQueuerRaw extends TableBaseRaw {
         queued,
       )
     ) {
-      return;
+      return this;
     }
     table.queueTableWrite({ action: "addEditProtection", ...protection });
-  }
-  private _queuedSheetConditionalFormatRules(): ModelableConditionalFormatRule[] {
-    const origin = this.tableOrigin();
-    return this.table.writes.conditionalFormatRules.map((rule) =>
-      this._sheetConditionalFormatRule(rule, origin),
-    );
+    return this;
   }
   private _queuedSheetEditProtections(): EditProtectionContent[] {
     const origin = this.tableOrigin();

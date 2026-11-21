@@ -42,7 +42,7 @@ export class TableColumnQueuerRaw extends TableBaseRaw {
     return colIndex;
   }
   // Strictly inside, so the band grows the Table with no range update; appendColumn adds at the end.
-  insertColumn(colIndex: number, headCells: NewColumnHeadCells): void {
+  insertColumn(colIndex: number, headCells: NewColumnHeadCells): this {
     this.table.assertRowIndexesNotStale();
     this._assertStrictlyInside(
       colIndex,
@@ -53,8 +53,9 @@ export class TableColumnQueuerRaw extends TableBaseRaw {
       colIndex,
       headCells,
     });
+    return this;
   }
-  deleteColumn(colIndex: number): void {
+  deleteColumn(colIndex: number): this {
     const { table } = this;
     table.assertRowIndexesNotStale();
     const columnCount = this._columnCountAfterChanges();
@@ -73,9 +74,10 @@ export class TableColumnQueuerRaw extends TableBaseRaw {
       );
     }
     table.queueTableWrite({ action: "deleteColumn", colIndex });
+    return this;
   }
   // Lands strictly inside, like insertColumn: an insert at the Table's first column lands outside it (sheets-behaviour.md).
-  moveColumns({ colIndex, count, beforeColIndex }: ColumnMoveSpan): void {
+  moveColumns({ colIndex, count, beforeColIndex }: ColumnMoveSpan): this {
     const { table } = this;
     table.assertRowIndexesNotStale();
     const columnCount = this._columnCountAfterChanges();
@@ -105,6 +107,7 @@ export class TableColumnQueuerRaw extends TableBaseRaw {
       count,
       beforeColIndex,
     });
+    return this;
   }
   get columnInsertLabel(): string {
     return `Inserting a column at the end of ${this._namedTableOnSheet}`;
@@ -174,6 +177,17 @@ export class TableColumnQueuerRaw extends TableBaseRaw {
       operations,
     });
   }
+  private _assertColumnChangesAlone(): void {
+    const { table } = this;
+    const otherWrites = {
+      ...this.tableState.writeQueue,
+      table: { ...table.writes, columnChanges: [] },
+    };
+    if (!hasQueuedWrites(otherWrites)) return;
+    throw new Error(
+      `Refusing to change the columns of ${table.tableLabel} alongside its other queued writes: they are indexed by the columns before the change. Flush the column change on its own.`,
+    );
+  }
   private _assertStrictlyInside(colIndex: number, taken: string): void {
     const columnCount = this._columnCountAfterChanges();
     if (Number.isInteger(colIndex) && colIndex >= 1 && colIndex < columnCount) {
@@ -201,17 +215,6 @@ export class TableColumnQueuerRaw extends TableBaseRaw {
     if (split === undefined) return;
     throw new Error(
       `${splittingPhrase(actionLabel, split.name)} with its head rows. Move "${split.name}" so that it and its head rows sit entirely within rows ${band.startRowIndex + 1}–${band.endRowIndex}, or entirely outside them.`,
-    );
-  }
-  private _assertColumnChangesAlone(): void {
-    const { table } = this;
-    const otherWrites = {
-      ...this.tableState.writeQueue,
-      table: { ...table.writes, columnChanges: [] },
-    };
-    if (!hasQueuedWrites(otherWrites)) return;
-    throw new Error(
-      `Refusing to change the columns of ${table.tableLabel} alongside its other queued writes: they are indexed by the columns before the change. Flush the column change on its own.`,
     );
   }
   // Each change is read in the layout the ones before it leave, so the working view moves with it.

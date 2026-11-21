@@ -49,7 +49,7 @@ import { TableProfileRaw } from "./TableProfileRaw";
 import { TableColumnQueuerRaw } from "./TableRaw/TableColumnQueuerRaw";
 import { TableColumnResolverRaw } from "./TableRaw/TableColumnResolverRaw";
 import { TableColumnTypeGathererRaw } from "./TableRaw/TableColumnTypeGathererRaw";
-import { TableRuleQueuerRaw } from "./TableRaw/TableRuleQueuerRaw";
+import { TableConditionalFormatAndProtectionQueuerRaw } from "./TableRaw/TableConditionalFormatAndProtectionQueuerRaw";
 
 /**
  * One Table's state by Table-relative index: rows, columns, pruning, queued
@@ -57,7 +57,7 @@ import { TableRuleQueuerRaw } from "./TableRaw/TableRuleQueuerRaw";
  * sampled column facts. Its sheet's title, grid size, conditional format rules
  * and edit protections are SheetRaw, reached as `table.sheet`.
  * Descriptive facts are TableProfileRaw and ColumnProfileRaw; column ID lookups, column
- * changes, column types, and rules and protections are TableRaw/;
+ * changes, column types, and conditional format rules and protections are TableRaw/;
  * spreadsheet-wide fetch and flush are SpreadsheetRaw. Config-aware lookups and names are Identified/Named.
  */
 export class TableRaw extends TableCommonRaw {
@@ -82,8 +82,8 @@ export class TableRaw extends TableCommonRaw {
   private get columnTypeGatherer(): TableColumnTypeGathererRaw {
     return new TableColumnTypeGathererRaw(this.tableRawProps);
   }
-  private get ruleQueuer(): TableRuleQueuerRaw {
-    return new TableRuleQueuerRaw(this.tableRawProps);
+  get conditionalFormatAndProtectionQueuer(): TableConditionalFormatAndProtectionQueuerRaw {
+    return new TableConditionalFormatAndProtectionQueuerRaw(this.tableRawProps);
   }
   get hasFetchedProperties(): boolean {
     return this.tableProperties !== undefined;
@@ -414,29 +414,37 @@ export class TableRaw extends TableCommonRaw {
     range: TableGridRange,
     declaration: ConditionalFormatDeclaration,
   ): this {
-    this.ruleQueuer.addConditionalFormatRuleAt(range, declaration);
+    this.conditionalFormatAndProtectionQueuer.addConditionalFormatRuleAt(
+      range,
+      declaration,
+    );
     return this;
   }
   removeConditionalFormatRulesAt(range: TableGridRange): this {
-    this.ruleQueuer.removeConditionalFormatRulesAt(range);
+    this.conditionalFormatAndProtectionQueuer.removeConditionalFormatRulesAt(
+      range,
+    );
     return this;
   }
   addEditWarningAt(
     range: TableGridRange,
     declaration: EditWarningDeclaration = {},
   ): this {
-    this.ruleQueuer.addEditWarningAt(range, declaration);
+    this.conditionalFormatAndProtectionQueuer.addEditWarningAt(
+      range,
+      declaration,
+    );
     return this;
   }
   addEditLockAt(
     range: TableGridRange,
     declaration: EditLockDeclaration = {},
   ): this {
-    this.ruleQueuer.addEditLockAt(range, declaration);
+    this.conditionalFormatAndProtectionQueuer.addEditLockAt(range, declaration);
     return this;
   }
   removeEditProtectionsAt(range: TableGridRange): this {
-    this.ruleQueuer.removeEditProtectionsAt(range);
+    this.conditionalFormatAndProtectionQueuer.removeEditProtectionsAt(range);
     return this;
   }
   // The head rows survive, or every later column-index resolution breaks.
@@ -504,12 +512,16 @@ export class TableRaw extends TableCommonRaw {
     writes.checkboxCells.forEach((cell) => {
       this.gatherCheckboxValidationOperation(cell);
     });
-    const { ruleQueuer } = this;
+    const { conditionalFormatAndProtectionQueuer } = this;
     writes.conditionalFormatRules.forEach((rule) => {
-      ruleQueuer.gatherConditionalFormatRuleOperation(rule);
+      conditionalFormatAndProtectionQueuer.gatherConditionalFormatRuleOperation(
+        rule,
+      );
     });
     writes.editProtections.forEach((protection) => {
-      ruleQueuer.gatherEditProtectionOperation(protection);
+      conditionalFormatAndProtectionQueuer.gatherEditProtectionOperation(
+        protection,
+      );
     });
     if (writes.deletesTable) this._gatherDeleteTableOperation();
   }
