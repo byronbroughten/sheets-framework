@@ -159,6 +159,10 @@ Write-ups sourced from Google's docs live on `research/*` branches, listed by `g
 - Observed: A REST API v4 `getByDataFilter` returned no `conditionalFormats` for sheets holding rules, and a plain `spreadsheets.get` with the fields mask `sheets(properties(sheetId),conditionalFormats)` returned them; live spreadsheet, the sheets not recorded; 2026-09-16; [recorded in 62abd855](https://github.com/byronbroughten/byro-repo/commit/62abd85537ae0110cd80e3311e00c2aa298f9eb0), [recorded in 613de032](https://github.com/byronbroughten/byro-repo/commit/613de032e7a8310dd19277de344f51caca4e4ce2).
 - Observed: A REST API v4 read of conditional-format rules returned each colour as a `*ColorStyle` (`backgroundColorStyle`, `foregroundColorStyle`) beside the plain colour field; live spreadsheet, the sheets not recorded; 2026-09-16; [recorded in 62abd855](https://github.com/byronbroughten/byro-repo/commit/62abd85537ae0110cd80e3311e00c2aa298f9eb0), [recorded in 613de032](https://github.com/byronbroughten/byro-repo/commit/613de032e7a8310dd19277de344f51caca4e4ce2).
 
+### Reading tab properties
+
+- Observed: A REST API v4 `updateSheetProperties` setting `tabColorStyle` to `#4a86e8` with `fields: tabColorStyle` read back from a `spreadsheets.get` of `properties(...tabColor,tabColorStyle,hidden,gridProperties(...))` with both `tabColor` and `tabColorStyle.rgbColor` as `{red: 0.2901961, green: 0.5254902, blue: 0.9098039}`, and with no `hidden` field and `gridProperties: {}` on a tab neither hidden nor frozen; Dates tab on the dev spreadsheet, sent and read by `dev:gen:configs`; 2026-11-20; [comment on #219](https://github.com/byronbroughten/sheets-framework/issues/219#issuecomment-7057363679).
+
 ## Formats and formulas
 
 ### Writing a formula with a Table reference
