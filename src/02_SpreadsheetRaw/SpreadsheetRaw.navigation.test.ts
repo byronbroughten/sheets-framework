@@ -148,6 +148,7 @@ describe("Raw profile members", () => {
         Exclude<keyof ColumnProfileRaw, keyof ColumnBaseRaw>,
         | "columnType"
         | "isFormula"
+        | "isSampledFormula"
         | "numberFormatType"
         | "topValue"
         | "topFormula"
