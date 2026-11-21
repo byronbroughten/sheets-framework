@@ -11,6 +11,7 @@ import {
   type SyncCreatedTable,
   type SyncCreatedTableColumn,
   type SyncDryRunOutcome,
+  type SyncEntry,
   type SyncFlushStoppedOutcome,
   type SyncHeaderTakenStop,
   type SyncHeadRowsStop,
@@ -417,12 +418,22 @@ function refusalWords(refusal: SyncRefusal): RefusalWords {
   }
   if (refusal.kind === "noSuchTable") {
     const { entry, name } = refusal;
-    const noun = entry === "tables" ? "Table" : "tab";
+    const noun = entryNouns[entry];
     return {
       heading: `${entry} › ${name}`,
       lines: [
         `no such ${noun}: adopt by removing the entry.`,
         `${noMapEntryText(noun, name)}, so it is gone from the sheet or went by another name at the last sync.`,
+      ],
+    };
+  }
+  if (refusal.kind === "notSendableYet") {
+    const { entry, name, path } = refusal;
+    return {
+      heading: `${entryNouns[entry]} ${name} › ${path}`,
+      lines: [
+        `sync can't send ${path} yet: for now it sends only a Table's ${[...sendableTraits.table].join(", ")}, a column's ${[...sendableTraits.column].join(", ")} and a tab's ${[...sendableTraits.tab].join(", ")}.`,
+        "Take this entry out, then rerun.",
       ],
     };
   }
@@ -432,15 +443,18 @@ function refusalWords(refusal: SyncRefusal): RefusalWords {
   };
 }
 
+const entryNouns: Record<SyncEntry, string> = {
+  tables: "Table",
+  tabs: "tab",
+  newTabs: "new tab",
+};
+
 function tableRefusalText(
-  refusal: Exclude<SyncRefusal, { kind: "touchesDeletion" | "noSuchTable" }>,
+  refusal: Exclude<
+    SyncRefusal,
+    { kind: "touchesDeletion" | "noSuchTable" | "notSendableYet" }
+  >,
 ): string[] {
-  if (refusal.kind === "notSendableYet") {
-    return [
-      `sync can't send ${refusal.path} yet: for now it sends only a Table's ${[...sendableTraits.table].join(", ")}, a column's ${[...sendableTraits.column].join(", ")} and a tab's ${[...sendableTraits.tab].join(", ")}.`,
-      "Take this entry out, then rerun.",
-    ];
-  }
   if (refusal.kind === "noSuchBeforeTab") {
     return [
       `${refusal.path} names ${refusal.before}, which is neither a tab at the last sync nor a newTabs title.`,
@@ -497,7 +511,14 @@ function tableRefusalText(
       `Use the column's old name, ${refusal.oldName}, this run, then rerun.`,
     ];
   }
-  return unknownBraceText(refusal);
+  if (refusal.kind === "unknownBraceTable") {
+    return [
+      `${refusal.brace} names no Table: ${noMapEntryText("Table", refusal.braceTable)}.`,
+    ];
+  }
+  return [
+    `${refusal.brace} names no column of ${refusal.braceTable}. Its columns: ${refusal.columns.join(", ")}.`,
+  ];
 }
 
 // Why the two paths of a `moves` or `newColumns` clash can't both hold.
@@ -529,19 +550,6 @@ const newColumnNameOwnText =
 // The one phrase for a name the previous ID-name map lacks.
 function noMapEntryText(noun: string, name: string): string {
   return `idNameMap.ts holds no ${noun} named ${name}`;
-}
-
-function unknownBraceText({
-  brace,
-  braceTable,
-  columns,
-}: Extract<SyncRefusal, { kind: "unknownBrace" }>): string[] {
-  if (columns === undefined) {
-    return [`${brace} names no Table: ${noMapEntryText("Table", braceTable)}.`];
-  }
-  return [
-    `${brace} names no column of ${braceTable}. Its columns: ${columns.join(", ")}.`,
-  ];
 }
 
 function grantRunLines(table: string, steps: string): string[] {

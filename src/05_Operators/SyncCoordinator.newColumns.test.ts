@@ -367,7 +367,8 @@ describe("SyncCoordinator.run new columns", () => {
       ).toEqual([
         {
           kind: "notSendableYet",
-          table: "item",
+          entry: "tables",
+          name: "item",
           path: "newColumns[0].columns[1].formula",
         },
       ]);

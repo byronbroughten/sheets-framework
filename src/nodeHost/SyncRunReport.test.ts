@@ -597,8 +597,21 @@ describe("SyncRunReport's refusals before the read", () => {
       { kind: "noSuchTable", entry: "tabs", name: "vendors" },
       {
         kind: "notSendableYet",
-        table: "item",
+        entry: "tables",
+        name: "item",
         path: "newColumns[0].columnType",
+      },
+      {
+        kind: "notSendableYet",
+        entry: "tabs",
+        name: "item",
+        path: "newTables[0].conditionalFormats.add[0].format.bold",
+      },
+      {
+        kind: "notSendableYet",
+        entry: "newTabs",
+        name: "Empty",
+        path: "newTabs[0].tables",
       },
     ],
   }).join("\n");
@@ -614,10 +627,20 @@ describe("SyncRunReport's refusals before the read", () => {
   });
 
   it("names the Table and the trait it can't send yet", () => {
-    expect(text).toContain("REFUSED 3 · item › newColumns[0].columnType");
+    expect(text).toContain("REFUSED 3 · Table item › newColumns[0].columnType");
     expect(text).toContain(
       "  sync can't send newColumns[0].columnType yet: for now it sends only a Table's name, deleted, letApiAccess, newColumns, moves, conditionalFormats.remove, conditionalFormats.replace, conditionalFormats.add, a column's header, columnType, formula, deleted, emptyValueAllowed and a tab's title, color, before, frozenRows, frozenColumns, hidden, deleted, newTables.",
     );
+  });
+
+  it("names a tab's trait apart from a Table's of the same name", () => {
+    expect(text).toContain(
+      "REFUSED 4 · tab item › newTables[0].conditionalFormats.add[0].format.bold",
+    );
+  });
+
+  it("names a new tab by its title", () => {
+    expect(text).toContain("REFUSED 5 · new tab Empty › newTabs[0].tables");
   });
 });
 
@@ -746,12 +769,11 @@ describe("SyncRunReport, case F: two refusals, then a head-row stop", () => {
       outcome: { kind: "refused" },
       refusals: [
         {
-          kind: "unknownBrace",
+          kind: "unknownBraceTable",
           table: "occCharge",
           path: "amount.formula",
           brace: "${vendor[@cost]}",
           braceTable: "vendor",
-          columns: undefined,
         },
       ],
     }).join("\n");

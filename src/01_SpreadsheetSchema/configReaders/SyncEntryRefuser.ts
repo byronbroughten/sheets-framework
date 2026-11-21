@@ -15,7 +15,7 @@ import {
   type WideNewTable,
   type WideTableEntry,
 } from "./SyncPlanner/wideAlterations";
-import type { SyncRefusal } from "./syncRunResult";
+import type { SyncEntry, SyncRefusal } from "./syncRunResult";
 
 export interface SyncEntryRefuserProps {
   alterations: WideAlterations;
@@ -24,6 +24,9 @@ export interface SyncEntryRefuserProps {
 }
 
 type NotSendableYet = Extract<SyncRefusal, { kind: "notSendableYet" }>;
+type TraitEntry = Pick<NotSendableYet, "entry" | "name">;
+type TabTraitEntry = TraitEntry & { entry: Exclude<SyncEntry, "tables"> };
+type MapEntry = Extract<SyncRefusal, { kind: "noSuchTable" }>["entry"];
 type NoSuchBeforeTab = Extract<SyncRefusal, { kind: "noSuchBeforeTab" }>;
 
 // Only these traits can be sent so far; each later trait ticket takes its trait off this refusal.
@@ -136,14 +139,17 @@ export class SyncEntryRefuser {
       entry: "tabs",
       mapNames: Object.values(this.idNameMap.tabs).map(({ name }) => name),
       entries: entriesOf(this.alterations.tabs),
-      traitRefusals: (tab, entry) => [
-        ...refusedPaths(tab, traitPathsAt("tab", entry, "")),
-        ...this._newTablesRefusals({
-          tab,
-          newTables: entry.newTables ?? [],
-          tablesAt: "newTables",
-        }),
-      ],
+      traitRefusals: (tab, entry) => {
+        const tabEntry: TabTraitEntry = { entry: "tabs", name: tab };
+        return [
+          ...refusedPaths(tabEntry, traitPathsAt("tab", entry, "")),
+          ...this._newTablesRefusals({
+            tabEntry,
+            newTables: entry.newTables ?? [],
+            tablesAt: "newTables",
+          }),
+        ];
+      },
     });
   }
   private get _newTabRefusals(): SyncRefusal[] {
@@ -155,13 +161,14 @@ export class SyncEntryRefuser {
     ]);
     return newTabs.flatMap((newTab, index) => {
       const at = `newTabs[${index}]`;
-      const tab = newTab.title ?? "newTabs";
+      const tab = newTab.title;
+      const tabEntry: TabTraitEntry = { entry: "newTabs", name: tab };
       // addSheet is sent only with a Table to create on it.
       const tablesRefusals =
         newTab.tables.length === 0
-          ? [notSendableYet(tab, `${at}.tables`)]
+          ? [notSendableYet({ ...tabEntry, path: `${at}.tables` })]
           : this._newTablesRefusals({
-              tab,
+              tabEntry,
               newTables: newTab.tables,
               tablesAt: `${at}.tables`,
             });
@@ -171,25 +178,34 @@ export class SyncEntryRefuser {
           ? []
           : [noSuchBeforeTab({ table: tab, path: `${at}.before`, before })];
       return [
-        ...refusedPaths(tab, traitPathsAt("newTab", newTab, `${at}.`)),
+        ...refusedPaths(tabEntry, traitPathsAt("newTab", newTab, `${at}.`)),
         ...beforeRefusals,
         ...tablesRefusals,
       ];
     });
   }
   private _newTablesRefusals({
-    tab,
+    tabEntry,
     newTables,
     tablesAt,
   }: NewTablesRefusalsProps): SyncRefusal[] {
     return newTables.flatMap((newTable, index) =>
-      this._newTableRefusals({ tab, newTable, at: `${tablesAt}[${index}]` }),
+      this._newTableRefusals({
+        tabEntry,
+        newTable,
+        at: `${tablesAt}[${index}]`,
+      }),
     );
   }
-  private _newTableRefusals({ tab, newTable, at }: NewTableAt): SyncRefusal[] {
+  private _newTableRefusals({
+    tabEntry,
+    newTable,
+    at,
+  }: NewTableUnder): SyncRefusal[] {
+    const tab = tabEntry.name;
     const newColumns = NewColumnNames.ofNewTable({ newTable, at });
     return [
-      ...refusedPaths(tab, newTableTraitPaths(newTable, at)),
+      ...refusedPaths(tabEntry, newTableTraitPaths(newTable, at)),
       ...newColumns.repeatRefusals(tab),
       ...this._braceRefuser.newTableRefusals({ tab, newTable, at }),
       ...RuleRefuser.ofNewTable({
@@ -202,21 +218,28 @@ export class SyncEntryRefuser {
       }).refusals,
       ...ruleTextFormatPaths({
         conditionalFormats: newTable.conditionalFormats,
-      }).map((path) => notSendableYet(tab, `${at}.${path}`)),
+      }).map((path) => notSendableYet({ ...tabEntry, path: `${at}.${path}` })),
     ];
   }
 }
 
+interface NewTableUnder extends Omit<NewTableAt, "tab"> {
+  tabEntry: TabTraitEntry;
+}
+
 interface NewTablesRefusalsProps {
-  tab: string;
+  tabEntry: TabTraitEntry;
   newTables: WideNewTable[];
   tablesAt: string;
 }
 
-function refusedPaths(table: string, paths: TraitPath[]): SyncRefusal[] {
+function refusedPaths(
+  traitEntry: TraitEntry,
+  paths: TraitPath[],
+): SyncRefusal[] {
   return paths
     .filter(({ level, trait }) => !sendableTraits[level].has(trait))
-    .map(({ path }) => notSendableYet(table, path));
+    .map(({ path }) => notSendableYet({ ...traitEntry, path }));
 }
 
 function newTableTraitPaths(
@@ -237,7 +260,7 @@ function newTableTraitPaths(
 }
 
 interface EntryRefusalsProps<EN extends object> {
-  entry: "tables" | "tabs";
+  entry: MapEntry;
   mapNames: string[];
   entries: [string, EN][];
   traitRefusals: (name: string, entry: EN) => SyncRefusal[];
@@ -256,12 +279,12 @@ function entryRefusals<EN extends object>({
   });
 }
 
-function noSuchTable(entry: "tables" | "tabs", name: string): SyncRefusal {
+function noSuchTable(entry: MapEntry, name: string): SyncRefusal {
   return { kind: "noSuchTable", entry, name };
 }
 
-function notSendableYet(table: string, path: string): NotSendableYet {
-  return { kind: "notSendableYet", table, path };
+function notSendableYet(props: Omit<NotSendableYet, "kind">): NotSendableYet {
+  return { kind: "notSendableYet", ...props };
 }
 
 function noSuchBeforeTab(
@@ -274,12 +297,15 @@ function tableTraitRefusals(
   table: string,
   entry: WideTableEntry,
 ): SyncRefusal[] {
+  const traitEntry: TraitEntry = { entry: "tables", name: table };
   return [
-    ...refusedPaths(table, [
+    ...refusedPaths(traitEntry, [
       ...traitPaths(entry),
       ...newColumnTraitPaths(entry),
     ]),
-    ...ruleTextFormatPaths(entry).map((path) => notSendableYet(table, path)),
+    ...ruleTextFormatPaths(entry).map((path) =>
+      notSendableYet({ ...traitEntry, path }),
+    ),
   ];
 }
 
