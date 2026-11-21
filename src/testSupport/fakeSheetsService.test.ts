@@ -1628,7 +1628,7 @@ describe("stubSheetsService replays rules under a Table-bounded column move as m
       });
 
       expect(() => send(cutFirstColumnOntoLast)).toThrowError(
-        "The fake Sheets service does not replay a cutPaste under a conditional-format rule outside the cut whose formula names a cut or pasted column, a shape not yet measured.",
+        "The fake Sheets service does not replay a cutPaste under a conditional-format rule outside the cut source, over the destination or not, whose formula names a cut or pasted column, a shape not yet measured.",
       );
     },
   );

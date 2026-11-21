@@ -217,7 +217,7 @@ interface PasteRanges {
 const ruleCutRefusals = {
   cut: "The fake Sheets service does not replay a cutPaste under a conditional-format rule, other than a sideways cut inside a whole-Table rule naming no cut or pasted column, or naming one on a one-column cut to the right, the pasted column only $-anchored.",
   outside:
-    "The fake Sheets service does not replay a cutPaste under a conditional-format rule outside the cut whose formula names a cut or pasted column, a shape not yet measured.",
+    "The fake Sheets service does not replay a cutPaste under a conditional-format rule outside the cut source, over the destination or not, whose formula names a cut or pasted column, a shape not yet measured.",
 } as const;
 
 function cutRules(
@@ -233,7 +233,7 @@ function cutRules(
         isInColumns(move.source, colIndex) ||
         isInColumns(move.destination, colIndex),
     );
-    // Unmeasured: no scratch has cut a column a rule outside the cut names, so throw rather than guess.
+    // Unmeasured: no scratch has cut a column a rule outside the cut source names, one over the destination included, so throw rather than guess.
     if (!isCut && isNamingMove) throw new Error(ruleCutRefusals.outside);
     if (!isCut) return rule;
     if (!isSidewaysInWholeTable(sheet, rule, move)) {
