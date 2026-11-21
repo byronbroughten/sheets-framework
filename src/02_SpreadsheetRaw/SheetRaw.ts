@@ -1,3 +1,4 @@
+import { Arr } from "@byronbroughten/utils/arr";
 import { Val } from "@byronbroughten/utils/val";
 
 import type {
@@ -345,12 +346,12 @@ export class SheetRaw extends SheetBaseRaw {
   }
   // The exclusive end column of the rightmost Table fetched onto the sheet; a queued column write moves it at the flush.
   get rightmostTableEndColIndex(): number | undefined {
-    const ends = this.tableIds.map((tableId) => {
-      const table = this.table(tableId);
-      return table.startColumnIndex + table.columnCount;
-    });
-    if (ends.length === 0) return undefined;
-    return Math.max(...ends);
+    return Arr.max(
+      this.tableIds.map((tableId) => {
+        const table = this.table(tableId);
+        return table.startColumnIndex + table.columnCount;
+      }),
+    );
   }
   // Row indexes only actually shift once the deletes have been sent, and a Table below the deleted rows shifts with them.
   markRowIndexesStale(): void {
