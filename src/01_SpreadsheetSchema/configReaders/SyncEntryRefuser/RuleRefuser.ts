@@ -170,6 +170,12 @@ function ruleColumnNames({ columns }: WideRule): string[] {
   return columns;
 }
 
+// Only a custom formula's value compiles its braces; any other value is a literal.
+function ruleFormulas({ condition }: WideRule): string[] {
+  if (condition.type !== "CUSTOM_FORMULA") return [];
+  return condition.values ?? [];
+}
+
 interface NumberRefusalsProps {
   table: string;
   path: string;
@@ -189,10 +195,4 @@ function numberRefusals({
   return [
     { kind: "notANumber", table, path, conditionType: condition.type, value },
   ];
-}
-
-// Only a custom formula's value compiles its braces; any other value is a literal.
-function ruleFormulas({ condition }: WideRule): string[] {
-  if (condition.type !== "CUSTOM_FORMULA") return [];
-  return condition.values ?? [];
 }

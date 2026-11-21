@@ -72,13 +72,13 @@ interface NumberConditionIntended {
   values?: [`${number}`];
 }
 
-interface TextConditionIntended {
+interface NonNumberConditionIntended {
   type: Exclude<ModelledConditionType, NumberConditionType>;
   // Each value in brace form, as a formula column's is.
   values?: string[];
 }
 
-type ConditionIntended = NumberConditionIntended | TextConditionIntended;
+type ConditionIntended = NumberConditionIntended | NonNumberConditionIntended;
 
 // Spans the body rows of the columns named, so a rule never needs a column letter.
 interface ConditionalFormatRuleIntended<CN extends string> {
