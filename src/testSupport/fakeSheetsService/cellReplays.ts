@@ -6,6 +6,7 @@ import {
   type FakeSpreadsheet,
   fakeSpreadsheet,
 } from "./fakeSpreadsheet";
+import { unreplayed } from "./unreplayed";
 
 type Response = GoogleAppsScript.Sheets.Schema.Response;
 type RowData = GoogleAppsScript.Sheets.Schema.RowData;
@@ -53,14 +54,10 @@ export const cellReplays = {
   ): Response {
     const type = request.type ?? "PASTE_NORMAL";
     if (type !== "PASTE_NORMAL" && type !== "PASTE_FORMULA") {
-      throw new Error(
-        `The fake Sheets service does not replay pasteData type ${type}.`,
-      );
+      throw unreplayed(`pasteData type ${type}`);
     }
     if (request.html === true) {
-      throw new Error(
-        "The fake Sheets service does not replay HTML pasteData.",
-      );
+      throw unreplayed("HTML pasteData");
     }
     const { coordinate } = request;
     const sheet = fakeSpreadsheet.sheet(spreadsheet, coordinate?.sheetId);

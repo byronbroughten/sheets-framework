@@ -6,6 +6,7 @@ import {
   type FakeSpreadsheet,
   fakeSpreadsheet,
 } from "./fakeSpreadsheet";
+import { unreplayed } from "./unreplayed";
 
 type Response = GoogleAppsScript.Sheets.Schema.Response;
 type DimensionRange = GoogleAppsScript.Sheets.Schema.DimensionRange;
@@ -93,9 +94,7 @@ export const dimensionReplays = {
     request: GoogleAppsScript.Sheets.Schema.UpdateDimensionPropertiesRequest,
   ): Response {
     if (request.fields !== "hiddenByUser") {
-      throw new Error(
-        `The fake Sheets service does not replay updateDimensionProperties fields "${request.fields}".`,
-      );
+      throw unreplayed(`updateDimensionProperties fields "${request.fields}"`);
     }
     const { dimension, startIndex, count } = dimensionChange(request.range);
     const sheet = fakeSpreadsheet.sheet(spreadsheet, request.range?.sheetId);

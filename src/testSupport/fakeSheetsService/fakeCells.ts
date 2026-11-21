@@ -3,6 +3,7 @@ import type {
   FakeCellValue,
   FakeRichCellValue,
 } from "../fakeSheetsService";
+import { unreplayed } from "./unreplayed";
 
 type GoogleCellData = GoogleAppsScript.Sheets.Schema.CellData;
 type ExtendedValue = GoogleAppsScript.Sheets.Schema.ExtendedValue;
@@ -38,9 +39,7 @@ export const fakeCells = {
       fieldMask.split(",").flatMap((rawPath) => {
         const path = rawPath.trim();
         if (!isCellFieldPath(path)) {
-          throw new Error(
-            `The fake Sheets service does not replay ${requestKind} field "${path}".`,
-          );
+          throw unreplayed(`${requestKind} field "${path}"`);
         }
         return [...cellFieldPaths[path]];
       }),
@@ -118,7 +117,7 @@ function userEnteredToRich(
     return { value: userEntered.formulaValue, isFormula: true };
   }
   if (userEntered?.errorValue !== undefined) {
-    throw new Error("The fake Sheets service does not replay an errorValue.");
+    throw unreplayed("an errorValue");
   }
   const value =
     userEntered?.stringValue ??
