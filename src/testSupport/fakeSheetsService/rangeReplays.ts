@@ -196,23 +196,9 @@ function carryTableColumns({
   table,
   move,
 }: TableColumnCut): void {
-  const colOffset =
-    move.destination.startColumnIndex - move.source.startColumnIndex;
-  const types = splitColumnFacts(table.columnTypes, move.source, colOffset);
-  const values = splitColumnFacts(
-    table.columnValidationValues,
-    move.source,
-    colOffset,
-  );
-  const conditionTypes = splitColumnFacts(
-    table.columnValidationConditionTypes,
-    move.source,
-    colOffset,
-  );
+  const facts = tableColumnFacts(table, move);
   if (coversColumns(table, move.destination)) {
-    table.columnTypes = mergedColumnFacts(types);
-    table.columnValidationValues = mergedColumnFacts(values);
-    table.columnValidationConditionTypes = mergedColumnFacts(conditionTypes);
+    Object.assign(table, facts.merged);
     return;
   }
   if (!isLastColumnToBefore(table, move)) {
@@ -220,20 +206,77 @@ function carryTableColumns({
       "The fake Sheets service does not replay a cutPaste of a Table's columns out of the Table, other than its last column to just before it.",
     );
   }
-  table.columnTypes = types?.kept;
-  table.columnValidationValues = values?.kept;
-  table.columnValidationConditionTypes = conditionTypes?.kept;
+  Object.assign(table, facts.kept);
   sheet.tables.push({
     tableId: `fake-table-${sheet.sheetId}-cut-${sheet.tables.length}`,
-    name: `Table${tableCount(spreadsheet) + 1}`,
+    name: newTableName(spreadsheet),
     startRowIndex: table.startRowIndex,
     endRowIndex: table.endRowIndex,
     startColumnIndex: move.destination.startColumnIndex,
     endColumnIndex: move.destination.endColumnIndex,
-    columnTypes: types?.carried,
-    columnValidationValues: values?.carried,
-    columnValidationConditionTypes: conditionTypes?.carried,
+    ...facts.carried,
   });
+}
+
+type ColumnFacts = Pick<
+  FakeTableState,
+  "columnTypes" | "columnValidationValues" | "columnValidationConditionTypes"
+>;
+
+// The facts the cut leaves, those it carries, and both together where the paste lands inside the Table.
+interface TableColumnFacts {
+  kept: ColumnFacts;
+  carried: ColumnFacts;
+  merged: ColumnFacts;
+}
+
+function tableColumnFacts(
+  table: FakeTableState,
+  { source, destination }: PasteRanges,
+): TableColumnFacts {
+  const colOffset = destination.startColumnIndex - source.startColumnIndex;
+  const types = splitColumnFacts(table.columnTypes, source, colOffset);
+  const values = splitColumnFacts(
+    table.columnValidationValues,
+    source,
+    colOffset,
+  );
+  const conditionTypes = splitColumnFacts(
+    table.columnValidationConditionTypes,
+    source,
+    colOffset,
+  );
+  return {
+    kept: {
+      columnTypes: types?.kept,
+      columnValidationValues: values?.kept,
+      columnValidationConditionTypes: conditionTypes?.kept,
+    },
+    carried: {
+      columnTypes: types?.carried,
+      columnValidationValues: values?.carried,
+      columnValidationConditionTypes: conditionTypes?.carried,
+    },
+    merged: {
+      columnTypes: mergedColumnFacts(types),
+      columnValidationValues: mergedColumnFacts(values),
+      columnValidationConditionTypes: mergedColumnFacts(conditionTypes),
+    },
+  };
+}
+
+// Inferred: Scratch353D's one existing Table gave Table2, so n is one past the spreadsheet's Table count.
+function newTableName(spreadsheet: FakeSpreadsheet): string {
+  const name = `Table${tableCount(spreadsheet) + 1}`;
+  const isTaken = spreadsheet.sheets.some((sheet) =>
+    sheet.tables.some((table) => table.name === name),
+  );
+  if (isTaken) {
+    throw new Error(
+      `The fake Sheets service does not replay a cutPaste making a new Table when ${name} is already taken, a name no scratch has measured.`,
+    );
+  }
+  return name;
 }
 
 // A one-column cut of a span's last column onto the column just left of it, as Scratch353D did.
@@ -311,7 +354,8 @@ function cutRules(
     if (!isCut) return rule;
     const range = wholeTableRange(sheet, rule);
     if (range === undefined) throw new Error(ruleCutRefusals.cut);
-    const isLeavingTable = isLastColumnToBefore(range, move);
+    const isLeavingTable =
+      isLastColumnToBefore(range, move) && coversRows(move.source, range);
     if (isLeavingTable && !isNamingMove) return withRangeOverPaste(rule, range);
     if (!isSidewaysInRange(range, move)) throw new Error(ruleCutRefusals.cut);
     if (!isNamingMove) return rule;

@@ -1614,22 +1614,61 @@ describe("stubSheetsService replays rules under a Table-bounded column move as m
     expect(measuredRules(grid)).toEqual([formulaRule("A5:E7", '=$E5="x"')]);
   });
 
-  it("throws on a Table's columns cut out of it in any other shape", () => {
+  it("moves a whole-Table rule with its Table under an insert at its first column, its anchored reference as written, and throws on a relative one", () => {
+    const insertAtFirstColumn: Request = {
+      insertRange: { range: measuredBandColumns(0), shiftDimension: "COLUMNS" },
+    };
+    const { grid } = stubSheetsService({
+      sheets: [
+        {
+          ...measuredRuleSheet(),
+          conditionalFormats: [formulaRule("A5:E7", '=$E5="x"')],
+        },
+      ],
+    });
+    send(insertAtFirstColumn);
+    expect(measuredRules(grid)).toEqual([formulaRule("B5:F7", '=$E5="x"')]);
+
     stubSheetsService({
-      sheets: [{ ...measuredRuleSheet(), conditionalFormats: [] }],
+      sheets: [
+        {
+          ...measuredRuleSheet(),
+          conditionalFormats: [formulaRule("A5:E7", '=E5="x"')],
+        },
+      ],
+    });
+    expect(() => send(insertAtFirstColumn)).toThrowError(
+      "The fake Sheets service does not replay a column change under the reference E5 in a conditional-format rule over A5:E7.",
+    );
+  });
+
+  it("throws on a cut of only some of a whole-Table rule's rows from its last column to just before it", () => {
+    stubSheetsService({
+      sheets: [
+        {
+          ...measuredRuleSheet(),
+          conditionalFormats: [formulaRule("A5:E7", '=$E5="x"')],
+        },
+      ],
     });
 
     expect(() =>
-      send({
-        cutPaste: {
-          source: measuredBandColumns(0),
-          destination: { sheetId: measuredGid, rowIndex: 0, columnIndex: 5 },
-          pasteType: "PASTE_NORMAL",
+      send(
+        {
+          insertRange: {
+            range: measuredBandColumns(0),
+            shiftDimension: "COLUMNS",
+          },
         },
-      }),
-    ).toThrowError(
-      "The fake Sheets service does not replay a cutPaste of a Table's columns out of the Table, other than its last column to just before it.",
-    );
+        {
+          cutPaste: {
+            source: measuredRange("F5:F6"),
+            destination: { sheetId: measuredGid, rowIndex: 4, columnIndex: 0 },
+            pasteType: "PASTE_NORMAL",
+          },
+        },
+      ),
+    ).toThrowError(cutUnderRuleMessage);
   });
 
   it("throws on a whole-row rule naming a column a cut moves left", () => {
@@ -2278,6 +2317,60 @@ describe("stubSheetsService replays cutPaste as a whole-cell move", () => {
       values: [{ userEnteredValue: "x" }, { userEnteredValue: "y" }],
     });
     expect(columns[1]?.dataValidationRule).toBeUndefined();
+  });
+
+  it("throws on a Table's columns cut out of it in any shape but its last column to just before it", () => {
+    stubSheetsService({
+      sheets: [{ ...measuredRuleSheet(), conditionalFormats: [] }],
+    });
+
+    expect(() =>
+      send({
+        cutPaste: {
+          source: measuredBandColumns(0),
+          destination: { sheetId: measuredGid, rowIndex: 0, columnIndex: 5 },
+          pasteType: "PASTE_NORMAL",
+        },
+      }),
+    ).toThrowError(
+      "The fake Sheets service does not replay a cutPaste of a Table's columns out of the Table, other than its last column to just before it.",
+    );
+  });
+
+  it("throws on a cut that would make a new Table whose name is already taken", () => {
+    const sheet = measuredRuleSheet();
+    stubSheetsService({
+      sheets: [
+        {
+          ...sheet,
+          conditionalFormats: [],
+          tables: (sheet.tables ?? []).map((table) => ({
+            ...table,
+            name: "Table2",
+          })),
+        },
+      ],
+    });
+
+    expect(() =>
+      send(
+        {
+          insertRange: {
+            range: measuredBandColumns(0),
+            shiftDimension: "COLUMNS",
+          },
+        },
+        {
+          cutPaste: {
+            source: measuredBandColumns(5),
+            destination: { sheetId: measuredGid, rowIndex: 0, columnIndex: 0 },
+            pasteType: "PASTE_NORMAL",
+          },
+        },
+      ),
+    ).toThrowError(
+      "The fake Sheets service does not replay a cutPaste making a new Table when Table2 is already taken, a name no scratch has measured.",
+    );
   });
 
   it("throws naming a paste type it does not replay", () => {

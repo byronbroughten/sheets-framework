@@ -25,7 +25,7 @@ export interface BandColumnRuleShift extends BandRuleShift {
   tableColumnSpans: [number, number][];
 }
 
-// Beside the band left of the change, moved with its columns, across the change point over a whole Table, or out of the band.
+// Beside the band left of the change, moved with its columns, over a whole Table across the change point or at an insert's column, or out of the band.
 type RulePlacement = "before" | "moved" | "spanning" | "outside";
 
 interface PlacedRule extends BandRuleShift {
