@@ -2,17 +2,24 @@ import { Val } from "@byronbroughten/utils/val";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
+import {
+  layoutSheet,
+  layoutTableId,
+} from "../02_SpreadsheetRaw/spreadsheetRawTestSupport";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
 import {
   type FakeSheetsService,
   stubSheetsService,
 } from "../testSupport/fakeSheetsService";
 import { parseIdNameMapFileSource } from "./parseIdNameMapFileSource";
+import { SyncCoordinator } from "./SyncCoordinator";
 import {
   emittedItemColumn,
+  frame,
   itemColumns,
   itemGid,
   itemSheet,
+  previousLayoutMap,
   runItem,
   seedFixture,
 } from "./syncCoordinatorTestSupport";
@@ -213,5 +220,39 @@ describe("SyncCoordinator.run renames", () => {
     expect(
       liveItemTable(service).columnProperties?.[optionalNoteIndex],
     ).toMatchObject({ columnName: itemColumns.optionalNote.header });
+  });
+
+  it("lists both Table names as moved when a person swaps two Tables' names", () => {
+    stubSheetsService({
+      sheets: [
+        layoutSheet({
+          layoutLeft: { name: "layoutRight" },
+          layoutRight: { name: "layoutLeft" },
+        }),
+      ],
+    });
+
+    const { result } = SyncCoordinator.init().run({
+      isSending: false,
+      intendedState: { alterations: {} },
+      previousIdNameMap: previousLayoutMap(),
+      forcedTraits: [],
+      frame,
+    });
+
+    expect(result.configs.namesMoved).toEqual([
+      {
+        kind: "table",
+        name: "layoutLeft",
+        wasId: layoutTableId("layoutLeft"),
+        nowId: layoutTableId("layoutRight"),
+      },
+      {
+        kind: "table",
+        name: "layoutRight",
+        wasId: layoutTableId("layoutRight"),
+        nowId: layoutTableId("layoutLeft"),
+      },
+    ]);
   });
 });

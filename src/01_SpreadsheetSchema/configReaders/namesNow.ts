@@ -1,5 +1,13 @@
-import type { IdNameMapGeneric, IdNameMapTable } from "./idNameMapTypes";
-import type { SyncMovedName } from "./syncRunResult";
+import type {
+  IdNameMapGeneric,
+  IdNameMapTab,
+  IdNameMapTable,
+} from "./idNameMapTypes";
+import type {
+  SyncMovedColumnName,
+  SyncMovedName,
+  SyncMovedTableOrTabName,
+} from "./syncRunResult";
 
 interface ColumnNow {
   columnId: string;
@@ -29,6 +37,8 @@ interface IdNameMaps {
   previous: IdNameMapGeneric;
   regenerated: IdNameMapGeneric;
 }
+
+type MovedId = Omit<SyncMovedTableOrTabName, "kind">;
 
 interface TableInBoth {
   tableId: string;
@@ -63,17 +73,51 @@ export function namesNow(maps: IdNameMaps): NamesNow {
   return { tables, tabs };
 }
 
-// Every column name both maps hold for one Table that now names another column ID.
+// Every Table, tab and column name both maps hold that now names another ID; a column's only within one Table.
 export function movedNames(maps: IdNameMaps): SyncMovedName[] {
+  const { previous, regenerated } = maps;
+  return [
+    ...movedIds(idsByName(previous.tables), idsByName(regenerated.tables)).map(
+      (moved): SyncMovedName => ({ kind: "table", ...moved }),
+    ),
+    ...movedIds(idsByName(previous.tabs), idsByName(regenerated.tabs)).map(
+      (moved): SyncMovedName => ({ kind: "tab", ...moved }),
+    ),
+    ...movedColumnNames(maps),
+  ];
+}
+
+function idsByName(
+  byId: Record<string, IdNameMapTable | IdNameMapTab>,
+): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(byId).map(([id, { name }]) => [name, id]),
+  );
+}
+
+function movedColumnNames(maps: IdNameMaps): SyncMovedColumnName[] {
   return tablesInBoth(maps).flatMap(({ previous, regenerated }) =>
-    Object.entries(previous.columns ?? {}).flatMap(
-      ([column, wasId]): SyncMovedName[] => {
-        const nowId = regenerated.columns?.[column];
-        if (nowId === undefined || nowId === wasId) return [];
-        return [{ table: regenerated.name, column, wasId, nowId }];
-      },
+    movedIds(previous.columns ?? {}, regenerated.columns ?? {}).map(
+      ({ name, wasId, nowId }): SyncMovedColumnName => ({
+        kind: "column",
+        table: regenerated.name,
+        column: name,
+        wasId,
+        nowId,
+      }),
     ),
   );
+}
+
+function movedIds(
+  wasIds: Record<string, string>,
+  nowIds: Record<string, string>,
+): MovedId[] {
+  return Object.entries(wasIds).flatMap(([name, wasId]): MovedId[] => {
+    const nowId = nowIds[name];
+    if (nowId === undefined || nowId === wasId) return [];
+    return [{ name, wasId, nowId }];
+  });
 }
 
 function tablesInBoth({ previous, regenerated }: IdNameMaps): TableInBoth[] {

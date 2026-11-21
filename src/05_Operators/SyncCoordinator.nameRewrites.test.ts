@@ -255,12 +255,14 @@ describe("SyncCoordinator.run name rewrites", () => {
     );
     expect(result.configs.namesMoved).toEqual([
       {
+        kind: "column",
         table: "item",
         column: "optionalNote",
         wasId: optionalNote.columnId,
         nowId: requiredCount.columnId,
       },
       {
+        kind: "column",
         table: "item",
         column: "requiredCount",
         wasId: requiredCount.columnId,
