@@ -190,7 +190,12 @@ export class SheetRaw extends SheetBaseRaw {
   queueGridRowsThrough(endRowIndex: SheetRowIndex): void {
     const { rowCount } = this;
     if (endRowIndex <= rowCount) return;
-    this.sheetState.writeQueue.appendedRowCount += endRowIndex - rowCount;
+    const addedRowCount = endRowIndex - rowCount;
+    // Before the count rises, so each Table is judged against the last row it ended on.
+    for (const tableId of this.tableIds) {
+      this.table(tableId).growWithGridEdge(addedRowCount);
+    }
+    this.sheetState.writeQueue.appendedRowCount += addedRowCount;
     this.sheetState.working.rowCount = endRowIndex;
   }
   queueGridColumnsThrough(endColumnIndex: SheetColIndex): void {

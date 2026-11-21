@@ -44,6 +44,7 @@ import {
   type ColumnFill,
   type ColumnMoveSpan,
   type NewColumnHeadCells,
+  type RowStateRaw,
   type SortParameters,
   type TableCell,
   type TableColumnChange,
@@ -921,6 +922,38 @@ export class TableRaw extends TableCommonRaw {
         ),
       ],
     });
+  }
+  // Matches Sheets, which grows a Table ending on the grid's last row with the grid; one with appends queued sets its own range as they gather.
+  growWithGridEdge(addedRowCount: number): void {
+    if (!this._endsOnGridEdge) return;
+    if (this._queuedRowAppendIndexes().length > 0) return;
+    const lastRowIndex = this.dataRowCount - 1;
+    const lastRowState =
+      lastRowIndex < 0 ? undefined : this.rowStates.get(lastRowIndex);
+    for (let offset = 1; offset <= addedRowCount; offset++) {
+      this.growDataRowCount();
+      if (lastRowState === undefined) continue;
+      this.rowStates.set(
+        lastRowIndex + offset,
+        this._carriedDownRowState(lastRowState),
+      );
+    }
+  }
+  // A Table whose rows have moved can't say where it ends, and every row read on it throws anyway.
+  private get _endsOnGridEdge(): boolean {
+    const properties = this.tableProperties;
+    if (properties === undefined || properties.rowIndexesAreStale) return false;
+    return properties.endRowIndex === this.sheet.rowCount;
+  }
+  // As Sheets fills a grown row: each formula column's formula carried down, every other cell blank.
+  private _carriedDownRowState(lastRowState: RowStateRaw): RowStateRaw {
+    return new Map(
+      Array.from(lastRowState, ([colIndex, { value }]) => {
+        const isFormula =
+          this.columnStates.get(colIndex)?.sampledFacts?.isFormula === true;
+        return [colIndex, { value: isFormula ? value : "" }];
+      }),
+    );
   }
   // An appended row deleted this flush still grows, then goes with the deletes, so the rows after it keep their place.
   private _queuedRowAppendIndexes(): number[] {
