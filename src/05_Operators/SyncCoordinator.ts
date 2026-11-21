@@ -1121,11 +1121,14 @@ function deletedTabOfMap(
   return {
     tab,
     title: mapTab.title,
-    tables: mapTab.tableIds.flatMap((tableId) => {
-      const tableKey = tables[tableId]?.name;
-      if (tableKey === undefined) return [];
+    tables: mapTab.tableIds.map((tableId) => {
+      const tableKey = Val.assert(
+        tables[tableId],
+        `the ID-name map's Table ${tableId}`,
+      ).name;
+      // A Table without API access is in the map but not the Table configs.
       const tableName = tableConfigs[tableKey]?.tableName ?? tableKey;
-      return [{ tableKey, tableName }];
+      return { tableKey, tableName };
     }),
   };
 }

@@ -23,6 +23,7 @@ function snapshot(overrides: Partial<ConfigSnapshot> = {}): ConfigSnapshot {
     retiredIdPrefixes: [],
     columnConfigs: { item: { name: itemName, qty: itemQty } },
     valueConfigs: { status: ["Open", "Closed"] },
+    conditionalFormatConfigs: { tables: {}, tabs: {} },
     ...overrides,
   };
 }
@@ -171,6 +172,43 @@ describe("summarizeConfigsDiff", () => {
     ]);
   });
 
+  it("lists conditional format rules added and removed, by group and rule handle", () => {
+    const qtyRule = {
+      kind: "boolean",
+      tableId: "item",
+      columns: ["qty"],
+      condition: { type: "NUMBER_GREATER", value: 2 },
+      format: { backgroundColor: "#ffcccc" },
+    };
+    const tabRule = {
+      kind: "boolean",
+      sheetGid: 7,
+      ranges: ["A1:A3"],
+      condition: { type: "NOT_BLANK" },
+      format: { backgroundColor: "#ccffcc" },
+    };
+    const before = snapshot({
+      conditionalFormatConfigs: {
+        tables: { item: { "qty | NUMBER_GREATER 2": qtyRule } },
+        tabs: {},
+      },
+    });
+    const after = snapshot({
+      conditionalFormatConfigs: {
+        tables: { item: {} },
+        tabs: { notes: { "A1:A3 | NOT_BLANK": tabRule } },
+      },
+    });
+
+    expect(summarizeConfigsDiff({ before, after })).toEqual([
+      "Conditional formats of Table item:",
+      "  rule qty | NUMBER_GREATER 2: removed",
+      "Conditional formats of tab notes:",
+      "  rule A1:A3 | NOT_BLANK: added",
+      "2 changes.",
+    ]);
+  });
+
   it("counts everything as added on a first generation with no HEAD version", () => {
     expect(
       summarizeConfigsDiff({ before: undefined, after: snapshot() }),
@@ -240,6 +278,34 @@ describe("readConfigsDiff", () => {
 
     expect(readConfigsDiff(sheetsConfig)).toEqual([
       'Retired ID prefixes: added "itm"',
+      "1 change.",
+    ]);
+  });
+
+  it("reads conditional format rules from their own file", () => {
+    const sheetsConfig = committedPackage({});
+    const rules = {
+      tables: {},
+      tabs: {
+        notes: {
+          "A1:A3 | NOT_BLANK": {
+            kind: "boolean",
+            sheetGid: 7,
+            ranges: ["A1:A3"],
+            condition: { type: "NOT_BLANK" },
+            format: { backgroundColor: "#ccffcc" },
+          },
+        },
+      },
+    };
+    writeFileSync(
+      join(sheetsConfig.generatedDir, "conditionalFormatConfigs.ts"),
+      `export const conditionalFormatConfigs = makeConditionalFormatConfigs(${JSON.stringify(rules)});\n`,
+    );
+
+    expect(readConfigsDiff(sheetsConfig)).toEqual([
+      "Conditional formats of tab notes:",
+      "  rule A1:A3 | NOT_BLANK: added",
       "1 change.",
     ]);
   });

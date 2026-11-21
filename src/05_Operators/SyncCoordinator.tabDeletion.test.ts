@@ -1,6 +1,7 @@
 import { Val } from "@byronbroughten/utils/val";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { type IdNameMapGeneric } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
 import { type PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState";
 import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
@@ -13,7 +14,7 @@ import {
 } from "../testSupport/fakeSheetsService";
 import { fakeSpreadsheet } from "../testSupport/fakeSheetsService/fakeSpreadsheet";
 import { parseIdNameMapFileSource } from "./parseIdNameMapFileSource";
-import { SyncCoordinator } from "./SyncCoordinator";
+import { SyncCoordinator, type SyncRun } from "./SyncCoordinator";
 import {
   bodyRowsWithNote,
   columnConfigs,
@@ -107,7 +108,7 @@ describe("SyncCoordinator.run tab deletion", () => {
         touchedBy: "tables.item.columns.optionalNote",
       },
     ])(
-      "refuses $row before any read, naming both entries and the Table the tab's deletion takes",
+      "refuses $row before any read, once, naming both entries and the Table the tab's deletion takes",
       ({ alterations, touchedBy }) => {
         const service = seedFixture();
 
@@ -116,15 +117,38 @@ describe("SyncCoordinator.run tab deletion", () => {
         expect(service.getByDataFilterCalls).toEqual([]);
         expect(service.batchUpdateCount()).toBe(0);
         expect(result.outcome).toMatchObject({ kind: "refused" });
-        expect(result.refusals).toContainEqual({
+        expect(result.refusals).toEqual([
+          {
+            kind: "touchesDeletion",
+            deleted: { tab: "item" },
+            deletedAt: "tabs.item",
+            touchedBy,
+            takenTable: "item",
+          },
+        ]);
+      },
+    );
+
+    it("refuses a changed column of the tab's Table once, naming the column entry", () => {
+      seedFixture();
+
+      const { result } = runItem({
+        isSending: true,
+        alterations: {
+          tabs: { item: { deleted: true } },
+          tables: { item: { columns: { optionalNote: { header: "Memo" } } } },
+        },
+      });
+
+      expect(result.refusals).toEqual([
+        {
           kind: "touchesDeletion",
           deleted: { tab: "item" },
           deletedAt: "tabs.item",
-          touchedBy,
-          takenTable: "item",
-        });
-      },
-    );
+          touchedBy: "tables.item.columns.optionalNote",
+        },
+      ]);
+    });
   });
 
   describe("a tab a person deleted", () => {
@@ -261,6 +285,45 @@ describe("SyncCoordinator.run tab deletion", () => {
       didntLand: [
         { subject: tabSubject, what: "delete the tab; Sheets kept false" },
       ],
+    });
+  });
+
+  describe("its Tables in the previous ID-name map", () => {
+    function dryRunDeletingItemTab(
+      previousIdNameMap: IdNameMapGeneric,
+    ): SyncRun {
+      seedFixture();
+      return SyncCoordinator.init().run({
+        isSending: false,
+        intendedState: { alterations: deleteItemTab },
+        previousIdNameMap,
+        forcedTraits: [],
+        frame,
+      });
+    }
+
+    it("throws on a tab naming a Table the map lacks, since one build writes both", () => {
+      const previous = previousItemMap();
+      const itemTab = Val.assert(previous.tabs[String(itemGid)], "item tab");
+      itemTab.tableIds.push("missing");
+
+      expect(() => dryRunDeletingItemTab(previous)).toThrow(
+        "the ID-name map's Table missing",
+      );
+    });
+
+    it("names a Table without API access, which the Table configs lack, by its map name", () => {
+      const previous = previousItemMap();
+      previous.tables.notes = { name: "notes", sheetGid: itemGid };
+      const itemTab = Val.assert(previous.tabs[String(itemGid)], "item tab");
+      itemTab.tableIds.push("notes");
+
+      const { result } = dryRunDeletingItemTab(previous);
+
+      expect(result.refusals).toEqual([]);
+      expect(result.plan).toEqual([
+        { subject: tabSubject, what: "delete the tab", effects: [] },
+      ]);
     });
   });
 

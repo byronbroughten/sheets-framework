@@ -124,7 +124,7 @@ export class DeletionRefuser {
     const at = `tables.${table}`;
     if (entry.deleted === true) return this._takenTableTouches(table, at);
     return [
-      { targets: this._tableTargets(table), touchedBy: at },
+      ...this._enclosingTableTouches(table, entry),
       ...entriesOf(entry.columns).flatMap(([column, columnEntry]) =>
         this._columnEntryTouches(table, column, columnEntry),
       ),
@@ -137,6 +137,16 @@ export class DeletionRefuser {
       ),
       ...this._moveTouches(table, entry.moves ?? []),
       ...this._ruleTouches(table, entry.conditionalFormats, at),
+    ];
+  }
+  // A column entry's touch already reaches its Table and tab, so a Table entry of only columns adds a second refusal for the same conflict.
+  private _enclosingTableTouches(
+    table: string,
+    entry: WideTableEntry,
+  ): Touch[] {
+    if (holdsOnlyColumns(entry)) return [];
+    return [
+      { targets: this._tableTargets(table), touchedBy: `tables.${table}` },
     ];
   }
   private _moveTouches(table: string, moves: WideColumnGroupMove[]): Touch[] {
@@ -240,6 +250,14 @@ export class DeletionRefuser {
     const tab = this.tabsByTable[table];
     return tab === undefined ? [] : [tabTarget(tab)];
   }
+}
+
+function holdsOnlyColumns(entry: WideTableEntry): boolean {
+  const { columns, ...rest } = entry;
+  const hasColumns = entriesOf(columns).length > 0;
+  return (
+    hasColumns && Object.values(rest).every((value) => value === undefined)
+  );
 }
 
 function beforeTabTouches(
