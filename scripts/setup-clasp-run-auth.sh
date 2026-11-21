@@ -221,11 +221,11 @@ _clasprc_field() {
   ' "$CLASPRC" "$1" "$2" 2>/dev/null || true
 }
 
-banner "Make gen:configs stop expiring every 7 days"
+banner "Make sync stop expiring every 7 days"
 
 # ── Stage 1 ───────────────────────────────────────────────────────────────
 stage "Preflight: check state and back up your credentials"
-say "npm run gen:configs and npm run chore both authenticate as:"
+say "npm run sync and npm run chore both authenticate as:"
 note "  the '$CLASP_USER' credential stored in $CLASPRC"
 say ""
 say "That token expires every 7 days for as long as GCP project '$PROJECT_ID'"
@@ -492,7 +492,7 @@ say ""
 say "Nothing you can read locally proves a refresh token is non-expiring — the"
 say "expiry lives on Google's side. The real test is time:"
 say ""
-step "On or after $CHECK_AFTER, run: npm run gen:configs"
+step "On or after $CHECK_AFTER, run: npm run sync"
 step "If it works without a re-login, the 7-day expiry is gone for good."
 say ""
 say "Ways the token can still die later (none are on a weekly clock):"
@@ -505,7 +505,7 @@ note "    clear — note that Gmail IS in enabledAdvancedServices, so the day a"
 note "    function actually calls it and a Gmail scope joins the manifest, password"
 note "    changes start invalidating this token."
 say ""
-say "If gen:configs fails later with an auth error, the fix is stage 4 alone:"
+say "If sync fails later with an auth error, the fix is stage 4 alone:"
 note "  cd $REPO_DIR"
 note "  npx clasp -u $CLASP_USER login --creds '$CREDS_FILE' --use-project-scopes"
 say ""
@@ -572,5 +572,5 @@ finish
 note "Consent screen: $PROJECT_ID is now 'In production'."
 note "Client secret kept at: $CREDS_FILE (chmod 600, outside the repo)."
 [[ -n "${BACKUP:-}" ]] && note "Old credentials backed up at: $BACKUP"
-note "Re-check on $CHECK_AFTER with: npm run gen:configs"
+note "Re-check on $CHECK_AFTER with: npm run sync"
 printf '\n'

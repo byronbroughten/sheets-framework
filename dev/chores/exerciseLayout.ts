@@ -7,7 +7,7 @@ const noteColumnId = "c:lyl:note";
 
 export const exerciseLayout: Chore = {
   description:
-    "Dev spreadsheet only: reads both Layout Tables and the Layout grid's column count. On a Layout tab built to its recipe, it then sends one batch that appends a row to layoutLeft, inserts a column at its end (pushing layoutRight right) and deletes its second row; run it again to read the pushed layoutRight without regenerating. The batch leaves the tab off its recipe: delete the Layout tab, then rerun buildDevFixtures and dev:gen:configs.",
+    "Dev spreadsheet only: reads both Layout Tables and the Layout grid's column count. On a Layout tab built to its recipe, it then sends one batch that appends a row to layoutLeft, inserts a column at its end (pushing layoutRight right) and deletes its second row; run it again to read the pushed layoutRight without regenerating. The batch leaves the tab off its recipe: delete the Layout tab, then rerun buildDevFixtures and dev:sync.",
   action: (ss, { spreadsheetId }) => {
     if (spreadsheetId !== devSpreadsheetId) {
       throw new Error(
