@@ -105,7 +105,7 @@ export class SyncEntryRefuser {
         }
         return [
           ...tableTraitRefusals(table, entry),
-          ...new NewColumnNames(entry).repeatRefusals(table),
+          ...NewColumnNames.ofTableEntry(entry).repeatRefusals(table),
           ...new PlacementsRefuser(table, entry).refusals,
           ...braceRefuser.tableEntryRefusals(table, entry),
           ...RuleRefuser.ofTableEntry({
@@ -187,6 +187,7 @@ export class SyncEntryRefuser {
   private _newTableRefusals({ tab, newTable, at }: NewTableAt): SyncRefusal[] {
     return [
       ...refusedPaths(tab, newTableTraitPaths(newTable, at)),
+      ...NewColumnNames.ofNewTable({ newTable, at }).repeatRefusals(tab),
       ...this._braceRefuser.newTableRefusals({ tab, newTable, at }),
       ...RuleRefuser.ofNewTable({
         tab,

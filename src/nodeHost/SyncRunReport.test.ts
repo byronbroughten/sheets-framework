@@ -783,28 +783,6 @@ describe("SyncRunReport, case F: two refusals, then a head-row stop", () => {
     );
   });
 
-  it("names the newColumns headers an ambiguous column could be", () => {
-    const text = render({
-      ...appDryRun,
-      outcome: { kind: "refused" },
-      refusals: [
-        {
-          kind: "ambiguousColumn",
-          table: "occCharge",
-          path: "conditionalFormats.add[0].columns",
-          column: "lateFee",
-          headers: ["Late fee", "Late Fee"],
-        },
-      ],
-    }).join("\n");
-    expect(text).toContain(
-      "lateFee could be any of the columns these newColumns headers create: Late fee, Late Fee.",
-    );
-    expect(text).toContain(
-      "Give each a header whose column name is its own, then rerun.",
-    );
-  });
-
   it("names both newColumns headers that give one column name", () => {
     const text = render({
       ...appDryRun,

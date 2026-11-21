@@ -38,9 +38,10 @@ interface RuleRefuserConstructorProps extends RuleRefuserProps {
   refusedAs: string;
   // Where the entry sits in its alterations, ending in a dot, or "" for a top-level entry.
   pathPrefix: string;
+  newColumns: NewColumnNames;
 }
 
-// Refuses a Table entry's rule naming a column neither mapped nor created by its `newColumns`, one two new headers name, or one by its same-run new name; and a handle both removed and replaced.
+// Refuses a Table entry's rule naming a column neither mapped nor created by its `newColumns`, or one by its same-run new name; and a handle both removed and replaced.
 export class RuleRefuser {
   private refusedAs: string;
   private tableKey: string;
@@ -55,6 +56,7 @@ export class RuleRefuser {
     refusedAs,
     pathPrefix,
     entry,
+    newColumns,
     columnNamesByTable,
     renamedColumnsByTable,
   }: RuleRefuserConstructorProps) {
@@ -62,7 +64,7 @@ export class RuleRefuser {
     this.tableKey = table;
     this.pathPrefix = pathPrefix;
     this.entry = entry;
-    this.newColumns = new NewColumnNames(entry);
+    this.newColumns = newColumns;
     this.renamedColumns = renamedColumnsByTable.get(table);
     this.columnNames = [
       ...new Set([
@@ -75,7 +77,6 @@ export class RuleRefuser {
         table,
         this.columnNames,
       ),
-      newColumnsByTable: new Map([[table, this.newColumns]]),
       renamedColumnsByTable,
     });
   }
@@ -84,6 +85,7 @@ export class RuleRefuser {
       ...props,
       refusedAs: props.table,
       pathPrefix: "",
+      newColumns: NewColumnNames.ofTableEntry(props.entry),
     });
   }
   // A new Table has only the columns its headers give, so a live Table its name matches lends it none, nor its renames.
@@ -103,12 +105,8 @@ export class RuleRefuser {
       table,
       refusedAs: tab,
       pathPrefix: `${at}.`,
-      entry: {
-        newColumns: [
-          { columns: newTable.columns.map(({ header }) => ({ header })) },
-        ],
-        conditionalFormats: newTable.conditionalFormats,
-      },
+      newColumns: NewColumnNames.ofNewTable({ newTable, at }),
+      entry: { conditionalFormats: newTable.conditionalFormats },
       columnNamesByTable: withoutLive,
       renamedColumnsByTable: withoutLiveRenames,
     });
@@ -140,7 +138,6 @@ export class RuleRefuser {
       at,
       {
         names: this.columnNames,
-        newColumns: this.newColumns,
         renamedColumns: this.renamedColumns,
       },
       () => ({ kind: "unknownColumn", ...at, columns: this.columnNames }),

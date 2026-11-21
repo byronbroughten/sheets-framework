@@ -196,15 +196,7 @@ export type SyncRefusal =
       column: string;
       columns: string[];
     }
-  // A rule's column or brace naming the column name two or more `newColumns` headers give.
-  | {
-      kind: "ambiguousColumn";
-      table: string;
-      path: string;
-      column: string;
-      headers: string[];
-    }
-  // A `newColumns` header giving the column name an earlier one's does, at `firstPath`: the refetch can't tell the two apart.
+  // A `newColumns` or new Table header giving the column name an earlier one's does, at `firstPath`: the refetch can't tell the two apart.
   | {
       kind: "repeatedNewColumn";
       table: string;
