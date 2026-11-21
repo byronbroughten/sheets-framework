@@ -32,6 +32,7 @@ import type {
   SyncHeadRowsStop,
   SyncNewTableStop,
   SyncTableGoneNotice,
+  SyncTabTitleRepeatedStop,
 } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
 import {
   configRetiredIdPrefixes,
@@ -114,7 +115,7 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
   newTableStops(newTables: PlannedNewTable[]): SyncNewTableStop[] {
     const { raw } = this.ss;
     const liveTables = raw.activeTableIds.map((tableId) => raw.table(tableId));
-    return newTables.flatMap(({ table, name, placement }) => {
+    const perTable = newTables.flatMap(({ table, name, placement }) => {
       const stops: SyncNewTableStop[] = [];
       const takenTable = liveTables.find(
         (live) => this.schema.titleToName(live.name) === table,
@@ -140,6 +141,31 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
       }
       return stops;
     });
+    return [...perTable, ...this._tabTitleRepeatedStops(newTables)];
+  }
+  // Since #331 a new tab's Tables are placed by its title, so a repeated title would quietly merge two entries into one tab, and a case-only difference would make two tabs with one codebase name.
+  private _tabTitleRepeatedStops(
+    newTables: PlannedNewTable[],
+  ): SyncTabTitleRepeatedStop[] {
+    const pathsByName = new Map<string, { title: string; paths: string[] }>();
+    for (const { placement } of newTables) {
+      if (placement.kind !== "newTab") continue;
+      const name = this.schema.titleToName(placement.title);
+      const entry = pathsByName.get(name) ?? {
+        title: placement.title,
+        paths: [],
+      };
+      if (!entry.paths.includes(placement.path)) {
+        entry.paths.push(placement.path);
+      }
+      pathsByName.set(name, entry);
+    }
+    return [...pathsByName.values()].flatMap(
+      ({ title, paths }): SyncTabTitleRepeatedStop[] => {
+        if (paths.length < 2) return [];
+        return [{ kind: "tabTitleRepeated", title, paths }];
+      },
+    );
   }
   // Minted before any queue, so a dry run's withheld flush and the report carry the same IDs; compiled then too, so a bad brace throws before any flush.
   mintNewTables(

@@ -400,6 +400,75 @@ describe("SyncCoordinator.run new tabs and Tables", () => {
     });
   });
 
+  it("stops before sending on two new tabs giving one title, naming each entry", () => {
+    const service = seedFixture();
+
+    const { result, files } = runItem({
+      isSending: true,
+      alterations: {
+        newTabs: [
+          { title: "Payments", tables: [paymentLog] },
+          {
+            title: "Payments",
+            tables: [{ name: "Desk Log", columns: deskLogColumns }],
+          },
+        ],
+      },
+    });
+
+    expect(service.batchUpdateCount()).toBe(0);
+    expect(files?.alterations).toBeUndefined();
+    expect(service.grid.sheetTitles()).toEqual(["Item"]);
+    expect(result).toMatchObject({
+      outcome: { kind: "stopped" },
+      stops: [
+        {
+          kind: "tabTitleRepeated",
+          title: "Payments",
+          paths: ["newTabs[0]", "newTabs[1]"],
+        },
+      ],
+    });
+  });
+
+  it("adds one tab per distinct new tab title, each holding its Tables side by side", () => {
+    const service = seedFixture();
+
+    const { files } = runItem({
+      isSending: true,
+      alterations: {
+        newTabs: [
+          {
+            title: "Payments",
+            tables: [paymentLog, { name: "Desk Log", columns: deskLogColumns }],
+          },
+          {
+            title: "Ledger",
+            tables: [
+              { name: "Ledger Log", columns: [{ header: "Note" }] },
+              { name: "Ledger Desk", columns: deskLogColumns },
+            ],
+          },
+        ],
+      },
+    });
+
+    expect(service.grid.sheetTitles()).toEqual(["Item", "Payments", "Ledger"]);
+    const map = mapOf(files);
+    const namesOn = (tab: string) =>
+      service.grid
+        .sheet(tabGidOf(map, tab))
+        .tables.map(({ name, range }) => [name, range.startColumnIndex]);
+    expect(namesOn("Payments")).toEqual([
+      ["Payment Log", startTableColIndex],
+      ["Desk Log", startTableColIndex + 2],
+    ]);
+    expect(namesOn("Ledger")).toEqual([
+      ["Ledger Log", startTableColIndex],
+      ["Ledger Desk", startTableColIndex + 1],
+    ]);
+  });
+
   describe("a new Table's rules", () => {
     const overThree = {
       columns: ["amount"],
