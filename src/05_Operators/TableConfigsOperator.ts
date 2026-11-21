@@ -35,6 +35,7 @@ import type {
 } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
 import {
   configRetiredIdPrefixes,
+  previousTableIdOf,
   tableConfigsByTableId,
 } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
@@ -56,7 +57,7 @@ import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
 import { oneLinePerEntryFileSource } from "./configFileSource";
 import { validateIdPrefixesUnchanged } from "./idPrefixGuard";
 import { SpreadsheetBaseOperator } from "./SpreadsheetBaseOperator";
-import { TableConfigsTraitSenderOperator } from "./TableConfigsOperator/TableConfigsTraitSenderOperator";
+import { TableConfigsTraitUpdaterOperator } from "./TableConfigsOperator/TableConfigsTraitUpdaterOperator";
 
 // A planned new Table with the IDs the run settled for it, its tab's GID in its created placement, and each column's formula and type compiled to the names on the sheet.
 export interface MintedNewTable extends PlannedNewTable {
@@ -75,8 +76,8 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
   get ss(): SpreadsheetNamed {
     return new SpreadsheetNamed(this.spreadsheetNamedProps);
   }
-  get traitSender(): TableConfigsTraitSenderOperator {
-    return new TableConfigsTraitSenderOperator(this.operatorProps);
+  get traitUpdater(): TableConfigsTraitUpdaterOperator {
+    return new TableConfigsTraitUpdaterOperator(this.operatorProps);
   }
   // The previous configs' order, then this run's grants, so a quiet run leaves the generated files unchanged.
   tableIdsApiAccesses(): string[] {
@@ -391,15 +392,15 @@ export class TableConfigsOperator extends SpreadsheetBaseOperator {
     );
   }
   updateTableNames(sent: IntendedTrait[]): this {
-    this.traitSender.updateTableNames(sent);
+    this.traitUpdater.updateTableNames(sent);
     return this;
   }
   deleteTables(sent: IntendedTrait[]): this {
-    this.traitSender.deleteTables(sent);
+    this.traitUpdater.deleteTables(sent);
     return this;
   }
   tableIdOf(tableKey: string): string {
-    return this.traitSender.tableIdOf(tableKey);
+    return previousTableIdOf(tableKey);
   }
   tableKeysByTableId(): Map<string, string> {
     const map = new Map<string, string>();

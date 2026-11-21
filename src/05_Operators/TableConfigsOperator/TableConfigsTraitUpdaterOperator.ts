@@ -1,15 +1,13 @@
-import { Val } from "@byronbroughten/utils/val";
-
 import {
   type IntendedTrait,
   isTableDeletion,
 } from "../../01_SpreadsheetSchema/configReaders/SyncPlanner";
-import { tableConfigsByName } from "../../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
+import { previousTableIdOf } from "../../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import type { TableRaw } from "../../02_SpreadsheetRaw/TableRaw";
 import { SpreadsheetNamed } from "../../04_SpreadsheetNamed/SpreadsheetNamed";
 import { SpreadsheetBaseOperator } from "../SpreadsheetBaseOperator";
 
-export class TableConfigsTraitSenderOperator extends SpreadsheetBaseOperator {
+export class TableConfigsTraitUpdaterOperator extends SpreadsheetBaseOperator {
   get ss(): SpreadsheetNamed {
     return new SpreadsheetNamed(this.spreadsheetNamedProps);
   }
@@ -30,14 +28,7 @@ export class TableConfigsTraitSenderOperator extends SpreadsheetBaseOperator {
     }
     return this;
   }
-  // By the previous configs' name, the one an alteration addresses a Table by.
-  tableIdOf(tableKey: string): string {
-    return Val.assert(
-      tableConfigsByName()[tableKey],
-      `previous Table ${tableKey}`,
-    ).tableId;
-  }
   private _previousTable(tableKey: string): TableRaw {
-    return this.ss.raw.table(this.tableIdOf(tableKey));
+    return this.ss.raw.table(previousTableIdOf(tableKey));
   }
 }
