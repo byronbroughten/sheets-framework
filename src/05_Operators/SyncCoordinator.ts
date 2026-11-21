@@ -991,7 +991,7 @@ function isColumnChangeSubject(subject: SyncTableSubject): boolean {
   );
 }
 
-// Each deleted column's item lists the rules going with it; a Table's rewrites go on its first move item when it moves, else its first delete item, else its first insert's, never an append's.
+// Each deleted column's item lists the rules going with it; a Table's rewrites go on its first move item when it moves, else its first delete item, else its first insert's, else its first append's.
 function withColumnChangeRuleEffects({
   plan,
   rules: { removals, dropped, rewrites },
@@ -1012,17 +1012,21 @@ function withColumnChangeRuleEffects({
         );
         return move === undefined ? [] : [move];
       }
-      const insert = newColumns.find(
-        (newColumn) =>
-          newColumn.table === table && newColumn.before !== undefined,
+      const ofTableNewColumns = newColumns.filter(
+        (newColumn) => newColumn.table === table,
       );
-      const insertWhat =
-        insert === undefined ? undefined : newColumnLines.sendLine(insert).what;
+      const rewriteNewColumn =
+        ofTableNewColumns.find(({ before }) => before !== undefined) ??
+        ofTableNewColumns[0];
+      const rewriteNewColumnWhat =
+        rewriteNewColumn === undefined
+          ? undefined
+          : newColumnLines.sendLine(rewriteNewColumn).what;
       const item =
         ofTable.find(({ subject }) => isDeletedColumn(subject)) ??
         ofTable.find(
           ({ subject, what }) =>
-            newColumnLines.isSubject(subject) && what === insertWhat,
+            newColumnLines.isSubject(subject) && what === rewriteNewColumnWhat,
         );
       return item === undefined ? [] : [item];
     }),

@@ -198,6 +198,34 @@ describe("SyncCoordinator.run holds back a Table's own column changes a left nei
     expect(Val.assert(files, "emitted files").alterations).toContain("moves");
   });
 
+  it("holds back the right Table's append and its rule's widening beside a left Table's insert", () => {
+    const service = seedWith([rightRule(right.startColumnIndex, 2)]);
+
+    const { result, files } = runLayout({
+      tables: {
+        ...insertOnLeft.tables,
+        layoutRight: { newColumns: [{ columns: [{ header: "Memo" }] }] },
+      },
+    });
+
+    expect(result).toMatchObject({
+      outcome: { kind: "sent" },
+      notSent: [
+        {
+          subject: { table: "layoutRight", path: "newColumns" },
+          what: heldBackWhat,
+        },
+      ],
+    });
+    expect(result.plan.map(({ subject }) => subject)).toEqual([
+      { table: "layoutLeft", path: "newColumns" },
+    ]);
+    expect(tabRules(service)).toEqual([
+      rightRule(right.startColumnIndex + 1, 2),
+    ]);
+    expect(Val.assert(files, "emitted files").alterations).toContain("Memo");
+  });
+
   it("sends a Table's insert and its rule rewrite in the same run when no left neighbour shifts it", () => {
     const service = seedWith([rightRule(right.startColumnIndex, 2)]);
 
