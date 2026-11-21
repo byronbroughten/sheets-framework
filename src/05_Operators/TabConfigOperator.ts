@@ -143,15 +143,6 @@ export class TabConfigOperator extends SpreadsheetBaseOperator {
         liveGids.has(sheetGid) ? [] : [{ kind: "tabGone", tab: name }],
     );
   }
-  private _sheetsByTabName(): Map<string, SheetRaw> {
-    const { raw } = this.ss;
-    return new Map(
-      raw.activeSheetGids.map((sheetGid) => {
-        const sheet = raw.sheet(sheetGid);
-        return [this.schema.titleToName(sheet.title), sheet];
-      }),
-    );
-  }
   toFileSource(): string {
     return [
       makeImportLine(["makeTabConfigs"]),
@@ -161,6 +152,15 @@ export class TabConfigOperator extends SpreadsheetBaseOperator {
       )});`,
       ``,
     ].join("\n");
+  }
+  private _sheetsByTabName(): Map<string, SheetRaw> {
+    const { raw } = this.ss;
+    return new Map(
+      raw.activeSheetGids.map((sheetGid) => {
+        const sheet = raw.sheet(sheetGid);
+        return [this.schema.titleToName(sheet.title), sheet];
+      }),
+    );
   }
 }
 

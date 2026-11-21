@@ -7,6 +7,7 @@ import {
 import { SpreadsheetRaw } from "./SpreadsheetRaw";
 import {
   colIdRowIndex,
+  expectedOrigin,
   tableHeaderRowIndex,
   topDataRowIndex,
 } from "./spreadsheetRawTestSupport";
@@ -89,6 +90,7 @@ describe("SpreadsheetRaw.createTable on a tab the same flush adds", () => {
       tableId: grid.sheet(newGid).tables[0]?.tableId,
       idPrefix: "plg",
       columnIds: [mintedColumnId("plg"), mintedColumnId("plg")],
+      origin: expectedOrigin,
       range: { sheetId: newGid, ...grid.sheet(newGid).tables[0]?.range },
     });
     expect(created.columnIds[0]).not.toBe(created.columnIds[1]);
@@ -169,6 +171,7 @@ describe("SpreadsheetRaw.createTable on a tab the same flush adds", () => {
       tableId: "tbl-fixture01",
       idPrefix: "pay",
       columnIds: ["c:pay:payee", "c:pay:amount"],
+      origin: expectedOrigin,
       range: { sheetId: newGid, ...grid.sheet(newGid).tables[0]?.range },
     });
     const added = grid.sheet(newGid);

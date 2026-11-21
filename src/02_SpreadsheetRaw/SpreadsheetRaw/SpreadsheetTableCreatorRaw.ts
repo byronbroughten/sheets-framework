@@ -49,6 +49,7 @@ export class SpreadsheetTableCreatorRaw extends SpreadsheetBaseRaw {
     const { endRowIndex, endColumnIndex } = tableEnd(origin, size);
     const created = {
       ...ids,
+      origin,
       range: {
         sheetId: placement.sheetGid,
         startRowIndex: origin.headerRowIndex,
@@ -248,7 +249,7 @@ function createdIds({
   idPrefix: idPrefixChoice,
   columns,
   tableId = randomTableId(),
-}: CreateTableProps): Omit<CreatedTable, "range"> {
+}: CreateTableProps): Omit<CreatedTable, "origin" | "range"> {
   const idPrefix =
     typeof idPrefixChoice === "string"
       ? idPrefixChoice

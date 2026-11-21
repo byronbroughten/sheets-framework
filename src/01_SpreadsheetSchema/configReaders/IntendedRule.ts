@@ -62,7 +62,11 @@ export const IntendedRule = {
   }: IntendedRuleProps): ModelableConditionalFormatRule {
     return {
       kind: "boolean",
-      ranges: bodyRanges(sheetGid, layout, columnOffsets(layout, rule)),
+      ranges: bodyRanges({
+        sheetGid,
+        layout,
+        offsets: columnOffsets(layout, rule),
+      }),
       condition: compiledCondition({ tableKey, layout, rule }),
       format: compiledFormat(rule.format),
     };
@@ -100,12 +104,18 @@ function columnOffsets(layout: RuleLayout, { columns }: WideRule): number[] {
   return [...new Set(offsets)].sort((first, second) => first - second);
 }
 
+interface BodyRangesProps {
+  sheetGid: number;
+  layout: RuleLayout;
+  offsets: number[];
+}
+
 // One range per run of side-by-side columns, each spanning the body rows.
-function bodyRanges(
-  sheetGid: number,
-  layout: RuleLayout,
-  offsets: number[],
-): GridRangeProps[] {
+function bodyRanges({
+  sheetGid,
+  layout,
+  offsets,
+}: BodyRangesProps): GridRangeProps[] {
   const firstCol = layout.headerTopLeft.colIndex;
   const runs = offsets.reduce<{ start: number; end: number }[]>(
     (found, offset) => {

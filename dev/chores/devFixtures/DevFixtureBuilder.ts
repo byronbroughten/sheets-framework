@@ -1,7 +1,7 @@
 import type { CellValue } from "../../../src/00_Source/CellValues/cellValues";
 import { dimensionIds } from "../../../src/01_SpreadsheetSchema/dimensionIds";
 import { headRows } from "../../../src/01_SpreadsheetSchema/headRows";
-import { TableOrigin } from "../../../src/01_SpreadsheetSchema/TableOrigin";
+import { type TableOrigin } from "../../../src/01_SpreadsheetSchema/TableOrigin";
 import type {
   CreatedTablePlacement,
   CreateTableProps,
@@ -17,6 +17,12 @@ import {
 
 // Each tab's first Table opens it at the expected origin; the rest sit one blank column right of the Table before.
 const besideGap = 1;
+
+interface FirstTableExtrasProps {
+  sheetGid: number;
+  origin: TableOrigin;
+  table: DevFixtureTable;
+}
 
 // A tab that exists is left alone; rebuild one by deleting it and rerunning (docs/how-it-runs/dev-project.md).
 export class DevFixtureBuilder extends SpreadsheetBaseNamed {
@@ -47,10 +53,10 @@ export class DevFixtureBuilder extends SpreadsheetBaseNamed {
     const { sheetGid, title, tables } = fixture;
     for (const [tableIndex, table] of tables.entries()) {
       if (tableIndex === 0) {
-        this.ss.raw.createTable(
+        const { origin } = this.ss.raw.createTable(
           createTablePropsOf(table, { kind: "newTab", sheetGid, title }),
         );
-        this._addFirstTableExtras(sheetGid, table);
+        this._addFirstTableExtras({ sheetGid, origin, table });
         continue;
       }
       validateNoFirstTableExtras(table);
@@ -71,8 +77,8 @@ export class DevFixtureBuilder extends SpreadsheetBaseNamed {
     return [];
   }
   // Formulas and the entry checkbox need the Table's origin, which only a tab's first Table knows before the flush.
-  private _addFirstTableExtras(sheetGid: number, table: DevFixtureTable): void {
-    const origin = TableOrigin.expected();
+  private _addFirstTableExtras(props: FirstTableExtrasProps): void {
+    const { sheetGid, origin, table } = props;
     for (const [columnIndex, { formula }] of table.columns.entries()) {
       if (formula === undefined) continue;
       for (let rowIndex = 0; rowIndex < bodyRowCountOf(table); rowIndex++) {
@@ -84,13 +90,13 @@ export class DevFixtureBuilder extends SpreadsheetBaseNamed {
         });
       }
     }
-    this._addEntryCheckbox(sheetGid, origin, table);
+    this._addEntryCheckbox(props);
   }
-  private _addEntryCheckbox(
-    sheetGid: number,
-    origin: TableOrigin,
-    table: DevFixtureTable,
-  ): void {
+  private _addEntryCheckbox({
+    sheetGid,
+    origin,
+    table,
+  }: FirstTableExtrasProps): void {
     const columnKey = table.entryCheckboxColumnKey;
     if (columnKey === undefined) return;
     const columnIndex = table.columns.findIndex(
