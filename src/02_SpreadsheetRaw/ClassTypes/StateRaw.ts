@@ -35,6 +35,7 @@ import type {
 } from "../../00_Source/RawSource/SheetIndex";
 import type { ColumnTypeBaseline } from "../../01_SpreadsheetSchema/columnBaseline";
 import type { IdPrefixFromTitleProps } from "../../01_SpreadsheetSchema/idPrefixes";
+import type { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin";
 
 export interface StateRaw {
   allSheetPropertiesAreFetched: boolean;
@@ -375,6 +376,7 @@ export interface CreatedTable {
   tableId: string;
   idPrefix: string;
   columnIds: string[];
+  origin: TableOrigin;
   // Header row through the last body row, where the addTable puts it.
   range: BoundedGridRange;
 }

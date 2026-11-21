@@ -23,6 +23,7 @@ import {
 } from "../01_SpreadsheetSchema/configReaders/RuleRecords";
 import {
   type IntendedTrait,
+  isColumnDeletion,
   type PlannedNewColumn,
   type PlannedRuleAddition,
   type PlannedRuleRemoval,
@@ -68,8 +69,7 @@ export interface DeletedTable {
 }
 
 // A removal matched on the pre-send read; `copiesLeft` is how many rules with its shared handle the send leaves on the Table.
-export interface IndexedRuleRemoval
-  extends PlannedRuleRemoval, Omit<TableRuleIndex, "kind"> {
+export interface IndexedRuleRemoval extends PlannedRuleRemoval, TableRuleIndex {
   tableId: string;
   copiesLeft: number;
 }
@@ -282,9 +282,7 @@ interface TableRules {
   indexes: Map<string, TableRuleIndex>;
 }
 
-interface HandleEntry {
-  table: string;
-  handle: string;
+interface HandleEntry extends PlannedRuleRemoval {
   path: string;
 }
 
@@ -777,10 +775,11 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
         rulesByTable.get(removal.table),
         `rules of ${removal.table}`,
       );
-      const { sharedHandle, index } = Val.assert(
+      const ruleIndex = Val.assert(
         indexes.get(removal.handle),
         `rule ${removal.handle} on ${removal.table}`,
       );
+      const { sharedHandle } = ruleIndex;
       const removedCopies = removals.filter(
         (other) =>
           other.table === removal.table &&
@@ -788,9 +787,8 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
       ).length;
       return {
         ...removal,
+        ...ruleIndex,
         tableId,
-        index,
-        sharedHandle,
         copiesLeft: copyCount(indexes, sharedHandle) - removedCopies,
       };
     });
@@ -891,13 +889,7 @@ function plannedLayoutOf({
 }: PlannedLayoutOfProps): RuleLayout {
   const changed = IntendedRule.plannedLayout({
     layout,
-    deletedColumns: sentTraits.flatMap((intended) => {
-      if (intended.kind !== "column" || intended.trait !== "deleted") {
-        return [];
-      }
-      if (intended.table !== table) return [];
-      return [intended.column];
-    }),
+    deletedColumns: deletedColumnsOf(sentTraits, table),
     newColumns: newColumns.filter((newColumn) => newColumn.table === table),
   });
   // Each move's indexes are Table-relative, on the layout the one before leaves.
@@ -907,6 +899,17 @@ function plannedLayoutOf({
     changed.columnNamesLeftToRight,
   );
   return { ...changed, columnNamesLeftToRight: columnNames };
+}
+
+function deletedColumnsOf(
+  sentTraits: IntendedTrait[],
+  table: string,
+): string[] {
+  return sentTraits.flatMap((intended) => {
+    if (intended.kind !== "column" || !isColumnDeletion(intended)) return [];
+    if (intended.table !== table) return [];
+    return [intended.column];
+  });
 }
 
 // The tabs where the run deletes a Table, a column or the tab itself: Sheets drops or moves rules there, so a pre-send index could name another rule.

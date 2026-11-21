@@ -1,7 +1,7 @@
 import type { CellValue } from "../../../src/00_Source/CellValues/cellValues";
 import { dimensionIds } from "../../../src/01_SpreadsheetSchema/dimensionIds";
 import { headRows } from "../../../src/01_SpreadsheetSchema/headRows";
-import { TableOrigin } from "../../../src/01_SpreadsheetSchema/TableOrigin";
+import { type TableOrigin } from "../../../src/01_SpreadsheetSchema/TableOrigin";
 import type {
   CreatedTablePlacement,
   CreateTableProps,
@@ -47,10 +47,10 @@ export class DevFixtureBuilder extends SpreadsheetBaseNamed {
     const { sheetGid, title, tables } = fixture;
     for (const [tableIndex, table] of tables.entries()) {
       if (tableIndex === 0) {
-        this.ss.raw.createTable(
+        const { origin } = this.ss.raw.createTable(
           createTablePropsOf(table, { kind: "newTab", sheetGid, title }),
         );
-        this._addFirstTableExtras(sheetGid, table);
+        this._addFirstTableExtras(sheetGid, origin, table);
         continue;
       }
       validateNoFirstTableExtras(table);
@@ -71,8 +71,11 @@ export class DevFixtureBuilder extends SpreadsheetBaseNamed {
     return [];
   }
   // Formulas and the entry checkbox need the Table's origin, which only a tab's first Table knows before the flush.
-  private _addFirstTableExtras(sheetGid: number, table: DevFixtureTable): void {
-    const origin = TableOrigin.expected();
+  private _addFirstTableExtras(
+    sheetGid: number,
+    origin: TableOrigin,
+    table: DevFixtureTable,
+  ): void {
     for (const [columnIndex, { formula }] of table.columns.entries()) {
       if (formula === undefined) continue;
       for (let rowIndex = 0; rowIndex < bodyRowCountOf(table); rowIndex++) {

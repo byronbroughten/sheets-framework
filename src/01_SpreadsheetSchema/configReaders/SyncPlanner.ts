@@ -116,9 +116,7 @@ export interface PlannedRuleRemoval {
 }
 
 // One `conditionalFormats.replace` entry, by its Table's codebase name: the handle it replaces and the rule it writes there.
-export interface PlannedRuleReplacement {
-  table: string;
-  handle: string;
+export interface PlannedRuleReplacement extends PlannedRuleRemoval {
   rule: WideRule;
 }
 
@@ -326,7 +324,7 @@ export const ruleRemovalLines = {
 
 // How a `conditionalFormats.replace` entry reads on the plan, stop, landed and didntLand lists.
 export const ruleReplacementLines = {
-  path({ handle }: Pick<PlannedRuleReplacement, "handle">): string {
+  path({ handle }: Pick<PlannedRuleRemoval, "handle">): string {
     return `conditionalFormats.replace["${handle}"]`;
   },
   sendLine(replacement: PlannedRuleReplacement): SyncSendLine {
