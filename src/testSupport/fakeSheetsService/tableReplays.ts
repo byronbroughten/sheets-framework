@@ -8,6 +8,7 @@ import {
   type FakeTableState,
 } from "./fakeSpreadsheet";
 import { fieldMasks } from "./fieldMasks";
+import { unreplayed } from "./unreplayed";
 
 type Response = GoogleAppsScript.Sheets.Schema.Response;
 type Table = GoogleAppsScript.Sheets.Schema.Table;
@@ -22,8 +23,8 @@ export const tableReplays = {
   ): Response {
     const table = request.table ?? {};
     if (table.columnProperties !== undefined) {
-      throw new Error(
-        "The fake Sheets service does not replay addTable columnProperties; send them in an updateTable.",
+      throw unreplayed(
+        "addTable columnProperties; send them in an updateTable",
       );
     }
     const range = table.range ?? {};
@@ -116,8 +117,8 @@ function rewriteReferencesToRanges(
           (whole, header: string) => rangesByHeader.get(header) ?? whole,
         );
         if (anyReference.test(rewritten)) {
-          throw new Error(
-            `The fake Sheets service does not replay deleteTable for a formula reading Table "${table.name}" in a form other than name[header]: ${cell.value}`,
+          throw unreplayed(
+            `deleteTable for a formula reading Table "${table.name}" in a form other than name[header]: ${cell.value}`,
           );
         }
         if (rewritten === cell.value) return;
@@ -221,8 +222,6 @@ function validateColumn(column: TableColumnProperties): void {
     ),
   ];
   if (ruleFields.length > 0) {
-    throw new Error(
-      `The fake Sheets service does not replay updateTable dataValidationRule field "${ruleFields[0]}".`,
-    );
+    throw unreplayed(`updateTable dataValidationRule field "${ruleFields[0]}"`);
   }
 }

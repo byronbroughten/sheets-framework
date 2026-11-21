@@ -1,3 +1,5 @@
+import { unreplayed } from "./unreplayed";
+
 export const fieldMasks = {
   replay(
     fieldMask: string | undefined,
@@ -8,9 +10,7 @@ export const fieldMasks = {
       const field = rawField.trim();
       const fieldReplay = fieldReplays[field];
       if (fieldReplay === undefined) {
-        throw new Error(
-          `The fake Sheets service does not replay ${requestKind} field "${field}".`,
-        );
+        throw unreplayed(`${requestKind} field "${field}"`);
       }
       fieldReplay();
     });

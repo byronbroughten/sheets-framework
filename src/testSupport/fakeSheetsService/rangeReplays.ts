@@ -12,6 +12,7 @@ import {
   type FakeTableState,
 } from "./fakeSpreadsheet";
 import { ruleFormulas } from "./ruleFormulas";
+import { unreplayed } from "./unreplayed";
 
 type Response = GoogleAppsScript.Sheets.Schema.Response;
 type GridRange = GoogleAppsScript.Sheets.Schema.GridRange;
@@ -68,20 +69,14 @@ export const rangeReplays = {
   ): Response {
     const pasteType = request.pasteType ?? "PASTE_NORMAL";
     if (!Obj.isKey(cellPastes, pasteType)) {
-      throw new Error(
-        `The fake Sheets service does not replay copyPaste type ${pasteType}.`,
-      );
+      throw unreplayed(`copyPaste type ${pasteType}`);
     }
     if ((request.pasteOrientation ?? "NORMAL") !== "NORMAL") {
-      throw new Error(
-        `The fake Sheets service does not replay copyPaste orientation ${request.pasteOrientation}.`,
-      );
+      throw unreplayed(`copyPaste orientation ${request.pasteOrientation}`);
     }
     const sheetId = request.source?.sheetId;
     if (request.destination?.sheetId !== sheetId) {
-      throw new Error(
-        "The fake Sheets service does not replay copyPaste across sheets.",
-      );
+      throw unreplayed("copyPaste across sheets");
     }
     const sheet = fakeSpreadsheet.sheet(spreadsheet, sheetId);
     const source = fakeGrid.rangeInGrid(sheet, request.source ?? {});
@@ -112,16 +107,12 @@ export const rangeReplays = {
   ): Response {
     const pasteType = request.pasteType ?? "PASTE_NORMAL";
     if (pasteType !== "PASTE_NORMAL") {
-      throw new Error(
-        `The fake Sheets service does not replay cutPaste type ${pasteType}.`,
-      );
+      throw unreplayed(`cutPaste type ${pasteType}`);
     }
     const sheetId = request.source?.sheetId;
     const coordinate = request.destination ?? {};
     if (coordinate.sheetId !== sheetId) {
-      throw new Error(
-        "The fake Sheets service does not replay cutPaste across sheets.",
-      );
+      throw unreplayed("cutPaste across sheets");
     }
     const sheet = fakeSpreadsheet.sheet(spreadsheet, sheetId);
     const source = fakeGrid.rangeInGrid(sheet, request.source ?? {});
@@ -134,9 +125,7 @@ export const rangeReplays = {
       endColumnIndex: source.endColumnIndex + colOffset,
     };
     if (overlaps(source, destination)) {
-      throw new Error(
-        "The fake Sheets service does not replay a cutPaste onto its own source.",
-      );
+      throw unreplayed("a cutPaste onto its own source");
     }
     sheet.conditionalFormats = cutRules(sheet, { source, destination });
     const lifted: FakeCell[][] = [];
@@ -202,8 +191,8 @@ function carryTableColumns({
     return;
   }
   if (!isLastColumnToBefore(table, move)) {
-    throw new Error(
-      "The fake Sheets service does not replay a cutPaste of a Table's columns out of the Table, other than its last column to just before it.",
+    throw unreplayed(
+      "a cutPaste of a Table's columns out of the Table, other than its last column to just before it",
     );
   }
   Object.assign(table, facts.kept);
@@ -272,8 +261,8 @@ function newTableName(spreadsheet: FakeSpreadsheet): string {
     sheet.tables.some((table) => table.name === name),
   );
   if (isTaken) {
-    throw new Error(
-      `The fake Sheets service does not replay a cutPaste making a new Table when ${name} is already taken, a name no scratch has measured.`,
+    throw unreplayed(
+      `a cutPaste making a new Table when ${name} is already taken, a name no scratch has measured`,
     );
   }
   return name;
@@ -331,9 +320,9 @@ function mergedColumnFacts<FT>(
 }
 
 const ruleCutRefusals = {
-  cut: "The fake Sheets service does not replay a cutPaste under a conditional-format rule, other than a sideways cut inside a whole-Table rule naming no cut or pasted column, or naming one on a one-column cut to the right, the pasted column only $-anchored, or a whole-Table rule's last column cut to just before it, naming neither.",
+  cut: "a cutPaste under a conditional-format rule, other than a sideways cut inside a whole-Table rule naming no cut or pasted column, or naming one on a one-column cut to the right, the pasted column only $-anchored, or a whole-Table rule's last column cut to just before it, naming neither",
   outside:
-    "The fake Sheets service does not replay a cutPaste under a conditional-format rule outside the cut source, over the destination or not, whose formula names a cut or pasted column, a shape not yet measured.",
+    "a cutPaste under a conditional-format rule outside the cut source, over the destination or not, whose formula names a cut or pasted column, a shape not yet measured",
 } as const;
 
 function cutRules(
@@ -350,14 +339,14 @@ function cutRules(
         isInColumns(move.destination, colIndex),
     );
     // Unmeasured: no scratch has cut a column a rule outside the cut source names, one over the destination included, so throw rather than guess.
-    if (!isCut && isNamingMove) throw new Error(ruleCutRefusals.outside);
+    if (!isCut && isNamingMove) throw unreplayed(ruleCutRefusals.outside);
     if (!isCut) return rule;
     const range = wholeTableRange(sheet, rule);
-    if (range === undefined) throw new Error(ruleCutRefusals.cut);
+    if (range === undefined) throw unreplayed(ruleCutRefusals.cut);
     const isLeavingTable =
       isLastColumnToBefore(range, move) && coversRows(move.source, range);
     if (isLeavingTable && !isNamingMove) return withRangeOverPaste(rule, range);
-    if (!isSidewaysInRange(range, move)) throw new Error(ruleCutRefusals.cut);
+    if (!isSidewaysInRange(range, move)) throw unreplayed(ruleCutRefusals.cut);
     if (!isNamingMove) return rule;
     return withPasteReferencesShifted(rule, move);
   });
@@ -413,14 +402,14 @@ function withPasteReferencesShifted(
   const width = destination.endColumnIndex - destination.startColumnIndex;
   const isOneColumnRight =
     width === 1 && source.endColumnIndex <= destination.startColumnIndex;
-  if (!isOneColumnRight) throw new Error(ruleCutRefusals.cut);
+  if (!isOneColumnRight) throw unreplayed(ruleCutRefusals.cut);
   return ruleFormulas.mapped(rule, (formula) =>
     a1Notation.mapCellReferences(
       formula,
       ({ reference, anchor, letters, row }) => {
         const colIndex = a1Notation.columnIndex(letters);
         if (!isInColumns(destination, colIndex)) return reference;
-        if (anchor !== "$") throw new Error(ruleCutRefusals.cut);
+        if (anchor !== "$") throw unreplayed(ruleCutRefusals.cut);
         return `$${a1Notation.columnLetters(colIndex + width)}${row}`;
       },
     ),
@@ -445,13 +434,11 @@ function withPastedFormula(cell: FakeCell, source: FakeCell): FakeCell {
   const formula = fakeCells.value(source);
   const isFormula = typeof source === "object" && source?.isFormula === true;
   if (!isFormula || typeof formula !== "string") {
-    throw new Error(
-      "The fake Sheets service does not replay a formula paste from a cell holding no formula.",
-    );
+    throw unreplayed("a formula paste from a cell holding no formula");
   }
   if (a1Notation.cellReference.test(formula)) {
-    throw new Error(
-      `The fake Sheets service does not replay a formula paste of ${formula}, which holds a cell reference.`,
+    throw unreplayed(
+      `a formula paste of ${formula}, which holds a cell reference`,
     );
   }
   return fakeCells.withValue(cell, formula, true);
@@ -528,8 +515,8 @@ function extendedRuleRange(
     source.startColumnIndex === destination.startColumnIndex &&
     source.endColumnIndex === destination.endColumnIndex;
   if (!isExtendable) {
-    throw new Error(
-      "The fake Sheets service does not replay a format paste onto rows other than those just below a rule's range.",
+    throw unreplayed(
+      "a format paste onto rows other than those just below a rule's range",
     );
   }
   return { ...range, endRowIndex: destination.endRowIndex };

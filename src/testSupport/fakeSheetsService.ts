@@ -26,6 +26,7 @@ import { rangeReplays } from "./fakeSheetsService/rangeReplays";
 import { ruleReplays } from "./fakeSheetsService/ruleReplays";
 import { sheetReplays } from "./fakeSheetsService/sheetReplays";
 import { tableReplays } from "./fakeSheetsService/tableReplays";
+import { unreplayed } from "./fakeSheetsService/unreplayed";
 
 type BatchUpdateRequest =
   GoogleAppsScript.Sheets.Schema.BatchUpdateSpreadsheetRequest;
@@ -403,7 +404,7 @@ function replayRequest(
     );
   }
   if (!isReplayedKind(kind)) {
-    throw new Error(`The fake Sheets service does not replay ${kind}.`);
+    throw unreplayed(kind);
   }
   // Each replay takes its own kind's body, which the lookup can't express.
   const replay = requestReplays[kind] as RequestReplay;
