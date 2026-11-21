@@ -22,6 +22,12 @@ type ConfigEntry = Record<string, unknown>;
 type IdField = "tableId" | "columnId";
 type IdentifiedEntry<FN extends IdField> = ConfigEntry & Record<FN, string>;
 type TabEntry = ConfigEntry & { sheetGid: number };
+type RuleGroups = Record<string, Record<string, ConfigEntry>>;
+
+interface RuleSnapshot {
+  tables: RuleGroups;
+  tabs: RuleGroups;
+}
 
 export interface ConfigSnapshot {
   tableConfigs: Record<string, IdentifiedEntry<"tableId">>;
@@ -29,6 +35,7 @@ export interface ConfigSnapshot {
   retiredIdPrefixes: string[];
   columnConfigs: Record<string, Record<string, IdentifiedEntry<"columnId">>>;
   valueConfigs: Record<string, ValueConfigBase>;
+  conditionalFormatConfigs: RuleSnapshot;
 }
 
 interface BeforeAfter<SV> {
@@ -51,6 +58,8 @@ type Pairing<EN extends object> =
   | { kind: "removed"; key: string; entry: EN }
   | { kind: "added"; key: string; entry: EN };
 
+const ownerWords = { tables: "Table", tabs: "Tab" } as const;
+
 interface Section {
   header: string;
   changes: string[];
@@ -69,6 +78,10 @@ export function summarizeConfigsDiff({
       after: after.retiredIdPrefixes,
     }),
     ...diffValues({ before: before.valueConfigs, after: after.valueConfigs }),
+    ...diffRules({
+      before: before.conditionalFormatConfigs,
+      after: after.conditionalFormatConfigs,
+    }),
   ];
   const headerCount = sections.filter(
     ({ changes }) => changes.length > 0,
@@ -100,6 +113,7 @@ function emptySnapshot(): ConfigSnapshot {
     retiredIdPrefixes: [],
     columnConfigs: {},
     valueConfigs: {},
+    conditionalFormatConfigs: { tables: {}, tabs: {} },
   };
 }
 
@@ -134,7 +148,7 @@ function tableSection(
   changes: string[],
   lines: string[],
 ): Section {
-  return { header: `Table ${label}`, changes, lines };
+  return { header: `${ownerWords.tables} ${label}`, changes, lines };
 }
 
 function diffCols(
@@ -168,7 +182,7 @@ function diffTabs(tabs: BeforeAfter<Record<string, TabEntry>>): Section[] {
 }
 
 function tabSection(label: string, changes: string[]): Section {
-  return { header: `Tab ${label}`, changes, lines: [] };
+  return { header: `${ownerWords.tabs} ${label}`, changes, lines: [] };
 }
 
 function diffRetiredIdPrefixes(prefixes: BeforeAfter<string[]>): Section[] {
@@ -214,14 +228,23 @@ function entryChanges(
   idField: IdField | "sheetGid",
 ): string[] {
   const renamed = beforeKey === afterKey ? [] : ["renamed"];
+  const changes = fieldChanges({ before, after }).filter(
+    ({ field }) => field !== idField,
+  );
+  return [...renamed, ...changes.map(({ change }) => change)];
+}
+
+function fieldChanges({
+  before,
+  after,
+}: BeforeAfter<ConfigEntry>): { field: string; change: string }[] {
   const fields = [...new Set([...Object.keys(before), ...Object.keys(after)])];
-  const fieldChanges = fields.flatMap((field) => {
+  return fields.flatMap((field) => {
     const old = JSON.stringify(before[field]);
     const next = JSON.stringify(after[field]);
-    if (field === idField || old === next) return [];
-    return [`${field} ${old} → ${next}`];
+    if (old === next) return [];
+    return [{ field, change: `${field} ${old} → ${next}` }];
   });
-  return [...renamed, ...fieldChanges];
 }
 
 function renameLabel({ beforeKey, afterKey }: Matched<object>): string {
@@ -293,6 +316,49 @@ function valueSection(name: string, changes: string[]): Section {
   return { header: `Value ${name}`, changes, lines: [] };
 }
 
+// Rules pair by handle, which is built from their content; groups pair by Table or tab key, so a renamed one reads as removed and added.
+function diffRules({ before, after }: BeforeAfter<RuleSnapshot>): Section[] {
+  return Obj.keys(ownerWords).flatMap((owner) => {
+    const groups = { before: before[owner], after: after[owner] };
+    return pairEntries(groups, (key) => key).flatMap((pairing) => {
+      const lines = diffRuleGroup(groupPair(pairing));
+      if (lines.length === 0) return [];
+      const label =
+        pairing.kind === "matched" ? pairing.beforeKey : pairing.key;
+      return [ruleSection(`${ownerWords[owner]} ${label}`, lines)];
+    });
+  });
+}
+
+function ruleSection(ownerLabel: string, lines: string[]): Section {
+  return { header: `${ownerLabel} conditional formats`, changes: [], lines };
+}
+
+function groupPair<EN extends object>(
+  pairing: Pairing<Record<string, EN>>,
+): BeforeAfter<Record<string, EN>> {
+  if (pairing.kind === "removed") return { before: pairing.entry, after: {} };
+  if (pairing.kind === "added") return { before: {}, after: pairing.entry };
+  return pairing;
+}
+
+function diffRuleGroup(
+  rules: BeforeAfter<Record<string, ConfigEntry>>,
+): string[] {
+  return pairEntries(rules, (handle) => handle).flatMap((pairing) => {
+    if (pairing.kind !== "matched") {
+      return [ruleLine(pairing.key, [pairing.kind])];
+    }
+    const changes = fieldChanges(pairing).map(({ change }) => change);
+    if (changes.length === 0) return [];
+    return [ruleLine(pairing.beforeKey, changes)];
+  });
+}
+
+function ruleLine(handle: string, changes: string[]): string {
+  return `  rule ${handle}: ${changes.join("; ")}`;
+}
+
 export function runConfigsDiff(sheetsConfig: SheetsConfig): void {
   if (!hasPackageConfigs(sheetsConfig)) {
     throw new Error(
@@ -343,7 +409,27 @@ function readSnapshot(
       readConfigFile(readFile, "valueConfigs"),
       validateValueConfig,
     ),
+    conditionalFormatConfigs: readRuleSnapshot(readFile),
   };
+}
+
+function readRuleSnapshot(
+  readFile: (file: ConfigFile) => string | undefined,
+): RuleSnapshot {
+  const file = readConfigFile(readFile, "conditionalFormatConfigs");
+  return {
+    tables: readRuleGroups(file.tables, "conditionalFormatConfigs.tables"),
+    tabs: readRuleGroups(file.tabs, "conditionalFormatConfigs.tabs"),
+  };
+}
+
+function readRuleGroups(value: unknown, what: string): RuleGroups {
+  if (value === undefined) return {};
+  return mapValues(validateRecord(value, what), (group) =>
+    mapValues(validateRecord(group, `a group of ${what}`), (rule) =>
+      validateRecord(rule, "a conditional format rule"),
+    ),
+  );
 }
 
 function readConfigFile(
