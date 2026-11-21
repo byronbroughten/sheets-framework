@@ -47,7 +47,7 @@ export const configFiles = [
 
 export type ConfigFile = (typeof configFiles)[number];
 
-interface FetchRequest {
+export interface FetchRequest {
   url: string;
   method: string;
   headers: Record<string, string>;
@@ -66,7 +66,7 @@ interface ClaspCredential {
   refresh_token: string;
 }
 
-const fetchSyncPath = fileURLToPath(new URL("./fetchSync.js", import.meta.url));
+const fetchSyncPath = fileURLToPath(new URL("./fetchSync.ts", import.meta.url));
 
 // Node's built-in env proxy, so fetch reaches Google through the Bash sandbox's proxy with no dependency.
 const fetchSyncFlags = ["--use-env-proxy", "--disable-warning=UNDICI-EHPA"];
