@@ -15,12 +15,9 @@ describe("FillRowIdsEndpoints", () => {
     >(true);
   });
   it("leaves out a Table without an ID column", () => {
-    assertType<
-      IsExactly<
-        Extract<keyof FillRowIdsEndpoints, "spreadsheetConfig_id">,
-        never
-      >
-    >(true);
+    assertType<IsExactly<Extract<keyof FillRowIdsEndpoints, "log_id">, never>>(
+      true,
+    );
   });
   it("types each entry by its own Table", () => {
     assertType<

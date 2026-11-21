@@ -149,8 +149,7 @@ describe("ColumnFullName, absolute column addressing", () => {
     // @ts-expect-error a number column is not a boolean column
     const numeric: ColumnFullName<"boolean"> = "item_requiredCount";
     // @ts-expect-error a string column is not a boolean column
-    const text: ColumnFullName<"boolean"> =
-      "spreadsheetConfig_fillRowIdsTimeLastRan";
+    const text: ColumnFullName<"boolean"> = "runItem_result";
     expect(valueNameOfFullName(sampled)).toBe("boolean");
     expect(valueNameOfFullName(numeric)).toBe("number");
     expect(valueNameOfFullName(text)).toBe("string");
