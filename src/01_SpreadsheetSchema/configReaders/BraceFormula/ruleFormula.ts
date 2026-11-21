@@ -4,13 +4,7 @@ import {
   type SheetRowIndex,
 } from "../../../00_Source/RawSource/SheetIndex";
 import { SpreadsheetBaseSchema } from "../../SpreadsheetBaseSchema";
-import {
-  braceMessage,
-  formulaPatterns,
-  type FormulaText,
-  noColumnMessage,
-  replaceBraces,
-} from "./braces";
+import { braces, formulaPatterns, type FormulaText } from "./braces";
 
 const schema = new SpreadsheetBaseSchema();
 
@@ -52,10 +46,10 @@ interface RuleBraceContext {
 export const ruleFormula = {
   // Takes a layout rather than reading the configs, so a rule can compile against a planned layout.
   compileForRule({ tableKey, formula, layout }: RuleFormulaProps): string {
-    return replaceBraces({ tableKey, formula }, (brace) => {
+    return braces.replace({ tableKey, formula }, (brace) => {
       if (brace.tableKey !== tableKey) {
         throw new Error(
-          braceMessage(
+          braces.message(
             brace,
             "names another Table, which a rule's formula can't reach",
             formula,
@@ -63,7 +57,9 @@ export const ruleFormula = {
         );
       }
       const offset = layout.columnNamesLeftToRight.indexOf(brace.columnName);
-      if (offset === -1) throw new Error(noColumnMessage(brace, formula));
+      if (offset === -1) {
+        throw new Error(braces.noColumnMessage(brace, formula));
+      }
       const colIndex = SheetIndex.col(layout.headerTopLeft.colIndex + offset);
       const firstBodyRow = SheetIndex.row(layout.headerTopLeft.rowIndex + 1);
       if (brace.isThisRow) return schema.anchoredA1(colIndex, firstBodyRow);

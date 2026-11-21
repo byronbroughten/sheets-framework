@@ -1,9 +1,7 @@
 import {
   braceGroupCount,
   type BraceMatch,
-  braceMatchOf,
-  braceOf,
-  bracePattern,
+  braces,
   formulaPatterns,
   type FormulaText,
 } from "./braces";
@@ -50,8 +48,8 @@ interface LiveReferenceRename extends LiveReferenceMatch {
 
 export const formulaNames = {
   columnsNamed({ tableKey, formula }: FormulaText): NamedColumn[] {
-    return [...formula.matchAll(bracePattern())].flatMap((groups) => {
-      const brace = braceOf(tableKey, braceMatchOf(groups));
+    return [...formula.matchAll(braces.pattern())].flatMap((groups) => {
+      const brace = braces.of(tableKey, braces.matchOf(groups));
       if (brace === undefined) return [];
       return [
         {
@@ -65,7 +63,7 @@ export const formulaNames = {
   // The Sheets name of each Table a `Table[Header]` reference outside a string literal or brace names.
   liveTablesNamed({ formula }: Pick<FormulaText, "formula">): string[] {
     const pattern = new RegExp(
-      `${bracePattern().source}|${formulaPatterns.liveReference}`,
+      `${braces.pattern().source}|${formulaPatterns.liveReference}`,
       "g",
     );
     return [...formula.matchAll(pattern)].flatMap((groups) => {
@@ -92,7 +90,7 @@ export const formulaNames = {
     const ownTable =
       tableKey === undefined ? undefined : renames.names.get(tableKey);
     const pattern = new RegExp(
-      `${bracePattern().source}|${formulaPatterns.liveReference}`,
+      `${braces.pattern().source}|${formulaPatterns.liveReference}`,
       "g",
     );
     return formula.replace(pattern, (...groups: unknown[]) => {
@@ -104,7 +102,7 @@ export const formulaNames = {
         });
       }
       return renamedBrace({
-        match: braceMatchOf(groups),
+        match: braces.matchOf(groups),
         ownTable,
         names: renames.names,
       });
@@ -112,10 +110,10 @@ export const formulaNames = {
   },
   // Each `${…}` outside a string literal that reads as no brace, such as `${@table[column]}`, so a run can refuse it rather than paste it.
   malformedBraces({ formula }: Pick<FormulaText, "formula">): string[] {
-    return [...formula.matchAll(bracePattern())].flatMap((groups) => {
-      const match = braceMatchOf(groups);
+    return [...formula.matchAll(braces.pattern())].flatMap((groups) => {
+      const match = braces.matchOf(groups);
       if (match.literal !== undefined) return [];
-      if (braceOf("", match) !== undefined) return [];
+      if (braces.of("", match) !== undefined) return [];
       return [match.text];
     });
   },

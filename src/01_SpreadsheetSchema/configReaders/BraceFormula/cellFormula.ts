@@ -3,11 +3,9 @@ import type { ConfigSetBase } from "../configRegister";
 import type { ColumnConfigStored, TableConfigStored } from "../makeConfigs";
 import {
   type Brace,
-  braceMessage,
+  braces,
   formulaPatterns,
   type FormulaText,
-  noColumnMessage,
-  replaceBraces,
 } from "./braces";
 
 export type BraceConfigs = Pick<
@@ -72,7 +70,7 @@ interface BraceTextProps {
 
 export const cellFormula = {
   compileForCell({ configs, tableKey, formula }: BraceCompileProps): string {
-    return replaceBraces({ tableKey, formula }, (brace) => {
+    return braces.replace({ tableKey, formula }, (brace) => {
       const reference = liveReferenceOf(configs, brace, formula);
       if (!brace.isThisRow) return reference;
       return `SINGLE(${reference})`;
@@ -198,12 +196,12 @@ function liveReferenceOf(
 ): string {
   const tableConfig = configs.tableConfigs[brace.tableKey];
   if (tableConfig === undefined) {
-    throw new Error(braceMessage(brace, "names no Table", formula));
+    throw new Error(braces.message(brace, "names no Table", formula));
   }
   const columnConfig =
     configs.columnConfigs[brace.tableKey]?.[brace.columnName];
   if (columnConfig === undefined) {
-    throw new Error(noColumnMessage(brace, formula));
+    throw new Error(braces.noColumnMessage(brace, formula));
   }
   return `${tableConfig.tableName}[${columnConfig.header}]`;
 }
