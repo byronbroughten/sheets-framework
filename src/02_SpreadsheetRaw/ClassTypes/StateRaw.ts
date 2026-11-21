@@ -279,6 +279,8 @@ export interface TableWrites {
   columnTypes: Map<ColIndex, QueuedColumnType>;
   // Raw can't tell a formula column, so an append's caller names the ones growth copies.
   appendedFormulaColIndexes: Set<ColIndex>;
+  // Rows another growth on the grid's edge grew the Table by this flush, so its own append still counts as on that edge.
+  gridGrownRowCount: number;
   checkboxCells: TableCell[];
   conditionalFormatRules: TableConditionalFormatRule[];
   editProtections: TableEditProtection[];

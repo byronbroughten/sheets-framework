@@ -41,6 +41,10 @@ export class ColumnProfileRaw extends ColumnBaseRaw {
   get isFormula(): boolean {
     return this._sampledFacts.isFormula;
   }
+  // False, not a throw, for a column whose top data row nothing fetched in full.
+  get isSampledFormula(): boolean {
+    return this.columnState?.sampledFacts?.isFormula === true;
+  }
   get numberFormatType(): string | undefined {
     return this._sampledFacts.numberFormatType;
   }

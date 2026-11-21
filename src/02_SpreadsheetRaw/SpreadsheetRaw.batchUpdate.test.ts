@@ -550,6 +550,38 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
         ]);
       });
 
+      it("lands below the blank row a new Table queued in the same flush grew it by", () => {
+        const { grid } = stubSideBySideTables();
+
+        const raw = SpreadsheetRaw.init();
+        raw.fetchAllSheetProperties();
+        raw.createTable({
+          name: "Payment Log",
+          placement: { kind: "besideTables", sheetGid: 111 },
+          idPrefix: "pay",
+          columns: [{ header: "Payee" }],
+          seedRows: [["Ann"], ["Bo"], ["Cy"]],
+        });
+        appendToRight(raw);
+
+        expect(
+          grid.sheet(111).values({
+            startRowIndex: topDataRowIndex,
+            endColumnIndex: neighbourEnd,
+          }),
+        ).toEqual([
+          ["r1", "a", "loose", "c1", 5],
+          ["r2", "b", "", "c2", 6],
+          [null, null, null, null, null],
+          [null, null, null, "c3", null],
+        ]);
+        expect(tableEndRowIndexes(grid).slice(0, 2)).toEqual([
+          topDataRowIndex + 4,
+          topDataRowIndex + 4,
+        ]);
+        expect(grid.sheet(111).rowCount).toBe(topDataRowIndex + 4);
+      });
+
       it("leaves a Table not on the grid's last row its range", () => {
         stubSideBySideTables({ hasRowBelow: true });
 
