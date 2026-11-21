@@ -439,6 +439,12 @@ function tableRefusalText(
       "Take this entry out, then rerun.",
     ];
   }
+  if (refusal.kind === "noSuchBeforeTab") {
+    return [
+      `${refusal.path} names ${refusal.before}, which is neither a tab at the last sync nor a newTabs title.`,
+      "Name a tab the ID-name map holds or a newTabs title, then rerun.",
+    ];
+  }
   const { table } = refusal;
   if (refusal.kind === "noApiAccess") {
     return [

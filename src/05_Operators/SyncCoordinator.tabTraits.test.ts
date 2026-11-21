@@ -203,6 +203,63 @@ describe("SyncCoordinator.run tab traits", () => {
         "Test",
       ]);
     });
+
+    it("places it before a tab the same run retitles, found by the tab's GID", () => {
+      const service = seedFixture({ extraSheets: [testTabSheet] });
+
+      const { result } = runTabs({
+        tabs: { test: { title: "Archive" } },
+        newTabs: [{ ...newTabOf("Ledger"), before: "test" }],
+      });
+
+      expect(result).toMatchObject({ outcome: { kind: "sent" } });
+      expect(service.grid.sheetTitles()).toEqual(["Item", "Ledger", "Archive"]);
+    });
+
+    it("refuses before any read a before naming no tab nor new tab, sending nothing", () => {
+      const service = seedFixture({ extraSheets: [testTabSheet] });
+
+      const { result, files } = runTabs({
+        newTabs: [{ ...newTabOf("Ledger"), before: "archive" }],
+      });
+
+      expect(service.batchUpdateCount()).toBe(0);
+      expect(files).toBeUndefined();
+      expect(result).toMatchObject({
+        outcome: { kind: "refused" },
+        refusals: [
+          {
+            kind: "noSuchBeforeTab",
+            table: "Ledger",
+            path: "newTabs[0].before",
+            before: "archive",
+          },
+        ],
+      });
+    });
+
+    it("refuses before any read a before naming a tab the same run deletes, naming both paths", () => {
+      const service = seedFixture({ extraSheets: [testTabSheet] });
+
+      const { result, files } = runTabs({
+        tabs: { test: { deleted: true } },
+        newTabs: [{ ...newTabOf("Ledger"), before: "test" }],
+      });
+
+      expect(service.batchUpdateCount()).toBe(0);
+      expect(files).toBeUndefined();
+      expect(result).toMatchObject({
+        outcome: { kind: "refused" },
+        refusals: [
+          {
+            kind: "touchesDeletion",
+            deleted: { tab: "test" },
+            deletedAt: "tabs.test",
+            touchedBy: "newTabs[0].before",
+          },
+        ],
+      });
+    });
   });
 
   it("stops on a person's tab edit since the last sync, sending nothing", () => {

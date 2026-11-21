@@ -24,6 +24,7 @@ export interface SyncEntryRefuserProps {
 }
 
 type NotSendableYet = Extract<SyncRefusal, { kind: "notSendableYet" }>;
+type NoSuchBeforeTab = Extract<SyncRefusal, { kind: "noSuchBeforeTab" }>;
 
 // Only these traits can be sent so far; each later trait ticket takes its trait off this refusal.
 export const sendableTraits = {
@@ -144,7 +145,13 @@ export class SyncEntryRefuser {
     });
   }
   private get _newTabRefusals(): SyncRefusal[] {
-    return (this.alterations.newTabs ?? []).flatMap((newTab, index) => {
+    const newTabs = this.alterations.newTabs ?? [];
+    // A new tab's traits go out after every addSheet, so a `before` the sheet can't resolve then fails with a write already landed.
+    const beforeTabs = new Set([
+      ...Object.values(this.idNameMap.tabs).map(({ name }) => name),
+      ...newTabs.map(({ title }) => title),
+    ]);
+    return newTabs.flatMap((newTab, index) => {
       const at = `newTabs[${index}]`;
       const tab = newTab.title ?? "newTabs";
       // addSheet is sent only with a Table to create on it.
@@ -156,8 +163,14 @@ export class SyncEntryRefuser {
               newTables: newTab.tables,
               tablesAt: `${at}.tables`,
             });
+      const { before } = newTab;
+      const beforeRefusals =
+        before === undefined || beforeTabs.has(before)
+          ? []
+          : [noSuchBeforeTab({ table: tab, path: `${at}.before`, before })];
       return [
         ...refusedPaths(tab, traitPathsAt("newTab", newTab, `${at}.`)),
+        ...beforeRefusals,
         ...tablesRefusals,
       ];
     });
@@ -244,6 +257,12 @@ function noSuchTable(entry: "tables" | "tabs", name: string): SyncRefusal {
 
 function notSendableYet(table: string, path: string): NotSendableYet {
   return { kind: "notSendableYet", table, path };
+}
+
+function noSuchBeforeTab(
+  props: Omit<NoSuchBeforeTab, "kind">,
+): NoSuchBeforeTab {
+  return { kind: "noSuchBeforeTab", ...props };
 }
 
 function tableTraitRefusals(

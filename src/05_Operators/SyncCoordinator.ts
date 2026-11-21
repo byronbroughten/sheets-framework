@@ -485,7 +485,10 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     if (isApplying) this._applyPlan(applied);
     const notes = this._recordUntypedColumns();
     if (isApplying) {
-      const stopped = this._flushUnlessStopped(applied);
+      const stopped = this._flushUnlessStopped(
+        applied,
+        props.previousIdNameMap,
+      );
       // No files: column IDs already recorded would reach the configs but not the sheet.
       if (stopped !== undefined) {
         return {
@@ -793,10 +796,11 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
   // The Node host's gate refuses a held flush by throwing, as Google refuses a batch over part of a Table; any other error goes on up.
   private _flushUnlessStopped(
     applied: AppliedPlan,
+    previousIdNameMap: IdNameMapGeneric,
   ): SyncFlushStoppedOutcome | undefined {
     try {
       this._flushPlan(applied);
-      this._flushNewTabTraits(applied.newTabTraits);
+      this._flushNewTabTraits(applied.newTabTraits, previousIdNameMap);
       return undefined;
     } catch (error) {
       if (error instanceof HeldFlushRefusal) return heldStoppedOutcome(error);
@@ -842,10 +846,11 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
   // Raw has no sheet state for a tab before its addSheet lands, so the sheet properties are refetched to reach it.
   private _flushNewTabTraits(
     newTabTraits: SyncPlannerResult["newTabTraits"],
+    previousIdNameMap: IdNameMapGeneric,
   ): void {
     if (newTabTraits.length === 0) return;
     this.ss.fetchAllSheetProperties();
-    this.tabConfigOperator.updateTabTraits(newTabTraits);
+    this.tabConfigOperator.updateNewTabTraits(newTabTraits, previousIdNameMap);
     this.ss.batchUpdateGSheets();
   }
   private _applyApiAccessChanges(accessChanges: ApiAccessChanges): void {

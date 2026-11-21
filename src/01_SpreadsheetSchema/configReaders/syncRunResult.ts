@@ -175,6 +175,8 @@ export type SyncRefusal =
   | { kind: "noSuchTable"; entry: "tables" | "tabs"; name: string }
   // `table` names the tab for a tab's trait; `path` is the trait's, with its column in front for a column's.
   | { kind: "notSendableYet"; table: string; path: string }
+  // A `newTabs` entry's `before` naming neither a tab the previous ID-name map holds nor a `newTabs` title; `table` is the entry's title.
+  | { kind: "noSuchBeforeTab"; table: string; path: string; before: string }
   // A brace naming a Table or column the previous ID-name map lacks, or for a rule's brace one the Table's `newColumns` create; `columns` is braceTable's, undefined when the map holds no such Table.
   | {
       kind: "unknownBrace";

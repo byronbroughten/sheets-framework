@@ -78,9 +78,36 @@ export class TabConfigOperator extends SpreadsheetBaseOperator {
   // Tabs resolve by their names before any retitle, which are the names the readings use.
   updateTabTraits(sent: IntendedTrait[]): this {
     const sheets = this._sheetsByTabName();
-    function sheetNamed(tabName: string): SheetRaw {
-      return Val.assert(sheets.get(tabName), `live tab ${tabName}`);
-    }
+    return this._updateTabTraits(sent, (tabName) =>
+      liveSheetOf(sheets, tabName),
+    );
+  }
+  // After the refetch a retitled tab has its new title, so a tab the previous map holds resolves by its GID and a new tab by its title.
+  updateNewTabTraits(
+    newTabTraits: IntendedTrait[],
+    { tabs }: IdNameMapGeneric,
+  ): this {
+    const sheets = this._sheetsByTabName();
+    const gidsByTabName = new Map(
+      Object.entries(tabs).map(([sheetGid, { name }]) => [
+        name,
+        Number(sheetGid),
+      ]),
+    );
+    const { raw } = this.ss;
+    return this._updateTabTraits(newTabTraits, (tabName) => {
+      const sheetGid = gidsByTabName.get(tabName);
+      // A tab a person deleted keeps its map entry, and raw.sheet would build it anyway.
+      if (sheetGid !== undefined && raw.gidIsActive(sheetGid)) {
+        return raw.sheet(sheetGid);
+      }
+      return liveSheetOf(sheets, tabName);
+    });
+  }
+  private _updateTabTraits(
+    sent: IntendedTrait[],
+    sheetNamed: (tabName: string) => SheetRaw,
+  ): this {
     // A deleted tab's other traits would be lost with it, and a retitle would hide it from deleteTabs.
     const deletedTabs = deletedTabsOf(sent);
     for (const intended of sent) {
@@ -104,7 +131,7 @@ export class TabConfigOperator extends SpreadsheetBaseOperator {
   deleteTabs(sent: IntendedTrait[]): this {
     const sheets = this._sheetsByTabName();
     for (const tab of deletedTabsOf(sent)) {
-      Val.assert(sheets.get(tab), `live tab ${tab}`).queueDelete();
+      liveSheetOf(sheets, tab).queueDelete();
     }
     return this;
   }
@@ -135,6 +162,10 @@ export class TabConfigOperator extends SpreadsheetBaseOperator {
       ``,
     ].join("\n");
   }
+}
+
+function liveSheetOf(sheets: Map<string, SheetRaw>, tab: string): SheetRaw {
+  return Val.assert(sheets.get(tab), `live tab ${tab}`);
 }
 
 function deletedTabsOf(sent: IntendedTrait[]): Set<string> {

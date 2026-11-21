@@ -903,6 +903,24 @@ describe("SyncRunReport, case F: two refusals, then a head-row stop", () => {
     );
   });
 
+  it("says a new tab's before names no tab, naming its path and the name", () => {
+    const text = render({
+      ...appDryRun,
+      outcome: { kind: "refused" },
+      refusals: [
+        {
+          kind: "noSuchBeforeTab",
+          table: "Payments",
+          path: "newTabs[0].before",
+          before: "ledger",
+        },
+      ],
+    }).join("\n");
+    expect(text).toContain(
+      "REFUSED 1 · Payments › newTabs[0].before\n  newTabs[0].before names ledger, which is neither a tab at the last sync nor a newTabs title.\n  Name a tab the ID-name map holds or a newTabs title, then rerun.",
+    );
+  });
+
   it("says a misplaced @ isn't a brace, with the four forms", () => {
     const text = render({
       ...appDryRun,
