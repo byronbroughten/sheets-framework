@@ -994,6 +994,7 @@ export class TableRaw extends TableCommonRaw {
     return properties.endRowIndex === this.sheet.rowCount;
   }
   // As Sheets fills a grown row: each formula column's formula carried down, every other cell blank.
+  // Sheets and the fake decide per cell; row state holds no per-cell formula fact, so a column's sampled top row stands in for it.
   private _carriedDownRowState(lastRowState: RowStateRaw): RowStateRaw {
     return new Map(
       Array.from(lastRowState, ([colIndex, { value }]) => {
