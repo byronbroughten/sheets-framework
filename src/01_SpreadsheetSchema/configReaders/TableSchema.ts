@@ -42,8 +42,8 @@ export interface TableSchemaProps<TN extends TableName> {
 export class TableSchema<
   TN extends TableName = TableName,
 > extends SpreadsheetBaseSchema {
-  readonly sheetGid: number;
-  readonly tableName: TN;
+  declare readonly sheetGid: number;
+  declare readonly tableName: TN;
   constructor({ sheetGid, tableName }: TableSchemaProps<TN>) {
     super();
     this.sheetGid = sheetGid;

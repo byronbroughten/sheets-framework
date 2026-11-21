@@ -28,7 +28,7 @@ export interface AppSetup {
 }
 
 export class Api extends SpreadsheetBaseNamed {
-  readonly endpoints: EndpointsAll;
+  declare readonly endpoints: EndpointsAll;
   constructor({ endpoints, ...rest }: ApiProps) {
     super(rest);
     this.endpoints = withFrameworkEndpoints(endpoints);

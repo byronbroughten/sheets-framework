@@ -28,7 +28,7 @@ export interface TableAddressRaw {
 export interface TableRawProps extends SheetRawProps, TableAddressRaw {}
 
 export class TableBaseRaw extends SheetBaseRaw {
-  private readonly addressedTableId: string;
+  declare private readonly addressedTableId: string;
   constructor({ tableId, ...props }: TableRawProps) {
     super(props);
     this.addressedTableId = tableId;

@@ -22,8 +22,8 @@ export type TableIdentifiedProps = SpreadsheetIdentifiedProps &
   TableAddressIdentified;
 
 export class TableBaseIdentified extends SpreadsheetBaseIdentified {
-  readonly sheetGid: number;
-  readonly tableId: string;
+  declare readonly sheetGid: number;
+  declare readonly tableId: string;
   constructor({
     spreadsheetStateRaw,
     spreadsheetStateIdentified,

@@ -6,7 +6,7 @@ import { ColumnBaseRaw, type ColumnRawProps } from "./ColumnBaseRaw.ts";
 export type CellRawProps = ColumnRawProps & { rowIndex: number };
 
 export class CellBaseRaw extends ColumnBaseRaw {
-  readonly rowIndex: number;
+  declare readonly rowIndex: number;
   constructor({ rowIndex, ...rest }: CellRawProps) {
     super(rest);
     this.rowIndex = rowIndex;

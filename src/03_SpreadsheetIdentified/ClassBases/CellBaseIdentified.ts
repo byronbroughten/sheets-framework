@@ -10,7 +10,7 @@ export type CellIdentifiedProps<VN extends ValueName = ValueName> =
 export class CellBaseIdentified<
   VN extends ValueName = ValueName,
 > extends ColumnBaseIdentified<VN> {
-  readonly rowIndex: number;
+  declare readonly rowIndex: number;
   constructor({ rowIndex, ...props }: CellIdentifiedProps<VN>) {
     super(props);
     this.rowIndex = rowIndex;

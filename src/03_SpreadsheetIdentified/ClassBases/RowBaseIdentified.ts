@@ -7,7 +7,7 @@ import {
 export type RowIdentifiedProps = TableIdentifiedProps & { rowIndex: number };
 
 export class RowBaseIdentified extends TableBaseIdentified {
-  readonly rowIndex: number;
+  declare readonly rowIndex: number;
   constructor({ rowIndex, ...rest }: RowIdentifiedProps) {
     super(rest);
     this.rowIndex = rowIndex;

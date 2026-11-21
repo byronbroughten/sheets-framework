@@ -12,7 +12,7 @@ export interface SheetRawProps extends SpreadsheetRawProps {
 }
 
 export class SheetBaseRaw extends SpreadsheetBaseRaw {
-  readonly sheetGid: number;
+  declare readonly sheetGid: number;
   constructor({ sheetGid, ...props }: SheetRawProps) {
     super(props);
     this.sheetGid = sheetGid;

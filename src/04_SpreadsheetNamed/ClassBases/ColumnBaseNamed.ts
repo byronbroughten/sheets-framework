@@ -14,7 +14,7 @@ export class ColumnBaseNamed<
   TN extends TableName,
   CN extends ColumnName<TN>,
 > extends TableBaseNamed<TN> {
-  readonly columnName: CN;
+  declare readonly columnName: CN;
   constructor(props: ColumnNamedProps<TN, CN>) {
     super(props);
     this.columnName = props.columnName;

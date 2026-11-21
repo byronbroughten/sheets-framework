@@ -14,8 +14,8 @@ export type HeadRowRawProps<HR extends HeadRole> = TableRawProps & {
 export class HeadRowBaseRaw<
   HR extends HeadRole = HeadRole,
 > extends RowCommonRaw {
-  readonly headRole: HR;
-  readonly roles: HeadRowRoles<HR>[];
+  declare readonly headRole: HR;
+  declare readonly roles: HeadRowRoles<HR>[];
   constructor({ headRole, ...rest }: HeadRowRawProps<HR>) {
     super({ ...rest, rowIndex: headRows.index(headRole) });
     this.headRole = headRole;

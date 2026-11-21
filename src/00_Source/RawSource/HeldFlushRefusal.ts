@@ -10,9 +10,9 @@ export interface HeldFlushRefusalProps {
 
 // A host held a flush that could lose entered data (ADR 0034); the flushes before it have landed.
 export class HeldFlushRefusal extends Error {
-  readonly kind: HeldFlushRefusalKind;
-  readonly landedFlushes: number;
-  readonly flushCount: number | undefined;
+  declare readonly kind: HeldFlushRefusalKind;
+  declare readonly landedFlushes: number;
+  declare readonly flushCount: number | undefined;
   constructor({ kind, landedFlushes, flushCount }: HeldFlushRefusalProps) {
     super(
       `Held flush ${landedFlushes + 1} (${kind}): it could lose entered data, and no token covers its held list. ${landedFlushes} earlier flushes landed.`,
