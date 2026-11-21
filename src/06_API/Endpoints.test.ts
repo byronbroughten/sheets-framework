@@ -17,13 +17,11 @@ type TimeLastRanOf<TN extends TableNameSimple> = NonNullable<
 
 describe("Endpoint's column parameters", () => {
   it("resolve to the entry column's own sheet", () => {
-    assertType<IsExactly<SelectorColumnOf<"tableConfig">, "letApiAccess">>(
-      true,
-    );
+    assertType<IsExactly<SelectorColumnOf<"runItem">, "selected">>(true);
     assertType<
       IsExactly<
-        TimeLastRanOf<"spreadsheetConfig">,
-        ColumnNameFiltered<"spreadsheetConfig", "string", false>
+        TimeLastRanOf<"valueTypes">,
+        ColumnNameFiltered<"valueTypes", "string", false>
       >
     >(true);
   });
@@ -80,8 +78,8 @@ describe("Endpoints, the endpoint map", () => {
     >(true);
     assertType<
       IsExactly<
-        Extract<keyof Endpoints, "tableConfig_letApiAccess">,
-        "tableConfig_letApiAccess"
+        Extract<keyof Endpoints, "valueConfig_exampleValue">,
+        "valueConfig_exampleValue"
       >
     >(true);
     assertType<

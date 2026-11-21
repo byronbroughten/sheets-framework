@@ -121,9 +121,9 @@ describe("PendingAlterations' keys", () => {
   });
 
   it("name a Table by its codebase name, never its ID", () => {
-    assertType<"tableConfig" extends keyof TableEntries ? true : false>(true);
-    // @ts-expect-error sheetConfig is the Table Config Table's ID
-    const byId: TableEntries = { sheetConfig: {} };
+    assertType<"scratch208an" extends keyof TableEntries ? true : false>(true);
+    // @ts-expect-error tbl-208an is the scratch208an Table's ID
+    const byId: TableEntries = { "tbl-208an": {} };
     expect(byId).toBeDefined();
   });
 

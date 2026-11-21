@@ -149,10 +149,7 @@ describe("CheckboxColumnOperator, column constraint", () => {
     >(true);
   });
 
-  // A config-describing sheet, so regeneration can't churn the expected union.
   it("names exactly the declared non-formula checkbox columns of a sheet", () => {
-    assertType<IsExactly<CheckboxColumnName<"tableConfig">, "letApiAccess">>(
-      true,
-    );
+    assertType<IsExactly<CheckboxColumnName<"runItem">, "selected">>(true);
   });
 });

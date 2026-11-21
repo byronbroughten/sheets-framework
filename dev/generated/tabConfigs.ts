@@ -2,16 +2,13 @@ import { makeTabConfigs } from "@byronbroughten/sheets-framework";
 
 export const tabConfigs = makeTabConfigs({
   "test": { "sheetGid": 604825146, "title": "Test", "color": null, "hidden": false, "frozenRows": 0, "frozenColumns": 0 },
-  "spreadsheetConfig": { "sheetGid": 1967106628, "title": "Spreadsheet Config", "color": null, "hidden": false, "frozenRows": 0, "frozenColumns": 0 },
-  "tableConfig": { "sheetGid": 210603630, "title": "Table Config", "color": null, "hidden": false, "frozenRows": 0, "frozenColumns": 0 },
-  "columnConfig": { "sheetGid": 2034522667, "title": "Column Config", "color": null, "hidden": false, "frozenRows": 0, "frozenColumns": 0 },
   "valueConfig": { "sheetGid": 2119236084, "title": "Value Config", "color": null, "hidden": false, "frozenRows": 0, "frozenColumns": 0 },
   "item": { "sheetGid": 1100001, "title": "Item", "color": null, "hidden": false, "frozenRows": 0, "frozenColumns": 0 },
   "valueTypes": { "sheetGid": 1100002, "title": "Value Types", "color": null, "hidden": false, "frozenRows": 0, "frozenColumns": 0 },
   "log": { "sheetGid": 1100003, "title": "Log", "color": null, "hidden": false, "frozenRows": 0, "frozenColumns": 0 },
   "runItem": { "sheetGid": 1100004, "title": "Run Item", "color": null, "hidden": false, "frozenRows": 0, "frozenColumns": 0 },
   "computed": { "sheetGid": 1100005, "title": "Computed", "color": null, "hidden": false, "frozenRows": 0, "frozenColumns": 0 },
-  "dates": { "sheetGid": 1100006, "title": "Dates", "color": null, "hidden": false, "frozenRows": 0, "frozenColumns": 0 },
+  "dates": { "sheetGid": 1100006, "title": "Dates", "color": "#4a86e8", "hidden": false, "frozenRows": 0, "frozenColumns": 0 },
   "layout": { "sheetGid": 1100007, "title": "Layout", "color": null, "hidden": false, "frozenRows": 0, "frozenColumns": 0 },
   "scratch208A": { "sheetGid": 2080001, "title": "Scratch208A", "color": null, "hidden": false, "frozenRows": 0, "frozenColumns": 0 },
   "scratch208B": { "sheetGid": 2080002, "title": "Scratch208B", "color": null, "hidden": false, "frozenRows": 0, "frozenColumns": 0 },

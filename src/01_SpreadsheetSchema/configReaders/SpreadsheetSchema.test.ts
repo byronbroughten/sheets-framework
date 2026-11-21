@@ -211,10 +211,7 @@ describe("ColumnFullName, absolute column addressing", () => {
 
   it("filters a column name within a sheet on the same two axes", () => {
     assertType<
-      IsExactly<
-        ColumnNameFiltered<"tableConfig", "checkbox", false>,
-        "letApiAccess"
-      >
+      IsExactly<ColumnNameFiltered<"runItem", "checkbox", false>, "selected">
     >(true);
     assertType<IsExactly<ColumnNameFiltered<"item">, ColumnName<"item">>>(true);
   });
