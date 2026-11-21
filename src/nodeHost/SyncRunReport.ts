@@ -32,6 +32,7 @@ import {
   type SyncStopCause,
   type SyncSubject,
   type SyncTableNameTakenStop,
+  type SyncTabTitleRepeatedStop,
   type SyncTabTitleTakenStop,
   type SyncUnmodelableRuleStop,
 } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
@@ -581,6 +582,7 @@ const stopKinds: StopKind[] = [
   "beforeFirstColumn",
   "tableNameTaken",
   "tabTitleTaken",
+  "tabTitleRepeated",
   "noSuchRule",
   "unmodelableRule",
 ];
@@ -629,6 +631,13 @@ const stopWords: { [SK in StopKind]: StopWords<SK> } = {
       return `${counted(length, "new tab title", "new tab titles")} taken`;
     },
     block: tabTitleTakenBlock,
+  },
+  tabTitleRepeated: {
+    name: "stop",
+    reason({ length }) {
+      return `${counted(length, "new tab title", "new tab titles")} repeated`;
+    },
+    block: tabTitleRepeatedBlock,
   },
   noSuchRule: {
     name: "stop",
@@ -748,6 +757,19 @@ function tabTitleTakenBlock(
     ...indent(2, [
       `A tab already gives its title's codebase name: "${existing}", GID ${gid}.`,
       entryStaysText,
+    ]),
+  ];
+}
+
+function tabTitleRepeatedBlock(
+  { title, paths }: SyncTabTitleRepeatedStop,
+  number: number,
+): string[] {
+  return [
+    `STOP ${number} · new tab "${title}"`,
+    ...indent(2, [
+      `${paths.join(", ")} give one title's codebase name. Give each new tab its own title, or merge the entries.`,
+      "The entries stay in alterations.ts.",
     ]),
   ];
 }

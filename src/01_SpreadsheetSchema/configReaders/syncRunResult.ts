@@ -270,7 +270,15 @@ export type SyncSheetStop =
   | SyncUnmodelableRuleStop
   | SyncNewTableStop;
 
-export type SyncNewTableStop = SyncTableNameTakenStop | SyncTabTitleTakenStop;
+export type SyncNewTableStop =
+  SyncTableNameTakenStop | SyncTabTitleTakenStop | SyncTabTitleRepeatedStop;
+
+// Two or more `newTabs` entries giving one codebase name: `paths` are theirs, as `newTabs[0]`.
+export interface SyncTabTitleRepeatedStop {
+  kind: "tabTitleRepeated";
+  title: string;
+  paths: string[];
+}
 
 // A new Table whose name gives the codebase name a live Table's does: `existing` and `tableId` are that Table's.
 export interface SyncTableNameTakenStop {

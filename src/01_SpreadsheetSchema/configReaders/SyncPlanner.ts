@@ -85,7 +85,8 @@ export interface PlannedColumnGroupMove extends WideColumnGroupMove {
 
 // A tab the run adds, or one already there by its codebase name, with `gap` empty columns right of its rightmost Table.
 export type PlannedNewTablePlacement =
-  | { kind: "newTab"; title: string }
+  // `path` is its `newTabs` entry's, as `newTabs[0]`.
+  | { kind: "newTab"; title: string; path: string }
   | { kind: "besideTables"; tab: string; gap: 0 | 1 };
 
 // A new Table's column, named by the name the regen gives its header.
@@ -484,9 +485,13 @@ export class SyncPlanner {
   // From intended state alone, so the run can check each name and title against the sheet before planning.
   get newTables(): PlannedNewTable[] {
     const onNewTabs = (this.alterations.newTabs ?? []).flatMap(
-      ({ title, tables }) =>
+      ({ title, tables }, index) =>
         tables.map((newTable) =>
-          plannedNewTable(newTable, { kind: "newTab", title }),
+          plannedNewTable(newTable, {
+            kind: "newTab",
+            title,
+            path: `newTabs[${index}]`,
+          }),
         ),
     );
     const besideTables = entriesOf(this.alterations.tabs).flatMap(
