@@ -1,29 +1,22 @@
 // `sheets-framework sync`: runs sync on the Node host, planning against the live Tables and previous configs, and sending only with --send.
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { basename, dirname, join } from "node:path";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { basename } from "node:path";
 
-import type { IdNameMapGeneric } from "../src/01_SpreadsheetSchema/configReaders/idNameMapTypes.ts";
-import type { PendingAlterations } from "../src/01_SpreadsheetSchema/configReaders/intendedState.ts";
 import type {
   ForcedTrait,
   SyncRunResult,
 } from "../src/01_SpreadsheetSchema/configReaders/syncRunResult.ts";
-import { alterationsFileSource } from "../src/05_Operators/configFileSource.ts";
-import { parseIdNameMapFileSource } from "../src/05_Operators/parseIdNameMapFileSource.ts";
 import type {
   ConfigRegeneration,
-  SyncIntendedState,
   SyncRun,
 } from "../src/05_Operators/SyncCoordinator.ts";
 import type { HeldList } from "../src/nodeHost/EnteredDataGate.ts";
 import { readConfigsDiff } from "./configsDiff.ts";
+import { GeneratedDir } from "./GeneratedDir.ts";
 import { HeldFile, parseConfirmToken } from "./HeldFile.ts";
 import {
-  type ConfigFile,
-  configFilePath,
   hasPackageConfigs,
-  importExportIfPresent,
   loadDropdownStyleReset,
   loadFrameworkConfigs,
   loadPackageConfigs,
@@ -31,28 +24,25 @@ import {
 } from "./nodeHost.ts";
 import type { SheetsConfig } from "./sheetsConfig.ts";
 
-interface ConfigFilesGeneratorProps {
+interface SyncRunnerProps {
   sheetsConfig: SheetsConfig;
   isSending: boolean;
   forcedTraits: ForcedTrait[];
   confirmToken?: string;
 }
 
-export class ConfigFilesGenerator {
+export class SyncRunner {
   readonly sheetsConfig: SheetsConfig;
   readonly isSending: boolean;
   readonly forcedTraits: ForcedTrait[];
   readonly heldFile: HeldFile;
-  readonly path: Record<
-    ConfigFile | "appConfigs" | "idNameMap" | "alterations",
-    string
-  >;
+  readonly generatedDir: GeneratedDir;
   constructor({
     sheetsConfig,
     isSending,
     forcedTraits,
     confirmToken,
-  }: ConfigFilesGeneratorProps) {
+  }: SyncRunnerProps) {
     this.sheetsConfig = sheetsConfig;
     this.isSending = isSending;
     this.forcedTraits = forcedTraits;
@@ -62,27 +52,10 @@ export class ConfigFilesGenerator {
       isSending,
       confirmToken,
     });
-    const { generatedDir } = sheetsConfig;
-    this.path = {
-      tableConfigs: configFilePath(generatedDir, "tableConfigs"),
-      tabConfigs: configFilePath(generatedDir, "tabConfigs"),
-      conditionalFormatConfigs: configFilePath(
-        generatedDir,
-        "conditionalFormatConfigs",
-      ),
-      retiredIdPrefixes: configFilePath(generatedDir, "retiredIdPrefixes"),
-      columnConfigs: configFilePath(generatedDir, "columnConfigs"),
-      valueConfigs: configFilePath(generatedDir, "valueConfigs"),
-      appConfigs: join(generatedDir, "appConfigs.ts"),
-      idNameMap: idNameMapPath(generatedDir),
-      alterations: alterationsPath(generatedDir),
-    };
+    this.generatedDir = new GeneratedDir(sheetsConfig.generatedDir);
   }
-  static init(
-    sheetsConfig: SheetsConfig,
-    argv: string[],
-  ): ConfigFilesGenerator {
-    return new ConfigFilesGenerator({
+  static init(sheetsConfig: SheetsConfig, argv: string[]): SyncRunner {
+    return new SyncRunner({
       sheetsConfig,
       isSending: argv.includes("--send"),
       forcedTraits: parseForcedTraits(argv),
@@ -116,11 +89,11 @@ export class ConfigFilesGenerator {
   }
 
   async _sync(): Promise<SyncRun> {
-    const { generatedDir } = this.sheetsConfig;
+    const { generatedDir } = this;
     const target = basename(this.sheetsConfig.dir);
     // Loaded before the host starts, as the configs are, so a broken alterations.ts costs no setup.
-    const intendedState = await loadIntendedState(generatedDir);
-    const previousIdNameMap = loadPreviousIdNameMap(generatedDir);
+    const intendedState = await generatedDir.loadIntendedState();
+    const previousIdNameMap = generatedDir.loadPreviousIdNameMap();
     // The previous configs say which Tables have API access; a package with no generated files yet borrows the framework's.
     // No app endpoints: they may name columns the configs being regenerated don't have yet.
     const host = await startNodeHost({
@@ -144,8 +117,8 @@ export class ConfigFilesGenerator {
       frame: {
         target,
         command: "npm run sync",
-        generatedDir,
-        alterationsPath: this.path.alterations,
+        generatedDir: this.sheetsConfig.generatedDir,
+        alterationsPath: generatedDir.path.alterations,
       },
       isHostWithholding: true,
       dropdownStyleReset: await loadDropdownStyleReset(this.sheetsConfig),
@@ -168,7 +141,7 @@ export class ConfigFilesGenerator {
 
   // Write nothing until every config and the ID-name map are confirmed good; a subset would go stale.
   _write(files: ConfigRegeneration): void {
-    const { path } = this;
+    const { path } = this.generatedDir;
     mkdirSync(this.sheetsConfig.generatedDir, { recursive: true });
     const writes: [string, string][] = [
       [path.tableConfigs, files.tableConfigs],
@@ -189,7 +162,7 @@ export class ConfigFilesGenerator {
       console.log(`Wrote ${filePath}`);
     }
     if (!existsSync(path.alterations)) {
-      writeFileSync(path.alterations, alterationsText());
+      writeFileSync(path.alterations, GeneratedDir.alterationsText);
       console.log(`Created ${path.alterations}`);
     }
   }
@@ -230,38 +203,6 @@ function reportTscFailure(): void {
       "that no longer exists after this regeneration. Fix those references " +
       "and re-run `npm run tsc` — do not hand-edit the generated files.",
   );
-}
-
-export function idNameMapPath(generatedDir: string): string {
-  return join(generatedDir, "idNameMap.ts");
-}
-
-// A fixed path from the generated directory, so finding it needs no setting of its own.
-export function alterationsPath(generatedDir: string): string {
-  return join(dirname(generatedDir), "alterations.ts");
-}
-
-export function alterationsText(): string {
-  return alterationsFileSource({});
-}
-
-// Intended state is the pending alterations alone until claims arrive; a package with no alterations.ts has none pending.
-export async function loadIntendedState(
-  generatedDir: string,
-): Promise<SyncIntendedState> {
-  const path = alterationsPath(generatedDir);
-  const pendingAlterations = await importExportIfPresent<PendingAlterations>(
-    path,
-    "pendingAlterations",
-  );
-  return { alterations: pendingAlterations ?? {} };
-}
-
-// A package that has never synced has no map, so every Table is new to it.
-export function loadPreviousIdNameMap(generatedDir: string): IdNameMapGeneric {
-  const path = idNameMapPath(generatedDir);
-  if (!existsSync(path)) return { tables: {}, tabs: {} };
-  return parseIdNameMapFileSource(readFileSync(path, "utf8"));
 }
 
 export function appConfigsText(): string {
@@ -308,5 +249,5 @@ export async function runSync(
   sheetsConfig: SheetsConfig,
   argv: string[],
 ): Promise<void> {
-  await ConfigFilesGenerator.init(sheetsConfig, argv).run();
+  await SyncRunner.init(sheetsConfig, argv).run();
 }

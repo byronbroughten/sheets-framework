@@ -28,10 +28,7 @@ import type {
   SyncRunResult,
   SyncSendResult,
 } from "../src/01_SpreadsheetSchema/configReaders/syncRunResult.ts";
-import {
-  alterationsFileSource,
-  columnIdsByName,
-} from "../src/05_Operators/configFileSource.ts";
+import { columnIdsByName } from "../src/05_Operators/configFileSource.ts";
 import { parseIdNameMapFileSource } from "../src/05_Operators/parseIdNameMapFileSource.ts";
 import type {
   ConfigRegeneration,
@@ -39,25 +36,13 @@ import type {
 } from "../src/05_Operators/SyncCoordinator.ts";
 import type { HeldItem } from "../src/nodeHost/FlushClassifier/flushClassifierTypes.ts";
 import { SyncRunReport } from "../src/nodeHost/SyncRunReport.ts";
+import { GeneratedDir } from "./GeneratedDir.ts";
 import type { SheetsConfig } from "./sheetsConfig.ts";
-import {
-  alterationsPath,
-  alterationsText,
-  appConfigsText,
-  ConfigFilesGenerator,
-  idNameMapPath,
-  loadIntendedState,
-  loadPreviousIdNameMap,
-  parseForcedTraits,
-} from "./sync.ts";
+import { appConfigsText, parseForcedTraits, SyncRunner } from "./sync.ts";
 
-const devGeneratedDir = fileURLToPath(
-  new URL("../dev/generated", import.meta.url),
-);
-const devIdNameMapPath = idNameMapPath(devGeneratedDir);
-const devAlterationsPath = alterationsPath(devGeneratedDir);
-const missingFilesDir = mkdtempSync(join(tmpdir(), "sync-"));
-const fixtureAlterationsDir = mkdtempSync(join(tmpdir(), "sync-"));
+const devIdNameMapPath = new GeneratedDir(
+  fileURLToPath(new URL("../dev/generated", import.meta.url)),
+).path.idNameMap;
 
 // The diff shells out to git, which the exit code doesn't depend on.
 vi.mock("./configsDiff.ts", () => ({ readConfigsDiff: () => [] }));
@@ -124,10 +109,10 @@ async function exitCodeOf({
   run,
   isTscPassing = true,
 }: ScriptRun): Promise<number | string | null | undefined> {
-  const generator = ConfigFilesGenerator.init(runSheetsConfig, []);
-  vi.spyOn(generator, "_sync").mockResolvedValue(run);
-  vi.spyOn(generator, "_runTsc").mockReturnValue(isTscPassing);
-  await generator.run();
+  const runner = SyncRunner.init(runSheetsConfig, []);
+  vi.spyOn(runner, "_sync").mockResolvedValue(run);
+  vi.spyOn(runner, "_runTsc").mockReturnValue(isTscPassing);
+  await runner.run();
   return process.exitCode;
 }
 
@@ -378,10 +363,10 @@ describe("the held file", () => {
   );
   const flushes = [[], [...notesItems, enteredDataItem(0, "title")]];
 
-  function generator(argv: string[]): ConfigFilesGenerator {
-    return ConfigFilesGenerator.init(heldSheetsConfig, argv);
+  function runner(argv: string[]): SyncRunner {
+    return SyncRunner.init(heldSheetsConfig, argv);
   }
-  const heldFilePath = generator([]).heldFile.path;
+  const heldFilePath = runner([]).heldFile.path;
 
   beforeEach(() => {
     rmSync(join(heldDir, ".probe"), { recursive: true, force: true });
@@ -392,7 +377,7 @@ describe("the held file", () => {
   });
 
   it("gets every held item and its value from a dry run, with the token", async () => {
-    await generator([])._withHeld(
+    await runner([])._withHeld(
       { ...dryRunResult, outcome: { kind: "ready" } },
       { token: "7f3a9c", flushes },
     );
@@ -405,7 +390,7 @@ describe("the held file", () => {
   });
 
   it("gives the dry run's report its held list, capped at 20 lines per column, and its path", async () => {
-    const result = await generator([])._withHeld(
+    const result = await runner([])._withHeld(
       { ...dryRunResult, outcome: { kind: "ready" } },
       { token: "7f3a9c", flushes },
     );
@@ -430,7 +415,7 @@ describe("the held file", () => {
   });
 
   it("is left alone by a dry run that holds nothing", async () => {
-    const result = await generator([])._withHeld(
+    const result = await runner([])._withHeld(
       { ...dryRunResult, outcome: { kind: "ready" } },
       { token: "e3b0c4", flushes: [[], []] },
     );
@@ -440,7 +425,7 @@ describe("the held file", () => {
   });
 
   it("is left alone by a send, which prints no held list", async () => {
-    const result = await generator(["--send"])._withHeld(
+    const result = await runner(["--send"])._withHeld(
       { ...sendResult, outcome: { kind: "sent", summary: "1 sent" } },
       { token: "7f3a9c", flushes },
     );
@@ -450,18 +435,18 @@ describe("the held file", () => {
   });
 
   it("is read back by a send with --confirm, and passed with the token", async () => {
-    await generator([])._withHeld(
+    await runner([])._withHeld(
       { ...dryRunResult, outcome: { kind: "ready" } },
       { token: "7f3a9c", flushes },
     );
 
     expect(
-      generator(["--send", "--confirm", "7f3a9c"]).heldFile.confirmedList,
+      runner(["--send", "--confirm", "7f3a9c"]).heldFile.confirmedList,
     ).toEqual({ token: "7f3a9c", flushes });
   });
 
   it("counts as mismatched when missing or unreadable", () => {
-    const { heldFile } = generator(["--send", "--confirm", "7f3a9c"]);
+    const { heldFile } = runner(["--send", "--confirm", "7f3a9c"]);
     expect(heldFile.confirmedList).toEqual({
       token: "7f3a9c",
       flushes: undefined,
@@ -474,9 +459,9 @@ describe("the held file", () => {
   });
 
   it("isn't read by a send without --confirm or by a dry run", () => {
-    expect(generator(["--send"]).heldFile.confirmedList).toBeUndefined();
+    expect(runner(["--send"]).heldFile.confirmedList).toBeUndefined();
     expect(
-      generator(["--confirm", "7f3a9c"]).heldFile.confirmedList,
+      runner(["--confirm", "7f3a9c"]).heldFile.confirmedList,
     ).toBeUndefined();
   });
 });
@@ -525,59 +510,5 @@ describe("a refused send's report", () => {
     );
     expect(text).toContain("Rerun the dry run: npm run sync");
     expect(text).not.toContain("Wrote ");
-  });
-});
-
-describe("alterationsPath", () => {
-  it("puts alterations.ts beside the generated directory", () => {
-    expect(alterationsPath(join("app", "src", "generated"))).toBe(
-      join("app", "src", "alterations.ts"),
-    );
-  });
-});
-
-describe("loadIntendedState", () => {
-  it("reads a missing alterations.ts as an empty one", async () => {
-    const generatedDir = join(missingFilesDir, "generated");
-    expect(await loadIntendedState(generatedDir)).toEqual({ alterations: {} });
-  });
-
-  it("takes the pending alterations alterations.ts exports", async () => {
-    const generatedDir = join(fixtureAlterationsDir, "generated");
-    writeFileSync(
-      alterationsPath(generatedDir),
-      "export const pendingAlterations = { tables: { item: { delete: true } } };\n",
-    );
-    expect(await loadIntendedState(generatedDir)).toEqual({
-      alterations: { tables: { item: { delete: true } } },
-    });
-  });
-});
-
-describe("loadPreviousIdNameMap", () => {
-  it("reads a missing ID-name map as an empty map", () => {
-    expect(loadPreviousIdNameMap(missingFilesDir)).toEqual({
-      tables: {},
-      tabs: {},
-    });
-  });
-
-  it("reads the ID-name map back from its source", () => {
-    const { tables } = loadPreviousIdNameMap(devGeneratedDir);
-    for (const [tableKey, { tableId }] of Object.entries(
-      appConfigs.tableConfigs,
-    )) {
-      expect(tables[tableId]?.name).toBe(tableKey);
-    }
-  });
-});
-
-describe("alterationsText", () => {
-  it("is the empty alterations file source", () => {
-    expect(alterationsText()).toBe(alterationsFileSource({}));
-  });
-
-  it("matches the dev package's own alterations.ts", () => {
-    expect(readFileSync(devAlterationsPath, "utf8")).toBe(alterationsText());
   });
 });
