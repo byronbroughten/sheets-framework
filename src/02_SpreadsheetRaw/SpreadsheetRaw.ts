@@ -1,3 +1,4 @@
+import { Arr } from "@byronbroughten/utils/arr";
 import { Val } from "@byronbroughten/utils/val";
 
 import type { ModelableConditionalFormatRule } from "../00_Source/RawSource/ConditionalFormat";
@@ -168,11 +169,11 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
     return this;
   }
   addedTablesEndColIndex(sheetGid: number): number | undefined {
-    const ends = this._queuedAddTableRanges(sheetGid).map(
-      ({ endColumnIndex }) => endColumnIndex,
+    return Arr.max(
+      this._queuedAddTableRanges(sheetGid).map(
+        ({ endColumnIndex }) => endColumnIndex,
+      ),
     );
-    if (ends.length === 0) return undefined;
-    return Math.max(...ends);
   }
   // A created Table starts with a blank body row, the model growth copies from.
   gatherAddTableOperation({ tableId, ...props }: AddTableProps): this {

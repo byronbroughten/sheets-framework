@@ -1,3 +1,5 @@
+import { Arr } from "@byronbroughten/utils/arr";
+
 import type { CellValue } from "../../00_Source/CellValues/cellValues";
 import {
   SheetIndex,
@@ -131,9 +133,7 @@ export class SpreadsheetTableCreatorRaw extends SpreadsheetBaseRaw {
     const addedEnd = this.ss.addedTablesEndColIndex(sheetGid);
     if (this.ss.sheetIsAdded(sheetGid)) return addedEnd;
     const fetchedEnd = this._fetchedTablesEndBeside(name, sheetGid);
-    const ends = [fetchedEnd, addedEnd].filter((end) => end !== undefined);
-    if (ends.length === 0) return undefined;
-    return Math.max(...ends);
+    return Arr.max([fetchedEnd, addedEnd].filter((end) => end !== undefined));
   }
   // Only a full properties fetch lists every Table on the tab; a grid fetch lists only those its ranges overlap.
   private _fetchedTablesEndBeside(
