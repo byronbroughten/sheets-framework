@@ -60,7 +60,7 @@ const refusalWords: {
   noSuchTable({ entry, name }) {
     const noun = entryNouns[entry];
     return {
-      heading: `${entry} › ${name}`,
+      heading: `${noun} ${name}`,
       lines: [
         `no such ${noun}: adopt by removing the entry.`,
         `${noMapEntryText(noun, name)}, so it is gone from the sheet or went by another name at the last sync.`,

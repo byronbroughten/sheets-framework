@@ -625,13 +625,13 @@ describe("SyncRunReport's refusals before the read", () => {
     ],
   }).join("\n");
 
-  it("says a Table entry's Table is gone, under the entry", () => {
-    expect(text).toContain("REFUSED 1 · tables › vendor");
+  it("says a Table entry's Table is gone, naming it as notSendableYet does", () => {
+    expect(text).toContain("REFUSED 1 · Table vendor\n");
     expect(text).toContain("  no such Table: adopt by removing the entry.");
   });
 
   it("says a tab entry's tab is gone, in words for a tab", () => {
-    expect(text).toContain("REFUSED 2 · tabs › vendors");
+    expect(text).toContain("REFUSED 2 · tab vendors\n");
     expect(text).toContain("  no such tab: adopt by removing the entry.");
   });
 
