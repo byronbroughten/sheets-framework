@@ -44,6 +44,7 @@ import {
   type ColumnFill,
   type ColumnMoveSpan,
   type NewColumnHeadCells,
+  type RowStateRaw,
   type SortParameters,
   type TableCell,
   type TableColumnChange,
@@ -885,8 +886,10 @@ export class TableRaw extends TableCommonRaw {
       endRowIndex: SheetIndex.row(modelRow.endRowIndex + appendedRowCount),
     };
     // The appendDimension sent first already grows a Table ending on the grid's last row; an insert would push that row out of it.
+    // Less the rows the grid grew it by, which that appendDimension also sends.
     const endsOnGridEdge =
-      newRows.startRowIndex === this.sheet.rowCountBeforeFlush;
+      newRows.startRowIndex - this.writes.gridGrownRowCount ===
+      this.sheet.rowCountBeforeFlush;
     this.sheet.queueGridRowsThrough(newRows.endRowIndex);
     const insert: InsertRangeOperation[] = endsOnGridEdge
       ? []
@@ -966,6 +969,38 @@ export class TableRaw extends TableCommonRaw {
       columnTypes.set(colIndex, queuedColumnType.typeOf(columnType)),
     );
     return columnTypes;
+  }
+  // Matches Sheets, which grows a Table ending on the grid's last row with the grid; one with appends queued sets its own range as they gather.
+  growWithGridEdge(addedRowCount: number): void {
+    if (!this._endsOnWorkingGridEdge) return;
+    if (this._queuedRowAppendIndexes().length > 0) return;
+    const lastRowIndex = this.dataRowCount - 1;
+    const lastRowState =
+      lastRowIndex < 0 ? undefined : this.rowStates.get(lastRowIndex);
+    for (let offset = 1; offset <= addedRowCount; offset++) {
+      this.growDataRowCount();
+      if (lastRowState === undefined) continue;
+      this.rowStates.set(
+        lastRowIndex + offset,
+        this._carriedDownRowState(lastRowState),
+      );
+    }
+    this.writes.gridGrownRowCount += addedRowCount;
+  }
+  // A Table whose rows have moved can't say where it ends, and every row read on it throws anyway.
+  private get _endsOnWorkingGridEdge(): boolean {
+    const properties = this.tableProperties;
+    if (properties === undefined || properties.rowIndexesAreStale) return false;
+    return properties.endRowIndex === this.sheet.rowCount;
+  }
+  // As Sheets fills a grown row: each formula column's formula carried down, every other cell blank.
+  private _carriedDownRowState(lastRowState: RowStateRaw): RowStateRaw {
+    return new Map(
+      Array.from(lastRowState, ([colIndex, { value }]) => {
+        const { isSampledFormula } = this.column(colIndex).profile;
+        return [colIndex, { value: isSampledFormula ? value : "" }];
+      }),
+    );
   }
   // Google resets every dropdown's style and colours on a columnProperties send; observed: docs/sheets-behaviour.md#creating-and-updating-tables.
   // Counted as sent, so a dropdown the send removes, which has no style to keep, isn't.

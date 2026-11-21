@@ -487,6 +487,165 @@ describe("SpreadsheetRaw.batchUpdateGSheets", () => {
       ]);
     });
 
+    describe("a second append to a neighbour the grid grew", () => {
+      const neighbourEnd = rightStart + 2;
+      function appendToRight(raw: SpreadsheetRaw): void {
+        raw.table("right").appendDataRow().updateValue(0, "c3");
+        raw.batchUpdateGSheets();
+      }
+
+      it("lands below the blank row an append to the other Table grew it by", () => {
+        const { grid } = stubSideBySideTables();
+
+        const raw = SpreadsheetRaw.init();
+        raw.fetchAllSheetProperties();
+        raw.table("left").appendDataRow().updateValue(0, "r3");
+        raw.batchUpdateGSheets();
+        appendToRight(raw);
+
+        expect(
+          grid.sheet(111).values({ startRowIndex: topDataRowIndex }),
+        ).toEqual([
+          ["r1", "a", "loose", "c1", 5],
+          ["r2", "b", "", "c2", 6],
+          ["r3", null, null, null, null],
+          [null, null, null, "c3", null],
+        ]);
+        // The second append ends on the grid's edge too, so it grows "left" by a blank row in turn.
+        expect(tableEndRowIndexes(grid)).toEqual([
+          topDataRowIndex + 4,
+          topDataRowIndex + 4,
+        ]);
+      });
+
+      it("lands below the blank row a new Table placed past the grid's edge grew it by", () => {
+        const { grid } = stubSideBySideTables();
+
+        const raw = SpreadsheetRaw.init();
+        raw.fetchAllSheetProperties();
+        raw.createTable({
+          name: "Payment Log",
+          placement: { kind: "besideTables", sheetGid: 111 },
+          idPrefix: "pay",
+          columns: [{ header: "Payee" }],
+          seedRows: [["Ann"], ["Bo"], ["Cy"]],
+        });
+        raw.batchUpdateGSheets();
+        appendToRight(raw);
+
+        expect(
+          grid.sheet(111).values({
+            startRowIndex: topDataRowIndex,
+            endColumnIndex: neighbourEnd,
+          }),
+        ).toEqual([
+          ["r1", "a", "loose", "c1", 5],
+          ["r2", "b", "", "c2", 6],
+          [null, null, null, null, null],
+          [null, null, null, "c3", null],
+        ]);
+        expect(tableEndRowIndexes(grid).slice(0, 2)).toEqual([
+          topDataRowIndex + 4,
+          topDataRowIndex + 4,
+        ]);
+      });
+
+      it("lands below the blank row a new Table queued in the same flush grew it by", () => {
+        const { grid } = stubSideBySideTables();
+
+        const raw = SpreadsheetRaw.init();
+        raw.fetchAllSheetProperties();
+        raw.createTable({
+          name: "Payment Log",
+          placement: { kind: "besideTables", sheetGid: 111 },
+          idPrefix: "pay",
+          columns: [{ header: "Payee" }],
+          seedRows: [["Ann"], ["Bo"], ["Cy"]],
+        });
+        appendToRight(raw);
+
+        expect(
+          grid.sheet(111).values({
+            startRowIndex: topDataRowIndex,
+            endColumnIndex: neighbourEnd,
+          }),
+        ).toEqual([
+          ["r1", "a", "loose", "c1", 5],
+          ["r2", "b", "", "c2", 6],
+          [null, null, null, null, null],
+          [null, null, null, "c3", null],
+        ]);
+        expect(tableEndRowIndexes(grid).slice(0, 2)).toEqual([
+          topDataRowIndex + 4,
+          topDataRowIndex + 4,
+        ]);
+        expect(grid.sheet(111).rowCount).toBe(topDataRowIndex + 4);
+      });
+
+      it("leaves a Table not on the grid's last row its range", () => {
+        stubSideBySideTables({ hasRowBelow: true });
+
+        const raw = SpreadsheetRaw.init();
+        raw.fetchAllSheetProperties();
+        raw.table("left").appendDataRow().updateValue(0, "r3");
+        raw.batchUpdateGSheets();
+
+        expect(raw.table("right").dataRowCount).toBe(2);
+      });
+
+      it("holds the grown row as the grid does: the last row's formula carried down, every other cell blank", () => {
+        const formula = { value: "=1+1", isFormula: true } as const;
+        const { grid } = stubSheetsService({
+          sheets: [
+            {
+              sheetId: 111,
+              title: "Records",
+              rows: buildGridRows({
+                [tableHeaderRowIndex]: ["ID", "Name", "", "Code", "Sum"],
+                [topDataRowIndex]: ["r1", "a", "", "c1", formula],
+                [topDataRowIndex + 1]: ["r2", "b", "", "c2", formula],
+              }),
+              tables: [
+                {
+                  tableId: "left",
+                  startColumnIndex: leftStart,
+                  endColumnIndex: leftStart + 2,
+                  endRowIndex: topDataRowIndex + 2,
+                },
+                {
+                  tableId: "right",
+                  startColumnIndex: rightStart,
+                  endColumnIndex: rightStart + 2,
+                  endRowIndex: topDataRowIndex + 2,
+                },
+              ],
+            },
+          ],
+        });
+
+        const raw = SpreadsheetRaw.init();
+        raw.fetchAllSheetProperties();
+        raw.table("right").row(0).gatherFetchFull();
+        raw.table("right").row(1).gatherFetchFull();
+        raw.fetchAllGathered();
+        raw.table("left").appendDataRow().updateValue(0, "r3");
+        raw.batchUpdateGSheets();
+
+        expect(
+          grid.sheet(111).values({
+            startRowIndex: topDataRowIndex + 2,
+            startColumnIndex: rightStart,
+            endColumnIndex: rightStart + 2,
+          }),
+        ).toEqual([[null, "=1+1"]]);
+        const grown = raw.table("right").row(2);
+        expect([grown.valueOrEmpty(0), grown.valueOrEmpty(1)]).toEqual([
+          "",
+          "=1+1",
+        ]);
+      });
+    });
+
     it("grows two Tables on one sheet each by its own rows, not as one merged append", () => {
       const { grid } = stubSideBySideTables();
 
