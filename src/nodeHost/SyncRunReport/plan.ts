@@ -2,11 +2,11 @@ import type {
   SyncPlanEffect,
   SyncPlanItem,
 } from "../../01_SpreadsheetSchema/configReaders/syncRunResult";
-import { reportText } from "../reportText";
+import { ReportText } from "../ReportText";
 import { checkLines } from "./checks";
 import { sendLines } from "./sends";
 
-const { indent, formatCount, counted } = reportText;
+const { indent, formatCount, counted } = ReportText;
 
 export const planLines = {
   of(plan: SyncPlanItem[]): string[] {

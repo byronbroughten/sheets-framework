@@ -1,7 +1,7 @@
 import type { SyncSubject } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
 
 // The plain-text pieces every section of sync's and a chore's report is built from.
-export const reportText = {
+export const ReportText = {
   section(title: string, lines: string[]): string[] {
     if (lines.length === 0) return [];
     return ["", `== ${title} ==`, ...lines];
@@ -13,7 +13,7 @@ export const reportText = {
     return count.toLocaleString("en-US");
   },
   counted(count: number, one: string, many: string): string {
-    return `${reportText.formatCount(count)} ${count === 1 ? one : many}`;
+    return `${ReportText.formatCount(count)} ${count === 1 ? one : many}`;
   },
   subjectLabel(subject: SyncSubject): string {
     if ("tab" in subject) {

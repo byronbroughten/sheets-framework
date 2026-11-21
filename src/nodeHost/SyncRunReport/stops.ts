@@ -13,9 +13,9 @@ import {
 } from "../../01_SpreadsheetSchema/configReaders/syncRunResult";
 import { headerZone } from "../../01_SpreadsheetSchema/headerZone";
 import { headRows } from "../../01_SpreadsheetSchema/headRows";
-import { reportText } from "../reportText";
+import { ReportText } from "../ReportText";
 
-const { indent, counted, subjectLabel } = reportText;
+const { indent, counted, subjectLabel } = ReportText;
 
 const layout = {
   rowLabelWidth: 30,
@@ -138,8 +138,14 @@ const stopWords: { [SK in StopKind]: StopWords<SK> } = {
 // The one phrase for a stop's entry left pending.
 const entryStaysText = "The entry stays in alterations.ts.";
 
-// A stop on a Table's entry is headed by the entry's path; a new Table's or tab's, which has none, by its name.
-function stopHeading(number: number, table: string, path: string): string {
+interface StopHeadingProps {
+  number: number;
+  table: string;
+  path: string;
+}
+
+// A stop on a Table's entry is headed by the entry's path; the new-Table and new-tab stops, which have none, word their own.
+function stopHeading({ number, table, path }: StopHeadingProps): string {
   return `STOP ${number} · ${table} › ${path}`;
 }
 
@@ -163,7 +169,7 @@ function stopBlock<SK extends StopKind>(
 
 function headRowsBlock(stop: SyncHeadRowsStop, number: number): string[] {
   return [
-    stopHeading(number, stop.table, "letApiAccess"),
+    stopHeading({ number, table: stop.table, path: "letApiAccess" }),
     ...indent(2, headRowsReason(stop)),
   ];
 }
@@ -191,7 +197,7 @@ function headerTakenBlock(
   number: number,
 ): string[] {
   return [
-    stopHeading(number, table, "newColumns"),
+    stopHeading({ number, table, path: "newColumns" }),
     ...indent(2, [
       `${table} already has a column headed "${header}": ${column}, ${columnId}.`,
       entryStaysText,
@@ -204,7 +210,7 @@ function beforeFirstColumnBlock(
   number: number,
 ): string[] {
   return [
-    stopHeading(number, stop.table, stop.path),
+    stopHeading({ number, table: stop.table, path: stop.path }),
     ...indent(2, [
       beforeFirstColumnText(stop),
       "Name a later column in before, or leave before out to add it at the Table's end.",
@@ -257,7 +263,7 @@ function noSuchRuleBlock(
   number: number,
 ): string[] {
   return [
-    stopHeading(number, table, path),
+    stopHeading({ number, table, path }),
     ...indent(2, [
       "no such rule: adopt by removing the entry.",
       `No rule on ${table} has this handle now: a person changed the rule after the last sync`,
@@ -278,7 +284,7 @@ function unmodelableRuleBlock(
   number: number,
 ): string[] {
   return [
-    stopHeading(number, table, path),
+    stopHeading({ number, table, path }),
     ...indent(2, [
       `The rule ${handle} is unmodelable: sync can't write a rule like it, so it can only be removed.`,
       "Move the handle to conditionalFormats.remove and add the rule you want instead.",

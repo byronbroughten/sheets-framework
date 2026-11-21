@@ -4,9 +4,9 @@ import type {
   SyncEntry,
   SyncRefusal,
 } from "../../01_SpreadsheetSchema/configReaders/syncRunResult";
-import { reportText } from "../reportText";
+import { ReportText } from "../ReportText";
 
-const { indent, subjectLabel } = reportText;
+const { indent, subjectLabel } = ReportText;
 
 export const refusalLines = {
   blocks(refusals: SyncRefusal[]): string[] {
@@ -45,17 +45,19 @@ function tableRefusal(
 const refusalWords: {
   [RK in RefusalKind]: (refusal: RefusalOf<RK>) => RefusalWords;
 } = {
-  touchesDeletion: ({ deleted, deletedAt, touchedBy, takenTable }) => ({
-    heading: subjectLabel(deleted),
-    lines: [
-      `${deletedAt} deletes ${subjectLabel(deleted)}, and ${touchedBy} touches it in the same run.`,
-      ...(takenTable === undefined
-        ? []
-        : [`The tab's deletion already takes the Table ${takenTable}.`]),
-      "Take one of the two out, then rerun.",
-    ],
-  }),
-  noSuchTable: ({ entry, name }) => {
+  touchesDeletion({ deleted, deletedAt, touchedBy, takenTable }) {
+    return {
+      heading: subjectLabel(deleted),
+      lines: [
+        `${deletedAt} deletes ${subjectLabel(deleted)}, and ${touchedBy} touches it in the same run.`,
+        ...(takenTable === undefined
+          ? []
+          : [`The tab's deletion already takes the Table ${takenTable}.`]),
+        "Take one of the two out, then rerun.",
+      ],
+    };
+  },
+  noSuchTable({ entry, name }) {
     const noun = entryNouns[entry];
     return {
       heading: `${entry} › ${name}`,
@@ -65,19 +67,22 @@ const refusalWords: {
       ],
     };
   },
-  notSendableYet: ({ entry, name, path }) => ({
-    heading: `${entryNouns[entry]} ${name} › ${path}`,
-    lines: [
-      `sync can't send ${path} yet: for now it sends only a Table's ${[...sendableTraits.table].join(", ")}, a column's ${[...sendableTraits.column].join(", ")} and a tab's ${[...sendableTraits.tab].join(", ")}.`,
-      "Take this entry out, then rerun.",
-    ],
-  }),
-  noSuchBeforeTab: (refusal) =>
-    tableRefusal(refusal, [
+  notSendableYet({ entry, name, path }) {
+    return {
+      heading: `${entryNouns[entry]} ${name} › ${path}`,
+      lines: [
+        `sync can't send ${path} yet: for now it sends only a Table's ${[...sendableTraits.table].join(", ")}, a column's ${[...sendableTraits.column].join(", ")} and a tab's ${[...sendableTraits.tab].join(", ")}.`,
+        "Take this entry out, then rerun.",
+      ],
+    };
+  },
+  noSuchBeforeTab(refusal) {
+    return tableRefusal(refusal, [
       `${refusal.path} names ${refusal.before}, which is neither a tab at the last sync nor a newTabs title.`,
       "Name a tab the ID-name map holds or a newTabs title, then rerun.",
-    ]),
-  noApiAccess: (refusal) => {
+    ]);
+  },
+  noApiAccess(refusal) {
     const { table } = refusal;
     return tableRefusal(refusal, [
       `${table} has no API access, so sync has nothing to compare it against: grant \`letApiAccess\` first.`,
@@ -87,7 +92,7 @@ const refusalWords: {
       ),
     ]);
   },
-  besideGrant: (refusal) => {
+  besideGrant(refusal) {
     const { table } = refusal;
     return tableRefusal(refusal, [
       `${table} has no API access yet, so sync has nothing to compare its columns against.`,
@@ -97,42 +102,50 @@ const refusalWords: {
       ),
     ]);
   },
-  malformedBrace: (refusal) =>
-    tableRefusal(refusal, [
+  malformedBrace(refusal) {
+    return tableRefusal(refusal, [
       `${refusal.brace} isn't a brace: write \${@column} or \${table[@column]} for this row, \${column} or \${table[column]} for the whole column.`,
-    ]),
-  unknownColumn: (refusal) =>
-    tableRefusal(refusal, [
+    ]);
+  },
+  unknownColumn(refusal) {
+    return tableRefusal(refusal, [
       `${refusal.column} names no column of ${refusal.table}, nor one its newColumns create. Its columns: ${refusal.columns.join(", ")}.`,
-    ]),
-  repeatedNewColumn: (refusal) =>
-    tableRefusal(refusal, [
+    ]);
+  },
+  repeatedNewColumn(refusal) {
+    return tableRefusal(refusal, [
       `${refusal.path} gives the column name ${refusal.column}, as ${refusal.firstPath} does: the two columns can't both be named it.`,
       newColumnNameOwnText,
-    ]),
-  removedAndReplaced: (refusal) =>
-    tableRefusal(refusal, [
+    ]);
+  },
+  removedAndReplaced(refusal) {
+    return tableRefusal(refusal, [
       `${refusal.removedAt} removes the rule this handle names, and ${refusal.path} replaces it in the same run.`,
       keepOneText,
-    ]),
-  clashingPlacements: (refusal) =>
-    tableRefusal(refusal, [
+    ]);
+  },
+  clashingPlacements(refusal) {
+    return tableRefusal(refusal, [
       clashingPlacementsText[refusal.clash](refusal),
       keepOneText,
-    ]),
-  renamedColumn: (refusal) =>
-    tableRefusal(refusal, [
+    ]);
+  },
+  renamedColumn(refusal) {
+    return tableRefusal(refusal, [
       `${refusal.column} is the name this run's rename gives ${refusal.oldName}, and alterations.ts names a column by its old name until the run lands.`,
       `Use the column's old name, ${refusal.oldName}, this run, then rerun.`,
-    ]),
-  unknownBraceTable: (refusal) =>
-    tableRefusal(refusal, [
+    ]);
+  },
+  unknownBraceTable(refusal) {
+    return tableRefusal(refusal, [
       `${refusal.brace} names no Table: ${noMapEntryText("Table", refusal.braceTable)}.`,
-    ]),
-  unknownBrace: (refusal) =>
-    tableRefusal(refusal, [
+    ]);
+  },
+  unknownBrace(refusal) {
+    return tableRefusal(refusal, [
       `${refusal.brace} names no column of ${refusal.braceTable}. Its columns: ${refusal.columns.join(", ")}.`,
-    ]),
+    ]);
+  },
 };
 
 const entryNouns: Record<SyncEntry, string> = {

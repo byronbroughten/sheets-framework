@@ -2,9 +2,9 @@ import type {
   SyncCheck,
   SyncOutsideReferenceEffect,
 } from "../../01_SpreadsheetSchema/configReaders/syncRunResult";
-import { reportText } from "../reportText";
+import { ReportText } from "../ReportText";
 
-const { indent, counted, subjectLabel } = reportText;
+const { indent, counted, subjectLabel } = ReportText;
 
 export const checkSectionName = "Check before sending";
 

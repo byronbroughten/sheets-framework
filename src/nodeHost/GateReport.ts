@@ -1,26 +1,26 @@
-import type {
-  FillFailedCause,
-  FlushRefusedCause,
-  FlushStoppedOutcome,
-  HeldBy,
-  LandedFlushes,
+import {
+  type FillFailedCause,
+  type FlushRefusedCause,
+  type FlushStoppedOutcome,
+  type HeldBy,
+  isFillFailed,
+  type LandedFlushes,
 } from "../01_SpreadsheetSchema/configReaders/flushStoppedOutcome";
 import {
   type DryRunHeld,
   fillRowIdsName,
   type HeldGroup,
-  type SyncSendOutcome,
 } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
-import { reportText } from "./reportText";
+import { ReportText } from "./ReportText";
 
-const { section, indent, formatCount, counted, subjectLabel } = reportText;
+const { section, indent, formatCount, counted, subjectLabel } = ReportText;
 
 export const heldSectionName = "Held";
 
-export type FillFailedOutcome = FlushStoppedOutcome & FillFailedCause;
+type FillFailedOutcome = FlushStoppedOutcome & FillFailedCause;
 
 // The entered-data gate's report pieces, which sync's report and a chore's output both print.
-export const gateReport = {
+export const GateReport = {
   // A dry run's held items, their full list's path and the token covering them; a chore's dry run prints it too.
   heldSection(held: DryRunHeld): string[] {
     return section(heldTitle(held), [
@@ -35,7 +35,7 @@ export const gateReport = {
   },
   // The result line of a send the gate or Google refused, sync's or a chore's, or whose fill failed.
   flushStoppedLine(outcome: FlushStoppedOutcome): string {
-    if (gateReport.isFillFailed(outcome)) return fillFailedLine(outcome);
+    if (isFillFailed(outcome)) return fillFailedLine(outcome);
     const refused = refusedWords(outcome);
     if (outcome.kind === "stoppedBeforeSending") {
       return `STOPPED: the send was refused before any flush landed${refused} Nothing was sent.`;
@@ -44,9 +44,6 @@ export const gateReport = {
       outcome,
       ` was refused${refused} Nothing after it was sent.`,
     );
-  },
-  isFillFailed(outcome: SyncSendOutcome): outcome is FillFailedOutcome {
-    return "fillFailure" in outcome;
   },
   rerunDryRunLine(command: string): string {
     return `Rerun the dry run: ${command}`;
@@ -58,7 +55,7 @@ function heldTitle(held: DryRunHeld): string {
   const cellCounts = held.groups.flatMap(({ cells }) =>
     cells === undefined ? [] : [cells],
   );
-  const count = gateReport.heldCount(held);
+  const count = GateReport.heldCount(held);
   if (cellCounts.length < held.groups.length) {
     return `${heldSectionName}: ${counted(count, "item", "items")}, ${confirm}`;
   }

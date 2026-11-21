@@ -182,18 +182,18 @@ export class ChoreRunner {
   async _reportRefusal(refusal: HeldFlushRefusal): Promise<void> {
     const { heldStoppedOutcome } =
       await import("../src/01_SpreadsheetSchema/configReaders/flushStoppedOutcome.ts");
-    const { gateReport } = await import("../src/nodeHost/gateReport.ts");
+    const { GateReport } = await import("../src/nodeHost/GateReport.ts");
     console.log(
-      `\n${gateReport.flushStoppedLine(heldStoppedOutcome(refusal))}`,
+      `\n${GateReport.flushStoppedLine(heldStoppedOutcome(refusal))}`,
     );
-    console.log(gateReport.rerunDryRunLine(`npm run chore ${this.choreName}`));
+    console.log(GateReport.rerunDryRunLine(`npm run chore ${this.choreName}`));
     process.exitCode = 1;
   }
 }
 
 async function reportHeld(held: DryRunHeld): Promise<void> {
-  const { gateReport } = await import("../src/nodeHost/gateReport.ts");
-  console.log(gateReport.heldSection(held).join("\n"));
+  const { GateReport } = await import("../src/nodeHost/GateReport.ts");
+  console.log(GateReport.heldSection(held).join("\n"));
 }
 
 export async function runChore(

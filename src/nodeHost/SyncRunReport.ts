@@ -1,4 +1,7 @@
-import type { FlushStoppedOutcome } from "../01_SpreadsheetSchema/configReaders/flushStoppedOutcome";
+import {
+  type FlushStoppedOutcome,
+  isFillFailed,
+} from "../01_SpreadsheetSchema/configReaders/flushStoppedOutcome";
 import type {
   DryRunHeld,
   SyncDryRunOutcome,
@@ -6,8 +9,8 @@ import type {
   SyncSendOutcome,
   SyncSentOutcome,
 } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
-import { gateReport, heldSectionName } from "./gateReport";
-import { reportText } from "./reportText";
+import { GateReport, heldSectionName } from "./GateReport";
+import { ReportText } from "./ReportText";
 import { checkLines, checkSectionName } from "./SyncRunReport/checks";
 import { configsLines } from "./SyncRunReport/configs";
 import { noticeLines } from "./SyncRunReport/notices";
@@ -16,7 +19,7 @@ import { refusalLines } from "./SyncRunReport/refusals";
 import { sendLines } from "./SyncRunReport/sends";
 import { stopLines } from "./SyncRunReport/stops";
 
-const { section, formatCount, counted } = reportText;
+const { section, formatCount, counted } = ReportText;
 
 const planTitles = {
   stopped: "Plan: what --send would send once nothing stops it",
@@ -115,7 +118,7 @@ export class SyncRunReport {
     const dryRun = "This was a dry run: nothing was sent.";
     const planTitle = planTitles.dryRun;
     if (held !== undefined) {
-      const count = gateReport.heldCount(held);
+      const count = GateReport.heldCount(held);
       const items = count === 1 ? "item" : "items";
       return {
         resultLine: `READY, ${formatCount(count)} HELD: --send sends only with --confirm (see ${heldSectionName})${this._checkClause}. ${dryRun}`,
@@ -143,12 +146,12 @@ export class SyncRunReport {
   }
   private _flushStoppedText(outcome: FlushStoppedOutcome): OutcomeText {
     const { command } = this.result;
-    let next = gateReport.rerunDryRunLine(command);
-    if (gateReport.isFillFailed(outcome)) {
+    let next = GateReport.rerunDryRunLine(command);
+    if (isFillFailed(outcome)) {
       next = `${this._wroteLine} Then rerun the dry run to fill the blank IDs: ${command}`;
     }
     return {
-      resultLine: gateReport.flushStoppedLine(outcome),
+      resultLine: GateReport.flushStoppedLine(outcome),
       planTitle: planTitles.send,
       next,
     };
@@ -179,8 +182,7 @@ export class SyncRunReport {
       lastSectionLines.push("alterations.ts is now empty.");
     }
     // A stopped send, even one stopped partway, leaves its met alterations pending, unless only its fill failed, after the files were built.
-    const isMetRemoved =
-      outcome.kind === "sent" || gateReport.isFillFailed(outcome);
+    const isMetRemoved = outcome.kind === "sent" || isFillFailed(outcome);
     const metTitle = isMetRemoved ? "removed from" : "still in";
     return [
       ...section("Landed: removed from alterations.ts", landedLines),
@@ -198,7 +200,7 @@ export class SyncRunReport {
   private get _heldSection(): string[] {
     const { result } = this;
     if (result.mode === "send" || result.held === undefined) return [];
-    return gateReport.heldSection(result.held);
+    return GateReport.heldSection(result.held);
   }
   // A refusal reads nothing, so there is nothing to refresh the configs from.
   private get _configsLines(): string[] {

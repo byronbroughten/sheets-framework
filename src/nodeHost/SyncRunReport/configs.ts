@@ -2,9 +2,9 @@ import type {
   SyncConfigs,
   SyncMovedName,
 } from "../../01_SpreadsheetSchema/configReaders/syncRunResult";
-import { reportText } from "../reportText";
+import { ReportText } from "../ReportText";
 
-const { indent, subjectLabel } = reportText;
+const { indent, subjectLabel } = ReportText;
 
 export const configsLines = {
   // What the refresh changed, in the Configs section's order.

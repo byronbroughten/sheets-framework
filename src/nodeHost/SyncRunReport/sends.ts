@@ -4,11 +4,11 @@ import type {
   SyncLandedItem,
   SyncSendLine,
 } from "../../01_SpreadsheetSchema/configReaders/syncRunResult";
-import { reportText } from "../reportText";
+import { ReportText } from "../ReportText";
 
 export const sendLines = {
   of({ subject, what }: SyncSendLine): string {
-    return `${reportText.subjectLabel(subject)}: ${what}`;
+    return `${ReportText.subjectLabel(subject)}: ${what}`;
   },
   landed(item: SyncLandedItem): string {
     if (item.kind === "send") return sendLines.of(item);

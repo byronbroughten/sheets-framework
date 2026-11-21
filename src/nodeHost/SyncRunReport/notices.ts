@@ -3,7 +3,7 @@ import {
   heldBackChangeWhat,
   type SyncNotice,
 } from "../../01_SpreadsheetSchema/configReaders/syncRunResult";
-import { reportText } from "../reportText";
+import { ReportText } from "../ReportText";
 
 export const noticeLines = {
   of(notice: SyncNotice): string {
@@ -12,7 +12,7 @@ export const noticeLines = {
       return `${notice.tab}: a person deleted this tab from the sheet, so sync dropped it from the configs.`;
     }
     if (notice.kind === "ruleHeldBack") {
-      return `${reportText.subjectLabel(notice.subject)}: ${heldBackChangeWhat(notice)}.`;
+      return `${ReportText.subjectLabel(notice.subject)}: ${heldBackChangeWhat(notice)}.`;
     }
     const { table } = notice;
     if (notice.kind === "tableGone") {

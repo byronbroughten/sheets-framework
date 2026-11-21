@@ -30,6 +30,12 @@ export interface FillFailedCause {
   fillFailure: string;
 }
 
+export function isFillFailed<OC extends { kind: string }>(
+  outcome: OC,
+): outcome is OC & FillFailedCause {
+  return "fillFailure" in outcome;
+}
+
 // "uncovered": the send had no --confirm; "mismatched": the sheet or plan changed since the dry run.
 export type HeldBy = "uncovered" | "mismatched";
 
