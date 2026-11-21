@@ -12,7 +12,7 @@
     "./eslint": "./scripts/eslintPreset.js"
   },
   "bin": {
-    "sheets-framework": "scripts/sheets-framework.js"
+    "sheets-framework": "scripts/sheets-framework.ts"
   },
   "files": [
     "src",
@@ -30,10 +30,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "chore": "node scripts/sheets-framework.js chore",
-    "sync": "node scripts/sheets-framework.js sync",
-    "configs:diff": "node scripts/sheets-framework.js configs-diff",
-    "probe": "node scripts/sheets-framework.js probe",
+    "chore": "node scripts/sheets-framework.ts chore",
+    "sync": "node scripts/sheets-framework.ts sync",
+    "configs:diff": "node scripts/sheets-framework.ts configs-diff",
+    "probe": "node scripts/sheets-framework.ts probe",
     "build": "rollup --config && clasp push",
     "push": "clasp push",
     "deploy": "clasp deploy"
@@ -42,8 +42,7 @@
     "node": ">=22.21"
   },
   "dependencies": {
-    "tslib": "^2.8.1",
-    "tsx": "^4.23.13"
+    "tslib": "^2.8.1"
   },
   "peerDependencies": {
     "@byronbroughten/config": "^0.1.0",

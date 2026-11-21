@@ -1,5 +1,5 @@
 {
-  // The Node program: scripts/ run under tsx, plus the four JS files that run outside it. Self-contained, since scripts/ ships in the package.
+  // The Node program: scripts/ run under Node's type stripping, plus the two JS presets. Self-contained, since scripts/ ships in the package.
   "compilerOptions": {
     "target": "ES2023",
     "module": "nodenext",
@@ -13,6 +13,7 @@
     "maxNodeModuleJsDepth": 1, // @byronbroughten/config ships JS without .d.ts, so an npm install needs this to type it.
     "checkJs": true,
     "verbatimModuleSyntax": true,
+    "erasableSyntaxOnly": true,
     "isolatedModules": true,
     "moduleDetection": "force",
     "skipLibCheck": true,
