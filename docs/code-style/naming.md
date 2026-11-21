@@ -37,7 +37,7 @@ One heading per naming rule, in docs/code-style.md's order: grep `^## ` for the 
 This is the list's one home. **It reserves each listed verb for its meaning, and each listed meaning for its verb**: a framework method never uses a listed verb for anything else, nor a new verb for a meaning already on it. A verb the list doesn't name is free in its everyday sense, as `build` in `IdNameMapBuilderOperator` and `rewrite` in `SpreadsheetRefusalRewriterRaw` are, so the list grows only when a meaning needs reserving, not with each new job (sheets-framework#347's review list). A closed list made every new job claim another bare English word:
 - `fetch` — actually hits the live Sheets API
 - `integrate` — merges a fetched snapshot into local state; no API call, so it is never `fetch`
-- `prep`/`gather` — queue state locally before a fetch (`prepFetchX` queues only; `gatherFetchX` queues *and* fetches)
+- `prep`/`gather` — queue state locally before a fetch (`prepFetchX` queues only; `gatherFetchX` queues *and* fetches); `gather*Operation` also builds a queued write into its operation at flush, as `TableColumnTypeGathererRaw` does
 - `update` — writes a local/queued change, not yet flushed
 - `queue` — stages a write on a sheet's or row's write queue; the flusher gathers it into an operation. Internal to the queue layer, which never says `update`
 - `append` — adds a new row
