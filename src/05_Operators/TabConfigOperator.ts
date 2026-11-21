@@ -79,7 +79,7 @@ export class TabConfigOperator extends SpreadsheetBaseOperator {
   updateTabTraits(sent: IntendedTrait[]): this {
     const sheets = this._sheetsByTabName();
     return this._updateTabTraits(sent, (tabName) =>
-      Val.assert(sheets.get(tabName), `live tab ${tabName}`),
+      liveSheetOf(sheets, tabName),
     );
   }
   // After the refetch a retitled tab has its new title, so a tab the previous map holds resolves by its GID and a new tab by its title.
@@ -88,7 +88,7 @@ export class TabConfigOperator extends SpreadsheetBaseOperator {
     { tabs }: IdNameMapGeneric,
   ): this {
     const sheets = this._sheetsByTabName();
-    const mappedGids = new Map(
+    const gidsByTabName = new Map(
       Object.entries(tabs).map(([sheetGid, { name }]) => [
         name,
         Number(sheetGid),
@@ -96,9 +96,12 @@ export class TabConfigOperator extends SpreadsheetBaseOperator {
     );
     const { raw } = this.ss;
     return this._updateTabTraits(newTabTraits, (tabName) => {
-      const sheetGid = mappedGids.get(tabName);
-      if (sheetGid !== undefined) return raw.sheet(sheetGid);
-      return Val.assert(sheets.get(tabName), `live tab ${tabName}`);
+      const sheetGid = gidsByTabName.get(tabName);
+      // A tab a person deleted keeps its map entry, and raw.sheet would build it anyway.
+      if (sheetGid !== undefined && raw.gidIsActive(sheetGid)) {
+        return raw.sheet(sheetGid);
+      }
+      return liveSheetOf(sheets, tabName);
     });
   }
   private _updateTabTraits(
@@ -128,7 +131,7 @@ export class TabConfigOperator extends SpreadsheetBaseOperator {
   deleteTabs(sent: IntendedTrait[]): this {
     const sheets = this._sheetsByTabName();
     for (const tab of deletedTabsOf(sent)) {
-      Val.assert(sheets.get(tab), `live tab ${tab}`).queueDelete();
+      liveSheetOf(sheets, tab).queueDelete();
     }
     return this;
   }
@@ -159,6 +162,10 @@ export class TabConfigOperator extends SpreadsheetBaseOperator {
       ``,
     ].join("\n");
   }
+}
+
+function liveSheetOf(sheets: Map<string, SheetRaw>, tab: string): SheetRaw {
+  return Val.assert(sheets.get(tab), `live tab ${tab}`);
 }
 
 function deletedTabsOf(sent: IntendedTrait[]): Set<string> {
