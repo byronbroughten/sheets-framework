@@ -5,13 +5,9 @@ import type {
   CellValue,
   CellValueName,
 } from "../00_Source/CellValues/cellValues";
-import type {
-  ConditionalFormatDeclaration,
-  ModelableConditionalFormatRule,
-} from "../00_Source/RawSource/ConditionalFormat";
+import type { ConditionalFormatDeclaration } from "../00_Source/RawSource/ConditionalFormat";
 import type {
   EditLockDeclaration,
-  EditProtectionContent,
   EditWarningDeclaration,
 } from "../00_Source/RawSource/EditProtection";
 import type {
@@ -21,11 +17,7 @@ import type {
   FindReplaceTerms,
   GridBlockSnapshot,
   GridCellSnapshot,
-  GridRangeProps,
   InsertRangeOperation,
-  TableColumnPropertiesUpdate,
-  TableColumnSnapshot,
-  TableColumnValidationRule,
 } from "../00_Source/RawSource/RawSource";
 import {
   type SheetColIndex,
@@ -33,27 +25,20 @@ import {
   type SheetRowIndex,
 } from "../00_Source/RawSource/SheetIndex";
 import { type HeadRole, headRows } from "../01_SpreadsheetSchema/headRows";
-import type { TableOrigin } from "../01_SpreadsheetSchema/TableOrigin";
 import { assertValueAndFormulaExclusive } from "./CellRaw";
 import type { RowCommonRaw } from "./ClassBases/RowCommonRaw";
-import { hasQueuedWrites, originOf } from "./ClassBases/TableBaseRaw";
-import { columnCountChange, TableCommonRaw } from "./ClassBases/TableCommonRaw";
-import { queuedColumnType } from "./ClassTypes/queuedColumnType";
-import {
-  type ChangeTableColumns,
-  type ColumnFill,
-  type ColumnMoveSpan,
-  type NewColumnHeadCells,
-  type RowStateRaw,
-  type SortParameters,
-  type TableCell,
-  type TableColumnChange,
-  type TableColumnChangeOperation,
-  type TableConditionalFormatRule,
-  type TableEditProtection,
-  type TableFindReplace,
-  type TableGridRange,
-  type TableWrites,
+import { originOf } from "./ClassBases/TableBaseRaw";
+import { TableCommonRaw } from "./ClassBases/TableCommonRaw";
+import type {
+  ChangeTableColumns,
+  ColumnFill,
+  ColumnMoveSpan,
+  NewColumnHeadCells,
+  RowStateRaw,
+  SortParameters,
+  TableCell,
+  TableFindReplace,
+  TableGridRange,
 } from "./ClassTypes/StateRaw";
 import { ColumnRaw } from "./ColumnRaw";
 import { HeadRowRaw } from "./HeadRowRaw";
@@ -61,26 +46,18 @@ import { RowRaw } from "./RowRaw";
 import { SheetRaw } from "./SheetRaw";
 import { SpreadsheetRaw } from "./SpreadsheetRaw";
 import { TableProfileRaw } from "./TableProfileRaw";
+import { TableColumnQueuerRaw } from "./TableRaw/TableColumnQueuerRaw";
 import { TableColumnResolverRaw } from "./TableRaw/TableColumnResolverRaw";
-
-const columnChangeRequests = {
-  insertColumn: { kind: "insertRange", action: "Inserting a column inside" },
-  deleteColumn: { kind: "deleteRange", action: "Deleting a column of" },
-  moveColumns: { kind: "cutPaste", action: "Moving a column of" },
-} as const satisfies Record<
-  TableColumnChange["kind"],
-  { kind: TableColumnChangeOperation["kind"]; action: string }
->;
-
-type ColumnCountChange = Exclude<TableColumnChange, { kind: "moveColumns" }>;
-type ColumnMove = Extract<TableColumnChange, { kind: "moveColumns" }>;
+import { TableColumnTypeGathererRaw } from "./TableRaw/TableColumnTypeGathererRaw";
+import { TableConditionalFormatAndProtectionQueuerRaw } from "./TableRaw/TableConditionalFormatAndProtectionQueuerRaw";
 
 /**
  * One Table's state by Table-relative index: rows, columns, pruning, queued
  * Table-level requests, and integrating fetched cells into its rows, cells and
  * sampled column facts. Its sheet's title, grid size, conditional format rules
  * and edit protections are SheetRaw, reached as `table.sheet`.
- * Descriptive facts are TableProfileRaw and ColumnProfileRaw; column ID lookups are TableRaw/;
+ * Descriptive facts are TableProfileRaw and ColumnProfileRaw; column ID lookups, column
+ * changes, column types, and conditional format rules and protections are TableRaw/;
  * spreadsheet-wide fetch and flush are SpreadsheetRaw. Config-aware lookups and names are Identified/Named.
  */
 export class TableRaw extends TableCommonRaw {
@@ -98,6 +75,15 @@ export class TableRaw extends TableCommonRaw {
   }
   get columnResolver(): TableColumnResolverRaw {
     return new TableColumnResolverRaw(this.tableRawProps);
+  }
+  private get columnQueuer(): TableColumnQueuerRaw {
+    return new TableColumnQueuerRaw(this.tableRawProps);
+  }
+  private get columnTypeGatherer(): TableColumnTypeGathererRaw {
+    return new TableColumnTypeGathererRaw(this.tableRawProps);
+  }
+  get conditionalFormatAndProtectionQueuer(): TableConditionalFormatAndProtectionQueuerRaw {
+    return new TableConditionalFormatAndProtectionQueuerRaw(this.tableRawProps);
   }
   get hasFetchedProperties(): boolean {
     return this.tableProperties !== undefined;
@@ -205,91 +191,20 @@ export class TableRaw extends TableCommonRaw {
       endColIndex: this.columnCount,
     });
   }
-  // Past the inserts already queued, since each lands at the Table end as it stands then.
   appendColumn(headCells: NewColumnHeadCells): number {
-    const colIndex = this.columnCount + this.writes.insertTableEndColumnCount;
-    this.queueTableWrite({ action: "insertTableEndColumn" });
-    this.column(colIndex)._initHeadCells(headCells);
-    return colIndex;
+    return this.columnQueuer.appendColumn(headCells);
   }
-  // Strictly inside, so the band grows the Table with no range update; appendColumn adds at the end.
   insertColumn(colIndex: number, headCells: NewColumnHeadCells): this {
-    this.assertRowIndexesNotStale();
-    this._assertStrictlyInside(
-      colIndex,
-      `a column inserted at ${tableColumnLabel(colIndex)}`,
-    );
-    return this.queueTableWrite({
-      action: "insertColumn",
-      colIndex,
-      headCells,
-    });
+    this.columnQueuer.insertColumn(colIndex, headCells);
+    return this;
   }
   deleteColumn(colIndex: number): this {
-    this.assertRowIndexesNotStale();
-    const columnCount = this._columnCountAfterChanges();
-    if (
-      !Number.isInteger(colIndex) ||
-      colIndex < 0 ||
-      colIndex >= columnCount
-    ) {
-      throw new Error(
-        `${this.tableLabel} has no ${tableColumnLabel(colIndex)} to delete: it has ${columnCount} columns.`,
-      );
-    }
-    if (columnCount === 1) {
-      throw new Error(
-        `Refusing to delete the last column of ${this.tableLabel}: a Table keeps at least one.`,
-      );
-    }
-    return this.queueTableWrite({ action: "deleteColumn", colIndex });
+    this.columnQueuer.deleteColumn(colIndex);
+    return this;
   }
-  // Lands strictly inside, like insertColumn: an insert at the Table's first column lands outside it (sheets-behaviour.md).
-  moveColumns({ colIndex, count, beforeColIndex }: ColumnMoveSpan): this {
-    this.assertRowIndexesNotStale();
-    const columnCount = this._columnCountAfterChanges();
-    const isBlockInside =
-      Number.isInteger(colIndex) &&
-      Number.isInteger(count) &&
-      count >= 1 &&
-      colIndex >= 0 &&
-      colIndex + count <= columnCount;
-    if (!isBlockInside) {
-      throw new Error(
-        `${this.tableLabel} has no ${count} column(s) from ${tableColumnLabel(colIndex)} to move: it has ${columnCount} columns.`,
-      );
-    }
-    this._assertStrictlyInside(
-      beforeColIndex,
-      `columns moved before ${tableColumnLabel(beforeColIndex)}`,
-    );
-    if (colIndex <= beforeColIndex && beforeColIndex <= colIndex + count) {
-      throw new Error(
-        `${this.tableLabel} already has its ${count} column(s) from ${tableColumnLabel(colIndex)} before ${tableColumnLabel(beforeColIndex)}.`,
-      );
-    }
-    return this.queueTableWrite({
-      action: "moveColumns",
-      colIndex,
-      count,
-      beforeColIndex,
-    });
-  }
-  private _assertStrictlyInside(colIndex: number, taken: string): void {
-    const columnCount = this._columnCountAfterChanges();
-    if (Number.isInteger(colIndex) && colIndex >= 1 && colIndex < columnCount) {
-      return;
-    }
-    throw new Error(
-      `${this.tableLabel} can't take ${taken}: it must sit strictly inside its ${columnCount} columns, so from 1 to ${columnCount - 1}.`,
-    );
-  }
-  private _columnCountAfterChanges(): number {
-    return this.writes.columnChanges.reduce(
-      (count, { kind }) =>
-        count + columnCountChange[columnChangeRequests[kind].kind],
-      this.columnCount,
-    );
+  moveColumns(span: ColumnMoveSpan): this {
+    this.columnQueuer.moveColumns(span);
+    return this;
   }
   row(rowIndex: number): RowRaw {
     return new RowRaw({
@@ -495,30 +410,19 @@ export class TableRaw extends TableCommonRaw {
   removeEditProtections(): this {
     return this.removeEditProtectionsAt(this.dataTableGridRange);
   }
-  // Checked against what the sheet holds now; converted again at gathering, after this batch's shifts.
   addConditionalFormatRuleAt(
     range: TableGridRange,
     declaration: ConditionalFormatDeclaration,
   ): this {
-    this.sheet.assertRowIndexesNotStale();
-    this.sheet.assertConditionalFormatIndexesNotStale();
-    const rule = this._sheetConditionalFormatRule(
-      { range, ...declaration },
-      this.tableOrigin(),
-    );
-    const queued = this.tablesOnSheet.flatMap((table) =>
-      table._queuedSheetConditionalFormatRules(),
-    );
-    if (this.sheet.hasPendingConditionalFormatRule(rule, queued)) return this;
-    return this.queueTableWrite({
-      action: "addConditionalFormatRule",
+    this.conditionalFormatAndProtectionQueuer.addConditionalFormatRuleAt(
       range,
-      ...declaration,
-    });
+      declaration,
+    );
+    return this;
   }
   removeConditionalFormatRulesAt(range: TableGridRange): this {
-    this.sheet.removeConditionalFormatRulesAt(
-      this._sheetGridRange(range, this.tableOrigin()),
+    this.conditionalFormatAndProtectionQueuer.removeConditionalFormatRulesAt(
+      range,
     );
     return this;
   }
@@ -526,32 +430,21 @@ export class TableRaw extends TableCommonRaw {
     range: TableGridRange,
     declaration: EditWarningDeclaration = {},
   ): this {
-    return this._queueEditProtection({
-      kind: "warning",
+    this.conditionalFormatAndProtectionQueuer.addEditWarningAt(
       range,
-      description: declaration.description ?? "",
-      users: [],
-      groups: [],
-      unprotectedRanges: [],
-    });
+      declaration,
+    );
+    return this;
   }
   addEditLockAt(
     range: TableGridRange,
     declaration: EditLockDeclaration = {},
   ): this {
-    return this._queueEditProtection({
-      kind: "lock",
-      range,
-      description: declaration.description ?? "",
-      users: declaration.users ?? [],
-      groups: declaration.groups ?? [],
-      unprotectedRanges: [],
-    });
+    this.conditionalFormatAndProtectionQueuer.addEditLockAt(range, declaration);
+    return this;
   }
   removeEditProtectionsAt(range: TableGridRange): this {
-    this.sheet.removeEditProtectionsAt(
-      this._sheetGridRange(range, this.tableOrigin()),
-    );
+    this.conditionalFormatAndProtectionQueuer.removeEditProtectionsAt(range);
     return this;
   }
   // The head rows survive, or every later column-index resolution breaks.
@@ -619,11 +512,16 @@ export class TableRaw extends TableCommonRaw {
     writes.checkboxCells.forEach((cell) => {
       this.gatherCheckboxValidationOperation(cell);
     });
+    const { conditionalFormatAndProtectionQueuer } = this;
     writes.conditionalFormatRules.forEach((rule) => {
-      this.gatherConditionalFormatRuleOperation(rule);
+      conditionalFormatAndProtectionQueuer.gatherConditionalFormatRuleOperation(
+        rule,
+      );
     });
     writes.editProtections.forEach((protection) => {
-      this.gatherEditProtectionOperation(protection);
+      conditionalFormatAndProtectionQueuer.gatherEditProtectionOperation(
+        protection,
+      );
     });
     if (writes.deletesTable) this._gatherDeleteTableOperation();
   }
@@ -658,21 +556,6 @@ export class TableRaw extends TableCommonRaw {
       range,
     });
   }
-  gatherConditionalFormatRuleOperation(rule: TableConditionalFormatRule): void {
-    this.writeOperations.addConditionalFormatRule.push({
-      kind: "addConditionalFormatRule",
-      index: 0,
-      rule: this._sheetConditionalFormatRule(rule, this.originAtGathering()),
-    });
-  }
-  gatherEditProtectionOperation(protection: TableEditProtection): void {
-    let origin = this.tableOrigin();
-    if (hasTableRows(protection.range)) origin = this.originAtGathering();
-    this.writeOperations.addProtectedRange.push({
-      kind: "addProtectedRange",
-      protection: this._sheetEditProtection(protection, origin),
-    });
-  }
   // Sent before the row deletes, so it spans the body as it stands before them.
   gatherFindReplaceOperation({
     terms,
@@ -687,21 +570,21 @@ export class TableRaw extends TableCommonRaw {
     });
   }
   columnInsertSplitting(neighbourName: string): string {
-    return splittingPhrase(this.columnInsertLabel, neighbourName);
+    return this.columnQueuer.columnInsertSplitting(neighbourName);
   }
-  // A move's gap is the insert its cutPaste follows, as _columnMoveOperations orders them.
   columnChangeSplitting(
-    { operations }: ChangeTableColumns,
+    change: ChangeTableColumns,
     insert: InsertRangeOperation,
     neighbourName: string,
   ): string {
-    const next = operations[operations.indexOf(insert) + 1];
-    const changeKind =
-      next?.kind === "cutPaste" ? "moveColumns" : "insertColumn";
-    return splittingPhrase(this._columnChangeLabel(changeKind), neighbourName);
+    return this.columnQueuer.columnChangeSplitting(
+      change,
+      insert,
+      neighbourName,
+    );
   }
   get columnInsertLabel(): string {
-    return `Inserting a column at the end of ${this._namedTableOnSheet}`;
+    return this.columnQueuer.columnInsertLabel;
   }
   get hasQueuedColumnInsert(): boolean {
     return this.writes.insertTableEndColumnCount > 0;
@@ -709,169 +592,11 @@ export class TableRaw extends TableCommonRaw {
   get hasQueuedColumnWrites(): boolean {
     return this.hasQueuedColumnInsert || this.writes.columnChanges.length > 0;
   }
-  // From the top head row down, so the head rows move with the Table; the widen is what grows it.
   gatherInsertTableEndColumnsOperation(): void {
-    const insertCount = this.writes.insertTableEndColumnCount;
-    if (insertCount === 0) return;
-    const { columnCount } = this;
-    const newColumns = this._headAndBodyBand(
-      columnCount,
-      columnCount + insertCount,
-    );
-    this._validateNoNeighbourSplitBy(newColumns, this.columnInsertLabel);
-    this.sheet.queueGridColumnsThrough(newColumns.endColumnIndex);
-    this.writeOperations.insertTableEndColumns.push({
-      tableId: this.tableId,
-      newColumns,
-      operations: [
-        { kind: "insertRange", range: newColumns, shiftDimension: "COLUMNS" },
-        {
-          kind: "updateTableRange",
-          tableId: this.tableId,
-          range: {
-            ...newColumns,
-            startRowIndex: this.startRowIndex,
-            startColumnIndex: this.startColumnIndex,
-          },
-        },
-      ],
-    });
-    this.growColumnCount(insertCount);
+    this.columnQueuer.gatherInsertTableEndColumnsOperation();
   }
-  private _validateNoNeighbourSplitBy(
-    band: BoundedGridRange,
-    actionLabel: string,
-  ): void {
-    const split = this.neighbourTables.find((neighbour) =>
-      neighbour.isSplitBy(band),
-    );
-    if (split === undefined) return;
-    throw new Error(
-      `${splittingPhrase(actionLabel, split.name)} with its head rows. Move "${split.name}" so that it and its head rows sit entirely within rows ${band.startRowIndex + 1}–${band.endRowIndex}, or entirely outside them.`,
-    );
-  }
-  // Sent in a flush of its own on this Table, since every other queued write is indexed by the columns before it.
   gatherColumnChangesOperation(): void {
-    const { columnChanges } = this.writes;
-    if (columnChanges.length === 0) return;
-    this._assertColumnChangesAlone();
-    const startColumnIndex = this.originAtGathering().sheetColIndex(0);
-    const operations = columnChanges.flatMap((change) => {
-      if (change.kind === "moveColumns") {
-        return this._columnMoveOperations(change);
-      }
-      return [this._columnChangeOperation(change)];
-    });
-    this.markColumnPropertiesStale();
-    this.writeOperations.changeTableColumns.push({
-      tableId: this.tableId,
-      sheetId: this.sheetGid,
-      startColumnIndex,
-      operations,
-    });
-  }
-  private _assertColumnChangesAlone(): void {
-    const otherWrites = {
-      ...this.tableState.writeQueue,
-      table: { ...this.writes, columnChanges: [] },
-    };
-    if (!hasQueuedWrites(otherWrites)) return;
-    throw new Error(
-      `Refusing to change the columns of ${this.tableLabel} alongside its other queued writes: they are indexed by the columns before the change. Flush the column change on its own.`,
-    );
-  }
-  // Each change is read in the layout the ones before it leave, so the working view moves with it.
-  private _columnChangeOperation(
-    change: ColumnCountChange,
-  ): TableColumnChangeOperation {
-    const { colIndex } = change;
-    const { kind } = columnChangeRequests[change.kind];
-    const band = this._headAndBodyBand(colIndex, colIndex + 1);
-    this._validateNoNeighbourSplitBy(
-      band,
-      this._columnChangeLabel(change.kind),
-    );
-    const shiftCount = columnCountChange[kind];
-    this._shiftWorkingColumns(colIndex, shiftCount);
-    this.growColumnCount(shiftCount);
-    if (change.kind === "insertColumn") {
-      this.column(colIndex)._initHeadCells(change.headCells);
-    }
-    return { kind, range: band, shiftDimension: "COLUMNS" };
-  }
-  // Not moveDimension, which reorders a Table stacked in the same sheet columns (sheets-behaviour.md).
-  private _columnMoveOperations(
-    move: ColumnMove,
-  ): TableColumnChangeOperation[] {
-    const { colIndex, count, beforeColIndex } = move;
-    const gap = this._headAndBodyBand(beforeColIndex, beforeColIndex + count);
-    this._validateNoNeighbourSplitBy(
-      gap,
-      this._columnChangeLabel("moveColumns"),
-    );
-    // An insert running past the grid's edge is clipped to it (sheets-behaviour.md), losing a cut column.
-    this.sheet.queueGridColumnsThrough(gap.endColumnIndex);
-    const colIndexAfterGap =
-      colIndex > beforeColIndex ? colIndex + count : colIndex;
-    const vacated = this._headAndBodyBand(
-      colIndexAfterGap,
-      colIndexAfterGap + count,
-    );
-    this._rekeyWorkingColumns((byColIndex) => movedColumns(byColIndex, move));
-    return [
-      { kind: "insertRange", range: gap, shiftDimension: "COLUMNS" },
-      {
-        kind: "cutPaste",
-        source: vacated,
-        destination: {
-          sheetId: gap.sheetId,
-          rowIndex: gap.startRowIndex,
-          columnIndex: gap.startColumnIndex,
-        },
-      },
-      { kind: "deleteRange", range: vacated, shiftDimension: "COLUMNS" },
-    ];
-  }
-  // From the top head row down, so the head rows move with the Table.
-  private _headAndBodyBand(
-    startColIndex: number,
-    endColIndex: number,
-  ): BoundedGridRange {
-    const origin = this.originAtGathering();
-    return {
-      sheetId: this.sheetGid,
-      startRowIndex: origin.topHeadSheetRowIndex,
-      endRowIndex: origin.sheetRowIndex(this.dataRowCount),
-      startColumnIndex: origin.sheetColIndex(startColIndex),
-      endColumnIndex: origin.sheetColIndex(endColIndex),
-    };
-  }
-  private _shiftWorkingColumns(colIndex: number, shiftCount: 1 | -1): void {
-    this._rekeyWorkingColumns((byColIndex) =>
-      shiftedColumns(byColIndex, colIndex, shiftCount),
-    );
-    if (shiftCount !== 1) return;
-    for (const rowState of this.rowStates.values()) {
-      rowState.set(colIndex, { value: "" });
-    }
-  }
-  private _rekeyWorkingColumns(
-    rekey: <VL>(byColIndex: Map<number, VL>) => Map<number, VL>,
-  ): void {
-    for (const [rowIndex, rowState] of this.rowStates) {
-      this.rowStates.set(rowIndex, rekey(rowState));
-    }
-    this.tableState.working.columnStates = rekey(this.columnStates);
-    // An earlier change's new head cells are queued by colIndex, so a later change in the same gather carries them.
-    for (const rowWrites of this.tableState.writeQueue.rows.values()) {
-      rowWrites.fillCells = rekey(rowWrites.fillCells);
-    }
-  }
-  private get _namedTableOnSheet(): string {
-    return `Table "${this.name}" on sheet "${this.sheetTitle}"`;
-  }
-  private _columnChangeLabel(changeKind: TableColumnChange["kind"]): string {
-    return `${columnChangeRequests[changeKind].action} ${this._namedTableOnSheet}`;
+    this.columnQueuer.gatherColumnChangesOperation();
   }
   // Before the Table-end column inserts are counted, since growth is sent ahead of them.
   gatherAppendTableRowsOperation(): void {
@@ -933,7 +658,7 @@ export class TableRaw extends TableCommonRaw {
   }
   // A typed column's validation is the Table's own, so only Automatic columns get theirs copied.
   private _untypedColumnRuns(): ColumnRun[] {
-    const columnTypes = this._columnTypesAfterFlush();
+    const columnTypes = this.columnTypeGatherer.columnTypesAfterFlush();
     return columnRuns(
       this.fullTableColIndexes.filter(
         (colIndex) => columnTypes.get(colIndex) === undefined,
@@ -948,27 +673,6 @@ export class TableRaw extends TableCommonRaw {
         appendedFormulaColIndexes.has(colIndex),
       ),
     );
-  }
-  // A column type queued this flush is sent before growth, so it is the one the new rows meet.
-  private _columnTypesAfterFlush(): Map<number, string | undefined> {
-    const columnTypes = new Map(
-      this.columnProperties.map(({ columnIndex, columnType }) => [
-        columnIndex,
-        columnType,
-      ]),
-    );
-    const unfetched = this.fullTableColIndexes.find(
-      (colIndex) => !columnTypes.has(colIndex),
-    );
-    if (unfetched !== undefined) {
-      throw new Error(
-        `${this.tableLabel} has no fetched type for ${tableColumnLabel(unfetched)}; refetch it before appending a row.`,
-      );
-    }
-    this.writes.columnTypes.forEach((columnType, colIndex) =>
-      columnTypes.set(colIndex, queuedColumnType.typeOf(columnType)),
-    );
-    return columnTypes;
   }
   // Matches Sheets, which grows a Table ending on the grid's last row with the grid; one with appends queued sets its own range as they gather.
   growWithGridEdge(addedRowCount: number): void {
@@ -1003,94 +707,11 @@ export class TableRaw extends TableCommonRaw {
       }),
     );
   }
-  // Google resets every dropdown's style and colours on a columnProperties send; observed: docs/sheets-behaviour.md#creating-and-updating-tables.
-  // Counted as sent, so a dropdown the send removes, which has no style to keep, isn't.
   assertDropdownStyleResetAllowed(): void {
-    const { columnTypes } = this.writes;
-    if (columnTypes.size === 0) return;
-    if (!this.spreadsheetStateRaw.rawSource.refusesDropdownStyleReset) return;
-    const dropdowns = this._columnTypesColumnProperties(columnTypes).filter(
-      ({ dataValidationRule }) => dataValidationRule !== undefined,
-    );
-    if (dropdowns.length === 0) return;
-    throw new Error(
-      `Refusing to set column types on ${this._tableLabel()} under dropdownStyleReset: "ask": it would reset the style and colours of its dropdowns ${dropdowns.map(({ columnName }) => columnName).join(", ")}.`,
-    );
+    this.columnTypeGatherer.assertDropdownStyleResetAllowed();
   }
   gatherSetTableColumnPropertiesOperation(): void {
-    const { columnTypes } = this.writes;
-    if (columnTypes.size === 0) return;
-    this._assertColumnTypesUpdateAllowed(columnTypes);
-    this.writeOperations.setTableColumnProperties.push({
-      kind: "setTableColumnProperties",
-      tableId: this.tableId,
-      columnProperties: this._columnTypesColumnProperties(columnTypes),
-    });
-  }
-  private _assertColumnTypesUpdateAllowed(columnTypes: ColumnTypes): void {
-    const tableLabel = this._tableLabel();
-    const fetched = this.columnProperties;
-    if (fetched.length === 0) {
-      throw new Error(
-        `${tableLabel} has no fetched column properties; refetch it before setting a column type.`,
-      );
-    }
-    if (
-      this.writeOperations.insertTableEndColumns.some(
-        ({ newColumns }) => newColumns.sheetId === this.sheetGid,
-      ) ||
-      this.writeOperations.changeTableColumns.some(
-        ({ sheetId }) => sheetId === this.sheetGid,
-      )
-    ) {
-      throw new Error(
-        `Refusing to set column types on ${tableLabel}: the same flush inserts or deletes a column on that sheet.`,
-      );
-    }
-    columnTypes.forEach((_, columnIndex) => {
-      if (!fetched.some((column) => column.columnIndex === columnIndex)) {
-        throw new Error(
-          `${tableLabel} has no fetched ${tableColumnLabel(columnIndex)}.`,
-        );
-      }
-    });
-  }
-  // Full list with each rule, since a partial columnProperties replaces the rest and a dropdown sent without its rule is refused.
-  private _columnTypesColumnProperties(
-    columnTypes: ColumnTypes,
-  ): TableColumnPropertiesUpdate[] {
-    return this.columnProperties.map((column) => {
-      const { columnIndex } = column;
-      if (column.columnName === undefined) {
-        throw new Error(
-          `${this._tableLabel()} ${tableColumnLabel(columnIndex)} has no columnName; refusing to replace column properties.`,
-        );
-      }
-      const queued = columnTypes.get(columnIndex);
-      const baseline =
-        queued === undefined ? undefined : queuedColumnType.baselineOf(queued);
-      if (baseline !== undefined) {
-        return {
-          columnIndex,
-          columnName: column.columnName,
-          ...queuedColumnType.properties(baseline),
-        };
-      }
-      const columnType =
-        queued === undefined
-          ? column.columnType
-          : queuedColumnType.typeOf(queued);
-      const dataValidationRule = validationRuleOf(column);
-      return {
-        columnIndex,
-        columnName: column.columnName,
-        ...(columnType !== undefined ? { columnType } : {}),
-        ...(dataValidationRule !== undefined ? { dataValidationRule } : {}),
-      };
-    });
-  }
-  private _tableLabel(): string {
-    return `Table ${this.tableId} on "${this.sheet.title}"`;
+    this.columnTypeGatherer.gatherSetTableColumnPropertiesOperation();
   }
   // Sent after the row deletes, so it spans only the body rows they leave.
   gatherSortTableOperation(): void {
@@ -1116,64 +737,6 @@ export class TableRaw extends TableCommonRaw {
       this.originAtGathering(),
     );
   }
-  private _sheetConditionalFormatRule(
-    { range, condition, format }: TableConditionalFormatRule,
-    origin: TableOrigin,
-  ): ModelableConditionalFormatRule {
-    return {
-      kind: "boolean",
-      ranges: [this._sheetGridRange(range, origin)],
-      condition,
-      format,
-    };
-  }
-  private _sheetEditProtection(
-    { range, ...protection }: TableEditProtection,
-    origin: TableOrigin,
-  ): EditProtectionContent {
-    return { ...protection, range: this._sheetGridRange(range, origin) };
-  }
-  // Absent bounds stay absent, as the matching of fetched rules and protections expects.
-  private _sheetGridRange(
-    { startRowIndex, endRowIndex, startColIndex, endColIndex }: TableGridRange,
-    origin: TableOrigin,
-  ): GridRangeProps {
-    const range: GridRangeProps = {
-      sheetId: this.sheetGid,
-      startRowIndex: SheetIndex.row(0),
-    };
-    if (startRowIndex !== undefined) {
-      range.startRowIndex = origin.sheetRowIndex(startRowIndex);
-    }
-    if (endRowIndex !== undefined) {
-      range.endRowIndex = origin.sheetRowIndex(endRowIndex);
-    }
-    if (startColIndex !== undefined) {
-      range.startColumnIndex = origin.sheetColIndex(startColIndex);
-    }
-    if (endColIndex !== undefined) {
-      range.endColumnIndex = origin.sheetColIndex(endColIndex);
-    }
-    return range;
-  }
-  private _queueEditProtection(protection: TableEditProtection): this {
-    // A same-batch shift carries only a Table whose properties have arrived.
-    this.assertTableIsKnown();
-    if (hasTableRows(protection.range)) this.sheet.assertRowIndexesNotStale();
-    this.sheet.assertEditProtectionsNotStale();
-    const queued = this.tablesOnSheet.flatMap((table) =>
-      table._queuedSheetEditProtections(),
-    );
-    if (
-      this.sheet.hasPendingEditProtection(
-        this._sheetEditProtection(protection, this.tableOrigin()),
-        queued,
-      )
-    ) {
-      return this;
-    }
-    return this.queueTableWrite({ action: "addEditProtection", ...protection });
-  }
   // A head row's range spans every Table on the sheet.
   get tablesOnSheet(): TableRaw[] {
     return this.tableIds().map((tableId) => this.ss.table(tableId));
@@ -1186,18 +749,6 @@ export class TableRaw extends TableCommonRaw {
   // By geometry alone: the column ID row may give way to metadata on the header row.
   get neighboursUnderHeadRows(): TableRaw[] {
     return this.neighbourTables.filter((other) => this.headRowsSitOn(other));
-  }
-  private _queuedSheetConditionalFormatRules(): ModelableConditionalFormatRule[] {
-    const origin = this.tableOrigin();
-    return this.writes.conditionalFormatRules.map((rule) =>
-      this._sheetConditionalFormatRule(rule, origin),
-    );
-  }
-  private _queuedSheetEditProtections(): EditProtectionContent[] {
-    const origin = this.tableOrigin();
-    return this.writes.editProtections.map((protection) =>
-      this._sheetEditProtection(protection, origin),
-    );
   }
   // Growth copies the named formula columns from the model row; Raw can't tell which they are.
   appendDataRow(formulaColIndexes: readonly number[] = []): RowRaw {
@@ -1215,66 +766,6 @@ export class TableRaw extends TableCommonRaw {
     }
     return row;
   }
-}
-
-type ColumnTypes = TableWrites["columnTypes"];
-
-// A whole column has none, so moved rows don't bar it.
-function hasTableRows(range: TableGridRange): boolean {
-  return range.startRowIndex !== undefined;
-}
-
-function splittingPhrase(actionLabel: string, neighbourName: string): string {
-  return `${actionLabel} would shift only part of Table "${neighbourName}"`;
-}
-
-function shiftedColumns<VL>(
-  byColIndex: Map<number, VL>,
-  colIndex: number,
-  shiftCount: 1 | -1,
-): Map<number, VL> {
-  return remappedColumns(byColIndex, (index) => {
-    if (index < colIndex) return index;
-    if (index > colIndex || shiftCount === 1) return index + shiftCount;
-    return undefined;
-  });
-}
-
-function movedColumns<VL>(
-  byColIndex: Map<number, VL>,
-  span: ColumnMoveSpan,
-): Map<number, VL> {
-  return remappedColumns(byColIndex, (index) => movedColIndex(index, span));
-}
-
-// A column the remap gives no index goes.
-function remappedColumns<VL>(
-  byColIndex: Map<number, VL>,
-  newColIndex: (index: number) => number | undefined,
-): Map<number, VL> {
-  return Array.from(byColIndex).reduce((remapped, [index, value]) => {
-    const remappedIndex = newColIndex(index);
-    if (remappedIndex !== undefined) remapped.set(remappedIndex, value);
-    return remapped;
-  }, new Map<number, VL>());
-}
-
-// Where a column sits once the block has moved; the columns it passes close the gap.
-function movedColIndex(
-  index: number,
-  { colIndex, count, beforeColIndex }: ColumnMoveSpan,
-): number {
-  const isInBlock = colIndex <= index && index < colIndex + count;
-  if (beforeColIndex > colIndex) {
-    if (isInBlock) return index + beforeColIndex - colIndex - count;
-    if (colIndex + count <= index && index < beforeColIndex) {
-      return index - count;
-    }
-    return index;
-  }
-  if (isInBlock) return index - (colIndex - beforeColIndex);
-  if (beforeColIndex <= index && index < colIndex) return index + count;
-  return index;
 }
 
 type ColumnRun = [startColIndex: number, endColIndex: number];
@@ -1316,20 +807,4 @@ function columnRun(
     startColumnIndex: SheetIndex.col(rows.startColumnIndex + startColIndex),
     endColumnIndex: SheetIndex.col(rows.startColumnIndex + endColIndex),
   };
-}
-
-// Google reads every rule back with its condition type, so a column with none has no rule to resend.
-function validationRuleOf(
-  column: TableColumnSnapshot,
-): TableColumnValidationRule | undefined {
-  const { dataValidationConditionType, dataValidationValues } = column;
-  if (dataValidationConditionType === undefined) return undefined;
-  return {
-    condition: dataValidationConditionType,
-    values: dataValidationValues,
-  };
-}
-
-function tableColumnLabel(columnIndex: number): string {
-  return `table column ${columnIndex}`;
 }
