@@ -22,6 +22,14 @@ export function refusedStoppedOutcome(
   return stoppedOutcome({ landedFlushes }, { googleRefusal });
 }
 
+// A send whose Fill Row IDs flush threw, after the flushes it counted landed.
+export function fillFailedStoppedOutcome(
+  landedFlushes: number,
+  fillFailure: string,
+): SyncFlushStoppedOutcome {
+  return stoppedOutcome({ landedFlushes }, { fillFailure });
+}
+
 // One stopped at the first flush landed nothing.
 function stoppedOutcome(
   { landedFlushes, flushCount }: SyncLandedFlushes,

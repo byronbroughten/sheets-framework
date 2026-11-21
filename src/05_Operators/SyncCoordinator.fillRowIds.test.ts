@@ -73,6 +73,46 @@ describe("SyncCoordinator.run Fill Row IDs", () => {
     });
   });
 
+  it("still returns the files when the fill's send throws, stopping partway after the checkbox's flush with the error's message, the fill listed but not landed", () => {
+    const fillFailure = "socket hang up";
+    let batchCount = 0;
+    const { grid } = seedFixture({
+      item: { actionRowCells: {}, bodyRows: [{ optionalNote: "blank ID" }] },
+      service: {
+        beforeEachBatchUpdate() {
+          batchCount++;
+          if (batchCount === 2) throw new Error(fillFailure);
+        },
+      },
+    });
+
+    const { result, files } = runItem({ isSending: true });
+
+    expect(
+      emittedItemColumn(Val.assert(files, "emitted files"), "id"),
+    ).toContain('"actionRowCell": {"kind":"checkbox"}');
+    expect(
+      itemCell(grid, expectedSheetLayout.topDataRowIndex)(idColIndex) ?? null,
+    ).toBeNull();
+    expect(result).toMatchObject({
+      outcome: { kind: "stoppedPartway", landedFlushes: 1, fillFailure },
+      plan: [
+        { what: "add the Fill Row IDs checkbox" },
+        {
+          subject: { table: "item", column: "id" },
+          what: expect.stringMatching(/^fill 1 blank ID: r:itm:/),
+        },
+      ],
+      landed: [
+        {
+          kind: "send",
+          subject: { table: "item", column: "id" },
+          what: "add the Fill Row IDs checkbox",
+        },
+      ],
+    });
+  });
+
   it("doesn't count a Row-ID-only send over an already-empty alterations.ts as emptying it", () => {
     seedFixture({
       item: { bodyRows: [{ optionalNote: "blank ID" }] },

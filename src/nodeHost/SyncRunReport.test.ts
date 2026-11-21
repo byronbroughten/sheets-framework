@@ -1263,6 +1263,29 @@ describe("SyncRunReport, a send Google refused partway", () => {
   });
 });
 
+describe("SyncRunReport, a send whose fill failed after its first flush landed", () => {
+  const lines = render({
+    ...appSend,
+    outcome: {
+      kind: "stoppedPartway",
+      landedFlushes: 1,
+      fillFailure: "socket hang up",
+    },
+    landed: [],
+    notSent: [],
+    configs: noConfigChanges,
+  });
+
+  it("words the fill's send failing, quoting the message, and says the configs were still written", () => {
+    expect(resultLine(lines)).toBe(
+      'STOPPED PARTWAY: flush 1 landed; flush 2, the Fill Row IDs send, failed: "socket hang up". The blank IDs stay blank; the configs were still written.',
+    );
+    expect(lines.join("\n")).toContain(
+      "Then rerun the dry run to fill the blank IDs: npm run app:sync",
+    );
+  });
+});
+
 describe("SyncRunReport, a send Google refused at its first flush", () => {
   const googleRefusal = 'Table "beside" would be split.';
   const lines = render({
