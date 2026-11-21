@@ -5,7 +5,7 @@ import {
   type WideTableEntry,
 } from "../SyncPlanner/wideAlterations";
 import type { SyncRefusal } from "../syncRunResult";
-import type { ColumnNamedAt } from "./NewColumnNames";
+import type { ColumnNamedAt } from "./namedColumnRefusals";
 
 // The names a Table entry's renames give its columns, each to the column's old name.
 export class RenamedColumnNames {

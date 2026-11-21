@@ -12,13 +12,14 @@ import {
 } from "../SyncPlanner/wideAlterations";
 import type { SyncRefusal } from "../syncRunResult";
 import { BraceRefuser } from "./BraceRefuser";
-import { namedColumnRefusals } from "./namedColumnRefusals";
-import { type ColumnNamedAt, NewColumnNames } from "./NewColumnNames";
+import { type ColumnNamedAt, namedColumnRefusals } from "./namedColumnRefusals";
+import type { NewColumnNames } from "./NewColumnNames";
 import type { RenamedColumnNames } from "./RenamedColumnNames";
 
 export interface RuleRefuserProps {
   table: string;
   entry: WideTableEntry;
+  newColumns: NewColumnNames;
   columnNamesByTable: Map<string, string[]>;
   // Every Table entry's renames, since a brace may name another Table's column.
   renamedColumnsByTable: Map<string, RenamedColumnNames>;
@@ -29,6 +30,7 @@ export interface NewTableRuleRefuserProps {
   newTable: WideNewTable;
   // Where the new Table sits in its alterations, as `newTables[0]`.
   at: string;
+  newColumns: NewColumnNames;
   columnNamesByTable: Map<string, string[]>;
   renamedColumnsByTable: Map<string, RenamedColumnNames>;
 }
@@ -40,13 +42,12 @@ interface RuleRefuserConstructorProps extends RuleRefuserProps {
   pathPrefix: string;
 }
 
-// Refuses a Table entry's rule naming a column neither mapped nor created by its `newColumns`, one two new headers name, or one by its same-run new name; and a handle both removed and replaced.
+// Refuses a Table entry's rule naming a column neither mapped nor created by its `newColumns`, or one by its same-run new name; and a handle both removed and replaced.
 export class RuleRefuser {
   private refusedAs: string;
   private tableKey: string;
   private pathPrefix: string;
   private entry: WideTableEntry;
-  private newColumns: NewColumnNames;
   private renamedColumns: RenamedColumnNames | undefined;
   private columnNames: string[];
   private braceRefuser: BraceRefuser;
@@ -55,6 +56,7 @@ export class RuleRefuser {
     refusedAs,
     pathPrefix,
     entry,
+    newColumns,
     columnNamesByTable,
     renamedColumnsByTable,
   }: RuleRefuserConstructorProps) {
@@ -62,12 +64,11 @@ export class RuleRefuser {
     this.tableKey = table;
     this.pathPrefix = pathPrefix;
     this.entry = entry;
-    this.newColumns = new NewColumnNames(entry);
     this.renamedColumns = renamedColumnsByTable.get(table);
     this.columnNames = [
       ...new Set([
         ...(columnNamesByTable.get(table) ?? []),
-        ...this.newColumns.names,
+        ...newColumns.names,
       ]),
     ];
     this.braceRefuser = new BraceRefuser({
@@ -75,7 +76,6 @@ export class RuleRefuser {
         table,
         this.columnNames,
       ),
-      newColumnsByTable: new Map([[table, this.newColumns]]),
       renamedColumnsByTable,
     });
   }
@@ -91,6 +91,7 @@ export class RuleRefuser {
     tab,
     newTable,
     at,
+    newColumns,
     columnNamesByTable,
     renamedColumnsByTable,
   }: NewTableRuleRefuserProps): RuleRefuser {
@@ -103,12 +104,8 @@ export class RuleRefuser {
       table,
       refusedAs: tab,
       pathPrefix: `${at}.`,
-      entry: {
-        newColumns: [
-          { columns: newTable.columns.map(({ header }) => ({ header })) },
-        ],
-        conditionalFormats: newTable.conditionalFormats,
-      },
+      newColumns,
+      entry: { conditionalFormats: newTable.conditionalFormats },
       columnNamesByTable: withoutLive,
       renamedColumnsByTable: withoutLiveRenames,
     });
@@ -140,7 +137,6 @@ export class RuleRefuser {
       at,
       {
         names: this.columnNames,
-        newColumns: this.newColumns,
         renamedColumns: this.renamedColumns,
       },
       () => ({ kind: "unknownColumn", ...at, columns: this.columnNames }),

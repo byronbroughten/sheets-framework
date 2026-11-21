@@ -610,11 +610,11 @@ describe("SyncCoordinator.run new tabs and Tables", () => {
       expect(service.batchUpdateCount()).toBe(0);
       expect(result.refusals).toEqual([
         {
-          kind: "ambiguousColumn",
+          kind: "repeatedNewColumn",
           table: "item",
-          path: "newTables[0].conditionalFormats.add[0].columns",
+          path: "newTables[0].columns[1].header",
+          firstPath: "newTables[0].columns[0].header",
           column: "amount",
-          headers: ["Amount", "amount"],
         },
       ]);
     });

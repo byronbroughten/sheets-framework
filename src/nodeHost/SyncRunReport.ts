@@ -475,12 +475,6 @@ function tableRefusalText(
       `${refusal.column} names no column of ${table}, nor one its newColumns create. Its columns: ${refusal.columns.join(", ")}.`,
     ];
   }
-  if (refusal.kind === "ambiguousColumn") {
-    return [
-      `${refusal.column} could be any of the columns these newColumns headers create: ${refusal.headers.join(", ")}.`,
-      newColumnNameOwnText,
-    ];
-  }
   if (refusal.kind === "repeatedNewColumn") {
     return [
       `${refusal.path} gives the column name ${refusal.column}, as ${refusal.firstPath} does: the two columns can't both be named it.`,

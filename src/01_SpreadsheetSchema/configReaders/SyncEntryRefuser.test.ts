@@ -536,18 +536,8 @@ describe("SyncEntryRefuser, a rule's columns and braces", () => {
     ]);
   });
 
-  it("refuses a column or brace naming a column two new headers both give", () => {
-    const ambiguous = {
-      kind: "ambiguousColumn",
-      table: "item",
-      column: "ref",
-      headers: ["Ref", "ref"],
-    };
-    expect(ruleRefusals(["ref"], "=${@ref}>0")).toEqual([
-      repeated,
-      { ...ambiguous, path: "conditionalFormats.add[0].columns" },
-      { ...ambiguous, path: "conditionalFormats.add[0].condition.values[0]" },
-    ]);
+  it("leaves a column or brace naming a repeated new header to the repeat's refusal", () => {
+    expect(ruleRefusals(["ref"], "=${@ref}>0")).toEqual([repeated]);
   });
 
   it("checks a replace's rule by its handle's path", () => {
@@ -709,6 +699,34 @@ describe("SyncEntryRefuser, entries that can't all hold", () => {
         path: "newTabs[0].tables[0].conditionalFormats.add[0].condition.values[0]",
         column: "total",
         oldName: "count",
+      },
+    ]);
+  });
+
+  it("refuses a new tab's new Table whose headers repeat a column name, naming both paths", () => {
+    expect(
+      refusals({
+        alterations: {
+          newTabs: [
+            {
+              title: "Orders",
+              tables: [
+                {
+                  name: "order",
+                  columns: [{ header: "Ref" }, { header: "ref" }],
+                },
+              ],
+            },
+          ],
+        },
+      }),
+    ).toEqual([
+      {
+        kind: "repeatedNewColumn",
+        table: "Orders",
+        path: "newTabs[0].tables[0].columns[1].header",
+        firstPath: "newTabs[0].tables[0].columns[0].header",
+        column: "ref",
       },
     ]);
   });

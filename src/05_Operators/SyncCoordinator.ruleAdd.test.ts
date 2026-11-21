@@ -408,13 +408,6 @@ describe("SyncCoordinator.run conditional-format rule add", () => {
         firstPath: "newColumns[0].columns[0].header",
         column: "lateFee",
       },
-      {
-        kind: "ambiguousColumn",
-        table: "item",
-        path: "conditionalFormats.add[0].columns",
-        column: "lateFee",
-        headers: ["Late fee", "late Fee"],
-      },
     ]);
   });
 

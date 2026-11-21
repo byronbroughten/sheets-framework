@@ -103,14 +103,16 @@ export class SyncEntryRefuser {
         if (!apiAccessNames.has(table)) {
           return noApiAccessRefusals(table, entry);
         }
+        const newColumns = NewColumnNames.ofTableEntry(entry);
         return [
           ...tableTraitRefusals(table, entry),
-          ...new NewColumnNames(entry).repeatRefusals(table),
+          ...newColumns.repeatRefusals(table),
           ...new PlacementsRefuser(table, entry).refusals,
           ...braceRefuser.tableEntryRefusals(table, entry),
           ...RuleRefuser.ofTableEntry({
             table,
             entry,
+            newColumns,
             columnNamesByTable,
             renamedColumnsByTable,
           }).refusals,
@@ -185,13 +187,16 @@ export class SyncEntryRefuser {
     );
   }
   private _newTableRefusals({ tab, newTable, at }: NewTableAt): SyncRefusal[] {
+    const newColumns = NewColumnNames.ofNewTable({ newTable, at });
     return [
       ...refusedPaths(tab, newTableTraitPaths(newTable, at)),
+      ...newColumns.repeatRefusals(tab),
       ...this._braceRefuser.newTableRefusals({ tab, newTable, at }),
       ...RuleRefuser.ofNewTable({
         tab,
         newTable,
         at,
+        newColumns,
         columnNamesByTable: this._columnNamesByTable,
         renamedColumnsByTable: RenamedColumnNames.byTable(this.alterations),
       }).refusals,

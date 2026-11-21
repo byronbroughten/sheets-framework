@@ -7,12 +7,10 @@ import {
 } from "../SyncPlanner/wideAlterations";
 import type { SyncRefusal } from "../syncRunResult";
 import { namedColumnRefusals } from "./namedColumnRefusals";
-import type { NewColumnNames } from "./NewColumnNames";
 import type { RenamedColumnNames } from "./RenamedColumnNames";
 
 interface BraceRefuserProps {
   columnNamesByTable: Map<string, string[]>;
-  newColumnsByTable?: Map<string, NewColumnNames>;
   renamedColumnsByTable?: Map<string, RenamedColumnNames>;
 }
 
@@ -30,18 +28,15 @@ interface FormulaBraceProps {
   formula: string;
 }
 
-// Refuses a formula's malformed braces, and the ones naming a column it doesn't know or can't tell apart.
+// Refuses a formula's malformed braces, and the ones naming a column it doesn't know.
 export class BraceRefuser {
   private columnNamesByTable: Map<string, string[]>;
-  private newColumnsByTable: Map<string, NewColumnNames>;
   private renamedColumnsByTable: Map<string, RenamedColumnNames>;
   constructor({
     columnNamesByTable,
-    newColumnsByTable = new Map(),
     renamedColumnsByTable = new Map(),
   }: BraceRefuserProps) {
     this.columnNamesByTable = columnNamesByTable;
-    this.newColumnsByTable = newColumnsByTable;
     this.renamedColumnsByTable = renamedColumnsByTable;
   }
   tableEntryRefusals(table: string, entry: WideTableEntry): SyncRefusal[] {
@@ -63,7 +58,6 @@ export class BraceRefuser {
         tableKey,
         columns.map(({ column }) => column),
       ),
-      newColumnsByTable: this.newColumnsByTable,
       renamedColumnsByTable: this.renamedColumnsByTable,
     });
     return newTable.columns.flatMap(({ formula }, columnIndex) => {
@@ -94,7 +88,6 @@ export class BraceRefuser {
         { table, path, column: columnName },
         {
           names: columnNames,
-          newColumns: this.newColumnsByTable.get(tableKey),
           renamedColumns: this.renamedColumnsByTable.get(tableKey),
         },
         () => ({
