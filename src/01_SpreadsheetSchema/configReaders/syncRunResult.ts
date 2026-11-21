@@ -485,12 +485,23 @@ export interface SyncRename {
   headerTo: string;
 }
 
-export interface SyncMovedName {
+// A Table's ID is its Table ID and a tab's its sheetGid.
+export interface SyncMovedTableOrTabName {
+  kind: "table" | "tab";
+  name: string;
+  wasId: string;
+  nowId: string;
+}
+
+export interface SyncMovedColumnName {
+  kind: "column";
   table: string;
   column: string;
   wasId: string;
   nowId: string;
 }
+
+export type SyncMovedName = SyncMovedTableOrTabName | SyncMovedColumnName;
 
 export interface SyncRewrite {
   from: string;

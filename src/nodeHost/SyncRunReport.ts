@@ -21,6 +21,7 @@ import {
   type SyncHeldGroup,
   type SyncLandedFlushes,
   type SyncLandedItem,
+  type SyncMovedName,
   type SyncNoSuchRuleStop,
   type SyncNotice,
   type SyncOutsideReferenceEffect,
@@ -1050,15 +1051,29 @@ function namesMovedLines(
 ): string[] {
   if (namesMoved.length === 0) return [];
   return [
-    `Names that now point at a different column than at the last sync. Reread ${generatedDir}idNameMap.ts before writing another entry:`,
+    `Names that now point at a different ID than at the last sync. Reread ${generatedDir}idNameMap.ts before writing another entry:`,
     ...indent(
       2,
       namesMoved.map(
-        ({ table, column, wasId, nowId }) =>
-          `${table} › ${column}    was ${wasId}, now ${nowId}`,
+        (moved) =>
+          `${movedNameLabel(moved)}    was ${moved.wasId}, now ${moved.nowId}`,
       ),
     ),
   ];
+}
+
+const movedNameKinds: Record<SyncMovedName["kind"], string> = {
+  table: "Table",
+  tab: "tab",
+  column: "column",
+};
+
+function movedNameLabel(moved: SyncMovedName): string {
+  const kind = movedNameKinds[moved.kind];
+  if (moved.kind === "column") {
+    return `${kind} ${moved.table} › ${moved.column}`;
+  }
+  return `${kind} ${moved.name}`;
 }
 
 function rewriteLines({ rewrites }: SyncConfigs): string[] {

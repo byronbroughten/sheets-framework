@@ -477,13 +477,17 @@ describe("SyncRunReport, case E: a rename and a swap the dry run took up", () =>
         },
       ],
       namesMoved: [
+        { kind: "table", name: "lease", wasId: "lse", nowId: "occ" },
+        { kind: "tab", name: "leases", wasId: "101", nowId: "202" },
         {
+          kind: "column",
           table: "unit",
           column: "moveIn",
           wasId: "c:unt:k2PqA9x",
           nowId: "c:unt:Rb7sW0e",
         },
         {
+          kind: "column",
           table: "unit",
           column: "moveOut",
           wasId: "c:unt:Rb7sW0e",
@@ -544,7 +548,12 @@ describe("SyncRunReport, case E: a rename and a swap the dry run took up", () =>
       '  occCharge › rent → monthlyRent    header "Rent" → "Monthly rent"',
     );
     expect(text).toContain(
-      "Reread src/generated/idNameMap.ts before writing another entry:\n  unit › moveIn    was c:unt:k2PqA9x, now c:unt:Rb7sW0e",
+      [
+        "Names that now point at a different ID than at the last sync. Reread src/generated/idNameMap.ts before writing another entry:",
+        "  Table lease    was lse, now occ",
+        "  tab leases    was 101, now 202",
+        "  column unit › moveIn    was c:unt:k2PqA9x, now c:unt:Rb7sW0e",
+      ].join("\n"),
     );
     expect(text).toContain(
       '  unit.columns.moveIn → unit.columns.moveOut    (c:unt:k2PqA9x, which a person retitled "Move out")',
