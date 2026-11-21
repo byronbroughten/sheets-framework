@@ -1,15 +1,15 @@
 import type {
   CellValue,
   CellValueName,
-} from "../../00_Source/CellValues/cellValues";
+} from "../../00_Source/CellValues/cellValues.ts";
 import type {
   ConditionalFormatDeclaration,
   ConditionalFormatRule,
-} from "../../00_Source/RawSource/ConditionalFormat";
+} from "../../00_Source/RawSource/ConditionalFormat.ts";
 import type {
   EditProtection,
   EditProtectionContent,
-} from "../../00_Source/RawSource/EditProtection";
+} from "../../00_Source/RawSource/EditProtection.ts";
 import type {
   AddTableOperation,
   BoundedGridRange,
@@ -27,15 +27,15 @@ import type {
   TableColumnSnapshot,
   TableColumnType,
   UpdateTableRangeOperation,
-} from "../../00_Source/RawSource/RawSource";
-import type { RgbColor } from "../../00_Source/RawSource/RgbColor";
+} from "../../00_Source/RawSource/RawSource.ts";
+import type { RgbColor } from "../../00_Source/RawSource/RgbColor.ts";
 import type {
   SheetColIndex,
   SheetRowIndex,
-} from "../../00_Source/RawSource/SheetIndex";
-import type { ColumnTypeBaseline } from "../../01_SpreadsheetSchema/columnBaseline";
-import type { IdPrefixFromTitleProps } from "../../01_SpreadsheetSchema/idPrefixes";
-import type { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin";
+} from "../../00_Source/RawSource/SheetIndex.ts";
+import type { ColumnTypeBaseline } from "../../01_SpreadsheetSchema/columnBaseline.ts";
+import type { IdPrefixFromTitleProps } from "../../01_SpreadsheetSchema/idPrefixes.ts";
+import type { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin.ts";
 
 export interface StateRaw {
   allSheetPropertiesAreFetched: boolean;

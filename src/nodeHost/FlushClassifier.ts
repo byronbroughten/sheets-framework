@@ -1,20 +1,20 @@
 import { Obj } from "@byronbroughten/utils/obj";
 import { Val } from "@byronbroughten/utils/val";
 
-import type { GoogleRequest } from "../00_Source/GoogleSheets/GoogleSheetsAPI";
-import type { DropdownStyleReset } from "../00_Source/RawSource/RawSource";
-import type { ForcedTrait } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
+import type { GoogleRequest } from "../00_Source/GoogleSheets/GoogleSheetsAPI.ts";
+import type { DropdownStyleReset } from "../00_Source/RawSource/RawSource.ts";
+import type { ForcedTrait } from "../01_SpreadsheetSchema/configReaders/syncRunResult.ts";
 import type {
   FlushRead,
   HeldItem,
-} from "./FlushClassifier/flushClassifierTypes";
-import { FlushTracker } from "./FlushClassifier/FlushTracker";
-import { RequestJudge } from "./FlushClassifier/RequestJudge";
+} from "./FlushClassifier/flushClassifierTypes.ts";
+import { FlushTracker } from "./FlushClassifier/FlushTracker.ts";
+import { RequestJudge } from "./FlushClassifier/RequestJudge.ts";
 import {
   type ClassifiedVerb,
   requestJudgements,
-} from "./FlushClassifier/requestJudgements";
-import { RunReads } from "./FlushClassifier/RunReads";
+} from "./FlushClassifier/requestJudgements.ts";
+import { RunReads } from "./FlushClassifier/RunReads.ts";
 
 export interface FlushClassifierProps {
   // Taken since the last flush landed: a stale read could free an overwrite.

@@ -3,14 +3,17 @@ import { describe, expect, it } from "vitest";
 import type {
   GoogleRequest,
   ModeledRequestVerb,
-} from "../00_Source/GoogleSheets/GoogleSheetsAPI";
-import { assertType, type IsExactly } from "../testSupport/typeAssertions";
-import { FlushClassifier, type FlushClassifierProps } from "./FlushClassifier";
+} from "../00_Source/GoogleSheets/GoogleSheetsAPI.ts";
+import { assertType, type IsExactly } from "../testSupport/typeAssertions.ts";
+import {
+  FlushClassifier,
+  type FlushClassifierProps,
+} from "./FlushClassifier.ts";
 import type {
   FlushRead,
   HeldItem,
-} from "./FlushClassifier/flushClassifierTypes";
-import type { requestJudgements } from "./FlushClassifier/requestJudgements";
+} from "./FlushClassifier/flushClassifierTypes.ts";
+import type { requestJudgements } from "./FlushClassifier/requestJudgements.ts";
 
 type GoogleCellData = GoogleAppsScript.Sheets.Schema.CellData;
 

@@ -1,10 +1,10 @@
-import { SpreadsheetSchema } from "../01_SpreadsheetSchema/configReaders/SpreadsheetSchema";
+import { SpreadsheetSchema } from "../01_SpreadsheetSchema/configReaders/SpreadsheetSchema.ts";
 import {
   type FeedbackColumnIds,
   installFeedbackColumnIds,
-} from "../03_SpreadsheetIdentified/feedbackColumnRegister";
-import type { Endpoints, EndpointsAll } from "./Endpoints";
-import { withFrameworkEndpoints } from "./frameworkEndpoints";
+} from "../03_SpreadsheetIdentified/feedbackColumnRegister.ts";
+import type { Endpoints, EndpointsAll } from "./Endpoints.ts";
+import { withFrameworkEndpoints } from "./frameworkEndpoints.ts";
 
 // Throws before installConfigs, since resolving a feedback column reads the configs.
 export function installEndpoints(endpoints: Endpoints): void {

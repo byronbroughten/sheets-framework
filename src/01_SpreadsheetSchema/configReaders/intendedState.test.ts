@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { assertType, type IsExactly } from "../../testSupport/typeAssertions";
+import {
+  assertType,
+  type IsExactly,
+} from "../../testSupport/typeAssertions.ts";
 import {
   makePendingAlterations,
   type PendingAlterations,
-} from "./intendedState";
+} from "./intendedState.ts";
 
 type TableEntries = NonNullable<PendingAlterations["tables"]>;
 type ItemEntry = NonNullable<TableEntries["item"]>;

@@ -1,6 +1,6 @@
-import type { ValueName } from "../../01_SpreadsheetSchema/configReaders/valueSchemas";
-import { TableColumnResolverRaw } from "../../02_SpreadsheetRaw/TableRaw/TableColumnResolverRaw";
-import { ColumnBaseIdentified } from "./ColumnBaseIdentified";
+import type { ValueName } from "../../01_SpreadsheetSchema/configReaders/valueSchemas.ts";
+import { TableColumnResolverRaw } from "../../02_SpreadsheetRaw/TableRaw/TableColumnResolverRaw.ts";
+import { ColumnBaseIdentified } from "./ColumnBaseIdentified.ts";
 
 export abstract class ColumnCommonIdentified<
   VN extends ValueName = ValueName,

@@ -3,15 +3,15 @@ import { Str } from "@byronbroughten/utils/str";
 import {
   type CodebaseNameDelimiter,
   codebaseNameDelimiter,
-} from "../00_Source/CellValues/cellValues";
-import type { GridRangeProps } from "../00_Source/RawSource/RawSource";
+} from "../00_Source/CellValues/cellValues.ts";
+import type { GridRangeProps } from "../00_Source/RawSource/RawSource.ts";
 import {
   type SheetColIndex,
   SheetIndex,
   type SheetRowIndex,
-} from "../00_Source/RawSource/SheetIndex";
-import { headRows } from "./headRows";
-import { tableLayout } from "./tableLayout";
+} from "../00_Source/RawSource/SheetIndex.ts";
+import { headRows } from "./headRows.ts";
+import { tableLayout } from "./tableLayout.ts";
 
 interface AnchoredColumnProps {
   colIndex: SheetColIndex;

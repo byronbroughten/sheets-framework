@@ -1,14 +1,14 @@
-import type { ColumnTypeBaseline } from "../columnBaseline";
-import { BraceFormula, type FormulaRenames } from "./BraceFormula";
-import type { TableNow } from "./namesNow";
-import { RuleRecords } from "./RuleRecords";
+import type { ColumnTypeBaseline } from "../columnBaseline.ts";
+import { BraceFormula, type FormulaRenames } from "./BraceFormula.ts";
+import type { TableNow } from "./namesNow.ts";
+import { RuleRecords } from "./RuleRecords.ts";
 import {
   entriesOf,
   type WideColumnEntry,
   type WideRule,
   type WideTableEntry,
-} from "./SyncPlanner/wideAlterations";
-import type { SyncRewrite } from "./syncRunResult";
+} from "./SyncPlanner/wideAlterations.ts";
+import type { SyncRewrite } from "./syncRunResult.ts";
 
 export interface Rename {
   written: string;

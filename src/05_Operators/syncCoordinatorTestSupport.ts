@@ -1,39 +1,39 @@
 import { Val } from "@byronbroughten/utils/val";
 
-import type { DropdownStyleReset } from "../00_Source/RawSource/RawSource";
-import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister";
-import { type IdNameMapGeneric } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
-import { type PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState";
+import type { DropdownStyleReset } from "../00_Source/RawSource/RawSource.ts";
+import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister.ts";
+import { type IdNameMapGeneric } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes.ts";
+import { type PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState.ts";
 import {
   type ForcedTrait,
   type SyncRunFrame,
-} from "../01_SpreadsheetSchema/configReaders/syncRunResult";
-import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
-import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
+} from "../01_SpreadsheetSchema/configReaders/syncRunResult.ts";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes.ts";
+import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds.ts";
 import {
   layoutGid,
   layoutTableId,
   managedLayoutTableNames,
-} from "../02_SpreadsheetRaw/spreadsheetRawTestSupport";
-import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
+} from "../02_SpreadsheetRaw/spreadsheetRawTestSupport.ts";
+import { expectedSheetLayout } from "../testSupport/expectedSheetLayout.ts";
 import {
   type FakeSheetProperties,
   type FakeSheetsService,
   type FakeSheetsServiceOptions,
   stubSheetsService,
-} from "../testSupport/fakeSheetsService";
-import { a1Notation } from "../testSupport/fakeSheetsService/a1Notation";
+} from "../testSupport/fakeSheetsService.ts";
+import { a1Notation } from "../testSupport/fakeSheetsService/a1Notation.ts";
 import {
   type FakeBodyRow,
   type FakeTableColumn,
   fakeTableSheet,
   type FakeTableSheetProps,
-} from "../testSupport/fakeSheetsService/fakeTableSheet";
+} from "../testSupport/fakeSheetsService/fakeTableSheet.ts";
 import {
   type ConfigRegeneration,
   SyncCoordinator,
   type SyncRun,
-} from "./SyncCoordinator";
+} from "./SyncCoordinator.ts";
 
 interface ReadGridRange {
   sheetId?: number;

@@ -11,8 +11,12 @@ import {
   type TraitReadings,
   type TraitValue,
   valueText,
-} from "./SyncPlanner";
-import type { SyncPlanItem, SyncSendLine, SyncSubject } from "./syncRunResult";
+} from "./SyncPlanner.ts";
+import type {
+  SyncPlanItem,
+  SyncSendLine,
+  SyncSubject,
+} from "./syncRunResult.ts";
 
 export function subjectKey(subject: SyncSubject): string {
   return JSON.stringify(subject);

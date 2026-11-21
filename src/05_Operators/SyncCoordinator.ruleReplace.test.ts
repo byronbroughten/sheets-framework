@@ -1,18 +1,18 @@
 import { Val } from "@byronbroughten/utils/val";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { type PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState";
-import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
+import { type PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState.ts";
+import { stubLogger } from "../testSupport/fakeAppsScriptGlobals.ts";
 import {
   type FakeSheetsService,
   stubSheetsService,
-} from "../testSupport/fakeSheetsService";
+} from "../testSupport/fakeSheetsService.ts";
 import {
   itemColumns,
   itemGid,
   itemSheet,
   runItem,
-} from "./syncCoordinatorTestSupport";
+} from "./syncCoordinatorTestSupport.ts";
 
 type SheetsRule = GoogleAppsScript.Sheets.Schema.ConditionalFormatRule;
 type ItemReplace = NonNullable<

@@ -1,11 +1,11 @@
 import { Val } from "@byronbroughten/utils/val";
 
-import { emptyStateRaw } from "../ClassTypes/emptyStateRaw";
-import type { SheetStateRaw } from "../ClassTypes/StateRaw";
+import { emptyStateRaw } from "../ClassTypes/emptyStateRaw.ts";
+import type { SheetStateRaw } from "../ClassTypes/StateRaw.ts";
 import {
   SpreadsheetBaseRaw,
   type SpreadsheetRawProps,
-} from "./SpreadsheetBaseRaw";
+} from "./SpreadsheetBaseRaw.ts";
 
 export interface SheetRawProps extends SpreadsheetRawProps {
   sheetGid: number;

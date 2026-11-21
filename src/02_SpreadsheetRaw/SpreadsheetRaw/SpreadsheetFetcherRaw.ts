@@ -5,11 +5,11 @@ import type {
   SheetPropertiesFetchOptions,
   SheetSnapshot,
   SpreadsheetSnapshot,
-} from "../../00_Source/RawSource/RawSource";
-import { SpreadsheetBaseRaw } from "../ClassBases/SpreadsheetBaseRaw";
-import { emptyStateRaw } from "../ClassTypes/emptyStateRaw";
-import type { TableStateRaw } from "../ClassTypes/StateRaw";
-import { SpreadsheetRaw } from "../SpreadsheetRaw";
+} from "../../00_Source/RawSource/RawSource.ts";
+import { SpreadsheetBaseRaw } from "../ClassBases/SpreadsheetBaseRaw.ts";
+import { emptyStateRaw } from "../ClassTypes/emptyStateRaw.ts";
+import type { TableStateRaw } from "../ClassTypes/StateRaw.ts";
+import { SpreadsheetRaw } from "../SpreadsheetRaw.ts";
 
 export class SpreadsheetFetcherRaw extends SpreadsheetBaseRaw {
   get ss(): SpreadsheetRaw {

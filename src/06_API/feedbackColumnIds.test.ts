@@ -1,13 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { getColumnTraitByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
-import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
-import { feedbackColumnIdsOf } from "./feedbackColumnIds";
+import { getColumnTraitByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes.ts";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes.ts";
+import { feedbackColumnIdsOf } from "./feedbackColumnIds.ts";
 
 describe("installEndpoints", () => {
   it("throws when the configs aren't installed yet", async () => {
     vi.resetModules();
-    const { installEndpoints } = await import("./feedbackColumnIds");
+    const { installEndpoints } = await import("./feedbackColumnIds.ts");
     expect(() => installEndpoints({})).toThrow(
       "Configs have not been installed.",
     );

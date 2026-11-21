@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { getColumnTraitByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
-import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
+import { getColumnTraitByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes.ts";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes.ts";
 import type {
   Value,
   VnToCvn,
-} from "../01_SpreadsheetSchema/configReaders/valueSchemas";
+} from "../01_SpreadsheetSchema/configReaders/valueSchemas.ts";
 import {
   colIdRowIndex,
   extraTablesSheet,
@@ -24,27 +24,27 @@ import {
   tableHeaderRowIndex,
   thrownMessage,
   topDataRowIndex,
-} from "../02_SpreadsheetRaw/spreadsheetRawTestSupport";
+} from "../02_SpreadsheetRaw/spreadsheetRawTestSupport.ts";
 import {
   buildGridRows,
   type FakeSheetProperties,
   stubSheetsService,
-} from "../testSupport/fakeSheetsService";
-import { assertType, type IsExactly } from "../testSupport/typeAssertions";
+} from "../testSupport/fakeSheetsService.ts";
+import { assertType, type IsExactly } from "../testSupport/typeAssertions.ts";
 import {
   blankValueTypesRow,
   filledValueTypesRow,
   stubValueTypesTable,
   valueTypesGid,
-} from "../testSupport/valueTypesTableSheet";
-import { CellIdentified } from "./CellIdentified";
-import { SpreadsheetBaseIdentified } from "./ClassBases/SpreadsheetBaseIdentified";
-import type { FetchTargetIdentified } from "./ClassTypes/StateIdentified";
-import { ColumnIdentified } from "./ColumnIdentified";
-import { HeadRowIdentified } from "./HeadRowIdentified";
-import { RowIdentified } from "./RowIdentified";
-import { SpreadsheetIdentified } from "./SpreadsheetIdentified";
-import { TableIdentified } from "./TableIdentified";
+} from "../testSupport/valueTypesTableSheet.ts";
+import { CellIdentified } from "./CellIdentified.ts";
+import { SpreadsheetBaseIdentified } from "./ClassBases/SpreadsheetBaseIdentified.ts";
+import type { FetchTargetIdentified } from "./ClassTypes/StateIdentified.ts";
+import { ColumnIdentified } from "./ColumnIdentified.ts";
+import { HeadRowIdentified } from "./HeadRowIdentified.ts";
+import { RowIdentified } from "./RowIdentified.ts";
+import { SpreadsheetIdentified } from "./SpreadsheetIdentified.ts";
+import { TableIdentified } from "./TableIdentified.ts";
 
 const itemGid = getTableTraitByName("item", "sheetGid");
 const itemIdColumnId = getColumnTraitByName("item", "id", "columnId");

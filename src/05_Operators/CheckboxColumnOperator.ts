@@ -1,10 +1,10 @@
-import type { ColumnNameFiltered } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
-import type { TableNameSimple } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
-import { ColumnIdentified } from "../03_SpreadsheetIdentified/ColumnIdentified";
-import { ColumnBaseNamed } from "../04_SpreadsheetNamed/ClassBases/ColumnBaseNamed";
-import { ColumnNamed } from "../04_SpreadsheetNamed/ColumnNamed";
-import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
-import type { TableNamed } from "../04_SpreadsheetNamed/TableNamed";
+import type { ColumnNameFiltered } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes.ts";
+import type { TableNameSimple } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes.ts";
+import { ColumnIdentified } from "../03_SpreadsheetIdentified/ColumnIdentified.ts";
+import { ColumnBaseNamed } from "../04_SpreadsheetNamed/ClassBases/ColumnBaseNamed.ts";
+import { ColumnNamed } from "../04_SpreadsheetNamed/ColumnNamed.ts";
+import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed.ts";
+import type { TableNamed } from "../04_SpreadsheetNamed/TableNamed.ts";
 
 // `checkbox`, not `boolean`: only a declared checkbox column is never blank.
 export type CheckboxColumnName<TN extends TableNameSimple> = ColumnNameFiltered<

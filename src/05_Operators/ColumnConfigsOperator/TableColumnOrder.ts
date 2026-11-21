@@ -1,6 +1,6 @@
 import { Arr, type BlockMove } from "@byronbroughten/utils/arr";
 
-import type { ColumnMoveSpan } from "../../02_SpreadsheetRaw/ClassTypes/StateRaw";
+import type { ColumnMoveSpan } from "../../02_SpreadsheetRaw/ClassTypes/StateRaw.ts";
 
 export interface ColumnOrderMove {
   columnId: string;
@@ -11,12 +11,11 @@ export interface ColumnOrderMove {
 
 // A Table's column IDs in sheet order, as ColumnConfigsLayoutOperator plans a run's column moves on them.
 export class TableColumnOrder {
+  readonly tableKey: string;
   private columnIds: (string | undefined)[];
   // A column with no ID yet, which the Raw tier reads as "", keeps its place so the indexes still count it.
-  constructor(
-    readonly tableKey: string,
-    liveColumnIds: string[],
-  ) {
+  constructor(tableKey: string, liveColumnIds: string[]) {
+    this.tableKey = tableKey;
     this.columnIds = liveColumnIds.map((columnId) =>
       columnId === "" ? undefined : columnId,
     );

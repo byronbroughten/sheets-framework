@@ -1,19 +1,19 @@
 import { Val } from "@byronbroughten/utils/val";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { type PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState";
-import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
+import { type PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState.ts";
+import { stubLogger } from "../testSupport/fakeAppsScriptGlobals.ts";
 import {
   type FakeSheetsService,
   stubSheetsService,
-} from "../testSupport/fakeSheetsService";
-import { fakeSpreadsheet } from "../testSupport/fakeSheetsService/fakeSpreadsheet";
+} from "../testSupport/fakeSheetsService.ts";
+import { fakeSpreadsheet } from "../testSupport/fakeSheetsService/fakeSpreadsheet.ts";
 import {
   itemColumns,
   itemGid,
   itemSheet,
   runItem,
-} from "./syncCoordinatorTestSupport";
+} from "./syncCoordinatorTestSupport.ts";
 
 type SheetsRule = GoogleAppsScript.Sheets.Schema.ConditionalFormatRule;
 

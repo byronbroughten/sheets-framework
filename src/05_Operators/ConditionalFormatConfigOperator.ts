@@ -1,18 +1,18 @@
 import { Arr } from "@byronbroughten/utils/arr";
 import { Val } from "@byronbroughten/utils/val";
 
-import type { ModelableConditionalFormatRule } from "../00_Source/RawSource/ConditionalFormat";
-import { rangesShareCell } from "../00_Source/RawSource/RawSource";
+import type { ModelableConditionalFormatRule } from "../00_Source/RawSource/ConditionalFormat.ts";
+import { rangesShareCell } from "../00_Source/RawSource/RawSource.ts";
 import {
   BraceFormula,
   type RuleLayout,
-} from "../01_SpreadsheetSchema/configReaders/BraceFormula";
-import { columnConfigsByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
-import { IntendedRule } from "../01_SpreadsheetSchema/configReaders/IntendedRule";
+} from "../01_SpreadsheetSchema/configReaders/BraceFormula.ts";
+import { columnConfigsByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes.ts";
+import { IntendedRule } from "../01_SpreadsheetSchema/configReaders/IntendedRule.ts";
 import {
   type ConditionalFormatConfigsBase,
   makeImportLine,
-} from "../01_SpreadsheetSchema/configReaders/makeConfigs";
+} from "../01_SpreadsheetSchema/configReaders/makeConfigs.ts";
 import {
   type OwnedTableRule,
   RuleRecords,
@@ -20,7 +20,7 @@ import {
   type RuleRecordsTable,
   type TableRuleIndex,
   type TableRuleRecord,
-} from "../01_SpreadsheetSchema/configReaders/RuleRecords";
+} from "../01_SpreadsheetSchema/configReaders/RuleRecords.ts";
 import {
   type IntendedTrait,
   isColumnDeletion,
@@ -33,8 +33,8 @@ import {
   ruleRemovalLines,
   ruleReplacementLines,
   ruleRespanLines,
-} from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
-import type { WideRule } from "../01_SpreadsheetSchema/configReaders/SyncPlanner/wideAlterations";
+} from "../01_SpreadsheetSchema/configReaders/SyncPlanner.ts";
+import type { WideRule } from "../01_SpreadsheetSchema/configReaders/SyncPlanner/wideAlterations.ts";
 import type {
   SyncCheck,
   SyncHeldBackChange,
@@ -42,25 +42,25 @@ import type {
   SyncPlanEffect,
   SyncSendLine,
   SyncUnmodelableRuleStop,
-} from "../01_SpreadsheetSchema/configReaders/syncRunResult";
-import { tableConfigsByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
-import type { SheetRaw } from "../02_SpreadsheetRaw/SheetRaw";
-import type { TableRaw } from "../02_SpreadsheetRaw/TableRaw";
-import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
-import { ColumnConfigsOperator } from "./ColumnConfigsOperator";
+} from "../01_SpreadsheetSchema/configReaders/syncRunResult.ts";
+import { tableConfigsByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes.ts";
+import type { SheetRaw } from "../02_SpreadsheetRaw/SheetRaw.ts";
+import type { TableRaw } from "../02_SpreadsheetRaw/TableRaw.ts";
+import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed.ts";
+import { ColumnConfigsOperator } from "./ColumnConfigsOperator.ts";
 import type {
   MintedNewColumn,
   PlannedColumnMove,
-} from "./ColumnConfigsOperator/ColumnConfigsLayoutOperator";
-import type { ApiTableColumns } from "./ColumnConfigsOperator/ColumnConfigsOutputOperator";
-import { blockMoveOf } from "./ColumnConfigsOperator/TableColumnOrder";
+} from "./ColumnConfigsOperator/ColumnConfigsLayoutOperator.ts";
+import type { ApiTableColumns } from "./ColumnConfigsOperator/ColumnConfigsOutputOperator.ts";
+import { blockMoveOf } from "./ColumnConfigsOperator/TableColumnOrder.ts";
 import {
   columnNamesByColumnId,
   oneLinePerLeafFileSource,
   tablesAndTabsFileSource,
-} from "./configFileSource";
-import { SpreadsheetBaseOperator } from "./SpreadsheetBaseOperator";
-import { TableConfigsOperator } from "./TableConfigsOperator";
+} from "./configFileSource.ts";
+import { SpreadsheetBaseOperator } from "./SpreadsheetBaseOperator.ts";
+import { TableConfigsOperator } from "./TableConfigsOperator.ts";
 
 // A Table a plan deletes: its codebase name and its ID.
 export interface DeletedTable {

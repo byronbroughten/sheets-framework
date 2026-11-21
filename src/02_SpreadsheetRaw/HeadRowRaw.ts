@@ -1,16 +1,16 @@
-import type { CellValue } from "../00_Source/CellValues/cellValues";
+import type { CellValue } from "../00_Source/CellValues/cellValues.ts";
 import type {
   EditLockDeclaration,
   EditProtection,
   EditWarningDeclaration,
-} from "../00_Source/RawSource/EditProtection";
+} from "../00_Source/RawSource/EditProtection.ts";
 import type {
   HeadRole,
   HeadRowValue,
   HeadRowValueName,
-} from "../01_SpreadsheetSchema/headRows";
-import { HeadRowBaseRaw } from "./ClassBases/HeadRowBaseRaw";
-import type { TableGridRange } from "./ClassTypes/StateRaw";
+} from "../01_SpreadsheetSchema/headRows.ts";
+import { HeadRowBaseRaw } from "./ClassBases/HeadRowBaseRaw.ts";
+import type { TableGridRange } from "./ClassTypes/StateRaw.ts";
 
 export class HeadRowRaw<
   HR extends HeadRole = HeadRole,

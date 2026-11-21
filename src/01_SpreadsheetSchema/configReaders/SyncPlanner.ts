@@ -1,9 +1,9 @@
-import type { DropdownStyleReset } from "../../00_Source/RawSource/RawSource";
-import type { ColumnTypeBaseline } from "../columnBaseline";
-import { SpreadsheetBaseSchema } from "../SpreadsheetBaseSchema";
-import { columnNameOfHeader } from "./columnConfigsTypes";
-import type { PendingAlterations } from "./intendedState";
-import { DeletionRefuser } from "./SyncPlanner/DeletionRefuser";
+import type { DropdownStyleReset } from "../../00_Source/RawSource/RawSource.ts";
+import type { ColumnTypeBaseline } from "../columnBaseline.ts";
+import { SpreadsheetBaseSchema } from "../SpreadsheetBaseSchema.ts";
+import { columnNameOfHeader } from "./columnConfigsTypes.ts";
+import type { PendingAlterations } from "./intendedState.ts";
+import { DeletionRefuser } from "./SyncPlanner/DeletionRefuser.ts";
 import {
   entriesOf,
   isMovePath,
@@ -14,7 +14,7 @@ import {
   type WideColumnGroupMove,
   type WideNewTable,
   type WideRule,
-} from "./SyncPlanner/wideAlterations";
+} from "./SyncPlanner/wideAlterations.ts";
 import type {
   ForcedTrait,
   SyncConflict,
@@ -26,7 +26,7 @@ import type {
   SyncSendLine,
   SyncSheetStop,
   SyncSubject,
-} from "./syncRunResult";
+} from "./syncRunResult.ts";
 
 export type TraitValue = string | number | boolean | ColumnTypeBaseline;
 type TraitRecord = Record<string, TraitValue | undefined>;

@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { type BoundedGridRange } from "../00_Source/RawSource/RawSource";
-import { SheetIndex } from "../00_Source/RawSource/SheetIndex";
+import { type BoundedGridRange } from "../00_Source/RawSource/RawSource.ts";
+import { SheetIndex } from "../00_Source/RawSource/SheetIndex.ts";
 import {
   buildGridRows,
   stubSheetsService,
-} from "../testSupport/fakeSheetsService";
-import type { AddTableProps } from "./ClassTypes/StateRaw";
-import { SpreadsheetRaw } from "./SpreadsheetRaw";
+} from "../testSupport/fakeSheetsService.ts";
+import type { AddTableProps } from "./ClassTypes/StateRaw.ts";
+import { SpreadsheetRaw } from "./SpreadsheetRaw.ts";
 import {
   expectedOrigin,
   formulaCell,
@@ -17,7 +17,7 @@ import {
   tableId111,
   tableId222,
   topDataRowIndex,
-} from "./spreadsheetRawTestSupport";
+} from "./spreadsheetRawTestSupport.ts";
 
 describe("SpreadsheetRaw add sheet and add Table", () => {
   const addSheetProps = {

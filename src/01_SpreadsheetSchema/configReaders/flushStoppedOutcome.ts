@@ -1,4 +1,4 @@
-import type { HeldFlushRefusalProps } from "../../00_Source/RawSource/HeldFlushRefusal";
+import type { HeldFlushRefusalProps } from "../../00_Source/RawSource/HeldFlushRefusal.ts";
 
 // A send stopped at a flush the entered-data gate held, Google refused or, for the fill's own send, failed.
 export type FlushStoppedOutcome =

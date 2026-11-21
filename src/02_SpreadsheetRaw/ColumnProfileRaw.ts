@@ -1,16 +1,16 @@
 import { type PrimitiveValueName, Val } from "@byronbroughten/utils/val";
 
-import type { CellValue } from "../00_Source/CellValues/cellValues";
-import type { FrameworkValueName } from "../00_Source/CellValues/frameworkValueSchemas";
-import type { TableColumnType } from "../00_Source/RawSource/RawSource";
+import type { CellValue } from "../00_Source/CellValues/cellValues.ts";
+import type { FrameworkValueName } from "../00_Source/CellValues/frameworkValueSchemas.ts";
+import type { TableColumnType } from "../00_Source/RawSource/RawSource.ts";
 import type {
   ActionRowCellBaseline,
   ColumnValidationRule,
-} from "../01_SpreadsheetSchema/columnBaseline";
-import { ColumnBaseRaw } from "./ClassBases/ColumnBaseRaw";
-import type { ColumnStateRaw, SampledFactsRaw } from "./ClassTypes/StateRaw";
-import { ColumnRaw } from "./ColumnRaw";
-import { TableRaw } from "./TableRaw";
+} from "../01_SpreadsheetSchema/columnBaseline.ts";
+import { ColumnBaseRaw } from "./ClassBases/ColumnBaseRaw.ts";
+import type { ColumnStateRaw, SampledFactsRaw } from "./ClassTypes/StateRaw.ts";
+import { ColumnRaw } from "./ColumnRaw.ts";
+import { TableRaw } from "./TableRaw.ts";
 
 export interface TableColumnReference {
   tableName: string;

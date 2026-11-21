@@ -1,6 +1,6 @@
-import { columnConfigsByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
-import type { ColumnConfigStored } from "../01_SpreadsheetSchema/configReaders/makeConfigs";
-import { tableConfigsByTableId } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
+import { columnConfigsByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes.ts";
+import type { ColumnConfigStored } from "../01_SpreadsheetSchema/configReaders/makeConfigs.ts";
+import { tableConfigsByTableId } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes.ts";
 
 // One Table's columns as the previous configs hold them; a Table new to them has none.
 export class PreviousColumnConfigs {

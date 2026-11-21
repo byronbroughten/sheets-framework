@@ -2,13 +2,13 @@ import {
   type ConditionalFormatRule,
   conditionalFormatRulesEqual,
   type ModelableConditionalFormatRule,
-} from "../../00_Source/RawSource/ConditionalFormat";
+} from "../../00_Source/RawSource/ConditionalFormat.ts";
 import {
   type GridRangeProps,
   rangeEqual,
-} from "../../00_Source/RawSource/RawSource";
-import { SheetBaseRaw } from "../ClassBases/SheetBaseRaw";
-import { SheetRaw } from "../SheetRaw";
+} from "../../00_Source/RawSource/RawSource.ts";
+import { SheetBaseRaw } from "../ClassBases/SheetBaseRaw.ts";
+import { SheetRaw } from "../SheetRaw.ts";
 
 export class SheetConditionalFormatsRaw extends SheetBaseRaw {
   get sheet(): SheetRaw {

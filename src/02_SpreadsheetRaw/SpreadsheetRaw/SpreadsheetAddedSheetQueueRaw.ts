@@ -5,10 +5,10 @@ import type {
   AddSheetOperation,
   BoundedGridRange,
   GridRangeProps,
-} from "../../00_Source/RawSource/RawSource";
-import { headRows } from "../../01_SpreadsheetSchema/headRows";
-import { SpreadsheetBaseRaw } from "../ClassBases/SpreadsheetBaseRaw";
-import type { AddedSheetCell, GridEnd } from "../ClassTypes/StateRaw";
+} from "../../00_Source/RawSource/RawSource.ts";
+import { headRows } from "../../01_SpreadsheetSchema/headRows.ts";
+import { SpreadsheetBaseRaw } from "../ClassBases/SpreadsheetBaseRaw.ts";
+import type { AddedSheetCell, GridEnd } from "../ClassTypes/StateRaw.ts";
 
 export class SpreadsheetAddedSheetQueueRaw extends SpreadsheetBaseRaw {
   // A tab this flush adds has no sheet state until fetched, so its queued addSheet is what puts it in the working view.

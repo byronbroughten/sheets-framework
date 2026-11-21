@@ -1,25 +1,25 @@
 import { Val } from "@byronbroughten/utils/val";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
-import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes.ts";
+import { stubLogger } from "../testSupport/fakeAppsScriptGlobals.ts";
 import {
   type FakeCell,
   type FakeCellValue,
   type FakeSheetProperties,
   type FakeSheetsService,
-} from "../testSupport/fakeSheetsService";
+} from "../testSupport/fakeSheetsService.ts";
 import {
   type FakeBodyRow,
   fakeTableSheet,
-} from "../testSupport/fakeSheetsService/fakeTableSheet";
-import { type ConfigRegeneration, SyncCoordinator } from "./SyncCoordinator";
+} from "../testSupport/fakeSheetsService/fakeTableSheet.ts";
+import { type ConfigRegeneration, SyncCoordinator } from "./SyncCoordinator.ts";
 import {
   columnsByHeader,
   runWithNoAlterations,
   seedFixture,
   sendWithNoAlterations,
-} from "./syncCoordinatorTestSupport";
+} from "./syncCoordinatorTestSupport.ts";
 
 type GridRange = GoogleAppsScript.Sheets.Schema.GridRange;
 

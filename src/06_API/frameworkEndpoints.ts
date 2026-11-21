@@ -1,12 +1,12 @@
 import {
   type CodebaseNameDelimiter,
   codebaseNameDelimiter,
-} from "../00_Source/CellValues/cellValues";
+} from "../00_Source/CellValues/cellValues.ts";
 import {
   type SheetNameWithIdColumn,
   tableNamesWithIdColumn,
-} from "../04_SpreadsheetNamed/TableNameGroups";
-import type { Endpoint, Endpoints, EndpointsAll } from "./Endpoints";
+} from "../04_SpreadsheetNamed/TableNameGroups.ts";
+import type { Endpoint, Endpoints, EndpointsAll } from "./Endpoints.ts";
 
 // Not MakeColumnFullName: "id" doesn't satisfy its ColumnName<TN> constraint over a generic TN.
 export type FillRowIdsEndpoints = {

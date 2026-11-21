@@ -1,22 +1,22 @@
 import type {
   ConditionalFormatDeclaration,
   ModelableConditionalFormatRule,
-} from "../../00_Source/RawSource/ConditionalFormat";
+} from "../../00_Source/RawSource/ConditionalFormat.ts";
 import type {
   EditLockDeclaration,
   EditProtectionContent,
   EditWarningDeclaration,
-} from "../../00_Source/RawSource/EditProtection";
-import type { GridRangeProps } from "../../00_Source/RawSource/RawSource";
-import { SheetIndex } from "../../00_Source/RawSource/SheetIndex";
-import type { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin";
-import { TableBaseRaw } from "../ClassBases/TableBaseRaw";
+} from "../../00_Source/RawSource/EditProtection.ts";
+import type { GridRangeProps } from "../../00_Source/RawSource/RawSource.ts";
+import { SheetIndex } from "../../00_Source/RawSource/SheetIndex.ts";
+import type { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin.ts";
+import { TableBaseRaw } from "../ClassBases/TableBaseRaw.ts";
 import type {
   TableConditionalFormatRule,
   TableEditProtection,
   TableGridRange,
-} from "../ClassTypes/StateRaw";
-import { TableRaw } from "../TableRaw";
+} from "../ClassTypes/StateRaw.ts";
+import { TableRaw } from "../TableRaw.ts";
 
 export class TableConditionalFormatAndProtectionQueuerRaw extends TableBaseRaw {
   get table(): TableRaw {

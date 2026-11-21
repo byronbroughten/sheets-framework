@@ -1,12 +1,12 @@
-import { PartialTableRefusal } from "../../00_Source/RawSource/PartialTableRefusal";
+import { PartialTableRefusal } from "../../00_Source/RawSource/PartialTableRefusal.ts";
 import type {
   AppendDimensionOperation,
   DeleteConditionalFormatRuleOperation,
   DeleteTableRowsOperation,
   LocalWriteOperation,
-} from "../../00_Source/RawSource/RawSource";
-import { SpreadsheetBaseRaw } from "../ClassBases/SpreadsheetBaseRaw";
-import { emptyStateRaw } from "../ClassTypes/emptyStateRaw";
+} from "../../00_Source/RawSource/RawSource.ts";
+import { SpreadsheetBaseRaw } from "../ClassBases/SpreadsheetBaseRaw.ts";
+import { emptyStateRaw } from "../ClassTypes/emptyStateRaw.ts";
 import type {
   AppendTableRows,
   RowWrites,
@@ -15,10 +15,10 @@ import type {
   TableColumnInsertOperation,
   TableGrowthOperation,
   TableStateRaw,
-} from "../ClassTypes/StateRaw";
-import { SpreadsheetRaw } from "../SpreadsheetRaw";
-import type { TableRaw } from "../TableRaw";
-import { SpreadsheetRefusalRewriterRaw } from "./SpreadsheetRefusalRewriterRaw";
+} from "../ClassTypes/StateRaw.ts";
+import { SpreadsheetRaw } from "../SpreadsheetRaw.ts";
+import type { TableRaw } from "../TableRaw.ts";
+import { SpreadsheetRefusalRewriterRaw } from "./SpreadsheetRefusalRewriterRaw.ts";
 
 interface QueuedRowWrites {
   rowIndex: number;

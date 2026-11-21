@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import type { ColumnTypeBaseline } from "../columnBaseline";
-import type { BraceConfigs } from "./BraceFormula";
-import { previousTraitTables } from "./previousTraitTables";
-import { SyncPlanner, type TraitReadings } from "./SyncPlanner";
+import type { ColumnTypeBaseline } from "../columnBaseline.ts";
+import type { BraceConfigs } from "./BraceFormula.ts";
+import { previousTraitTables } from "./previousTraitTables.ts";
+import { SyncPlanner, type TraitReadings } from "./SyncPlanner.ts";
 
 function column(
   columnId: string,

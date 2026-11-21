@@ -1,17 +1,17 @@
 import {
   type Configs,
   installedConfigs,
-} from "../01_SpreadsheetSchema/configReaders/configRegister";
-import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
+} from "../01_SpreadsheetSchema/configReaders/configRegister.ts";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes.ts";
 import {
   type FakeSheetProperties,
   type FakeSheetsService,
   stubSheetsService,
-} from "./fakeSheetsService";
+} from "./fakeSheetsService.ts";
 import {
   type FakeBodyRow,
   fakeTableSheet,
-} from "./fakeSheetsService/fakeTableSheet";
+} from "./fakeSheetsService/fakeTableSheet.ts";
 
 type ValueTypesColumnConfigs = Configs["columnConfigs"]["valueTypes"];
 

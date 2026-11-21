@@ -1,9 +1,9 @@
 import {
   SheetIndex,
   type SheetRowIndex,
-} from "../00_Source/RawSource/SheetIndex";
-import { headRows } from "./headRows";
-import { tableLayout } from "./tableLayout";
+} from "../00_Source/RawSource/SheetIndex.ts";
+import { headRows } from "./headRows.ts";
+import { tableLayout } from "./tableLayout.ts";
 
 const bounds = {
   depth: tableLayout.headerZoneDepth,

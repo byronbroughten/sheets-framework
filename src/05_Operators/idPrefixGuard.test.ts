@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { IdPrefixesByTableId } from "../01_SpreadsheetSchema/idPrefixes";
-import { validateIdPrefixesUnchanged } from "./idPrefixGuard";
+import { IdPrefixesByTableId } from "../01_SpreadsheetSchema/idPrefixes.ts";
+import { validateIdPrefixesUnchanged } from "./idPrefixGuard.ts";
 
 const previousEntries: [string, string][] = [
   ["item", "itm"],

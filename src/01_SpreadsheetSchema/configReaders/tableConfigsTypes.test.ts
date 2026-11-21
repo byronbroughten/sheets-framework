@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { assertType, type IsExactly } from "../../testSupport/typeAssertions";
-import { installedConfigs } from "./configRegister";
+import {
+  assertType,
+  type IsExactly,
+} from "../../testSupport/typeAssertions.ts";
+import { installedConfigs } from "./configRegister.ts";
 import {
   configTableNames,
   getTableTraitByGid,
@@ -9,7 +12,7 @@ import {
   tableConfigsByName,
   tableKeysByGid,
   type TableNameSimple,
-} from "./tableConfigsTypes";
+} from "./tableConfigsTypes.ts";
 
 const { tableConfigs } = installedConfigs();
 

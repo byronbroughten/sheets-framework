@@ -2,14 +2,14 @@ import type {
   GoogleBatchUpdateResponse,
   GoogleRequest,
   SheetsHttpRead,
-} from "../00_Source/GoogleSheets/GoogleSheetsAPI";
-import { HeldFlushRefusal } from "../00_Source/RawSource/HeldFlushRefusal";
+} from "../00_Source/GoogleSheets/GoogleSheetsAPI.ts";
+import { HeldFlushRefusal } from "../00_Source/RawSource/HeldFlushRefusal.ts";
 import {
   defaultDropdownStyleReset,
   type DropdownStyleReset,
-} from "../00_Source/RawSource/RawSource";
-import { FlushClassifier } from "./FlushClassifier";
-import type { HeldItem } from "./FlushClassifier/flushClassifierTypes";
+} from "../00_Source/RawSource/RawSource.ts";
+import { FlushClassifier } from "./FlushClassifier.ts";
+import type { HeldItem } from "./FlushClassifier/flushClassifierTypes.ts";
 
 // Every flush's held items in flush order, a free flush's empty list included, and the token that binds them to a target.
 export interface HeldList {

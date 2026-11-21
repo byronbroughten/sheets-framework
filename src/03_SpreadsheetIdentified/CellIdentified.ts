@@ -1,25 +1,25 @@
-import type { NotEmpty } from "../00_Source/CellValues/cellValues";
+import type { NotEmpty } from "../00_Source/CellValues/cellValues.ts";
 import type {
   ConditionalFormatDeclaration,
   ConditionalFormatRule,
-} from "../00_Source/RawSource/ConditionalFormat";
+} from "../00_Source/RawSource/ConditionalFormat.ts";
 import type {
   EditLockDeclaration,
   EditProtection,
   EditWarningDeclaration,
-} from "../00_Source/RawSource/EditProtection";
-import type { RgbColor } from "../00_Source/RawSource/RgbColor";
+} from "../00_Source/RawSource/EditProtection.ts";
+import type { RgbColor } from "../00_Source/RawSource/RgbColor.ts";
 import {
   toWireValue,
   type Value,
   type ValueName,
   type VnToCvn,
-} from "../01_SpreadsheetSchema/configReaders/valueSchemas";
-import { headRows } from "../01_SpreadsheetSchema/headRows";
-import { CellRaw } from "../02_SpreadsheetRaw/CellRaw";
-import { CellBaseIdentified } from "./ClassBases/CellBaseIdentified";
-import type { CellChange } from "./ClassTypes/StateIdentified";
-import { ColumnIdentified } from "./ColumnIdentified";
+} from "../01_SpreadsheetSchema/configReaders/valueSchemas.ts";
+import { headRows } from "../01_SpreadsheetSchema/headRows.ts";
+import { CellRaw } from "../02_SpreadsheetRaw/CellRaw.ts";
+import { CellBaseIdentified } from "./ClassBases/CellBaseIdentified.ts";
+import type { CellChange } from "./ClassTypes/StateIdentified.ts";
+import { ColumnIdentified } from "./ColumnIdentified.ts";
 
 export class CellIdentified<
   VN extends ValueName = ValueName,

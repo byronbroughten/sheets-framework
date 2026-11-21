@@ -1,6 +1,6 @@
 // What one `sync` run did or would do, as `SyncRunReport` prints it. Facts, apart from the few phrases a producer words: a stop's label and cause, a send's what, a sent summary.
-import type { DryRunHeld } from "./dryRunHeld";
-import type { FlushStoppedOutcome } from "./flushStoppedOutcome";
+import type { DryRunHeld } from "./dryRunHeld.ts";
+import type { FlushStoppedOutcome } from "./flushStoppedOutcome.ts";
 
 export type SyncRunResult = SyncDryRunResult | SyncSendResult;
 

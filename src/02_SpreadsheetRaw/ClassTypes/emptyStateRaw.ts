@@ -10,7 +10,7 @@ import type {
   TableWriteQueueRaw,
   TableWrites,
   WriteOperations,
-} from "./StateRaw";
+} from "./StateRaw.ts";
 
 export const emptyStateRaw = {
   writeOperations(): WriteOperations {

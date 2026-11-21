@@ -1,7 +1,7 @@
-import type { CellValue } from "../../../src/00_Source/CellValues/cellValues";
-import type { TableColumnType } from "../../../src/00_Source/RawSource/RawSource";
-import { dimensionIds } from "../../../src/01_SpreadsheetSchema/dimensionIds";
-import { tableLayout } from "../../../src/01_SpreadsheetSchema/tableLayout";
+import type { CellValue } from "../../../src/00_Source/CellValues/cellValues.ts";
+import type { TableColumnType } from "../../../src/00_Source/RawSource/RawSource.ts";
+import { dimensionIds } from "../../../src/01_SpreadsheetSchema/dimensionIds.ts";
+import { tableLayout } from "../../../src/01_SpreadsheetSchema/tableLayout.ts";
 
 export interface DevFixtureColumn {
   key: string;

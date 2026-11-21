@@ -1,12 +1,12 @@
 // First, out of order: entering the RowCommonRaw <-> TableRaw cycle here loads HeadRowBaseRaw before its base class, in the bundle.
-import "./TableRaw";
+import "./TableRaw.ts";
 
 import type {
   CellValue,
   CellValueName,
-} from "../00_Source/CellValues/cellValues";
-import type { RowRawProps } from "./ClassBases/RowBaseRaw";
-import { RowCommonRaw } from "./ClassBases/RowCommonRaw";
+} from "../00_Source/CellValues/cellValues.ts";
+import type { RowRawProps } from "./ClassBases/RowBaseRaw.ts";
+import { RowCommonRaw } from "./ClassBases/RowCommonRaw.ts";
 
 export class RowRaw extends RowCommonRaw {
   constructor(props: RowRawProps) {

@@ -1,9 +1,9 @@
 import { Val } from "@byronbroughten/utils/val";
 
-import type { FormulaRenames } from "./BraceFormula";
-import { subjectKey } from "./didntLand";
-import type { NamesNow, TableNow } from "./namesNow";
-import { type Rename, SyncFormulaRewriter } from "./SyncFormulaRewriter";
+import type { FormulaRenames } from "./BraceFormula.ts";
+import { subjectKey } from "./didntLand.ts";
+import type { NamesNow, TableNow } from "./namesNow.ts";
+import { type Rename, SyncFormulaRewriter } from "./SyncFormulaRewriter.ts";
 import {
   entriesOf,
   moveBeforePath,
@@ -17,8 +17,8 @@ import {
   type WideNewTable,
   type WideTabEntry,
   type WideTableEntry,
-} from "./SyncPlanner/wideAlterations";
-import type { SyncRewrite, SyncSubject } from "./syncRunResult";
+} from "./SyncPlanner/wideAlterations.ts";
+import type { SyncRewrite, SyncSubject } from "./syncRunResult.ts";
 
 export interface SyncAlterationsRewriterProps {
   names: NamesNow;

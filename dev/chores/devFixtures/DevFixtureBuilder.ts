@@ -1,19 +1,19 @@
-import type { CellValue } from "../../../src/00_Source/CellValues/cellValues";
-import { dimensionIds } from "../../../src/01_SpreadsheetSchema/dimensionIds";
-import { headRows } from "../../../src/01_SpreadsheetSchema/headRows";
-import { type TableOrigin } from "../../../src/01_SpreadsheetSchema/TableOrigin";
+import type { CellValue } from "../../../src/00_Source/CellValues/cellValues.ts";
+import { dimensionIds } from "../../../src/01_SpreadsheetSchema/dimensionIds.ts";
+import { headRows } from "../../../src/01_SpreadsheetSchema/headRows.ts";
+import { type TableOrigin } from "../../../src/01_SpreadsheetSchema/TableOrigin.ts";
 import type {
   CreatedTablePlacement,
   CreateTableProps,
-} from "../../../src/02_SpreadsheetRaw/ClassTypes/StateRaw";
-import { SpreadsheetBaseNamed } from "../../../src/04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
-import { SpreadsheetNamed } from "../../../src/04_SpreadsheetNamed/SpreadsheetNamed";
+} from "../../../src/02_SpreadsheetRaw/ClassTypes/StateRaw.ts";
+import { SpreadsheetBaseNamed } from "../../../src/04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed.ts";
+import { SpreadsheetNamed } from "../../../src/04_SpreadsheetNamed/SpreadsheetNamed.ts";
 import {
   bodyRowCountOf,
   type DevFixtureSheet,
   devFixtureSheets,
   type DevFixtureTable,
-} from "./devFixtureSheets";
+} from "./devFixtureSheets.ts";
 
 // Each tab's first Table opens it at the expected origin; the rest sit one blank column right of the Table before.
 const besideGap = 1;

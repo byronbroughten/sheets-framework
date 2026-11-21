@@ -3,14 +3,14 @@ import { describe, expect, it } from "vitest";
 import {
   buildGridRows,
   stubSheetsService,
-} from "../testSupport/fakeSheetsService";
-import { SpreadsheetRaw } from "./SpreadsheetRaw";
+} from "../testSupport/fakeSheetsService.ts";
+import { SpreadsheetRaw } from "./SpreadsheetRaw.ts";
 import {
   colIdRowIndex,
   expectedOrigin,
   tableHeaderRowIndex,
   topDataRowIndex,
-} from "./spreadsheetRawTestSupport";
+} from "./spreadsheetRawTestSupport.ts";
 
 const newGid = 777;
 const existingGid = 111;

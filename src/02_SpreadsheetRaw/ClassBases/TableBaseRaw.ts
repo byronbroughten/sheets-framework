@@ -3,11 +3,11 @@ import { Val } from "@byronbroughten/utils/val";
 import type {
   BoundedGridRange,
   TableSnapshot,
-} from "../../00_Source/RawSource/RawSource";
-import { SheetIndex } from "../../00_Source/RawSource/SheetIndex";
-import { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin";
-import { emptyStateRaw } from "../ClassTypes/emptyStateRaw";
-import { queuedColumnType } from "../ClassTypes/queuedColumnType";
+} from "../../00_Source/RawSource/RawSource.ts";
+import { SheetIndex } from "../../00_Source/RawSource/SheetIndex.ts";
+import { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin.ts";
+import { emptyStateRaw } from "../ClassTypes/emptyStateRaw.ts";
+import { queuedColumnType } from "../ClassTypes/queuedColumnType.ts";
 import type {
   BoundedTableGridRange,
   ColumnStateRaw,
@@ -18,8 +18,8 @@ import type {
   TablesStateRaw,
   TableStateRaw,
   TableWriteQueueRaw,
-} from "../ClassTypes/StateRaw";
-import { SheetBaseRaw, type SheetRawProps } from "./SheetBaseRaw";
+} from "../ClassTypes/StateRaw.ts";
+import { SheetBaseRaw, type SheetRawProps } from "./SheetBaseRaw.ts";
 
 export interface TableAddressRaw {
   tableId: string;

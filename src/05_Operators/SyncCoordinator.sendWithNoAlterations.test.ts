@@ -1,16 +1,16 @@
 import { Val } from "@byronbroughten/utils/val";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
-import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
-import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes.ts";
+import { expectedSheetLayout } from "../testSupport/expectedSheetLayout.ts";
+import { stubLogger } from "../testSupport/fakeAppsScriptGlobals.ts";
 import {
   type FakeSheetProperties,
   stubSheetsService,
-} from "../testSupport/fakeSheetsService";
-import { fakeTableSheet } from "../testSupport/fakeSheetsService/fakeTableSheet";
-import { parseIdNameMapFileSource } from "./parseIdNameMapFileSource";
-import { type ConfigRegeneration, SyncCoordinator } from "./SyncCoordinator";
+} from "../testSupport/fakeSheetsService.ts";
+import { fakeTableSheet } from "../testSupport/fakeSheetsService/fakeTableSheet.ts";
+import { parseIdNameMapFileSource } from "./parseIdNameMapFileSource.ts";
+import { type ConfigRegeneration, SyncCoordinator } from "./SyncCoordinator.ts";
 import {
   columnConfigs,
   columnsByHeader,
@@ -24,7 +24,7 @@ import {
   seedFixture,
   sendWithNoAlterations,
   tableConfigsEntry,
-} from "./syncCoordinatorTestSupport";
+} from "./syncCoordinatorTestSupport.ts";
 
 beforeEach(() => {
   stubLogger();

@@ -1,8 +1,8 @@
 import { Val } from "@byronbroughten/utils/val";
 import { describe, expect, it } from "vitest";
 
-import { googleRawRequest } from "../00_Source/GoogleSheets/GoogleSheetsAPI";
-import { headRows } from "../01_SpreadsheetSchema/headRows";
+import { googleRawRequest } from "../00_Source/GoogleSheets/GoogleSheetsAPI.ts";
+import { headRows } from "../01_SpreadsheetSchema/headRows.ts";
 import {
   buildGridRows,
   type FakeCell,
@@ -10,9 +10,9 @@ import {
   type FakeSheetsServiceOptions,
   type FakeTable,
   stubSheetsService,
-} from "../testSupport/fakeSheetsService";
-import { type ColumnProfileRaw } from "./ColumnProfileRaw";
-import { SpreadsheetRaw } from "./SpreadsheetRaw";
+} from "../testSupport/fakeSheetsService.ts";
+import { type ColumnProfileRaw } from "./ColumnProfileRaw.ts";
+import { SpreadsheetRaw } from "./SpreadsheetRaw.ts";
 import {
   colIdRowIndex,
   expectedOrigin,
@@ -28,7 +28,7 @@ import {
   tableId111,
   thrownMessage,
   topDataRowIndex,
-} from "./spreadsheetRawTestSupport";
+} from "./spreadsheetRawTestSupport.ts";
 
 describe("ColumnProfileRaw sampled facts", () => {
   const tableEndRow = topDataRowIndex + 1;

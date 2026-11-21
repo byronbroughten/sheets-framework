@@ -1,11 +1,10 @@
-import type { LocalWriteOperation } from "./RawSource";
+import type { LocalWriteOperation } from "./RawSource.ts";
 
 // Google names only the request it refused, so the Source hands back the operation that sent it.
 export class PartialTableRefusal extends Error {
-  constructor(
-    message: string,
-    readonly operation: LocalWriteOperation,
-  ) {
+  readonly operation: LocalWriteOperation;
+  constructor(message: string, operation: LocalWriteOperation) {
     super(message);
+    this.operation = operation;
   }
 }

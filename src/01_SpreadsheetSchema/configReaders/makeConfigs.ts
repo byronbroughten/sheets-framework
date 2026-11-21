@@ -1,11 +1,11 @@
-import type { TabColor } from "../../00_Source/RawSource/RawSource";
+import type { TabColor } from "../../00_Source/RawSource/RawSource.ts";
 import type {
   ActionRowCellBaseline,
   ColumnTypeBaseline,
-} from "../columnBaseline";
-import { idPrefixes } from "../idPrefixes";
-import type { RuleRecordSet } from "./RuleRecords";
-import type { Value, ValueName } from "./valueSchemas";
+} from "../columnBaseline.ts";
+import { idPrefixes } from "../idPrefixes.ts";
+import type { RuleRecordSet } from "./RuleRecords.ts";
+import type { Value, ValueName } from "./valueSchemas.ts";
 
 type ConfigMakerName =
   | "makeTableConfigs"

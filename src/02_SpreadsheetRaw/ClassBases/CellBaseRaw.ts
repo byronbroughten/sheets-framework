@@ -1,7 +1,7 @@
 import { Val } from "@byronbroughten/utils/val";
 
-import type { CellStateRaw, RowStateRaw } from "../ClassTypes/StateRaw";
-import { ColumnBaseRaw, type ColumnRawProps } from "./ColumnBaseRaw";
+import type { CellStateRaw, RowStateRaw } from "../ClassTypes/StateRaw.ts";
+import { ColumnBaseRaw, type ColumnRawProps } from "./ColumnBaseRaw.ts";
 
 export type CellRawProps = ColumnRawProps & { rowIndex: number };
 

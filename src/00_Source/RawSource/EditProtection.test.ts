@@ -4,15 +4,15 @@ import {
   assertNotType,
   assertType,
   type IsExactly,
-} from "../../testSupport/typeAssertions";
+} from "../../testSupport/typeAssertions.ts";
 import {
   type EditLockDeclaration,
   type EditWarningDeclaration,
   protectionRangeEqual,
   type WholeSheetEditLockDeclaration,
   type WholeSheetEditWarningDeclaration,
-} from "./EditProtection";
-import { SheetIndex } from "./SheetIndex";
+} from "./EditProtection.ts";
+import { SheetIndex } from "./SheetIndex.ts";
 
 type HasUnprotectedRanges<T> = "unprotectedRanges" extends keyof T
   ? true

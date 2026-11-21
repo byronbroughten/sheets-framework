@@ -4,28 +4,28 @@ import { Val } from "@byronbroughten/utils/val";
 import type {
   ConditionalFormatRule,
   ModelableConditionalFormatRule,
-} from "../00_Source/RawSource/ConditionalFormat";
+} from "../00_Source/RawSource/ConditionalFormat.ts";
 import type {
   EditProtection,
   EditProtectionContent,
   ProtectionGridRange,
   WholeSheetEditLockDeclaration,
   WholeSheetEditWarningDeclaration,
-} from "../00_Source/RawSource/EditProtection";
+} from "../00_Source/RawSource/EditProtection.ts";
 import type {
   GridRangeProps,
   SheetSnapshot,
   SheetTabProperties,
   TableSnapshot,
   UpdateTabPropertiesOperation,
-} from "../00_Source/RawSource/RawSource";
+} from "../00_Source/RawSource/RawSource.ts";
 import {
   type SheetColIndex,
   SheetIndex,
   type SheetRowIndex,
-} from "../00_Source/RawSource/SheetIndex";
-import { headerZone } from "../01_SpreadsheetSchema/headerZone";
-import { SheetBaseRaw, type SheetRawProps } from "./ClassBases/SheetBaseRaw";
+} from "../00_Source/RawSource/SheetIndex.ts";
+import { headerZone } from "../01_SpreadsheetSchema/headerZone.ts";
+import { SheetBaseRaw, type SheetRawProps } from "./ClassBases/SheetBaseRaw.ts";
 import {
   hasQueuedWrites,
   integrateColumnProperties,
@@ -33,13 +33,13 @@ import {
   tableIdsOnSheet,
   tableOnSheetLabel,
   tableStateOf,
-} from "./ClassBases/TableBaseRaw";
-import { rowIndexesStaleMessage } from "./ClassBases/TableCommonRaw";
-import { emptyStateRaw } from "./ClassTypes/emptyStateRaw";
-import type { TableStateRaw } from "./ClassTypes/StateRaw";
-import { SheetConditionalFormatsRaw } from "./SheetRaw/SheetConditionalFormatsRaw";
-import { SheetEditProtectionsRaw } from "./SheetRaw/SheetEditProtectionsRaw";
-import { TableRaw } from "./TableRaw";
+} from "./ClassBases/TableBaseRaw.ts";
+import { rowIndexesStaleMessage } from "./ClassBases/TableCommonRaw.ts";
+import { emptyStateRaw } from "./ClassTypes/emptyStateRaw.ts";
+import type { TableStateRaw } from "./ClassTypes/StateRaw.ts";
+import { SheetConditionalFormatsRaw } from "./SheetRaw/SheetConditionalFormatsRaw.ts";
+import { SheetEditProtectionsRaw } from "./SheetRaw/SheetEditProtectionsRaw.ts";
+import { TableRaw } from "./TableRaw.ts";
 
 export class SheetRaw extends SheetBaseRaw {
   constructor(props: SheetRawProps) {

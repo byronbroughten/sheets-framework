@@ -1,11 +1,11 @@
-import { SpreadsheetNamed } from "../../04_SpreadsheetNamed/SpreadsheetNamed";
-import { ApiColumnIdentities } from "../ColumnConfigsOperator/ApiColumnIdentities";
-import { InstalledBraceConfigs } from "../ColumnConfigsOperator/InstalledBraceConfigs";
+import { SpreadsheetNamed } from "../../04_SpreadsheetNamed/SpreadsheetNamed.ts";
+import { ApiColumnIdentities } from "../ColumnConfigsOperator/ApiColumnIdentities.ts";
+import { InstalledBraceConfigs } from "../ColumnConfigsOperator/InstalledBraceConfigs.ts";
 import {
   type ConfigSyncState,
   SpreadsheetBaseOperator,
-} from "../SpreadsheetBaseOperator";
-import { TableConfigsOperator } from "../TableConfigsOperator";
+} from "../SpreadsheetBaseOperator.ts";
+import { TableConfigsOperator } from "../TableConfigsOperator.ts";
 
 export class ColumnConfigsBaseOperator extends SpreadsheetBaseOperator {
   get ss(): SpreadsheetNamed {

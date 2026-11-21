@@ -6,24 +6,24 @@ import {
   type GoogleRequest,
   type GoogleSheetsAPI,
   type SheetsHttpRequest,
-} from "../00_Source/GoogleSheets/GoogleSheetsAPI";
-import { HeldFlushRefusal } from "../00_Source/RawSource/HeldFlushRefusal";
-import type { DropdownStyleReset } from "../00_Source/RawSource/RawSource";
-import { SheetIndex } from "../00_Source/RawSource/SheetIndex";
-import { getColumnTraitByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
-import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister";
-import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
-import { SpreadsheetRaw } from "../02_SpreadsheetRaw/SpreadsheetRaw";
-import type { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
-import type { Endpoints } from "../06_API/Endpoints";
-import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
+} from "../00_Source/GoogleSheets/GoogleSheetsAPI.ts";
+import { HeldFlushRefusal } from "../00_Source/RawSource/HeldFlushRefusal.ts";
+import type { DropdownStyleReset } from "../00_Source/RawSource/RawSource.ts";
+import { SheetIndex } from "../00_Source/RawSource/SheetIndex.ts";
+import { getColumnTraitByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes.ts";
+import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister.ts";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes.ts";
+import { SpreadsheetRaw } from "../02_SpreadsheetRaw/SpreadsheetRaw.ts";
+import type { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed.ts";
+import type { Endpoints } from "../06_API/Endpoints.ts";
+import { expectedSheetLayout } from "../testSupport/expectedSheetLayout.ts";
 import {
   buildGridRows,
   type FakeCell,
   type FakeCellValue,
-} from "../testSupport/fakeSheetsService";
-import type { HeldList } from "./EnteredDataGate";
-import { NodeHost } from "./NodeHost";
+} from "../testSupport/fakeSheetsService.ts";
+import type { HeldList } from "./EnteredDataGate.ts";
+import { NodeHost } from "./NodeHost.ts";
 
 type GoogleCellData = GoogleAppsScript.Sheets.Schema.CellData;
 
@@ -611,11 +611,11 @@ async function appendBeneathOneRow({
   endpoints,
 }: AppendCase): Promise<FakeCellValue[][]> {
   vi.resetModules();
-  const { NodeHost } = await import("./NodeHost");
+  const { NodeHost } = await import("./NodeHost.ts");
   const { stubSheetsService } =
-    await import("../testSupport/fakeSheetsService");
+    await import("../testSupport/fakeSheetsService.ts");
   const { SpreadsheetNamed } =
-    await import("../04_SpreadsheetNamed/SpreadsheetNamed");
+    await import("../04_SpreadsheetNamed/SpreadsheetNamed.ts");
   NodeHost.init({
     configs: installedConfigs(),
     spreadsheetId,

@@ -1,5 +1,5 @@
-import type { SyncRefusal } from "../syncRunResult";
-import type { RenamedColumnNames } from "./RenamedColumnNames";
+import type { SyncRefusal } from "../syncRunResult.ts";
+import type { RenamedColumnNames } from "./RenamedColumnNames.ts";
 
 export interface ColumnNamedAt {
   table: string;

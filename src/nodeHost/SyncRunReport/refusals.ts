@@ -1,10 +1,10 @@
-import { sendableTraits } from "../../01_SpreadsheetSchema/configReaders/SyncEntryRefuser";
+import { sendableTraits } from "../../01_SpreadsheetSchema/configReaders/SyncEntryRefuser.ts";
 import type {
   SyncClashingPlacements,
   SyncEntry,
   SyncRefusal,
-} from "../../01_SpreadsheetSchema/configReaders/syncRunResult";
-import { ReportText } from "../ReportText";
+} from "../../01_SpreadsheetSchema/configReaders/syncRunResult.ts";
+import { ReportText } from "../ReportText.ts";
 
 const { indent, subjectLabel } = ReportText;
 

@@ -1,5 +1,5 @@
-import type { ColumnStateRaw } from "../ClassTypes/StateRaw";
-import { TableBaseRaw, type TableRawProps } from "./TableBaseRaw";
+import type { ColumnStateRaw } from "../ClassTypes/StateRaw.ts";
+import { TableBaseRaw, type TableRawProps } from "./TableBaseRaw.ts";
 
 export type ColumnRawProps = TableRawProps & { colIndex: number };
 

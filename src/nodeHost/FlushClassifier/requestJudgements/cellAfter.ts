@@ -1,4 +1,4 @@
-import type { CellAfter, GoogleCellData } from "../flushClassifierTypes";
+import type { CellAfter, GoogleCellData } from "../flushClassifierTypes.ts";
 
 export const cellAfter = {
   written(cell: GoogleCellData | undefined): CellAfter {

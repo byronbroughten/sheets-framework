@@ -3,12 +3,12 @@ import type {
   CopyPasteOperation,
   CopyPasteType,
   InsertRangeOperation,
-} from "../../00_Source/RawSource/RawSource";
-import { SheetIndex } from "../../00_Source/RawSource/SheetIndex";
-import { columnRun, TableBaseRaw } from "../ClassBases/TableBaseRaw";
-import type { RowStateRaw } from "../ClassTypes/StateRaw";
-import { TableRaw } from "../TableRaw";
-import { TableColumnTypeGathererRaw } from "./TableColumnTypeGathererRaw";
+} from "../../00_Source/RawSource/RawSource.ts";
+import { SheetIndex } from "../../00_Source/RawSource/SheetIndex.ts";
+import { columnRun, TableBaseRaw } from "../ClassBases/TableBaseRaw.ts";
+import type { RowStateRaw } from "../ClassTypes/StateRaw.ts";
+import { TableRaw } from "../TableRaw.ts";
+import { TableColumnTypeGathererRaw } from "./TableColumnTypeGathererRaw.ts";
 
 export class TableRowAppenderRaw extends TableBaseRaw {
   get table(): TableRaw {

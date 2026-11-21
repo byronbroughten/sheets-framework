@@ -77,16 +77,18 @@ describe("appConfigsText", () => {
   const text = GeneratedDir.appConfigsText;
 
   it("builds appConfigs from the sibling config files", () => {
-    expect(text).toContain('import { columnConfigs } from "./columnConfigs";');
     expect(text).toContain(
-      'import { retiredIdPrefixes } from "./retiredIdPrefixes";',
+      'import { columnConfigs } from "./columnConfigs.ts";',
     );
-    expect(text).toContain('import { tabConfigs } from "./tabConfigs";');
     expect(text).toContain(
-      'import { conditionalFormatConfigs } from "./conditionalFormatConfigs";',
+      'import { retiredIdPrefixes } from "./retiredIdPrefixes.ts";',
     );
-    expect(text).toContain('import { tableConfigs } from "./tableConfigs";');
-    expect(text).toContain('import { valueConfigs } from "./valueConfigs";');
+    expect(text).toContain('import { tabConfigs } from "./tabConfigs.ts";');
+    expect(text).toContain(
+      'import { conditionalFormatConfigs } from "./conditionalFormatConfigs.ts";',
+    );
+    expect(text).toContain('import { tableConfigs } from "./tableConfigs.ts";');
+    expect(text).toContain('import { valueConfigs } from "./valueConfigs.ts";');
     expect(text).toContain(
       "export const appConfigs = {\n  tableConfigs,\n  tabConfigs,\n  conditionalFormatConfigs,\n  retiredIdPrefixes,\n  columnConfigs,\n  valueConfigs,\n};",
     );
@@ -104,8 +106,19 @@ describe("appConfigsText", () => {
     );
   });
 
+  it("is what the framework's dev/generated/appConfigs.ts holds", () => {
+    expect(
+      readFileSync(
+        fileURLToPath(
+          new URL("../dev/generated/appConfigs.ts", import.meta.url),
+        ),
+        "utf8",
+      ),
+    ).toBe(text);
+  });
+
   it("registers the sibling ID-name map's type", () => {
-    expect(text).toContain('import type { IdNameMap } from "./idNameMap";');
+    expect(text).toContain('import type { IdNameMap } from "./idNameMap.ts";');
   });
 });
 

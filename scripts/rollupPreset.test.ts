@@ -195,7 +195,7 @@ async function bundleOf(
 
 describe("a build with the preset", () => {
   const appSource = [
-    "import { usedByEntry } from '../../framework/src/lib';",
+    "import { usedByEntry } from '../../framework/src/lib.ts';",
     "function triggerOnEdit() { return usedByEntry(); }",
     "function scratch() { return 1; }",
     "",

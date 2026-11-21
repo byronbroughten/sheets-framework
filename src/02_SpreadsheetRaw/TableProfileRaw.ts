@@ -1,7 +1,7 @@
-import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
-import { TableBaseRaw } from "./ClassBases/TableBaseRaw";
-import type { ColumnProfileRaw } from "./ColumnProfileRaw";
-import { TableRaw } from "./TableRaw";
+import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds.ts";
+import { TableBaseRaw } from "./ClassBases/TableBaseRaw.ts";
+import type { ColumnProfileRaw } from "./ColumnProfileRaw.ts";
+import { TableRaw } from "./TableRaw.ts";
 
 // Reads only, so it extends the base rather than TableCommonRaw and its queued writes.
 export class TableProfileRaw extends TableBaseRaw {

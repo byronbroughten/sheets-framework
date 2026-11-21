@@ -4,7 +4,7 @@ import {
   configTableNames,
   type TableConfigs,
   tableConfigsByName,
-} from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
+} from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes.ts";
 
 export type SheetNameWithIdColumn = keyof SubType<
   TableConfigs,

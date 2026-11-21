@@ -1,14 +1,14 @@
-import { a1Notation } from "./a1Notation";
-import { fakeCells } from "./fakeCells";
-import { fakeGrid } from "./fakeGrid";
+import { a1Notation } from "./a1Notation.ts";
+import { fakeCells } from "./fakeCells.ts";
+import { fakeGrid } from "./fakeGrid.ts";
 import {
   type FakeSheetState,
   type FakeSpreadsheet,
   fakeSpreadsheet,
   type FakeTableState,
-} from "./fakeSpreadsheet";
-import { fieldMasks } from "./fieldMasks";
-import { unreplayed } from "./unreplayed";
+} from "./fakeSpreadsheet.ts";
+import { fieldMasks } from "./fieldMasks.ts";
+import { unreplayed } from "./unreplayed.ts";
 
 type Response = GoogleAppsScript.Sheets.Schema.Response;
 type Table = GoogleAppsScript.Sheets.Schema.Table;

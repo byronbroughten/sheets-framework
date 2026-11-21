@@ -1,14 +1,14 @@
 import { Val } from "@byronbroughten/utils/val";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { type PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState";
-import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
-import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
+import { type PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState.ts";
+import { expectedSheetLayout } from "../testSupport/expectedSheetLayout.ts";
+import { stubLogger } from "../testSupport/fakeAppsScriptGlobals.ts";
 import {
   type FakeCellValue,
   type FakeSheetsService,
   stubSheetsService,
-} from "../testSupport/fakeSheetsService";
+} from "../testSupport/fakeSheetsService.ts";
 import {
   bodyRowsWithNote,
   type ItemColumnName,
@@ -17,7 +17,7 @@ import {
   itemSheet,
   runItem,
   seedFixture,
-} from "./syncCoordinatorTestSupport";
+} from "./syncCoordinatorTestSupport.ts";
 
 beforeEach(() => {
   stubLogger();

@@ -1,8 +1,8 @@
 import {
   SpreadsheetBaseIdentified,
   type SpreadsheetIdentifiedProps,
-} from "../../03_SpreadsheetIdentified/ClassBases/SpreadsheetBaseIdentified";
-import type { FeedbackColumnIds } from "../../03_SpreadsheetIdentified/feedbackColumnRegister";
+} from "../../03_SpreadsheetIdentified/ClassBases/SpreadsheetBaseIdentified.ts";
+import type { FeedbackColumnIds } from "../../03_SpreadsheetIdentified/feedbackColumnRegister.ts";
 
 export interface SpreadsheetNamedProps extends SpreadsheetIdentifiedProps {}
 

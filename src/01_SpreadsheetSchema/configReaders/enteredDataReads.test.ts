@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { enteredDataReads } from "./enteredDataReads";
-import type { IdNameMapGeneric } from "./idNameMapTypes";
+import { enteredDataReads } from "./enteredDataReads.ts";
+import type { IdNameMapGeneric } from "./idNameMapTypes.ts";
 
 const idNameMap: IdNameMapGeneric = {
   tables: {

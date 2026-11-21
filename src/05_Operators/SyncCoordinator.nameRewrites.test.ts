@@ -1,12 +1,12 @@
 import { Val } from "@byronbroughten/utils/val";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
+import { stubLogger } from "../testSupport/fakeAppsScriptGlobals.ts";
 import {
   itemColumns,
   runItem,
   seedFixture,
-} from "./syncCoordinatorTestSupport";
+} from "./syncCoordinatorTestSupport.ts";
 
 beforeEach(() => {
   stubLogger();

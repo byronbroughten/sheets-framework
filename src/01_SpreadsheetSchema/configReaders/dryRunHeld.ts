@@ -1,5 +1,5 @@
 // syncRunResult.ts imports this file back; both imports are type-only, so the cycle is erased at load time.
-import type { SyncSubject } from "./syncRunResult";
+import type { SyncSubject } from "./syncRunResult.ts";
 
 // A dry run's held items, sync's or a chore's: what the entered-data gate holds until --confirm names the token.
 export interface DryRunHeld {

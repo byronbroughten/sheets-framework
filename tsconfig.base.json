@@ -11,8 +11,10 @@
     // Apps Script's V8 runtime doesn't support native public class fields;
     // this keeps TS emitting `this.x = ...` in the constructor instead.
     "useDefineForClassFields": false,
-    "module": "esnext",
-    "moduleResolution": "bundler",
+    // Node's own module rules, so a relative import with no .ts is a type error.
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "allowImportingTsExtensions": true,
     // Resolves @byronbroughten/utils to its src/, so the workspace needs no build.
     "customConditions": ["source"],
     "lib": ["esnext"],
@@ -53,6 +55,8 @@
     // Recommended Options
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
+    // Node refuses what it can't strip, a parameter property among it.
+    "erasableSyntaxOnly": true,
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
     "skipLibCheck": true

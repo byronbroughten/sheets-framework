@@ -1,25 +1,25 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getColumnTraitByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
-import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
-import { SpreadsheetBaseNamed } from "../04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
-import type { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
-import { TableNamed } from "../04_SpreadsheetNamed/TableNamed";
+import { getColumnTraitByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes.ts";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes.ts";
+import { SpreadsheetBaseNamed } from "../04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed.ts";
+import type { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed.ts";
+import { TableNamed } from "../04_SpreadsheetNamed/TableNamed.ts";
 import {
   stubLogger,
   stubScriptAndSpreadsheetApp,
-} from "../testSupport/fakeAppsScriptGlobals";
+} from "../testSupport/fakeAppsScriptGlobals.ts";
 import {
   buildGridRows,
   type FakeCell,
   type FakeCellValue,
   stubSheetsService,
-} from "../testSupport/fakeSheetsService";
-import type { FakeGridView } from "../testSupport/fakeSheetsService/gridView";
-import { assertType, type IsExactly } from "../testSupport/typeAssertions";
-import { EndpointRun } from "./EndpointRun";
-import type { ActionReturn, Endpoint, EndpointsAll } from "./Endpoints";
-import { feedbackColumnIdsOf } from "./feedbackColumnIds";
+} from "../testSupport/fakeSheetsService.ts";
+import type { FakeGridView } from "../testSupport/fakeSheetsService/gridView.ts";
+import { assertType, type IsExactly } from "../testSupport/typeAssertions.ts";
+import { EndpointRun } from "./EndpointRun.ts";
+import type { ActionReturn, Endpoint, EndpointsAll } from "./Endpoints.ts";
+import { feedbackColumnIdsOf } from "./feedbackColumnIds.ts";
 
 type Color = GoogleAppsScript.Sheets.Schema.Color;
 

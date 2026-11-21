@@ -4,29 +4,29 @@ import { Val } from "@byronbroughten/utils/val";
 import type {
   CellValue,
   CellValueName,
-} from "../00_Source/CellValues/cellValues";
-import type { ConditionalFormatDeclaration } from "../00_Source/RawSource/ConditionalFormat";
+} from "../00_Source/CellValues/cellValues.ts";
+import type { ConditionalFormatDeclaration } from "../00_Source/RawSource/ConditionalFormat.ts";
 import type {
   EditLockDeclaration,
   EditWarningDeclaration,
-} from "../00_Source/RawSource/EditProtection";
+} from "../00_Source/RawSource/EditProtection.ts";
 import type {
   BoundedGridRange,
   FindReplaceTerms,
   GridBlockSnapshot,
   GridCellSnapshot,
   InsertRangeOperation,
-} from "../00_Source/RawSource/RawSource";
+} from "../00_Source/RawSource/RawSource.ts";
 import {
   type SheetColIndex,
   SheetIndex,
   type SheetRowIndex,
-} from "../00_Source/RawSource/SheetIndex";
-import { type HeadRole, headRows } from "../01_SpreadsheetSchema/headRows";
-import { assertValueAndFormulaExclusive } from "./CellRaw";
-import type { RowCommonRaw } from "./ClassBases/RowCommonRaw";
-import { columnRun, originOf } from "./ClassBases/TableBaseRaw";
-import { TableCommonRaw } from "./ClassBases/TableCommonRaw";
+} from "../00_Source/RawSource/SheetIndex.ts";
+import { type HeadRole, headRows } from "../01_SpreadsheetSchema/headRows.ts";
+import { assertValueAndFormulaExclusive } from "./CellRaw.ts";
+import type { RowCommonRaw } from "./ClassBases/RowCommonRaw.ts";
+import { columnRun, originOf } from "./ClassBases/TableBaseRaw.ts";
+import { TableCommonRaw } from "./ClassBases/TableCommonRaw.ts";
 import type {
   ChangeTableColumns,
   ColumnFill,
@@ -36,18 +36,18 @@ import type {
   TableCell,
   TableFindReplace,
   TableGridRange,
-} from "./ClassTypes/StateRaw";
-import { ColumnRaw } from "./ColumnRaw";
-import { HeadRowRaw } from "./HeadRowRaw";
-import { RowRaw } from "./RowRaw";
-import { SheetRaw } from "./SheetRaw";
-import { SpreadsheetRaw } from "./SpreadsheetRaw";
-import { TableProfileRaw } from "./TableProfileRaw";
-import { TableColumnQueuerRaw } from "./TableRaw/TableColumnQueuerRaw";
-import { TableColumnResolverRaw } from "./TableRaw/TableColumnResolverRaw";
-import { TableColumnTypeGathererRaw } from "./TableRaw/TableColumnTypeGathererRaw";
-import { TableConditionalFormatAndProtectionQueuerRaw } from "./TableRaw/TableConditionalFormatAndProtectionQueuerRaw";
-import { TableRowAppenderRaw } from "./TableRaw/TableRowAppenderRaw";
+} from "./ClassTypes/StateRaw.ts";
+import { ColumnRaw } from "./ColumnRaw.ts";
+import { HeadRowRaw } from "./HeadRowRaw.ts";
+import { RowRaw } from "./RowRaw.ts";
+import { SheetRaw } from "./SheetRaw.ts";
+import { SpreadsheetRaw } from "./SpreadsheetRaw.ts";
+import { TableProfileRaw } from "./TableProfileRaw.ts";
+import { TableColumnQueuerRaw } from "./TableRaw/TableColumnQueuerRaw.ts";
+import { TableColumnResolverRaw } from "./TableRaw/TableColumnResolverRaw.ts";
+import { TableColumnTypeGathererRaw } from "./TableRaw/TableColumnTypeGathererRaw.ts";
+import { TableConditionalFormatAndProtectionQueuerRaw } from "./TableRaw/TableConditionalFormatAndProtectionQueuerRaw.ts";
+import { TableRowAppenderRaw } from "./TableRaw/TableRowAppenderRaw.ts";
 
 /**
  * One Table's state by Table-relative index: rows, columns, pruning, queued

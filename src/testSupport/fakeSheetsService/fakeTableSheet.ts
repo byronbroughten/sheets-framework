@@ -1,11 +1,11 @@
-import type { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin";
+import type { TableOrigin } from "../../01_SpreadsheetSchema/TableOrigin.ts";
 import {
   buildGridRows,
   type FakeCell,
   type FakeSheetProperties,
   type FakeTable,
-} from "../fakeSheetsService";
-import { type FakeTablePlacement, fakeTables } from "./fakeTables";
+} from "../fakeSheetsService.ts";
+import { type FakeTablePlacement, fakeTables } from "./fakeTables.ts";
 
 export interface FakeTableColumn {
   columnId: string;

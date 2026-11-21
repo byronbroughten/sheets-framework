@@ -1,13 +1,13 @@
 // Without it, a program that reaches this file only by dynamic import rejects the augmentation (TS2664).
 import type {} from "@byronbroughten/sheets-framework";
 
-import { columnConfigs as devColumnConfigs } from "../dev/generated/columnConfigs";
-import { tableConfigs as devTableConfigs } from "../dev/generated/tableConfigs";
+import { columnConfigs as devColumnConfigs } from "../dev/generated/columnConfigs.ts";
+import { tableConfigs as devTableConfigs } from "../dev/generated/tableConfigs.ts";
 import {
   makeColumnConfigs,
   makeTableConfigs,
   makeValueConfigs,
-} from "../src/01_SpreadsheetSchema/configReaders/makeConfigs";
+} from "../src/01_SpreadsheetSchema/configReaders/makeConfigs.ts";
 
 const tableConfigs = makeTableConfigs({
   ...devTableConfigs,

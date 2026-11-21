@@ -2,11 +2,11 @@ import {
   type BraceConfigs,
   BraceFormula,
   type BraceNames,
-} from "../01_SpreadsheetSchema/configReaders/BraceFormula";
-import { columnNameOfHeader } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
-import type { ColumnConfigsGeneric } from "../01_SpreadsheetSchema/configReaders/makeConfigs";
-import type { FormulaColumn } from "../01_SpreadsheetSchema/configReaders/OutsideReferences";
-import { previousTraitTables } from "../01_SpreadsheetSchema/configReaders/previousTraitTables";
+} from "../01_SpreadsheetSchema/configReaders/BraceFormula.ts";
+import { columnNameOfHeader } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes.ts";
+import type { ColumnConfigsGeneric } from "../01_SpreadsheetSchema/configReaders/makeConfigs.ts";
+import type { FormulaColumn } from "../01_SpreadsheetSchema/configReaders/OutsideReferences.ts";
+import { previousTraitTables } from "../01_SpreadsheetSchema/configReaders/previousTraitTables.ts";
 import {
   type IntendedTrait,
   newColumnLines,
@@ -15,38 +15,38 @@ import {
   type PlannedNewTable,
   type PlanReadings,
   type TraitReadings,
-} from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
+} from "../01_SpreadsheetSchema/configReaders/SyncPlanner.ts";
 import type {
   SyncBeforeFirstColumnStop,
   SyncCreatedColumn,
   SyncCreatedTable,
   SyncHeaderTakenStop,
   SyncSendLine,
-} from "../01_SpreadsheetSchema/configReaders/syncRunResult";
-import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
-import { ColumnConfigsBaseOperator } from "./ClassBases/ColumnConfigsBaseOperator";
-import type { NamedColumnIdentity } from "./ColumnConfigsOperator/ApiColumnIdentities";
+} from "../01_SpreadsheetSchema/configReaders/syncRunResult.ts";
+import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds.ts";
+import { ColumnConfigsBaseOperator } from "./ClassBases/ColumnConfigsBaseOperator.ts";
+import type { NamedColumnIdentity } from "./ColumnConfigsOperator/ApiColumnIdentities.ts";
 import {
   ColumnConfigsLayoutOperator,
   type ColumnMovesProps,
   type MintedNewColumn,
   type PlannedColumnMove,
-} from "./ColumnConfigsOperator/ColumnConfigsLayoutOperator";
+} from "./ColumnConfigsOperator/ColumnConfigsLayoutOperator.ts";
 import {
   type ApiTableColumns,
   ColumnConfigsOutputOperator,
-} from "./ColumnConfigsOperator/ColumnConfigsOutputOperator";
-import { ColumnConfigsUntypedColumnsOperator } from "./ColumnConfigsOperator/ColumnConfigsUntypedColumnsOperator";
-import { ColumnConfigsValueSourcesOperator } from "./ColumnConfigsOperator/ColumnConfigsValueSourcesOperator";
+} from "./ColumnConfigsOperator/ColumnConfigsOutputOperator.ts";
+import { ColumnConfigsUntypedColumnsOperator } from "./ColumnConfigsOperator/ColumnConfigsUntypedColumnsOperator.ts";
+import { ColumnConfigsValueSourcesOperator } from "./ColumnConfigsOperator/ColumnConfigsValueSourcesOperator.ts";
 import {
   bracedFormula,
   InstalledBraceConfigs,
-} from "./ColumnConfigsOperator/InstalledBraceConfigs";
+} from "./ColumnConfigsOperator/InstalledBraceConfigs.ts";
 import {
   SpreadsheetBaseOperator,
   type ValueSource,
-} from "./SpreadsheetBaseOperator";
-import type { MintedNewTable } from "./TableConfigsOperator";
+} from "./SpreadsheetBaseOperator.ts";
+import type { MintedNewTable } from "./TableConfigsOperator.ts";
 
 export interface LandedColumns {
   createdColumns: SyncCreatedColumn[];

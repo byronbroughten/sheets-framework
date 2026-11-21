@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { idPrefixes, IdPrefixesByTableId } from "./idPrefixes";
+import { idPrefixes, IdPrefixesByTableId } from "./idPrefixes.ts";
 
 describe("idPrefixes.fromTitle", () => {
   it("abbreviates a one-word title to the first letter plus consonants, up to 3", () => {

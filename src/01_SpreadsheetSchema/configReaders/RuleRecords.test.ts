@@ -5,10 +5,10 @@ import type {
   ConditionalFormat,
   ConditionalFormatRule,
   ModelableConditionalFormatRule,
-} from "../../00_Source/RawSource/ConditionalFormat";
-import type { GridRangeProps } from "../../00_Source/RawSource/RawSource";
-import { SheetIndex } from "../../00_Source/RawSource/SheetIndex";
-import { RuleRecords, type RuleRecordsTab } from "./RuleRecords";
+} from "../../00_Source/RawSource/ConditionalFormat.ts";
+import type { GridRangeProps } from "../../00_Source/RawSource/RawSource.ts";
+import { SheetIndex } from "../../00_Source/RawSource/SheetIndex.ts";
+import { RuleRecords, type RuleRecordsTab } from "./RuleRecords.ts";
 
 const sheetGid = 7;
 const red: ConditionalFormat = { backgroundColor: { red: 1 } };

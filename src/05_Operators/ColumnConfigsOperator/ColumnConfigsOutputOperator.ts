@@ -3,18 +3,18 @@ import { Val } from "@byronbroughten/utils/val";
 import {
   type BraceConfigs,
   BraceFormula,
-} from "../../01_SpreadsheetSchema/configReaders/BraceFormula";
-import { columnNameOfHeader } from "../../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
+} from "../../01_SpreadsheetSchema/configReaders/BraceFormula.ts";
+import { columnNameOfHeader } from "../../01_SpreadsheetSchema/configReaders/columnConfigsTypes.ts";
 import {
   type ColumnConfigsGeneric,
   makeImportLine,
-} from "../../01_SpreadsheetSchema/configReaders/makeConfigs";
-import type { ValueName } from "../../01_SpreadsheetSchema/configReaders/valueSchemas";
-import { ColumnConfigsBaseOperator } from "../ClassBases/ColumnConfigsBaseOperator";
-import { oneLinePerLeafFileSource } from "../configFileSource";
-import { PreviousColumnConfigs } from "../PreviousColumnConfigs";
-import { ColumnConfigsValueSourcesOperator } from "./ColumnConfigsValueSourcesOperator";
-import { bracedFormula } from "./InstalledBraceConfigs";
+} from "../../01_SpreadsheetSchema/configReaders/makeConfigs.ts";
+import type { ValueName } from "../../01_SpreadsheetSchema/configReaders/valueSchemas.ts";
+import { ColumnConfigsBaseOperator } from "../ClassBases/ColumnConfigsBaseOperator.ts";
+import { oneLinePerLeafFileSource } from "../configFileSource.ts";
+import { PreviousColumnConfigs } from "../PreviousColumnConfigs.ts";
+import { ColumnConfigsValueSourcesOperator } from "./ColumnConfigsValueSourcesOperator.ts";
+import { bracedFormula } from "./InstalledBraceConfigs.ts";
 
 export interface ApiTableColumns {
   tableKey: string;

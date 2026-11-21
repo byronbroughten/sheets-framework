@@ -2,13 +2,13 @@ import {
   type TabColor,
   type ThemeColorName,
   themeColorNames,
-} from "../../RawSource/RawSource";
+} from "../../RawSource/RawSource.ts";
 import {
   quantizeRgbChannels,
   type RgbChannels,
   rgbChannelsHex,
   type RgbColor,
-} from "../../RawSource/RgbColor";
+} from "../../RawSource/RgbColor.ts";
 
 type GoogleColor = GoogleAppsScript.Sheets.Schema.Color;
 type GoogleColorStyle = GoogleAppsScript.Sheets.Schema.ColorStyle;

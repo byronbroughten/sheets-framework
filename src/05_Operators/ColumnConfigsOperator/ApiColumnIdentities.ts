@@ -1,11 +1,11 @@
 import { Val } from "@byronbroughten/utils/val";
 
-import { columnNameOfHeader } from "../../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
-import type { IntendedTrait } from "../../01_SpreadsheetSchema/configReaders/SyncPlanner";
-import type { ColumnProfileRaw } from "../../02_SpreadsheetRaw/ColumnProfileRaw";
-import type { SpreadsheetNamed } from "../../04_SpreadsheetNamed/SpreadsheetNamed";
-import { PreviousColumnConfigs } from "../PreviousColumnConfigs";
-import type { TableConfigsOperator } from "../TableConfigsOperator";
+import { columnNameOfHeader } from "../../01_SpreadsheetSchema/configReaders/columnConfigsTypes.ts";
+import type { IntendedTrait } from "../../01_SpreadsheetSchema/configReaders/SyncPlanner.ts";
+import type { ColumnProfileRaw } from "../../02_SpreadsheetRaw/ColumnProfileRaw.ts";
+import type { SpreadsheetNamed } from "../../04_SpreadsheetNamed/SpreadsheetNamed.ts";
+import { PreviousColumnConfigs } from "../PreviousColumnConfigs.ts";
+import type { TableConfigsOperator } from "../TableConfigsOperator.ts";
 
 export interface ColumnIdentity {
   tableId: string;

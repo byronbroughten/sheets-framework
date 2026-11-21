@@ -13,7 +13,7 @@ const frameworkPackage = "@byronbroughten/sheets-framework";
 const platformMessage =
   "Google Sheets code lives only in the framework's src/00_Source/GoogleSheets/. Everything else takes a platform-neutral type or a return value that the entry point handles.";
 export const platformImportPattern = {
-  regex: "GoogleSheets/|GoogleSheets/(GoogleSheetsAPI|AppsScript)(\\.js)?$",
+  regex: "GoogleSheets/|GoogleSheets/(GoogleSheetsAPI|AppsScript)(\\.ts)?$",
   message: platformMessage,
 };
 
@@ -92,7 +92,7 @@ function appImportPatterns(depth, isTestingAllowed) {
       message: appEntryMessage,
     },
     {
-      regex: "(^|/)generated/(?!appConfigs(\\.js)?$)",
+      regex: "(^|/)generated/(?!appConfigs(\\.ts)?$)",
       message:
         "Outside generated/, import only generated/appConfigs; the other generated files are its internals.",
     },

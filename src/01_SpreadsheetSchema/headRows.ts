@@ -3,8 +3,8 @@ import { Obj } from "@byronbroughten/utils/obj";
 import type {
   CellValue,
   CellValueName,
-} from "../00_Source/CellValues/cellValues";
-import { tableLayout } from "./tableLayout";
+} from "../00_Source/CellValues/cellValues.ts";
+import { tableLayout } from "./tableLayout.ts";
 
 type HeadRowOffsets = typeof tableLayout.headRowOffsets;
 export type HeadRole = keyof HeadRowOffsets;

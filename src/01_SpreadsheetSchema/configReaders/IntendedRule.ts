@@ -4,13 +4,16 @@ import {
   conditionLiteral,
   isModelledConditionType,
   type ModelableConditionalFormatRule,
-} from "../../00_Source/RawSource/ConditionalFormat";
-import type { GridRangeProps } from "../../00_Source/RawSource/RawSource";
-import { hexRgbChannels } from "../../00_Source/RawSource/RgbColor";
-import { SheetIndex } from "../../00_Source/RawSource/SheetIndex";
-import { BraceFormula, type RuleLayout } from "./BraceFormula";
-import type { TableRuleRecord } from "./RuleRecords";
-import type { WideRule, WideRuleFormat } from "./SyncPlanner/wideAlterations";
+} from "../../00_Source/RawSource/ConditionalFormat.ts";
+import type { GridRangeProps } from "../../00_Source/RawSource/RawSource.ts";
+import { hexRgbChannels } from "../../00_Source/RawSource/RgbColor.ts";
+import { SheetIndex } from "../../00_Source/RawSource/SheetIndex.ts";
+import { BraceFormula, type RuleLayout } from "./BraceFormula.ts";
+import type { TableRuleRecord } from "./RuleRecords.ts";
+import type {
+  WideRule,
+  WideRuleFormat,
+} from "./SyncPlanner/wideAlterations.ts";
 
 // A new column by the name the regen gives it, placed before `before` or at the Table's end.
 export interface LayoutNewColumn {

@@ -1,16 +1,16 @@
-import type { ConditionalFormatRule } from "../00_Source/RawSource/ConditionalFormat";
+import type { ConditionalFormatRule } from "../00_Source/RawSource/ConditionalFormat.ts";
 import type {
   EditProtection,
   WholeSheetEditLockDeclaration,
   WholeSheetEditWarningDeclaration,
-} from "../00_Source/RawSource/EditProtection";
-import { SpreadsheetSchema } from "../01_SpreadsheetSchema/configReaders/SpreadsheetSchema";
-import type { TableName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
-import { SheetRaw } from "../02_SpreadsheetRaw/SheetRaw";
+} from "../00_Source/RawSource/EditProtection.ts";
+import { SpreadsheetSchema } from "../01_SpreadsheetSchema/configReaders/SpreadsheetSchema.ts";
+import type { TableName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes.ts";
+import { SheetRaw } from "../02_SpreadsheetRaw/SheetRaw.ts";
 import {
   SpreadsheetBaseNamed,
   type SpreadsheetNamedProps,
-} from "./ClassBases/SpreadsheetBaseNamed";
+} from "./ClassBases/SpreadsheetBaseNamed.ts";
 
 export interface SheetNamedProps extends SpreadsheetNamedProps {
   sheetGid: number;

@@ -3,13 +3,13 @@ import { describe, expect, it } from "vitest";
 import {
   buildGridRows,
   stubSheetsService,
-} from "../testSupport/fakeSheetsService";
-import { SpreadsheetRaw } from "./SpreadsheetRaw";
+} from "../testSupport/fakeSheetsService.ts";
+import { SpreadsheetRaw } from "./SpreadsheetRaw.ts";
 import {
   lightGreen,
   tableId111,
   threeByThreeAround,
-} from "./spreadsheetRawTestSupport";
+} from "./spreadsheetRawTestSupport.ts";
 
 describe("CellRaw.updateValue", () => {
   it("writes to a row that was never fetched, since a write needs no fetched state", () => {

@@ -1,17 +1,17 @@
 import { Val } from "@byronbroughten/utils/val";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { type PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState";
-import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
-import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
+import { type PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState.ts";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes.ts";
+import { stubLogger } from "../testSupport/fakeAppsScriptGlobals.ts";
 import {
   buildGridRows,
   type FakeSheetsService,
   stubSheetsService,
-} from "../testSupport/fakeSheetsService";
-import { fakeSpreadsheet } from "../testSupport/fakeSheetsService/fakeSpreadsheet";
-import { parseIdNameMapFileSource } from "./parseIdNameMapFileSource";
-import { SyncCoordinator, type SyncRun } from "./SyncCoordinator";
+} from "../testSupport/fakeSheetsService.ts";
+import { fakeSpreadsheet } from "../testSupport/fakeSheetsService/fakeSpreadsheet.ts";
+import { parseIdNameMapFileSource } from "./parseIdNameMapFileSource.ts";
+import { SyncCoordinator, type SyncRun } from "./SyncCoordinator.ts";
 import {
   bodyRowsWithNote,
   columnConfigs,
@@ -31,7 +31,7 @@ import {
   runItem,
   seedFixture,
   uncheckedOutsideFormulasNotice,
-} from "./syncCoordinatorTestSupport";
+} from "./syncCoordinatorTestSupport.ts";
 
 beforeEach(() => {
   stubLogger();

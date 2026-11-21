@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import type { GoogleRequest } from "../00_Source/GoogleSheets/GoogleSheetsAPI";
-import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
-import { UpdateRequestSummary } from "./UpdateRequestSummary";
+import type { GoogleRequest } from "../00_Source/GoogleSheets/GoogleSheetsAPI.ts";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes.ts";
+import { UpdateRequestSummary } from "./UpdateRequestSummary.ts";
 
 const itemGid = getTableTraitByName("item", "sheetGid");
 const unknownGid = 999999;

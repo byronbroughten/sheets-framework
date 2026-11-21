@@ -1,50 +1,50 @@
 import { Val } from "@byronbroughten/utils/val";
 
-import { HeldFlushRefusal } from "../00_Source/RawSource/HeldFlushRefusal";
-import { PartialTableRefusal } from "../00_Source/RawSource/PartialTableRefusal";
+import { HeldFlushRefusal } from "../00_Source/RawSource/HeldFlushRefusal.ts";
+import { PartialTableRefusal } from "../00_Source/RawSource/PartialTableRefusal.ts";
 import {
   defaultDropdownStyleReset,
   type DropdownStyleReset,
-} from "../00_Source/RawSource/RawSource";
-import { RuleFlushRefusal } from "../00_Source/RawSource/RuleFlushRefusal";
+} from "../00_Source/RawSource/RawSource.ts";
+import { RuleFlushRefusal } from "../00_Source/RawSource/RuleFlushRefusal.ts";
 import {
   type ApiAccessChanges,
   apiAccessChanges,
   withApiAccessReadings,
-} from "../01_SpreadsheetSchema/configReaders/apiAccessChanges";
-import { columnConfigsByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
-import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister";
+} from "../01_SpreadsheetSchema/configReaders/apiAccessChanges.ts";
+import { columnConfigsByName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes.ts";
+import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister.ts";
 import type {
   ConfigSnapshot,
   ConfigSnapshots,
-} from "../01_SpreadsheetSchema/configReaders/configSnapshots";
+} from "../01_SpreadsheetSchema/configReaders/configSnapshots.ts";
 import {
   didntLandOf,
   groupMovesDidntLand,
   hasLanded,
-} from "../01_SpreadsheetSchema/configReaders/didntLand";
+} from "../01_SpreadsheetSchema/configReaders/didntLand.ts";
 import {
   type EnteredDataReads,
   enteredDataReads,
-} from "../01_SpreadsheetSchema/configReaders/enteredDataReads";
+} from "../01_SpreadsheetSchema/configReaders/enteredDataReads.ts";
 import {
   fillFailedStoppedOutcome,
   type FlushStoppedOutcome,
   heldStoppedOutcome,
   refusedStoppedOutcome,
-} from "../01_SpreadsheetSchema/configReaders/flushStoppedOutcome";
+} from "../01_SpreadsheetSchema/configReaders/flushStoppedOutcome.ts";
 import {
   type IdNameMapGeneric,
   tableIdsByName,
-} from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
-import type { PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState";
+} from "../01_SpreadsheetSchema/configReaders/idNameMapTypes.ts";
+import type { PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState.ts";
 import {
   type DeletedTab,
   OutsideReferences,
-} from "../01_SpreadsheetSchema/configReaders/OutsideReferences";
-import { remainingAlterations } from "../01_SpreadsheetSchema/configReaders/remainingAlterations";
-import { SyncEntryRefuser } from "../01_SpreadsheetSchema/configReaders/SyncEntryRefuser";
-import { SyncNameRewriter } from "../01_SpreadsheetSchema/configReaders/SyncNameRewriter";
+} from "../01_SpreadsheetSchema/configReaders/OutsideReferences.ts";
+import { remainingAlterations } from "../01_SpreadsheetSchema/configReaders/remainingAlterations.ts";
+import { SyncEntryRefuser } from "../01_SpreadsheetSchema/configReaders/SyncEntryRefuser.ts";
+import { SyncNameRewriter } from "../01_SpreadsheetSchema/configReaders/SyncNameRewriter.ts";
 import {
   columnGroupMoveLines,
   deletedTableOf,
@@ -58,7 +58,7 @@ import {
   type SyncPlannerResult,
   type TabsByTable,
   type TraitReadings,
-} from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
+} from "../01_SpreadsheetSchema/configReaders/SyncPlanner.ts";
 import type {
   ForcedTrait,
   SyncCreatedColumn,
@@ -76,25 +76,25 @@ import type {
   SyncTableGoneNotice,
   SyncTableSubject,
   SyncTypedTraitChange,
-} from "../01_SpreadsheetSchema/configReaders/syncRunResult";
+} from "../01_SpreadsheetSchema/configReaders/syncRunResult.ts";
 import {
   SyncRunResultBuilder,
   type SyncRunSendStop,
-} from "../01_SpreadsheetSchema/configReaders/SyncRunResultBuilder";
-import { typedTraitChanges } from "../01_SpreadsheetSchema/configReaders/typedTraitChanges";
+} from "../01_SpreadsheetSchema/configReaders/SyncRunResultBuilder.ts";
+import { typedTraitChanges } from "../01_SpreadsheetSchema/configReaders/typedTraitChanges.ts";
 import {
   SpreadsheetBaseNamed,
   type SpreadsheetNamedProps,
-} from "../04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
-import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
+} from "../04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed.ts";
+import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed.ts";
 import {
   ColumnConfigsOperator,
   namesAtTableCreation,
-} from "./ColumnConfigsOperator";
+} from "./ColumnConfigsOperator.ts";
 import type {
   MintedNewColumn,
   PlannedColumnMove,
-} from "./ColumnConfigsOperator/ColumnConfigsLayoutOperator";
+} from "./ColumnConfigsOperator/ColumnConfigsLayoutOperator.ts";
 import {
   type BatchRuleSends,
   type ColumnChangeRules,
@@ -105,17 +105,20 @@ import {
   ConditionalFormatConfigOperator,
   type IndexedRuleRemoval,
   type ShiftedTable,
-} from "./ConditionalFormatConfigOperator";
-import { alterationsFileSource, idNameMapFileSource } from "./configFileSource";
-import { RowIdsOperator } from "./RowIdsOperator";
-import { SpreadsheetBaseOperator } from "./SpreadsheetBaseOperator";
-import { IdNameMapBuilderOperator } from "./SyncCoordinator/IdNameMapBuilderOperator";
-import { TabConfigOperator } from "./TabConfigOperator";
+} from "./ConditionalFormatConfigOperator.ts";
+import {
+  alterationsFileSource,
+  idNameMapFileSource,
+} from "./configFileSource.ts";
+import { RowIdsOperator } from "./RowIdsOperator.ts";
+import { SpreadsheetBaseOperator } from "./SpreadsheetBaseOperator.ts";
+import { IdNameMapBuilderOperator } from "./SyncCoordinator/IdNameMapBuilderOperator.ts";
+import { TabConfigOperator } from "./TabConfigOperator.ts";
 import {
   type MintedNewTable,
   TableConfigsOperator,
-} from "./TableConfigsOperator";
-import { ValueConfigsOperator } from "./ValueConfigsOperator";
+} from "./TableConfigsOperator.ts";
+import { ValueConfigsOperator } from "./ValueConfigsOperator.ts";
 
 export interface ConfigRegeneration {
   tableConfigs: string;

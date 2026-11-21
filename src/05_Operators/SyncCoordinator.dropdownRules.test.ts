@@ -1,15 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
-import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
-import { fakeTableSheet } from "../testSupport/fakeSheetsService/fakeTableSheet";
-import { SyncCoordinator } from "./SyncCoordinator";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes.ts";
+import { stubLogger } from "../testSupport/fakeAppsScriptGlobals.ts";
+import { fakeTableSheet } from "../testSupport/fakeSheetsService/fakeTableSheet.ts";
+import { SyncCoordinator } from "./SyncCoordinator.ts";
 import {
   columnsByHeader,
   itemColumns,
   runWithNoAlterations,
   seedFixture,
-} from "./syncCoordinatorTestSupport";
+} from "./syncCoordinatorTestSupport.ts";
 
 beforeEach(() => {
   stubLogger();

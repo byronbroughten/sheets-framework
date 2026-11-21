@@ -1,35 +1,35 @@
-import type { NotEmpty } from "../00_Source/CellValues/cellValues";
+import type { NotEmpty } from "../00_Source/CellValues/cellValues.ts";
 import type {
   ConditionalFormatDeclaration,
   ConditionalFormatRule,
-} from "../00_Source/RawSource/ConditionalFormat";
+} from "../00_Source/RawSource/ConditionalFormat.ts";
 import type {
   EditLockDeclaration,
   EditProtection,
   EditWarningDeclaration,
-} from "../00_Source/RawSource/EditProtection";
+} from "../00_Source/RawSource/EditProtection.ts";
 import type {
   FindReplaceTerms,
   GridRangeProps,
   TableColumnType,
-} from "../00_Source/RawSource/RawSource";
+} from "../00_Source/RawSource/RawSource.ts";
 import {
   toWireValue,
   type Value,
   type ValueName,
   type VnToCvn,
-} from "../01_SpreadsheetSchema/configReaders/valueSchemas";
+} from "../01_SpreadsheetSchema/configReaders/valueSchemas.ts";
 import {
   type HeadRole,
   headRows,
   type HeadRowValueName,
-} from "../01_SpreadsheetSchema/headRows";
-import type { CellFill } from "../02_SpreadsheetRaw/ClassTypes/StateRaw";
-import { ColumnRaw } from "../02_SpreadsheetRaw/ColumnRaw";
-import { CellIdentified } from "./CellIdentified";
-import { ColumnCommonIdentified } from "./ClassBases/ColumnCommonIdentified";
-import type { CellChange } from "./ClassTypes/StateIdentified";
-import { TableIdentified } from "./TableIdentified";
+} from "../01_SpreadsheetSchema/headRows.ts";
+import type { CellFill } from "../02_SpreadsheetRaw/ClassTypes/StateRaw.ts";
+import { ColumnRaw } from "../02_SpreadsheetRaw/ColumnRaw.ts";
+import { CellIdentified } from "./CellIdentified.ts";
+import { ColumnCommonIdentified } from "./ClassBases/ColumnCommonIdentified.ts";
+import type { CellChange } from "./ClassTypes/StateIdentified.ts";
+import { TableIdentified } from "./TableIdentified.ts";
 
 export class ColumnIdentified<
   VN extends ValueName = ValueName,

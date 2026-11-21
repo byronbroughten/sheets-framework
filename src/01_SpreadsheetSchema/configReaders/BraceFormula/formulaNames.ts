@@ -4,8 +4,8 @@ import {
   braces,
   formulaPatterns,
   type FormulaText,
-} from "./braces";
-import type { ConfiguredColumn } from "./cellFormula";
+} from "./braces.ts";
+import type { ConfiguredColumn } from "./cellFormula.ts";
 
 export interface NamedColumn extends ConfiguredColumn {
   // The brace as written, so a refusal can quote it.

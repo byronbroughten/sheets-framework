@@ -1,16 +1,16 @@
 import { Val } from "@byronbroughten/utils/val";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { HeldFlushRefusal } from "../00_Source/RawSource/HeldFlushRefusal";
-import { type PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState";
-import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
-import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
+import { HeldFlushRefusal } from "../00_Source/RawSource/HeldFlushRefusal.ts";
+import { type PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState.ts";
+import { expectedSheetLayout } from "../testSupport/expectedSheetLayout.ts";
+import { stubLogger } from "../testSupport/fakeAppsScriptGlobals.ts";
 import {
   type FakeSheetsService,
   type FakeSheetsServiceOptions,
   stubSheetsService,
-} from "../testSupport/fakeSheetsService";
-import { SyncCoordinator, type SyncRun } from "./SyncCoordinator";
+} from "../testSupport/fakeSheetsService.ts";
+import { SyncCoordinator, type SyncRun } from "./SyncCoordinator.ts";
 import {
   frame,
   itemAtEachFlush,
@@ -22,7 +22,7 @@ import {
   optionalNoteAlteration,
   previousItemMap,
   runItem,
-} from "./syncCoordinatorTestSupport";
+} from "./syncCoordinatorTestSupport.ts";
 
 beforeEach(() => {
   stubLogger();

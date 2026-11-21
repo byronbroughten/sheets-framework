@@ -1,6 +1,6 @@
-import { ColumnConfigsBaseOperator } from "../ClassBases/ColumnConfigsBaseOperator";
-import type { UntypedHeadersByTableName } from "../SpreadsheetBaseOperator";
-import { ColumnConfigsValueSourcesOperator } from "./ColumnConfigsValueSourcesOperator";
+import { ColumnConfigsBaseOperator } from "../ClassBases/ColumnConfigsBaseOperator.ts";
+import type { UntypedHeadersByTableName } from "../SpreadsheetBaseOperator.ts";
+import { ColumnConfigsValueSourcesOperator } from "./ColumnConfigsValueSourcesOperator.ts";
 
 export class ColumnConfigsUntypedColumnsOperator extends ColumnConfigsBaseOperator {
   get valueSourcesOperator(): ColumnConfigsValueSourcesOperator {

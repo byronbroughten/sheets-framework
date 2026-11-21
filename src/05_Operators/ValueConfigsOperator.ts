@@ -1,22 +1,22 @@
-import type { CellValue } from "../00_Source/CellValues/cellValues";
-import type { FrameworkValueName } from "../00_Source/CellValues/frameworkValueSchemas";
+import type { CellValue } from "../00_Source/CellValues/cellValues.ts";
+import type { FrameworkValueName } from "../00_Source/CellValues/frameworkValueSchemas.ts";
 import {
   type FixedListMember,
   makeImportLine,
   type ValueConfigBase,
   type ValueConfigsBase,
-} from "../01_SpreadsheetSchema/configReaders/makeConfigs";
-import { tableLayout } from "../01_SpreadsheetSchema/tableLayout";
-import type { ColumnRaw } from "../02_SpreadsheetRaw/ColumnRaw";
-import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
-import { ColumnConfigsOperator } from "./ColumnConfigsOperator";
+} from "../01_SpreadsheetSchema/configReaders/makeConfigs.ts";
+import { tableLayout } from "../01_SpreadsheetSchema/tableLayout.ts";
+import type { ColumnRaw } from "../02_SpreadsheetRaw/ColumnRaw.ts";
+import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed.ts";
+import { ColumnConfigsOperator } from "./ColumnConfigsOperator.ts";
 import {
   type ConfigSyncState,
   type SourceColumn,
   sourceLabel,
   SpreadsheetBaseOperator,
   type ValueSource,
-} from "./SpreadsheetBaseOperator";
+} from "./SpreadsheetBaseOperator.ts";
 
 export class ValueConfigsOperator extends SpreadsheetBaseOperator {
   static init(): ValueConfigsOperator {

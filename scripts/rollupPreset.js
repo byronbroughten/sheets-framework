@@ -2,8 +2,13 @@
 // JS, not TypeScript: a consumer's rollup config imports this from node_modules, where Node won't strip types.
 import { resolve } from "node:path";
 
-import typescript from "@rollup/plugin-typescript";
+import typescriptModule from "@rollup/plugin-typescript";
 import { parseAst } from "rollup/parseAst";
+
+// Its one types file reads as CommonJS under nodenext, but Node loads its ESM build, whose default export is the plugin itself.
+const typescript = /** @type {typeof typescriptModule.default} */ (
+  /** @type {unknown} */ (typescriptModule)
+);
 
 /**
  * @param {string} code
@@ -116,6 +121,10 @@ export function rollupPreset({
         filterRoot: false,
         compilerOptions: {
           rootDir: resolve(rootDir),
+          // The plugin's own module default would clash with the tsconfig's nodenext resolution (TS5110).
+          module: "nodenext",
+          // The sources import each other by .ts; without it the plugin warns TS5096.
+          rewriteRelativeImportExtensions: true,
           declaration: false,
           declarationMap: false,
         },

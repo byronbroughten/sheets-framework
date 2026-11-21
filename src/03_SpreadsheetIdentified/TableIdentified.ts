@@ -1,19 +1,19 @@
-import type { ConditionalFormatDeclaration } from "../00_Source/RawSource/ConditionalFormat";
+import type { ConditionalFormatDeclaration } from "../00_Source/RawSource/ConditionalFormat.ts";
 import type {
   EditLockDeclaration,
   EditWarningDeclaration,
-} from "../00_Source/RawSource/EditProtection";
-import type { FindReplaceTerms } from "../00_Source/RawSource/RawSource";
-import type { Value } from "../01_SpreadsheetSchema/configReaders/valueSchemas";
-import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
-import { type HeadRole, headRows } from "../01_SpreadsheetSchema/headRows";
-import { TableRaw } from "../02_SpreadsheetRaw/TableRaw";
-import { TableCommonIdentified } from "./ClassBases/TableCommonIdentified";
-import { ColumnIdentified } from "./ColumnIdentified";
-import { HeadRowIdentified } from "./HeadRowIdentified";
-import { RowIdentified } from "./RowIdentified";
-import { SpreadsheetTableValidatorIdentified } from "./SpreadsheetIdentified/SpreadsheetTableValidatorIdentified";
-import { TableColumnResolverIdentified } from "./TableIdentified/TableColumnResolverIdentified";
+} from "../00_Source/RawSource/EditProtection.ts";
+import type { FindReplaceTerms } from "../00_Source/RawSource/RawSource.ts";
+import type { Value } from "../01_SpreadsheetSchema/configReaders/valueSchemas.ts";
+import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds.ts";
+import { type HeadRole, headRows } from "../01_SpreadsheetSchema/headRows.ts";
+import { TableRaw } from "../02_SpreadsheetRaw/TableRaw.ts";
+import { TableCommonIdentified } from "./ClassBases/TableCommonIdentified.ts";
+import { ColumnIdentified } from "./ColumnIdentified.ts";
+import { HeadRowIdentified } from "./HeadRowIdentified.ts";
+import { RowIdentified } from "./RowIdentified.ts";
+import { SpreadsheetTableValidatorIdentified } from "./SpreadsheetIdentified/SpreadsheetTableValidatorIdentified.ts";
+import { TableColumnResolverIdentified } from "./TableIdentified/TableColumnResolverIdentified.ts";
 
 export class TableIdentified extends TableCommonIdentified {
   get raw(): TableRaw {

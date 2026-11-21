@@ -1,9 +1,9 @@
-import type { IdNameMapGeneric } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes";
+import type { IdNameMapGeneric } from "../01_SpreadsheetSchema/configReaders/idNameMapTypes.ts";
 import {
   type ColumnConfigsGeneric,
   makeImportLine,
-} from "../01_SpreadsheetSchema/configReaders/makeConfigs";
-import type { WideAlterations } from "../01_SpreadsheetSchema/configReaders/SyncPlanner/wideAlterations";
+} from "../01_SpreadsheetSchema/configReaders/makeConfigs.ts";
+import type { WideAlterations } from "../01_SpreadsheetSchema/configReaders/SyncPlanner/wideAlterations.ts";
 
 function oneLineJsonObject(record: object): string {
   const fields = Object.entries(record).map(

@@ -1,6 +1,6 @@
-import { headerZone } from "../../01_SpreadsheetSchema/headerZone";
-import { SpreadsheetBaseRaw } from "../ClassBases/SpreadsheetBaseRaw";
-import { SpreadsheetRaw } from "../SpreadsheetRaw";
+import { headerZone } from "../../01_SpreadsheetSchema/headerZone.ts";
+import { SpreadsheetBaseRaw } from "../ClassBases/SpreadsheetBaseRaw.ts";
+import { SpreadsheetRaw } from "../SpreadsheetRaw.ts";
 
 export class SpreadsheetTableValidatorRaw extends SpreadsheetBaseRaw {
   get ss(): SpreadsheetRaw {

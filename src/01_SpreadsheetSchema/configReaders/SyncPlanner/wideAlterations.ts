@@ -1,4 +1,4 @@
-import type { ColumnTypeBaseline } from "../../columnBaseline";
+import type { ColumnTypeBaseline } from "../../columnBaseline.ts";
 
 // `PendingAlterations` keyed by whatever the map holds, widened since the planner reads every entry alike.
 export interface WideRule {

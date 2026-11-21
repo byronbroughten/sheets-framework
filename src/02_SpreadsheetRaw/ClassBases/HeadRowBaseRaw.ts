@@ -3,9 +3,9 @@ import {
   type HeadRowRoles,
   headRows,
   type HeadRowValue,
-} from "../../01_SpreadsheetSchema/headRows";
-import { RowCommonRaw } from "./RowCommonRaw";
-import type { TableRawProps } from "./TableBaseRaw";
+} from "../../01_SpreadsheetSchema/headRows.ts";
+import { RowCommonRaw } from "./RowCommonRaw.ts";
+import type { TableRawProps } from "./TableBaseRaw.ts";
 
 export type HeadRowRawProps<HR extends HeadRole> = TableRawProps & {
   headRole: HR;

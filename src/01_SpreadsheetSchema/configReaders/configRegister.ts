@@ -2,14 +2,14 @@ import type {
   IdNameMapGeneric,
   IdNameMapTab,
   IdNameMapTable,
-} from "./idNameMapTypes";
+} from "./idNameMapTypes.ts";
 import type {
   ColumnConfigsBase,
   ConditionalFormatConfigsBase,
   TabConfigsBase,
   TableConfigsBase,
   ValueConfigsBase,
-} from "./makeConfigs";
+} from "./makeConfigs.ts";
 
 // The tab list, rule records and retired prefixes are optional so a configs set generated before them still registers.
 export interface ConfigSetBase {

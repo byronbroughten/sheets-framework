@@ -3,21 +3,21 @@ import { SerialDate } from "@byronbroughten/utils/serial-date";
 import { SerialDateTime } from "@byronbroughten/utils/serial-date-time";
 import { Val } from "@byronbroughten/utils/val";
 
-import type { SheetPropertiesFetchOptions } from "../00_Source/RawSource/RawSource";
-import { SpreadsheetSchema } from "../01_SpreadsheetSchema/configReaders/SpreadsheetSchema";
-import type { TableName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes.js";
-import type { FindReplaceProps } from "../02_SpreadsheetRaw/ClassTypes/StateRaw";
-import { SpreadsheetRaw } from "../02_SpreadsheetRaw/SpreadsheetRaw.js";
-import { SpreadsheetIdentified } from "../03_SpreadsheetIdentified/SpreadsheetIdentified.js";
-import type { TableIdentified } from "../03_SpreadsheetIdentified/TableIdentified";
-import type { GatherDataPrerequisitesProps } from "../03_SpreadsheetIdentified/TableIdentified/TableColumnResolverIdentified";
-import { SpreadsheetBaseNamed } from "./ClassBases/SpreadsheetBaseNamed.js";
-import { SheetNamed } from "./SheetNamed";
-import { TableNamed } from "./TableNamed.js";
+import type { SheetPropertiesFetchOptions } from "../00_Source/RawSource/RawSource.ts";
+import { SpreadsheetSchema } from "../01_SpreadsheetSchema/configReaders/SpreadsheetSchema.ts";
+import type { TableName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes.ts";
+import type { FindReplaceProps } from "../02_SpreadsheetRaw/ClassTypes/StateRaw.ts";
+import { SpreadsheetRaw } from "../02_SpreadsheetRaw/SpreadsheetRaw.ts";
+import { SpreadsheetIdentified } from "../03_SpreadsheetIdentified/SpreadsheetIdentified.ts";
+import type { TableIdentified } from "../03_SpreadsheetIdentified/TableIdentified.ts";
+import type { GatherDataPrerequisitesProps } from "../03_SpreadsheetIdentified/TableIdentified/TableColumnResolverIdentified.ts";
+import { SpreadsheetBaseNamed } from "./ClassBases/SpreadsheetBaseNamed.ts";
+import { SheetNamed } from "./SheetNamed.ts";
+import { TableNamed } from "./TableNamed.ts";
 import {
   type SheetNameWithIdColumn,
   tableNamesWithIdColumn,
-} from "./TableNameGroups.js";
+} from "./TableNameGroups.ts";
 import {
   type ColumnSpecifierNamed,
   type FetchColumnSpecifierNamed,
@@ -26,7 +26,7 @@ import {
   type NamedSheets,
   type RowSpecifierName,
   type SheetColumnNamesStandard,
-} from "./Types/NamedState.js";
+} from "./Types/NamedState.ts";
 
 export class SpreadsheetNamed extends SpreadsheetBaseNamed {
   static init(): SpreadsheetNamed {

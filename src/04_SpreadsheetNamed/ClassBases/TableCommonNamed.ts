@@ -1,7 +1,7 @@
-import type { TableName } from "../../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
-import { TableSchema } from "../../01_SpreadsheetSchema/configReaders/TableSchema";
-import type { TableAddressIdentified } from "../../03_SpreadsheetIdentified/ClassBases/TableBaseIdentified";
-import { TableBaseNamed } from "./TableBaseNamed";
+import type { TableName } from "../../01_SpreadsheetSchema/configReaders/tableConfigsTypes.ts";
+import { TableSchema } from "../../01_SpreadsheetSchema/configReaders/TableSchema.ts";
+import type { TableAddressIdentified } from "../../03_SpreadsheetIdentified/ClassBases/TableBaseIdentified.ts";
+import { TableBaseNamed } from "./TableBaseNamed.ts";
 
 export abstract class TableCommonNamed<
   TN extends TableName,

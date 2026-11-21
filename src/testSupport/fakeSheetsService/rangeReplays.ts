@@ -1,18 +1,18 @@
 import { Obj } from "@byronbroughten/utils/obj";
 
-import type { CopyPasteType } from "../../00_Source/RawSource/RawSource";
-import type { FakeCell } from "../fakeSheetsService";
-import { a1Notation } from "./a1Notation";
-import { fakeCells } from "./fakeCells";
-import { type BandChange, type BoundedRange, fakeGrid } from "./fakeGrid";
+import type { CopyPasteType } from "../../00_Source/RawSource/RawSource.ts";
+import type { FakeCell } from "../fakeSheetsService.ts";
+import { a1Notation } from "./a1Notation.ts";
+import { fakeCells } from "./fakeCells.ts";
+import { type BandChange, type BoundedRange, fakeGrid } from "./fakeGrid.ts";
 import {
   type FakeSheetState,
   type FakeSpreadsheet,
   fakeSpreadsheet,
   type FakeTableState,
-} from "./fakeSpreadsheet";
-import { ruleFormulas } from "./ruleFormulas";
-import { unreplayed } from "./unreplayed";
+} from "./fakeSpreadsheet.ts";
+import { ruleFormulas } from "./ruleFormulas.ts";
+import { unreplayed } from "./unreplayed.ts";
 
 type Response = GoogleAppsScript.Sheets.Schema.Response;
 type GridRange = GoogleAppsScript.Sheets.Schema.GridRange;

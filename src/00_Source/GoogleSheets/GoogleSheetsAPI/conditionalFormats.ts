@@ -7,10 +7,10 @@ import {
   type ModelableConditionalFormatRule,
   type ModelledConditionType,
   numberConditionHoldsText,
-} from "../../RawSource/ConditionalFormat";
-import type { GridRangeProps } from "../../RawSource/RawSource";
-import { googleColor } from "./googleColor";
-import { googleGrid } from "./gridSnapshots";
+} from "../../RawSource/ConditionalFormat.ts";
+import type { GridRangeProps } from "../../RawSource/RawSource.ts";
+import { googleColor } from "./googleColor.ts";
+import { googleGrid } from "./gridSnapshots.ts";
 
 type GoogleSheet = GoogleAppsScript.Sheets.Schema.Sheet;
 type GoogleColor = GoogleAppsScript.Sheets.Schema.Color;

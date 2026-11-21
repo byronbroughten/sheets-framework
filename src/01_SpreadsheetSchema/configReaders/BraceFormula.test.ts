@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { SheetIndex } from "../../00_Source/RawSource/SheetIndex";
-import { type BraceConfigs, BraceFormula } from "./BraceFormula";
+import { SheetIndex } from "../../00_Source/RawSource/SheetIndex.ts";
+import { type BraceConfigs, BraceFormula } from "./BraceFormula.ts";
 
 function column(columnId: string, header: string) {
   return {

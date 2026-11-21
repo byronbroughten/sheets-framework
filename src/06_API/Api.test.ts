@@ -1,32 +1,32 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { SheetEdit } from "../00_Source/PlatformEvents/sheetEdit";
-import { SheetIndex } from "../00_Source/RawSource/SheetIndex";
+import type { SheetEdit } from "../00_Source/PlatformEvents/sheetEdit.ts";
+import { SheetIndex } from "../00_Source/RawSource/SheetIndex.ts";
 import {
   getColumnTraitByName,
   getSheetColumnNames,
-} from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
-import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister";
-import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
+} from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes.ts";
+import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister.ts";
+import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes.ts";
 import {
   layoutGid,
   layoutOrigins,
   layoutSheet,
   layoutTableId,
-} from "../02_SpreadsheetRaw/spreadsheetRawTestSupport";
-import { expectedSheetLayout } from "../testSupport/expectedSheetLayout";
+} from "../02_SpreadsheetRaw/spreadsheetRawTestSupport.ts";
+import { expectedSheetLayout } from "../testSupport/expectedSheetLayout.ts";
 import {
   stubLogger,
   stubScriptAndSpreadsheetApp,
-} from "../testSupport/fakeAppsScriptGlobals";
+} from "../testSupport/fakeAppsScriptGlobals.ts";
 import {
   buildGridRows,
   type FakeCell,
   stubSheetsService,
-} from "../testSupport/fakeSheetsService";
-import type { FakeGridView } from "../testSupport/fakeSheetsService/gridView";
-import { Api } from "./Api";
-import type { Endpoints } from "./Endpoints";
+} from "../testSupport/fakeSheetsService.ts";
+import type { FakeGridView } from "../testSupport/fakeSheetsService/gridView.ts";
+import { Api } from "./Api.ts";
+import type { Endpoints } from "./Endpoints.ts";
 
 const runItemGid = getTableTraitByName("runItem", "sheetGid");
 // The last column is deliberately left without a column id.
@@ -108,7 +108,7 @@ const configs = installedConfigs();
 describe("Api.handleSheetEdit, the entry call", () => {
   it("supplies the installed configs before anything reads them", async () => {
     vi.resetModules();
-    const fresh = await import("./Api");
+    const fresh = await import("./Api.ts");
     const installSource = vi.fn();
     expect(() =>
       fresh.Api.handleSheetEdit(
@@ -509,10 +509,10 @@ describe("Api.handleSheetEdit, the Fill Row IDs endpoint", () => {
 describe("Api.handleSheetEdit, the endpoints it installs", () => {
   it("lets a spreadsheet built afterwards reuse a row holding only a run status", async () => {
     vi.resetModules();
-    const fresh = await import("./Api");
-    const fake = await import("../testSupport/fakeSheetsService");
+    const fresh = await import("./Api.ts");
+    const fake = await import("../testSupport/fakeSheetsService.ts");
     const { SpreadsheetNamed } =
-      await import("../04_SpreadsheetNamed/SpreadsheetNamed");
+      await import("../04_SpreadsheetNamed/SpreadsheetNamed.ts");
     const runStatusColumnId = getColumnTraitByName(
       "runItem",
       "runStatus",

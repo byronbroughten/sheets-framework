@@ -1,31 +1,31 @@
-import type { NotEmpty } from "../00_Source/CellValues/cellValues";
+import type { NotEmpty } from "../00_Source/CellValues/cellValues.ts";
 import type {
   ConditionalFormatDeclaration,
   ConditionalFormatRule,
-} from "../00_Source/RawSource/ConditionalFormat";
+} from "../00_Source/RawSource/ConditionalFormat.ts";
 import type {
   EditLockDeclaration,
   EditProtection,
   EditWarningDeclaration,
-} from "../00_Source/RawSource/EditProtection";
-import type { RgbColor } from "../00_Source/RawSource/RgbColor";
+} from "../00_Source/RawSource/EditProtection.ts";
+import type { RgbColor } from "../00_Source/RawSource/RgbColor.ts";
 import type {
   ColumnIsFormula,
   ColumnName,
   ColumnValue,
   ColumnValueDeclared,
   ColumnValueName,
-} from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
-import type { TableName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
+} from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes.ts";
+import type { TableName } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes.ts";
 import type {
   Value,
   ValueName,
   VnToCvn,
-} from "../01_SpreadsheetSchema/configReaders/valueSchemas";
-import type { CellRaw } from "../02_SpreadsheetRaw/CellRaw";
-import type { CellIdentified } from "../03_SpreadsheetIdentified/CellIdentified";
-import { CellBaseNamed } from "./ClassBases/CellBaseNamed";
-import { ColumnNamed } from "./ColumnNamed";
+} from "../01_SpreadsheetSchema/configReaders/valueSchemas.ts";
+import type { CellRaw } from "../02_SpreadsheetRaw/CellRaw.ts";
+import type { CellIdentified } from "../03_SpreadsheetIdentified/CellIdentified.ts";
+import { CellBaseNamed } from "./ClassBases/CellBaseNamed.ts";
+import { ColumnNamed } from "./ColumnNamed.ts";
 
 export class CellNamed<
   TN extends TableName,

@@ -1,5 +1,5 @@
-import type { DropdownStyleReset } from "../../00_Source/RawSource/RawSource";
-import { ExtVal } from "../ExtVal";
+import type { DropdownStyleReset } from "../../00_Source/RawSource/RawSource.ts";
+import { ExtVal } from "../ExtVal.ts";
 import type {
   BoundedRange,
   CellAfter,
@@ -8,10 +8,10 @@ import type {
   GridCell,
   HeldItem,
   RequestVerb,
-} from "./flushClassifierTypes";
-import type { FlushTracker } from "./FlushTracker";
-import { Grid } from "./Grid";
-import type { ReadValue, RunReads } from "./RunReads";
+} from "./flushClassifierTypes.ts";
+import type { FlushTracker } from "./FlushTracker.ts";
+import { Grid } from "./Grid.ts";
+import type { ReadValue, RunReads } from "./RunReads.ts";
 
 type GoogleTable = GoogleAppsScript.Sheets.Schema.Table;
 type GoogleTableColumnProperties =

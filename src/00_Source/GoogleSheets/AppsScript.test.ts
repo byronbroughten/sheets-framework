@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { stubScriptAndSpreadsheetApp } from "../../testSupport/fakeAppsScriptGlobals";
-import { AppsScript } from "./AppsScript";
+import { stubScriptAndSpreadsheetApp } from "../../testSupport/fakeAppsScriptGlobals.ts";
+import { AppsScript } from "./AppsScript.ts";
 
 describe("AppsScript.boundSpreadsheetId", () => {
   it("reads the ID of the spreadsheet the script is bound to", () => {

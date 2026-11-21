@@ -2,8 +2,8 @@ import {
   type SheetColIndex,
   SheetIndex,
   type SheetRowIndex,
-} from "../00_Source/RawSource/SheetIndex";
-import { type HeadRole, headRows } from "./headRows";
+} from "../00_Source/RawSource/SheetIndex.ts";
+import { type HeadRole, headRows } from "./headRows.ts";
 
 export interface TableOriginProps {
   headerRowIndex: SheetRowIndex;

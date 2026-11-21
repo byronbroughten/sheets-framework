@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { googleRawRequest } from "../00_Source/GoogleSheets/GoogleSheetsAPI";
+import { googleRawRequest } from "../00_Source/GoogleSheets/GoogleSheetsAPI.ts";
 import {
   buildGridRows,
   type FakeCell,
   stubSheetsService,
-} from "../testSupport/fakeSheetsService";
-import { defaultTableId } from "../testSupport/fakeSheetsService/fakeSpreadsheet";
-import { SpreadsheetRaw } from "./SpreadsheetRaw";
+} from "../testSupport/fakeSheetsService.ts";
+import { defaultTableId } from "../testSupport/fakeSheetsService/fakeSpreadsheet.ts";
+import { SpreadsheetRaw } from "./SpreadsheetRaw.ts";
 import {
   firstTableEndRowIndex,
   gridRanges,
@@ -16,7 +16,7 @@ import {
   tableId111,
   tableId222,
   topDataRowIndex,
-} from "./spreadsheetRawTestSupport";
+} from "./spreadsheetRawTestSupport.ts";
 
 describe("SpreadsheetRaw.gatherRawOperation", () => {
   function rawValueWrite(rowIndex: number, colIndex: number, value: string) {

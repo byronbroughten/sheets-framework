@@ -3,7 +3,7 @@ import {
   isWholeSheetGridRange,
   rangeEqual,
   type WholeSheetGridRange,
-} from "./RawSource";
+} from "./RawSource.ts";
 
 export type ProtectionGridRange = GridRangeProps | WholeSheetGridRange;
 

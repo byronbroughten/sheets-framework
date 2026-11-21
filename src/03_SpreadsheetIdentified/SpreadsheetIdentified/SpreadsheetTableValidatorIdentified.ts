@@ -1,9 +1,9 @@
-import { SpreadsheetSchema } from "../../01_SpreadsheetSchema/configReaders/SpreadsheetSchema";
-import type { TableSchema } from "../../01_SpreadsheetSchema/configReaders/TableSchema";
-import { headerZone } from "../../01_SpreadsheetSchema/headerZone";
-import { SpreadsheetRaw } from "../../02_SpreadsheetRaw/SpreadsheetRaw";
-import { headerRowPlace } from "../../02_SpreadsheetRaw/SpreadsheetRaw/SpreadsheetTableValidatorRaw";
-import { SpreadsheetBaseIdentified } from "../ClassBases/SpreadsheetBaseIdentified";
+import { SpreadsheetSchema } from "../../01_SpreadsheetSchema/configReaders/SpreadsheetSchema.ts";
+import type { TableSchema } from "../../01_SpreadsheetSchema/configReaders/TableSchema.ts";
+import { headerZone } from "../../01_SpreadsheetSchema/headerZone.ts";
+import { SpreadsheetRaw } from "../../02_SpreadsheetRaw/SpreadsheetRaw.ts";
+import { headerRowPlace } from "../../02_SpreadsheetRaw/SpreadsheetRaw/SpreadsheetTableValidatorRaw.ts";
+import { SpreadsheetBaseIdentified } from "../ClassBases/SpreadsheetBaseIdentified.ts";
 
 type Misplacement = { table: TableSchema } & (
   { kind: "missing" } | { kind: "outside-zone" } | { kind: "band-shifted" }

@@ -4,12 +4,12 @@ import type {
   TableColumnPropertiesAdd,
   TableColumnPropertiesUpdate,
   UpdateTabPropertiesOperation,
-} from "../../RawSource/RawSource";
-import type { GoogleRequest, ModeledRequest } from "../GoogleSheetsAPI";
-import { cellDataRequests } from "./cellData";
-import { googleConditionalFormatRule } from "./conditionalFormats";
-import { googleColor } from "./googleColor";
-import { googleProtectedRange } from "./protectedRanges";
+} from "../../RawSource/RawSource.ts";
+import type { GoogleRequest, ModeledRequest } from "../GoogleSheetsAPI.ts";
+import { cellDataRequests } from "./cellData.ts";
+import { googleConditionalFormatRule } from "./conditionalFormats.ts";
+import { googleColor } from "./googleColor.ts";
+import { googleProtectedRange } from "./protectedRanges.ts";
 
 type GoogleColumnProperties =
   GoogleAppsScript.Sheets.Schema.TableColumnProperties;

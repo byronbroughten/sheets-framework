@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   buildGridRows,
   stubSheetsService,
-} from "../testSupport/fakeSheetsService";
-import { SpreadsheetRaw } from "./SpreadsheetRaw";
+} from "../testSupport/fakeSheetsService.ts";
+import { SpreadsheetRaw } from "./SpreadsheetRaw.ts";
 import {
   colIdRowIndex,
   formulaCell,
@@ -14,7 +14,7 @@ import {
   tableId111,
   threeByThreeAround,
   topDataRowIndex,
-} from "./spreadsheetRawTestSupport";
+} from "./spreadsheetRawTestSupport.ts";
 
 describe("ColumnRaw.updateAllCells", () => {
   function stubFilledSheet() {

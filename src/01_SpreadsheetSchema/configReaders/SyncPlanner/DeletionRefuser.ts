@@ -1,6 +1,6 @@
-import { BraceFormula } from "../BraceFormula";
-import type { TabsByTable } from "../SyncPlanner";
-import type { SyncRefusal, SyncSubject } from "../syncRunResult";
+import { BraceFormula } from "../BraceFormula.ts";
+import type { TabsByTable } from "../SyncPlanner.ts";
+import type { SyncRefusal, SyncSubject } from "../syncRunResult.ts";
 import {
   entriesOf,
   moveBeforePath,
@@ -13,7 +13,7 @@ import {
   type WideColumnGroupMove,
   type WideNewTable,
   type WideTableEntry,
-} from "./wideAlterations";
+} from "./wideAlterations.ts";
 
 interface DeletionRefuserProps {
   alterations: WideAlterations;

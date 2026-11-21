@@ -3,13 +3,13 @@ import { describe, expect, it } from "vitest";
 import {
   buildGridRows,
   stubSheetsService,
-} from "../testSupport/fakeSheetsService";
-import { SpreadsheetRaw } from "./SpreadsheetRaw";
+} from "../testSupport/fakeSheetsService.ts";
+import { SpreadsheetRaw } from "./SpreadsheetRaw.ts";
 import {
   startTableColIndex,
   tableHeaderRowIndex,
   topDataRowIndex,
-} from "./spreadsheetRawTestSupport";
+} from "./spreadsheetRawTestSupport.ts";
 
 describe("TableRaw.queueSort", () => {
   const besideStart = startTableColIndex + 3;

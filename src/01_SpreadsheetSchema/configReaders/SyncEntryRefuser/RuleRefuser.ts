@@ -1,21 +1,24 @@
-import { numberConditionHoldsText } from "../../../00_Source/RawSource/ConditionalFormat";
+import { numberConditionHoldsText } from "../../../00_Source/RawSource/ConditionalFormat.ts";
 import {
   ruleRemovalLines,
   ruleReplacementLines,
   unplacedNewTable,
-} from "../SyncPlanner";
+} from "../SyncPlanner.ts";
 import {
   entriesOf,
   rulesOf,
   type WideNewTable,
   type WideRule,
   type WideTableEntry,
-} from "../SyncPlanner/wideAlterations";
-import type { SyncRefusal } from "../syncRunResult";
-import { BraceRefuser } from "./BraceRefuser";
-import { type ColumnNamedAt, namedColumnRefusals } from "./namedColumnRefusals";
-import type { NewColumnNames } from "./NewColumnNames";
-import type { RenamedColumnNames } from "./RenamedColumnNames";
+} from "../SyncPlanner/wideAlterations.ts";
+import type { SyncRefusal } from "../syncRunResult.ts";
+import { BraceRefuser } from "./BraceRefuser.ts";
+import {
+  type ColumnNamedAt,
+  namedColumnRefusals,
+} from "./namedColumnRefusals.ts";
+import type { NewColumnNames } from "./NewColumnNames.ts";
+import type { RenamedColumnNames } from "./RenamedColumnNames.ts";
 
 export interface RuleRefuserProps {
   table: string;

@@ -1,4 +1,4 @@
-import type { Chore } from "./Chore";
+import type { Chore } from "./Chore.ts";
 
 export const fillMissingRowIds: Chore = {
   description:

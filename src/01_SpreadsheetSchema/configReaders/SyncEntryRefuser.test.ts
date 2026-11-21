@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import type { IdNameMapGeneric } from "./idNameMapTypes";
+import type { IdNameMapGeneric } from "./idNameMapTypes.ts";
 import {
   SyncEntryRefuser,
   type SyncEntryRefuserProps,
-} from "./SyncEntryRefuser";
+} from "./SyncEntryRefuser.ts";
 
 const idNameMap: IdNameMapGeneric = {
   tables: {

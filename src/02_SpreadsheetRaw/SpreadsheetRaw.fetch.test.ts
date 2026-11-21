@@ -1,13 +1,13 @@
 import { Val } from "@byronbroughten/utils/val";
 import { describe, expect, it } from "vitest";
 
-import { installedRawSource } from "../00_Source/RawSource/installedRawSource";
-import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
+import { installedRawSource } from "../00_Source/RawSource/installedRawSource.ts";
+import { stubLogger } from "../testSupport/fakeAppsScriptGlobals.ts";
 import {
   buildGridRows,
   stubSheetsService,
-} from "../testSupport/fakeSheetsService";
-import { SpreadsheetRaw } from "./SpreadsheetRaw";
+} from "../testSupport/fakeSheetsService.ts";
+import { SpreadsheetRaw } from "./SpreadsheetRaw.ts";
 import {
   colIdRowIndex,
   extraTablesSheet,
@@ -33,7 +33,7 @@ import {
   tableId111,
   thrownMessage,
   topDataRowIndex,
-} from "./spreadsheetRawTestSupport";
+} from "./spreadsheetRawTestSupport.ts";
 
 describe("SpreadsheetRaw.fetchAllSheetProperties", () => {
   it("integrates sheet properties from Sheets.Spreadsheets.get into raw state", () => {

@@ -4,16 +4,16 @@ import type {
   IntendedTrait,
   PlannedColumnGroupMove,
   PlannedNewColumn,
-} from "../../01_SpreadsheetSchema/configReaders/SyncPlanner";
-import type { WideColumnGroupMove } from "../../01_SpreadsheetSchema/configReaders/SyncPlanner/wideAlterations";
-import { beforeFirstColumnText } from "../../01_SpreadsheetSchema/configReaders/syncRunResult";
-import { dimensionIds } from "../../01_SpreadsheetSchema/dimensionIds";
+} from "../../01_SpreadsheetSchema/configReaders/SyncPlanner.ts";
+import type { WideColumnGroupMove } from "../../01_SpreadsheetSchema/configReaders/SyncPlanner/wideAlterations.ts";
+import { beforeFirstColumnText } from "../../01_SpreadsheetSchema/configReaders/syncRunResult.ts";
+import { dimensionIds } from "../../01_SpreadsheetSchema/dimensionIds.ts";
 import type {
   ColumnMoveSpan,
   NewColumnHeadCells,
-} from "../../02_SpreadsheetRaw/ClassTypes/StateRaw";
-import { ColumnConfigsBaseOperator } from "../ClassBases/ColumnConfigsBaseOperator";
-import { TableColumnOrder } from "./TableColumnOrder";
+} from "../../02_SpreadsheetRaw/ClassTypes/StateRaw.ts";
+import { ColumnConfigsBaseOperator } from "../ClassBases/ColumnConfigsBaseOperator.ts";
+import { TableColumnOrder } from "./TableColumnOrder.ts";
 
 export interface MintedNewColumn extends PlannedNewColumn {
   tableId: string;

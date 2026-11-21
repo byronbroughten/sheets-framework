@@ -1,21 +1,21 @@
 import { Val } from "@byronbroughten/utils/val";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { type PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState";
-import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
+import { type PendingAlterations } from "../01_SpreadsheetSchema/configReaders/intendedState.ts";
+import { stubLogger } from "../testSupport/fakeAppsScriptGlobals.ts";
 import {
   type FakeSheetProperties,
   stubSheetsService,
-} from "../testSupport/fakeSheetsService";
-import { parseIdNameMapFileSource } from "./parseIdNameMapFileSource";
-import { SyncCoordinator, type SyncRun } from "./SyncCoordinator";
+} from "../testSupport/fakeSheetsService.ts";
+import { parseIdNameMapFileSource } from "./parseIdNameMapFileSource.ts";
+import { SyncCoordinator, type SyncRun } from "./SyncCoordinator.ts";
 import {
   frame,
   itemGid,
   itemSheet,
   previousItemMap,
   seedFixture,
-} from "./syncCoordinatorTestSupport";
+} from "./syncCoordinatorTestSupport.ts";
 
 beforeEach(() => {
   stubLogger();

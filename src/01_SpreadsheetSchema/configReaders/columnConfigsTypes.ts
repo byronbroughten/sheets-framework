@@ -10,11 +10,18 @@ import { Val } from "@byronbroughten/utils/val";
 import type {
   CodebaseNameDelimiter,
   NotEmpty,
-} from "../../00_Source/CellValues/cellValues";
-import { type Configs, installedConfigs } from "./configRegister";
-import type { ColumnConfigsGeneric, ColumnConfigStored } from "./makeConfigs";
-import { configTableNames, type TableNameSimple } from "./tableConfigsTypes";
-import { type Value, type ValueName, type ValueSchema } from "./valueSchemas";
+} from "../../00_Source/CellValues/cellValues.ts";
+import { type Configs, installedConfigs } from "./configRegister.ts";
+import type {
+  ColumnConfigsGeneric,
+  ColumnConfigStored,
+} from "./makeConfigs.ts";
+import { configTableNames, type TableNameSimple } from "./tableConfigsTypes.ts";
+import {
+  type Value,
+  type ValueName,
+  type ValueSchema,
+} from "./valueSchemas.ts";
 
 export type ColumnConfigs = Configs["columnConfigs"];
 

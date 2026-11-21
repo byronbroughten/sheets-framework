@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import type { TableNameSimple } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
-import { assertType, type IsExactly } from "../testSupport/typeAssertions";
+import type { TableNameSimple } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes.ts";
+import { assertType, type IsExactly } from "../testSupport/typeAssertions.ts";
 import {
   isInTnGroup,
   type SheetNameWithIdAndNameColumn,
   type SheetNameWithIdColumn,
   type SheetNameWithNameColumn,
-} from "./TableNameGroups";
+} from "./TableNameGroups.ts";
 
 describe("SheetNameWithIdColumn", () => {
   it("names log, the exclusion checks' exemplar, as a Table", () => {

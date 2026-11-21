@@ -1,13 +1,13 @@
-import { PartialTableRefusal } from "../../00_Source/RawSource/PartialTableRefusal";
+import { PartialTableRefusal } from "../../00_Source/RawSource/PartialTableRefusal.ts";
 import type {
   InsertRangeOperation,
   TableSnapshot,
-} from "../../00_Source/RawSource/RawSource";
-import { SheetIndex } from "../../00_Source/RawSource/SheetIndex";
-import { SpreadsheetBaseRaw } from "../ClassBases/SpreadsheetBaseRaw";
-import { rowShiftFrom } from "../ClassBases/TableCommonRaw";
-import type { AppendTableRows } from "../ClassTypes/StateRaw";
-import { SpreadsheetRaw } from "../SpreadsheetRaw";
+} from "../../00_Source/RawSource/RawSource.ts";
+import { SheetIndex } from "../../00_Source/RawSource/SheetIndex.ts";
+import { SpreadsheetBaseRaw } from "../ClassBases/SpreadsheetBaseRaw.ts";
+import { rowShiftFrom } from "../ClassBases/TableCommonRaw.ts";
+import type { AppendTableRows } from "../ClassTypes/StateRaw.ts";
+import { SpreadsheetRaw } from "../SpreadsheetRaw.ts";
 
 export class SpreadsheetRefusalRewriterRaw extends SpreadsheetBaseRaw {
   get ss(): SpreadsheetRaw {

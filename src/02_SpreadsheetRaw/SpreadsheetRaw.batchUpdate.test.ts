@@ -1,13 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { installedRawSource } from "../00_Source/RawSource/installedRawSource";
-import type { LocalWriteOperation } from "../00_Source/RawSource/RawSource";
-import { SheetIndex } from "../00_Source/RawSource/SheetIndex";
+import { installedRawSource } from "../00_Source/RawSource/installedRawSource.ts";
+import type { LocalWriteOperation } from "../00_Source/RawSource/RawSource.ts";
+import { SheetIndex } from "../00_Source/RawSource/SheetIndex.ts";
 import {
   buildGridRows,
   stubSheetsService,
-} from "../testSupport/fakeSheetsService";
-import { SpreadsheetRaw } from "./SpreadsheetRaw";
+} from "../testSupport/fakeSheetsService.ts";
+import { SpreadsheetRaw } from "./SpreadsheetRaw.ts";
 import {
   firstTableEndRowIndex,
   lightGreen,
@@ -16,7 +16,7 @@ import {
   tableId111,
   tableId222,
   topDataRowIndex,
-} from "./spreadsheetRawTestSupport";
+} from "./spreadsheetRawTestSupport.ts";
 
 describe("SpreadsheetRaw.batchUpdateGSheets", () => {
   it("sends nothing for a write queued before the sheet's Table was fetched, once discarded", () => {

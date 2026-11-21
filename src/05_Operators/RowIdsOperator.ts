@@ -2,12 +2,12 @@ import {
   fillRowIdsName,
   type SyncNotice,
   type SyncPlanItem,
-} from "../01_SpreadsheetSchema/configReaders/syncRunResult";
-import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
-import type { TableRaw } from "../02_SpreadsheetRaw/TableRaw";
-import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
-import { SpreadsheetBaseOperator } from "./SpreadsheetBaseOperator";
-import { TableConfigsOperator } from "./TableConfigsOperator";
+} from "../01_SpreadsheetSchema/configReaders/syncRunResult.ts";
+import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds.ts";
+import type { TableRaw } from "../02_SpreadsheetRaw/TableRaw.ts";
+import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed.ts";
+import { SpreadsheetBaseOperator } from "./SpreadsheetBaseOperator.ts";
+import { TableConfigsOperator } from "./TableConfigsOperator.ts";
 
 interface IdColumn {
   table: TableRaw;

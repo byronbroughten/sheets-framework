@@ -1,14 +1,14 @@
-import { SheetIndex } from "../../00_Source/RawSource/SheetIndex";
-import type { FakeCell, FakeCellValue } from "../fakeSheetsService";
-import { fakeCells } from "./fakeCells";
-import { fakeGrid } from "./fakeGrid";
+import { SheetIndex } from "../../00_Source/RawSource/SheetIndex.ts";
+import type { FakeCell, FakeCellValue } from "../fakeSheetsService.ts";
+import { fakeCells } from "./fakeCells.ts";
+import { fakeGrid } from "./fakeGrid.ts";
 import {
   type FakeSheetState,
   type FakeSpreadsheet,
   fakeSpreadsheet,
   type FakeTableState,
-} from "./fakeSpreadsheet";
-import { fakeTables } from "./fakeTables";
+} from "./fakeSpreadsheet.ts";
+import { fakeTables } from "./fakeTables.ts";
 
 export interface FakeGridRange {
   startRowIndex?: number;

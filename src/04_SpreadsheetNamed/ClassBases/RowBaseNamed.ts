@@ -1,6 +1,6 @@
-import type { TableName } from "../../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
-import { TableSchema } from "../../01_SpreadsheetSchema/configReaders/TableSchema";
-import { TableBaseNamed, type TableNamedProps } from "./TableBaseNamed";
+import type { TableName } from "../../01_SpreadsheetSchema/configReaders/tableConfigsTypes.ts";
+import { TableSchema } from "../../01_SpreadsheetSchema/configReaders/TableSchema.ts";
+import { TableBaseNamed, type TableNamedProps } from "./TableBaseNamed.ts";
 
 export interface RowNamedProps<
   TN extends TableName,

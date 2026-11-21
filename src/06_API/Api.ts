@@ -1,20 +1,20 @@
-import type { SheetEdit } from "../00_Source/PlatformEvents/sheetEdit";
-import type { DropdownStyleReset } from "../00_Source/RawSource/RawSource";
-import type { ColumnSchema } from "../01_SpreadsheetSchema/configReaders/ColumnSchema";
+import type { SheetEdit } from "../00_Source/PlatformEvents/sheetEdit.ts";
+import type { DropdownStyleReset } from "../00_Source/RawSource/RawSource.ts";
+import type { ColumnSchema } from "../01_SpreadsheetSchema/configReaders/ColumnSchema.ts";
 import {
   type Configs,
   installConfigs,
-} from "../01_SpreadsheetSchema/configReaders/configRegister";
-import { SpreadsheetSchema } from "../01_SpreadsheetSchema/configReaders/SpreadsheetSchema";
-import { SpreadsheetIdentified } from "../03_SpreadsheetIdentified/SpreadsheetIdentified";
+} from "../01_SpreadsheetSchema/configReaders/configRegister.ts";
+import { SpreadsheetSchema } from "../01_SpreadsheetSchema/configReaders/SpreadsheetSchema.ts";
+import { SpreadsheetIdentified } from "../03_SpreadsheetIdentified/SpreadsheetIdentified.ts";
 import {
   SpreadsheetBaseNamed,
   type SpreadsheetNamedProps,
-} from "../04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
-import { EndpointRun } from "./EndpointRun";
-import type { Endpoints, EndpointsAll } from "./Endpoints";
-import { installEndpoints } from "./feedbackColumnIds";
-import { withFrameworkEndpoints } from "./frameworkEndpoints";
+} from "../04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed.ts";
+import { EndpointRun } from "./EndpointRun.ts";
+import type { Endpoints, EndpointsAll } from "./Endpoints.ts";
+import { installEndpoints } from "./feedbackColumnIds.ts";
+import { withFrameworkEndpoints } from "./frameworkEndpoints.ts";
 
 interface ApiProps extends SpreadsheetNamedProps {
   endpoints: Endpoints;

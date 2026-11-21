@@ -1,8 +1,8 @@
-import { type TableSchema } from "../../01_SpreadsheetSchema/configReaders/TableSchema";
+import { type TableSchema } from "../../01_SpreadsheetSchema/configReaders/TableSchema.ts";
 import {
   TableBaseIdentified,
   type TableIdentifiedProps,
-} from "./TableBaseIdentified";
+} from "./TableBaseIdentified.ts";
 
 export type RowIdentifiedProps = TableIdentifiedProps & { rowIndex: number };
 

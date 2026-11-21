@@ -1,12 +1,12 @@
-import type { CodebaseNameDelimiter } from "../00_Source/CellValues/cellValues";
+import type { CodebaseNameDelimiter } from "../00_Source/CellValues/cellValues.ts";
 import type {
   ColumnFullName,
   ColumnNameFiltered,
   TableNameOf,
-} from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
-import type { TableNameSimple } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
-import type { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
-import type { CheckboxColumnName } from "../05_Operators/CheckboxColumnOperator";
+} from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes.ts";
+import type { TableNameSimple } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes.ts";
+import type { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed.ts";
+import type { CheckboxColumnName } from "../05_Operators/CheckboxColumnOperator.ts";
 
 // The only columns a run can report into: writable, and holding a sentence.
 export type FeedbackColumnName<TN extends TableNameSimple> = ColumnNameFiltered<

@@ -1,17 +1,17 @@
-import type { RgbColor } from "../00_Source/RawSource/RgbColor";
-import type { ColumnName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
-import type { TableNameSimple } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
-import type { CellChange } from "../03_SpreadsheetIdentified/ClassTypes/StateIdentified";
+import type { RgbColor } from "../00_Source/RawSource/RgbColor.ts";
+import type { ColumnName } from "../01_SpreadsheetSchema/configReaders/columnConfigsTypes.ts";
+import type { TableNameSimple } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes.ts";
+import type { CellChange } from "../03_SpreadsheetIdentified/ClassTypes/StateIdentified.ts";
 import {
   TableBaseNamed,
   type TableNamedProps,
-} from "../04_SpreadsheetNamed/ClassBases/TableBaseNamed";
-import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
-import type { TableNamed } from "../04_SpreadsheetNamed/TableNamed";
+} from "../04_SpreadsheetNamed/ClassBases/TableBaseNamed.ts";
+import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed.ts";
+import type { TableNamed } from "../04_SpreadsheetNamed/TableNamed.ts";
 import {
   type CheckboxColumnName,
   CheckboxColumnOperator,
-} from "../05_Operators/CheckboxColumnOperator";
+} from "../05_Operators/CheckboxColumnOperator.ts";
 import type {
   ActionReturn,
   EndpointDispatched,
@@ -19,7 +19,7 @@ import type {
   RowReports,
   RunReport,
   RunStateReported,
-} from "./Endpoints";
+} from "./Endpoints.ts";
 
 interface RunState {
   message: string;

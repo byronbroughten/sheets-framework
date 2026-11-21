@@ -1,6 +1,6 @@
-import { tableLayout } from "../../01_SpreadsheetSchema/tableLayout";
-import { colLetters } from "../colLetters";
-import { ExtVal } from "../ExtVal";
+import { tableLayout } from "../../01_SpreadsheetSchema/tableLayout.ts";
+import { colLetters } from "../colLetters.ts";
+import { ExtVal } from "../ExtVal.ts";
 import type {
   ExtendedValue,
   FlushRead,
@@ -10,8 +10,8 @@ import type {
   GridSize,
   HeldCell,
   HeldRow,
-} from "./flushClassifierTypes";
-import { Grid } from "./Grid";
+} from "./flushClassifierTypes.ts";
+import { Grid } from "./Grid.ts";
 
 type GoogleSheet = GoogleAppsScript.Sheets.Schema.Sheet;
 type GoogleTable = GoogleAppsScript.Sheets.Schema.Table;

@@ -5,19 +5,19 @@ import type {
   ConditionalFormat,
   ConditionalFormatRule,
   ModelableConditionalFormatRule,
-} from "../../00_Source/RawSource/ConditionalFormat";
+} from "../../00_Source/RawSource/ConditionalFormat.ts";
 import {
   type GridRangeProps,
   rangesShareCell,
-} from "../../00_Source/RawSource/RawSource";
+} from "../../00_Source/RawSource/RawSource.ts";
 import {
   type HexColor,
   rgbChannelsHex,
-} from "../../00_Source/RawSource/RgbColor";
-import { SheetIndex } from "../../00_Source/RawSource/SheetIndex";
-import { SpreadsheetBaseSchema } from "../SpreadsheetBaseSchema";
-import { BraceFormula, type RuleLayout } from "./BraceFormula";
-import type { SyncPlanEffect } from "./syncRunResult";
+} from "../../00_Source/RawSource/RgbColor.ts";
+import { SheetIndex } from "../../00_Source/RawSource/SheetIndex.ts";
+import { SpreadsheetBaseSchema } from "../SpreadsheetBaseSchema.ts";
+import { BraceFormula, type RuleLayout } from "./BraceFormula.ts";
+import type { SyncPlanEffect } from "./syncRunResult.ts";
 
 const schema = new SpreadsheetBaseSchema();
 

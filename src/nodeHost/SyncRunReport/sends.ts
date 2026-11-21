@@ -3,8 +3,8 @@ import type {
   SyncCreatedTableColumn,
   SyncLandedItem,
   SyncSendLine,
-} from "../../01_SpreadsheetSchema/configReaders/syncRunResult";
-import { ReportText } from "../ReportText";
+} from "../../01_SpreadsheetSchema/configReaders/syncRunResult.ts";
+import { ReportText } from "../ReportText.ts";
 
 export const sendLines = {
   of({ subject, what }: SyncSendLine): string {

@@ -2,12 +2,12 @@ import type {
   IdNameMapGeneric,
   IdNameMapTab,
   IdNameMapTable,
-} from "./idNameMapTypes";
+} from "./idNameMapTypes.ts";
 import type {
   SyncMovedColumnName,
   SyncMovedName,
   SyncMovedTableOrTabName,
-} from "./syncRunResult";
+} from "./syncRunResult.ts";
 
 interface ColumnNow {
   columnId: string;

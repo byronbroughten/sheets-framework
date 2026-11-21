@@ -1,10 +1,14 @@
-import type { FakeCell } from "../fakeSheetsService";
-import { a1Notation } from "./a1Notation";
-import { bandColumnRules, type BandShift, ruleOwner } from "./bandColumnRules";
-import { fakeCells } from "./fakeCells";
-import { FakeGoogleRefusal } from "./FakeGoogleRefusal";
-import { type FakeSheetState, type FakeTableState } from "./fakeSpreadsheet";
-import { unreplayed } from "./unreplayed";
+import type { FakeCell } from "../fakeSheetsService.ts";
+import { a1Notation } from "./a1Notation.ts";
+import {
+  bandColumnRules,
+  type BandShift,
+  ruleOwner,
+} from "./bandColumnRules.ts";
+import { fakeCells } from "./fakeCells.ts";
+import { FakeGoogleRefusal } from "./FakeGoogleRefusal.ts";
+import { type FakeSheetState, type FakeTableState } from "./fakeSpreadsheet.ts";
+import { unreplayed } from "./unreplayed.ts";
 
 type GridRange = GoogleAppsScript.Sheets.Schema.GridRange;
 export type Dimension = "ROWS" | "COLUMNS";

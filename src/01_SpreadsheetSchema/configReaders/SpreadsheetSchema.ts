@@ -1,15 +1,15 @@
 import { Val } from "@byronbroughten/utils/val";
 
-import type { SheetEdit } from "../../00_Source/PlatformEvents/sheetEdit";
-import { headerZone } from "../headerZone";
-import { SpreadsheetBaseSchema } from "../SpreadsheetBaseSchema";
+import type { SheetEdit } from "../../00_Source/PlatformEvents/sheetEdit.ts";
+import { headerZone } from "../headerZone.ts";
+import { SpreadsheetBaseSchema } from "../SpreadsheetBaseSchema.ts";
 import {
   configTableNames,
   loneTableKeyOnGid,
   tableKeysByGid,
   type TableName,
-} from "./tableConfigsTypes";
-import { TableSchema } from "./TableSchema";
+} from "./tableConfigsTypes.ts";
+import { TableSchema } from "./TableSchema.ts";
 
 export class SpreadsheetSchema extends SpreadsheetBaseSchema {
   isInSheetGids(sheetGid: number): boolean {

@@ -32,7 +32,7 @@ An unaugmented `Register` is a type error, not a silent widening.
 
 ```ts
 import { Api } from "@byronbroughten/sheets-framework";
-import { appConfigs } from "./generated/appConfigs";
+import { appConfigs } from "./generated/appConfigs.ts";
 
 const app = { configs: appConfigs, endpoints: myEndpoints };
 

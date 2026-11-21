@@ -1,10 +1,13 @@
-import type { CellValue, NotEmpty } from "../00_Source/CellValues/cellValues";
-import { type Value } from "../01_SpreadsheetSchema/configReaders/valueSchemas";
-import { RowRaw } from "../02_SpreadsheetRaw/RowRaw";
-import { CellIdentified } from "./CellIdentified";
-import type { RowIdentifiedProps } from "./ClassBases/RowBaseIdentified";
-import { RowCommonIdentified } from "./ClassBases/RowCommonIdentified";
-import { TableIdentified } from "./TableIdentified";
+import type {
+  CellValue,
+  NotEmpty,
+} from "../00_Source/CellValues/cellValues.ts";
+import { type Value } from "../01_SpreadsheetSchema/configReaders/valueSchemas.ts";
+import { RowRaw } from "../02_SpreadsheetRaw/RowRaw.ts";
+import { CellIdentified } from "./CellIdentified.ts";
+import type { RowIdentifiedProps } from "./ClassBases/RowBaseIdentified.ts";
+import { RowCommonIdentified } from "./ClassBases/RowCommonIdentified.ts";
+import { TableIdentified } from "./TableIdentified.ts";
 
 export class RowIdentified extends RowCommonIdentified {
   constructor(props: RowIdentifiedProps) {
