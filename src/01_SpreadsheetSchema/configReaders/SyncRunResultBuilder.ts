@@ -45,6 +45,12 @@ export interface SyncRunFlushStopped {
   rowIds: SyncRunRowIds;
 }
 
+// The Fill Row IDs send that threw after the regen, and its plan lines, which never landed.
+export interface SyncRunFillStop {
+  outcome: SyncFlushStoppedOutcome;
+  unfilled: SyncPlanItem[];
+}
+
 export interface SyncRunPlanned {
   planned: SyncPlannerResult;
   notes: string[];
@@ -59,6 +65,7 @@ export interface SyncRunPlanned {
   nameRewriter: SyncNameRewriter;
   // Left out of the plan, so a send lists each as not sent and a dry run as a notice.
   heldBackChanges: SyncHeldBackChange[];
+  fillStop?: SyncRunFillStop;
 }
 
 interface SyncRunCommonProps {
@@ -96,6 +103,7 @@ export class SyncRunResultBuilder {
     rowIds,
     nameRewriter,
     heldBackChanges,
+    fillStop,
   }: SyncRunPlanned): SyncRunResult {
     const common = this._common({
       refusals: [],
@@ -132,17 +140,20 @@ export class SyncRunResultBuilder {
     ];
     const metOrLandedCount =
       landedAlterations.length + planned.alreadyMet.length;
-    return {
-      ...sendResult(common, {
-        kind: "sent",
-        summary: sentSummary({
-          sentCount: planned.plan.length,
-          didntLandCount: didntLand.length,
-          rowIdsSendCount: rowIds.plan.length,
-          alreadyMetCount: planned.alreadyMet.length,
-        }),
+    const outcome: SyncSendOutcome = fillStop?.outcome ?? {
+      kind: "sent",
+      summary: sentSummary({
+        sentCount: planned.plan.length,
+        didntLandCount: didntLand.length,
+        rowIdsSendCount: rowIds.plan.length,
+        alreadyMetCount: planned.alreadyMet.length,
       }),
-      landed: [...landedAlterations, ...rowIds.plan.map(landedSend)],
+    };
+    const unfilled = new Set(fillStop?.unfilled);
+    const landedRowIds = rowIds.plan.filter((item) => !unfilled.has(item));
+    return {
+      ...sendResult(common, outcome),
+      landed: [...landedAlterations, ...landedRowIds.map(landedSend)],
       notSent: heldBackChanges.map((rule) =>
         asRewritten(heldBackLine(rule), nameRewriter),
       ),

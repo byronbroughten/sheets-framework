@@ -28,6 +28,7 @@ import {
   enteredDataReads,
 } from "../01_SpreadsheetSchema/configReaders/enteredDataReads";
 import {
+  fillFailedStoppedOutcome,
   heldStoppedOutcome,
   refusedStoppedOutcome,
 } from "../01_SpreadsheetSchema/configReaders/flushStoppedOutcome";
@@ -76,7 +77,10 @@ import type {
   SyncTableSubject,
   SyncTypedTraitChange,
 } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
-import { SyncRunResultBuilder } from "../01_SpreadsheetSchema/configReaders/SyncRunResultBuilder";
+import {
+  type SyncRunFillStop,
+  SyncRunResultBuilder,
+} from "../01_SpreadsheetSchema/configReaders/SyncRunResultBuilder";
 import { typedTraitChanges } from "../01_SpreadsheetSchema/configReaders/typedTraitChanges";
 import {
   SpreadsheetBaseNamed,
@@ -192,6 +196,12 @@ interface RegenerationProps {
   notes: string[];
   sent: SyncSubject[];
   previous: ConfigSnapshot;
+}
+
+// The fill's plan lines, and its flush's error message when it threw.
+interface FillSend {
+  filled: SyncPlanItem[];
+  failure?: string;
 }
 
 interface DeletionEffectsProps {
@@ -563,8 +573,20 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       files.alterations = alterationsFileSource(nameRewriter.alterations);
     }
     let fillPlan: SyncPlanItem[];
+    let fillStop: SyncRunFillStop | undefined;
     if (isApplying) {
-      fillPlan = regenerator._fillBlankIds();
+      const fill = regenerator._fillBlankIds();
+      fillPlan = fill.filled;
+      // A refetch is a fresh coordinator, so the flushes that landed are counted on this one.
+      if (fill.failure !== undefined) {
+        fillStop = {
+          outcome: fillFailedStoppedOutcome(
+            this.ss.raw.landedFlushCount,
+            fill.failure,
+          ),
+          unfilled: fill.filled,
+        };
+      }
     } else {
       fillPlan = regenerator.rowIdsOperator.fillPlan();
     }
@@ -579,6 +601,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
         rowIds: { plan: [...checkboxPlan, ...fillPlan], notices },
         nameRewriter,
         heldBackChanges,
+        fillStop,
       }),
       files,
     };
@@ -647,11 +670,15 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       return { ...item, effects: [...item.effects, ...effects] };
     });
   }
-  // Its own send after the regen, planned from the fresh configs; it writes only blank cells, so the entered-data gate holds nothing.
-  private _fillBlankIds(): SyncPlanItem[] {
+  // Its own send after the regen, planned from the fresh configs; it writes only blank cells, so the entered-data gate holds nothing; its failure is caught, not thrown, so the run still returns the configs after an earlier flush landed.
+  private _fillBlankIds(): FillSend {
     const filled = this.rowIdsOperator.fillBlankIds();
-    this.ss.batchUpdateGSheets();
-    return filled;
+    try {
+      this.ss.batchUpdateGSheets();
+      return { filled };
+    } catch (error) {
+      return { filled, failure: errorMessage(error) };
+    }
   }
   // The untyped-column notes come from the refetch, since a rename changes the headers and Table names they cite.
   private _refetchedRegeneration({
@@ -1158,4 +1185,10 @@ function referenceEffects(
   );
   if (check === undefined) return [];
   return [OutsideReferences.effect(check)];
+}
+
+// A thrown value need not be an Error, and the report quotes whatever text it has.
+function errorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return String(error);
 }

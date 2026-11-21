@@ -12,12 +12,14 @@ import {
   type SyncCreatedTableColumn,
   type SyncDryRunOutcome,
   type SyncEntry,
+  type SyncFillFailedCause,
   type SyncFlushStoppedOutcome,
   type SyncHeaderTakenStop,
   type SyncHeadRowsStop,
   type SyncHeld,
   type SyncHeldBy,
   type SyncHeldGroup,
+  type SyncLandedFlushes,
   type SyncLandedItem,
   type SyncNoSuchRuleStop,
   type SyncNotice,
@@ -25,12 +27,12 @@ import {
   type SyncPlanEffect,
   type SyncPlanItem,
   type SyncRefusal,
+  type SyncRefusedCause,
   type SyncRunResult,
   type SyncSendLine,
   type SyncSendOutcome,
   type SyncSentOutcome,
   type SyncStop,
-  type SyncStopCause,
   type SyncSubject,
   type SyncTableNameTakenStop,
   type SyncTabTitleRepeatedStop,
@@ -170,19 +172,27 @@ export class SyncRunReport {
     return { resultLine, planTitle, next: `Nothing held: ${send}` };
   }
   private _sentText({ summary }: SyncSentOutcome): OutcomeText {
-    const { generatedDir, alterationsPath } = this.result;
     return {
       resultLine: `SENT: ${summary}${this._checkClause}.`,
       planTitle: planTitles.send,
-      next: `sync wrote ${generatedDir} and ${alterationsPath}. Run npm run check, then commit them with your change.`,
+      next: this._wroteLine,
     };
   }
   private _flushStoppedText(outcome: SyncFlushStoppedOutcome): OutcomeText {
+    const { command } = this.result;
+    let next = rerunDryRunLine(command);
+    if (isFillFailed(outcome)) {
+      next = `${this._wroteLine} Then rerun the dry run to fill the blank IDs: ${command}`;
+    }
     return {
       resultLine: flushStoppedLine(outcome),
       planTitle: planTitles.send,
-      next: rerunDryRunLine(this.result.command),
+      next,
     };
+  }
+  private get _wroteLine(): string {
+    const { generatedDir, alterationsPath } = this.result;
+    return `sync wrote ${generatedDir} and ${alterationsPath}. Run npm run check, then commit them with your change.`;
   }
   private get _checkClause(): string {
     const { checks } = this.result;
@@ -205,8 +215,8 @@ export class SyncRunReport {
       const lastSectionLines = metLines.length > 0 ? metLines : landedLines;
       lastSectionLines.push("alterations.ts is now empty.");
     }
-    // A stopped send, even one stopped partway, leaves its met alterations pending.
-    const isMetRemoved = outcome.kind === "sent";
+    // A stopped send, even one stopped partway, leaves its met alterations pending, unless only its fill failed, after the files were built.
+    const isMetRemoved = outcome.kind === "sent" || isFillFailed(outcome);
     const metTitle = isMetRemoved ? "removed from" : "still in";
     return [
       ...section("Landed: removed from alterations.ts", landedLines),
@@ -252,21 +262,49 @@ export function heldSection(held: SyncHeld): string[] {
   ]);
 }
 
-// The result line of a send the gate or Google refused, sync's or a chore's.
+type SyncFillFailedOutcome = SyncFlushStoppedOutcome & SyncFillFailedCause;
+
+function isFillFailed(
+  outcome: SyncSendOutcome,
+): outcome is SyncFillFailedOutcome {
+  return "fillFailure" in outcome;
+}
+
+// The result line of a send the gate or Google refused, sync's or a chore's, or whose fill failed.
 export function flushStoppedLine(outcome: SyncFlushStoppedOutcome): string {
+  if (isFillFailed(outcome)) return fillFailedLine(outcome);
   const refused = refusedWords(outcome);
   if (outcome.kind === "stoppedBeforeSending") {
     return `STOPPED: the send was refused before any flush landed${refused} Nothing was sent.`;
   }
-  const { landedFlushes, flushCount } = outcome;
-  const landed = flushSpan(landedFlushes, flushCount);
-  return `STOPPED PARTWAY: ${landed}; flush ${landedFlushes + 1} was refused${refused} Nothing after it was sent.`;
+  return stoppedPartwayLine(
+    outcome,
+    ` was refused${refused} Nothing after it was sent.`,
+  );
+}
+
+// The fill is the send's last flush, after the files are built.
+function fillFailedLine(outcome: SyncFillFailedOutcome): string {
+  const failed = `the ${fillRowIdsName} send, failed: "${outcome.fillFailure}". The blank IDs stay blank; the configs were still written.`;
+  if (outcome.kind === "stoppedBeforeSending") {
+    return `STOPPED: no flush landed; flush 1, ${failed}`;
+  }
+  return stoppedPartwayLine(outcome, `, ${failed}`);
 }
 
 // Google's reworded refusal ends in its own full stop.
-function refusedWords(cause: SyncStopCause): string {
+function refusedWords(cause: SyncRefusedCause): string {
   if ("heldBy" in cause) return `, because ${heldByReason[cause.heldBy]}.`;
   return `: Google refused its batch and applied none of it. ${cause.googleRefusal}`;
+}
+
+// The stopping flush is the one after the last that landed; its cause's words follow it.
+function stoppedPartwayLine(
+  { landedFlushes, flushCount }: SyncLandedFlushes,
+  stoppedWords: string,
+): string {
+  const landed = flushSpan(landedFlushes, flushCount);
+  return `STOPPED PARTWAY: ${landed}; flush ${landedFlushes + 1}${stoppedWords}`;
 }
 
 export function rerunDryRunLine(command: string): string {

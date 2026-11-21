@@ -51,7 +51,7 @@ export type SyncSendOutcome =
   | SyncSentOutcome
   | SyncFlushStoppedOutcome;
 
-// A send stopped at a flush the entered-data gate held or Google refused.
+// A send stopped at a flush the entered-data gate held, Google refused or, for the fill's own send, failed.
 export type SyncFlushStoppedOutcome =
   SyncStoppedBeforeSendingOutcome | SyncStoppedPartwayOutcome;
 
@@ -76,8 +76,16 @@ export interface SyncLandedFlushes {
   flushCount?: number;
 }
 
+export type SyncStopCause = SyncRefusedCause | SyncFillFailedCause;
+
 // The gate held the flush, or Google refused its batch whole, in the reworded text that names the Tables.
-export type SyncStopCause = { heldBy: SyncHeldBy } | { googleRefusal: string };
+export type SyncRefusedCause =
+  { heldBy: SyncHeldBy } | { googleRefusal: string };
+
+// The Fill Row IDs send after the regen threw, by its error's message; the run still writes its files.
+export interface SyncFillFailedCause {
+  fillFailure: string;
+}
 
 // "uncovered": the send had no --confirm; "mismatched": the sheet or plan changed since the dry run.
 export type SyncHeldBy = "uncovered" | "mismatched";
