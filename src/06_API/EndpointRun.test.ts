@@ -735,7 +735,7 @@ describe("EndpointRun.run, a run that fails", () => {
     expect(toasts).toEqual([]);
   });
 
-  it("toasts the error's message when the endpoint has no feedback columns", () => {
+  it("toasts the error when the endpoint has no feedback columns", () => {
     stubRunItemSheet();
     const { toasts } = stubScriptAndSpreadsheetApp();
 
