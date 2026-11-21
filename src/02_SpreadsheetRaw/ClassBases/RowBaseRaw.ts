@@ -5,7 +5,7 @@ import { TableBaseRaw, type TableRawProps } from "./TableBaseRaw.ts";
 export type RowRawProps = TableRawProps & { rowIndex: number };
 
 export class RowBaseRaw extends TableBaseRaw {
-  readonly rowIndex;
+  declare readonly rowIndex: number;
   constructor({ rowIndex, ...rest }: RowRawProps) {
     super(rest);
     this.rowIndex = rowIndex;

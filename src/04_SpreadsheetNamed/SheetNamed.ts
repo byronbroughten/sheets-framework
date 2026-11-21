@@ -17,7 +17,7 @@ export interface SheetNamedProps extends SpreadsheetNamedProps {
 }
 
 export class SheetNamed extends SpreadsheetBaseNamed {
-  readonly sheetGid: number;
+  declare readonly sheetGid: number;
   constructor({ sheetGid, ...props }: SheetNamedProps) {
     super(props);
     this.sheetGid = sheetGid;

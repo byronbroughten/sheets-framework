@@ -4,7 +4,7 @@ import { TableBaseRaw, type TableRawProps } from "./TableBaseRaw.ts";
 export type ColumnRawProps = TableRawProps & { colIndex: number };
 
 export class ColumnBaseRaw extends TableBaseRaw {
-  readonly colIndex: number;
+  declare readonly colIndex: number;
   constructor({ colIndex, ...rest }: ColumnRawProps) {
     super(rest);
     this.colIndex = colIndex;

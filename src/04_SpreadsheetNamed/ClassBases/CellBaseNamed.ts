@@ -13,7 +13,7 @@ export class CellBaseNamed<
   TN extends TableName,
   CN extends ColumnName<TN>,
 > extends ColumnBaseNamed<TN, CN> {
-  readonly rowIndex: number;
+  declare readonly rowIndex: number;
   constructor({ rowIndex, ...props }: CellNamedProps<TN, CN>) {
     super(props);
     this.rowIndex = rowIndex;

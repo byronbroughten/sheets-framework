@@ -22,8 +22,8 @@ export type HeadRowIdentifiedProps<HR extends HeadRole> =
 export class HeadRowIdentified<
   HR extends HeadRole = HeadRole,
 > extends RowCommonIdentified {
-  readonly headRole: HR;
-  readonly roles: HeadRowRoles<HR>[];
+  declare readonly headRole: HR;
+  declare readonly roles: HeadRowRoles<HR>[];
   constructor({ headRole, ...rest }: HeadRowIdentifiedProps<HR>) {
     super({ ...rest, rowIndex: headRows.index(headRole) });
     this.headRole = headRole;

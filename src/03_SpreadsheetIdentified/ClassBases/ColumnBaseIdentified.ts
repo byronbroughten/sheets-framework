@@ -11,8 +11,8 @@ export type ColumnIdentifiedProps<VN extends ValueName = ValueName> =
 export class ColumnBaseIdentified<
   VN extends ValueName = ValueName,
 > extends TableBaseIdentified {
-  readonly columnId: string;
-  readonly valueName?: VN;
+  declare readonly columnId: string;
+  declare readonly valueName?: VN;
   constructor({ columnId, valueName, ...props }: ColumnIdentifiedProps<VN>) {
     super(props);
     this.columnId = columnId;

@@ -34,7 +34,7 @@ export interface OperatorProps extends SpreadsheetNamedProps {
 }
 
 export class SpreadsheetBaseOperator extends SpreadsheetBaseNamed {
-  protected configSyncState: ConfigSyncState;
+  declare protected configSyncState: ConfigSyncState;
   constructor({ configSyncState, ...rest }: OperatorProps) {
     super(rest);
     this.configSyncState = configSyncState;

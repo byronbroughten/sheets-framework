@@ -25,10 +25,10 @@ export class ColumnSchema<
   TN extends TableName = TableName,
   CN extends ColumnName<TN> = ColumnName<TN>,
 > extends SpreadsheetBaseSchema {
-  readonly sheetGid: number;
-  readonly tableName: TN;
-  readonly columnId: string;
-  readonly columnName: CN;
+  declare readonly sheetGid: number;
+  declare readonly tableName: TN;
+  declare readonly columnId: string;
+  declare readonly columnName: CN;
   constructor({
     sheetGid,
     tableName,

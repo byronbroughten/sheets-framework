@@ -77,8 +77,8 @@ export interface EndpointRunProps<
 export class EndpointRun<
   TN extends TableNameSimple = TableNameSimple,
 > extends TableBaseNamed<TN> {
-  readonly entryColumnName: ColumnName<TN>;
-  readonly endpoint: EndpointDispatched<TN>;
+  declare readonly entryColumnName: ColumnName<TN>;
+  declare readonly endpoint: EndpointDispatched<TN>;
   constructor({ entryColumnName, endpoint, ...props }: EndpointRunProps<TN>) {
     super(props);
     this.entryColumnName = entryColumnName;

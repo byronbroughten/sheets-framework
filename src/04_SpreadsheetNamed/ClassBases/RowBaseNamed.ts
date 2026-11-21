@@ -9,7 +9,7 @@ export interface RowNamedProps<
 }
 
 export class RowBaseNamed<TN extends TableName> extends TableBaseNamed<TN> {
-  readonly rowIndex: number;
+  declare readonly rowIndex: number;
   constructor({ rowIndex, ...props }: RowNamedProps<TN>) {
     super(props);
     this.rowIndex = rowIndex;

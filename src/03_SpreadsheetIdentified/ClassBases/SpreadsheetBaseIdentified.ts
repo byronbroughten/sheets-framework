@@ -14,8 +14,8 @@ export interface SpreadsheetIdentifiedProps extends SpreadsheetRawProps {
 }
 
 export class SpreadsheetBaseIdentified extends SpreadsheetBaseRaw {
-  protected spreadsheetStateIdentified: StateIdentified;
-  readonly feedbackColumnIds: FeedbackColumnIds;
+  declare protected spreadsheetStateIdentified: StateIdentified;
+  declare readonly feedbackColumnIds: FeedbackColumnIds;
   constructor({
     spreadsheetStateIdentified,
     feedbackColumnIds,

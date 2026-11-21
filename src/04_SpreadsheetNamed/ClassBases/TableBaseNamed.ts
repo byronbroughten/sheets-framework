@@ -11,7 +11,7 @@ export interface TableNamedProps<
 }
 
 export class TableBaseNamed<TN extends TableName> extends SpreadsheetBaseNamed {
-  readonly tableName: TN;
+  declare readonly tableName: TN;
   constructor({ tableName, ...props }: TableNamedProps<TN>) {
     super(props);
     this.tableName = tableName;
