@@ -1,4 +1,5 @@
 // What one `sync` run did or would do, as `SyncRunReport` prints it. Facts, apart from the few phrases a producer words: a stop's label and cause, a send's what, a sent summary.
+import type { DryRunHeld } from "./dryRunHeld";
 import type { FlushStoppedOutcome } from "./flushStoppedOutcome";
 
 export type SyncRunResult = SyncDryRunResult | SyncSendResult;
@@ -349,22 +350,6 @@ export interface SyncUnmodelableRuleStop {
   table: string;
   path: string;
   handle: string;
-}
-
-// A dry run's held items, sync's or a chore's: what the entered-data gate holds until --confirm names the token.
-export interface DryRunHeld {
-  groups: HeldGroup[];
-  token: string;
-  fullListPath: string;
-}
-
-export interface HeldGroup {
-  // Absent for a held item no Table or tab names, such as a find-and-replace.
-  subject?: SyncSubject;
-  what: string;
-  // Entered-data cells this group holds; absent for a held item that isn't cells, such as a dropdown reset.
-  cells?: number;
-  lines: string[];
 }
 
 export interface SyncPlanItem extends SyncSendLine {

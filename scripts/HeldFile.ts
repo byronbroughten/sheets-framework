@@ -2,7 +2,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 
-import type { DryRunHeld } from "../src/01_SpreadsheetSchema/configReaders/syncRunResult.ts";
+import type { DryRunHeld } from "../src/01_SpreadsheetSchema/configReaders/dryRunHeld.ts";
 import type {
   ConfirmedList,
   HeldList,

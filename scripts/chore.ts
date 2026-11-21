@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import type { SheetsHttpTransport } from "../src/00_Source/GoogleSheets/GoogleSheetsAPI.ts";
 import type { HeldFlushRefusal } from "../src/00_Source/RawSource/HeldFlushRefusal.ts";
 import type { Configs } from "../src/01_SpreadsheetSchema/configReaders/configRegister.ts";
-import type { DryRunHeld } from "../src/01_SpreadsheetSchema/configReaders/syncRunResult.ts";
+import type { DryRunHeld } from "../src/01_SpreadsheetSchema/configReaders/dryRunHeld.ts";
 import type { Chore } from "../src/chores/Chore.ts";
 import type { NodeHost } from "../src/nodeHost/NodeHost.ts";
 import { ChoreIndex } from "./choreIndex.ts";

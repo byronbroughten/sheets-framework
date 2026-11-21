@@ -1,6 +1,6 @@
 import { Val } from "@byronbroughten/utils/val";
 
-import type { HeldGroup } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
+import type { HeldGroup } from "../01_SpreadsheetSchema/configReaders/dryRunHeld";
 import type {
   HeldCell,
   HeldItem,

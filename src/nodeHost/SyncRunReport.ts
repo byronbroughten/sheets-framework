@@ -1,9 +1,9 @@
+import type { DryRunHeld } from "../01_SpreadsheetSchema/configReaders/dryRunHeld";
 import {
   type FlushStoppedOutcome,
   isFillFailed,
 } from "../01_SpreadsheetSchema/configReaders/flushStoppedOutcome";
 import type {
-  DryRunHeld,
   SyncDryRunOutcome,
   SyncRunResult,
   SyncSendOutcome,

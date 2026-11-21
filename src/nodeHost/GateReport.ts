@@ -1,3 +1,7 @@
+import type {
+  DryRunHeld,
+  HeldGroup,
+} from "../01_SpreadsheetSchema/configReaders/dryRunHeld";
 import {
   type FillFailedCause,
   type FlushRefusedCause,
@@ -6,11 +10,7 @@ import {
   isFillFailed,
   type LandedFlushes,
 } from "../01_SpreadsheetSchema/configReaders/flushStoppedOutcome";
-import {
-  type DryRunHeld,
-  fillRowIdsName,
-  type HeldGroup,
-} from "../01_SpreadsheetSchema/configReaders/syncRunResult";
+import { fillRowIdsName } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
 import { ReportText } from "./ReportText";
 
 const { section, indent, formatCount, counted, subjectLabel } = ReportText;
