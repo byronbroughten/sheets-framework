@@ -9,16 +9,16 @@ import type {
   FixedListMember,
   ValueConfigBase,
 } from "../../src/01_SpreadsheetSchema/configReaders/makeConfigs.ts";
-import {
-  type ConfigSnapshot,
-  type IdentifiedEntry,
-  type IdField,
-  type RuleGroups,
-  type RuleSnapshot,
-  type TabEntry,
-  valueKindLabels,
+import type {
+  ConfigSnapshot,
+  IdentifiedEntry,
+  IdField,
+  RuleGroups,
+  RuleSnapshot,
+  TabEntry,
 } from "../configsDiff.ts";
 import type { ConfigFile } from "../nodeHost.ts";
+import { valueKindLabels } from "./snapshotDiff.ts";
 
 type ReadFile = (file: ConfigFile) => string | undefined;
 
@@ -68,20 +68,12 @@ export const configFiles = {
   },
 };
 
-function readRuleSnapshot(readFile: ReadFile): RuleSnapshot {
-  const file = readConfigFile(readFile, "conditionalFormatConfigs");
-  return {
-    tables: readRuleGroups(file.tables, "conditionalFormatConfigs.tables"),
-    tabs: readRuleGroups(file.tabs, "conditionalFormatConfigs.tabs"),
-  };
-}
-
-function readRuleGroups(value: unknown, what: string): RuleGroups {
-  if (value === undefined) return {};
-  return mapValues(validateRecord(value, what), (group) =>
-    mapValues(validateRecord(group, `a group of ${what}`), (rule) =>
-      validateRecord(rule, "a conditional format rule"),
-    ),
+function mapValues<FR, TO>(
+  record: Record<string, FR>,
+  transform: (value: FR) => TO,
+): Record<string, TO> {
+  return Object.fromEntries(
+    Object.entries(record).map(([key, value]) => [key, transform(value)]),
   );
 }
 
@@ -93,16 +85,6 @@ function readConfigFile(
   // A file missing at HEAD is a first generation of that file: all its entries count as added.
   if (text === undefined) return {};
   return validateRecord(parseConfigFile(text), file);
-}
-
-function readRetiredIdPrefixes(readFile: ReadFile): string[] {
-  const text = readFile("retiredIdPrefixes");
-  if (text === undefined) return [];
-  const value = parseConfigFile(text);
-  if (Array.isArray(value)) {
-    return value.map((prefix) => Val.validate.string(prefix));
-  }
-  throw new Error("configs:diff: retiredIdPrefixes is not a JSON array.");
 }
 
 // The generated files are one `make…(<JSON>)` call; parsing the JSON avoids importing two versions of one module.
@@ -132,6 +114,16 @@ function validateTabEntry(value: unknown): TabEntry {
   return entry as TabEntry;
 }
 
+function readRetiredIdPrefixes(readFile: ReadFile): string[] {
+  const text = readFile("retiredIdPrefixes");
+  if (text === undefined) return [];
+  const value = parseConfigFile(text);
+  if (Array.isArray(value)) {
+    return value.map((prefix) => Val.validate.string(prefix));
+  }
+  throw new Error("configs:diff: retiredIdPrefixes is not a JSON array.");
+}
+
 function validateValueConfig(value: unknown): ValueConfigBase {
   if (Array.isArray(value)) return value.map(validateMember);
   const entry = validateRecord(value, "a valueConfigs entry");
@@ -151,11 +143,19 @@ function validateMember(value: unknown): FixedListMember {
   );
 }
 
-function mapValues<FR, TO>(
-  record: Record<string, FR>,
-  transform: (value: FR) => TO,
-): Record<string, TO> {
-  return Object.fromEntries(
-    Object.entries(record).map(([key, value]) => [key, transform(value)]),
+function readRuleSnapshot(readFile: ReadFile): RuleSnapshot {
+  const file = readConfigFile(readFile, "conditionalFormatConfigs");
+  return {
+    tables: readRuleGroups(file.tables, "conditionalFormatConfigs.tables"),
+    tabs: readRuleGroups(file.tabs, "conditionalFormatConfigs.tabs"),
+  };
+}
+
+function readRuleGroups(value: unknown, what: string): RuleGroups {
+  if (value === undefined) return {};
+  return mapValues(validateRecord(value, what), (group) =>
+    mapValues(validateRecord(group, `a group of ${what}`), (rule) =>
+      validateRecord(rule, "a conditional format rule"),
+    ),
   );
 }

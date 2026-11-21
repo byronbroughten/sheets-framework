@@ -31,32 +31,11 @@ export interface SnapshotPair {
   after: ConfigSnapshot;
 }
 
-export const valueKindLabels = {
-  fixedList: "fixed list",
-  liveReference: "live reference",
-} as const;
-
 export function summarizeConfigsDiff({
   before = emptySnapshot(),
   after,
 }: SnapshotPair): string[] {
-  const sections = snapshotDiff.sections({ before, after });
-  const headerCount = sections.filter(
-    ({ changes }) => changes.length > 0,
-  ).length;
-  const lineCount = sections.reduce(
-    (total, { lines }) => total + lines.length,
-    0,
-  );
-  const count = headerCount + lineCount;
-  if (count === 0) return ["No config changes."];
-  return [
-    ...sections.flatMap((section) => [
-      snapshotDiff.sectionHeader(section),
-      ...section.lines,
-    ]),
-    `${count} ${count === 1 ? "change" : "changes"}.`,
-  ];
+  return snapshotDiff.summarize({ before, after });
 }
 
 function emptySnapshot(): ConfigSnapshot {

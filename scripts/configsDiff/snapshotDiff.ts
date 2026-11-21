@@ -6,14 +6,13 @@ import type {
   FixedListMember,
   ValueConfigBase,
 } from "../../src/01_SpreadsheetSchema/configReaders/makeConfigs.ts";
-import {
-  type ConfigEntry,
-  type ConfigSnapshot,
-  type IdentifiedEntry,
-  type IdField,
-  type RuleSnapshot,
-  type TabEntry,
-  valueKindLabels,
+import type {
+  ConfigEntry,
+  ConfigSnapshot,
+  IdentifiedEntry,
+  IdField,
+  RuleSnapshot,
+  TabEntry,
 } from "../configsDiff.ts";
 
 interface BeforeAfter<SV> {
@@ -33,15 +32,20 @@ type Pairing<EN extends object> =
 
 const ownerWords = { tables: "Table", tabs: "Tab" } as const;
 
-export interface Section {
+export const valueKindLabels = {
+  fixedList: "fixed list",
+  liveReference: "live reference",
+} as const;
+
+interface Section {
   header: string;
   changes: string[];
   lines: string[];
 }
 
 export const snapshotDiff = {
-  sections({ before, after }: BeforeAfter<ConfigSnapshot>): Section[] {
-    return [
+  summarize({ before, after }: BeforeAfter<ConfigSnapshot>): string[] {
+    const sections = [
       ...diffTables({ before, after }),
       ...diffTabs({ before: before.tabConfigs, after: after.tabConfigs }),
       ...diffRetiredIdPrefixes({
@@ -54,10 +58,22 @@ export const snapshotDiff = {
         after: after.conditionalFormatConfigs,
       }),
     ];
-  },
-  sectionHeader({ header, changes }: Section): string {
-    if (changes.length === 0) return `${header}:`;
-    return `${header}: ${changes.join("; ")}`;
+    const headerCount = sections.filter(
+      ({ changes }) => changes.length > 0,
+    ).length;
+    const lineCount = sections.reduce(
+      (total, { lines }) => total + lines.length,
+      0,
+    );
+    const count = headerCount + lineCount;
+    if (count === 0) return ["No config changes."];
+    return [
+      ...sections.flatMap((section) => [
+        sectionHeader(section),
+        ...section.lines,
+      ]),
+      `${count} ${count === 1 ? "change" : "changes"}.`,
+    ];
   },
 };
 
@@ -85,54 +101,6 @@ function diffTables({ before, after }: BeforeAfter<ConfigSnapshot>): Section[] {
     if (changes.length + lines.length === 0) return [];
     return [tableSection(renameLabel(pairing), changes, lines)];
   });
-}
-
-function tableSection(
-  label: string,
-  changes: string[],
-  lines: string[],
-): Section {
-  return { header: `${ownerWords.tables} ${label}`, changes, lines };
-}
-
-function diffCols(
-  columns: BeforeAfter<Record<string, IdentifiedEntry<"columnId">>>,
-): string[] {
-  const pairings = pairEntries(columns, (_key, { columnId }) => columnId);
-  return pairings.flatMap((pairing) => {
-    if (pairing.kind !== "matched") {
-      return [colLine(pairing.key, [pairing.kind])];
-    }
-    const changes = entryChanges(pairing, "columnId");
-    if (changes.length === 0) return [];
-    return [colLine(renameLabel(pairing), changes)];
-  });
-}
-
-function colLine(label: string, changes: string[]): string {
-  return `  column ${label}: ${changes.join("; ")}`;
-}
-
-function diffTabs(tabs: BeforeAfter<Record<string, TabEntry>>): Section[] {
-  const pairings = pairEntries(tabs, (_key, { sheetGid }) => sheetGid);
-  return pairings.flatMap((pairing) => {
-    if (pairing.kind !== "matched") {
-      return [tabSection(pairing.key, [pairing.kind])];
-    }
-    const changes = entryChanges(pairing, "sheetGid");
-    if (changes.length === 0) return [];
-    return [tabSection(renameLabel(pairing), changes)];
-  });
-}
-
-function tabSection(label: string, changes: string[]): Section {
-  return { header: `${ownerWords.tabs} ${label}`, changes, lines: [] };
-}
-
-function diffRetiredIdPrefixes(prefixes: BeforeAfter<string[]>): Section[] {
-  const changes = memberChanges(prefixes);
-  if (changes.length === 0) return [];
-  return [{ header: "Retired ID prefixes", changes, lines: [] }];
 }
 
 // Removed and matched entries keep the before order; added entries follow in the after order.
@@ -167,6 +135,24 @@ function pairEntries<EN extends object>(
   return [...matchedAndRemoved, ...added];
 }
 
+function diffCols(
+  columns: BeforeAfter<Record<string, IdentifiedEntry<"columnId">>>,
+): string[] {
+  const pairings = pairEntries(columns, (_key, { columnId }) => columnId);
+  return pairings.flatMap((pairing) => {
+    if (pairing.kind !== "matched") {
+      return [colLine(pairing.key, [pairing.kind])];
+    }
+    const changes = entryChanges(pairing, "columnId");
+    if (changes.length === 0) return [];
+    return [colLine(renameLabel(pairing), changes)];
+  });
+}
+
+function colLine(label: string, changes: string[]): string {
+  return `  column ${label}: ${changes.join("; ")}`;
+}
+
 function entryChanges(
   { beforeKey, afterKey, before, after }: Matched<ConfigEntry>,
   idField: IdField | "sheetGid",
@@ -195,38 +181,34 @@ function renameLabel({ beforeKey, afterKey }: Matched<object>): string {
   return beforeKey === afterKey ? beforeKey : `${beforeKey} → ${afterKey}`;
 }
 
-function diffValues(
-  values: BeforeAfter<Record<string, ValueConfigBase>>,
-): Section[] {
-  return pairEntries(values, (name) => name).flatMap((pairing) => {
+function tableSection(
+  label: string,
+  changes: string[],
+  lines: string[],
+): Section {
+  return { header: `${ownerWords.tables} ${label}`, changes, lines };
+}
+
+function diffTabs(tabs: BeforeAfter<Record<string, TabEntry>>): Section[] {
+  const pairings = pairEntries(tabs, (_key, { sheetGid }) => sheetGid);
+  return pairings.flatMap((pairing) => {
     if (pairing.kind !== "matched") {
-      return [valueSection(pairing.key, [pairing.kind])];
+      return [tabSection(pairing.key, [pairing.kind])];
     }
-    const changes = valueConfigChanges(pairing);
+    const changes = entryChanges(pairing, "sheetGid");
     if (changes.length === 0) return [];
-    return [valueSection(pairing.beforeKey, changes)];
+    return [tabSection(renameLabel(pairing), changes)];
   });
 }
 
-function valueConfigChanges({
-  before,
-  after,
-}: BeforeAfter<ValueConfigBase>): string[] {
-  if (isFixedList(before) && isFixedList(after)) {
-    return memberChanges({ before, after });
-  }
-  const beforeKind = valueKindLabel(before);
-  const afterKind = valueKindLabel(after);
-  return beforeKind === afterKind ? [] : [`${beforeKind} → ${afterKind}`];
+function tabSection(label: string, changes: string[]): Section {
+  return { header: `${ownerWords.tabs} ${label}`, changes, lines: [] };
 }
 
-function isFixedList(config: ValueConfigBase): config is FixedList {
-  return Array.isArray(config);
-}
-
-function valueKindLabel(config: ValueConfigBase): string {
-  if (isFixedList(config)) return valueKindLabels.fixedList;
-  return valueKindLabels.liveReference;
+function diffRetiredIdPrefixes(prefixes: BeforeAfter<string[]>): Section[] {
+  const changes = memberChanges(prefixes);
+  if (changes.length === 0) return [];
+  return [{ header: "Retired ID prefixes", changes, lines: [] }];
 }
 
 function memberChanges({ before, after }: BeforeAfter<FixedList>): string[] {
@@ -251,8 +233,42 @@ function memberListChange(verb: string, members: FixedListMember[]): string[] {
   return [`${verb} ${quoted.join(", ")}`];
 }
 
+function diffValues(
+  values: BeforeAfter<Record<string, ValueConfigBase>>,
+): Section[] {
+  return pairEntries(values, (name) => name).flatMap((pairing) => {
+    if (pairing.kind !== "matched") {
+      return [valueSection(pairing.key, [pairing.kind])];
+    }
+    const changes = valueConfigChanges(pairing);
+    if (changes.length === 0) return [];
+    return [valueSection(pairing.beforeKey, changes)];
+  });
+}
+
 function valueSection(name: string, changes: string[]): Section {
   return { header: `Value ${name}`, changes, lines: [] };
+}
+
+function valueConfigChanges({
+  before,
+  after,
+}: BeforeAfter<ValueConfigBase>): string[] {
+  if (isFixedList(before) && isFixedList(after)) {
+    return memberChanges({ before, after });
+  }
+  const beforeKind = valueKindLabel(before);
+  const afterKind = valueKindLabel(after);
+  return beforeKind === afterKind ? [] : [`${beforeKind} → ${afterKind}`];
+}
+
+function isFixedList(config: ValueConfigBase): config is FixedList {
+  return Array.isArray(config);
+}
+
+function valueKindLabel(config: ValueConfigBase): string {
+  if (isFixedList(config)) return valueKindLabels.fixedList;
+  return valueKindLabels.liveReference;
 }
 
 // Rules pair by handle, which is built from their content; groups pair by Table or tab key, so a renamed one reads as removed and added.
@@ -267,18 +283,6 @@ function diffRules({ before, after }: BeforeAfter<RuleSnapshot>): Section[] {
       return [ruleSection(`${ownerWords[owner]} ${label}`, lines)];
     });
   });
-}
-
-function ruleSection(ownerLabel: string, lines: string[]): Section {
-  return { header: `${ownerLabel} conditional formats`, changes: [], lines };
-}
-
-function groupPair<EN extends object>(
-  pairing: Pairing<Record<string, EN>>,
-): BeforeAfter<Record<string, EN>> {
-  if (pairing.kind === "removed") return { before: pairing.entry, after: {} };
-  if (pairing.kind === "added") return { before: {}, after: pairing.entry };
-  return pairing;
 }
 
 function diffRuleGroup(
@@ -296,4 +300,21 @@ function diffRuleGroup(
 
 function ruleLine(handle: string, changes: string[]): string {
   return `  rule ${handle}: ${changes.join("; ")}`;
+}
+
+function groupPair<EN extends object>(
+  pairing: Pairing<Record<string, EN>>,
+): BeforeAfter<Record<string, EN>> {
+  if (pairing.kind === "removed") return { before: pairing.entry, after: {} };
+  if (pairing.kind === "added") return { before: {}, after: pairing.entry };
+  return pairing;
+}
+
+function ruleSection(ownerLabel: string, lines: string[]): Section {
+  return { header: `${ownerLabel} conditional formats`, changes: [], lines };
+}
+
+function sectionHeader({ header, changes }: Section): string {
+  if (changes.length === 0) return `${header}:`;
+  return `${header}: ${changes.join("; ")}`;
 }
