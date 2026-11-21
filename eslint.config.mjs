@@ -4,7 +4,7 @@ import { defineConfig } from "eslint/config";
 import {
   platformImportPattern,
   sheetsSrcBlocks,
-} from "./scripts/eslintPreset.js";
+} from "./scripts/eslintPreset.ts";
 
 const importPatterns = {
   raw: {

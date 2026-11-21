@@ -8,7 +8,7 @@
 
 ## The rollup preset
 
-**`rollup.config.mjs` is `rollupPreset({ input })` from `scripts/rollupPreset.js`**, exported as the `./rollup` subpath, and returns a plain config an app can spread and override. It tree-shakes, so **only functions in the entry file are callable by name from Apps Script**: a function in any other module is dropped when nothing calls it, where the old `treeshake: false` bundle kept it by accident of flattening. The preset keeps every top-level function declaration in the entry file, exported or not, exporting it to rollup and stripping the `export` statement from the chunk. The `es` format's `export` is a syntax error in Apps Script. To opt out, pass `treeshake: false`: `rollupPreset({ input, treeshake: false })` keeps every module's code.
+**`rollup.config.mjs` is `rollupPreset({ input })` from `scripts/rollupPreset.ts`**, exported as the `./rollup` subpath, and returns a plain config an app can spread and override. It tree-shakes, so **only functions in the entry file are callable by name from Apps Script**: a function in any other module is dropped when nothing calls it, where the old `treeshake: false` bundle kept it by accident of flattening. The preset keeps every top-level function declaration in the entry file, exported or not, exporting it to rollup and stripping the `export` statement from the chunk. The `es` format's `export` is a syntax error in Apps Script. To opt out, pass `treeshake: false`: `rollupPreset({ input, treeshake: false })` keeps every module's code.
 
 - **`rootDir` widens** (default `.`, resolved from cwd) with `filterRoot: false` and `declaration: false`, because the TypeScript plugin otherwise treats source outside its `rootDir` as external and silently leaves it out of the bundle. An app that bundles the framework from a sibling workspace passes the directory above both.
 - **An `UNRESOLVED_IMPORT` warning fails the build**, so a missing import can't ship as an external.
@@ -16,7 +16,7 @@
 
 ## The ESLint preset
 
-**An app's `eslint.config.mjs` spreads `@byronbroughten/config`'s `eslintPreset`, then `appEslintPreset({ testSetupFiles })` from `scripts/eslintPreset.js`**, exported as the `./eslint` subpath. It is JavaScript, not TypeScript, because Node won't strip types from a file under `node_modules`. It adds, for the app's `src/`:
+**An app's `eslint.config.mjs` spreads `@byronbroughten/config`'s `eslintPreset`, then `appEslintPreset({ testSetupFiles })` from `scripts/eslintPreset.ts`**, exported as the `./eslint` subpath. It adds, for the app's `src/`:
 
 - **The platform boundary**: no `GoogleSheets/` import, `GoogleAppsScript` type, or Apps Script global such as `SpreadsheetApp`. The framework's own config applies the same blocks through `sheetsSrcBlocks`, so the boundary can't drift between them.
 - **The public entry**: the framework is imported only as `@byronbroughten/sheets-framework`, and `/testing` only from `*.test.ts` and the `testSetupFiles`, which are the non-test files that install configs for tests.
