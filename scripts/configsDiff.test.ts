@@ -201,9 +201,9 @@ describe("summarizeConfigsDiff", () => {
     });
 
     expect(summarizeConfigsDiff({ before, after })).toEqual([
-      "Conditional formats of Table item:",
+      "Table item conditional formats:",
       "  rule qty | NUMBER_GREATER 2: removed",
-      "Conditional formats of tab notes:",
+      "Tab notes conditional formats:",
       "  rule A1:A3 | NOT_BLANK: added",
       "2 changes.",
     ]);
@@ -304,7 +304,7 @@ describe("readConfigsDiff", () => {
     );
 
     expect(readConfigsDiff(sheetsConfig)).toEqual([
-      "Conditional formats of tab notes:",
+      "Tab notes conditional formats:",
       "  rule A1:A3 | NOT_BLANK: added",
       "1 change.",
     ]);

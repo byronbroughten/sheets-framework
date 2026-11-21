@@ -312,7 +312,7 @@ describe("SyncCoordinator.run tab deletion", () => {
       );
     });
 
-    it("names a Table without API access, which the Table configs lack, by its map name", () => {
+    it("plans the deletion of a tab holding a Table without API access, which the Table configs lack", () => {
       const previous = previousItemMap();
       previous.tables.notes = { name: "notes", sheetGid: itemGid };
       const itemTab = Val.assert(previous.tabs[String(itemGid)], "item tab");

@@ -25,6 +25,12 @@ interface Deletion {
   deletedAt: string;
 }
 
+interface EnclosingTableProps {
+  table: string;
+  entry: WideTableEntry;
+  at: string;
+}
+
 interface Touch {
   targets: string[];
   touchedBy: string;
@@ -124,7 +130,7 @@ export class DeletionRefuser {
     const at = `tables.${table}`;
     if (entry.deleted === true) return this._takenTableTouches(table, at);
     return [
-      ...this._enclosingTableTouches(table, entry),
+      ...this._enclosingTableTouches({ table, entry, at }),
       ...entriesOf(entry.columns).flatMap(([column, columnEntry]) =>
         this._columnEntryTouches(table, column, columnEntry),
       ),
@@ -140,14 +146,13 @@ export class DeletionRefuser {
     ];
   }
   // A column entry's touch already reaches its Table and tab, so a Table entry of only columns adds a second refusal for the same conflict.
-  private _enclosingTableTouches(
-    table: string,
-    entry: WideTableEntry,
-  ): Touch[] {
+  private _enclosingTableTouches({
+    table,
+    entry,
+    at,
+  }: EnclosingTableProps): Touch[] {
     if (holdsOnlyColumns(entry)) return [];
-    return [
-      { targets: this._tableTargets(table), touchedBy: `tables.${table}` },
-    ];
+    return [{ targets: this._tableTargets(table), touchedBy: at }];
   }
   private _moveTouches(table: string, moves: WideColumnGroupMove[]): Touch[] {
     const at = `tables.${table}`;
