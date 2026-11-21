@@ -104,13 +104,10 @@ import {
   type IndexedRuleRemoval,
   type ShiftedTable,
 } from "./ConditionalFormatConfigOperator";
-import {
-  alterationsFileSource,
-  columnIdsByName,
-  idNameMapFileSource,
-} from "./configFileSource";
+import { alterationsFileSource, idNameMapFileSource } from "./configFileSource";
 import { RowIdsOperator } from "./RowIdsOperator";
 import { SpreadsheetBaseOperator } from "./SpreadsheetBaseOperator";
+import { IdNameMapBuilderOperator } from "./SyncCoordinator/IdNameMapBuilderOperator";
 import { TabConfigOperator } from "./TabConfigOperator";
 import {
   type MintedNewTable,
@@ -272,6 +269,9 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
   }
   get rowIdsOperator(): RowIdsOperator {
     return new RowIdsOperator(this.operatorProps);
+  }
+  get idNameMapBuilder(): IdNameMapBuilderOperator {
+    return new IdNameMapBuilderOperator(this.operatorProps);
   }
   run(props: SyncRunProps): SyncRun {
     const { alterations } = props.intendedState;
@@ -741,7 +741,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     const configs: ConfigSnapshots = {
       previous,
       regenerated: {
-        idNameMap: this._idNameMap(),
+        idNameMap: this.idNameMapBuilder.idNameMap(),
         tableConfigs: this.tableConfigOperator.newTableConfigs(),
         columnConfigs: this.columnConfigOperator.newColumnConfigs(),
         valueConfigs: this.valueConfigOperator.newValueConfigs(),
@@ -906,49 +906,6 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       valueConfigs: this.valueConfigOperator.toFileSource(),
       idNameMap: idNameMapFileSource(idNameMap),
     };
-  }
-  private _idNameMap(): IdNameMapGeneric {
-    return { tables: this._idNameMapTables(), tabs: this._idNameMapTabs() };
-  }
-  private _idNameMapTables(): IdNameMapGeneric["tables"] {
-    const { raw } = this.ss;
-    const apiTableColumnsByTableId =
-      this.columnConfigOperator.apiTableColumnsByTableId();
-    return raw.activeTableIds.reduce<IdNameMapGeneric["tables"]>(
-      (tables, tableId) => {
-        const { name, sheetGid } = raw.table(tableId);
-        const apiTableColumns = apiTableColumnsByTableId.get(tableId);
-        if (apiTableColumns === undefined) {
-          tables[tableId] = {
-            name: this.ss.schema.titleToName(name),
-            sheetGid,
-          };
-          return tables;
-        }
-        tables[tableId] = {
-          name: apiTableColumns.tableKey,
-          sheetGid,
-          columns: columnIdsByName(apiTableColumns.columnConfigs),
-        };
-        return tables;
-      },
-      {},
-    );
-  }
-  private _idNameMapTabs(): IdNameMapGeneric["tabs"] {
-    const { raw } = this.ss;
-    return raw.activeSheetGids.reduce<IdNameMapGeneric["tabs"]>(
-      (tabs, sheetGid) => {
-        const sheet = raw.sheet(sheetGid);
-        tabs[String(sheetGid)] = {
-          name: this.ss.schema.titleToName(sheet.title),
-          title: sheet.title,
-          tableIds: sheet.tableIds,
-        };
-        return tabs;
-      },
-      {},
-    );
   }
 }
 

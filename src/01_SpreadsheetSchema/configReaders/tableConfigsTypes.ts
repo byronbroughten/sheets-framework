@@ -74,6 +74,14 @@ export function tableConfigsByName(): TableConfigsBase {
   return tableConfigs();
 }
 
+// By the previous configs' name, the one an alteration addresses a Table by.
+export function previousTableIdOf(tableKey: string): string {
+  return Val.assert(
+    tableConfigsByName()[tableKey],
+    `previous Table ${tableKey}`,
+  ).tableId;
+}
+
 export function configRetiredIdPrefixes(): readonly string[] {
   const configs: ConfigSetBase = installedConfigs();
   return configs.retiredIdPrefixes ?? [];
