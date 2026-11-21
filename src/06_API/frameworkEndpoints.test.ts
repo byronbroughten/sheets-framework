@@ -1,5 +1,6 @@
 import { describe, it } from "vitest";
 
+import type { TableNameSimple } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import type { SheetNameWithIdColumn } from "../04_SpreadsheetNamed/TableNameGroups";
 import { assertType, type IsExactly } from "../testSupport/typeAssertions";
 import type { Endpoint, EndpointsAll } from "./Endpoints";
@@ -15,6 +16,7 @@ describe("FillRowIdsEndpoints", () => {
     >(true);
   });
   it("leaves out a Table without an ID column", () => {
+    assertType<IsExactly<Extract<TableNameSimple, "log">, "log">>(true);
     assertType<IsExactly<Extract<keyof FillRowIdsEndpoints, "log_id">, never>>(
       true,
     );

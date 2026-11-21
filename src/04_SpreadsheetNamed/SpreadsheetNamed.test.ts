@@ -990,9 +990,12 @@ describe("TableNamed.appendRowWithAllVals", () => {
   });
 
   it("asks a sheet with no ID column for every writable column", () => {
-    assertType<IsExactly<keyof CompleteAppendBag<"log">, "entry" | "amount">>(
-      true,
-    );
+    assertType<
+      IsExactly<
+        CompleteAppendBag<"log">,
+        { entry: string; amount: number | "" }
+      >
+    >(true);
   });
 
   it("refuses a bag that names the ID", () => {

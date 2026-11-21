@@ -161,7 +161,7 @@ Write-ups sourced from Google's docs live on `research/*` branches, listed by `g
 
 ### Reading tab properties
 
-- Observed: A REST API v4 `updateSheetProperties` setting `tabColorStyle` to `#4a86e8` with `fields: tabColorStyle` read back from a `spreadsheets.get` of `properties(...tabColor,tabColorStyle,hidden,gridProperties(...))` with both `tabColor` and `tabColorStyle.rgbColor` as `{red: 0.2901961, green: 0.5254902, blue: 0.9098039}`, and with no `hidden` field and `gridProperties: {}` on a tab neither hidden nor frozen; Dates tab on the dev spreadsheet, sent and read by `dev:gen:configs`; 2026-11-20; [comment on #219](https://github.com/byronbroughten/sheets-framework/issues/219#issuecomment-7057363679).
+- Observed: A REST API v4 `updateSheetProperties` setting `tabColorStyle` to `#4a86e8` with `fields: tabColorStyle` read back from a `spreadsheets.get` of `sheets.properties(title,tabColor,tabColorStyle,hidden,gridProperties(frozenRowCount,frozenColumnCount))` with both `tabColor` and `tabColorStyle.rgbColor` as `{red: 0.2901961, green: 0.5254902, blue: 0.9098039}`, and with no `hidden` field and `gridProperties: {}` on a tab neither hidden nor frozen; Dates tab on the dev spreadsheet, sent by `dev:gen:configs` and read by `dev:probe`; 2026-11-20; [comment on #219](https://github.com/byronbroughten/sheets-framework/issues/219#issuecomment-7057363679).
 
 ## Formats and formulas
 

@@ -72,15 +72,9 @@ describe("Endpoints, the endpoint map", () => {
       true,
     );
   });
-  it("keeps every other column, a config sheet's included", () => {
+  it("keeps every other column", () => {
     assertType<
       IsExactly<keyof Endpoints, Exclude<ColumnFullName, `${string}_id`>>
-    >(true);
-    assertType<
-      IsExactly<
-        Extract<keyof Endpoints, "valueConfig_exampleValue">,
-        "valueConfig_exampleValue"
-      >
     >(true);
     assertType<
       IsExactly<Extract<keyof Endpoints, "runItem_result">, "runItem_result">

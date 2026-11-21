@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import type { TableNameSimple } from "../01_SpreadsheetSchema/configReaders/tableConfigsTypes";
 import { assertType, type IsExactly } from "../testSupport/typeAssertions";
 import {
   isInTnGroup,
@@ -9,6 +10,10 @@ import {
 } from "./TableNameGroups";
 
 describe("SheetNameWithIdColumn", () => {
+  it("names log, the exclusion checks' exemplar, as a Table", () => {
+    assertType<IsExactly<Extract<TableNameSimple, "log">, "log">>(true);
+  });
+
   it("includes a sheet that declares an id column and excludes one that doesn't", () => {
     assertType<IsExactly<Extract<SheetNameWithIdColumn, "item">, "item">>(true);
     assertType<IsExactly<Extract<SheetNameWithIdColumn, "log">, never>>(true);
