@@ -10,7 +10,7 @@ import { headRows } from "../../01_SpreadsheetSchema/headRows";
 import { SpreadsheetBaseRaw } from "../ClassBases/SpreadsheetBaseRaw";
 import type { AddedSheetCell, GridEnd } from "../ClassTypes/StateRaw";
 
-export class SpreadsheetAddedSheetValidatorRaw extends SpreadsheetBaseRaw {
+export class SpreadsheetAddedSheetQueueRaw extends SpreadsheetBaseRaw {
   // A tab this flush adds has no sheet state until fetched, so its queued addSheet is what puts it in the working view.
   sheetIsAdded(sheetGid: number): boolean {
     return this._queuedAddSheet(sheetGid) !== undefined;

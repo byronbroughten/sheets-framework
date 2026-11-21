@@ -19,7 +19,7 @@ import type {
   GridEnd,
 } from "./ClassTypes/StateRaw";
 import { SheetRaw } from "./SheetRaw";
-import { SpreadsheetAddedSheetValidatorRaw } from "./SpreadsheetRaw/SpreadsheetAddedSheetValidatorRaw";
+import { SpreadsheetAddedSheetQueueRaw } from "./SpreadsheetRaw/SpreadsheetAddedSheetQueueRaw";
 import { SpreadsheetFetcherRaw } from "./SpreadsheetRaw/SpreadsheetFetcherRaw";
 import { SpreadsheetFlusherRaw } from "./SpreadsheetRaw/SpreadsheetFlusherRaw";
 import {
@@ -54,8 +54,8 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
   private get tableValidator(): SpreadsheetTableValidatorRaw {
     return new SpreadsheetTableValidatorRaw(this.spreadsheetRawProps);
   }
-  private get addedSheetValidator(): SpreadsheetAddedSheetValidatorRaw {
-    return new SpreadsheetAddedSheetValidatorRaw(this.spreadsheetRawProps);
+  private get addedSheetQueue(): SpreadsheetAddedSheetQueueRaw {
+    return new SpreadsheetAddedSheetQueueRaw(this.spreadsheetRawProps);
   }
   private get tableCreator(): SpreadsheetTableCreatorRaw {
     return new SpreadsheetTableCreatorRaw(this.spreadsheetRawProps);
@@ -154,15 +154,15 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
   }
   // A tab this flush adds has no sheet state until fetched, so its queued addSheet is what puts it in the working view.
   sheetIsAdded(sheetGid: number): boolean {
-    return this.addedSheetValidator.sheetIsAdded(sheetGid);
+    return this.addedSheetQueue.sheetIsAdded(sheetGid);
   }
   // So a further Table this flush adds on the tab fits its grid.
   updateAddedSheetGridThrough(sheetGid: number, gridEnd: GridEnd): this {
-    this.addedSheetValidator.updateAddedSheetGridThrough(sheetGid, gridEnd);
+    this.addedSheetQueue.updateAddedSheetGridThrough(sheetGid, gridEnd);
     return this;
   }
   addedTablesEndColIndex(sheetGid: number): number | undefined {
-    return this.addedSheetValidator.addedTablesEndColIndex(sheetGid);
+    return this.addedSheetQueue.addedTablesEndColIndex(sheetGid);
   }
   // A created Table starts with a blank body row, the model growth copies from.
   gatherAddTableOperation({ tableId, ...props }: AddTableProps): this {
@@ -185,15 +185,12 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
   }
   // A cell value on a tab this flush adds; an existing tab writes through CellRaw.
   gatherAddedSheetFillCellOperation(props: AddedSheetCell): this {
-    this.addedSheetValidator.validateAddSheetQueued(
-      props.sheetId,
-      "cell write",
-    );
+    this.addedSheetQueue.validateAddSheetQueued(props.sheetId, "cell write");
     return this._gatherAddedFillCellOperation(props);
   }
   // A cell in a Table this flush adds, head rows included; it has no properties to reach it through CellRaw until fetched.
   gatherAddedTableFillCellOperation(props: AddedSheetCell): this {
-    this.addedSheetValidator.validateInAddedTable(props);
+    this.addedSheetQueue.validateInAddedTable(props);
     return this._gatherAddedFillCellOperation(props);
   }
   // A rule over a Table this flush adds, which has no properties to reach it through TableRaw until fetched; first, as SheetRaw adds its own.
@@ -201,7 +198,7 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
     rule: ModelableConditionalFormatRule,
   ): this {
     for (const range of rule.ranges) {
-      this.addedSheetValidator.validateRangeInAddedTable(range);
+      this.addedSheetQueue.validateRangeInAddedTable(range);
     }
     this.writeOperations.addConditionalFormatRule.push({
       kind: "addConditionalFormatRule",
@@ -212,7 +209,7 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
   }
   // A checkbox on a tab this flush adds; an existing tab goes through CellRaw.
   gatherAddedSheetCheckboxValidationOperation(range: BoundedGridRange): this {
-    this.addedSheetValidator.validateAddSheetQueued(
+    this.addedSheetQueue.validateAddSheetQueued(
       range.sheetId,
       "checkbox validation",
     );
