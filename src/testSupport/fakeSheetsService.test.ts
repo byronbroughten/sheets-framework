@@ -1708,61 +1708,56 @@ describe("stubSheetsService replays the grid-edge measurements (sheets-framework
     ]);
   });
 
-  it("keeps the cells a move's insert pushes past the grid's last column, leaving the grid a blank column wider, the moved column keeping its header (Scratch337C, Scratch364E)", () => {
-    const { grid } = stubSheetsService({
-      sheets: [moveSheet({ title: "Scratch364E", emptyColumnsPast: 0 })],
-    });
+  it.each([
+    {
+      title: "Scratch364E",
+      place:
+        "on the grid's last column, keeping the cells its insert pushes past the edge and leaving the grid a blank column wider",
+      emptyColumnsPast: 0,
+      columnCount: 5,
+    },
+    {
+      title: "Scratch364R",
+      place: "with room past the Table, leaving the grid's size unchanged",
+      emptyColumnsPast: 6,
+      columnCount: 10,
+    },
+  ])(
+    "moves a Table's last column to second $place, the moved column keeping its header ($title)",
+    ({ title, emptyColumnsPast, columnCount }) => {
+      const { grid } = stubSheetsService({
+        sheets: [moveSheet(title, emptyColumnsPast)],
+      });
 
-    sendLastColumnToSecond();
+      sendLastColumnToSecond();
 
-    const sheet = grid.sheet(edgeGid);
-    expect(sheet.columnCount).toBe(5);
-    expect(edgeTableRanges(grid)).toEqual([edgeRange("A4:D7")]);
-    expect(sheet.values({ endRowIndex: 1, endColumnIndex: 5 })).toEqual([
-      ["c:1", "c:4", "c:2", "c:3", null],
-    ]);
-    expect(sheet.values({ startRowIndex: 3, endColumnIndex: 5 })).toEqual([
-      ["One", "Four", "Two", "Three", null],
-      ["a1", "d1", "b1", "c1", null],
-      ["a2", "d2", "b2", "c2", null],
-      ["a3", "d3", "b3", "c3", null],
-    ]);
-    expect(tableColumnNames(grid)).toEqual(["One", "Four", "Two", "Three"]);
-  });
-
-  it("moves a Table's last column to second with room past the Table, the grid's size unchanged and the moved column keeping its header (Scratch364R)", () => {
-    const { grid } = stubSheetsService({
-      sheets: [moveSheet({ title: "Scratch364R", emptyColumnsPast: 6 })],
-    });
-
-    sendLastColumnToSecond();
-
-    const sheet = grid.sheet(edgeGid);
-    expect(sheet.columnCount).toBe(10);
-    expect(edgeTableRanges(grid)).toEqual([edgeRange("A4:D7")]);
-    expect(sheet.values({ endRowIndex: 1, endColumnIndex: 5 })).toEqual([
-      ["c:1", "c:4", "c:2", "c:3", null],
-    ]);
-    expect(sheet.values({ startRowIndex: 3, endColumnIndex: 5 })).toEqual([
-      ["One", "Four", "Two", "Three", null],
-      ["a1", "d1", "b1", "c1", null],
-      ["a2", "d2", "b2", "c2", null],
-      ["a3", "d3", "b3", "c3", null],
-    ]);
-    expect(tableColumnNames(grid)).toEqual(["One", "Four", "Two", "Three"]);
-  });
+      const sheet = grid.sheet(edgeGid);
+      expect(sheet.columnCount).toBe(columnCount);
+      expect(edgeTableRanges(grid)).toEqual([edgeRange("A4:D7")]);
+      expect(sheet.values({ endRowIndex: 1, endColumnIndex: 5 })).toEqual([
+        ["c:1", "c:4", "c:2", "c:3", null],
+      ]);
+      expect(sheet.values({ startRowIndex: 3, endColumnIndex: 5 })).toEqual([
+        ["One", "Four", "Two", "Three", null],
+        ["a1", "d1", "b1", "c1", null],
+        ["a2", "d2", "b2", "c2", null],
+        ["a3", "d3", "b3", "c3", null],
+      ]);
+      expect(edgeTableColumnNames(grid)).toEqual([
+        "One",
+        "Four",
+        "Two",
+        "Three",
+      ]);
+    },
+  );
 });
 
-interface MoveSheet {
-  title: string;
-  emptyColumnsPast: number;
-}
-
 // The Table #364 measured after putting back the header addTable had overwritten.
-function moveSheet({
-  title,
-  emptyColumnsPast,
-}: MoveSheet): FakeSheetProperties {
+function moveSheet(
+  title: string,
+  emptyColumnsPast: number,
+): FakeSheetProperties {
   const empty = Array.from({ length: emptyColumnsPast }, () => null);
   return {
     sheetId: edgeGid,
@@ -1801,7 +1796,7 @@ function sendLastColumnToSecond(): void {
   );
 }
 
-function tableColumnNames(grid: FakeGridView): (string | undefined)[] {
+function edgeTableColumnNames(grid: FakeGridView): (string | undefined)[] {
   return (grid.sheet(edgeGid).tables[0]?.columnProperties ?? []).map(
     (column) => column.columnName,
   );
