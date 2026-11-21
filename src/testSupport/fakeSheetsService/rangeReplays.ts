@@ -11,9 +11,12 @@ import {
   fakeSpreadsheet,
   type FakeTableState,
 } from "./fakeSpreadsheet";
+import { ruleFormulas } from "./ruleFormulas";
 
 type Response = GoogleAppsScript.Sheets.Schema.Response;
 type GridRange = GoogleAppsScript.Sheets.Schema.GridRange;
+type ConditionalFormatRule =
+  GoogleAppsScript.Sheets.Schema.ConditionalFormatRule;
 
 type CellPaste = (cell: FakeCell, source: FakeCell) => FakeCell;
 
@@ -135,7 +138,7 @@ export const rangeReplays = {
         "The fake Sheets service does not replay a cutPaste onto its own source.",
       );
     }
-    validateNoRuleCut(sheet, { source, destination });
+    sheet.conditionalFormats = cutRules(sheet, { source, destination });
     const lifted: FakeCell[][] = [];
     fakeGrid.forEachCell(source, (rowIndex, colIndex) => {
       const row = (lifted[rowIndex - source.startRowIndex] ??= []);
@@ -211,26 +214,35 @@ interface PasteRanges {
   destination: BoundedRange;
 }
 
-const cellReferences = new RegExp(a1Notation.cellReference, "g");
+const ruleCutRefusal =
+  "The fake Sheets service does not replay a cutPaste under a conditional-format rule, other than a sideways cut inside a whole-Table rule naming no cut or pasted column, or naming one on a one-column cut to the right, the pasted column only $-anchored.";
 
-function validateNoRuleCut(sheet: FakeSheetState, move: PasteRanges): void {
-  const isCut = (sheet.conditionalFormats ?? []).some(
-    (rule) =>
-      (rule.ranges ?? []).some((range) =>
-        overlaps(fakeGrid.boundedRange(sheet, range), move.source),
-      ) && !isLeftAsWritten(sheet, rule, move),
-  );
-  if (isCut) {
-    throw new Error(
-      "The fake Sheets service does not replay a cutPaste under a conditional-format rule, other than a sideways cut inside a whole-Table rule naming no cut or pasted column.",
+function cutRules(
+  sheet: FakeSheetState,
+  move: PasteRanges,
+): ConditionalFormatRule[] | undefined {
+  return sheet.conditionalFormats?.map((rule) => {
+    const isCut = (rule.ranges ?? []).some((range) =>
+      overlaps(fakeGrid.boundedRange(sheet, range), move.source),
     );
-  }
+    if (!isCut) return rule;
+    if (!isSidewaysInWholeTable(sheet, rule, move)) {
+      throw new Error(ruleCutRefusal);
+    }
+    const isNamingMove = ruleColumnIndexes(rule).some(
+      (colIndex) =>
+        isInColumns(move.source, colIndex) ||
+        isInColumns(move.destination, colIndex),
+    );
+    if (!isNamingMove) return rule;
+    return withPasteReferencesShifted(rule, move);
+  });
 }
 
-// Measured live (sheets-framework#217, Scratch217A): only this shape was seen left as written.
-function isLeftAsWritten(
+// Measured live (sheets-framework#217, Scratch217A; #353, Scratch353A to C): only this shape was seen.
+function isSidewaysInWholeTable(
   sheet: FakeSheetState,
-  rule: GoogleAppsScript.Sheets.Schema.ConditionalFormatRule,
+  rule: ConditionalFormatRule,
   move: PasteRanges,
 ): boolean {
   const { source, destination } = move;
@@ -244,22 +256,37 @@ function isLeftAsWritten(
       table.endColumnIndex === bounded.endColumnIndex,
   );
   if (!isOverWholeTable) return false;
-  if (!coversColumns(bounded, source)) return false;
-  if (!coversColumns(bounded, destination)) return false;
-  return !ruleColumnIndexes(rule).some(
-    (colIndex) =>
-      isInColumns(source, colIndex) || isInColumns(destination, colIndex),
+  return coversColumns(bounded, source) && coversColumns(bounded, destination);
+}
+
+// Measured (Scratch353A to C): a cut column's references stay as written; one into the paste takes the band insert's shift, which the fake's insert leaves out.
+function withPasteReferencesShifted(
+  rule: ConditionalFormatRule,
+  { source, destination }: PasteRanges,
+): ConditionalFormatRule {
+  const width = destination.endColumnIndex - destination.startColumnIndex;
+  const isOneColumnRight =
+    width === 1 && source.endColumnIndex <= destination.startColumnIndex;
+  if (!isOneColumnRight) throw new Error(ruleCutRefusal);
+  return ruleFormulas.mapped(rule, (formula) =>
+    a1Notation.mapCellReferences(
+      formula,
+      ({ reference, anchor, letters, row }) => {
+        const colIndex = a1Notation.columnIndex(letters);
+        if (!isInColumns(destination, colIndex)) return reference;
+        if (anchor !== "$") throw new Error(ruleCutRefusal);
+        return `$${a1Notation.columnLetters(colIndex + width)}${row}`;
+      },
+    ),
   );
 }
 
-function ruleColumnIndexes(
-  rule: GoogleAppsScript.Sheets.Schema.ConditionalFormatRule,
-): number[] {
+function ruleColumnIndexes(rule: ConditionalFormatRule): number[] {
   const values = rule.booleanRule?.condition?.values ?? [];
   return values.flatMap((value) =>
-    [...(value.userEnteredValue ?? "").matchAll(cellReferences)].map(
-      ([, , letters = "A"]) => a1Notation.columnIndex(letters),
-    ),
+    a1Notation
+      .cellReferencesIn(value.userEnteredValue ?? "")
+      .map(({ letters }) => a1Notation.columnIndex(letters)),
   );
 }
 
