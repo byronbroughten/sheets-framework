@@ -1,6 +1,7 @@
 import { Val } from "@byronbroughten/utils/val";
 
 import { columnNameOfHeader } from "../../01_SpreadsheetSchema/configReaders/columnConfigsTypes";
+import type { IntendedTrait } from "../../01_SpreadsheetSchema/configReaders/SyncPlanner";
 import type { ColumnProfileRaw } from "../../02_SpreadsheetRaw/ColumnProfileRaw";
 import type { SpreadsheetNamed } from "../../04_SpreadsheetNamed/SpreadsheetNamed";
 import { PreviousColumnConfigs } from "../PreviousColumnConfigs";
@@ -15,6 +16,10 @@ export interface NamedColumnIdentity extends ColumnIdentity {
   tableKey: string;
   columnName: string;
   previousEmptyValueAllowed: boolean;
+}
+
+export interface SentColumnTrait extends NamedColumnIdentity {
+  value: IntendedTrait["value"];
 }
 
 interface ApiColumnIdentitiesProps {
@@ -76,4 +81,53 @@ export class ApiColumnIdentities {
   describedColumn({ tableId, columnId }: ColumnIdentity): ColumnProfileRaw {
     return this.ss.raw.table(tableId).profile.columnById(columnId);
   }
+  sentColumnTraits(
+    sent: IntendedTrait[],
+    trait: "header" | "columnType" | "formula" | "deleted",
+  ): SentColumnTrait[] {
+    const identities = this.namedColumnIdentities();
+    return sent.flatMap((intended) => {
+      if (intended.kind !== "column" || intended.trait !== trait) return [];
+      const { table: tableKey, column, value } = intended;
+      const identity = Val.assert(
+        identityNamed(identities, tableKey, column),
+        liveColumnLabel(tableKey, column),
+      );
+      return [{ ...identity, value }];
+    });
+  }
+  columnIdOf(tableKey: string, columnName: string): string {
+    return Val.assert(
+      this.identityNamed(tableKey, columnName),
+      liveColumnLabel(tableKey, columnName),
+    ).columnId;
+  }
+  // By previous names, as a `before` gives them.
+  identityNamed(
+    tableKey: string,
+    columnName: string,
+  ): NamedColumnIdentity | undefined {
+    return identityNamed(this.namedColumnIdentities(), tableKey, columnName);
+  }
+  colIndexOf(tableId: string, columnId: string): number {
+    return this.ss.raw.table(tableId).columnResolver.colIndexOf(columnId);
+  }
+  isFirstColumn({ tableId, columnId }: ColumnIdentity): boolean {
+    return this.colIndexOf(tableId, columnId) === 0;
+  }
+}
+
+function identityNamed(
+  identities: NamedColumnIdentity[],
+  tableKey: string,
+  columnName: string,
+): NamedColumnIdentity | undefined {
+  return identities.find(
+    (identity) =>
+      identity.tableKey === tableKey && identity.columnName === columnName,
+  );
+}
+
+function liveColumnLabel(tableKey: string, columnName: string): string {
+  return `live column ${tableKey}.${columnName}`;
 }

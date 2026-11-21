@@ -88,10 +88,12 @@ import {
 import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
 import {
   ColumnConfigsOperator,
-  type MintedNewColumn,
   namesAtTableCreation,
-  type PlannedColumnMove,
 } from "./ColumnConfigsOperator";
+import type {
+  MintedNewColumn,
+  PlannedColumnMove,
+} from "./ColumnConfigsOperator/ColumnConfigsLayoutOperator";
 import {
   type BatchRuleSends,
   type ColumnChangeRules,

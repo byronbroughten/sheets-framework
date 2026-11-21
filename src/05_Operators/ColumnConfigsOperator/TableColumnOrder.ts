@@ -9,7 +9,7 @@ export interface ColumnOrderMove {
   before: string;
 }
 
-// A Table's column IDs in sheet order, as ColumnConfigsOperator plans a run's column moves on them.
+// A Table's column IDs in sheet order, as ColumnConfigsLayoutOperator plans a run's column moves on them.
 export class TableColumnOrder {
   private columnIds: (string | undefined)[];
   // A column with no ID yet, which the Raw tier reads as "", keeps its place so the indexes still count it.
