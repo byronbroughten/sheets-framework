@@ -1,15 +1,12 @@
-import { Arr } from "@byronbroughten/utils/arr";
 import { Val } from "@byronbroughten/utils/val";
 
 import type { ModelableConditionalFormatRule } from "../00_Source/RawSource/ConditionalFormat";
 import type {
   AddSheetOperation,
   BoundedGridRange,
-  GridRangeProps,
   OpaqueRawRequest,
   SheetPropertiesFetchOptions,
 } from "../00_Source/RawSource/RawSource";
-import { headRows } from "../01_SpreadsheetSchema/headRows";
 import { validateFormulaString } from "./CellRaw";
 import { SpreadsheetBaseRaw } from "./ClassBases/SpreadsheetBaseRaw";
 import { emptyStateRaw } from "./ClassTypes/emptyStateRaw";
@@ -22,6 +19,7 @@ import type {
   GridEnd,
 } from "./ClassTypes/StateRaw";
 import { SheetRaw } from "./SheetRaw";
+import { SpreadsheetAddedSheetValidatorRaw } from "./SpreadsheetRaw/SpreadsheetAddedSheetValidatorRaw";
 import { SpreadsheetFetcherRaw } from "./SpreadsheetRaw/SpreadsheetFetcherRaw";
 import { SpreadsheetFlusherRaw } from "./SpreadsheetRaw/SpreadsheetFlusherRaw";
 import {
@@ -55,6 +53,9 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
   }
   private get tableValidator(): SpreadsheetTableValidatorRaw {
     return new SpreadsheetTableValidatorRaw(this.spreadsheetRawProps);
+  }
+  private get addedSheetValidator(): SpreadsheetAddedSheetValidatorRaw {
+    return new SpreadsheetAddedSheetValidatorRaw(this.spreadsheetRawProps);
   }
   private get tableCreator(): SpreadsheetTableCreatorRaw {
     return new SpreadsheetTableCreatorRaw(this.spreadsheetRawProps);
@@ -153,27 +154,15 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
   }
   // A tab this flush adds has no sheet state until fetched, so its queued addSheet is what puts it in the working view.
   sheetIsAdded(sheetGid: number): boolean {
-    return this._queuedAddSheet(sheetGid) !== undefined;
+    return this.addedSheetValidator.sheetIsAdded(sheetGid);
   }
   // So a further Table this flush adds on the tab fits its grid.
-  updateAddedSheetGridThrough(
-    sheetGid: number,
-    { endRowIndex, endColumnIndex }: GridEnd,
-  ): this {
-    const addSheet = Val.assert(
-      this._queuedAddSheet(sheetGid),
-      `queued addSheet for GID ${sheetGid}`,
-    );
-    addSheet.rowCount = Math.max(addSheet.rowCount, endRowIndex);
-    addSheet.columnCount = Math.max(addSheet.columnCount, endColumnIndex);
+  updateAddedSheetGridThrough(sheetGid: number, gridEnd: GridEnd): this {
+    this.addedSheetValidator.updateAddedSheetGridThrough(sheetGid, gridEnd);
     return this;
   }
   addedTablesEndColIndex(sheetGid: number): number | undefined {
-    return Arr.max(
-      this._queuedAddTableRanges(sheetGid).map(
-        ({ endColumnIndex }) => endColumnIndex,
-      ),
-    );
+    return this.addedSheetValidator.addedTablesEndColIndex(sheetGid);
   }
   // A created Table starts with a blank body row, the model growth copies from.
   gatherAddTableOperation({ tableId, ...props }: AddTableProps): this {
@@ -196,19 +185,24 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
   }
   // A cell value on a tab this flush adds; an existing tab writes through CellRaw.
   gatherAddedSheetFillCellOperation(props: AddedSheetCell): this {
-    this._validateAddSheetQueued(props.sheetId, "cell write");
+    this.addedSheetValidator.validateAddSheetQueued(
+      props.sheetId,
+      "cell write",
+    );
     return this._gatherAddedFillCellOperation(props);
   }
   // A cell in a Table this flush adds, head rows included; it has no properties to reach it through CellRaw until fetched.
   gatherAddedTableFillCellOperation(props: AddedSheetCell): this {
-    this._validateInAddedTable(props);
+    this.addedSheetValidator.validateInAddedTable(props);
     return this._gatherAddedFillCellOperation(props);
   }
   // A rule over a Table this flush adds, which has no properties to reach it through TableRaw until fetched; first, as SheetRaw adds its own.
   gatherAddedTableConditionalFormatRule(
     rule: ModelableConditionalFormatRule,
   ): this {
-    for (const range of rule.ranges) this._validateRangeInAddedTable(range);
+    for (const range of rule.ranges) {
+      this.addedSheetValidator.validateRangeInAddedTable(range);
+    }
     this.writeOperations.addConditionalFormatRule.push({
       kind: "addConditionalFormatRule",
       index: 0,
@@ -218,7 +212,10 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
   }
   // A checkbox on a tab this flush adds; an existing tab goes through CellRaw.
   gatherAddedSheetCheckboxValidationOperation(range: BoundedGridRange): this {
-    this._validateAddSheetQueued(range.sheetId, "checkbox validation");
+    this.addedSheetValidator.validateAddSheetQueued(
+      range.sheetId,
+      "checkbox validation",
+    );
     this.writeOperations.addCheckboxValidation.push({
       kind: "addCheckboxValidation",
       range,
@@ -253,73 +250,9 @@ export class SpreadsheetRaw extends SpreadsheetBaseRaw {
     });
     return this;
   }
-  private _queuedAddSheet(sheetGid: number): AddSheetOperation | undefined {
-    return this.writeOperations.addSheet.find(
-      ({ sheetId }) => sheetId === sheetGid,
-    );
-  }
-  private _validateAddSheetQueued(sheetId: number, write: string): void {
-    if (this.sheetIsAdded(sheetId)) return;
-    throw new Error(
-      `Added-sheet ${write} refused: no addSheet for GID ${sheetId} is queued in this flush.`,
-    );
-  }
   private _gatherAddedFillCellOperation(props: AddedSheetCell): this {
     if ("formula" in props) validateFormulaString(props.formula);
     this.writeOperations.fillCell.push({ kind: "fillCell", ...props });
     return this;
-  }
-  private _validateInAddedTable({
-    sheetId,
-    rowIndex,
-    colIndex,
-  }: AddedSheetCell): void {
-    const added = this._addedTableHolds(
-      sheetId,
-      (range) =>
-        range.startRowIndex - headRows.countAboveHeader <= rowIndex &&
-        rowIndex < range.endRowIndex &&
-        range.startColumnIndex <= colIndex &&
-        colIndex < range.endColumnIndex,
-    );
-    if (added) return;
-    throw new Error(
-      `Added-Table cell write refused: no addTable queued in this flush holds row ${rowIndex}, column ${colIndex} of GID ${sheetId}.`,
-    );
-  }
-  private _validateRangeInAddedTable(rangeProps: GridRangeProps): void {
-    const {
-      sheetId,
-      startRowIndex,
-      endRowIndex,
-      startColumnIndex,
-      endColumnIndex,
-    } = rangeProps;
-    const added = this._addedTableHolds(
-      sheetId,
-      (range) =>
-        range.startRowIndex <= startRowIndex &&
-        endRowIndex !== undefined &&
-        endRowIndex <= range.endRowIndex &&
-        startColumnIndex !== undefined &&
-        range.startColumnIndex <= startColumnIndex &&
-        endColumnIndex !== undefined &&
-        endColumnIndex <= range.endColumnIndex,
-    );
-    if (added) return;
-    throw new Error(
-      `Added-Table rule refused: no addTable queued in this flush holds the range ${JSON.stringify(rangeProps)}.`,
-    );
-  }
-  private _addedTableHolds(
-    sheetId: number,
-    holds: (range: BoundedGridRange) => boolean,
-  ): boolean {
-    return this._queuedAddTableRanges(sheetId).some(holds);
-  }
-  private _queuedAddTableRanges(sheetGid: number): BoundedGridRange[] {
-    return this.writeOperations.addTable
-      .map(({ range }) => range)
-      .filter(({ sheetId }) => sheetId === sheetGid);
   }
 }
