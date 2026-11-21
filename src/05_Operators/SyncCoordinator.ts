@@ -1015,16 +1015,18 @@ function withColumnChangeRuleEffects({
       const ofTableNewColumns = newColumns.filter(
         (newColumn) => newColumn.table === table,
       );
-      const insert =
+      const rewriteNewColumn =
         ofTableNewColumns.find(({ before }) => before !== undefined) ??
         ofTableNewColumns[0];
-      const insertWhat =
-        insert === undefined ? undefined : newColumnLines.sendLine(insert).what;
+      const rewriteNewColumnWhat =
+        rewriteNewColumn === undefined
+          ? undefined
+          : newColumnLines.sendLine(rewriteNewColumn).what;
       const item =
         ofTable.find(({ subject }) => isDeletedColumn(subject)) ??
         ofTable.find(
           ({ subject, what }) =>
-            newColumnLines.isSubject(subject) && what === insertWhat,
+            newColumnLines.isSubject(subject) && what === rewriteNewColumnWhat,
         );
       return item === undefined ? [] : [item];
     }),

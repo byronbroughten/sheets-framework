@@ -171,10 +171,16 @@ export interface CompiledRuleRewritesProps extends BatchRuleSends {
   moves: PlannedColumnMove[];
 }
 
-// The last change a Table's rewrite follows: a move, sent after the deletes and inserts, outranks them.
+// The last change a Table's rewrite follows: a move, sent after the deletes, inserts and appends, outranks them.
 interface TableColumnChange {
   deletedColumns: string[];
   after: Extract<SyncPlanEffect, { kind: "rulesRewritten" }>["after"];
+}
+
+interface NewColumnChangesProps {
+  byTable: Map<string, TableColumnChange>;
+  newColumns: PlannedColumnSends["newColumns"];
+  after: Extract<TableColumnChange["after"], "insert" | "append">;
 }
 
 type RuleFate =
@@ -612,13 +618,17 @@ export class ConditionalFormatConfigOperator extends SpreadsheetBaseOperator {
       moves,
     });
   }
-  // A moved Table's delete or insert still leaves its rules past the Table, where the move's band insert can't carry them, so those rewrites also go in the first flush.
+  // A moved Table's delete or insert still leaves its rules past the Table, where the move's band insert can't carry them, so those rewrites also go in the first flush; its append moves none, so the move's rewrite alone widens them.
   reshapeRewrites(
     rewrites: RuleRewrite[],
     columnChanges: PlannedColumnChanges,
   ): RuleRewrite[] {
     const reshaped = columnChangesByTable(columnChanges, []);
-    return rewrites.filter(({ table }) => reshaped.has(table));
+    return rewrites.filter(({ table, after }) => {
+      const reshape = reshaped.get(table)?.after;
+      if (reshape === undefined) return false;
+      return after !== "move" || reshape !== "append";
+    });
   }
   // By the previous configs' name, the one a plan subject and tableIdOf take; _tableRulesByTable skips a Table no longer live, but needs the regen to identify one for its rule layout.
   private _identifiedTables(): Pick<PlannedRuleRemoval, "table">[] {
@@ -1002,21 +1012,35 @@ function columnChangesByTable(
     byTable.set(intended.table, change);
     return byTable;
   }, new Map<string, TableColumnChange>());
-  const inserts = newColumns.reduce((byTable, { table, before }) => {
-    if (before === undefined || byTable.has(table)) return byTable;
-    byTable.set(table, { deletedColumns: [], after: "insert" });
-    return byTable;
-  }, deletes);
-  const appends = newColumns.reduce((byTable, { table, before }) => {
-    if (before !== undefined || byTable.has(table)) return byTable;
-    byTable.set(table, { deletedColumns: [], after: "append" });
-    return byTable;
-  }, inserts);
+  const inserts = withNewColumnChanges({
+    byTable: deletes,
+    newColumns,
+    after: "insert",
+  });
+  const appends = withNewColumnChanges({
+    byTable: inserts,
+    newColumns,
+    after: "append",
+  });
   return moves.reduce((byTable, { table }) => {
     const deletedColumns = byTable.get(table)?.deletedColumns ?? [];
     byTable.set(table, { deletedColumns, after: "move" });
     return byTable;
   }, appends);
+}
+
+// An insert names a `before` and an append doesn't; a Table already changed keeps its change.
+function withNewColumnChanges({
+  byTable,
+  newColumns,
+  after,
+}: NewColumnChangesProps): Map<string, TableColumnChange> {
+  return newColumns.reduce((changed, { table, before }) => {
+    const isInsert = before !== undefined;
+    if (isInsert !== (after === "insert") || changed.has(table)) return changed;
+    changed.set(table, { deletedColumns: [], after });
+    return changed;
+  }, byTable);
 }
 
 // An append moves no rule's ranges, so it leaves every rule but a whole-Table one as it was.
