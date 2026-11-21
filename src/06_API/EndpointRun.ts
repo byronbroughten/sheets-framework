@@ -254,5 +254,12 @@ export class EndpointRun<
     this.ss.discardQueuedChanges();
     this._applyRunState("failure", { message: String(error) });
     Logger.log(`Endpoint run failed: ${String(error)}`);
+    this._toastFailureWithoutFeedback(error);
+  }
+  // With no feedback column the log is the only trace, and whoever ticked never reads the log.
+  private _toastFailureWithoutFeedback(error: unknown): void {
+    const { timeLastRan, runStatus } = this.endpoint;
+    if (timeLastRan || runStatus) return;
+    this.ss.toast(String(error));
   }
 }
