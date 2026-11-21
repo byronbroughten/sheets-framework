@@ -173,18 +173,31 @@ export type SyncRefusal =
   | { kind: "besideGrant"; table: string; path: string }
   // A `tables` or `tabs` entry naming one the previous ID-name map doesn't hold.
   | { kind: "noSuchTable"; entry: "tables" | "tabs"; name: string }
-  // `table` names the tab for a tab's trait; `path` is the trait's, with its column in front for a column's.
-  | { kind: "notSendableYet"; table: string; path: string }
+  // `name` is the Table's, the tab's or the new tab's title, as `entry` says; `path` is the trait's, with its column in front for a column's.
+  | {
+      kind: "notSendableYet";
+      entry: "tables" | "tabs" | "newTabs";
+      name: string;
+      path: string;
+    }
   // A `newTabs` entry's `before` naming neither a tab the previous ID-name map holds nor a `newTabs` title; `table` is the entry's title.
   | { kind: "noSuchBeforeTab"; table: string; path: string; before: string }
-  // A brace naming a Table or column the previous ID-name map lacks, or for a rule's brace one the Table's `newColumns` create; `columns` is braceTable's, undefined when the map holds no such Table.
+  // A brace naming a Table the previous ID-name map lacks.
+  | {
+      kind: "unknownBraceTable";
+      table: string;
+      path: string;
+      brace: string;
+      braceTable: string;
+    }
+  // A brace naming a column of braceTable the previous ID-name map lacks, or for a rule's brace one the Table's `newColumns` create; `columns` is braceTable's.
   | {
       kind: "unknownBrace";
       table: string;
       path: string;
       brace: string;
       braceTable: string;
-      columns: string[] | undefined;
+      columns: string[];
     }
   // A `${…}` in a formula that reads as no brace, such as `@` before a Table key.
   | { kind: "malformedBrace"; table: string; path: string; brace: string }

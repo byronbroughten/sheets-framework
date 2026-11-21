@@ -364,22 +364,26 @@ describe("SyncCoordinator.run conditional-format rule replacement", () => {
     expect(result.refusals).toEqual([
       {
         kind: "notSendableYet",
-        table: "item",
+        entry: "tables",
+        name: "item",
         path: "conditionalFormats.add[0].format.bold",
       },
       {
         kind: "notSendableYet",
-        table: "item",
+        entry: "tables",
+        name: "item",
         path: "conditionalFormats.add[0].format.italic",
       },
       {
         kind: "notSendableYet",
-        table: "item",
+        entry: "tables",
+        name: "item",
         path: `conditionalFormats.replace["${firstHandle}"].format.bold`,
       },
       {
         kind: "notSendableYet",
-        table: "item",
+        entry: "tables",
+        name: "item",
         path: `conditionalFormats.replace["${firstHandle}"].format.italic`,
       },
     ]);

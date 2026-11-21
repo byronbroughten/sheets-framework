@@ -226,12 +226,14 @@ describe("SyncEntryRefuser, traits not sendable yet", () => {
     ).toEqual([
       {
         kind: "notSendableYet",
-        table: "item",
+        entry: "tables",
+        name: "item",
         path: "newColumns[1].columns[0].formula",
       },
       {
         kind: "notSendableYet",
-        table: "item",
+        entry: "tables",
+        name: "item",
         path: "newColumns[1].columns[0].columnType",
       },
     ]);
@@ -326,7 +328,8 @@ describe("SyncEntryRefuser, traits not sendable yet", () => {
     ).toEqual([
       {
         kind: "notSendableYet",
-        table: "items",
+        entry: "tabs",
+        name: "items",
         path: "newTables[0].conditionalFormats.add[0].format.bold",
       },
     ]);
@@ -373,7 +376,12 @@ describe("SyncEntryRefuser, traits not sendable yet", () => {
         },
       }),
     ).toEqual([
-      { kind: "notSendableYet", table: "Empty", path: "newTabs[1].tables" },
+      {
+        kind: "notSendableYet",
+        entry: "newTabs",
+        name: "Empty",
+        path: "newTabs[1].tables",
+      },
     ]);
   });
 
@@ -398,7 +406,8 @@ describe("SyncEntryRefuser, traits not sendable yet", () => {
     ).toEqual([
       {
         kind: "notSendableYet",
-        table: "items",
+        entry: "tabs",
+        name: "items",
         path: "newTables[1].conditionalFormats.add[0].format.bold",
       },
     ]);
@@ -438,12 +447,11 @@ describe("SyncEntryRefuser, a formula's braces", () => {
   it("refuses a brace naming no Table, with no columns to list", () => {
     expect(formulaRefusals("=SUM(${vendor[@cost]})")).toEqual([
       {
-        kind: "unknownBrace",
+        kind: "unknownBraceTable",
         table: "item",
         path: "count.formula",
         brace: "${vendor[@cost]}",
         braceTable: "vendor",
-        columns: undefined,
       },
     ]);
   });

@@ -24,6 +24,8 @@ export interface SyncEntryRefuserProps {
 }
 
 type NotSendableYet = Extract<SyncRefusal, { kind: "notSendableYet" }>;
+// The entry a trait sits under, as a `notSendableYet` names it.
+type TraitEntry = Pick<NotSendableYet, "entry" | "name">;
 type NoSuchBeforeTab = Extract<SyncRefusal, { kind: "noSuchBeforeTab" }>;
 
 // Only these traits can be sent so far; each later trait ticket takes its trait off this refusal.
@@ -137,8 +139,12 @@ export class SyncEntryRefuser {
       mapNames: Object.values(this.idNameMap.tabs).map(({ name }) => name),
       entries: entriesOf(this.alterations.tabs),
       traitRefusals: (tab, entry) => [
-        ...refusedPaths(tab, traitPathsAt("tab", entry, "")),
+        ...refusedPaths(
+          { entry: "tabs", name: tab },
+          traitPathsAt("tab", entry, ""),
+        ),
         ...this._newTablesRefusals({
+          entry: "tabs",
           tab,
           newTables: entry.newTables ?? [],
           tablesAt: "newTables",
@@ -155,12 +161,14 @@ export class SyncEntryRefuser {
     ]);
     return newTabs.flatMap((newTab, index) => {
       const at = `newTabs[${index}]`;
-      const tab = newTab.title ?? "newTabs";
+      const tab = newTab.title;
+      const traitEntry: TraitEntry = { entry: "newTabs", name: tab };
       // addSheet is sent only with a Table to create on it.
       const tablesRefusals =
         newTab.tables.length === 0
-          ? [notSendableYet(tab, `${at}.tables`)]
+          ? [notSendableYet({ ...traitEntry, path: `${at}.tables` })]
           : this._newTablesRefusals({
+              entry: "newTabs",
               tab,
               newTables: newTab.tables,
               tablesAt: `${at}.tables`,
@@ -171,25 +179,37 @@ export class SyncEntryRefuser {
           ? []
           : [noSuchBeforeTab({ table: tab, path: `${at}.before`, before })];
       return [
-        ...refusedPaths(tab, traitPathsAt("newTab", newTab, `${at}.`)),
+        ...refusedPaths(traitEntry, traitPathsAt("newTab", newTab, `${at}.`)),
         ...beforeRefusals,
         ...tablesRefusals,
       ];
     });
   }
   private _newTablesRefusals({
+    entry,
     tab,
     newTables,
     tablesAt,
   }: NewTablesRefusalsProps): SyncRefusal[] {
     return newTables.flatMap((newTable, index) =>
-      this._newTableRefusals({ tab, newTable, at: `${tablesAt}[${index}]` }),
+      this._newTableRefusals({
+        entry,
+        tab,
+        newTable,
+        at: `${tablesAt}[${index}]`,
+      }),
     );
   }
-  private _newTableRefusals({ tab, newTable, at }: NewTableAt): SyncRefusal[] {
+  private _newTableRefusals({
+    entry,
+    tab,
+    newTable,
+    at,
+  }: NewTableUnder): SyncRefusal[] {
     const newColumns = NewColumnNames.ofNewTable({ newTable, at });
+    const traitEntry: TraitEntry = { entry, name: tab };
     return [
-      ...refusedPaths(tab, newTableTraitPaths(newTable, at)),
+      ...refusedPaths(traitEntry, newTableTraitPaths(newTable, at)),
       ...newColumns.repeatRefusals(tab),
       ...this._braceRefuser.newTableRefusals({ tab, newTable, at }),
       ...RuleRefuser.ofNewTable({
@@ -202,21 +222,34 @@ export class SyncEntryRefuser {
       }).refusals,
       ...ruleTextFormatPaths({
         conditionalFormats: newTable.conditionalFormats,
-      }).map((path) => notSendableYet(tab, `${at}.${path}`)),
+      }).map((path) =>
+        notSendableYet({ ...traitEntry, path: `${at}.${path}` }),
+      ),
     ];
   }
 }
 
+// A new Table sits under a tab entry or a new tab.
+type NewTableEntry = "tabs" | "newTabs";
+
+interface NewTableUnder extends NewTableAt {
+  entry: NewTableEntry;
+}
+
 interface NewTablesRefusalsProps {
+  entry: NewTableEntry;
   tab: string;
   newTables: WideNewTable[];
   tablesAt: string;
 }
 
-function refusedPaths(table: string, paths: TraitPath[]): SyncRefusal[] {
+function refusedPaths(
+  traitEntry: TraitEntry,
+  paths: TraitPath[],
+): SyncRefusal[] {
   return paths
     .filter(({ level, trait }) => !sendableTraits[level].has(trait))
-    .map(({ path }) => notSendableYet(table, path));
+    .map(({ path }) => notSendableYet({ ...traitEntry, path }));
 }
 
 function newTableTraitPaths(
@@ -260,8 +293,8 @@ function noSuchTable(entry: "tables" | "tabs", name: string): SyncRefusal {
   return { kind: "noSuchTable", entry, name };
 }
 
-function notSendableYet(table: string, path: string): NotSendableYet {
-  return { kind: "notSendableYet", table, path };
+function notSendableYet(props: Omit<NotSendableYet, "kind">): NotSendableYet {
+  return { kind: "notSendableYet", ...props };
 }
 
 function noSuchBeforeTab(
@@ -274,12 +307,15 @@ function tableTraitRefusals(
   table: string,
   entry: WideTableEntry,
 ): SyncRefusal[] {
+  const traitEntry: TraitEntry = { entry: "tables", name: table };
   return [
-    ...refusedPaths(table, [
+    ...refusedPaths(traitEntry, [
       ...traitPaths(entry),
       ...newColumnTraitPaths(entry),
     ]),
-    ...ruleTextFormatPaths(entry).map((path) => notSendableYet(table, path)),
+    ...ruleTextFormatPaths(entry).map((path) =>
+      notSendableYet({ ...traitEntry, path }),
+    ),
   ];
 }
 
