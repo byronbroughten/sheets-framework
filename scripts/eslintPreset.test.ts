@@ -34,11 +34,46 @@ async function restrictedImports(
     .map(({ message }) => message);
 }
 
-describe("appEslintPreset's generated/ boundary", () => {
-  afterAll(() => {
-    rmSync(appDir, { recursive: true });
+afterAll(() => {
+  rmSync(appDir, { recursive: true });
+});
+
+async function restrictedSyntax(code: string): Promise<string[]> {
+  const results = await eslint.lintText(code, {
+    filePath: join(appDir, "src/app.ts"),
+  });
+  return results
+    .flatMap(({ messages }) => messages)
+    .filter(({ ruleId }) => ruleId === "no-restricted-syntax")
+    .map(({ message }) => message);
+}
+
+function subclassWith(field: string): string {
+  return `class Base {}\n\nexport class Sub extends Base {\n  ${field}\n}\n`;
+}
+
+describe("appEslintPreset's subclass fields", () => {
+  it("reports a subclass field with neither an initializer nor declare", async () => {
+    expect(await restrictedSyntax(subclassWith("count: number;"))).toEqual([
+      expect.stringContaining("declare"),
+    ]);
   });
 
+  it("allows a declare field and an initialised one", async () => {
+    expect(
+      await restrictedSyntax(subclassWith("declare count: number;")),
+    ).toEqual([]);
+    expect(await restrictedSyntax(subclassWith("count = 1;"))).toEqual([]);
+  });
+
+  it("keeps the style selectors config exports", async () => {
+    expect(
+      await restrictedSyntax("export enum Kind {\n  One,\n}\n"),
+    ).not.toEqual([]);
+  });
+});
+
+describe("appEslintPreset's generated/ boundary", () => {
   it("reports a config file imported from outside generated/", async () => {
     expect(
       await restrictedImports(
