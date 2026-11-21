@@ -81,7 +81,6 @@ import {
   SyncRunResultBuilder,
 } from "../01_SpreadsheetSchema/configReaders/SyncRunResultBuilder";
 import { typedTraitChanges } from "../01_SpreadsheetSchema/configReaders/typedTraitChanges";
-import type { SpreadsheetRaw } from "../02_SpreadsheetRaw/SpreadsheetRaw";
 import {
   SpreadsheetBaseNamed,
   type SpreadsheetNamedProps,
@@ -618,11 +617,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
     const checks = OutsideReferences.checks({
       deletedTables,
       deletedTabs: [...deletedTabs].map((tab) =>
-        deletedTabOfMap({
-          idNameMap: previousIdNameMap,
-          tab,
-          raw: this.ss.raw,
-        }),
+        this._deletedTabOfMap(previousIdNameMap, tab),
       ),
       formulaColumns: this.columnConfigOperator.formulaColumns(),
     });
@@ -652,6 +647,32 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       };
     });
     return { ...planned, plan, checks: [...planned.checks, ...checks] };
+  }
+  // The entry refuser and the planner already hold the tab to the map; its Tables' Sheets names come from the live read, the one source holding a Table without API access by its live name.
+  private _deletedTabOfMap(
+    { tables, tabs }: IdNameMapGeneric,
+    tab: string,
+  ): DeletedTab {
+    const { raw } = this.ss;
+    const mapTab = Val.assert(
+      Object.values(tabs).find(({ name }) => name === tab),
+      `the ID-name map's tab ${tab}`,
+    );
+    return {
+      tab,
+      title: mapTab.title,
+      tables: mapTab.tableIds.map((tableId) => {
+        const tableKey = Val.assert(
+          tables[tableId],
+          `the ID-name map's Table ${tableId}`,
+        ).name;
+        // A Table already gone from the sheet has no live name, and no live formula can name it.
+        if (!raw.tableIdIsActive(tableId)) {
+          return { tableKey, tableName: tableKey };
+        }
+        return { tableKey, tableName: raw.table(tableId).name };
+      }),
+    };
   }
   // A pure planner can't read the live rules an add goes in ahead of, so the run fills them in from its live read.
   private _withAddedFirstEffects(
@@ -1113,39 +1134,6 @@ function goneNotices({
     ]),
     ...fromLiveTabs,
   ];
-}
-
-interface DeletedTabOfMapProps {
-  idNameMap: IdNameMapGeneric;
-  tab: string;
-  raw: SpreadsheetRaw;
-}
-
-// The entry refuser and the planner already hold the tab to the map; its Tables' Sheets names come from the live read, the one source holding a Table without API access by its live name.
-function deletedTabOfMap({
-  idNameMap: { tables, tabs },
-  tab,
-  raw,
-}: DeletedTabOfMapProps): DeletedTab {
-  const mapTab = Val.assert(
-    Object.values(tabs).find(({ name }) => name === tab),
-    `the ID-name map's tab ${tab}`,
-  );
-  return {
-    tab,
-    title: mapTab.title,
-    tables: mapTab.tableIds.map((tableId) => {
-      const tableKey = Val.assert(
-        tables[tableId],
-        `the ID-name map's Table ${tableId}`,
-      ).name;
-      // A Table already gone from the sheet has no live name, and no live formula can name it.
-      if (!raw.tableIdIsActive(tableId)) {
-        return { tableKey, tableName: tableKey };
-      }
-      return { tableKey, tableName: raw.table(tableId).name };
-    }),
-  };
 }
 
 // A check's subject is the bare Table or tab its plan line deletes.

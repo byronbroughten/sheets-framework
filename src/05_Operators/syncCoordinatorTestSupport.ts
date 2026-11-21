@@ -245,12 +245,7 @@ export function dryRunBesideLog({
   logFormula,
   unmanagedItemTabTable,
 }: BesideLogProps): SyncRun {
-  let itemTab = itemSheet({ name: getTableTraitByName("item", "tableName") });
-  const previousIdNameMap = previousItemAndLogMap();
-  if (unmanagedItemTabTable !== undefined) {
-    itemTab = withUnmanagedTable(itemTab, unmanagedItemTabTable);
-    addUnmanagedTable(previousIdNameMap);
-  }
+  const { itemTab, previousIdNameMap } = besideLogSeed(unmanagedItemTabTable);
   stubSheetsService({ sheets: [itemTab, logSheet(logFormula)] });
   return SyncCoordinator.init().run({
     isSending: false,
@@ -259,6 +254,23 @@ export function dryRunBesideLog({
     forcedTraits: [],
     frame,
   });
+}
+
+interface BesideLogSeed {
+  itemTab: FakeSheetProperties;
+  previousIdNameMap: IdNameMapGeneric;
+}
+
+function besideLogSeed(unmanagedItemTabTable?: string): BesideLogSeed {
+  const itemTab = itemSheet({ name: getTableTraitByName("item", "tableName") });
+  const previousIdNameMap = previousItemAndLogMap();
+  if (unmanagedItemTabTable === undefined) {
+    return { itemTab, previousIdNameMap };
+  }
+  return {
+    itemTab: withUnmanagedTable(itemTab, unmanagedItemTabTable),
+    previousIdNameMap: withUnmanagedMapTable(previousIdNameMap),
+  };
 }
 
 // Right of Item, past its columns, so the two Tables share no cell.
@@ -296,10 +308,25 @@ function withUnmanagedTable(
 }
 
 // Its map key isn't its live name, as for any Table without API access the sync's titleToName reshapes.
-function addUnmanagedTable(map: IdNameMapGeneric): void {
-  map.tables[unmanagedTableId] = { name: unmanagedTableId, sheetGid: itemGid };
-  const itemTab = Val.assert(map.tabs[String(itemGid)], "the item tab");
-  itemTab.tableIds.push(unmanagedTableId);
+function withUnmanagedMapTable({
+  tables,
+  tabs,
+}: IdNameMapGeneric): IdNameMapGeneric {
+  const itemTabKey = String(itemGid);
+  const itemTab = Val.assert(tabs[itemTabKey], "the item tab");
+  return {
+    tables: {
+      ...tables,
+      [unmanagedTableId]: { name: unmanagedTableId, sheetGid: itemGid },
+    },
+    tabs: {
+      ...tabs,
+      [itemTabKey]: {
+        ...itemTab,
+        tableIds: [...itemTab.tableIds, unmanagedTableId],
+      },
+    },
+  };
 }
 
 export interface RunOptions {
