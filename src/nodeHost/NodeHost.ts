@@ -4,7 +4,7 @@ import {
   GoogleSheetsAPI,
   type SheetsHttpTransport,
 } from "../00_Source/GoogleSheets/GoogleSheetsAPI";
-import { installRawSource } from "../00_Source/RawSource/RawSource";
+import { installRawSource } from "../00_Source/RawSource/installedRawSource";
 import {
   type Configs,
   installConfigs,

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { googleRawRequest } from "../00_Source/GoogleSheets/GoogleSheetsAPI";
-import { installedRawSource } from "../00_Source/RawSource/RawSource";
+import { installedRawSource } from "../00_Source/RawSource/installedRawSource";
 import { expectedSheetLayout } from "./expectedSheetLayout";
 import {
   buildGridRows,
