@@ -1,10 +1,10 @@
 import { ColumnConfigsBaseOperator } from "../ClassBases/ColumnConfigsBaseOperator";
 import type { UntypedHeadersByTableName } from "../SpreadsheetBaseOperator";
-import { ColumnValueSourcesOperator } from "./ColumnValueSourcesOperator";
+import { ColumnConfigsValueSourcesOperator } from "./ColumnConfigsValueSourcesOperator";
 
-export class UntypedColumnsOperator extends ColumnConfigsBaseOperator {
-  get valueSourcesOperator(): ColumnValueSourcesOperator {
-    return new ColumnValueSourcesOperator(this.operatorProps);
+export class ColumnConfigsUntypedColumnsOperator extends ColumnConfigsBaseOperator {
+  get valueSourcesOperator(): ColumnConfigsValueSourcesOperator {
+    return new ColumnConfigsValueSourcesOperator(this.operatorProps);
   }
   private get untypedHeadersByTableName(): UntypedHeadersByTableName {
     return this.columnConfigSync.untypedHeadersByTableName;

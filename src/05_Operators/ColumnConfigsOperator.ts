@@ -39,13 +39,13 @@ import {
   type ApiTableColumns,
   ColumnConfigsOutputOperator,
 } from "./ColumnConfigsOperator/ColumnConfigsOutputOperator";
-import { ColumnValueSourcesOperator } from "./ColumnConfigsOperator/ColumnValueSourcesOperator";
+import { ColumnConfigsUntypedColumnsOperator } from "./ColumnConfigsOperator/ColumnConfigsUntypedColumnsOperator";
+import { ColumnConfigsValueSourcesOperator } from "./ColumnConfigsOperator/ColumnConfigsValueSourcesOperator";
 import {
   bracedFormula,
   InstalledBraceConfigs,
 } from "./ColumnConfigsOperator/InstalledBraceConfigs";
 import { TableColumnOrder } from "./ColumnConfigsOperator/TableColumnOrder";
-import { UntypedColumnsOperator } from "./ColumnConfigsOperator/UntypedColumnsOperator";
 import {
   SpreadsheetBaseOperator,
   type ValueSource,
@@ -111,11 +111,11 @@ export class ColumnConfigsOperator extends ColumnConfigsBaseOperator {
       SpreadsheetBaseOperator.initOperatorProps(),
     );
   }
-  get valueSourcesOperator(): ColumnValueSourcesOperator {
-    return new ColumnValueSourcesOperator(this.operatorProps);
+  get valueSourcesOperator(): ColumnConfigsValueSourcesOperator {
+    return new ColumnConfigsValueSourcesOperator(this.operatorProps);
   }
-  get untypedColumnsOperator(): UntypedColumnsOperator {
-    return new UntypedColumnsOperator(this.operatorProps);
+  get untypedColumnsOperator(): ColumnConfigsUntypedColumnsOperator {
+    return new ColumnConfigsUntypedColumnsOperator(this.operatorProps);
   }
   get outputOperator(): ColumnConfigsOutputOperator {
     return new ColumnConfigsOutputOperator(this.operatorProps);

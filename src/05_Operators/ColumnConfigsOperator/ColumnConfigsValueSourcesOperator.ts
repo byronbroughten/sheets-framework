@@ -13,7 +13,7 @@ import {
   type ValueSource,
 } from "../SpreadsheetBaseOperator";
 
-export class ColumnValueSourcesOperator extends ColumnConfigsBaseOperator {
+export class ColumnConfigsValueSourcesOperator extends ColumnConfigsBaseOperator {
   valueSources(): ValueSource[] {
     const tableKeysByTableId = this.tableConfigOperator.tableKeysByTableId();
     const { apiColumnIdentities } = this;
@@ -34,6 +34,9 @@ export class ColumnValueSourcesOperator extends ColumnConfigsBaseOperator {
       sourcesByValueName.set(source.valueName, source);
     }
     return [...sourcesByValueName.values()];
+  }
+  private _sourceLabel({ tableId, header }: SourceColumn): string {
+    return sourceLabel({ tableName: this.ss.raw.table(tableId).name, header });
   }
   _valueSource(
     describedColumn: ColumnProfileRaw,
@@ -65,9 +68,6 @@ export class ColumnValueSourcesOperator extends ColumnConfigsBaseOperator {
       return undefined;
     }
     return { tableId, header: reference.header };
-  }
-  private _sourceLabel({ tableId, header }: SourceColumn): string {
-    return sourceLabel({ tableName: this.ss.raw.table(tableId).name, header });
   }
 }
 

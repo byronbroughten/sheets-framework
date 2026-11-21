@@ -9,7 +9,7 @@ import type { ValueName } from "../../01_SpreadsheetSchema/configReaders/valueSc
 import { ColumnConfigsBaseOperator } from "../ClassBases/ColumnConfigsBaseOperator";
 import { oneLinePerLeafFileSource } from "../configFileSource";
 import { PreviousColumnConfigs } from "../PreviousColumnConfigs";
-import { ColumnValueSourcesOperator } from "./ColumnValueSourcesOperator";
+import { ColumnConfigsValueSourcesOperator } from "./ColumnConfigsValueSourcesOperator";
 
 export interface ApiTableColumns {
   tableKey: string;
@@ -17,8 +17,8 @@ export interface ApiTableColumns {
 }
 
 export class ColumnConfigsOutputOperator extends ColumnConfigsBaseOperator {
-  get valueSourcesOperator(): ColumnValueSourcesOperator {
-    return new ColumnValueSourcesOperator(this.operatorProps);
+  get valueSourcesOperator(): ColumnConfigsValueSourcesOperator {
+    return new ColumnConfigsValueSourcesOperator(this.operatorProps);
   }
   newColumnConfigs(): ColumnConfigsGeneric {
     const tableKeysByTableId = this.tableConfigOperator.tableKeysByTableId();
