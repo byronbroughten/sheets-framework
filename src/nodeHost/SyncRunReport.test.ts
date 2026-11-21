@@ -464,6 +464,18 @@ describe("SyncRunReport, case E: a rename and a swap the dry run took up", () =>
         what: "emptyValueAllowed → false. Changes the configs only; nothing is sent to the sheet.",
         effects: [],
       },
+      {
+        subject: { table: "occCharge" },
+        what: 'append column "Note" (TEXT).',
+        effects: [
+          {
+            kind: "rulesRewritten",
+            table: "occCharge",
+            count: 1,
+            after: "append",
+          },
+        ],
+      },
     ],
     configs: {
       ...noConfigChanges,
@@ -540,6 +552,12 @@ describe("SyncRunReport, case E: a rename and a swap the dry run took up", () =>
   it("indents the rule rewrites under the insert", () => {
     expect(text).toContain(
       "    Rewrites 2 conditional-format rules over occCharge after the insert, since Sheets leaves them wrong.",
+    );
+  });
+
+  it("says an append's rules are widened over the new columns", () => {
+    expect(text).toContain(
+      "    Widens 1 conditional-format rule over occCharge after the append, since Sheets leaves them short of the new columns.",
     );
   });
 

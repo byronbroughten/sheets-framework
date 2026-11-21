@@ -34,6 +34,9 @@ function effectLine(effect: SyncPlanEffect): string {
     }
     return `Added first; it outranks ${counted(outranks.length, "rule", "rules")} on these cells: ${outranks.join(", ")}.`;
   }
+  if (effect.kind === "rulesRewritten" && effect.after === "append") {
+    return `Widens ${ruleCount(effect.count)} over ${effect.table} after the append, since Sheets leaves them short of the new columns.`;
+  }
   if (effect.kind === "rulesRewritten") {
     return `Rewrites ${ruleCount(effect.count)} over ${effect.table} after the ${effect.after}, since Sheets leaves them wrong.`;
   }
