@@ -138,6 +138,10 @@ export function tableOnSheetLabel({
   return `Table "${name}" on ${onSheet}`;
 }
 
+export function tableColumnLabel(columnIndex: number): string {
+  return `table column ${columnIndex}`;
+}
+
 export function tableIdsOnSheet(
   tables: TablesStateRaw,
   sheetGid: number,
