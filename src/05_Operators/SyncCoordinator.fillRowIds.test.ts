@@ -73,6 +73,20 @@ describe("SyncCoordinator.run Fill Row IDs", () => {
     });
   });
 
+  it("doesn't count a Row-ID-only send over an already-empty alterations.ts as emptying it", () => {
+    seedFixture({
+      item: { bodyRows: [{ optionalNote: "blank ID" }] },
+    });
+
+    const { result } = runItem({ isSending: true });
+
+    expect(result).toMatchObject({
+      outcome: { kind: "sent" },
+      landed: [{ kind: "send", subject: { table: "item", column: "id" } }],
+      hasEmptiedAlterations: false,
+    });
+  });
+
   it("lists the blank IDs in a dry run's plan and fills none", () => {
     const { grid, batchUpdateCount } = seedFixture({
       item: { bodyRows: [{}, {}] },

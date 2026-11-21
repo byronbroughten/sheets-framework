@@ -75,7 +75,7 @@ describe("SyncCoordinator already-met alterations", () => {
       plan: [],
       landed: [],
       alreadyMet: [metNote],
-      isAlterationsEmpty: true,
+      hasEmptiedAlterations: true,
     });
   });
 
@@ -109,7 +109,7 @@ describe("SyncCoordinator already-met alterations", () => {
         },
       ],
       alreadyMet: [metNote],
-      isAlterationsEmpty: true,
+      hasEmptiedAlterations: true,
     });
   });
 
@@ -145,7 +145,7 @@ describe("SyncCoordinator already-met alterations", () => {
       alreadyMet: [],
       notSent: [],
       didntLand: [],
-      isAlterationsEmpty: false,
+      hasEmptiedAlterations: false,
     });
   });
 
@@ -184,7 +184,7 @@ describe("SyncCoordinator already-met alterations", () => {
       alreadyMet: [],
       notSent: [],
       didntLand: [],
-      isAlterationsEmpty: false,
+      hasEmptiedAlterations: false,
     });
   });
 

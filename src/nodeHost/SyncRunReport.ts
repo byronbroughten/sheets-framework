@@ -197,9 +197,10 @@ export class SyncRunReport {
         metLines,
       );
     }
-    const { landed, notSent, didntLand, outcome, isAlterationsEmpty } = result;
+    const { landed, notSent, didntLand, outcome, hasEmptiedAlterations } =
+      result;
     const landedLines = landed.map(landedLine);
-    if (isAlterationsEmpty && landedLines.length + metLines.length > 0) {
+    if (hasEmptiedAlterations) {
       const lastSectionLines = metLines.length > 0 ? metLines : landedLines;
       lastSectionLines.push("alterations.ts is now empty.");
     }

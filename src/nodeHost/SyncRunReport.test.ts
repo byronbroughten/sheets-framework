@@ -42,7 +42,7 @@ const appSend = {
   landed: [],
   notSent: [],
   didntLand: [],
-  isAlterationsEmpty: false,
+  hasEmptiedAlterations: false,
 } as const satisfies Omit<SyncSendResult, "outcome">;
 
 function render(result: SyncRunResult): string[] {
@@ -1345,7 +1345,7 @@ describe("SyncRunReport, an alteration already met", () => {
       },
       landed: sentLanded,
       alreadyMet,
-      isAlterationsEmpty: true,
+      hasEmptiedAlterations: true,
     });
     expect(sections(lines)).toEqual([
       "Landed",
@@ -1402,7 +1402,7 @@ describe("SyncRunReport, an entry the planner skipped", () => {
       ...appSend,
       outcome: { kind: "sent", summary: "1 alteration landed" },
       landed,
-      isAlterationsEmpty: false,
+      hasEmptiedAlterations: false,
     });
     expect(lines).toContain("unit › notes › header: set to Remarks");
     expect(lines).not.toContain("alterations.ts is now empty.");
@@ -1421,7 +1421,7 @@ describe("SyncRunReport, an entry the planner skipped", () => {
           what: "already Monthly rent",
         },
       ],
-      isAlterationsEmpty: false,
+      hasEmptiedAlterations: false,
     });
     expect(lines).toContain("== Already met: removed from alterations.ts ==");
     expect(lines).not.toContain("alterations.ts is now empty.");
@@ -1432,7 +1432,7 @@ describe("SyncRunReport, an entry the planner skipped", () => {
       ...appSend,
       outcome: { kind: "sent", summary: "1 alteration landed" },
       landed,
-      isAlterationsEmpty: true,
+      hasEmptiedAlterations: true,
     });
     expect(lines.join("\n")).toContain(
       "unit › notes › header: set to Remarks\nalterations.ts is now empty.",
@@ -1493,7 +1493,7 @@ describe("SyncRunReport, case H: a clean send", () => {
         columnId: "c:opy:Xw3nB7d",
       },
     ],
-    isAlterationsEmpty: true,
+    hasEmptiedAlterations: true,
     plan: [
       {
         subject: { table: "occPayment" },

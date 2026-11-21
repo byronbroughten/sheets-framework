@@ -117,7 +117,7 @@ export class SyncRunResultBuilder {
       return dryRunResult({ ...common, notices }, { kind: "ready" });
     }
     const isLanded = hasLanded(didntLand);
-    const landed: SyncLandedItem[] = [
+    const landedAlterations: SyncLandedItem[] = [
       ...planned.plan
         .filter(
           // Each new column or Table lands as its created line, carrying the minted IDs its plan line couldn't.
@@ -129,8 +129,9 @@ export class SyncRunResultBuilder {
         .map(landedSend),
       ...createdColumns,
       ...createdTables,
-      ...rowIds.plan.map(landedSend),
     ];
+    const metOrLandedCount =
+      landedAlterations.length + planned.alreadyMet.length;
     return {
       ...sendResult(common, {
         kind: "sent",
@@ -141,12 +142,13 @@ export class SyncRunResultBuilder {
           alreadyMetCount: planned.alreadyMet.length,
         }),
       }),
-      landed,
+      landed: [...landedAlterations, ...rowIds.plan.map(landedSend)],
       notSent: heldBackChanges.map((rule) =>
         asRewritten(heldBackLine(rule), nameRewriter),
       ),
       didntLand: didntLand.map((line) => asRewritten(line, nameRewriter)),
-      isAlterationsEmpty: nameRewriter.isAlterationsEmpty,
+      hasEmptiedAlterations:
+        nameRewriter.isAlterationsEmpty && metOrLandedCount > 0,
     };
   }
   // A send the host held or Google refused at a flush; nothing after it was sent.
@@ -251,7 +253,7 @@ function sendResult(
     landed: [],
     notSent: [],
     didntLand: [],
-    isAlterationsEmpty: false,
+    hasEmptiedAlterations: false,
   };
 }
 

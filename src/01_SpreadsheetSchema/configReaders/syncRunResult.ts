@@ -14,8 +14,8 @@ export interface SyncSendResult extends SyncRunCommon {
   landed: SyncLandedItem[];
   notSent: SyncSendLine[];
   didntLand: SyncSendLine[];
-  // From the file the run leaves, since an entry the planner skips lists in no section yet stays in it; false on a send that writes no files.
-  isAlterationsEmpty: boolean;
+  // From the file the run leaves, since an entry the planner skips lists in no section yet stays in it; false when no entry landed or was met, as on a Row-ID-only send or one that writes no files.
+  hasEmptiedAlterations: boolean;
 }
 
 // What a run's caller says about it, before anything is read.
