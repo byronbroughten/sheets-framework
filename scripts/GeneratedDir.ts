@@ -13,11 +13,41 @@ import {
 } from "./nodeHost.ts";
 
 export class GeneratedDir {
+  static readonly alterationsText = alterationsFileSource({});
+  static readonly appConfigsText = `// Without it, a program that reaches this file only by dynamic import rejects the augmentation (TS2664).
+import type {} from "@byronbroughten/sheets-framework";
+
+import { columnConfigs } from "./columnConfigs";
+import { conditionalFormatConfigs } from "./conditionalFormatConfigs";
+import type { IdNameMap } from "./idNameMap";
+import { retiredIdPrefixes } from "./retiredIdPrefixes";
+import { tabConfigs } from "./tabConfigs";
+import { tableConfigs } from "./tableConfigs";
+import { valueConfigs } from "./valueConfigs";
+
+export const appConfigs = {
+  tableConfigs,
+  tabConfigs,
+  conditionalFormatConfigs,
+  retiredIdPrefixes,
+  columnConfigs,
+  valueConfigs,
+};
+
+declare module "@byronbroughten/sheets-framework" {
+  interface Register {
+    configs: typeof appConfigs;
+    idNameMap: IdNameMap;
+  }
+}
+`;
+  readonly dir: string;
   readonly path: Record<
     ConfigFile | "appConfigs" | "idNameMap" | "alterations",
     string
   >;
   constructor(dir: string) {
+    this.dir = dir;
     this.path = {
       tableConfigs: configFilePath(dir, "tableConfigs"),
       tabConfigs: configFilePath(dir, "tabConfigs"),
@@ -30,9 +60,6 @@ export class GeneratedDir {
       // A fixed path from the generated directory, so finding it needs no setting of its own.
       alterations: join(dirname(dir), "alterations.ts"),
     };
-  }
-  static get alterationsText(): string {
-    return alterationsFileSource({});
   }
 
   // Intended state is the pending alterations alone until claims arrive; a package with no alterations.ts has none pending.

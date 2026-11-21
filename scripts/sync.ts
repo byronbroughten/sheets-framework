@@ -117,7 +117,7 @@ export class SyncRunner {
       frame: {
         target,
         command: "npm run sync",
-        generatedDir: this.sheetsConfig.generatedDir,
+        generatedDir: generatedDir.dir,
         alterationsPath: generatedDir.path.alterations,
       },
       isHostWithholding: true,
@@ -141,8 +141,8 @@ export class SyncRunner {
 
   // Write nothing until every config and the ID-name map are confirmed good; a subset would go stale.
   _write(files: ConfigRegeneration): void {
-    const { path } = this.generatedDir;
-    mkdirSync(this.sheetsConfig.generatedDir, { recursive: true });
+    const { dir, path } = this.generatedDir;
+    mkdirSync(dir, { recursive: true });
     const writes: [string, string][] = [
       [path.tableConfigs, files.tableConfigs],
       [path.tabConfigs, files.tabConfigs],
@@ -150,7 +150,7 @@ export class SyncRunner {
       [path.retiredIdPrefixes, files.retiredIdPrefixes],
       [path.columnConfigs, files.columnConfigs],
       [path.valueConfigs, files.valueConfigs],
-      [path.appConfigs, appConfigsText()],
+      [path.appConfigs, GeneratedDir.appConfigsText],
       [path.idNameMap, files.idNameMap],
     ];
     // alterations.ts is rewritten only when the run returns it, so a run that landed nothing leaves its comments alone.
@@ -203,36 +203,6 @@ function reportTscFailure(): void {
       "that no longer exists after this regeneration. Fix those references " +
       "and re-run `npm run tsc` — do not hand-edit the generated files.",
   );
-}
-
-export function appConfigsText(): string {
-  return `// Without it, a program that reaches this file only by dynamic import rejects the augmentation (TS2664).
-import type {} from "@byronbroughten/sheets-framework";
-
-import { columnConfigs } from "./columnConfigs";
-import { conditionalFormatConfigs } from "./conditionalFormatConfigs";
-import type { IdNameMap } from "./idNameMap";
-import { retiredIdPrefixes } from "./retiredIdPrefixes";
-import { tabConfigs } from "./tabConfigs";
-import { tableConfigs } from "./tableConfigs";
-import { valueConfigs } from "./valueConfigs";
-
-export const appConfigs = {
-  tableConfigs,
-  tabConfigs,
-  conditionalFormatConfigs,
-  retiredIdPrefixes,
-  columnConfigs,
-  valueConfigs,
-};
-
-declare module "@byronbroughten/sheets-framework" {
-  interface Register {
-    configs: typeof appConfigs;
-    idNameMap: IdNameMap;
-  }
-}
-`;
 }
 
 // Non-zero whenever something the run meant to do didn't happen, so an agent can branch on the exit code alone.

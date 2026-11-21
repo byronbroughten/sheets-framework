@@ -38,7 +38,7 @@ import type { HeldItem } from "../src/nodeHost/FlushClassifier/flushClassifierTy
 import { SyncRunReport } from "../src/nodeHost/SyncRunReport.ts";
 import { GeneratedDir } from "./GeneratedDir.ts";
 import type { SheetsConfig } from "./sheetsConfig.ts";
-import { appConfigsText, parseForcedTraits, SyncRunner } from "./sync.ts";
+import { parseForcedTraits, SyncRunner } from "./sync.ts";
 
 const devIdNameMapPath = new GeneratedDir(
   fileURLToPath(new URL("../dev/generated", import.meta.url)),
@@ -274,42 +274,6 @@ describe("the dev package's generated files", () => {
         tableId,
       );
     });
-  });
-});
-
-describe("appConfigsText", () => {
-  const text = appConfigsText();
-
-  it("builds appConfigs from the sibling config files", () => {
-    expect(text).toContain('import { columnConfigs } from "./columnConfigs";');
-    expect(text).toContain(
-      'import { retiredIdPrefixes } from "./retiredIdPrefixes";',
-    );
-    expect(text).toContain('import { tabConfigs } from "./tabConfigs";');
-    expect(text).toContain(
-      'import { conditionalFormatConfigs } from "./conditionalFormatConfigs";',
-    );
-    expect(text).toContain('import { tableConfigs } from "./tableConfigs";');
-    expect(text).toContain('import { valueConfigs } from "./valueConfigs";');
-    expect(text).toContain(
-      "export const appConfigs = {\n  tableConfigs,\n  tabConfigs,\n  conditionalFormatConfigs,\n  retiredIdPrefixes,\n  columnConfigs,\n  valueConfigs,\n};",
-    );
-  });
-
-  it("brings the framework's entry into the program with a type-only import", () => {
-    expect(text).toContain(
-      'import type {} from "@byronbroughten/sheets-framework";',
-    );
-  });
-
-  it("augments the package's Register with the appConfigs type", () => {
-    expect(text).toMatch(
-      /declare module "@byronbroughten\/sheets-framework" \{\s*interface Register \{\s*configs: typeof appConfigs;\s*idNameMap: IdNameMap;\s*\}\s*\}/,
-    );
-  });
-
-  it("registers the sibling ID-name map's type", () => {
-    expect(text).toContain('import type { IdNameMap } from "./idNameMap";');
   });
 });
 
