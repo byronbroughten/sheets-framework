@@ -7,7 +7,7 @@ import { ESLint, type Linter } from "eslint";
 import { defineConfig } from "eslint/config";
 import { afterAll, describe, expect, it } from "vitest";
 
-import { appEslintPreset } from "./eslintPreset.js";
+import { appEslintPreset } from "./eslintPreset.ts";
 
 const appDir = mkdtempSync(join(tmpdir(), "eslint-preset-"));
 const eslint = new ESLint({

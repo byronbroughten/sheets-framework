@@ -5,7 +5,7 @@ import { runInNewContext } from "node:vm";
 import { rollup } from "rollup";
 import { describe, expect, it } from "vitest";
 
-import { rollupPreset } from "./rollupPreset.js";
+import { rollupPreset } from "./rollupPreset.ts";
 
 const frameworkRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 

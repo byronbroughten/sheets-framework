@@ -1,46 +1,44 @@
-// @ts-check
-// JS, not TypeScript: a consumer's rollup config imports this from node_modules, where Node won't strip types.
 import { resolve } from "node:path";
 
 import typescriptModule from "@rollup/plugin-typescript";
+import type {
+  ExportNamedDeclaration,
+  FunctionDeclaration,
+  Identifier,
+  Literal,
+} from "estree";
+import type {
+  LoggingFunction,
+  OutputOptions,
+  Plugin,
+  RollupLog,
+  RollupOptions,
+} from "rollup";
 import { parseAst } from "rollup/parseAst";
 
 // Its one types file reads as CommonJS under nodenext, but Node loads its ESM build, whose default export is the plugin itself.
-const typescript = /** @type {typeof typescriptModule.default} */ (
-  /** @type {unknown} */ (typescriptModule)
-);
+const typescript =
+  typescriptModule as unknown as typeof typescriptModule.default;
 
-/**
- * @param {string} code
- * @returns {string[]}
- */
-export function entryFunctionNames(code) {
+export function entryFunctionNames(code: string): string[] {
   return parseAst(code)
     .body.filter(
-      /** @returns {node is import("estree").FunctionDeclaration} */
-      (node) => node.type === "FunctionDeclaration",
+      (node): node is FunctionDeclaration =>
+        node.type === "FunctionDeclaration",
     )
     .map((node) => node.id.name);
 }
 
-/**
- * @param {string} code
- * @returns {string}
- */
-export function exportEntryFunctions(code) {
+export function exportEntryFunctions(code: string): string {
   const names = entryFunctionNames(code);
   if (names.length === 0) return code;
   return `${code}\nexport { ${names.join(", ")} };\n`;
 }
 
-/**
- * @param {string} code
- * @returns {string}
- */
-export function stripExportStatements(code) {
+export function stripExportStatements(code: string): string {
   const exportStatements = parseAst(code).body.filter(
-    /** @returns {node is import("estree").ExportNamedDeclaration & { start: number, end: number }} */
-    (node) => node.type === "ExportNamedDeclaration" && !node.source,
+    (node): node is ExportNamedDeclaration & { start: number; end: number } =>
+      node.type === "ExportNamedDeclaration" && !node.source,
   );
   for (const { specifiers } of exportStatements) {
     for (const specifier of specifiers) {
@@ -62,16 +60,11 @@ export function stripExportStatements(code) {
 }
 
 // Rollup names its own exports with identifiers, never string literals.
-/**
- * @param {import("estree").Identifier | import("estree").Literal} node
- * @returns {string}
- */
-function nameOf(node) {
-  return /** @type {import("estree").Identifier} */ (node).name;
+function nameOf(node: Identifier | Literal): string {
+  return (node as Identifier).name;
 }
 
-/** @returns {import("rollup").Plugin} */
-function keepEntryFunctionsAsGlobals() {
+function keepEntryFunctionsAsGlobals(): Plugin {
   return {
     name: "keep-entry-functions-as-globals",
     transform(code, id) {
@@ -85,31 +78,28 @@ function keepEntryFunctionsAsGlobals() {
   };
 }
 
-/** @type {import("rollup").WarningHandlerWithDefault} */
-function failOnUnresolvedImport(warning, defaultHandler) {
+function failOnUnresolvedImport(
+  warning: RollupLog,
+  defaultHandler: LoggingFunction,
+): void {
   if (warning.code === "UNRESOLVED_IMPORT") throw new Error(warning.message);
   defaultHandler(warning);
 }
 
-/**
- * @typedef {object} RollupPresetOptions
- * @property {string} input
- * @property {boolean} [treeshake]
- * @property {string} [tsconfig]
- * @property {string} [rootDir]
- */
+interface RollupPresetOptions {
+  input: string;
+  treeshake?: boolean;
+  tsconfig?: string;
+  rootDir?: string;
+}
 
 // The TypeScript plugin treats a file outside rootDir as external, so rootDir widens to cover every package that gets bundled.
-/**
- * @param {RollupPresetOptions} options
- * @returns {import("rollup").RollupOptions & { output: import("rollup").OutputOptions }}
- */
 export function rollupPreset({
   input,
   treeshake = true,
   tsconfig = "./tsconfig.json",
   rootDir = ".",
-}) {
+}: RollupPresetOptions): RollupOptions & { output: OutputOptions } {
   return {
     input,
     output: { file: "dist/bundle.js", format: "es", sourcemap: true },

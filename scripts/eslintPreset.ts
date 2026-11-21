@@ -1,6 +1,5 @@
-// @ts-check
-// JS, not TypeScript: a consumer's eslint config imports this from node_modules, where Node won't strip types.
 import { styleSyntax, variableNaming } from "@byronbroughten/config/eslint";
+import type { Linter } from "eslint";
 
 const requestRecordingMessage =
   "Assert the grid a write leaves through stubSheetsService()'s grid, not requests a hand-rolled batchUpdate records; only GoogleSheetsAPI.test.ts tests the request mapping (docs/code-style.md, Tests).";
@@ -12,17 +11,18 @@ const requestRecordingSyntax = [
 const frameworkPackage = "@byronbroughten/sheets-framework";
 const platformMessage =
   "Google Sheets code lives only in the framework's src/00_Source/GoogleSheets/. Everything else takes a platform-neutral type or a return value that the entry point handles.";
-export const platformImportPattern = {
+interface ImportPattern {
+  regex: string;
+  message: string;
+}
+
+export const platformImportPattern: ImportPattern = {
   regex: "GoogleSheets/|GoogleSheets/(GoogleSheetsAPI|AppsScript)(\\.ts)?$",
   message: platformMessage,
 };
 
 // One copy for the framework and its apps, so the platform boundary can't drift between them.
-/**
- * @param {string[]} platformIgnores
- * @returns {import("eslint").Linter.Config[]}
- */
-export function sheetsSrcBlocks(platformIgnores) {
+export function sheetsSrcBlocks(platformIgnores: string[]): Linter.Config[] {
   return [
     // Tests keep bare T, K and V, like the domain-free utilities each package names itself.
     {
@@ -77,11 +77,10 @@ export function sheetsSrcBlocks(platformIgnores) {
 
 // App code reaches the framework only through its package name, and a relative import never leaves the app's src/.
 const appEntryMessage = `App code imports the framework only from "${frameworkPackage}", and "${frameworkPackage}/testing" only from *.test.ts (#140).`;
-/**
- * @param {number} depth
- * @param {boolean} isTestingAllowed
- */
-function appImportPatterns(depth, isTestingAllowed) {
+function appImportPatterns(
+  depth: number,
+  isTestingAllowed: boolean,
+): ImportPattern[] {
   return [
     {
       regex: `^(\\.\\./){${depth + 1}}`,
@@ -99,24 +98,17 @@ function appImportPatterns(depth, isTestingAllowed) {
   ];
 }
 
-/**
- * @typedef {object} AppEslintPresetOptions
- * @property {string[]} testSetupFiles
- */
+interface AppEslintPresetOptions {
+  testSetupFiles: string[];
+}
 
 // Layered on @byronbroughten/config's eslintPreset, which the app spreads first.
-/**
- * @param {AppEslintPresetOptions} options
- * @returns {import("eslint").Linter.Config[]}
- */
-export function appEslintPreset({ testSetupFiles }) {
+export function appEslintPreset({
+  testSetupFiles,
+}: AppEslintPresetOptions): Linter.Config[] {
   const appImportBlocks = [0, 1, 2, 3, 4, 5].flatMap((depth) => {
     const files = [`src/${"*/".repeat(depth)}*.ts`];
-    /**
-     * @param {boolean} isTestingAllowed
-     * @returns {import("eslint").Linter.RulesRecord}
-     */
-    function restrict(isTestingAllowed) {
+    function restrict(isTestingAllowed: boolean): Linter.RulesRecord {
       return {
         "no-restricted-imports": [
           "error",

@@ -18,7 +18,7 @@ import {
   exportEntryFunctions,
   rollupPreset,
   stripExportStatements,
-} from "./rollupPreset.js";
+} from "./rollupPreset.ts";
 
 describe("entryFunctionNames", () => {
   it("lists top-level function declarations in source order", () => {

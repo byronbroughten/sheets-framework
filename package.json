@@ -8,8 +8,8 @@
     ".": "./src/framework.ts",
     "./testing": "./src/frameworkTesting.ts",
     "./tsconfig.base.json": "./tsconfig.base.json",
-    "./rollup": "./scripts/rollupPreset.js",
-    "./eslint": "./scripts/eslintPreset.js"
+    "./rollup": "./scripts/rollupPreset.ts",
+    "./eslint": "./scripts/eslintPreset.ts"
   },
   "bin": {
     "sheets-framework": "scripts/sheets-framework.ts"
