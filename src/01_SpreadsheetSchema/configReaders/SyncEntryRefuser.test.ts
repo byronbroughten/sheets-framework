@@ -75,6 +75,49 @@ describe("SyncEntryRefuser, a Table or tab that no longer exists", () => {
   });
 });
 
+describe("SyncEntryRefuser, a new tab's before", () => {
+  function newTabOf(title: string, before: string) {
+    return {
+      title,
+      before,
+      tables: [{ name: `${title} Log`, columns: [{ header: "Note" }] }],
+    };
+  }
+
+  it("lets through a before naming a mapped tab or another new tab's title", () => {
+    expect(
+      refusals({
+        alterations: {
+          newTabs: [
+            newTabOf("Ledger", "items"),
+            newTabOf("Payments", "Ledger"),
+          ],
+        },
+      }),
+    ).toEqual([]);
+  });
+
+  it("refuses a before naming neither, by its path and the name", () => {
+    expect(
+      refusals({
+        alterations: {
+          newTabs: [
+            newTabOf("Ledger", "items"),
+            newTabOf("Payments", "ledger"),
+          ],
+        },
+      }),
+    ).toEqual([
+      {
+        kind: "noSuchBeforeTab",
+        table: "Payments",
+        path: "newTabs[1].before",
+        before: "ledger",
+      },
+    ]);
+  });
+});
+
 describe("SyncEntryRefuser, traits not sendable yet", () => {
   it("lets a Table's name and a column's header and emptyValueAllowed through", () => {
     expect(
@@ -297,7 +340,7 @@ describe("SyncEntryRefuser, traits not sendable yet", () => {
             {
               title: "Vendors",
               color: "#ff0000",
-              before: "item",
+              before: "items",
               frozenRows: 1,
               frozenColumns: 1,
               hidden: true,
