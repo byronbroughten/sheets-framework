@@ -670,8 +670,7 @@ export class SyncCoordinator extends SpreadsheetBaseOperator {
       return { ...item, effects: [...item.effects, ...effects] };
     });
   }
-  // Its own send after the regen, planned from the fresh configs; it writes only blank cells, so the entered-data gate holds nothing.
-  // Caught rather than thrown, so the files still reach the sheet's first flush: the configs never trail a landed flush.
+  // Its own send after the regen, planned from the fresh configs; it writes only blank cells, so the entered-data gate holds nothing; its failure is caught, not thrown, so the run still returns the configs after an earlier flush landed.
   private _fillBlankIds(): FillSend {
     const filled = this.rowIdsOperator.fillBlankIds();
     try {
@@ -966,12 +965,6 @@ interface ColumnChangeRuleEffectsProps {
   newColumns: MintedNewColumn[];
 }
 
-// A thrown value need not be an Error, and the report quotes whatever text it has.
-function errorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  return String(error);
-}
-
 function subjectsOf(lines: { subject: SyncSubject }[]): SyncSubject[] {
   return lines.map(({ subject }) => subject);
 }
@@ -1192,4 +1185,10 @@ function referenceEffects(
   );
   if (check === undefined) return [];
   return [OutsideReferences.effect(check)];
+}
+
+// A thrown value need not be an Error, and the report quotes whatever text it has.
+function errorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return String(error);
 }
