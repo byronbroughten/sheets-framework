@@ -63,6 +63,12 @@ export function sheetsSrcBlocks(platformIgnores: string[]): Linter.Config[] {
               "TSQualifiedName[left.type='Identifier'][left.name='GoogleAppsScript']",
             message: platformMessage,
           },
+          {
+            selector:
+              ":matches(ClassDeclaration, ClassExpression)[superClass] > ClassBody > PropertyDefinition[value=null][declare!=true][static!=true]",
+            message:
+              "A subclass field takes an initializer or declare: under Node's type stripping a bare one resets to undefined after super(), while the Apps Script bundle keeps its value.",
+          },
         ],
         "no-restricted-globals": [
           "error",
