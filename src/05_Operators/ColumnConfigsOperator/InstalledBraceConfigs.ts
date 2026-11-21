@@ -16,6 +16,7 @@ export class InstalledBraceConfigs {
     columnConfigs: columnConfigsByName(),
   };
   // The previous configs with each API-access Table's live name and each live column's header: live names under previous keys, the keys an alteration uses, so a person renaming a Table a formula or rule names reads as no change.
+  // Takes its caller's raw and Table IDs: it shares _withTableNames with atColumnFill here (#345).
   liveNamed(
     raw: SpreadsheetRaw,
     apiTableIds: ReadonlySet<string>,
