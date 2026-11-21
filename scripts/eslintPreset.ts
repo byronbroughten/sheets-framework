@@ -17,7 +17,7 @@ interface ImportPattern {
 }
 
 export const platformImportPattern: ImportPattern = {
-  regex: "GoogleSheets/|GoogleSheets/(GoogleSheetsAPI|AppsScript)(\\.ts)?$",
+  regex: "GoogleSheets/",
   message: platformMessage,
 };
 
