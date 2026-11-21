@@ -47,11 +47,11 @@ import { tableConfigsByName } from "../01_SpreadsheetSchema/configReaders/tableC
 import type { SheetRaw } from "../02_SpreadsheetRaw/SheetRaw";
 import type { TableRaw } from "../02_SpreadsheetRaw/TableRaw";
 import { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
-import {
-  ColumnConfigsOperator,
-  type MintedNewColumn,
-  type PlannedColumnMove,
-} from "./ColumnConfigsOperator";
+import { ColumnConfigsOperator } from "./ColumnConfigsOperator";
+import type {
+  MintedNewColumn,
+  PlannedColumnMove,
+} from "./ColumnConfigsOperator/ColumnConfigsLayoutOperator";
 import type { ApiTableColumns } from "./ColumnConfigsOperator/ColumnConfigsOutputOperator";
 import { blockMoveOf } from "./ColumnConfigsOperator/TableColumnOrder";
 import {

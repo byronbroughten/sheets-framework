@@ -1,5 +1,3 @@
-import { Val } from "@byronbroughten/utils/val";
-
 import {
   type BraceConfigs,
   BraceFormula,
@@ -13,28 +11,27 @@ import {
   type IntendedTrait,
   newColumnLines,
   newTableLines,
-  type PlannedColumnGroupMove,
   type PlannedNewColumn,
   type PlannedNewTable,
   type PlanReadings,
   type TraitReadings,
 } from "../01_SpreadsheetSchema/configReaders/SyncPlanner";
-import type { WideColumnGroupMove } from "../01_SpreadsheetSchema/configReaders/SyncPlanner/wideAlterations";
-import {
-  beforeFirstColumnText,
-  type SyncBeforeFirstColumnStop,
-  type SyncCreatedColumn,
-  type SyncCreatedTable,
-  type SyncHeaderTakenStop,
-  type SyncSendLine,
+import type {
+  SyncBeforeFirstColumnStop,
+  SyncCreatedColumn,
+  SyncCreatedTable,
+  SyncHeaderTakenStop,
+  SyncSendLine,
 } from "../01_SpreadsheetSchema/configReaders/syncRunResult";
 import { dimensionIds } from "../01_SpreadsheetSchema/dimensionIds";
-import type {
-  ColumnMoveSpan,
-  NewColumnHeadCells,
-} from "../02_SpreadsheetRaw/ClassTypes/StateRaw";
 import { ColumnConfigsBaseOperator } from "./ClassBases/ColumnConfigsBaseOperator";
 import type { NamedColumnIdentity } from "./ColumnConfigsOperator/ApiColumnIdentities";
+import {
+  ColumnConfigsLayoutOperator,
+  type ColumnMovesProps,
+  type MintedNewColumn,
+  type PlannedColumnMove,
+} from "./ColumnConfigsOperator/ColumnConfigsLayoutOperator";
 import {
   type ApiTableColumns,
   ColumnConfigsOutputOperator,
@@ -45,21 +42,11 @@ import {
   bracedFormula,
   InstalledBraceConfigs,
 } from "./ColumnConfigsOperator/InstalledBraceConfigs";
-import { TableColumnOrder } from "./ColumnConfigsOperator/TableColumnOrder";
 import {
   SpreadsheetBaseOperator,
   type ValueSource,
 } from "./SpreadsheetBaseOperator";
 import type { MintedNewTable } from "./TableConfigsOperator";
-
-interface SentColumnTrait extends NamedColumnIdentity {
-  value: IntendedTrait["value"];
-}
-
-export interface MintedNewColumn extends PlannedNewColumn {
-  tableId: string;
-  columnId: string;
-}
 
 export interface LandedColumns {
   createdColumns: SyncCreatedColumn[];
@@ -69,40 +56,6 @@ export interface LandedColumns {
 export interface LandedTables {
   createdTables: SyncCreatedTable[];
   didntLand: SyncSendLine[];
-}
-
-interface ColumnAt {
-  tableId: string;
-  colIndex: number;
-}
-
-interface ColumnInsert extends ColumnAt {
-  headCells: NewColumnHeadCells;
-}
-
-// Indexed in the layout the run's column deletions and inserts leave; `table` is the codebase name a rule rewrite looks it up by.
-export interface PlannedColumnMove extends ColumnMoveSpan {
-  tableId: string;
-  table: string;
-}
-
-interface ColumnMovesProps {
-  sent: IntendedTrait[];
-  minted: MintedNewColumn[];
-  groupMoves: PlannedColumnGroupMove[];
-}
-
-// Columns to sit together, in order, immediately before `before`, all by previous names.
-interface OrderedColumns extends WideColumnGroupMove {
-  tableId: string;
-  tableKey: string;
-}
-
-interface ColumnOrderProps {
-  tableId: string;
-  tableKey: string;
-  deleted: Set<string>;
-  minted: MintedNewColumn[];
 }
 
 export class ColumnConfigsOperator extends ColumnConfigsBaseOperator {
@@ -119,6 +72,9 @@ export class ColumnConfigsOperator extends ColumnConfigsBaseOperator {
   }
   get outputOperator(): ColumnConfigsOutputOperator {
     return new ColumnConfigsOutputOperator(this.operatorProps);
+  }
+  get layoutOperator(): ColumnConfigsLayoutOperator {
+    return new ColumnConfigsLayoutOperator(this.operatorProps);
   }
   valueSources(): ValueSource[] {
     return this.valueSourcesOperator.valueSources();
@@ -186,9 +142,9 @@ export class ColumnConfigsOperator extends ColumnConfigsBaseOperator {
         };
         const { header, columnType, validationRule } =
           apiColumnIdentities.describedColumn(identity);
-        const next = this._columnOrder(tableId, tableKey).columnIdAfter(
-          columnId,
-        );
+        const next = this.layoutOperator
+          ._columnOrder(tableId, tableKey)
+          .columnIdAfter(columnId);
         reading.columns[columnName] = {
           header,
           emptyValueAllowed: identity.previousEmptyValueAllowed,
@@ -228,7 +184,7 @@ export class ColumnConfigsOperator extends ColumnConfigsBaseOperator {
         if (formula === undefined) return [];
         const cell = this.ss.raw
           .table(tableId)
-          .columnBodyA1(this._colIndexOf(tableId, columnId));
+          .columnBodyA1(this.liveColumnFinder.colIndexOf(tableId, columnId));
         return [{ tableKey, cell, formula }];
       });
   }
@@ -254,10 +210,11 @@ export class ColumnConfigsOperator extends ColumnConfigsBaseOperator {
   }
   // Queues each sent column header, addressed by the previous names the readings use.
   updateHeaders(sent: IntendedTrait[]): this {
-    for (const { tableId, columnId, value } of this._sentColumnTraits(
-      sent,
-      "header",
-    )) {
+    for (const {
+      tableId,
+      columnId,
+      value,
+    } of this.liveColumnFinder.sentColumnTraits(sent, "header")) {
       this.ss.raw.table(tableId).updateHeader(columnId, String(value));
     }
     return this;
@@ -265,10 +222,12 @@ export class ColumnConfigsOperator extends ColumnConfigsBaseOperator {
   // Fills every body row with one formula; a Table copies a uniform column formula into the rows it grows by.
   updateFormulas(sent: IntendedTrait[]): this {
     const configs = this.installedBraceConfigs.atColumnFill(sent);
-    for (const { tableId, columnId, tableKey, value } of this._sentColumnTraits(
-      sent,
-      "formula",
-    )) {
+    for (const {
+      tableId,
+      columnId,
+      tableKey,
+      value,
+    } of this.liveColumnFinder.sentColumnTraits(sent, "formula")) {
       const table = this.ss.raw.table(tableId);
       table.column(table.columnResolver.colIndexOf(columnId)).updateAllFormulas(
         BraceFormula.compileForCell({
@@ -283,10 +242,12 @@ export class ColumnConfigsOperator extends ColumnConfigsBaseOperator {
   // Each with its own rule, so a dropdown's values change in the same send as its type.
   updateColumnTypes(sent: IntendedTrait[]): this {
     const configs = this.installedBraceConfigs.atColumnFill(sent);
-    for (const { tableId, columnId, tableKey, value } of this._sentColumnTraits(
-      sent,
-      "columnType",
-    )) {
+    for (const {
+      tableId,
+      columnId,
+      tableKey,
+      value,
+    } of this.liveColumnFinder.sentColumnTraits(sent, "columnType")) {
       if (typeof value !== "object") {
         throw new Error(
           `The columnType sent to ${tableKey} column ${columnId} isn't a type and rule.`,
@@ -328,12 +289,13 @@ export class ColumnConfigsOperator extends ColumnConfigsBaseOperator {
   beforeFirstColumnStops(
     newColumns: PlannedNewColumn[],
   ): SyncBeforeFirstColumnStop[] {
+    const { liveColumnFinder } = this;
     return newColumns.flatMap(
       ({ table, beforePath, header, before }): SyncBeforeFirstColumnStop[] => {
         if (before === undefined) return [];
-        const placedBefore = this._liveColumnNamed(table, before);
+        const placedBefore = liveColumnFinder.columnNamed(table, before);
         if (placedBefore === undefined) return [];
-        if (!this._isFirstColumn(placedBefore)) return [];
+        if (!liveColumnFinder.isFirstColumn(placedBefore)) return [];
         return [
           {
             kind: "beforeFirstColumn",
@@ -346,32 +308,11 @@ export class ColumnConfigsOperator extends ColumnConfigsBaseOperator {
       },
     );
   }
-  // Minted before any queue, so a dry run's withheld flush and the report carry the same IDs.
   mintColumnIds(newColumns: PlannedNewColumn[]): MintedNewColumn[] {
-    const idPrefixesByTableId = this.tableConfigOperator.idPrefixesByTableId();
-    return newColumns.map((newColumn) => {
-      const tableId = this.tableConfigOperator.tableIdOf(newColumn.table);
-      this._validateInsertable(tableId, newColumn);
-      const idPrefix = idPrefixesByTableId.assertIdPrefix(tableId);
-      return { ...newColumn, tableId, columnId: dimensionIds.col(idPrefix) };
-    });
+    return this.layoutOperator.mintColumnIds(newColumns);
   }
-  // A guard only: beforeFirstColumnStops stops the run first. Before anything is queued, so the throw sends nothing.
-  private _validateInsertable(
-    tableId: string,
-    { table, header, before }: PlannedNewColumn,
-  ): void {
-    if (before === undefined) return;
-    const columnId = this._columnIdOf(table, before);
-    if (!this._isFirstColumn({ tableId, columnId })) return;
-    throw new Error(beforeFirstColumnText({ table, header, before }));
-  }
-  // At the end, a new column shifts none of the plan's other writes, so it joins their flush.
   appendColumns(minted: MintedNewColumn[]): this {
-    for (const { tableId, columnId, header, before } of minted) {
-      if (before !== undefined) continue;
-      this.ss.raw.table(tableId).appendColumn({ columnId, header });
-    }
+    this.layoutOperator.appendColumns(minted);
     return this;
   }
   // Found by minted ID in the fresh configs, which name each column by its live header.
@@ -429,191 +370,19 @@ export class ColumnConfigsOperator extends ColumnConfigsBaseOperator {
     }
     return landed;
   }
-  // Rightmost first on each Table, so a delete's index isn't moved by the ones queued before it.
-  // Then the inserts, each at its index once those deletes land.
   updateDeletionsAndInserts(
     sent: IntendedTrait[],
     minted: MintedNewColumn[],
   ): this {
-    const deletions = this._sentColumnTraits(sent, "deleted").map(
-      ({ tableId, columnId }) => ({
-        tableId,
-        colIndex: this._colIndexOf(tableId, columnId),
-      }),
-    );
-    deletions.sort((first, second) => second.colIndex - first.colIndex);
-    for (const { tableId, colIndex } of deletions) {
-      this.ss.raw.table(tableId).deleteColumn(colIndex);
-    }
-    for (const { tableId, colIndex, headCells } of this._inserts(
-      minted,
-      deletions,
-    )) {
-      this.ss.raw.table(tableId).insertColumn(colIndex, headCells);
-    }
+    this.layoutOperator.updateDeletionsAndInserts(sent, minted);
     return this;
   }
-  // Rightmost first, and two before one column in reverse entry order, so the entries land in the order written.
-  private _inserts(
-    minted: MintedNewColumn[],
-    deletions: ColumnAt[],
-  ): ColumnInsert[] {
-    const inserts = minted.flatMap(
-      ({ tableId, table, columnId, header, before }): ColumnInsert[] => {
-        if (before === undefined) return [];
-        const beforeIndex = this._colIndexOf(
-          tableId,
-          this._columnIdOf(table, before),
-        );
-        const deletedLeft = deletions.filter(
-          (deletion) =>
-            deletion.tableId === tableId && deletion.colIndex < beforeIndex,
-        ).length;
-        return [
-          {
-            tableId,
-            colIndex: beforeIndex - deletedLeft,
-            headCells: { columnId, header },
-          },
-        ];
-      },
-    );
-    return inserts
-      .reverse()
-      .sort((first, second) => second.colIndex - first.colIndex);
+  planColumnMoves(props: ColumnMovesProps): PlannedColumnMove[] {
+    return this.layoutOperator.planColumnMoves(props);
   }
-  // Before any queue, so a throw sends nothing; each move is indexed in the layout the run's deletions, inserts and earlier moves leave.
-  planColumnMoves({
-    sent,
-    minted,
-    groupMoves,
-  }: ColumnMovesProps): PlannedColumnMove[] {
-    const deleted = new Set(
-      this._sentColumnTraits(sent, "deleted").map(({ columnId }) => columnId),
-    );
-    // One order per Table, so each move is indexed in the layout the earlier ones leave.
-    const orders = new Map<string, TableColumnOrder>();
-    const columnGroupMoves = groupMoves.map(({ table, columns, before }) => ({
-      tableId: this.tableConfigOperator.tableIdOf(table),
-      tableKey: table,
-      columns,
-      before,
-    }));
-    return columnGroupMoves.flatMap((ordered) => {
-      const { tableId, tableKey } = ordered;
-      const order =
-        orders.get(tableId) ??
-        this._columnOrderAfterChanges({ tableId, tableKey, deleted, minted });
-      orders.set(tableId, order);
-      return this._plannedMoves(order, ordered);
-    });
-  }
-  // Last column first, each before the one after it in the group, so the group ends in its order before its target.
-  private _plannedMoves(
-    order: TableColumnOrder,
-    { tableId, tableKey, columns, before }: OrderedColumns,
-  ): PlannedColumnMove[] {
-    const sequence = [...columns, before];
-    return columns
-      .map((column, index) => ({
-        column,
-        before: Val.assert(sequence[index + 1], `column after ${column}`),
-      }))
-      .reverse()
-      .flatMap(({ column, before: target }): PlannedColumnMove[] => {
-        const span = order.moveSpan({
-          columnId: this._columnIdOf(tableKey, column),
-          beforeColumnId: this._columnIdOf(tableKey, target),
-          column,
-          before: target,
-        });
-        if (span === undefined) return [];
-        order.move(span);
-        return [{ tableId, table: tableKey, ...span }];
-      });
-  }
-  // Queued once the run's deletions and inserts have flushed, since their indexes are the layout those leave.
   moveColumns(moves: PlannedColumnMove[]): this {
-    for (const { tableId, colIndex, count, beforeColIndex } of moves) {
-      this.ss.raw
-        .table(tableId)
-        .moveColumns({ colIndex, count, beforeColIndex });
-    }
+    this.layoutOperator.moveColumns(moves);
     return this;
-  }
-  // As updateDeletionsAndInserts and appendColumns leave the Table: each insert before its column in entry order, each append at the end.
-  private _columnOrderAfterChanges({
-    tableId,
-    tableKey,
-    deleted,
-    minted,
-  }: ColumnOrderProps): TableColumnOrder {
-    const order = this._columnOrder(tableId, tableKey).without(deleted);
-    for (const {
-      tableId: mintedTableId,
-      table: key,
-      columnId,
-      before,
-    } of minted) {
-      if (mintedTableId !== tableId) continue;
-      let beforeColumnId: string | undefined;
-      if (before !== undefined) beforeColumnId = this._columnIdOf(key, before);
-      order.insert(columnId, beforeColumnId);
-    }
-    return order;
-  }
-  private _columnOrder(tableId: string, tableKey: string): TableColumnOrder {
-    const table = this.ss.raw.table(tableId);
-    return new TableColumnOrder(
-      tableKey,
-      table.fullTableColIndexes.map((colIndex) =>
-        table.columnResolver.columnIdAt(colIndex),
-      ),
-    );
-  }
-  private _colIndexOf(tableId: string, columnId: string): number {
-    return this.ss.raw.table(tableId).columnResolver.colIndexOf(columnId);
-  }
-  private _isFirstColumn({
-    tableId,
-    columnId,
-  }: Pick<NamedColumnIdentity, "tableId" | "columnId">): boolean {
-    return this._colIndexOf(tableId, columnId) === 0;
-  }
-  private _columnIdOf(tableKey: string, columnName: string): string {
-    return Val.assert(
-      this._liveColumnNamed(tableKey, columnName),
-      `live column ${tableKey}.${columnName}`,
-    ).columnId;
-  }
-  // By previous names, as a `before` gives them.
-  private _liveColumnNamed(
-    tableKey: string,
-    columnName: string,
-  ): NamedColumnIdentity | undefined {
-    return this.apiColumnIdentities
-      .namedColumnIdentities()
-      .find(
-        (identity) =>
-          identity.tableKey === tableKey && identity.columnName === columnName,
-      );
-  }
-  private _sentColumnTraits(
-    sent: IntendedTrait[],
-    trait: "header" | "columnType" | "formula" | "deleted",
-  ): SentColumnTrait[] {
-    const identities = this.apiColumnIdentities.namedColumnIdentities();
-    return sent.flatMap((intended) => {
-      if (intended.kind !== "column" || intended.trait !== trait) return [];
-      const { table: tableKey, column, value } = intended;
-      const identity = Val.assert(
-        identities.find(
-          (named) => named.tableKey === tableKey && named.columnName === column,
-        ),
-        `live column ${tableKey}.${column}`,
-      );
-      return [{ ...identity, value }];
-    });
   }
   recordEmptyValueAllowed(configTraits: TraitReadings): this {
     const byIds = this.columnConfigSync.emptyValueAllowedByIds;

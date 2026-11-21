@@ -1,6 +1,7 @@
 import { SpreadsheetNamed } from "../../04_SpreadsheetNamed/SpreadsheetNamed";
 import { ApiColumnIdentities } from "../ColumnConfigsOperator/ApiColumnIdentities";
 import { InstalledBraceConfigs } from "../ColumnConfigsOperator/InstalledBraceConfigs";
+import { LiveColumnFinder } from "../ColumnConfigsOperator/LiveColumnFinder";
 import {
   type ConfigSyncState,
   SpreadsheetBaseOperator,
@@ -25,5 +26,11 @@ export class ColumnConfigsBaseOperator extends SpreadsheetBaseOperator {
   }
   get installedBraceConfigs(): InstalledBraceConfigs {
     return new InstalledBraceConfigs();
+  }
+  get liveColumnFinder(): LiveColumnFinder {
+    return new LiveColumnFinder({
+      ss: this.ss,
+      apiColumnIdentities: this.apiColumnIdentities,
+    });
   }
 }
