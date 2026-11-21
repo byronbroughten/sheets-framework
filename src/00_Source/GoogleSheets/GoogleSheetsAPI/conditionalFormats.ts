@@ -131,6 +131,7 @@ function toModelableRule(
   if (type === undefined || !isModelledConditionType(type)) return null;
   const userEnteredValue = booleanRule.condition?.values?.[0]?.userEnteredValue;
   if (userEnteredValue === undefined) return null;
+  if (numberConditionHoldsText(type, userEnteredValue)) return null;
   const condition = googleBooleanCondition.toCondition(type, userEnteredValue);
   return {
     kind: "boolean",
@@ -138,6 +139,15 @@ function toModelableRule(
     condition,
     format: googleCellFormat.toConditionalFormat(booleanRule.format),
   };
+}
+
+// The GUI saves a NUMBER_* rule holding text that updateConditionalFormatRule refuses; observed: docs/sheets-behaviour.md#reading-conditional-formats.
+function numberConditionHoldsText(
+  type: ModelledConditionType,
+  userEnteredValue: string,
+): boolean {
+  if (!type.startsWith("NUMBER_")) return false;
+  return typeof conditionLiteral.toCellValue(userEnteredValue) !== "number";
 }
 
 function cellFormatHasUnmodelledFields(

@@ -110,26 +110,26 @@ describe("TableNamed conditional format rules", () => {
 
   it("prepends a column rule so it takes precedence over rules already on the sheet", () => {
     const { grid } = stubRunItemWithRules([
-      googleBooleanRule(sheetRange, "NUMBER_EQ", "TRUE", grey),
+      googleBooleanRule(sheetRange, "NUMBER_EQ", "1", grey),
     ]);
     const { ss, sheet } = fetchedRunItem();
 
     sheet.column("id").addConditionalFormatRule({
-      condition: { type: "NUMBER_EQ", value: true },
+      condition: { type: "NUMBER_EQ", value: 1 },
       format: { backgroundColor: pink },
     });
     ss.batchUpdateGSheets();
 
     expect(runItemRules(grid)).toEqual([
-      googleBooleanRule(idColumnRange, "NUMBER_EQ", "TRUE", pink),
-      googleBooleanRule(sheetRange, "NUMBER_EQ", "TRUE", grey),
+      googleBooleanRule(idColumnRange, "NUMBER_EQ", "1", pink),
+      googleBooleanRule(sheetRange, "NUMBER_EQ", "1", grey),
     ]);
 
     sheet.sheet.prepFetchConditionalFormatRules();
     ss.fetchAllPrepped({ skipFetchingProperties: true });
     expect(sheet.sheet.conditionalFormatRules()[0]).toMatchObject({
       kind: "boolean",
-      condition: { type: "NUMBER_EQ", value: true },
+      condition: { type: "NUMBER_EQ", value: 1 },
     });
     expect(sheet.sheet.conditionalFormatRules()[1]).toMatchObject({
       kind: "boolean",
@@ -139,10 +139,10 @@ describe("TableNamed conditional format rules", () => {
 
   it("removes every rule whose range exactly matches a column and leaves a sheet-wide rule alone", () => {
     const { grid } = stubRunItemWithRules([
-      googleBooleanRule(sheetRange, "NUMBER_EQ", "TRUE", grey),
-      googleBooleanRule(idColumnRange, "NUMBER_EQ", "TRUE", pink),
-      googleBooleanRule(selectColumnRange, "NUMBER_EQ", "TRUE", green),
-      googleBooleanRule(idColumnRange, "NUMBER_NOT_EQ", "TRUE", green),
+      googleBooleanRule(sheetRange, "NUMBER_EQ", "1", grey),
+      googleBooleanRule(idColumnRange, "NUMBER_EQ", "1", pink),
+      googleBooleanRule(selectColumnRange, "NUMBER_EQ", "1", green),
+      googleBooleanRule(idColumnRange, "NUMBER_NOT_EQ", "1", green),
     ]);
     const { ss, sheet } = fetchedRunItem();
 
@@ -150,8 +150,8 @@ describe("TableNamed conditional format rules", () => {
     ss.batchUpdateGSheets();
 
     expect(runItemRules(grid)).toEqual([
-      googleBooleanRule(sheetRange, "NUMBER_EQ", "TRUE", grey),
-      googleBooleanRule(selectColumnRange, "NUMBER_EQ", "TRUE", green),
+      googleBooleanRule(sheetRange, "NUMBER_EQ", "1", grey),
+      googleBooleanRule(selectColumnRange, "NUMBER_EQ", "1", green),
     ]);
 
     sheet.sheet.prepFetchConditionalFormatRules();
@@ -169,8 +169,8 @@ describe("TableNamed conditional format rules", () => {
 
   it("removes a single rule by exact content so a re-stamp can replace it", () => {
     const { grid } = stubRunItemWithRules([
-      googleBooleanRule(idColumnRange, "NUMBER_EQ", "TRUE", pink),
-      googleBooleanRule(idColumnRange, "NUMBER_NOT_EQ", "TRUE", green),
+      googleBooleanRule(idColumnRange, "NUMBER_EQ", "1", pink),
+      googleBooleanRule(idColumnRange, "NUMBER_NOT_EQ", "1", green),
     ]);
     const { ss, sheet } = fetchedRunItem();
     const toRemove = Val.assert(
@@ -182,18 +182,18 @@ describe("TableNamed conditional format rules", () => {
     ss.batchUpdateGSheets();
 
     expect(runItemRules(grid)).toEqual([
-      googleBooleanRule(idColumnRange, "NUMBER_NOT_EQ", "TRUE", green),
+      googleBooleanRule(idColumnRange, "NUMBER_NOT_EQ", "1", green),
     ]);
   });
 
   it("sends no batch update when adding a rule identical to one already present", () => {
     const { batchUpdateCount } = stubRunItemWithRules([
-      googleBooleanRule(idColumnRange, "NUMBER_EQ", "TRUE", pink),
+      googleBooleanRule(idColumnRange, "NUMBER_EQ", "1", pink),
     ]);
     const { ss, sheet } = fetchedRunItem();
 
     sheet.column("id").addConditionalFormatRule({
-      condition: { type: "NUMBER_EQ", value: true },
+      condition: { type: "NUMBER_EQ", value: 1 },
       format: { backgroundColor: pink },
     });
     ss.batchUpdateGSheets();
@@ -204,7 +204,7 @@ describe("TableNamed conditional format rules", () => {
   it("removes several column rules at once and keeps the rule between them", () => {
     const { grid } = stubRunItemWithRules([
       googleBooleanRule(idColumnRange, "NUMBER_EQ", "1", pink),
-      googleBooleanRule(sheetRange, "NUMBER_EQ", "TRUE", grey),
+      googleBooleanRule(sheetRange, "NUMBER_EQ", "1", grey),
       googleBooleanRule(idColumnRange, "NUMBER_EQ", "2", green),
       googleBooleanRule(idColumnRange, "NUMBER_EQ", "3", grey),
     ]);
@@ -214,7 +214,7 @@ describe("TableNamed conditional format rules", () => {
     ss.batchUpdateGSheets();
 
     expect(runItemRules(grid)).toEqual([
-      googleBooleanRule(sheetRange, "NUMBER_EQ", "TRUE", grey),
+      googleBooleanRule(sheetRange, "NUMBER_EQ", "1", grey),
     ]);
   });
 
@@ -223,14 +223,14 @@ describe("TableNamed conditional format rules", () => {
     const { ss, sheet } = fetchedRunItem();
 
     sheet.column("id").addConditionalFormatRule({
-      condition: { type: "NUMBER_EQ", value: true },
+      condition: { type: "NUMBER_EQ", value: 1 },
       format: { backgroundColor: pink },
     });
     ss.batchUpdateGSheets();
 
     expect(() =>
       sheet.column("id").addConditionalFormatRule({
-        condition: { type: "NUMBER_NOT_EQ", value: true },
+        condition: { type: "NUMBER_NOT_EQ", value: 1 },
         format: { backgroundColor: green },
       }),
     ).toThrowError(/Conditional format indexes are stale/);
@@ -238,13 +238,13 @@ describe("TableNamed conditional format rules", () => {
     sheet.sheet.prepFetchConditionalFormatRules();
     ss.fetchAllPrepped({ skipFetchingProperties: true });
     sheet.column("id").addConditionalFormatRule({
-      condition: { type: "NUMBER_NOT_EQ", value: true },
+      condition: { type: "NUMBER_NOT_EQ", value: 1 },
       format: { backgroundColor: green },
     });
     ss.batchUpdateGSheets();
     expect(runItemRules(grid)).toEqual([
-      googleBooleanRule(idColumnRange, "NUMBER_NOT_EQ", "TRUE", green),
-      googleBooleanRule(idColumnRange, "NUMBER_EQ", "TRUE", pink),
+      googleBooleanRule(idColumnRange, "NUMBER_NOT_EQ", "1", green),
+      googleBooleanRule(idColumnRange, "NUMBER_EQ", "1", pink),
     ]);
   });
 
@@ -262,7 +262,7 @@ describe("TableNamed conditional format rules", () => {
     const { ss, sheet } = fetchedRunItem();
 
     sheet.addConditionalFormatRule({
-      condition: { type: "NUMBER_EQ", value: true },
+      condition: { type: "NUMBER_EQ", value: 1 },
       format: { backgroundColor: grey, foregroundColor: grey },
     });
     sheet

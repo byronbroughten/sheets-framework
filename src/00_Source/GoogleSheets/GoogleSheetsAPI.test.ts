@@ -1122,7 +1122,7 @@ describe("GoogleSheetsAPI payload mapping", () => {
               booleanRule: {
                 condition: {
                   type: "NUMBER_EQ",
-                  values: [{ userEnteredValue: "TRUE" }],
+                  values: [{ userEnteredValue: "1" }],
                 },
                 format: { backgroundColor: { red: 0, green: 1, blue: 0 } },
               },
@@ -1189,7 +1189,7 @@ describe("GoogleSheetsAPI payload mapping", () => {
           endColumnIndex: 4,
         },
       ],
-      condition: { type: "NUMBER_EQ", value: true },
+      condition: { type: "NUMBER_EQ", value: 1 },
       format: { backgroundColor: { red: 0, green: 1, blue: 0 } },
     });
     expect(rules?.[2]).toEqual({

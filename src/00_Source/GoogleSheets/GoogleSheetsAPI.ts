@@ -14,6 +14,7 @@ import {
   type SheetPropertiesFetchOptions,
   type SpreadsheetSnapshot,
 } from "../RawSource/RawSource";
+import { RuleFlushRefusal } from "../RawSource/RuleFlushRefusal";
 import { AppsScript } from "./AppsScript";
 import { googleConditionalFormatRule } from "./GoogleSheetsAPI/conditionalFormats";
 import { googleGrid } from "./GoogleSheetsAPI/gridSnapshots";
@@ -76,6 +77,9 @@ interface FieldsArg {
 
 const partOfTableRefusalText =
   "You cannot insert or delete cells over part of a table.";
+
+const ruleRequestRefusal =
+  /requests\[\d+\]\.(add|update)ConditionalFormatRule:/;
 
 const timeZoneMask = "properties(timeZone)";
 const sheetPropertiesMask =
@@ -292,7 +296,11 @@ export class GoogleSheetsAPI implements RawSource {
       );
       googleProtectedRange.validateAddReplies(response, requests);
     } catch (error) {
-      throw partialTableRefusal(error, requestOperations) ?? error;
+      throw (
+        partialTableRefusal(error, requestOperations) ??
+        ruleFlushRefusal(error) ??
+        error
+      );
     }
   }
   // The Sheets service has no toast, so this needs the Apps Script host; only an endpoint run toasts.
@@ -331,4 +339,11 @@ function partialTableRefusal(
   const operation = requestOperations[Number(requestIndex)];
   if (operation === undefined) return undefined;
   return new PartialTableRefusal(error.message, operation);
+}
+
+// Observed: docs/sheets-behaviour.md#reading-conditional-formats.
+function ruleFlushRefusal(error: unknown): RuleFlushRefusal | undefined {
+  if (!(error instanceof Error)) return undefined;
+  if (!ruleRequestRefusal.test(error.message)) return undefined;
+  return new RuleFlushRefusal(error.message);
 }

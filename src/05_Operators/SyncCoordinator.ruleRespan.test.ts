@@ -202,6 +202,83 @@ describe("SyncCoordinator.run conditional-format rule re-span", () => {
     expect(result.plan).toEqual([]);
   });
 
+  function numberEqualsRule(range: GridRange, userEnteredValue: string) {
+    return {
+      ranges: [range],
+      booleanRule: {
+        condition: { type: "NUMBER_EQ", values: [{ userEnteredValue }] },
+        format: { backgroundColor: { red: 1, green: 0, blue: 0 } },
+      },
+    } satisfies SheetsRule;
+  }
+
+  it.each(["FALSE", "Yes"])(
+    "leaves a short NUMBER_EQ rule holding %s as it is, since Google refuses to rewrite it",
+    (userEnteredValue) => {
+      const textRule = numberEqualsRule(
+        bodyRange(1, shortEndRowIndex),
+        userEnteredValue,
+      );
+      const service = seedWith([textRule]);
+
+      const { result } = runWith();
+
+      expect(rulesLeft(service)).toEqual([textRule]);
+      expect(service.batchUpdateCount()).toBe(0);
+      expect(result.plan).toEqual([]);
+    },
+  );
+
+  it("still re-spans a short NUMBER_EQ rule holding 0", () => {
+    const service = seedWith([
+      numberEqualsRule(bodyRange(1, shortEndRowIndex), "0"),
+    ]);
+
+    const { result } = runWith();
+
+    expect(rulesLeft(service)).toEqual([
+      numberEqualsRule(bodyRange(1, endRowIndex), "0"),
+    ]);
+    expect(result).toMatchObject({ outcome: { kind: "sent" }, didntLand: [] });
+  });
+
+  it("stops partway when Google refuses the rule flush, the checkbox's flush before it landed, and still returns the files", () => {
+    const googleRefusal =
+      "Invalid requests[0].updateConditionalFormatRule: Invalid ConditionValue.userEnteredValue: FALSE for ConditionType: NUMBER_EQ";
+    let batchCount = 0;
+    const service = stubSheetsService({
+      sheets: [
+        {
+          ...itemSheet({
+            bodyRows: [
+              { id: "r:itm:one" },
+              { id: "r:itm:two" },
+              { id: "r:itm:three" },
+            ],
+            actionRowCells: {},
+          }),
+          conditionalFormats: [duplicateRuleEndingAt(shortEndRowIndex)],
+        },
+      ],
+      beforeEachBatchUpdate() {
+        batchCount++;
+        if (batchCount === 2) throw new Error(googleRefusal);
+      },
+    });
+
+    const { result, files } = runWith();
+
+    expect(files).toBeDefined();
+    expect(rulesLeft(service)).toEqual([
+      duplicateRuleEndingAt(shortEndRowIndex),
+    ]);
+    expect(result.outcome).toEqual({
+      kind: "stoppedPartway",
+      landedFlushes: 1,
+      googleRefusal,
+    });
+  });
+
   it("leaves a short rule a replace names to the replace", () => {
     const service = seedWith([duplicateRuleEndingAt(shortEndRowIndex)]);
 
