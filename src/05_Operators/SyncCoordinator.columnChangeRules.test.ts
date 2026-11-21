@@ -92,7 +92,7 @@ describe("SyncCoordinator.run rules after a column insert, append, delete or mov
     );
   }
 
-  // Left of the count column, reading it: the fake throws on its delete unless the rule went first.
+  // Left of the count column, reading it: unless the rule goes first, the delete leaves it naming the column that moves in.
   const countReadingRule = formulaRule(
     rangeOver(noteColIndex, 1),
     BraceFormula.compileForRule({
@@ -246,18 +246,25 @@ describe("SyncCoordinator.run rules after a column insert, append, delete or mov
   });
 
   describe("after a move", () => {
-    // On a column no move here cuts or pastes into once the band's insert lands: the fake replays only a cut under a rule naming neither.
+    // On a column no move here cuts or pastes into once the band's insert lands.
     const idFormula = `=\${@id}=""`;
 
-    function idReadingRule(names: string[]): SheetsRule {
+    function wholeTableRuleReading(
+      formula: string,
+      names: string[],
+    ): SheetsRule {
       return formulaRule(
         rangeOver(0, names.length),
         BraceFormula.compileForRule({
           tableKey: "item",
-          formula: idFormula,
+          formula,
           layout: layoutOf(names),
         }),
       );
+    }
+
+    function idReadingRule(names: string[]): SheetsRule {
+      return wholeTableRuleReading(idFormula, names);
     }
 
     function namesMoved(
@@ -313,6 +320,32 @@ describe("SyncCoordinator.run rules after a column insert, append, delete or mov
           ],
         },
       ]);
+    });
+
+    // The batch leaves it naming the cut column's old letter, so only the rewrite brings it to the column's new place.
+    it("rewrites a whole-Table rule reading the moved column to its new place", () => {
+      const service = seedWith([
+        wholeTableRuleReading(countFormula, columnNames),
+        handDrawnRule,
+      ]);
+
+      const { result } = runItem({
+        isSending: true,
+        alterations: moveAlterations,
+      });
+
+      expect(rulesLeft(service)).toEqual([
+        wholeTableRuleReading(
+          countFormula,
+          namesMoved(columnNames, countBeforeName),
+        ),
+        handDrawnRule,
+      ]);
+      expect(result).toMatchObject({
+        outcome: { kind: "sent" },
+        stops: [],
+        didntLand: [],
+      });
     });
 
     it("rewrites after a move that follows a delete, on the layout both leave", () => {

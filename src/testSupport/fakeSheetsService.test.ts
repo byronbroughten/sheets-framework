@@ -1358,7 +1358,7 @@ function measuredBandColumns(
 }
 
 const cutUnderRuleMessage =
-  "The fake Sheets service does not replay a cutPaste under a conditional-format rule, other than a sideways cut inside a whole-Table rule naming no cut or pasted column.";
+  "The fake Sheets service does not replay a cutPaste under a conditional-format rule, other than a sideways cut inside a whole-Table rule naming no cut or pasted column, or naming one on a one-column cut to the right, the pasted column only $-anchored.";
 
 function measuredRules(
   grid: FakeGridView,
@@ -1518,17 +1518,18 @@ describe("stubSheetsService replays rules under Table-bounded column inserts and
 
 describe("stubSheetsService replays rules under a Table-bounded column move as measured", () => {
   // Scratch217A: the first column moved to before the last, by an insert, a cut into the gap and a delete.
+  const cutFirstColumnOntoLast: Request = {
+    cutPaste: {
+      source: measuredBandColumns(0),
+      destination: { sheetId: measuredGid, rowIndex: 0, columnIndex: 4 },
+      pasteType: "PASTE_NORMAL",
+    },
+  };
   const moveFirstColumnBeforeLast: Request[] = [
     {
       insertRange: { range: measuredBandColumns(4), shiftDimension: "COLUMNS" },
     },
-    {
-      cutPaste: {
-        source: measuredBandColumns(0),
-        destination: { sheetId: measuredGid, rowIndex: 0, columnIndex: 4 },
-        pasteType: "PASTE_NORMAL",
-      },
-    },
+    cutFirstColumnOntoLast,
     {
       deleteRange: { range: measuredBandColumns(0), shiftDimension: "COLUMNS" },
     },
@@ -1547,10 +1548,15 @@ describe("stubSheetsService replays rules under a Table-bounded column move as m
     ]);
   });
 
-  it.each([['=$A5="x"'], ['=A5="x"'], ['=$E5="x"']])(
-    "throws on a whole-row rule %s naming a cut or pasted column",
-    (formula) => {
-      stubSheetsService({
+  // Scratch353A to C (sheets-framework#353).
+  it.each([
+    ['=$A5="x"', '=$A5="x"'],
+    ['=A5="x"', '=A5="x"'],
+    ['=$E5="x"', '=$F5="x"'],
+  ])(
+    "leaves a whole-row rule %s, naming a cut or pasted column, one column past the Table as %s",
+    (formula, formulaAfter) => {
+      const { grid } = stubSheetsService({
         sheets: [
           {
             ...measuredRuleSheet(),
@@ -1559,11 +1565,55 @@ describe("stubSheetsService replays rules under a Table-bounded column move as m
         ],
       });
 
-      expect(() => send(...moveFirstColumnBeforeLast)).toThrowError(
-        cutUnderRuleMessage,
-      );
+      send(...moveFirstColumnBeforeLast);
+
+      expect(measuredRules(grid)).toEqual([formulaRule("A5:F7", formulaAfter)]);
     },
   );
+
+  it("throws on a whole-row rule naming a column a cut moves left", () => {
+    stubSheetsService({
+      sheets: [
+        {
+          ...measuredRuleSheet(),
+          conditionalFormats: [formulaRule("A5:E7", '=$E5="x"')],
+        },
+      ],
+    });
+
+    expect(() =>
+      send(
+        {
+          insertRange: {
+            range: measuredBandColumns(1),
+            shiftDimension: "COLUMNS",
+          },
+        },
+        {
+          cutPaste: {
+            source: measuredBandColumns(4),
+            destination: { sheetId: measuredGid, rowIndex: 0, columnIndex: 1 },
+            pasteType: "PASTE_NORMAL",
+          },
+        },
+      ),
+    ).toThrowError(cutUnderRuleMessage);
+  });
+
+  it("throws on a relative reference into the paste", () => {
+    stubSheetsService({
+      sheets: [
+        {
+          ...measuredRuleSheet(),
+          conditionalFormats: [formulaRule("A5:E7", '=E5="x"')],
+        },
+      ],
+    });
+
+    expect(() => send(cutFirstColumnOntoLast)).toThrowError(
+      cutUnderRuleMessage,
+    );
+  });
 
   it("leaves all four rules matching the columns' new places once the whole-row rule is updated at its index (Scratch217K)", () => {
     const { grid } = stubSheetsService({ sheets: [measuredRuleSheet()] });
@@ -1583,6 +1633,108 @@ describe("stubSheetsService replays rules under a Table-bounded column move as m
       formulaRule("E5:E7", "=C5>2"),
     ]);
   });
+});
+
+// Mirrors the live probes (sheets-framework#353, Scratch353F and G): Table at C4:F7, rules beside the band and below it.
+describe("stubSheetsService replays rules outside a Table-bounded column change as measured", () => {
+  function outsideRuleSheet(
+    conditionalFormats: GoogleAppsScript.Sheets.Schema.ConditionalFormatRule[],
+  ): FakeSheetProperties {
+    return {
+      ...measuredRuleSheet(),
+      tables: [
+        {
+          tableId: "o",
+          name: "O",
+          startRowIndex: 3,
+          startColumnIndex: 2,
+          endRowIndex: 7,
+          endColumnIndex: 6,
+          headRows: { 0: ["One", "Two", "Three", "Four"] },
+        },
+      ],
+      conditionalFormats,
+    };
+  }
+
+  function bandChangeAtD(kind: "insertRange" | "deleteRange"): Request {
+    return {
+      [kind]: { range: measuredBandColumns(3), shiftDimension: "COLUMNS" },
+    };
+  }
+
+  it("keeps each rule's range and moves its references into the band with their columns, on an insert", () => {
+    const { grid } = stubSheetsService({
+      sheets: [
+        outsideRuleSheet([
+          formulaRule("A5:A7", '=$D5="x"'),
+          formulaRule("A5:A7", '=D5="x"'),
+          formulaRule("A10:A12", '=$D$5="x"'),
+          formulaRule("A10:A12", '=E5="x"'),
+        ]),
+      ],
+    });
+
+    send(bandChangeAtD("insertRange"));
+
+    expect(measuredRules(grid)).toEqual([
+      formulaRule("A5:A7", '=$E5="x"'),
+      formulaRule("A5:A7", '=E5="x"'),
+      formulaRule("A10:A12", '=$E$5="x"'),
+      formulaRule("A10:A12", '=F5="x"'),
+    ]);
+  });
+
+  it("keeps each rule's range, moves its references right of a delete left, and leaves one to the deleted column as written", () => {
+    const { grid } = stubSheetsService({
+      sheets: [
+        outsideRuleSheet([
+          formulaRule("A5:A7", '=$E5="x"'),
+          formulaRule("A5:A7", '=$D5="x"'),
+          formulaRule("A10:A12", '=$E$5="x"'),
+          formulaRule("A10:A12", '=E5="x"'),
+        ]),
+      ],
+    });
+
+    send(bandChangeAtD("deleteRange"));
+
+    expect(measuredRules(grid)).toEqual([
+      formulaRule("A5:A7", '=$D5="x"'),
+      formulaRule("A5:A7", '=$D5="x"'),
+      formulaRule("A10:A12", '=$D$5="x"'),
+      formulaRule("A10:A12", '=D5="x"'),
+    ]);
+  });
+
+  it("leaves a reference outside the band's rows, or left of the change, as written", () => {
+    const rules = [
+      formulaRule("A10:A12", '=$E$20="x"'),
+      formulaRule("A5:A7", '=$B5="x"'),
+    ];
+    const { grid } = stubSheetsService({ sheets: [outsideRuleSheet(rules)] });
+
+    send(bandChangeAtD("insertRange"));
+
+    expect(measuredRules(grid)).toEqual(rules);
+  });
+
+  it.each([
+    ["H10:H12", '=$E$5="x"', "$E$5"],
+    ["A5:B7", '=D5="x"', "D5"],
+    ["A7:A9", '=$E7="x"', "$E7"],
+  ])(
+    "throws on a rule over %s, reaching the band with %s, a shape not measured",
+    (a1, formula, reference) => {
+      stubSheetsService({
+        sheets: [outsideRuleSheet([formulaRule(a1, formula)])],
+      });
+
+      expect(() => send(bandChangeAtD("insertRange"))).toThrowError(
+        `The fake Sheets service does not replay a column change under the reference ${reference} in a conditional-format rule over ${a1}.`,
+      );
+    },
+  );
 });
 
 const edgeGid = 337;

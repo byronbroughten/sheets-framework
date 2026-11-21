@@ -13,16 +13,19 @@ export interface BandShift {
   shift: DimensionShift;
 }
 
-export interface BandColumnRuleShift extends BandShift {
+export interface BandRuleShift extends BandShift {
   rule: ConditionalFormatRule;
+}
+
+export interface BandColumnRuleShift extends BandRuleShift {
   // The rule's one range, held whole across the band's rows.
   range: GridRange;
   // The columns of each Table the band holds, before the change.
   tableColumnSpans: [number, number][];
 }
 
-// Left of the change, moved with its columns, or across the change point over a whole Table.
-type RulePlacement = "before" | "moved" | "spanning";
+// Beside the band left of the change, moved with its columns, across the change point over a whole Table, or out of the band.
+type RulePlacement = "before" | "moved" | "spanning" | "outside";
 
 interface PlacedRule extends BandColumnRuleShift {
   placement: RulePlacement;
@@ -31,7 +34,6 @@ interface PlacedRule extends BandColumnRuleShift {
 export const ruleOwner = "conditional-format rule";
 
 const cellReferences = new RegExp(a1Notation.cellReference, "g");
-const stringLiteral = /("(?:[^"]|"")*")/;
 // A whole-column (D:D) or whole-row (5:5) range, or a reference qualified by a sheet name.
 const unmeasuredReference =
   /(?<![A-Za-z0-9_])\$?[A-Z]{1,3}:\$?[A-Z]{1,3}(?![0-9A-Za-z_(])|(?<![A-Za-z0-9_])\$?\d+:\$?\d+|!/;
@@ -77,6 +79,19 @@ export const bandColumnRules = {
         ],
       },
     ];
+  },
+  // Measured live (sheets-framework#353, Scratch353F and G): a rule the band doesn't hold keeps its range.
+  shiftOutside(ruleShift: BandRuleShift): ConditionalFormatRule {
+    const ranges = ruleShift.rule.ranges ?? [];
+    // Several ranges give a relative reference no one origin, so one reaching the band throws, as over no bounds.
+    let range: GridRange = {};
+    if (ranges.length === 1) range = ranges[0] ?? {};
+    return withFormulasShifted({
+      ...ruleShift,
+      range,
+      tableColumnSpans: [],
+      placement: "outside",
+    });
   },
 };
 
@@ -126,21 +141,17 @@ function withFormulasShifted(placed: PlacedRule): ConditionalFormatRule {
 
 // Measured: an $-anchored column stays as written; a relative one moves with its column unless deleted.
 function shiftedFormula(formula: string, placed: PlacedRule): string {
-  return formula
-    .split(stringLiteral)
-    .map((part, index) => {
-      if (index % 2 === 1) return part;
-      const unmeasured = unmeasuredReference.exec(part);
-      if (unmeasured !== null) {
-        throw unreplayedReference(unmeasured[0], placed);
-      }
-      return part.replace(
-        cellReferences,
-        (reference, anchor: string, letters: string, row: string) =>
-          shiftedReference({ reference, anchor, letters, row }, placed),
-      );
-    })
-    .join("");
+  return a1Notation.mapOutsideLiterals(formula, (part) => {
+    const unmeasured = unmeasuredReference.exec(part);
+    if (unmeasured !== null) {
+      throw unreplayedReference(unmeasured[0], placed);
+    }
+    return part.replace(
+      cellReferences,
+      (reference, anchor: string, letters: string, row: string) =>
+        shiftedReference({ reference, anchor, letters, row }, placed),
+    );
+  });
 }
 
 interface CellReference {
@@ -151,20 +162,72 @@ interface CellReference {
 }
 
 function shiftedReference(
-  { reference, anchor, letters, row }: CellReference,
+  cellReference: CellReference,
   placed: PlacedRule,
 ): string {
+  const { reference, anchor, letters, row } = cellReference;
   const { change, shift, placement } = placed;
+  if (placement === "before" || placement === "outside") {
+    return outsideReference(cellReference, placed);
+  }
   const colIndex = a1Notation.columnIndex(letters);
   if (colIndex < change.startIndex) return reference;
   const isAnchoredInSpanning = anchor === "$" && placement === "spanning";
   if (isAnchoredInSpanning) return reference;
+  const movedIndex = shift.index(colIndex);
+  // Measured (Scratch353C): a relative reference to a column deleted under a spanning rule stays as written too.
+  const isDeletedInSpanning =
+    placement === "spanning" && movedIndex === undefined;
+  if (isDeletedInSpanning) return reference;
   if (anchor === "$" || placement !== "moved") {
     throw unreplayedReference(reference, placed);
   }
-  const movedIndex = shift.index(colIndex);
   if (movedIndex === undefined) return reference;
   return `${a1Notation.columnLetters(movedIndex)}${row}`;
+}
+
+// Measured (Scratch353F and G): a reference into the band follows its column, whatever its anchors, unless deleted.
+function outsideReference(
+  { reference, anchor, letters, row }: CellReference,
+  placed: PlacedRule,
+): string {
+  const { change, shift, range } = placed;
+  const colIndex = a1Notation.columnIndex(letters);
+  const [firstCol, endCol] = referencedSpan(colIndex, anchor === "$", [
+    range.startColumnIndex,
+    range.endColumnIndex,
+  ]);
+  const rowIndex = Number(row.replace("$", "")) - 1;
+  const [firstRow, endRow] = referencedSpan(rowIndex, row.startsWith("$"), [
+    range.startRowIndex,
+    range.endRowIndex,
+  ]);
+  const isLeftOfChange = endCol <= change.startIndex;
+  const isOutsideBandRows =
+    endRow <= change.crossStartIndex || change.crossEndIndex <= firstRow;
+  if (isLeftOfChange || isOutsideBandRows) return reference;
+  const isMeasuredShape =
+    endCol - firstCol === 1 &&
+    change.crossStartIndex <= firstRow &&
+    endRow <= change.crossEndIndex &&
+    (range.endColumnIndex ?? Number.MAX_SAFE_INTEGER) <= change.startIndex;
+  if (!isMeasuredShape) throw unreplayedReference(reference, placed);
+  const movedIndex = shift.index(colIndex);
+  if (movedIndex === undefined) return reference;
+  return `${anchor}${a1Notation.columnLetters(movedIndex)}${row}`;
+}
+
+// The indexes a reference reads across the rule's range: one if anchored, else one per row or column.
+function referencedSpan(
+  index: number,
+  isAnchored: boolean,
+  [start, end]: [number | undefined, number | undefined],
+): [number, number] {
+  if (isAnchored) return [index, index + 1];
+  if (start === undefined || end === undefined) {
+    return [index, Number.MAX_SAFE_INTEGER];
+  }
+  return [index, index + end - start];
 }
 
 function unreplayedReference(reference: string, { range }: PlacedRule): Error {

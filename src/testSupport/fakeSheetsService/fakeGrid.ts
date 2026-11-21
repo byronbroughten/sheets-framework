@@ -484,7 +484,7 @@ function shiftBandRanges(sheet: FakeSheetState, bandShift: BandShift): void {
   });
 }
 
-// Column changes rewrite rule formulas too, so they replay only the shapes sheets-framework#217 measured.
+// Column changes rewrite rule formulas too, so they replay only the shapes sheets-framework#217 and #353 measured.
 function shiftBandColumnRules(
   sheet: FakeSheetState,
   bandShift: BandShift,
@@ -497,7 +497,7 @@ function shiftBandColumnRules(
     const isHeld = ranges
       .map((range) => isBandHeld(range, bandShift.change, ruleOwner))
       .some(Boolean);
-    if (!isHeld) return [rule];
+    if (!isHeld) return [bandColumnRules.shiftOutside({ ...bandShift, rule })];
     const [range] = ranges;
     if (range === undefined || ranges.length > 1) {
       throw unreplayed(
