@@ -378,7 +378,7 @@ export type SyncPlanEffect =
       kind: "rulesRewritten";
       table: string;
       count: number;
-      after: "insert" | "move" | "delete";
+      after: "insert" | "append" | "move" | "delete";
     }
   | { kind: "ruleRespanned"; handle: string; fromRow: number; toRow: number }
   | { kind: "rulesRemoved"; handles: string[] }

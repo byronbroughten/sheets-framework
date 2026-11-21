@@ -31,7 +31,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("SyncCoordinator.run rules after a column insert, delete or move", () => {
+describe("SyncCoordinator.run rules after a column insert, append, delete or move", () => {
   const sheet = itemSheet({
     bodyRows: [{ id: "r:itm:one" }, { id: "r:itm:two" }, { id: "r:itm:three" }],
   });
@@ -191,6 +191,40 @@ describe("SyncCoordinator.run rules after a column insert, delete or move", () =
       ),
     ).toEqual([
       { kind: "rulesRewritten", table: "item", count: 1, after: "insert" },
+    ]);
+  });
+
+  it("after an append, widens a whole-Table rule over the new column and leaves a column-list rule", () => {
+    const service = seedWith([
+      wholeTableRule(columnNames),
+      countOnlyRule,
+      handDrawnRule,
+    ]);
+
+    const { result } = runItem({
+      isSending: true,
+      alterations: {
+        tables: { item: { newColumns: [{ columns: [{ header: "Ref" }] }] } },
+      },
+    });
+
+    expect(rulesLeft(service)).toEqual([
+      wholeTableRule([...columnNames, "ref"]),
+      countOnlyRule,
+      handDrawnRule,
+    ]);
+    expect(result).toMatchObject({
+      outcome: { kind: "sent" },
+      stops: [],
+      didntLand: [],
+    });
+    expect(result.checks).toEqual([]);
+    expect(
+      result.plan.flatMap(({ effects }) =>
+        effects.filter(({ kind }) => kind === "rulesRewritten"),
+      ),
+    ).toEqual([
+      { kind: "rulesRewritten", table: "item", count: 1, after: "append" },
     ]);
   });
 
