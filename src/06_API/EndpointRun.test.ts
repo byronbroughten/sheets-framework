@@ -5,7 +5,10 @@ import { getTableTraitByName } from "../01_SpreadsheetSchema/configReaders/table
 import { SpreadsheetBaseNamed } from "../04_SpreadsheetNamed/ClassBases/SpreadsheetBaseNamed";
 import type { SpreadsheetNamed } from "../04_SpreadsheetNamed/SpreadsheetNamed";
 import { TableNamed } from "../04_SpreadsheetNamed/TableNamed";
-import { stubLogger } from "../testSupport/fakeAppsScriptGlobals";
+import {
+  stubLogger,
+  stubScriptAndSpreadsheetApp,
+} from "../testSupport/fakeAppsScriptGlobals";
 import {
   buildGridRows,
   type FakeCell,
@@ -721,6 +724,24 @@ describe("EndpointRun.run, a run that fails", () => {
     runEndpoint(selectiveEndpoint(failingAction));
 
     expect(columnCells(grid, idColIndex)[0]).toBe("r:rit:row4");
+  });
+
+  it("toasts no error when the endpoint has feedback columns", () => {
+    stubRunItemSheet();
+    const { toasts } = stubScriptAndSpreadsheetApp();
+
+    runEndpoint(selectiveEndpoint(failingAction));
+
+    expect(toasts).toEqual([]);
+  });
+
+  it("toasts the error's message when the endpoint has no feedback columns", () => {
+    stubRunItemSheet();
+    const { toasts } = stubScriptAndSpreadsheetApp();
+
+    runEndpoint({ action: failingAction, selector: { column: "selected" } });
+
+    expect(toasts).toEqual([expect.stringMatching(/^Error: /)]);
   });
 });
 
