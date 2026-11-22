@@ -33,7 +33,7 @@ One line per principle. A principle's argument and instances, where it has them,
 
 ## Adding a principle
 
-Decisions are ADRs in [`docs/adr/`](./adr/); the issue, commit, probe and code-site citations left in the reasoning files are evidence their migration kept. The rule is byro-repo's [ADR 0020](https://github.com/byronbroughten/byro-repo/blob/master/docs/adr/0020-a-principle-may-rest-on-one-adr-and-a-reasoning-file-holds-only-what-no-adr-holds.md).
+Decisions are ADRs in [`docs/adr/`](./adr/); the issue, commit, probe and code-site citations left in the reasoning files are evidence their migration kept.
 
 - **A principle may rest on one ADR from this repo, or from real-estate under the last rule, and earns its line only by deciding cases its ADRs don't name.**
 - **A principle gets a reasoning file only for what no single ADR holds**: the argument across several ADRs, or a citable case beyond its one ADR. Otherwise its line links its ADR directly.
