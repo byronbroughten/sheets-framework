@@ -11,7 +11,7 @@ Disclosed from [`docs/code-style.md`](../code-style.md), "Type modeling". The ru
 
 ## The framework's generic abbreviations
 
-The abbreviations are `TN` (TableName), `VN` (ValueName), `CN` (ColumnName), `HR` (HeadRole) and `IF` (IsFormula); `SN` (SheetName) was retired with Sheet Config. The domain-free utilities in `@byronbroughten/utils` keep bare `T`/`K`/`V`/`O`. Why two letters: `@byronbroughten/config`'s `docs/code-style/type-modeling.md`.
+The abbreviations are `TN` (TableName), `VN` (ValueName), `CN` (ColumnName), `HR` (HeadRole) and `IF` (IsFormula); `SN` (SheetName) was retired with Sheet Config. The domain-free utilities in `@byronbroughten/utils` keep bare `T`/`K`/`V`/`O`. Why two letters: `@byronbroughten/code-style`'s `docs/code-style/type-modeling.md`.
 
 ## The two accepted `as` idioms
 

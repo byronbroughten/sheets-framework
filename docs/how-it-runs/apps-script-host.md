@@ -16,7 +16,7 @@
 
 ## The ESLint preset
 
-**An app's `eslint.config.mjs` spreads `@byronbroughten/config`'s `eslintPreset`, then `appEslintPreset({ testSetupFiles })` from `scripts/eslintPreset.ts`**, exported as the `./eslint` subpath. It adds, for the app's `src/`:
+**An app's `eslint.config.mjs` spreads `@byronbroughten/code-style`'s `eslintPreset`, then `appEslintPreset({ testSetupFiles })` from `scripts/eslintPreset.ts`**, exported as the `./eslint` subpath. It adds, for the app's `src/`:
 
 - **The platform boundary**: no `GoogleSheets/` import, `GoogleAppsScript` type, or Apps Script global such as `SpreadsheetApp`. The framework's own config applies the same blocks through `sheetsSrcBlocks`, so the boundary can't drift between them.
 - **The public entry**: the framework is imported only as `@byronbroughten/sheets-framework`, and `/testing` only from `*.test.ts` and the `testSetupFiles`, which are the non-test files that install configs for tests.

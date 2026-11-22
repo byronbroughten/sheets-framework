@@ -1,6 +1,6 @@
 # Naming
 
-Style fragment. The one-line rules live in [`docs/code-style.md`](../code-style.md); this file holds the reasoning and the worked examples. The general naming reasoning is in `@byronbroughten/config`'s `docs/code-style/naming.md`.
+Style fragment. The one-line rules live in [`docs/code-style.md`](../code-style.md); this file holds the reasoning and the worked examples. The general naming reasoning is in `@byronbroughten/code-style`'s `docs/code-style/naming.md`.
 
 One heading per naming rule, in docs/code-style.md's order: grep `^## ` for the rule you're applying and read that section.
 
@@ -10,7 +10,7 @@ One heading per naming rule, in docs/code-style.md's order: grep `^## ` for the 
 
 ## `_actualX` drops its prefix when a helper moves down
 
-**When a "compute the true/live value" helper with a committed counterpart moves from a coordinating Operator down onto the column it's actually about, it lands on the profile under the bare name.** `ColumnConfigsOperator._actualValueTitle`/`_actualValidationValueName`/`_actualPrimitiveValueName` — named from the coordinator's point of view, contrasting a *live* value against the *stored config* value — became `activeValueTitle()`/`activeValidationValueTitle()` on the Meta column once they moved onto the column itself, and `column.profile.valueTitle()`/`.validationValueTitle()` once the profile replaced Meta (sheets-framework#116; #146 later generalised the latter to `.validationColumnReference()`): from that object's own point of view it's just its current state. (The innermost helper, `_actualPrimitiveValueName`, kept its old name and stayed `private` — it has no live/committed counterpart to disambiguate; see the `_`-prefix note in `@byronbroughten/config`'s `docs/code-style/naming.md` for why it's still underscored while its siblings aren't.)
+**When a "compute the true/live value" helper with a committed counterpart moves from a coordinating Operator down onto the column it's actually about, it lands on the profile under the bare name.** `ColumnConfigsOperator._actualValueTitle`/`_actualValidationValueName`/`_actualPrimitiveValueName` — named from the coordinator's point of view, contrasting a *live* value against the *stored config* value — became `activeValueTitle()`/`activeValidationValueTitle()` on the Meta column once they moved onto the column itself, and `column.profile.valueTitle()`/`.validationValueTitle()` once the profile replaced Meta (sheets-framework#116; #146 later generalised the latter to `.validationColumnReference()`): from that object's own point of view it's just its current state. (The innermost helper, `_actualPrimitiveValueName`, kept its old name and stayed `private` — it has no live/committed counterpart to disambiguate; see the `_`-prefix note in `@byronbroughten/code-style`'s `docs/code-style/naming.md` for why it's still underscored while its siblings aren't.)
 
 ## `col` or `column`
 
@@ -22,7 +22,7 @@ One heading per naming rule, in docs/code-style.md's order: grep `^## ` for the 
 
 ## Google's API names stay at the wire
 
-**Google's API names stay at the wire; everything the framework defines for itself follows the glossary** (#70). Anything that spells a Google API object, request or field keeps Google's spelling: `GoogleProtectedRange`, the queued request kinds `"addProtectedRange"` and `"deleteProtectedRange"`, the fields `protectedRangeId` and `unprotectedRanges`. Everything above that takes the glossary term, so the framework type is `EditProtection` and the sheet reads `editProtections()`. Before #70 the framework used both, and `removeEditProtection(protection: ProtectedRange)` put the two names for one thing in a single signature. The enum-string rule under the constant rule in `@byronbroughten/config`'s `docs/code-style/naming.md` is the same boundary.
+**Google's API names stay at the wire; everything the framework defines for itself follows the glossary** (#70). Anything that spells a Google API object, request or field keeps Google's spelling: `GoogleProtectedRange`, the queued request kinds `"addProtectedRange"` and `"deleteProtectedRange"`, the fields `protectedRangeId` and `unprotectedRanges`. Everything above that takes the glossary term, so the framework type is `EditProtection` and the sheet reads `editProtections()`. Before #70 the framework used both, and `removeEditProtection(protection: ProtectedRange)` put the two names for one thing in a single signature. The enum-string rule under the constant rule in `@byronbroughten/code-style`'s `docs/code-style/naming.md` is the same boundary.
 
 ## A multi-row delete is `SHOUTING_SNAKE_CASE`
 
@@ -30,7 +30,7 @@ One heading per naming rule, in docs/code-style.md's order: grep `^## ` for the 
 
 ## Collaborator names: `<Subject><Role><Tier>`
 
-**A collaborator's role is the agent noun of its verb, a listed verb's only in its listed meaning, and its tier word comes last, like every other tier class's** (#67); the subject and the descriptive-noun fallback are `@byronbroughten/config`'s `docs/code-style/naming.md`, "A collaborator is `<Subject><Role>`". `SpreadsheetFlusherRaw` is named for `flush`, not `update`, because `update` means a local change and the flusher sends the batch; `SpreadsheetTableValidatorRaw` is named for `validate` because it throws on failure. "Handler" and "Manager" are never allowed: they fit any class, so they tell the reader nothing about which job this one does.
+**A collaborator's role is the agent noun of its verb, a listed verb's only in its listed meaning, and its tier word comes last, like every other tier class's** (#67); the subject and the descriptive-noun fallback are `@byronbroughten/code-style`'s `docs/code-style/naming.md`, "A collaborator is `<Subject><Role>`". `SpreadsheetFlusherRaw` is named for `flush`, not `update`, because `update` means a local change and the flusher sends the batch; `SpreadsheetTableValidatorRaw` is named for `validate` because it throws on failure. "Handler" and "Manager" are never allowed: they fit any class, so they tell the reader nothing about which job this one does.
 
 ## The controlled verb list
 

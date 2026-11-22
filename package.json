@@ -45,7 +45,7 @@
     "tslib": "^2.8.1"
   },
   "peerDependencies": {
-    "@byronbroughten/config": "^0.1.0",
+    "@byronbroughten/code-style": "^0.1.0",
     "@byronbroughten/utils": "^0.1.0",
     "@rollup/plugin-typescript": "^12.1.4",
     "eslint": "^9.35.0",
@@ -53,7 +53,7 @@
     "vitest": "^4.1.11"
   },
   "peerDependenciesMeta": {
-    "@byronbroughten/config": {
+    "@byronbroughten/code-style": {
       "optional": true
     },
     "@rollup/plugin-typescript": {
@@ -70,7 +70,7 @@
     }
   },
   "devDependencies": {
-    "@byronbroughten/config": "^0.1.0",
+    "@byronbroughten/code-style": "^0.1.0",
     "@byronbroughten/utils": "^0.1.0",
     "@google/clasp": "^3.4.1",
     "@rollup/plugin-typescript": "^12.1.4",
