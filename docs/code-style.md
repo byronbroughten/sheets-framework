@@ -1,6 +1,6 @@
 # Framework style
 
-The framework's own code-shape rules, layered on the general style doc that ships with `@byronbroughten/code-style` (`docs/code-style.md` in that package; `config/docs/code-style.md` in the workspace). Read that first: everything there applies here too. Where things live is [`src/AGENTS.md`](../src/AGENTS.md) and [`vocabulary.md`](./vocabulary.md).
+The framework's own code-shape rules, layered on the general style doc that ships with `@byronbroughten/code-style` ([`docs/code-style.md`](https://github.com/byronbroughten/code-style/blob/master/docs/code-style.md) in that package). Read that first: everything there applies here too. Where things live is [`src/AGENTS.md`](../src/AGENTS.md) and [`vocabulary.md`](./vocabulary.md).
 
 One line per rule. The reasoning and worked examples are one file away. Open a reasoning file only when you're changing the rule, or the rule's line doesn't decide your case.
 
