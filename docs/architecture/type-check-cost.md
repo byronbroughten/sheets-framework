@@ -12,7 +12,7 @@ The generated config describes ~574 columns across ~28 sheets, and a lot of this
 
 ## Baseline and the lazy mapped filter
 
-The baseline measured **~286k instantiations and ~1.2s check time**, and one mapped filter over the flat column map (`{ [K in ColumnFullName]: … }`) ~48k per distinct instantiation (Sept 2026, recorded in [ecd32996](https://github.com/byronbroughten/byro-repo/commit/ecd32996faf29f3daa60dd820c8e817a37181e4f)). The filter is cheap, and cheaper *lazily* than precomputed: eagerly grouping every value name up front cost ~390k, while filtering per use pays one filter's cost for each value name actually used.
+The baseline measured **~286k instantiations and ~1.2s check time**, and one mapped filter over the flat column map (`{ [K in ColumnFullName]: … }`) ~48k per distinct instantiation (Sept 2026). The filter is cheap, and cheaper *lazily* than precomputed: eagerly grouping every value name up front cost ~390k, while filtering per use pays one filter's cost for each value name actually used.
 
 ## The known cliff: a widened template literal over both names
 

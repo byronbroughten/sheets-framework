@@ -1,8 +1,14 @@
 # Sheets behaviour
 
-An observation index of how Google's platforms behave (the Sheets UI, the Sheets REST API, Apps Script with `SpreadsheetApp` and triggers, and the Google auth they share), measured costs included, never the framework's own behaviour. It is grouped by subject, and each line records one dated observation: tagged `Observed:` or `Documented:`, it states only what was seen, under what conditions, and links to its evidence.
+An observation index of how Google's platforms behave (the Sheets UI, the Sheets REST API, Apps Script with `SpreadsheetApp` and triggers, and the Google auth they share), measured costs included, never the framework's own behaviour. It is grouped by subject, each line one dated observation, under these rules:
 
-Whoever settles or overturns an observation adds or updates its line in the same change as the finding.
+- **Each line is tagged `Observed:` or `Documented:`, then states the action, the result, the conditions and the date, and links to its evidence.**
+- **A line says only what was seen: no "always", "never", "covers" or "can", and no cause.**
+- **A line holds no open or withdrawn question**; an open question lives in the doc that relies on it, or in an issue when a decision waits on it.
+- **A `Documented:` line goes in only when a doc, an ADR or the code relies on it.**
+- **The same result seen again updates the line's date and evidence link; a different result goes in as a new line above the old one, which stays.**
+- **Evidence is an issue comment, or the file on a research branch**; an observation recorded before this rule may link the commit that recorded it.
+- **Whoever settles or overturns an observation adds or updates its line in the same change as the finding.**
 
 Write-ups sourced from Google's docs live on `research/*` branches, listed by `git branch -r --list 'origin/research/*'`.
 
