@@ -1,6 +1,6 @@
 # Framework test style
 
-Disclosed from [`docs/code-style.md`](../code-style.md), "Tests". How tests run, and the fakes: [`docs/testing.md`](../testing.md). The general test reasoning is in `@byronbroughten/config`'s `docs/code-style/tests.md`.
+Disclosed from [`docs/code-style.md`](../code-style.md), "Tests". How tests run, and the fakes: [`docs/testing.md`](../testing.md). The general test reasoning is in `@byronbroughten/code-style`'s `docs/code-style/tests.md`.
 
 ## Tier imports
 

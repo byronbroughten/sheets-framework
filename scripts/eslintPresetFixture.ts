@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { eslintPreset } from "@byronbroughten/config/eslint";
+import { eslintPreset } from "@byronbroughten/code-style/eslint";
 import { ESLint, type Linter } from "eslint";
 import { defineConfig } from "eslint/config";
 

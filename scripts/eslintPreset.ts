@@ -1,4 +1,4 @@
-import { styleSyntax, variableNaming } from "@byronbroughten/config/eslint";
+import { styleSyntax, variableNaming } from "@byronbroughten/code-style/eslint";
 import type { Linter } from "eslint";
 
 const requestRecordingMessage =
@@ -108,7 +108,7 @@ interface AppEslintPresetOptions {
   testSetupFiles: string[];
 }
 
-// Layered on @byronbroughten/config's eslintPreset, which the app spreads first.
+// Layered on @byronbroughten/code-style's eslintPreset, which the app spreads first.
 export function appEslintPreset({
   testSetupFiles,
 }: AppEslintPresetOptions): Linter.Config[] {

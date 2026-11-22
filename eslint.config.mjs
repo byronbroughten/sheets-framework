@@ -1,4 +1,7 @@
-import { eslintPreset, variableNaming } from "@byronbroughten/config/eslint";
+import {
+  eslintPreset,
+  variableNaming,
+} from "@byronbroughten/code-style/eslint";
 import { defineConfig } from "eslint/config";
 
 import {

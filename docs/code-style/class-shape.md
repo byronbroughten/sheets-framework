@@ -1,6 +1,6 @@
 # Class shape
 
-Style fragment. The one-line rules live in [`docs/code-style.md`](../code-style.md); this file holds the reasoning and the worked examples. The general class-shape reasoning (member order, helpers, dead scaffolding) is in `@byronbroughten/config`'s `docs/code-style/class-shape.md`.
+Style fragment. The one-line rules live in [`docs/code-style.md`](../code-style.md); this file holds the reasoning and the worked examples. The general class-shape reasoning (member order, helpers, dead scaffolding) is in `@byronbroughten/code-style`'s `docs/code-style/class-shape.md`.
 
 One heading per class-shape rule, most of them with the refactor that produced it: grep `^## ` for the rule you're applying and read that section.
 
@@ -44,7 +44,7 @@ Callers reach `orchestrator.tableConfigOperator` on the instance.
 
 ## A coordinator splits by the general rule
 
-When, how and why a class splits into collaborators is `@byronbroughten/config`'s `docs/code-style/class-shape.md`, "Split a class when its helpers fall into groups that share nothing" and the section after it. `SpreadsheetRaw` is the framework's instance: 26 private helpers in three groups, finishing a gathered fetch, checking that each sheet's Table is where the layout requires, and turning queued changes into a batch update and sending it (#67). What the framework adds:
+When, how and why a class splits into collaborators is `@byronbroughten/code-style`'s `docs/code-style/class-shape.md`, "Split a class when its helpers fall into groups that share nothing" and the section after it. `SpreadsheetRaw` is the framework's instance: 26 private helpers in three groups, finishing a gathered fetch, checking that each sheet's Table is where the layout requires, and turning queued changes into a batch update and sending it (#67). What the framework adds:
 
 - **Collaborators are built the coordinator way above**, with `new` from the coordinator's props in lazy getters (`fetcher`, `flusher`); `SpreadsheetFetcherRaw` builds its own `tableValidator`, because finishing a fetch is what decides which Tables to judge.
 - **Collaborators get no tests of their own**: the coordinator keeps each public method as a one-line delegation, so its tests already cover them.
@@ -65,7 +65,7 @@ Holding the row index as an optional field assigned at the start of a build was 
 
 ## A domain query composed of collaborator calls belongs on the collaborator
 
-This is the framework's worked example of `@byronbroughten/config`'s rule that a helper on one collaborator's state belongs on that collaborator (`docs/code-style/class-shape.md`, "A helper that never reads `this` is a module function"), so the composition isn't re-inlined at every call site. `ColumnConfigsOperator` used to reach through `sheet.headRow("columnId").workingValueArr` and `.hasValue(columnId)` directly; that logic moved onto the Table profile as `get columnIds()` (`TableProfileRaw`) and onto the Table's column resolver as `hasColumnId(columnId)`, and `ColumnConfigsOperator`'s own private helper now just delegates:
+This is the framework's worked example of `@byronbroughten/code-style`'s rule that a helper on one collaborator's state belongs on that collaborator (`docs/code-style/class-shape.md`, "A helper that never reads `this` is a module function"), so the composition isn't re-inlined at every call site. `ColumnConfigsOperator` used to reach through `sheet.headRow("columnId").workingValueArr` and `.hasValue(columnId)` directly; that logic moved onto the Table profile as `get columnIds()` (`TableProfileRaw`) and onto the Table's column resolver as `hasColumnId(columnId)`, and `ColumnConfigsOperator`'s own private helper now just delegates:
 
 ```ts
 private _hasColumnId(tableId: string, columnId: string): boolean {
@@ -77,7 +77,7 @@ Destructure a collaborator's getter directly when only one property is needed: `
 
 ## A query whose parameter its caller already holds belongs on the instance
 
-A container method that takes an index/id as a parameter, but is only ever called by code that already has that exact value as its own instance state, belongs on the instance instead — drop the parameter along with the method. `SheetBaseRaw.columnValidationValues(colIndex: number)` was deleted; its one caller always already had its own `colIndex`, so the query moved onto the column as `get valueValidationStrings()`, now on its profile (`ColumnProfileRaw.ts`). The parameter disappearing is what turns it into a getter (see the getter rule in `@byronbroughten/config`'s `docs/code-style/naming.md`).
+A container method that takes an index/id as a parameter, but is only ever called by code that already has that exact value as its own instance state, belongs on the instance instead — drop the parameter along with the method. `SheetBaseRaw.columnValidationValues(colIndex: number)` was deleted; its one caller always already had its own `colIndex`, so the query moved onto the column as `get valueValidationStrings()`, now on its profile (`ColumnProfileRaw.ts`). The parameter disappearing is what turns it into a getter (see the getter rule in `@byronbroughten/code-style`'s `docs/code-style/naming.md`).
 
 ## Model state at the granularity the concept actually has
 
