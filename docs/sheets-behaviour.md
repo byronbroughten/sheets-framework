@@ -1,6 +1,6 @@
 # Sheets behaviour
 
-An [observation index](https://github.com/byronbroughten/byro-repo/blob/master/docs/agents/prose-files.md#terms) of how Google's platforms behave (the Sheets UI, the Sheets REST API, Apps Script with `SpreadsheetApp` and triggers, and the Google auth they share), measured costs included, never the framework's own behaviour. It is grouped by subject and follows the [observation-index rules](https://github.com/byronbroughten/byro-repo/blob/master/docs/prose-style.md#observation-indexes).
+An observation index of how Google's platforms behave (the Sheets UI, the Sheets REST API, Apps Script with `SpreadsheetApp` and triggers, and the Google auth they share), measured costs included, never the framework's own behaviour. It is grouped by subject, and each line records one dated observation: tagged `Observed:` or `Documented:`, it states only what was seen, under what conditions, and links to its evidence.
 
 Whoever settles or overturns an observation adds or updates its line in the same change as the finding.
 
