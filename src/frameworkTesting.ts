@@ -2,6 +2,7 @@
 export { installConfigs } from "./01_SpreadsheetSchema/configReaders/configRegister.ts";
 export { EndpointRun } from "./06_API/EndpointRun.ts";
 export { stubLogger } from "./testSupport/fakeAppsScriptGlobals.ts";
+export { fakeSheetsHttpTransport } from "./testSupport/fakeSheetsHttpTransport.ts";
 export {
   buildGridRows,
   stubSheetsService,

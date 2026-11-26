@@ -47,6 +47,7 @@ export interface FakeTabProperties {
 export interface FakeGridView {
   sheetTitles(): string[];
   sheet(sheetGid: number): FakeSheetView;
+  sheetByTitle(title: string): FakeSheetView;
 }
 
 export const gridView = {
@@ -57,6 +58,15 @@ export const gridView = {
       },
       sheet(sheetGid) {
         return sheetView(fakeSpreadsheet.sheet(spreadsheet, sheetGid));
+      },
+      sheetByTitle(title) {
+        const sheet = spreadsheet.sheets.find((each) => each.title === title);
+        if (sheet === undefined) {
+          throw new Error(
+            `The fake spreadsheet has no sheet titled "${title}".`,
+          );
+        }
+        return sheetView(sheet);
       },
     };
   },

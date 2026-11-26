@@ -89,9 +89,7 @@ function rewriteReferencesToRanges(
   table: FakeTableState,
 ): void {
   if (table.name === undefined) return;
-  const sheetPrefix = /^[A-Za-z_]\w*$/.test(sheet.title)
-    ? sheet.title
-    : `'${sheet.title.replaceAll("'", "''")}'`;
+  const sheetPrefix = a1Notation.sheetName(sheet.title);
   const rangesByHeader = new Map<string, string>();
   for (let col = table.startColumnIndex; col < table.endColumnIndex; col++) {
     const header = fakeCells.value(

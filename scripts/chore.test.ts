@@ -1,14 +1,13 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { appConfigs } from "../dev/generated/appConfigs.ts";
 import type { SheetsHttpRequest } from "../src/00_Source/GoogleSheets/GoogleSheetsAPI.ts";
-import { ChoreRunner } from "./chore.ts";
-import type { SheetsConfig } from "./sheetsConfig.ts";
+import {
+  type ChoreRun,
+  choreSheetsConfig,
+  runChoreOver,
+} from "./choreFixture.ts";
 
 const srcUrl = new URL("../src/", import.meta.url);
 
@@ -31,44 +30,25 @@ export const replaceRent = {
 };
 `;
 
-const packageDir = mkdtempSync(join(tmpdir(), "chore-"));
-const choreHome = join(packageDir, "chores");
-mkdirSync(choreHome);
-writeFileSync(join(choreHome, "replaceRent.ts"), replaceRentChoreSource);
+const sheetsConfig = choreSheetsConfig({
+  name: "replaceRent",
+  source: replaceRentChoreSource,
+});
 
-const sheetsConfig: SheetsConfig = {
-  path: join(packageDir, "sheets.config.json"),
-  dir: packageDir,
-  spreadsheetId: "spreadsheet-under-test",
-  generatedDir: join(packageDir, "generated"),
-  choreHomes: [choreHome],
-  endpointModule: undefined,
-};
-
-interface ChoreRun {
-  output: string;
-  exitCode: number | string | null | undefined;
-  batchUpdates: number;
-}
-
-// Runs the chore past its live host: only the Sheets transport is stood in for.
-async function runReplaceRent(argv: string[]): Promise<ChoreRun> {
+async function runReplaceRent(
+  argv: string[],
+): Promise<ChoreRun & { batchUpdates: number }> {
   const transport = vi.fn((request: SheetsHttpRequest) => {
     if (request.url.includes(":batchUpdate")) return { replies: [] };
     return { sheets: [] };
   });
-  const runner = ChoreRunner.init(sheetsConfig, ["replaceRent", ...argv], {
+  const run = await runChoreOver({
+    sheetsConfig,
     transport,
-    configs: appConfigs,
+    argv: ["replaceRent", ...argv],
   });
-  const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
-  process.exitCode = undefined;
-  await runner.run();
-  const output = log.mock.calls.map(([line]) => String(line)).join("\n");
-  log.mockRestore();
   return {
-    output,
-    exitCode: process.exitCode,
+    ...run,
     batchUpdates: transport.mock.calls.filter(([request]) =>
       request.url.includes(":batchUpdate"),
     ).length,
@@ -76,11 +56,6 @@ async function runReplaceRent(argv: string[]): Promise<ChoreRun> {
 }
 
 describe("a chore's --send over entered data", () => {
-  afterEach(() => {
-    process.exitCode = undefined;
-    vi.restoreAllMocks();
-  });
-
   it("is held without --confirm, then sent once --confirm gives the dry run's token", async () => {
     const refused = await runReplaceRent(["--send"]);
     expect(refused.batchUpdates).toBe(0);
