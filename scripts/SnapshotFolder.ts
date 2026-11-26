@@ -1,7 +1,8 @@
-// A confirmed send's snapshot file, its undo line and the prune of old snapshots, which chore calls and sync is to call too. The caller names the folder; none is the package's .probe/snapshots.
+// A confirmed send's snapshot file, its undo line and the prune of old snapshots, which chore calls and sync is to call too; restore reads the file back. The caller names the folder; none is the package's .probe/snapshots.
 import {
   mkdirSync,
   readdirSync,
+  readFileSync,
   rmSync,
   statSync,
   writeFileSync,
@@ -43,9 +44,15 @@ export interface SnapshotFile {
   snapshot: SendSnapshot;
 }
 
-interface SnapshotFileName extends Pick<SnapshotFile, "target" | "command"> {
+// The file as written, which restore reads back.
+export interface SavedSnapshotFile extends SnapshotFile {
   takenAt: string;
 }
+
+type SnapshotFileName = Pick<
+  SavedSnapshotFile,
+  "target" | "command" | "takenAt"
+>;
 
 export class SnapshotFolder {
   readonly dir: string;
@@ -97,7 +104,13 @@ export class SnapshotFolder {
     const takenAt = this.now().toISOString();
     const path = join(this.dir, fileNameOf({ takenAt, target, command }));
     mkdirSync(this.dir, { recursive: true });
-    const contents = { target, command, takenAt, plan, snapshot };
+    const contents: SavedSnapshotFile = {
+      target,
+      command,
+      takenAt,
+      plan,
+      snapshot,
+    };
     writeFileSync(path, `${JSON.stringify(contents, null, 2)}\n`, {
       flag: "wx",
     });
@@ -114,6 +127,34 @@ export class SnapshotFolder {
       ...GateReport.versionHistoryLines(versionHistoryItems),
     ];
   }
+}
+
+// The snapshot file an undo line names, a path typed from where npm was invoked.
+export function readSnapshotFile(named: string): SavedSnapshotFile {
+  const path = resolve(invokedFrom(), named);
+  let contents: unknown;
+  try {
+    contents = JSON.parse(readFileSync(path, "utf8"));
+  } catch (error) {
+    throw new Error(
+      `Could not read the snapshot file ${named}: ${error.message}`,
+    );
+  }
+  if (!isSavedSnapshotFile(contents)) {
+    throw new Error(`${named} is not a send's snapshot file.`);
+  }
+  return contents;
+}
+
+// The fields restore reads; the file is one this module wrote.
+function isSavedSnapshotFile(contents: unknown): contents is SavedSnapshotFile {
+  const file = contents as Partial<SavedSnapshotFile> | null;
+  return (
+    typeof file?.target === "string" &&
+    typeof file.command === "string" &&
+    Array.isArray(file.snapshot?.columns) &&
+    Array.isArray(file.snapshot.fingerprints)
+  );
 }
 
 function flagValue(argv: string[], flag: string): string | undefined {

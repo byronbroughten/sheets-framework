@@ -23,7 +23,6 @@ const spreadsheetId = "spreadsheet-under-test";
 const gateTarget = "app:spreadsheet-under-test";
 
 // The Widget Table, where the layout puts it: column IDs in row 0, header in row 3, data from row 4.
-// Gid 0, as the fake's Table range carries no sheetId, which the gate reads as 0.
 const widget = { gid: 0, title: "Widget", endRow: 6 };
 const widgetColumns = {
   id: { columnId: "col-id", header: "ID" },
@@ -220,6 +219,8 @@ describe("NodeHost.sendSnapshot", () => {
         header: "Amount",
         columnId: "col-amount",
         colIndex: widgetCol("amount"),
+        columnIdRowIndex: 0,
+        idColIndex: widgetCol("id"),
         values: seededColumn(widgetCol("amount")),
       },
     ]);

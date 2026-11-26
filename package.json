@@ -31,6 +31,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "chore": "node scripts/sheets-framework.ts chore",
+    "restore": "node scripts/sheets-framework.ts restore",
     "sync": "node scripts/sheets-framework.ts sync",
     "configs:diff": "node scripts/sheets-framework.ts configs-diff",
     "probe": "node scripts/sheets-framework.ts probe",

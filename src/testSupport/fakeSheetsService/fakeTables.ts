@@ -49,6 +49,8 @@ function toGoogleTables(
     tableId: table.tableId,
     ...(table.name !== undefined ? { name: table.name } : {}),
     range: {
+      // Google omits a zero sheetId: docs/sheets-behaviour.md#empty-lists-and-zero-valued-fields.
+      ...(sheet.sheetId !== 0 ? { sheetId: sheet.sheetId } : {}),
       startRowIndex: table.startRowIndex,
       endRowIndex: table.endRowIndex,
       startColumnIndex: table.startColumnIndex,
