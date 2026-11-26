@@ -172,6 +172,10 @@ Write-ups sourced from Google's docs live on `research/*` branches, listed by `g
 
 - Observed: A REST API v4 `updateSheetProperties` setting `tabColorStyle` to `#4a86e8` with `fields: tabColorStyle` read back from a `spreadsheets.get` of `sheets.properties(title,tabColor,tabColorStyle,hidden,gridProperties(frozenRowCount,frozenColumnCount))` with both `tabColor` and `tabColorStyle.rgbColor` as `{red: 0.2901961, green: 0.5254902, blue: 0.9098039}`, and with no `hidden` field and `gridProperties: {}` on a tab neither hidden nor frozen; Dates tab on the dev spreadsheet, sent by `dev:gen:configs` and read by `dev:probe`; 2026-11-20; [comment on #219](https://github.com/byronbroughten/sheets-framework/issues/219#issuecomment-7057363679).
 
+### Reading whole columns with `values:batchGet`
+
+- Observed: A REST API v4 `values:batchGet` of four whole-column ranges, `'Item'!C:C`, `'Item'!B:B`, `'Item'!A:A` and `'Item'!D:D`, with `majorDimension=COLUMNS`, `valueRenderOption=FORMULA` and `dateTimeRenderOption=SERIAL_NUMBER`, was accepted, and returned each range as one column from row 1, head rows included. The Optional note column came back with six values, its blank seventh row left out, while the three fully filled columns came back with seven. A checkbox cell came back as the boolean `false`, and number cells as JSON numbers. No tab title held a space or a quote, and no read cell held a formula or a date; Item tab on the dev spreadsheet, read by the node host's send snapshot on a `dev:chore --send --confirm` and checked against a `dev:probe` `userEnteredValue` grid read; 2026-11-26; [comment on byronbroughten/byro-repo#1187](https://github.com/byronbroughten/byro-repo/issues/1187#issuecomment-7182355861).
+
 ## Formats and formulas
 
 ### Writing a formula with a Table reference
