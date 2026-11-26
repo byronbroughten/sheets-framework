@@ -7,6 +7,7 @@ import {
   type TabGrid,
 } from "../00_Source/GoogleSheets/GoogleSheetsAPI/httpSheetsTransport.ts";
 import { colLetters } from "./colLetters.ts";
+import { SnapshotColumnRecreator } from "./SendSnapshotRestorer/SnapshotColumnRecreator.ts";
 import {
   type ColumnLabel,
   type CurrentTab,
@@ -43,7 +44,13 @@ export type SnapshotRestore =
       homelessRows: HomelessRow[];
     };
 
-// Puts a send's snapshot back: each saved column by its column ID, its rows by position on a tab whose rows didn't move, else by row ID where the Table has an ID column.
+// The tabs as the recreated columns leave them, and the requests that recreate them.
+interface TabsRecreation {
+  tabs: Map<number, CurrentTab>;
+  requests: GoogleRequest[];
+}
+
+// Puts a send's snapshot back: each saved column by its column ID, a deleted one recreated first, its rows by position on a tab whose rows didn't move, else by row ID where the Table has an ID column.
 export class SendSnapshotRestorer {
   private call: HttpSpreadsheetCall;
   private snapshot: SendSnapshot;
@@ -62,9 +69,9 @@ export class SendSnapshotRestorer {
   }
   // Writes nothing when a tab's rows moved since the send, unless forced.
   restore(): SnapshotRestore {
-    const tabs = this._currentTabs();
+    const tabsNow = this._currentTabs();
     const movedFingerprints = this.snapshot.fingerprints.filter(
-      (fingerprints) => hasMoved(fingerprints, tabs),
+      (fingerprints) => hasMoved(fingerprints, tabsNow),
     );
     const changedTabs = movedFingerprints.map(({ tabTitle }) => tabTitle);
     if (changedTabs.length > 0 && !this.isForced) {
@@ -73,10 +80,10 @@ export class SendSnapshotRestorer {
     const movedGids = new Set(
       movedFingerprints.map(({ sheetGid }) => sheetGid),
     );
+    const { tabs, requests } = this._recreatedTabs(tabsNow);
     const restoredColumns: RestoredColumn[] = [];
     const goneColumns: SnapshotColumn[] = [];
     const homelessRows: HomelessRow[] = [];
-    const requests: GoogleRequest[] = [];
     for (const column of this.snapshot.columns) {
       const restorer = this._columnRestorer(column, tabs, movedGids);
       if (restorer === undefined) {
@@ -100,7 +107,28 @@ export class SendSnapshotRestorer {
       homelessRows,
     };
   }
-  // One GET for the tabs' sizes, then one values:batchGet of each affected tab whole.
+  // A deleted column comes back first, so its values are written as an overwritten column's are.
+  private _recreatedTabs(tabs: Map<number, CurrentTab>): TabsRecreation {
+    const recreated = new Map(tabs);
+    const requests: GoogleRequest[] = [];
+    for (const [sheetGid, tab] of tabs) {
+      const deleted = this.snapshot.columns.filter(
+        (column) =>
+          column.sheetGid === sheetGid &&
+          colIndexOf(tab, column.columnIdRowIndex, column.columnId) ===
+            undefined,
+      );
+      if (deleted.length === 0) continue;
+      const recreation = SnapshotColumnRecreator.init({
+        tab,
+        columns: deleted,
+      }).recreate();
+      recreated.set(sheetGid, recreation.tab);
+      requests.push(...recreation.requests);
+    }
+    return { tabs: recreated, requests };
+  }
+  // One GET for the tabs' sizes and Tables, then one values:batchGet of each affected tab whole.
   private _currentTabs(): Map<number, CurrentTab> {
     const { columns, fingerprints } = this.snapshot;
     const sheetGids = new Set(
@@ -124,7 +152,7 @@ export class SendSnapshotRestorer {
       ]),
     );
   }
-  // Undefined where the column's tab or column ID is gone.
+  // Undefined where the column's tab or Table is gone, so it couldn't be recreated.
   private _columnRestorer(
     column: SnapshotColumn,
     tabs: Map<number, CurrentTab>,

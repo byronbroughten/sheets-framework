@@ -159,7 +159,7 @@ function rowIndexesById(
 }
 
 // A value as values:batchGet gave it under FORMULA, entered again; a blank clears the cell.
-function enteredCell(value: SheetValue): GoogleCellData {
+export function enteredCell(value: SheetValue): GoogleCellData {
   if (value === "") return {};
   if (typeof value === "number") {
     return { userEnteredValue: { numberValue: value } };

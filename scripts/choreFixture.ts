@@ -75,6 +75,45 @@ export async function runRestoreOver({
   return capturedRun(() => runner.run());
 }
 
+interface ConfirmedSendProps {
+  sheetsConfig: SheetsConfig;
+  transport: SheetsHttpTransport;
+  chore: string;
+}
+
+export interface ConfirmedSend {
+  dryRun: ChoreRun;
+  sent: ChoreRun;
+  restore: (argv?: string[]) => Promise<ChoreRun>;
+}
+
+// A dry run for the token, the confirmed send it covers, then the restore its undo line names.
+export async function confirmedSendOver({
+  sheetsConfig,
+  transport,
+  chore,
+}: ConfirmedSendProps): Promise<ConfirmedSend> {
+  vi.stubEnv("INIT_CWD", mkdtempSync(join(tmpdir(), "snapshots-")));
+  const dryRun = await runChoreOver({ sheetsConfig, transport, argv: [chore] });
+  const token = /Token (\S+):/.exec(dryRun.output)?.[1];
+  const sent = await runChoreOver({
+    sheetsConfig,
+    transport,
+    argv: [chore, "--send", "--confirm", `${token}`],
+  });
+  const snapshot = /undo: npm run \S+ -- (\S+)/.exec(sent.output)?.[1];
+  return {
+    dryRun,
+    sent,
+    restore: (argv = []) =>
+      runRestoreOver({
+        sheetsConfig,
+        transport,
+        argv: [`${snapshot}`, ...argv],
+      }),
+  };
+}
+
 async function capturedRun(run: () => Promise<void>): Promise<ChoreRun> {
   const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
   process.exitCode = undefined;
