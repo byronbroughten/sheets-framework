@@ -66,11 +66,20 @@ function heldTitle(held: DryRunHeld): string {
   return `${heldSectionName}: ${counted(count, "cell", "cells")}${sum}, ${confirm}`;
 }
 
-function heldGroupLines({ subject, what, lines }: HeldGroup): string[] {
+function heldGroupLines({
+  subject,
+  what,
+  isUndoneOnlyByVersionHistory,
+  lines,
+}: HeldGroup): string[] {
   const heading =
     subject === undefined ? what : `${subjectLabel(subject)}  ${what}`;
-  return [heading, ...indent(2, lines)];
+  const undo = isUndoneOnlyByVersionHistory ? [versionHistoryLine] : [];
+  return [heading, ...indent(2, [...undo, ...lines])];
 }
+
+const versionHistoryLine =
+  "undone only by the spreadsheet's version history: the send snapshot can't hold it";
 
 // The fill is the send's last flush, after the files are built.
 function fillFailedLine(outcome: FillFailedOutcome): string {

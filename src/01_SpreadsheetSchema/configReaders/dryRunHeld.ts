@@ -14,5 +14,7 @@ export interface HeldGroup {
   what: string;
   // Entered-data cells this group holds; absent for a held item that isn't cells, such as a dropdown reset.
   cells?: number;
+  // True for an item that names no cell with a column ID, which a send snapshot can't hold.
+  isUndoneOnlyByVersionHistory?: boolean;
   lines: string[];
 }

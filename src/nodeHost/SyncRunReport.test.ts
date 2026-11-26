@@ -228,6 +228,7 @@ describe("SyncRunReport, case C: a dropdown reset under ask, a rule added first,
         {
           subject: { table: "item" },
           what: 'dropdown style reset (dropdownStyleReset: "ask"):',
+          isUndoneOnlyByVersionHistory: true,
           lines: [
             "Sending item's column list resets these dropdowns to plain chips and clears their option colours: status, category.",
           ],
@@ -288,6 +289,15 @@ describe("SyncRunReport, case C: a dropdown reset under ask, a rule added first,
         "    Resets the style and colours of 2 dropdowns: status, category (dropdownStyleReset: \"ask\", so held, above). This is a quirk of Google's API: setting any column's type resends the Table's column list, which resets every dropdown on it.",
         " 2. item: add rule item·weight·NUMBER_LESS(0)·text#cc0000.",
         '    Added first; it outranks 1 rule on these cells: item·all·=${status}="Retired"·bg#eeeeee.',
+      ].join("\n"),
+    );
+  });
+
+  it("names the dropdown reset as undone only by version history", () => {
+    expect(text).toContain(
+      [
+        'item  dropdown style reset (dropdownStyleReset: "ask"):',
+        "  undone only by the spreadsheet's version history: the send snapshot can't hold it",
       ].join("\n"),
     );
   });

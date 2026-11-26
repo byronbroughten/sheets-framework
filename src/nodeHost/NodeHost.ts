@@ -16,6 +16,7 @@ import {
   type EnteredDataGateProps,
   type HeldList,
 } from "./EnteredDataGate.ts";
+import { type SendSnapshot, SendSnapshotTaker } from "./SendSnapshotTaker.ts";
 import { UpdateRequestSummary } from "./UpdateRequestSummary.ts";
 
 export interface NodeHostProps {
@@ -40,6 +41,7 @@ export class NodeHost {
   private transport: SheetsHttpTransport;
   private log: (message: string) => void;
   private sentRequests: GoogleRequest[];
+  private sendSnapshotTaker: SendSnapshotTaker;
   constructor(props: NodeHostProps) {
     this.configs = props.configs;
     this.endpoints = props.endpoints ?? {};
@@ -49,6 +51,10 @@ export class NodeHost {
     this.transport = props.transport;
     this.log = props.log;
     this.sentRequests = [];
+    this.sendSnapshotTaker = SendSnapshotTaker.init({
+      spreadsheetId: props.spreadsheetId,
+      transport: props.transport,
+    });
   }
   static init(props: NodeHostProps): NodeHost {
     return new NodeHost(props);
@@ -77,15 +83,24 @@ export class NodeHost {
     installRawSource(this.googleSheetsAPI);
     return this;
   }
+  // What the send's held items changed, read just before each flush that held them, and the post-send fingerprints; undefined when nothing was held.
+  sendSnapshot(): SendSnapshot | undefined {
+    return this.sendSnapshotTaker.finished();
+  }
   private _gateFlush(
     requests: GoogleRequest[],
     send: () => GoogleBatchUpdateResponse,
   ): GoogleBatchUpdateResponse {
     this.sentRequests.push(...requests);
-    this.enteredDataGate?.classify(requests);
+    const gate = this.enteredDataGate;
+    gate?.classify(requests);
     if (this.isDryRun) return {};
-    if (this.enteredDataGate === undefined) return send();
-    return this.enteredDataGate.flush(send);
+    if (gate === undefined) return send();
+    // The gate calls this only once a token covers the flush, so a refused flush takes no snapshot.
+    return gate.flush(() => {
+      this.sendSnapshotTaker.capture(gate.snapshotPlan);
+      return send();
+    });
   }
 }
 
