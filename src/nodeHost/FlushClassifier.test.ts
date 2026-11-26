@@ -205,6 +205,31 @@ function updateTable(
   };
 }
 
+function insertColumns(startIndex: number, endIndex: number): GoogleRequest {
+  return {
+    insertDimension: {
+      range: { sheetId: gid, dimension: "COLUMNS", startIndex, endIndex },
+    },
+  };
+}
+
+// What a deleteTable of Payments holds: each entered body cell, its formulas freed.
+function tableDeletedChanges(requestIndex: number) {
+  const deleted = (before: string) => ({ kind: "delete", before });
+  const depositRowId = { sheetRow: depositRow + 1, nameValue: "Deposit" };
+  return [
+    { requestIndex, column: "Name", row: rentId, change: deleted('"Rent"') },
+    { requestIndex, column: "ID", row: rentId, change: deleted('"pay-0001"') },
+    { requestIndex, column: "Amount", row: rentId, change: deleted("1200") },
+    {
+      requestIndex,
+      column: "Name",
+      row: depositRowId,
+      change: deleted('"Deposit"'),
+    },
+  ];
+}
+
 const ledgerGid = 9;
 
 // The Ledger tab, read whole: its Table's header on row 4 (index 3) fills the header zone, columns A and B; a note in D1 and a sum in B8 sit outside it.
@@ -482,34 +507,7 @@ describe("FlushClassifier.heldItems", () => {
 
     it("holds a deleteTable per entered cell of the read Table range as deleted, and frees its formulas", () => {
       const held = heldItems([{ deleteTable: { tableId: "tbl-pay" } }]);
-      const deleted = (before: string) => ({ kind: "delete", before });
-      const depositRowId = { sheetRow: depositRow + 1, nameValue: "Deposit" };
-      expect(cellChanges(held)).toEqual([
-        {
-          requestIndex: 0,
-          column: "Name",
-          row: rentId,
-          change: deleted('"Rent"'),
-        },
-        {
-          requestIndex: 0,
-          column: "ID",
-          row: rentId,
-          change: deleted('"pay-0001"'),
-        },
-        {
-          requestIndex: 0,
-          column: "Amount",
-          row: rentId,
-          change: deleted("1200"),
-        },
-        {
-          requestIndex: 0,
-          column: "Name",
-          row: depositRowId,
-          change: deleted('"Deposit"'),
-        },
-      ]);
+      expect(cellChanges(held)).toEqual(tableDeletedChanges(0));
     });
 
     it("frees a write after a deleteTable into a cell it blanked", () => {
@@ -1216,6 +1214,88 @@ describe("FlushClassifier.heldItems", () => {
           },
         },
       ]);
+    });
+
+    it("judges a deleteTable after a column insert at the cells the insert moved the Table to", () => {
+      const held = heldItems([
+        insertColumns(name, name + 2),
+        { deleteTable: { tableId: "tbl-pay" } },
+      ]);
+      expect(cellChanges(held)).toEqual(tableDeletedChanges(1));
+    });
+
+    it("judges a deleteTable in a later flush at the cells an earlier flush's column insert moved the Table to", () => {
+      const judgedReads = judgedReadsOf([paymentsRead()]);
+      const flush = (requests: GoogleRequest[]) =>
+        FlushClassifier.init({
+          judgedReads,
+          requests,
+          dropdownStyleReset: "ask",
+          forcedTraits: [],
+        }).heldItems();
+      expect(flush([insertColumns(name, name + 2)])).toEqual([]);
+      expect(
+        cellChanges(flush([{ deleteTable: { tableId: "tbl-pay" } }])),
+      ).toEqual(tableDeletedChanges(0));
+    });
+
+    it("holds a deleteTable as unmeasured once a column move split the Table", () => {
+      const held = heldItems([
+        {
+          moveDimension: {
+            source: {
+              sheetId: gid,
+              dimension: "COLUMNS",
+              startIndex: amount,
+              endIndex: amount + 1,
+            },
+            destinationIndex: payments.endCol + 2,
+          },
+        },
+        { deleteTable: { tableId: "tbl-pay" } },
+      ]);
+      expect(held).toEqual([
+        expect.objectContaining({
+          kind: "unmeasured",
+          requestIndex: 1,
+          verb: "deleteTable",
+        }),
+      ]);
+    });
+
+    it("holds a dropdown reset whose read dropdown a column insert moved out of the sent column", () => {
+      const held = heldItems(
+        [insertColumns(id, id + 1), updateTable("tbl-pay", "DOUBLE")],
+        { reads: [paymentsRead(paymentsRows, "DROPDOWN")] },
+      );
+      expect(held).toEqual([
+        { kind: "dropdownReset", requestIndex: 1, table: "Payments" },
+      ]);
+    });
+
+    it("frees a column-properties update retyping the read dropdown where a column insert moved it", () => {
+      const held = heldItems(
+        [
+          insertColumns(id, id + 1),
+          {
+            updateTable: {
+              table: {
+                tableId: "tbl-pay",
+                columnProperties: [
+                  {
+                    columnIndex: amount + 1,
+                    columnName: "Amount",
+                    columnType: "DOUBLE",
+                  },
+                ],
+              },
+              fields: "columnProperties",
+            },
+          },
+        ],
+        { reads: [paymentsRead(paymentsRows, "DROPDOWN")] },
+      );
+      expect(held).toEqual([]);
     });
   });
 

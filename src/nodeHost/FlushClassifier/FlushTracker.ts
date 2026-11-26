@@ -16,9 +16,14 @@ export type CellOrigin =
   // Sorted earlier in the flush, so which read cell it holds is unknown.
   | { kind: "reordered" };
 
-type Layer = (
-  cell: GridCell,
-) => GridCell | Exclude<CellOrigin, { kind: "read" }>;
+type CellBack = GridCell | Exclude<CellOrigin, { kind: "read" }>;
+
+// One request's effect on the grid, as the cells it left mapped back and the ranges it found mapped on.
+interface Layer {
+  back(cell: GridCell): CellBack;
+  // Undefined once the request split the range, so it no longer stands as one range.
+  forward(range: BoundedRange): BoundedRange | undefined;
+}
 
 export interface DimensionShift {
   sheetGid: number;
@@ -53,11 +58,20 @@ export class FlushTracker {
   resolve(cell: GridCell): CellOrigin {
     let current = cell;
     for (const layer of [...this.layers].reverse()) {
-      const earlier = layer(current);
+      const earlier = layer.back(current);
       if ("kind" in earlier) return earlier;
       current = earlier;
     }
     return { kind: "read", cell: current };
+  }
+  // Where a read range's cells stand now, the inverse of resolve; undefined once a request split them.
+  follow(range: BoundedRange): BoundedRange | undefined {
+    let current: BoundedRange | undefined = range;
+    for (const layer of this.layers) {
+      if (current === undefined) return undefined;
+      current = layer.forward(current);
+    }
+    return current;
   }
   // Undefined when an open bound meets a tab whose size no read gave.
   bounded(range: GoogleGridRange): BoundedRange | undefined {
@@ -84,7 +98,10 @@ export class FlushTracker {
     if (shift.band === undefined || shift.count > 0) {
       this.grow(shift.sheetGid, shift.dimension, shift.count);
     }
-    this.layers.push((cell) => shiftedBack(cell, shift));
+    this.layers.push({
+      back: (cell) => shiftedBack(cell, shift),
+      forward: (range) => shiftedOn(range, shift),
+    });
     this.hasShiftedCells = true;
     return this;
   }
@@ -96,32 +113,44 @@ export class FlushTracker {
     return this;
   }
   move(move: DimensionMove): this {
-    this.layers.push((cell) => movedBack(cell, move));
+    this.layers.push({
+      back: (cell) => movedBack(cell, move),
+      forward: (range) => movedOn(range, move),
+    });
     this.hasShiftedCells = true;
     return this;
   }
   cut(source: BoundedRange, destination: GridCell): this {
-    this.layers.push((cell) => cutBack(cell, source, destination));
+    this.layers.push({
+      back: (cell) => cutBack(cell, source, destination),
+      forward: (range) => cutOn(range, source, destination),
+    });
     this.hasShiftedCells = true;
     return this;
   }
   write(cells: GridCell[]): this {
     const written = new Set(cells.map(cellKey));
-    this.layers.push((cell) =>
-      written.has(cellKey(cell)) ? { kind: "written" } : cell,
+    this.layers.push(
+      inPlace((cell) =>
+        written.has(cellKey(cell)) ? { kind: "written" } : cell,
+      ),
     );
     return this;
   }
   reorder(range: GoogleGridRange): this {
-    this.layers.push((cell) =>
-      Grid.isInRange(range, cell) ? { kind: "reordered" } : cell,
+    this.layers.push(
+      inPlace((cell) =>
+        Grid.isInRange(range, cell) ? { kind: "reordered" } : cell,
+      ),
     );
     return this;
   }
   addSheet(sheetGid: number, size: GridSize): this {
     this.gridSizes.set(sheetGid, size);
-    this.layers.push((cell) =>
-      cell.sheetGid === sheetGid ? { kind: "created" } : cell,
+    this.layers.push(
+      inPlace((cell) =>
+        cell.sheetGid === sheetGid ? { kind: "created" } : cell,
+      ),
     );
     return this;
   }
@@ -135,7 +164,12 @@ function cellKey(cell: GridCell): string {
   return [cell.sheetGid, cell.rowIndex, cell.colIndex].join(":");
 }
 
-function shiftedBack(cell: GridCell, shift: DimensionShift): ReturnType<Layer> {
+// A request that changes what cells hold but moves none, so a range stands where it stood.
+function inPlace(back: Layer["back"]): Layer {
+  return { back, forward: (range) => range };
+}
+
+function shiftedBack(cell: GridCell, shift: DimensionShift): CellBack {
   if (cell.sheetGid !== shift.sheetGid) return cell;
   const along = Grid.along(cell, shift.dimension);
   const across = Grid.across(cell, shift.dimension);
@@ -145,6 +179,51 @@ function shiftedBack(cell: GridCell, shift: DimensionShift): ReturnType<Layer> {
   if (along < shift.startIndex) return cell;
   if (along < shift.startIndex + shift.count) return { kind: "created" };
   return Grid.withAlong(cell, shift.dimension, along - shift.count);
+}
+
+// A range shift over only part of the range splits it; one wholly beside or wholly past it leaves it be.
+function shiftedOn(
+  range: BoundedRange,
+  shift: DimensionShift,
+): BoundedRange | undefined {
+  if (range.sheetGid !== shift.sheetGid) return range;
+  const along = Grid.spanAlong(range, shift.dimension);
+  const across = Grid.spanAcross(range, shift.dimension);
+  if (shift.startIndex >= along.endIndex) return range;
+  if (shift.band !== undefined && !Grid.isSpanInside(across, shift.band)) {
+    return Grid.doSpansOverlap(across, shift.band) ? undefined : range;
+  }
+  return Grid.withSpanAlong(range, shift.dimension, shiftedSpan(along, shift));
+}
+
+// An insert at a span's first index moves the whole span; a delete takes the part it covers.
+function shiftedSpan(span: IndexSpan, shift: DimensionShift): IndexSpan {
+  const { startIndex, count } = shift;
+  if (count > 0) {
+    return {
+      startIndex:
+        span.startIndex >= startIndex
+          ? span.startIndex + count
+          : span.startIndex,
+      endIndex:
+        span.endIndex > startIndex ? span.endIndex + count : span.endIndex,
+    };
+  }
+  const deletedEnd = startIndex - count;
+  return {
+    startIndex: deletedOn(span.startIndex, startIndex, deletedEnd),
+    endIndex: deletedOn(span.endIndex, startIndex, deletedEnd),
+  };
+}
+
+function deletedOn(
+  index: number,
+  deletedStart: number,
+  deletedEnd: number,
+): number {
+  if (index < deletedStart) return index;
+  if (index < deletedEnd) return deletedStart;
+  return index - (deletedEnd - deletedStart);
 }
 
 function movedBack(cell: GridCell, move: DimensionMove): GridCell {
@@ -181,11 +260,51 @@ function movedBack(cell: GridCell, move: DimensionMove): GridCell {
   return cell;
 }
 
+// A move carrying part of the range away, or another span into it, splits it.
+function movedOn(
+  range: BoundedRange,
+  move: DimensionMove,
+): BoundedRange | undefined {
+  if (range.sheetGid !== move.sheetGid) return range;
+  const along = Grid.spanAlong(range, move.dimension);
+  const indexes = Array.from(
+    { length: along.endIndex - along.startIndex },
+    (_, offset) => movedOnIndex(along.startIndex + offset, move),
+  );
+  if (indexes.length === 0) return range;
+  const startIndex = Math.min(...indexes);
+  const endIndex = Math.max(...indexes) + 1;
+  if (endIndex - startIndex !== indexes.length) return undefined;
+  return Grid.withSpanAlong(range, move.dimension, { startIndex, endIndex });
+}
+
+// The inverse of movedBack along the move's dimension.
+function movedOnIndex(index: number, move: DimensionMove): number {
+  const { startIndex, endIndex, destinationIndex } = move;
+  const movedCount = endIndex - startIndex;
+  const isMoved = index >= startIndex && index < endIndex;
+  if (destinationIndex >= endIndex) {
+    const landedStart = destinationIndex - movedCount;
+    if (isMoved) return landedStart + index - startIndex;
+    if (index >= endIndex && index < destinationIndex) {
+      return index - movedCount;
+    }
+    return index;
+  }
+  if (destinationIndex <= startIndex) {
+    if (isMoved) return destinationIndex + index - startIndex;
+    if (index >= destinationIndex && index < startIndex) {
+      return index + movedCount;
+    }
+  }
+  return index;
+}
+
 function cutBack(
   cell: GridCell,
   source: BoundedRange,
   destination: GridCell,
-): ReturnType<Layer> {
+): CellBack {
   const rowOffset = cell.rowIndex - destination.rowIndex;
   const colOffset = cell.colIndex - destination.colIndex;
   const isPasted =
@@ -202,4 +321,40 @@ function cutBack(
     };
   }
   return Grid.isInBounded(source, cell) ? { kind: "created" } : cell;
+}
+
+// A cut lifting the whole range carries it to the destination; one lifting only part splits it, and one pasting over it leaves it in place.
+function cutOn(
+  range: BoundedRange,
+  source: BoundedRange,
+  destination: GridCell,
+): BoundedRange | undefined {
+  const isOnSourceTab = range.sheetGid === source.sheetGid;
+  if (
+    !isOnSourceTab ||
+    !Grid.doSpansOverlap(range.rows, source.rows) ||
+    !Grid.doSpansOverlap(range.cols, source.cols)
+  ) {
+    return range;
+  }
+  if (
+    !Grid.isSpanInside(range.rows, source.rows) ||
+    !Grid.isSpanInside(range.cols, source.cols)
+  ) {
+    return undefined;
+  }
+  const rowOffset = destination.rowIndex - source.rows.startIndex;
+  const colOffset = destination.colIndex - source.cols.startIndex;
+  return {
+    sheetGid: destination.sheetGid,
+    rows: offsetSpan(range.rows, rowOffset),
+    cols: offsetSpan(range.cols, colOffset),
+  };
+}
+
+function offsetSpan(span: IndexSpan, offset: number): IndexSpan {
+  return {
+    startIndex: span.startIndex + offset,
+    endIndex: span.endIndex + offset,
+  };
 }

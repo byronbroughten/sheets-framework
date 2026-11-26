@@ -51,6 +51,16 @@ export const Grid = {
   isInSpan(index: number, span: IndexSpan): boolean {
     return index >= span.startIndex && index < span.endIndex;
   },
+  isSpanInside(inner: IndexSpan, outer: IndexSpan): boolean {
+    return (
+      inner.startIndex >= outer.startIndex && inner.endIndex <= outer.endIndex
+    );
+  },
+  doSpansOverlap(first: IndexSpan, second: IndexSpan): boolean {
+    return (
+      first.startIndex < second.endIndex && second.startIndex < first.endIndex
+    );
+  },
   // An absent end is open, as Google reads it.
   isInRange(range: GoogleGridRange, cell: GridCell): boolean {
     return (
@@ -90,6 +100,13 @@ export const Grid = {
   },
   spanAcross(range: BoundedRange, dimension: ShiftDimension): IndexSpan {
     return range[dimensionKeys[dimension].crossSpan];
+  },
+  withSpanAlong(
+    range: BoundedRange,
+    dimension: ShiftDimension,
+    span: IndexSpan,
+  ): BoundedRange {
+    return { ...range, [dimensionKeys[dimension].span]: span };
   },
   grown(size: GridSize, dimension: ShiftDimension, count: number): GridSize {
     const sizeCount = dimensionKeys[dimension].sizeCount;
