@@ -10,8 +10,10 @@ const usage = `Usage: sheets-framework <command> [args]
                        the generated files (send the plan with --send; --force
                        sends one stopped trait for this run only)
   configs-diff         summarise how the generated files differ from HEAD; read-only
-  chore [name] [--send] [--json]
-                       dry-run a chore (or apply it with --send); no name lists them
+  chore [name] [--send [--confirm <token>]] [--json] [--snapshots <folder>] [--restore-script <name>]
+                       dry-run a chore (or apply it with --send); no name lists them;
+                       a --confirm send writes its snapshot to the folder and
+                       prints the undo line naming the script
   probe --fields|--filter|--path ...
                        one read-only Sheets request; no args prints its usage
   setup-auth           mint the Node host's clasp credential

@@ -11,6 +11,8 @@ import {
   type LandedFlushes,
 } from "../01_SpreadsheetSchema/configReaders/flushStoppedOutcome.ts";
 import { fillRowIdsName } from "../01_SpreadsheetSchema/configReaders/syncRunResult.ts";
+import type { HeldItem } from "./FlushClassifier/flushClassifierTypes.ts";
+import { heldGroups } from "./heldGroups.ts";
 import { ReportText } from "./ReportText.ts";
 
 const { section, indent, formatCount, counted, subjectLabel } = ReportText;
@@ -48,6 +50,19 @@ export const GateReport = {
   rerunDryRunLine(command: string): string {
     return `Rerun the dry run: ${command}`;
   },
+  // Beside a send's undo line: the held items the send snapshot couldn't hold; nothing when it held them all.
+  versionHistoryLines(items: HeldItem[]): string[] {
+    const groups = heldGroups([items]);
+    if (groups.length === 0) return [];
+    const lines = groups.flatMap((group) => [
+      groupHeading(group),
+      ...indent(2, group.lines),
+    ]);
+    return [
+      "undone only by the spreadsheet's version history:",
+      ...indent(2, lines),
+    ];
+  },
 };
 
 function heldTitle(held: DryRunHeld): string {
@@ -66,16 +81,13 @@ function heldTitle(held: DryRunHeld): string {
   return `${heldSectionName}: ${counted(count, "cell", "cells")}${sum}, ${confirm}`;
 }
 
-function heldGroupLines({
-  subject,
-  what,
-  isUndoneOnlyByVersionHistory,
-  lines,
-}: HeldGroup): string[] {
-  const heading =
-    subject === undefined ? what : `${subjectLabel(subject)}  ${what}`;
-  const undo = isUndoneOnlyByVersionHistory ? [versionHistoryLine] : [];
-  return [heading, ...indent(2, [...undo, ...lines])];
+function heldGroupLines(group: HeldGroup): string[] {
+  const undo = group.isUndoneOnlyByVersionHistory ? [versionHistoryLine] : [];
+  return [groupHeading(group), ...indent(2, [...undo, ...group.lines])];
+}
+
+function groupHeading({ subject, what }: HeldGroup): string {
+  return subject === undefined ? what : `${subjectLabel(subject)}  ${what}`;
 }
 
 const versionHistoryLine =
