@@ -8,7 +8,6 @@ sheets-framework chore <name>            # dry run: read the sheet, print what i
 sheets-framework chore <name> --json     # the same, as raw request JSON
 sheets-framework chore <name> --send     # apply it
 sheets-framework chore <name> --send --confirm <token>   # apply it, held items included
-sheets-framework chore <name> --send --confirm <token> --snapshots <folder> --restore-script <name>
 ```
 
 **A chore's `--send` is gated on entered data as `sync`'s is** ([sync's gate](./sync.md#syncs-entered-data-gate-and---confirm)): a flush that could lose entered data is held until `--confirm` gives the token its dry run printed. Its held list goes to the package's `.probe/chore-held.json`, and a held send prints `STOPPED` and the dry run to rerun, then exits 1.

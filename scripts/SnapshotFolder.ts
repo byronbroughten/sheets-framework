@@ -1,4 +1,4 @@
-// A confirmed send's snapshot file, its undo line and the prune of old snapshots, which chore and sync both call. The caller names the folder; none is the package's .probe/snapshots.
+// A confirmed send's snapshot file, its undo line and the prune of old snapshots, which chore calls and sync is to call too. The caller names the folder; none is the package's .probe/snapshots.
 import {
   mkdirSync,
   readdirSync,
@@ -11,17 +11,11 @@ import { join, relative, resolve } from "node:path";
 import type { HeldItem } from "../src/nodeHost/FlushClassifier/flushClassifierTypes.ts";
 import type { SendSnapshot } from "../src/nodeHost/SendSnapshotTaker.ts";
 
-const snapshotFlags = {
+// Each takes a value, which a runner reading its command's name must skip.
+export const snapshotFlags = {
   folder: "--snapshots",
   restoreScript: "--restore-script",
 } as const;
-
-// Flags whose next argument is their value, not a chore's name.
-export const valueFlags = [
-  "--confirm",
-  snapshotFlags.folder,
-  snapshotFlags.restoreScript,
-];
 
 const filePrefix = "snapshot-";
 const keptDays = 30;
@@ -47,6 +41,10 @@ export interface SnapshotFile {
   command: string;
   plan: string;
   snapshot: SendSnapshot;
+}
+
+interface SnapshotFileName extends Pick<SnapshotFile, "target" | "command"> {
+  takenAt: string;
 }
 
 export class SnapshotFolder {
@@ -97,7 +95,7 @@ export class SnapshotFolder {
   // Writes one file and returns its path; a file already there is never overwritten.
   write({ target, command, plan, snapshot }: SnapshotFile): string {
     const takenAt = this.now().toISOString();
-    const path = join(this.dir, fileNameOf(takenAt, target, command));
+    const path = join(this.dir, fileNameOf({ takenAt, target, command }));
     mkdirSync(this.dir, { recursive: true });
     const contents = { target, command, takenAt, plan, snapshot };
     writeFileSync(path, `${JSON.stringify(contents, null, 2)}\n`, {
@@ -118,15 +116,6 @@ export class SnapshotFolder {
   }
 }
 
-function fileNameOf(takenAt: string, target: string, command: string): string {
-  const stamp = takenAt.replaceAll(":", "-");
-  return `${filePrefix}${stamp}-${target}-${command.replaceAll(" ", "-")}.json`;
-}
-
-function invokedFrom(): string {
-  return process.env.INIT_CWD ?? process.cwd();
-}
-
 function flagValue(argv: string[], flag: string): string | undefined {
   const index = argv.indexOf(flag);
   if (index === -1) return undefined;
@@ -135,4 +124,13 @@ function flagValue(argv: string[], flag: string): string | undefined {
     throw new Error(`${flag} takes a value.`);
   }
   return value;
+}
+
+function invokedFrom(): string {
+  return process.env.INIT_CWD ?? process.cwd();
+}
+
+function fileNameOf({ takenAt, target, command }: SnapshotFileName): string {
+  const stamp = takenAt.replaceAll(":", "-");
+  return `${filePrefix}${stamp}-${target}-${command.replaceAll(" ", "-")}.json`;
 }

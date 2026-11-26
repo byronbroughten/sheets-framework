@@ -54,13 +54,12 @@ export const GateReport = {
   versionHistoryLines(items: HeldItem[]): string[] {
     const groups = heldGroups([items]);
     if (groups.length === 0) return [];
-    const lines = groups.flatMap((group) => [
-      groupHeading(group),
-      ...indent(2, group.lines),
-    ]);
     return [
-      "undone only by the spreadsheet's version history:",
-      ...indent(2, lines),
+      `${versionHistoryWords}:`,
+      ...indent(
+        2,
+        groups.flatMap((group) => groupBlock(group, [])),
+      ),
     ];
   },
 };
@@ -83,15 +82,22 @@ function heldTitle(held: DryRunHeld): string {
 
 function heldGroupLines(group: HeldGroup): string[] {
   const undo = group.isUndoneOnlyByVersionHistory ? [versionHistoryLine] : [];
-  return [groupHeading(group), ...indent(2, [...undo, ...group.lines])];
+  return groupBlock(group, undo);
 }
 
-function groupHeading({ subject, what }: HeldGroup): string {
-  return subject === undefined ? what : `${subjectLabel(subject)}  ${what}`;
+// A group's heading, then its extra lines and its own, indented.
+function groupBlock(
+  { subject, what, lines }: HeldGroup,
+  extraLines: string[],
+): string[] {
+  const heading =
+    subject === undefined ? what : `${subjectLabel(subject)}  ${what}`;
+  return [heading, ...indent(2, [...extraLines, ...lines])];
 }
 
-const versionHistoryLine =
-  "undone only by the spreadsheet's version history: the send snapshot can't hold it";
+const versionHistoryWords = "undone only by the spreadsheet's version history";
+
+const versionHistoryLine = `${versionHistoryWords}: the send snapshot can't hold it`;
 
 // The fill is the send's last flush, after the files are built.
 function fillFailedLine(outcome: FillFailedOutcome): string {

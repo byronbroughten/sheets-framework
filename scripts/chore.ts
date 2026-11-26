@@ -17,7 +17,10 @@ import {
   startNodeHost,
 } from "./nodeHost.ts";
 import type { SheetsConfig } from "./sheetsConfig.ts";
-import { SnapshotFolder, valueFlags } from "./SnapshotFolder.ts";
+import { snapshotFlags, SnapshotFolder } from "./SnapshotFolder.ts";
+
+// Flags whose next argument is their value, not a chore's name.
+const valueFlags: string[] = ["--confirm", ...Object.values(snapshotFlags)];
 
 const genericHome = fileURLToPath(new URL("../src/chores/", import.meta.url));
 
@@ -145,8 +148,11 @@ export class ChoreRunner {
         spreadsheetId: host.spreadsheetId,
       });
     } catch (error) {
-      if (!(error instanceof HeldFlushRefusal)) throw error;
-      await this._reportRefusal(error);
+      // Flushes that landed before the stop still get their snapshot.
+      const isRefusal = error instanceof HeldFlushRefusal;
+      if (isRefusal) await this._reportRefusal(error);
+      await this._keepSnapshot(host);
+      if (!isRefusal) throw error;
       return;
     }
     if (result) console.log(`result: ${result}`);
@@ -162,11 +168,10 @@ export class ChoreRunner {
     snapshotFolder.prune();
     const snapshot = host.sendSnapshot();
     if (snapshot === undefined) return;
-    const { summary } = host;
     const path = snapshotFolder.write({
       target: this.target,
       command: `chore ${this.choreName}`,
-      plan: this.isJson ? summary.json : summary.lines.join("\n"),
+      plan: this._planText(host),
       snapshot,
     });
     const lines = await snapshotFolder.undoLines(
@@ -213,8 +218,12 @@ export class ChoreRunner {
       ? "SENT — the spreadsheet was written to:"
       : "DRY RUN — nothing was written. It would send:";
     console.log(`\n${heading}\n`);
-    console.log(this.isJson ? summary.json : summary.lines.join("\n"));
+    console.log(this._planText({ summary }));
     console.log(`\n${summary.count} request(s).${this._nextStep(held)}`);
+  }
+  // The requests as the run prints them, which the send's snapshot file keeps as its plan.
+  _planText({ summary }: Pick<NodeHost, "summary">): string {
+    return this.isJson ? summary.json : summary.lines.join("\n");
   }
   // A dry run that held items points at the held section's rerun instead, since a plain --send would be refused.
   _nextStep(held: DryRunHeld | undefined): string {

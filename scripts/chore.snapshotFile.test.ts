@@ -26,17 +26,19 @@ afterEach(() => {
 
 // Runs replaceRent as a dry run, then as the send its token covers.
 async function confirmedSend(sheetsConfig = replaceRentSheetsConfig()) {
-  const run = (argv: string[]) =>
-    runChoreOver({
+  function run(argv: string[]) {
+    return runChoreOver({
       sheetsConfig,
       transport: emptySheetsTransport(),
       argv: ["replaceRent", ...argv],
       now: () => clock,
     });
+  }
   const dryRun = await run([]);
   const token = /Token (\S+):/.exec(dryRun.output)?.[1];
-  const sent = (extra: string[]) =>
-    run(["--send", "--confirm", `${token}`, ...extra]);
+  function sent(extra: string[]) {
+    return run(["--send", "--confirm", `${token}`, ...extra]);
+  }
   return { dryRun, sent, sheetsConfig };
 }
 
@@ -126,7 +128,7 @@ describe("a chore's confirmed send's snapshot file", () => {
   });
 });
 
-describe("a chore's held send prunes its snapshot folder", () => {
+describe("a chore's confirmed send prunes its snapshot folder", () => {
   it("removes snapshots older than 30 days by their file time and keeps newer ones and other files", async () => {
     const folder = mkdtempSync(join(tmpdir(), "snapshots-"));
     const seeded = {
