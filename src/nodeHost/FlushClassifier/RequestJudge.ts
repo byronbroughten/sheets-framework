@@ -103,15 +103,11 @@ export class RequestJudge {
     if (range === undefined) {
       return this.holdUnmeasured(`Table ${tableId}, which no read fetched`);
     }
-    const bounded = this.bounded(range);
-    if (bounded === undefined) return this;
-    const followed = this.tracker.follow(bounded);
-    if (followed === undefined) {
-      return this.holdUnmeasured(
-        `Table ${tableId}, whose read range an earlier request split`,
-      );
+    const tableNow = this._tableNow(range);
+    if (tableNow.kind === "unfollowed") {
+      return this.holdUnmeasured(`Table ${tableId}, ${tableNow.reason}`);
     }
-    const cells = Grid.cells(followed);
+    const cells = Grid.cells(tableNow.now);
     this.delete(cells);
     this.tracker.write(cells);
     return this;
@@ -141,29 +137,43 @@ export class RequestJudge {
     read: GoogleTable | undefined,
   ): number[] | undefined {
     if (read?.range === undefined) return undefined;
-    const bounded = this.tracker.bounded(read.range);
-    if (bounded === undefined) return undefined;
-    const followed = this.tracker.follow(bounded);
-    if (followed === undefined) return undefined;
+    const tableNow = this._tableNow(read.range);
+    if (tableNow.kind === "unfollowed") return undefined;
     const indexes: number[] = [];
     const readDropdowns = (read.columnProperties ?? []).filter(
       dropdowns.isColumn,
     );
     for (const { columnIndex = 0 } of readDropdowns) {
-      const colIndex = bounded.cols.startIndex + columnIndex;
+      const colIndex = tableNow.read.cols.startIndex + columnIndex;
       const colNow = this.tracker.follow({
-        ...bounded,
+        ...tableNow.read,
         cols: { startIndex: colIndex, endIndex: colIndex + 1 },
       });
-      if (
-        colNow === undefined ||
-        colNow.cols.endIndex <= colNow.cols.startIndex
-      ) {
+      if (colNow === undefined || Grid.isSpanEmpty(colNow.cols)) {
         return undefined;
       }
-      indexes.push(colNow.cols.startIndex - followed.cols.startIndex);
+      indexes.push(colNow.cols.startIndex - tableNow.now.cols.startIndex);
     }
     return indexes;
+  }
+  // A read Table's range, bounded by its tab's size as read, and where earlier requests left it.
+  private _tableNow(range: GoogleGridRange): TableNow {
+    const sheetGid = range.sheetId ?? 0;
+    const read = Grid.bounded(range, this.reads.gridSizes.get(sheetGid));
+    if (read === undefined) {
+      return {
+        kind: "unfollowed",
+        reason: `whose read range is open-ended on gid ${sheetGid}, a tab no read sized`,
+      };
+    }
+    const now = this.tracker.follow(read);
+    if (now === undefined) {
+      return {
+        kind: "unfollowed",
+        reason: "whose read range an earlier request split",
+      };
+    }
+    return { kind: "followed", read, now };
   }
   holdFindReplace(find: string, replacement: string): this {
     this.held.push({
@@ -248,6 +258,10 @@ export class RequestJudge {
     });
   }
 }
+
+type TableNow =
+  | { kind: "followed"; read: BoundedRange; now: BoundedRange }
+  | { kind: "unfollowed"; reason: string };
 
 interface JudgedCell {
   origin: GridCell;
