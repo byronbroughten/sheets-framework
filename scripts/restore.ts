@@ -1,4 +1,4 @@
-// `sheets-framework restore`: puts a confirmed send's snapshot back on the package's spreadsheet. See docs/how-it-runs/chore-dry-run.md.
+// `sheets-framework restore`: puts a send's snapshot back on the package's spreadsheet. See docs/how-it-runs/chore-dry-run.md.
 import type { SheetsHttpTransport } from "../src/00_Source/GoogleSheets/GoogleSheetsAPI.ts";
 import type { SnapshotRestore } from "../src/nodeHost/SendSnapshotRestorer.ts";
 import type { ColumnLabel } from "../src/nodeHost/SendSnapshotRestorer/SnapshotColumnRestorer.ts";
@@ -11,7 +11,7 @@ import {
 } from "./SnapshotFolder.ts";
 
 const usage = `Usage: npm run restore -- <snapshot> [--force]
-  <snapshot>  the snapshot file a confirmed send's undo line names
+  <snapshot>  the snapshot file a send's undo line names
   --force     restore though rows were added, removed or reordered since the send`;
 
 // A test's stand-in for Google.

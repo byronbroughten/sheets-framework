@@ -1,12 +1,4 @@
-import {
-  existsSync,
-  mkdtempSync,
-  readdirSync,
-  readFileSync,
-  utimesSync,
-  writeFileSync,
-} from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -16,9 +8,14 @@ import {
   replaceRentSheetsConfig,
   runChoreOver,
 } from "./choreFixture.ts";
-
-const clock = new Date("2026-11-25T12:00:00.000Z");
-const dayMilliseconds = 24 * 60 * 60 * 1000;
+import { tokenOf } from "./runnerFixture.ts";
+import {
+  clock,
+  readJson,
+  seedAgedFiles,
+  snapshotFiles,
+  snapshotsFolder,
+} from "./snapshotFixture.ts";
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -35,31 +32,16 @@ async function confirmedSend(sheetsConfig = replaceRentSheetsConfig()) {
     });
   }
   const dryRun = await run([]);
-  const token = /Token (\S+):/.exec(dryRun.output)?.[1];
+  const token = tokenOf(dryRun.output);
   function sent(extra: string[]) {
     return run(["--send", "--confirm", `${token}`, ...extra]);
   }
   return { dryRun, sent, sheetsConfig };
 }
 
-function snapshotFiles(folder: string): string[] {
-  if (!existsSync(folder)) return [];
-  return readdirSync(folder).filter((name) => name.startsWith("snapshot-"));
-}
-
-function readJson(path: string): Record<string, unknown> {
-  return JSON.parse(readFileSync(path, "utf8"));
-}
-
-function ageFile(path: string, daysOld: number): void {
-  const time = new Date(clock.getTime() - daysOld * dayMilliseconds);
-  utimesSync(path, time, time);
-}
-
 describe("a chore's confirmed send's snapshot file", () => {
   it("lands in the folder the caller names, with the plan, and the undo line names the restore the caller names", async () => {
-    const folder = mkdtempSync(join(tmpdir(), "snapshots-"));
-    vi.stubEnv("INIT_CWD", folder);
+    const folder = snapshotsFolder();
     const { sent } = await confirmedSend();
 
     const { output } = await sent([
@@ -84,7 +66,7 @@ describe("a chore's confirmed send's snapshot file", () => {
   });
 
   it("names the held items the snapshot can't cover beside the undo line", async () => {
-    const folder = mkdtempSync(join(tmpdir(), "snapshots-"));
+    const folder = snapshotsFolder();
     const { sent } = await confirmedSend();
 
     const { output } = await sent(["--snapshots", folder]);
@@ -113,7 +95,7 @@ describe("a chore's confirmed send's snapshot file", () => {
   });
 
   it("is not written by a dry run, which prints no undo line", async () => {
-    const folder = mkdtempSync(join(tmpdir(), "snapshots-"));
+    const folder = snapshotsFolder();
     const sheetsConfig = replaceRentSheetsConfig();
 
     const dryRun = await runChoreOver({
@@ -130,16 +112,8 @@ describe("a chore's confirmed send's snapshot file", () => {
 
 describe("a chore's confirmed send prunes its snapshot folder", () => {
   it("removes snapshots older than 30 days by their file time and keeps newer ones and other files", async () => {
-    const folder = mkdtempSync(join(tmpdir(), "snapshots-"));
-    const seeded = {
-      old: join(folder, "snapshot-old.json"),
-      recent: join(folder, "snapshot-recent.json"),
-      other: join(folder, "notes.txt"),
-    };
-    for (const path of Object.values(seeded)) writeFileSync(path, "{}");
-    ageFile(seeded.old, 31);
-    ageFile(seeded.recent, 29);
-    ageFile(seeded.other, 90);
+    const folder = snapshotsFolder();
+    const seeded = seedAgedFiles(folder);
     const { sent } = await confirmedSend();
 
     await sent(["--snapshots", folder]);

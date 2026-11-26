@@ -3,13 +3,15 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { expect, vi } from "vitest";
+import { expect } from "vitest";
 
 import { appConfigs } from "../dev/generated/appConfigs.ts";
 import type { SheetsHttpTransport } from "../src/00_Source/GoogleSheets/GoogleSheetsAPI.ts";
 import { ChoreRunner } from "./chore.ts";
 import { RestoreRunner } from "./restore.ts";
+import { type CapturedRun, capturedRun, tokenOf } from "./runnerFixture.ts";
 import type { SheetsConfig } from "./sheetsConfig.ts";
+import { snapshotsFolder } from "./snapshotFixture.ts";
 
 interface ChoreSource {
   name: string;
@@ -32,11 +34,6 @@ export function choreSheetsConfig({ name, source }: ChoreSource): SheetsConfig {
   };
 }
 
-export interface ChoreRun {
-  output: string;
-  exitCode: number | string | null | undefined;
-}
-
 interface ChoreRunProps {
   sheetsConfig: SheetsConfig;
   transport: SheetsHttpTransport;
@@ -50,7 +47,7 @@ export async function runChoreOver({
   transport,
   argv,
   now,
-}: ChoreRunProps): Promise<ChoreRun> {
+}: ChoreRunProps): Promise<CapturedRun> {
   const runner = ChoreRunner.init(sheetsConfig, argv, {
     transport,
     configs: appConfigs,
@@ -70,7 +67,7 @@ export async function runRestoreOver({
   sheetsConfig,
   transport,
   argv,
-}: RestoreRunProps): Promise<ChoreRun> {
+}: RestoreRunProps): Promise<CapturedRun> {
   const runner = RestoreRunner.init(sheetsConfig, argv, { transport });
   return capturedRun(() => runner.run());
 }
@@ -82,9 +79,9 @@ interface ConfirmedSendProps {
 }
 
 export interface ConfirmedSend {
-  dryRun: ChoreRun;
-  sent: ChoreRun;
-  restore: (argv?: string[]) => Promise<ChoreRun>;
+  dryRun: CapturedRun;
+  sent: CapturedRun;
+  restore: (argv?: string[]) => Promise<CapturedRun>;
 }
 
 // A dry run for the token, the confirmed send it covers, which must print an undo line, then the restore that line names.
@@ -93,9 +90,9 @@ export async function confirmedSendOver({
   transport,
   chore,
 }: ConfirmedSendProps): Promise<ConfirmedSend> {
-  vi.stubEnv("INIT_CWD", mkdtempSync(join(tmpdir(), "snapshots-")));
+  snapshotsFolder();
   const dryRun = await runChoreOver({ sheetsConfig, transport, argv: [chore] });
-  const token = /Token (\S+):/.exec(dryRun.output)?.[1];
+  const token = tokenOf(dryRun.output);
   const sent = await runChoreOver({
     sheetsConfig,
     transport,
@@ -115,18 +112,6 @@ export async function confirmedSendOver({
         argv: [`${snapshot}`, ...argv],
       }),
   };
-}
-
-async function capturedRun(run: () => Promise<void>): Promise<ChoreRun> {
-  const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
-  process.exitCode = undefined;
-  await run();
-  const output = log.mock.calls.map(([line]) => String(line)).join("\n");
-  log.mockRestore();
-  const { exitCode } = process;
-  // A held or stopped run's exit code would otherwise fail the test process.
-  process.exitCode = undefined;
-  return { output, exitCode };
 }
 
 const srcUrl = new URL("../src/", import.meta.url);

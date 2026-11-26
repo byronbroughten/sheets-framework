@@ -5,17 +5,19 @@ import { fileURLToPath } from "node:url";
 import { loadSheetsConfig } from "./sheetsConfig.ts";
 
 const usage = `Usage: sheets-framework <command> [args]
-  sync [--send] [--force <table>/<column>/<trait>]
+  sync [--send [--confirm <token>]] [--force <table>/<column>/<trait>] [--snapshots <folder>] [--restore-script <name>]
                        plan alterations.ts against the live sheet and refresh
                        the generated files (send the plan with --send; --force
-                       sends one stopped trait for this run only)
+                       sends one stopped trait for this run only);
+                       a --confirm or --force send writes its snapshot to the
+                       folder and prints the undo line naming the script
   configs-diff         summarise how the generated files differ from HEAD; read-only
   chore [name] [--send [--confirm <token>]] [--json] [--snapshots <folder>] [--restore-script <name>]
                        dry-run a chore (or apply it with --send); no name lists them;
                        a --confirm send writes its snapshot to the folder and
                        prints the undo line naming the script
   restore <snapshot> [--force]
-                       put a confirmed send's snapshot back, each saved column
+                       put a send's snapshot back, each saved column
                        by its column ID; stops if rows moved since the send,
                        unless --force
   probe --fields|--filter|--path ...

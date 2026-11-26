@@ -1,17 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { SheetsHttpRequest } from "../src/00_Source/GoogleSheets/GoogleSheetsAPI.ts";
-import {
-  type ChoreRun,
-  replaceRentSheetsConfig,
-  runChoreOver,
-} from "./choreFixture.ts";
+import { replaceRentSheetsConfig, runChoreOver } from "./choreFixture.ts";
+import { type CapturedRun, tokenOf } from "./runnerFixture.ts";
 
 const sheetsConfig = replaceRentSheetsConfig();
 
 async function runReplaceRent(
   argv: string[],
-): Promise<ChoreRun & { batchUpdates: number }> {
+): Promise<CapturedRun & { batchUpdates: number }> {
   const transport = vi.fn((request: SheetsHttpRequest) => {
     if (request.url.includes(":batchUpdate")) return { replies: [] };
     return { sheets: [] };
@@ -42,7 +39,7 @@ describe("a chore's --send over entered data", () => {
     );
 
     const dryRun = await runReplaceRent([]);
-    const token = /Token (\S+):/.exec(dryRun.output)?.[1];
+    const token = tokenOf(dryRun.output);
     expect(dryRun.output).toContain(
       "== Held: 1 item, sent only with --confirm ==",
     );
