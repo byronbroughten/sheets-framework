@@ -7,12 +7,16 @@ import type {
 } from "../GoogleSheetsAPI.ts";
 
 type GoogleSpreadsheet = GoogleAppsScript.Sheets.Schema.Spreadsheet;
-type GoogleValueRange = GoogleAppsScript.Sheets.Schema.ValueRange;
 
 const sheetsApiBase = "https://sheets.googleapis.com/v4/spreadsheets";
 
 // A cell as values:batchGet gives it under FORMULA: a formula's text, else its unformatted value.
 export type SheetValue = string | number | boolean;
+
+// A values:batchGet reply under majorDimension=COLUMNS: each range's one column.
+interface ColumnValueRanges {
+  valueRanges?: { values?: SheetValue[][] }[];
+}
 
 export interface ColumnValuesRead {
   spreadsheetId: string;
@@ -33,25 +37,17 @@ export function httpColumnValues({
     "valueRenderOption=FORMULA",
     "dateTimeRenderOption=SERIAL_NUMBER",
   ].join("&");
-  const reply = transport({
+  const { valueRanges = [] } = send<ColumnValueRanges>(transport, {
     method: "GET",
     url: `${sheetsApiBase}/${spreadsheetId}/values:batchGet?${query}`,
     body: null,
-  }) as { valueRanges?: GoogleValueRange[] };
-  const valueRanges = reply.valueRanges ?? [];
-  return ranges.map(
-    (_, index) =>
-      (valueRanges[index]?.values?.[0] as SheetValue[] | undefined) ?? [],
-  );
+  });
+  return ranges.map((_, index) => valueRanges[index]?.values?.[0] ?? []);
 }
 
 export function httpSheetsTransport(
   props: GoogleSheetsAPIHttpProps,
 ): SheetsAdvancedTransport {
-  // The one place the wire is trusted, as Apps Script's own declaration trusts it.
-  function send<RS>(request: SheetsHttpRequest): RS {
-    return props.transport(request) as RS;
-  }
   function url(spreadsheetId: string, suffix: string, fields?: string): string {
     const query = fields ? `?fields=${encodeURIComponent(fields)}` : "";
     return `${sheetsApiBase}/${spreadsheetId}${suffix}${query}`;
@@ -59,7 +55,7 @@ export function httpSheetsTransport(
   return {
     Spreadsheets: {
       get: (spreadsheetId, optionalArgs) => {
-        const spreadsheet = send<GoogleSpreadsheet>({
+        const spreadsheet = send<GoogleSpreadsheet>(props.transport, {
           method: "GET",
           url: url(spreadsheetId, "", optionalArgs?.fields),
           body: null,
@@ -68,7 +64,7 @@ export function httpSheetsTransport(
         return spreadsheet;
       },
       getByDataFilter: (resource, spreadsheetId, optionalArgs) => {
-        const spreadsheet = send<GoogleSpreadsheet>({
+        const spreadsheet = send<GoogleSpreadsheet>(props.transport, {
           method: "POST",
           url: url(spreadsheetId, ":getByDataFilter", optionalArgs?.fields),
           body: JSON.stringify(resource),
@@ -83,7 +79,7 @@ export function httpSheetsTransport(
       },
       batchUpdate: (resource, spreadsheetId) =>
         props.gateFlush(resource.requests ?? [], () =>
-          send<GoogleBatchUpdateResponse>({
+          send<GoogleBatchUpdateResponse>(props.transport, {
             method: "POST",
             url: url(spreadsheetId, ":batchUpdate"),
             body: JSON.stringify(resource),
@@ -91,4 +87,12 @@ export function httpSheetsTransport(
         ),
     },
   };
+}
+
+// The one place the wire is trusted, as Apps Script's own declaration trusts it.
+function send<RS>(
+  transport: SheetsHttpTransport,
+  request: SheetsHttpRequest,
+): RS {
+  return transport(request) as RS;
 }

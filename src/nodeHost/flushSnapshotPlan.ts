@@ -36,8 +36,12 @@ export function flushSnapshotPlan({
     trait,
   }));
   for (const item of items) {
-    const column = isHeldCellItem(item) && reads.heldColumn(item.cell);
-    if (!isHeldCellItem(item) || !column) {
+    if (!isHeldCellItem(item)) {
+      versionHistoryItems.push(item);
+      continue;
+    }
+    const column = reads.heldColumn(item.cell);
+    if (column === undefined) {
       versionHistoryItems.push(item);
       continue;
     }

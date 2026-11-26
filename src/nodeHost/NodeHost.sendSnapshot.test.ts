@@ -10,11 +10,11 @@ import { SheetIndex } from "../00_Source/RawSource/SheetIndex.ts";
 import { installedConfigs } from "../01_SpreadsheetSchema/configReaders/configRegister.ts";
 import type { ForcedTrait } from "../01_SpreadsheetSchema/configReaders/syncRunResult.ts";
 import { fakeSheetsHttpTransport } from "../testSupport/fakeSheetsHttpTransport.ts";
+import { stubSheetsService } from "../testSupport/fakeSheetsService.ts";
 import {
-  buildGridRows,
-  type FakeSheetsService,
-  stubSheetsService,
-} from "../testSupport/fakeSheetsService.ts";
+  type FakeBodyRow,
+  fakeTableSheet,
+} from "../testSupport/fakeSheetsService/fakeTableSheet.ts";
 import type { HeldList } from "./EnteredDataGate.ts";
 import { heldGroups } from "./heldGroups.ts";
 import { NodeHost } from "./NodeHost.ts";
@@ -22,34 +22,39 @@ import { NodeHost } from "./NodeHost.ts";
 const spreadsheetId = "spreadsheet-under-test";
 const gateTarget = "app:spreadsheet-under-test";
 
-// The Ledger Table: column IDs in row 0, header in row 3 (ID, Name, Amount, Note), data from row 4.
+// The Widget Table, where the layout puts it: column IDs in row 0, header in row 3, data from row 4.
 // Gid 0, as the fake's Table range carries no sheetId, which the gate reads as 0.
-const ledger = { gid: 0, title: "Ledger", headerRow: 3, endRow: 6 };
-const ledgerCol = { id: 0, name: 1, amount: 2, note: 3 };
-const ledgerRows = buildGridRows({
-  3: ["ID", "Name", "Amount", "Note"],
-  4: ["row-1", "Rent", 1200],
-  5: ["row-2", "Fee", 50, "late"],
-});
-const ledgerColumnIds = ["col-id", "col-name", "col-amount", "col-note"];
+const widget = { gid: 0, title: "Widget", endRow: 6 };
+const widgetColumns = {
+  id: { columnId: "col-id", header: "ID" },
+  name: { columnId: "col-name", header: "Name" },
+  amount: { columnId: "col-amount", header: "Amount" },
+  note: { columnId: "col-note", header: "Note" },
+};
+type WidgetColumn = keyof typeof widgetColumns;
+const widgetColumnNames: WidgetColumn[] = ["id", "name", "amount", "note"];
+const widgetBodyRows: FakeBodyRow<WidgetColumn>[] = [
+  { id: "row-1", name: "Sprocket", amount: 1200 },
+  { id: "row-2", name: "Gizmo", amount: 50, note: "late" },
+];
 // A tab with no Table the run reads.
 const scratch = { gid: 6, title: "Scratch" };
 
-function seedFake(): FakeSheetsService {
+function widgetCol(column: WidgetColumn): number {
+  return widgetColumnNames.indexOf(column);
+}
+
+function seedFake() {
   return stubSheetsService({
     sheets: [
-      {
-        sheetId: ledger.gid,
-        title: ledger.title,
-        rows: ledgerRows,
-        table: {
-          name: "Ledger",
-          startRowIndex: ledger.headerRow,
-          startColumnIndex: 0,
-          endRowIndex: ledger.endRow,
-          headRows: { 3: ledgerColumnIds },
-        },
-      },
+      fakeTableSheet.build({
+        sheetId: widget.gid,
+        title: widget.title,
+        name: widget.title,
+        columnConfigs: widgetColumns,
+        columnNames: widgetColumnNames,
+        bodyRows: widgetBodyRows,
+      }),
       { sheetId: scratch.gid, title: scratch.title, rows: [["kept"]] },
     ],
   });
@@ -60,16 +65,21 @@ interface SnapshotCase {
   forcedTraits?: ForcedTrait[];
 }
 
-function seedHost(
-  isDryRun: boolean,
-  confirmedList: HeldList | undefined,
-  forcedTraits: ForcedTrait[] | undefined,
-) {
-  const fake = seedFake();
-  const host = NodeHost.init({
+interface HostSeed {
+  isDryRun: boolean;
+  confirmedList: HeldList | undefined;
+  forcedTraits: ForcedTrait[] | undefined;
+}
+
+function seedHost({
+  isDryRun,
+  confirmedList,
+  forcedTraits,
+}: HostSeed): NodeHost {
+  return NodeHost.init({
     configs: installedConfigs(),
     spreadsheetId,
-    transport: fakeSheetsHttpTransport(fake),
+    transport: fakeSheetsHttpTransport(seedFake()),
     isDryRun,
     log: vi.fn(),
     enteredDataGate: {
@@ -80,18 +90,17 @@ function seedHost(
       hash: (input) => `hash(${input})`,
     },
   });
-  return { host, fake, api: host.googleSheetsAPI };
 }
 
-function readLedger(api: GoogleSheetsAPI): void {
+function readWidget(api: GoogleSheetsAPI): void {
   api.fetchGrid(
     [
       {
-        sheetId: ledger.gid,
+        sheetId: widget.gid,
         startRowIndex: SheetIndex.row(0),
-        endRowIndex: SheetIndex.row(ledger.endRow),
+        endRowIndex: SheetIndex.row(widget.endRow),
         startColumnIndex: SheetIndex.col(0),
-        endColumnIndex: SheetIndex.col(4),
+        endColumnIndex: SheetIndex.col(widgetColumnNames.length),
       },
     ],
     { includeProgrammaticFacts: false },
@@ -100,7 +109,7 @@ function readLedger(api: GoogleSheetsAPI): void {
 
 function runFlushes(host: NodeHost, flushes: GoogleRequest[][]): void {
   const api = host.googleSheetsAPI;
-  readLedger(api);
+  readWidget(api);
   for (const requests of flushes) {
     api.flush(
       requests.map((request) => ({
@@ -112,7 +121,11 @@ function runFlushes(host: NodeHost, flushes: GoogleRequest[][]): void {
 }
 
 function dryRun({ flushes, forcedTraits }: SnapshotCase) {
-  const { host } = seedHost(true, undefined, forcedTraits);
+  const host = seedHost({
+    isDryRun: true,
+    confirmedList: undefined,
+    forcedTraits,
+  });
   runFlushes(host, flushes);
   return host;
 }
@@ -120,7 +133,11 @@ function dryRun({ flushes, forcedTraits }: SnapshotCase) {
 // A dry run for the token, then the send it covers.
 function confirmedSend(snapshotCase: SnapshotCase) {
   const heldList = Val.assert(dryRun(snapshotCase).heldList, "heldList");
-  const { host } = seedHost(false, heldList, snapshotCase.forcedTraits);
+  const host = seedHost({
+    isDryRun: false,
+    confirmedList: heldList,
+    forcedTraits: snapshotCase.forcedTraits,
+  });
   runFlushes(host, snapshotCase.flushes);
   return { snapshot: host.sendSnapshot() };
 }
@@ -146,36 +163,39 @@ function writeCell(
   };
 }
 
-const overwriteRent = writeCell(ledger.gid, 4, ledgerCol.amount, {
+const overwriteSprocket = writeCell(widget.gid, 4, widgetCol("amount"), {
   numberValue: 900,
 });
-const noteRent = writeCell(ledger.gid, 4, ledgerCol.note, {
+const noteSprocket = writeCell(widget.gid, 4, widgetCol("note"), {
   stringValue: "memo",
 });
 const deleteNoteColumn: GoogleRequest = {
   deleteRange: {
     range: {
-      sheetId: ledger.gid,
-      startColumnIndex: ledgerCol.note,
-      endColumnIndex: ledgerCol.note + 1,
+      sheetId: widget.gid,
+      startColumnIndex: widgetCol("note"),
+      endColumnIndex: widgetCol("note") + 1,
     },
     shiftDimension: "COLUMNS",
   },
 };
-const replaceRent: GoogleRequest = {
-  findReplace: { find: "Rent", replacement: "Lease", allSheets: true },
+const replaceSprocket: GoogleRequest = {
+  findReplace: { find: "Sprocket", replacement: "Cog", allSheets: true },
 };
 const overwriteScratch = writeCell(scratch.gid, 0, 0, {
   stringValue: "gone",
 });
 
+// The Widget tab as the fixture seeds it, blank cells as batchGet gives them.
+const blankRow = widgetColumnNames.map(() => "");
 const seededRows: unknown[][] = [
-  ledgerColumnIds,
-  ["", "", "", ""],
-  ["", "", "", ""],
-  ["ID", "Name", "Amount", "Note"],
-  ["row-1", "Rent", 1200, ""],
-  ["row-2", "Fee", 50, "late"],
+  widgetColumnNames.map((column) => widgetColumns[column].columnId),
+  blankRow,
+  blankRow,
+  widgetColumnNames.map((column) => widgetColumns[column].header),
+  ...widgetBodyRows.map((row) =>
+    widgetColumnNames.map((column) => row[column] ?? ""),
+  ),
 ];
 
 function seededColumn(colIndex: number): unknown[] {
@@ -189,29 +209,33 @@ function seededFingerprints(colIndexes: number[]): unknown[][] {
 describe("NodeHost.sendSnapshot", () => {
   it("holds an overwritten column whole by its column ID, and fingerprints the tab before and after the send", () => {
     const { snapshot } = confirmedSend({
-      flushes: [[overwriteRent, noteRent]],
+      flushes: [[overwriteSprocket, noteSprocket]],
     });
 
     expect(snapshot?.columns).toEqual([
       {
-        sheetGid: ledger.gid,
-        tabTitle: ledger.title,
-        table: "Ledger",
+        sheetGid: widget.gid,
+        tabTitle: widget.title,
+        table: widget.title,
         header: "Amount",
         columnId: "col-amount",
-        colIndex: ledgerCol.amount,
-        values: seededColumn(ledgerCol.amount),
+        colIndex: widgetCol("amount"),
+        values: seededColumn(widgetCol("amount")),
       },
     ]);
-    const fingerprintCols = [ledgerCol.id, ledgerCol.name, ledgerCol.note];
+    const fingerprintCols = [
+      widgetCol("id"),
+      widgetCol("name"),
+      widgetCol("note"),
+    ];
     const before = seededFingerprints(fingerprintCols);
     expect(snapshot?.fingerprints).toEqual([
       {
-        sheetGid: ledger.gid,
-        tabTitle: ledger.title,
+        sheetGid: widget.gid,
+        tabTitle: widget.title,
         colIndexes: fingerprintCols,
         before,
-        after: before.with(4, ["row-1", "Rent", "memo"]),
+        after: before.with(4, ["row-1", "Sprocket", "memo"]),
       },
     ]);
     expect(snapshot?.versionHistoryItems).toEqual([]);
@@ -224,33 +248,33 @@ describe("NodeHost.sendSnapshot", () => {
       expect.objectContaining({
         header: "Note",
         columnId: "col-note",
-        colIndex: ledgerCol.note,
-        values: ["col-note", "", "", "Note", "", "late"],
+        colIndex: widgetCol("note"),
+        values: seededColumn(widgetCol("note")),
       }),
     ]);
     expect(snapshot?.fingerprints[0]?.colIndexes).toEqual([
-      ledgerCol.id,
-      ledgerCol.name,
-      ledgerCol.amount,
+      widgetCol("id"),
+      widgetCol("name"),
+      widgetCol("amount"),
     ]);
   });
 
   it("holds each column as it stood before the first flush that changes it", () => {
     const { snapshot } = confirmedSend({
       flushes: [
-        [overwriteRent],
-        [writeCell(ledger.gid, 5, ledgerCol.amount, { numberValue: 1 })],
+        [overwriteSprocket],
+        [writeCell(widget.gid, 5, widgetCol("amount"), { numberValue: 1 })],
       ],
     });
 
     expect(snapshot?.columns.map(({ values }) => values)).toEqual([
-      seededColumn(ledgerCol.amount),
+      seededColumn(widgetCol("amount")),
     ]);
   });
 
   it("names a findReplace and a cell no Table read covers as undone only by version history", () => {
     const { snapshot } = confirmedSend({
-      flushes: [[replaceRent], [overwriteScratch]],
+      flushes: [[replaceSprocket], [overwriteScratch]],
     });
 
     expect(snapshot?.columns).toEqual([]);
@@ -262,21 +286,21 @@ describe("NodeHost.sendSnapshot", () => {
 
   it("names the same items in the dry run's held groups as undone only by version history", () => {
     const heldList = dryRun({
-      flushes: [[overwriteRent], [replaceRent], [overwriteScratch]],
+      flushes: [[overwriteSprocket], [replaceSprocket], [overwriteScratch]],
     }).heldList;
 
     const groups = heldGroups(Val.assert(heldList, "heldList").flushes);
 
     expect(groups).toEqual([
       expect.objectContaining({
-        subject: { table: "Ledger", column: "Amount" },
+        subject: { table: widget.title, column: "Amount" },
       }),
       expect.objectContaining({
         subject: { tab: `gid ${scratch.gid}`, path: "A" },
         isUndoneOnlyByVersionHistory: true,
       }),
       expect.objectContaining({
-        what: expect.stringContaining("Rent"),
+        what: expect.stringContaining("Sprocket"),
         isUndoneOnlyByVersionHistory: true,
       }),
     ]);
@@ -284,10 +308,10 @@ describe("NodeHost.sendSnapshot", () => {
   });
 
   it("snapshots a forced send's traits though the send holds no cell", () => {
-    const trait = { table: "Ledger", column: "Amount", trait: "valueName" };
+    const trait = { table: widget.title, column: "Amount", trait: "valueName" };
 
     const { snapshot } = confirmedSend({
-      flushes: [[noteRent]],
+      flushes: [[noteSprocket]],
       forcedTraits: [trait],
     });
 
@@ -300,11 +324,13 @@ describe("NodeHost.sendSnapshot", () => {
 
   it("takes none on a dry run", () => {
     expect(
-      dryRun({ flushes: [[overwriteRent]] }).sendSnapshot(),
+      dryRun({ flushes: [[overwriteSprocket]] }).sendSnapshot(),
     ).toBeUndefined();
   });
 
   it("takes none on a send with nothing held", () => {
-    expect(confirmedSend({ flushes: [[noteRent]] }).snapshot).toBeUndefined();
+    expect(
+      confirmedSend({ flushes: [[noteSprocket]] }).snapshot,
+    ).toBeUndefined();
   });
 });

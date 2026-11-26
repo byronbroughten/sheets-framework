@@ -15,21 +15,20 @@ import {
 } from "./flushSnapshotPlan.ts";
 
 // A held column as it stood before the send, head rows included, so a deleted column can be recreated where it was.
-export interface SnapshotColumn {
-  sheetGid: number;
-  tabTitle: string;
-  table: string;
-  header: string;
+export interface SnapshotColumn extends Pick<
+  HeldColumn,
+  "sheetGid" | "tabTitle" | "table" | "header" | "colIndex"
+> {
   columnId: string;
-  colIndex: number;
   // From the tab's first row; Google trims the column's trailing blanks.
   values: SheetValue[];
 }
 
 // Each row of an affected tab, read from columns the send doesn't change, before and after the send.
-export interface TabFingerprints {
-  sheetGid: number;
-  tabTitle: string;
+export interface TabFingerprints extends Pick<
+  HeldColumn,
+  "sheetGid" | "tabTitle"
+> {
   colIndexes: number[];
   before: SheetValue[][];
   after: SheetValue[][];
@@ -48,6 +47,12 @@ export interface SendSnapshotTakerProps {
 }
 
 type TabFingerprintsBefore = Omit<TabFingerprints, "after">;
+
+// A tab with the rows one read gave its fingerprint columns.
+interface TabRows {
+  tab: TabFingerprintsBefore;
+  rows: SheetValue[][];
+}
 
 const fingerprintColumnLimit = 3;
 
@@ -83,7 +88,9 @@ export class SendSnapshotTaker {
     const newTabs = this._newTabs(columns);
     const tabRanges = newTabs.flatMap(fingerprintRanges);
     const ranges = [
-      ...freshColumns.map(({ column }) => columnRange(column)),
+      ...freshColumns.map(({ column }) =>
+        wholeColumnRange(column.tabTitle, column.colIndex),
+      ),
       ...tabRanges,
     ];
     if (ranges.length === 0) return this;
@@ -91,12 +98,9 @@ export class SendSnapshotTaker {
     for (const [index, planned] of freshColumns.entries()) {
       this._keepColumn(planned, values[index] ?? []);
     }
-    const tabRows = fingerprintRowsByTab(
-      newTabs,
-      values.slice(freshColumns.length),
-    );
-    for (const [index, tab] of newTabs.entries()) {
-      this.tabs.set(tab.sheetGid, { ...tab, before: tabRows[index] ?? [] });
+    const tabValues = values.slice(freshColumns.length);
+    for (const { tab, rows } of tabsWithRows(newTabs, tabValues)) {
+      this.tabs.set(tab.sheetGid, { ...tab, before: rows });
     }
     return this;
   }
@@ -104,13 +108,10 @@ export class SendSnapshotTaker {
   finished(): SendSnapshot | undefined {
     if (!this.hasStarted) return undefined;
     const tabs = [...this.tabs.values()];
-    const tabRows = fingerprintRowsByTab(
-      tabs,
-      this._columnValues(tabs.flatMap(fingerprintRanges)),
-    );
-    const fingerprints = tabs.map((tab, index) => ({
+    const values = this._columnValues(tabs.flatMap(fingerprintRanges));
+    const fingerprints = tabsWithRows(tabs, values).map(({ tab, rows }) => ({
       ...tab,
-      after: tabRows[index] ?? [],
+      after: rows,
     }));
     return {
       columns: this.columns,
@@ -147,13 +148,14 @@ export class SendSnapshotTaker {
       return;
     }
     this.capturedColumnKeys.add(columnKey(column));
+    const { sheetGid, tabTitle, table, header, colIndex } = column;
     this.columns.push({
-      sheetGid: column.sheetGid,
-      tabTitle: column.tabTitle,
-      table: column.table,
-      header: column.header,
+      sheetGid,
+      tabTitle,
+      table,
+      header,
+      colIndex,
       columnId,
-      colIndex: column.colIndex,
       values,
     });
   }
@@ -187,26 +189,24 @@ function fingerprintRanges({
   return colIndexes.map((colIndex) => wholeColumnRange(tabTitle, colIndex));
 }
 
-function columnRange({ tabTitle, colIndex }: HeldColumn): string {
-  return wholeColumnRange(tabTitle, colIndex);
-}
-
 function wholeColumnRange(tabTitle: string, colIndex: number): string {
   const letters = colLetters(colIndex);
   return `'${tabTitle.replaceAll("'", "''")}'!${letters}:${letters}`;
 }
 
-// The values one read gave each tab's fingerprint columns, in order, as each tab's rows.
-function fingerprintRowsByTab(
+// The values one read gave each tab's fingerprint columns, in order, paired with each tab as its rows.
+function tabsWithRows(
   tabs: TabFingerprintsBefore[],
   values: SheetValue[][],
-): SheetValue[][][] {
+): TabRows[] {
+  const withRows: TabRows[] = [];
   let offset = 0;
-  return tabs.map(({ colIndexes }) => {
-    const tabValues = values.slice(offset, offset + colIndexes.length);
-    offset += colIndexes.length;
-    return fingerprintRows(tabValues);
-  });
+  for (const tab of tabs) {
+    const end = offset + tab.colIndexes.length;
+    withRows.push({ tab, rows: fingerprintRows(values.slice(offset, end)) });
+    offset = end;
+  }
+  return withRows;
 }
 
 // The columns turned into rows, a column's trimmed tail padded with "".
