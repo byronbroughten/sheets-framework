@@ -14,6 +14,10 @@ const usage = `Usage: sheets-framework <command> [args]
                        dry-run a chore (or apply it with --send); no name lists them;
                        a --confirm send writes its snapshot to the folder and
                        prints the undo line naming the script
+  restore <snapshot> [--force]
+                       put a confirmed send's snapshot back, each saved column
+                       by its column ID; stops if rows moved since the send,
+                       unless --force
   probe --fields|--filter|--path ...
                        one read-only Sheets request; no args prints its usage
   setup-auth           mint the Node host's clasp credential
@@ -36,6 +40,11 @@ switch (command) {
   case "chore": {
     const { runChore } = await import("./chore.ts");
     await runChore(loadSheetsConfig(), argv);
+    break;
+  }
+  case "restore": {
+    const { runRestore } = await import("./restore.ts");
+    await runRestore(loadSheetsConfig(), argv);
     break;
   }
   case "probe": {

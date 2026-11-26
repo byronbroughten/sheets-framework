@@ -46,6 +46,7 @@ describe("SpreadsheetRaw add sheet and add Table", () => {
     tableId: mintedTableId,
     name: "spreadsheetConfig",
     range: {
+      sheetId: 555,
       startRowIndex: 2,
       endRowIndex: 5,
       startColumnIndex: 1,

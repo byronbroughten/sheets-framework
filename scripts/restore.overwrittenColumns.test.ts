@@ -1,0 +1,326 @@
+// The scripts project installs no configs, and valueTypesTableSheet reads them as it loads.
+import "../dev/installDevConfigs.ts";
+
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { tableLayout } from "../src/01_SpreadsheetSchema/tableLayout.ts";
+import { fakeSheetsHttpTransport } from "../src/testSupport/fakeSheetsHttpTransport.ts";
+import {
+  type FakeSheetsService,
+  stubSheetsService,
+} from "../src/testSupport/fakeSheetsService.ts";
+import {
+  type ValueTypesBodyRow,
+  type ValueTypesColumnName,
+  valueTypesColumnNames,
+  valueTypesGid,
+  valueTypesTableSheet,
+} from "../src/testSupport/valueTypesTableSheet.ts";
+import {
+  choreSheetsConfig,
+  runChoreOver,
+  runRestoreOver,
+} from "./choreFixture.ts";
+
+type GoogleRequest = GoogleAppsScript.Sheets.Schema.Request;
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
+
+const srcUrl = new URL("../src/", import.meta.url);
+
+function srcModule(path: string): string {
+  return JSON.stringify(fileURLToPath(new URL(path, srcUrl)));
+}
+
+const topDataRowIndex = tableLayout.headerZoneDepth;
+
+const bodyRows: ValueTypesBodyRow[] = [
+  { id: "r:vty:apple", stringValue: "Apple", checkbox: true },
+  { id: "r:vty:pear", stringValue: "Pear", checkbox: true },
+];
+
+interface TableCase {
+  columnNames: ValueTypesColumnName[];
+}
+
+const withRowIds: TableCase = { columnNames: valueTypesColumnNames() };
+const withoutRowIds: TableCase = {
+  columnNames: valueTypesColumnNames().filter((name) => name !== "id"),
+};
+
+function colOf({ columnNames }: TableCase, name: ValueTypesColumnName): number {
+  return columnNames.indexOf(name);
+}
+
+function writeCell(
+  rowIndex: number,
+  colIndex: number,
+  userEnteredValue: GoogleAppsScript.Sheets.Schema.ExtendedValue,
+): GoogleRequest {
+  return {
+    updateCells: {
+      range: {
+        sheetId: valueTypesGid,
+        startRowIndex: rowIndex,
+        endRowIndex: rowIndex + 1,
+        startColumnIndex: colIndex,
+        endColumnIndex: colIndex + 1,
+      },
+      rows: [{ values: [{ userEnteredValue }] }],
+      fields: "userEnteredValue",
+    },
+  };
+}
+
+// Reads Text and Checkbox, then overwrites both on every row, which the gate holds.
+function overwriteChoreSource(
+  tableCase: TableCase,
+  rows: ValueTypesBodyRow[],
+): string {
+  const requests = rows.flatMap((_, bodyIndex) => [
+    writeCell(topDataRowIndex + bodyIndex, colOf(tableCase, "stringValue"), {
+      stringValue: "Overwritten",
+    }),
+    writeCell(topDataRowIndex + bodyIndex, colOf(tableCase, "checkbox"), {
+      boolValue: false,
+    }),
+  ]);
+  return `
+import { googleRawRequest } from ${srcModule("00_Source/GoogleSheets/GoogleSheetsAPI.ts")};
+import { SpreadsheetRaw } from ${srcModule("02_SpreadsheetRaw/SpreadsheetRaw.ts")};
+
+export const overwrite = {
+  description: "overwrites Text and Checkbox on every row",
+  action(ss) {
+    ss.table("valueTypes").prepFetchColumnsFull("stringValue", "checkbox");
+    ss.fetchAllPrepped();
+    const raw = SpreadsheetRaw.init();
+    for (const request of ${JSON.stringify(requests)}) {
+      raw.gatherRawOperation(googleRawRequest(request));
+    }
+    raw.batchUpdateGSheets();
+  },
+};
+`;
+}
+
+interface SentCase {
+  fake: FakeSheetsService;
+  restore: (argv?: string[]) => ReturnType<typeof runRestoreOver>;
+}
+
+// A dry run for the token, the confirmed send it covers, then the restore its undo line names.
+async function overwritingSend(
+  tableCase: TableCase,
+  rows: ValueTypesBodyRow[] = bodyRows,
+): Promise<SentCase> {
+  const fake = stubSheetsService({
+    sheets: [valueTypesTableSheet(rows, tableCase)],
+  });
+  const transport = fakeSheetsHttpTransport(fake);
+  const sheetsConfig = choreSheetsConfig({
+    name: "overwrite",
+    source: overwriteChoreSource(tableCase, rows),
+  });
+  const folder = mkdtempSync(join(tmpdir(), "snapshots-"));
+  vi.stubEnv("INIT_CWD", folder);
+  const dryRun = await runChoreOver({
+    sheetsConfig,
+    transport,
+    argv: ["overwrite"],
+  });
+  const token = /Token (\S+):/.exec(dryRun.output)?.[1];
+  const sent = await runChoreOver({
+    sheetsConfig,
+    transport,
+    argv: ["overwrite", "--send", "--confirm", `${token}`],
+  });
+  const snapshot = /undo: npm run \S+ -- (\S+)/.exec(sent.output)?.[1];
+  expect(snapshot, `${dryRun.output}\n---\n${sent.output}`).toBeDefined();
+  return {
+    fake,
+    restore: (argv = []) =>
+      runRestoreOver({
+        sheetsConfig,
+        transport,
+        argv: [`${snapshot}`, ...argv],
+      }),
+  };
+}
+
+function columnValues(
+  fake: FakeSheetsService,
+  tableCase: TableCase,
+  name: ValueTypesColumnName,
+): unknown[] {
+  return fake.grid
+    .sheet(valueTypesGid)
+    .values()
+    .slice(topDataRowIndex)
+    .map((row) => row[colOf(tableCase, name)]);
+}
+
+function edit(fake: FakeSheetsService, requests: GoogleRequest[]): void {
+  fake.sheets.Spreadsheets.batchUpdate({ requests }, "spreadsheet-under-test");
+}
+
+function insertRowAbove(rowIndex: number): GoogleRequest {
+  return {
+    insertDimension: {
+      range: {
+        sheetId: valueTypesGid,
+        dimension: "ROWS",
+        startIndex: rowIndex,
+        endIndex: rowIndex + 1,
+      },
+    },
+  };
+}
+
+function deleteRow(rowIndex: number): GoogleRequest {
+  return {
+    deleteDimension: {
+      range: {
+        sheetId: valueTypesGid,
+        dimension: "ROWS",
+        startIndex: rowIndex,
+        endIndex: rowIndex + 1,
+      },
+    },
+  };
+}
+
+describe("restore of an overwriting send's snapshot", () => {
+  it("puts each saved column back on its rows, matched by row ID", async () => {
+    const { fake, restore } = await overwritingSend(withRowIds);
+    expect(columnValues(fake, withRowIds, "stringValue")).toEqual([
+      "Overwritten",
+      "Overwritten",
+    ]);
+
+    const { output, exitCode } = await restore();
+
+    expect(exitCode).toBeUndefined();
+    expect(columnValues(fake, withRowIds, "stringValue")).toEqual([
+      "Apple",
+      "Pear",
+    ]);
+    expect(columnValues(fake, withRowIds, "checkbox")).toEqual([true, true]);
+    expect(output).toContain("restored:");
+  });
+
+  it("puts each saved column back on its rows, matched by position, on a Table without an ID column", async () => {
+    const { fake, restore } = await overwritingSend(withoutRowIds);
+
+    const { exitCode } = await restore();
+
+    expect(exitCode).toBeUndefined();
+    expect(columnValues(fake, withoutRowIds, "stringValue")).toEqual([
+      "Apple",
+      "Pear",
+    ]);
+    expect(columnValues(fake, withoutRowIds, "checkbox")).toEqual([true, true]);
+  });
+
+  it("puts a saved row with a blank row ID back by position when no row moved", async () => {
+    const { fake, restore } = await overwritingSend(withRowIds, [
+      { id: "r:vty:apple", stringValue: "Apple", checkbox: true },
+      { stringValue: "Pear", checkbox: true },
+    ]);
+
+    const { output, exitCode } = await restore();
+
+    expect(exitCode).toBeUndefined();
+    expect(columnValues(fake, withRowIds, "stringValue")).toEqual([
+      "Apple",
+      "Pear",
+    ]);
+    expect(output).not.toContain("left to the spreadsheet's version history");
+  });
+});
+
+describe("restore when rows moved since the send", () => {
+  it("writes nothing, exits nonzero and lists the changed tab", async () => {
+    const { fake, restore } = await overwritingSend(withRowIds);
+    edit(fake, [insertRowAbove(topDataRowIndex)]);
+    const before = fake.grid.sheet(valueTypesGid).values();
+
+    const { output, exitCode } = await restore();
+
+    expect(exitCode).toBe(1);
+    expect(output).toContain("RESTORE STOPPED");
+    expect(output).toContain("  Value Types");
+    expect(fake.grid.sheet(valueTypesGid).values()).toEqual(before);
+  });
+
+  it("restores anyway with --force, each value onto its row ID's new row", async () => {
+    const { fake, restore } = await overwritingSend(withRowIds);
+    edit(fake, [insertRowAbove(topDataRowIndex)]);
+
+    const { output, exitCode } = await restore(["--force"]);
+
+    expect(exitCode).toBeUndefined();
+    expect(output).toContain("restored anyway");
+    expect(columnValues(fake, withRowIds, "id")).toEqual([
+      null,
+      "r:vty:apple",
+      "r:vty:pear",
+    ]);
+    expect(columnValues(fake, withRowIds, "stringValue")).toEqual([
+      null,
+      "Apple",
+      "Pear",
+    ]);
+  });
+
+  it("lists a saved row whose row ID is gone as left to version history", async () => {
+    const { fake, restore } = await overwritingSend(withRowIds);
+    edit(fake, [deleteRow(topDataRowIndex)]);
+
+    const { output } = await restore(["--force"]);
+
+    expect(columnValues(fake, withRowIds, "stringValue")).toEqual(["Pear"]);
+    expect(output).toContain(
+      "left to the spreadsheet's version history, with no row to land on:",
+    );
+    expect(output).toContain("row ID r:vty:apple");
+  });
+
+  it("lists a saved row past the tab's end as left to version history, on a Table without an ID column", async () => {
+    const { fake, restore } = await overwritingSend(withoutRowIds);
+    edit(fake, [deleteRow(topDataRowIndex + 1)]);
+
+    const { output } = await restore(["--force"]);
+
+    expect(columnValues(fake, withoutRowIds, "stringValue")).toEqual(["Apple"]);
+    expect(output).toContain(`row ${topDataRowIndex + 2}`);
+  });
+});
+
+describe("restore when a saved column's column ID is gone", () => {
+  it("lists it as not restored and restores the rest", async () => {
+    const { fake, restore } = await overwritingSend(withRowIds);
+    edit(fake, [
+      writeCell(0, colOf(withRowIds, "checkbox"), {
+        stringValue: "c:vty:renamed",
+      }),
+    ]);
+
+    const { output, exitCode } = await restore();
+
+    expect(exitCode).toBeUndefined();
+    expect(output).toContain("not restored, its column ID is gone:");
+    expect(columnValues(fake, withRowIds, "checkbox")).toEqual([false, false]);
+    expect(columnValues(fake, withRowIds, "stringValue")).toEqual([
+      "Apple",
+      "Pear",
+    ]);
+  });
+});

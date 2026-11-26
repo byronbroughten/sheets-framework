@@ -1,0 +1,213 @@
+import {
+  httpBatchUpdate,
+  httpRangeColumns,
+  type HttpSpreadsheetCall,
+  httpTabGrids,
+  type SheetValue,
+  type TabGrid,
+} from "../00_Source/GoogleSheets/GoogleSheetsAPI/httpSheetsTransport.ts";
+import { colLetters } from "./colLetters.ts";
+import {
+  type ColumnLabel,
+  type CurrentTab,
+  type HomelessRow,
+  type RowIds,
+  SnapshotColumnRestorer,
+} from "./SendSnapshotRestorer/SnapshotColumnRestorer.ts";
+import {
+  fingerprintRows,
+  type SendSnapshot,
+  type SnapshotColumn,
+  type TabFingerprints,
+} from "./SendSnapshotTaker.ts";
+
+type GoogleRequest = GoogleAppsScript.Sheets.Schema.Request;
+
+export interface SendSnapshotRestorerProps extends HttpSpreadsheetCall {
+  snapshot: SendSnapshot;
+  isForced: boolean;
+}
+
+export interface RestoredColumn extends ColumnLabel {
+  rowCount: number;
+}
+
+export type SnapshotRestore =
+  | { kind: "stopped"; changedTabs: string[] }
+  | {
+      kind: "restored";
+      // Restored over anyway, by --force.
+      changedTabs: string[];
+      restoredColumns: RestoredColumn[];
+      goneColumns: SnapshotColumn[];
+      homelessRows: HomelessRow[];
+    };
+
+// Puts a send's snapshot back: each saved column by its column ID, its rows by position on a tab whose rows didn't move, else by row ID where the Table has an ID column.
+export class SendSnapshotRestorer {
+  private call: HttpSpreadsheetCall;
+  private snapshot: SendSnapshot;
+  private isForced: boolean;
+  constructor({
+    spreadsheetId,
+    transport,
+    ...props
+  }: SendSnapshotRestorerProps) {
+    this.call = { spreadsheetId, transport };
+    this.snapshot = props.snapshot;
+    this.isForced = props.isForced;
+  }
+  static init(props: SendSnapshotRestorerProps): SendSnapshotRestorer {
+    return new SendSnapshotRestorer(props);
+  }
+  // Writes nothing when a tab's rows moved since the send, unless forced.
+  restore(): SnapshotRestore {
+    const tabs = this._currentTabs();
+    const movedFingerprints = this.snapshot.fingerprints.filter(
+      (fingerprints) => hasMoved(fingerprints, tabs),
+    );
+    const changedTabs = movedFingerprints.map(({ tabTitle }) => tabTitle);
+    if (changedTabs.length > 0 && !this.isForced) {
+      return { kind: "stopped", changedTabs };
+    }
+    const movedGids = new Set(
+      movedFingerprints.map(({ sheetGid }) => sheetGid),
+    );
+    const restoredColumns: RestoredColumn[] = [];
+    const goneColumns: SnapshotColumn[] = [];
+    const homelessRows: HomelessRow[] = [];
+    const requests: GoogleRequest[] = [];
+    for (const column of this.snapshot.columns) {
+      const restorer = this._columnRestorer(column, tabs, movedGids);
+      if (restorer === undefined) {
+        goneColumns.push(column);
+        continue;
+      }
+      const restored = restorer.restore();
+      homelessRows.push(...restored.homelessRows);
+      requests.push(...restored.requests);
+      const { tabTitle, header } = column;
+      restoredColumns.push({ tabTitle, header, rowCount: restored.rowCount });
+    }
+    if (requests.length > 0) {
+      httpBatchUpdate({ ...this.call, requests });
+    }
+    return {
+      kind: "restored",
+      changedTabs,
+      restoredColumns,
+      goneColumns,
+      homelessRows,
+    };
+  }
+  // One GET for the tabs' sizes, then one values:batchGet of each affected tab whole.
+  private _currentTabs(): Map<number, CurrentTab> {
+    const { columns, fingerprints } = this.snapshot;
+    const sheetGids = new Set(
+      [...columns, ...fingerprints].map(({ sheetGid }) => sheetGid),
+    );
+    const grids = httpTabGrids(this.call).filter(
+      (grid) =>
+        sheetGids.has(grid.sheetGid) &&
+        grid.rowCount > 0 &&
+        grid.columnCount > 0,
+    );
+    if (grids.length === 0) return new Map();
+    const values = httpRangeColumns({
+      ...this.call,
+      ranges: grids.map(tabRange),
+    });
+    return new Map(
+      grids.map((grid, index) => [
+        grid.sheetGid,
+        { grid, columns: values[index] ?? [] },
+      ]),
+    );
+  }
+  // Undefined where the column's tab or column ID is gone.
+  private _columnRestorer(
+    column: SnapshotColumn,
+    tabs: Map<number, CurrentTab>,
+    movedGids: Set<number>,
+  ): SnapshotColumnRestorer | undefined {
+    const tab = tabs.get(column.sheetGid);
+    if (tab === undefined) return undefined;
+    const colIndex = colIndexOf(tab, column.columnIdRowIndex, column.columnId);
+    if (colIndex === undefined) return undefined;
+    const fingerprints = this._fingerprintsOf(column.sheetGid);
+    // Fingerprints that still match mean no row moved, so position is exact, even for a row whose ID the send filled.
+    const isUnmoved =
+      fingerprints !== undefined && !movedGids.has(column.sheetGid);
+    return SnapshotColumnRestorer.init({
+      column,
+      tab,
+      colIndex,
+      rowIds: isUnmoved ? undefined : this._rowIds(column, tab),
+      preSendRowCount: Math.max(
+        column.values.length,
+        fingerprints?.before.length ?? 0,
+      ),
+    });
+  }
+  private _fingerprintsOf(sheetGid: number): TabFingerprints | undefined {
+    return this.snapshot.fingerprints.find(
+      (fingerprints) => fingerprints.sheetGid === sheetGid,
+    );
+  }
+  // The ID column before the send and now, found now by the column ID it had then.
+  private _rowIds(column: SnapshotColumn, tab: CurrentTab): RowIds | undefined {
+    const { idColIndex, columnIdRowIndex } = column;
+    if (idColIndex === undefined) return undefined;
+    const before = this._idColumnBefore(column.sheetGid, idColIndex);
+    const idColumnId = before[columnIdRowIndex];
+    const nowColIndex =
+      typeof idColumnId === "string" && idColumnId !== ""
+        ? colIndexOf(tab, columnIdRowIndex, idColumnId)
+        : undefined;
+    const now =
+      nowColIndex === undefined ? [] : (tab.columns[nowColIndex] ?? []);
+    return { before, now };
+  }
+  // A saved ID column, else the fingerprint column it is whenever the send left it alone.
+  private _idColumnBefore(sheetGid: number, idColIndex: number): SheetValue[] {
+    const saved = this.snapshot.columns.find(
+      (column) =>
+        column.sheetGid === sheetGid && column.colIndex === idColIndex,
+    );
+    if (saved !== undefined) return saved.values;
+    const fingerprints = this._fingerprintsOf(sheetGid);
+    const index = fingerprints?.colIndexes.indexOf(idColIndex) ?? -1;
+    // An ID column the send changed but couldn't hold: no row can be matched.
+    if (fingerprints === undefined || index === -1) return [];
+    return fingerprints.before.map((row) => row[index] ?? "");
+  }
+}
+
+function tabRange({ title, rowCount, columnCount }: TabGrid): string {
+  const lastColumn = colLetters(columnCount - 1);
+  return `'${title.replaceAll("'", "''")}'!A1:${lastColumn}${rowCount}`;
+}
+
+// A tab whose fingerprint columns differ from just after the send: rows were added, removed or reordered.
+function hasMoved(
+  { sheetGid, colIndexes, after }: TabFingerprints,
+  tabs: Map<number, CurrentTab>,
+): boolean {
+  const tab = tabs.get(sheetGid);
+  if (tab === undefined) return true;
+  const now = fingerprintRows(
+    colIndexes.map((colIndex) => tab.columns[colIndex] ?? []),
+  );
+  return JSON.stringify(now) !== JSON.stringify(after);
+}
+
+function colIndexOf(
+  tab: CurrentTab,
+  columnIdRowIndex: number,
+  columnId: string,
+): number | undefined {
+  const colIndex = tab.columns.findIndex(
+    (values) => values[columnIdRowIndex] === columnId,
+  );
+  return colIndex === -1 ? undefined : colIndex;
+}

@@ -218,7 +218,7 @@ export async function startNodeHost({
   }).ensureGlobals();
 }
 
-function liveTransport(): SheetsHttpTransport {
+export function liveTransport(): SheetsHttpTransport {
   const transport = SheetsTransport.init();
   return (request) => transport.send(request);
 }

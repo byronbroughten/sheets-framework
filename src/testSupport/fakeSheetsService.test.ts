@@ -1090,6 +1090,7 @@ describe("stubSheetsService replays Table-bounded inserts and deletes", () => {
     });
 
     expect(tableRange(grid, "c")).toEqual({
+      sheetId: bandGid,
       startRowIndex: 12,
       endRowIndex: 14,
       startColumnIndex: 0,
@@ -1139,6 +1140,7 @@ describe("stubSheetsService replays Table-bounded inserts and deletes", () => {
     const sheet = grid.sheet(bandGid);
     expect(tableRange(grid, "a")?.endColumnIndex).toBe(3);
     expect(tableRange(grid, "b")).toEqual({
+      sheetId: bandGid,
       startRowIndex: 3,
       endRowIndex: 6,
       startColumnIndex: 6,
@@ -1235,6 +1237,7 @@ describe("stubSheetsService replays Table-bounded inserts and deletes", () => {
     });
 
     expect(tableRange(grid, "a")).toEqual({
+      sheetId: bandGid,
       startRowIndex: 3,
       endRowIndex: 4,
       startColumnIndex: 0,

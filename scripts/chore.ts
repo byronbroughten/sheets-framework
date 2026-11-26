@@ -1,5 +1,4 @@
 // `sheets-framework chore`: runs one chore against the package's spreadsheet. See docs/how-it-runs/chore-dry-run.md.
-import { basename } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import type { SheetsHttpTransport } from "../src/00_Source/GoogleSheets/GoogleSheetsAPI.ts";
@@ -17,7 +16,11 @@ import {
   startNodeHost,
 } from "./nodeHost.ts";
 import type { SheetsConfig } from "./sheetsConfig.ts";
-import { snapshotFlags, SnapshotFolder } from "./SnapshotFolder.ts";
+import {
+  snapshotFlags,
+  SnapshotFolder,
+  snapshotTarget,
+} from "./SnapshotFolder.ts";
 
 // Flags whose next argument is their value, not a chore's name.
 const valueFlags: string[] = ["--confirm", ...Object.values(snapshotFlags)];
@@ -105,7 +108,7 @@ export class ChoreRunner {
     });
   }
   get target(): string {
-    return basename(this.sheetsConfig.dir);
+    return snapshotTarget(this.sheetsConfig);
   }
   async run(): Promise<void> {
     if (!this.choreName) {

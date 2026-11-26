@@ -49,6 +49,7 @@ describe("SpreadsheetRaw.createTable on a tab the same flush adds", () => {
         tableId: mintedTableId,
         name: "Payment Log",
         range: {
+          sheetId: newGid,
           startRowIndex: tableHeaderRowIndex,
           endRowIndex: topDataRowIndex + 1,
           startColumnIndex: 0,
@@ -270,6 +271,7 @@ describe("SpreadsheetRaw.createTable beside the Tables on an existing tab", () =
 
   it("places the Table right against the rightmost Table with no gap", () => {
     expect(createdRange()).toEqual({
+      sheetId: existingGid,
       startRowIndex: tableHeaderRowIndex,
       endRowIndex: topDataRowIndex + 1,
       startColumnIndex: besideEnd,
@@ -280,6 +282,7 @@ describe("SpreadsheetRaw.createTable beside the Tables on an existing tab", () =
 
   it("leaves one empty column before it with a gap of 1", () => {
     expect(createdRange(1)).toEqual({
+      sheetId: existingGid,
       startRowIndex: tableHeaderRowIndex,
       endRowIndex: topDataRowIndex + 1,
       startColumnIndex: besideEnd + 1,

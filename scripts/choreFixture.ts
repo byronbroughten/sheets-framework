@@ -8,6 +8,7 @@ import { vi } from "vitest";
 import { appConfigs } from "../dev/generated/appConfigs.ts";
 import type { SheetsHttpTransport } from "../src/00_Source/GoogleSheets/GoogleSheetsAPI.ts";
 import { ChoreRunner } from "./chore.ts";
+import { RestoreRunner } from "./restore.ts";
 import type { SheetsConfig } from "./sheetsConfig.ts";
 
 interface ChoreSource {
@@ -55,13 +56,33 @@ export async function runChoreOver({
     configs: appConfigs,
     now,
   });
+  return capturedRun(() => runner.run());
+}
+
+interface RestoreRunProps {
+  sheetsConfig: SheetsConfig;
+  transport: SheetsHttpTransport;
+  argv: string[];
+}
+
+// Runs a restore past its live transport.
+export async function runRestoreOver({
+  sheetsConfig,
+  transport,
+  argv,
+}: RestoreRunProps): Promise<ChoreRun> {
+  const runner = RestoreRunner.init(sheetsConfig, argv, { transport });
+  return capturedRun(() => runner.run());
+}
+
+async function capturedRun(run: () => Promise<void>): Promise<ChoreRun> {
   const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
   process.exitCode = undefined;
-  await runner.run();
+  await run();
   const output = log.mock.calls.map(([line]) => String(line)).join("\n");
   log.mockRestore();
   const { exitCode } = process;
-  // A held run's exit code would otherwise fail the test process.
+  // A held or stopped run's exit code would otherwise fail the test process.
   process.exitCode = undefined;
   return { output, exitCode };
 }

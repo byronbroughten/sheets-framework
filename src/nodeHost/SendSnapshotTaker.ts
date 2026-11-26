@@ -17,7 +17,13 @@ import {
 // A held column as it stood before the send, head rows included, so a deleted column can be recreated where it was.
 export interface SnapshotColumn extends Pick<
   HeldColumn,
-  "sheetGid" | "tabTitle" | "table" | "header" | "colIndex"
+  | "sheetGid"
+  | "tabTitle"
+  | "table"
+  | "header"
+  | "colIndex"
+  | "columnIdRowIndex"
+  | "idColIndex"
 > {
   columnId: string;
   // From the tab's first row; Google trims the column's trailing blanks.
@@ -148,13 +154,23 @@ export class SendSnapshotTaker {
       return;
     }
     this.capturedColumnKeys.add(columnKey(column));
-    const { sheetGid, tabTitle, table, header, colIndex } = column;
+    const {
+      sheetGid,
+      tabTitle,
+      table,
+      header,
+      colIndex,
+      columnIdRowIndex,
+      idColIndex,
+    } = column;
     this.columns.push({
       sheetGid,
       tabTitle,
       table,
       header,
       colIndex,
+      columnIdRowIndex,
+      idColIndex,
       columnId,
       values,
     });
@@ -209,8 +225,8 @@ function tabsWithRows(
   return withRows;
 }
 
-// The columns turned into rows, a column's trimmed tail padded with "".
-function fingerprintRows(columns: SheetValue[][]): SheetValue[][] {
+// The columns turned into rows, a column's trimmed tail padded with "": a tab's fingerprint as the snapshot keeps it.
+export function fingerprintRows(columns: SheetValue[][]): SheetValue[][] {
   const rowCount = Math.max(0, ...columns.map((values) => values.length));
   return Array.from({ length: rowCount }, (_, rowIndex) =>
     columns.map((values) => values[rowIndex] ?? ""),
