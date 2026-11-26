@@ -37,15 +37,18 @@ export interface DimensionMove extends IndexSpan {
   destinationIndex: number;
 }
 
-// Maps a cell as it stands partway through a flush back to the cell the run read, one request at a time.
+// Maps a cell as it stands partway through a flush, or a later flush judged against the same reads, back to the cell the run read, one request at a time.
 export class FlushTracker {
   private layers: Layer[];
   private gridSizes: Map<number, GridSize>;
   private addedTableIds: Set<string>;
+  // Once a request inserted, deleted, moved or cut cells, a read cell's index may no longer name the cell standing there.
+  hasShiftedCells: boolean;
   constructor(gridSizes: Map<number, GridSize>) {
     this.layers = [];
     this.gridSizes = new Map(gridSizes);
     this.addedTableIds = new Set();
+    this.hasShiftedCells = false;
   }
   resolve(cell: GridCell): CellOrigin {
     let current = cell;
@@ -82,6 +85,7 @@ export class FlushTracker {
       this.grow(shift.sheetGid, shift.dimension, shift.count);
     }
     this.layers.push((cell) => shiftedBack(cell, shift));
+    this.hasShiftedCells = true;
     return this;
   }
   grow(sheetGid: number, dimension: ShiftDimension, count: number): this {
@@ -93,10 +97,12 @@ export class FlushTracker {
   }
   move(move: DimensionMove): this {
     this.layers.push((cell) => movedBack(cell, move));
+    this.hasShiftedCells = true;
     return this;
   }
   cut(source: BoundedRange, destination: GridCell): this {
     this.layers.push((cell) => cutBack(cell, source, destination));
+    this.hasShiftedCells = true;
     return this;
   }
   write(cells: GridCell[]): this {

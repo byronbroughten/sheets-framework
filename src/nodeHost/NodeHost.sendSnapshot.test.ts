@@ -62,6 +62,8 @@ function seedFake() {
 interface SnapshotCase {
   flushes: GoogleRequest[][];
   forcedTraits?: ForcedTrait[];
+  // No read before the flushes, so every cell they write is unread.
+  isWidgetUnread?: boolean;
 }
 
 interface HostSeed {
@@ -106,9 +108,12 @@ function readWidget(api: GoogleSheetsAPI): void {
   );
 }
 
-function runFlushes(host: NodeHost, flushes: GoogleRequest[][]): void {
+function runFlushes(
+  host: NodeHost,
+  { flushes, isWidgetUnread }: SnapshotCase,
+): void {
   const api = host.googleSheetsAPI;
-  readWidget(api);
+  if (!isWidgetUnread) readWidget(api);
   for (const requests of flushes) {
     api.flush(
       requests.map((request) => ({
@@ -119,13 +124,13 @@ function runFlushes(host: NodeHost, flushes: GoogleRequest[][]): void {
   }
 }
 
-function dryRun({ flushes, forcedTraits }: SnapshotCase) {
+function dryRun(snapshotCase: SnapshotCase) {
   const host = seedHost({
     isDryRun: true,
     confirmedList: undefined,
-    forcedTraits,
+    forcedTraits: snapshotCase.forcedTraits,
   });
-  runFlushes(host, flushes);
+  runFlushes(host, snapshotCase);
   return host;
 }
 
@@ -137,7 +142,7 @@ function confirmedSend(snapshotCase: SnapshotCase) {
     confirmedList: heldList,
     forcedTraits: snapshotCase.forcedTraits,
   });
-  runFlushes(host, snapshotCase.flushes);
+  runFlushes(host, snapshotCase);
   return { snapshot: host.sendSnapshot() };
 }
 
@@ -273,9 +278,39 @@ describe("NodeHost.sendSnapshot", () => {
     ]);
   });
 
+  it("names a later flush's held cell as undone only by version history once an earlier flush shifted columns", () => {
+    const deleteNameColumn: GoogleRequest = {
+      deleteRange: {
+        range: {
+          sheetId: widget.gid,
+          startColumnIndex: widgetCol("name"),
+          endColumnIndex: widgetCol("name") + 1,
+        },
+        shiftDimension: "COLUMNS",
+      },
+    };
+    // Gizmo's note, one column left of where the read saw it.
+    const overwriteShiftedNote = writeCell(widget.gid, 5, widgetCol("amount"), {
+      stringValue: "early",
+    });
+
+    const { snapshot } = confirmedSend({
+      flushes: [[deleteNameColumn], [overwriteShiftedNote]],
+    });
+
+    expect(snapshot?.columns.map(({ header }) => header)).toEqual(["Name"]);
+    expect(snapshot?.versionHistoryItems).toEqual([
+      expect.objectContaining({
+        kind: "enteredData",
+        cell: expect.objectContaining({ column: "Note" }),
+      }),
+    ]);
+  });
+
   it("names a findReplace and a cell no Table read covers as undone only by version history", () => {
     const { snapshot } = confirmedSend({
       flushes: [[replaceSprocket], [overwriteScratch]],
+      isWidgetUnread: true,
     });
 
     expect(snapshot?.columns).toEqual([]);
@@ -287,7 +322,7 @@ describe("NodeHost.sendSnapshot", () => {
 
   it("names the same items in the dry run's held groups as undone only by version history", () => {
     const heldList = dryRun({
-      flushes: [[overwriteSprocket], [replaceSprocket], [overwriteScratch]],
+      flushes: [[overwriteSprocket], [replaceSprocket]],
     }).heldList;
 
     const groups = heldGroups(Val.assert(heldList, "heldList").flushes);
@@ -295,10 +330,6 @@ describe("NodeHost.sendSnapshot", () => {
     expect(groups).toEqual([
       expect.objectContaining({
         subject: { table: widget.title, column: "Amount" },
-      }),
-      expect.objectContaining({
-        subject: { tab: `gid ${scratch.gid}`, path: "A" },
-        isUndoneOnlyByVersionHistory: true,
       }),
       expect.objectContaining({
         what: expect.stringContaining("Sprocket"),

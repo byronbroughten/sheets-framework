@@ -4,21 +4,19 @@ import { Val } from "@byronbroughten/utils/val";
 import type { GoogleRequest } from "../00_Source/GoogleSheets/GoogleSheetsAPI.ts";
 import type { DropdownStyleReset } from "../00_Source/RawSource/RawSource.ts";
 import type { ForcedTrait } from "../01_SpreadsheetSchema/configReaders/syncRunResult.ts";
-import type {
-  FlushRead,
-  HeldItem,
-} from "./FlushClassifier/flushClassifierTypes.ts";
-import { FlushTracker } from "./FlushClassifier/FlushTracker.ts";
+import type { HeldItem } from "./FlushClassifier/flushClassifierTypes.ts";
+import type { FlushTracker } from "./FlushClassifier/FlushTracker.ts";
+import type { JudgedReads } from "./FlushClassifier/judgedReads.ts";
 import { RequestJudge } from "./FlushClassifier/RequestJudge.ts";
 import {
   type ClassifiedVerb,
   requestJudgements,
 } from "./FlushClassifier/requestJudgements.ts";
-import { RunReads } from "./FlushClassifier/RunReads.ts";
+import { type RunReads } from "./FlushClassifier/RunReads.ts";
 
 export interface FlushClassifierProps {
-  // Taken since the last flush landed: a stale read could free an overwrite.
-  reads: FlushRead[];
+  // Taken since the last flush landed, or before earlier flushes the tracker followed: a stale read could free an overwrite.
+  judgedReads: JudgedReads;
   requests: GoogleRequest[];
   dropdownStyleReset: DropdownStyleReset;
   forcedTraits: ForcedTrait[];
@@ -33,12 +31,12 @@ interface RequestToJudge {
 
 // The entered-data gate's judge (ADR 0034): which of one flush's items are held, and why.
 export class FlushClassifier {
-  private flushReads: FlushRead[];
+  private judgedReads: JudgedReads;
   private requests: GoogleRequest[];
   private dropdownStyleReset: DropdownStyleReset;
   private forcedTraits: ForcedTrait[];
   constructor(props: FlushClassifierProps) {
-    this.flushReads = props.reads;
+    this.judgedReads = props.judgedReads;
     this.requests = props.requests;
     this.dropdownStyleReset = props.dropdownStyleReset;
     this.forcedTraits = props.forcedTraits;
@@ -46,13 +44,9 @@ export class FlushClassifier {
   static init(props: FlushClassifierProps): FlushClassifier {
     return new FlushClassifier(props);
   }
-  private get reads(): RunReads {
-    return new RunReads(this.flushReads);
-  }
   // Requests are judged in order, each against the grid the ones before it left.
   heldItems(): HeldItem[] {
-    const reads = this.reads;
-    const tracker = new FlushTracker(reads.gridSizes);
+    const { reads, tracker } = this.judgedReads;
     const forced: HeldItem[] = this.forcedTraits.map((trait) => ({
       kind: "forcedTrait",
       trait,

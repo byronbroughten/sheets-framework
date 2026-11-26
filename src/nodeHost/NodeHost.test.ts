@@ -426,12 +426,12 @@ describe("NodeHost with an entered-data gate", () => {
     ]);
   });
 
-  it("judges a flush against the reads since the one before it, as the send will", () => {
+  it("judges a flush with no reads of its own against the reads before, through the grid the earlier flushes left", () => {
     expect(
       heldKinds(
         dryRunHeldList([[appendRows], [writeAmounts(payments.emptyRow, [5])]]),
       ),
-    ).toEqual([[], ["unreadCell"]]);
+    ).toEqual([[], []]);
   });
 
   it("holds a write into a cell no read covered", () => {

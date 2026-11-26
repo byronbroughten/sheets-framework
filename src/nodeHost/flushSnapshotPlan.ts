@@ -23,12 +23,15 @@ export interface FlushSnapshotPlanProps {
   items: HeldItem[];
   // Forced traits name no cell; the first flush's plan names them once for the send.
   forcedTraits: ForcedTrait[];
+  // An earlier flush judged against the same reads shifted cells, so a read column's index may name another live column: every held cell goes to version history.
+  hasShiftedCells: boolean;
 }
 
 export function flushSnapshotPlan({
   reads,
   items,
   forcedTraits,
+  hasShiftedCells,
 }: FlushSnapshotPlanProps): FlushSnapshotPlan {
   const columns = new Map<string, PlannedColumn>();
   const versionHistoryItems: HeldItem[] = forcedTraits.map((trait) => ({
@@ -40,7 +43,7 @@ export function flushSnapshotPlan({
       versionHistoryItems.push(item);
       continue;
     }
-    const column = reads.heldColumn(item.cell);
+    const column = hasShiftedCells ? undefined : reads.heldColumn(item.cell);
     if (column === undefined) {
       versionHistoryItems.push(item);
       continue;
