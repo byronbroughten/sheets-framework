@@ -58,6 +58,11 @@ export const a1Notation = {
       ) - 1
     );
   },
+  // Quoting a title that isn't a plain identifier was never probed live.
+  sheetName(title: string): string {
+    if (/^[A-Za-z_]\w*$/.test(title)) return title;
+    return `'${title.replaceAll("'", "''")}'`;
+  },
   range(range: GridRange): string {
     const startColumn = a1Notation.columnLetters(range.startColumnIndex ?? 0);
     const lastColumn = a1Notation.columnLetters(

@@ -3,6 +3,7 @@ import type {
   FakeCellValue,
   FakeRichCellValue,
 } from "../fakeSheetsService.ts";
+import { fakeCells } from "./fakeCells.ts";
 import type { FakeSheetState } from "./fakeSpreadsheet.ts";
 
 type GoogleCellData = GoogleAppsScript.Sheets.Schema.CellData;
@@ -84,10 +85,9 @@ export class FakeGridPayload {
     const data: GoogleCellData = {
       effectiveValue: fakeValueToExtendedValue(rich.value),
     };
-    if (rich.isFormula) {
-      data.userEnteredValue = {
-        formulaValue: rich.formula ?? formulaText(rich.value),
-      };
+    const formulaValue = fakeCells.formula(rich);
+    if (formulaValue !== undefined) {
+      data.userEnteredValue = { formulaValue };
     } else if (this.isFormulaOnlyMask && rich.value !== null) {
       data.userEnteredValue = {};
     }
@@ -118,11 +118,4 @@ function fakeValueToExtendedValue(
     return { numberValue: value };
   }
   return { boolValue: value };
-}
-
-// A replayed formula keeps its text; a fixture's formula cell gives only its computed value.
-function formulaText(value: FakeCellValue): string {
-  return typeof value === "string" && value.startsWith("=")
-    ? value
-    : "=FAKE_FORMULA()";
 }

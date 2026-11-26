@@ -30,6 +30,14 @@ export const fakeCells = {
     const value = fakeCells.value(cell);
     return value === null || value === "";
   },
+  // A formula cell's text: a replayed formula keeps it; a fixture's formula cell may give only its computed value.
+  formula(cell: FakeCell): string | undefined {
+    const { value, isFormula, formula } = toRich(cell);
+    if (!isFormula) return undefined;
+    if (formula !== undefined) return formula;
+    if (typeof value === "string" && value.startsWith("=")) return value;
+    return "=FAKE_FORMULA()";
+  },
   // Throws on a path the replay doesn't model, so a write can't pass by changing nothing.
   fields(fieldMask: string | undefined, requestKind: string): CellFields {
     if (fieldMask === undefined || fieldMask === "") {
