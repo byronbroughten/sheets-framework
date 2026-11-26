@@ -3,14 +3,15 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { expect, vi } from "vitest";
+import { expect } from "vitest";
 
 import { appConfigs } from "../dev/generated/appConfigs.ts";
 import type { SheetsHttpTransport } from "../src/00_Source/GoogleSheets/GoogleSheetsAPI.ts";
 import { ChoreRunner } from "./chore.ts";
 import { RestoreRunner } from "./restore.ts";
-import { type CapturedRun, capturedRun } from "./runnerFixture.ts";
+import { type CapturedRun, capturedRun, tokenOf } from "./runnerFixture.ts";
 import type { SheetsConfig } from "./sheetsConfig.ts";
+import { snapshotsFolder } from "./snapshotFixture.ts";
 
 interface ChoreSource {
   name: string;
@@ -89,9 +90,9 @@ export async function confirmedSendOver({
   transport,
   chore,
 }: ConfirmedSendProps): Promise<ConfirmedSend> {
-  vi.stubEnv("INIT_CWD", mkdtempSync(join(tmpdir(), "snapshots-")));
+  snapshotsFolder();
   const dryRun = await runChoreOver({ sheetsConfig, transport, argv: [chore] });
-  const token = /Token (\S+):/.exec(dryRun.output)?.[1];
+  const token = tokenOf(dryRun.output);
   const sent = await runChoreOver({
     sheetsConfig,
     transport,

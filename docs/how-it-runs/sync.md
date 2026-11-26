@@ -28,7 +28,7 @@
 
 **A `sync` command can lose entered data only while holding `--confirm`** ([ADR 0034](../adr/0034-hold-entered-data-loss-at-the-node-hosts-adapter-until-a-hash-bound-confirm.md)); a chore's gate: [chore dry run](./chore-dry-run.md). An unstopped dry run flushes its plan after its files are built, for the Node host's gate to judge and withhold; `SyncRunProps.isHostWithholding` turns that flush on, and only the Node host's `sync` sets it. Just before that flush, or a send's, the run reads the cells the gate judges: every column a deletion or a sent formula touches, and each deleted Table or tab still on the sheet (`enteredDataReads`). When the gate holds anything, the dry run writes every held item and its value to the package's `.probe/sync-held.json`, prints that path, the held list (each column past 20 lines as counts, with their sum) and the token, then "Rerun with `--send --confirm <token>` to send these". `--send --confirm <token>` reads that file, a missing or unreadable one counting as mismatched, and sends only when the token and the list still match. A refused send writes no file and says only "rerun the dry run": `STOPPED` before any flush landed, `STOPPED PARTWAY` after, with the landed flushes reported. A batch Google refuses, such as a column move beside a taller Table, stops the send the same way, its line carrying Google's refusal reworded to name both Tables ([stacked tables](../architecture/stacked-tables.md#googles-partial-table-refusal-is-reworded)).
 
-**A `--send` holding `--confirm` or `--force` keeps a send snapshot, with the report the run printed as its plan, prints the undo line and prunes old snapshots**, as [a chore's confirmed send does](./chore-dry-run.md). A send stopped before any flush landed writes no snapshot. A send that throws uses the request lines as its plan.
+**A `--send` holding `--confirm` or `--force` keeps a send snapshot, with the report the run printed as its plan, prints the undo line and prunes old snapshots**, as [a chore's confirmed send does](./chore-dry-run.md). A send stopped before any flush landed writes no snapshot. A send that throws uses the request lines as its plan. When keeping the snapshot fails, the run prints why and that only version history undoes the send, then carries on: it still writes the generated files, and a thrown send keeps its own error.
 
 ## Forcing one trait with --force
 
@@ -44,7 +44,7 @@ When the `generatedDir`'s parent holds no `alterations.ts`, it creates one in th
 
 ## sync's exit codes
 
-The run exits 1 when it stopped, was refused, held a flush that stopped a send (before any flush landed or partway), or sent with an item that didn't land (a sent header or Table name Sheets kept another value for); and when the package's `npm run tsc` fails afterward. It exits 0 otherwise: a ready dry run, held items included, or a send where everything landed. `syncExitCode` in `scripts/sync.ts` decides it.
+The run exits 1 when it stopped, was refused, held a flush that stopped a send (before any flush landed or partway), sent with an item that didn't land (a sent header or Table name Sheets kept another value for), or lost a held send's snapshot; and when the package's `npm run tsc` fails afterward. It exits 0 otherwise: a ready dry run, held items included, or a send where everything landed. `syncExitCode` in `scripts/sync.ts` decides it.
 
 ## What configs-diff prints
 

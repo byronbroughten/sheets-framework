@@ -16,6 +16,7 @@ import {
 } from "./nodeHost.ts";
 import type { SheetsConfig } from "./sheetsConfig.ts";
 import {
+  printSnapshotNotice,
   snapshotFlags,
   SnapshotFolder,
   snapshotTarget,
@@ -165,7 +166,7 @@ export class ChoreRunner {
       command: `chore ${this.choreName}`,
       plan: this._planText(host),
     });
-    if (undo !== undefined) console.log(`\n${undo}`);
+    printSnapshotNotice(undo);
   }
   async _startHost(): Promise<NodeHost> {
     const { standIn } = this;

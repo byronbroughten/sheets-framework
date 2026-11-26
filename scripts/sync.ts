@@ -12,8 +12,6 @@ import type {
   SyncRun,
 } from "../src/05_Operators/SyncCoordinator.ts";
 import type { HeldList } from "../src/nodeHost/EnteredDataGate.ts";
-import type { NodeHost } from "../src/nodeHost/NodeHost.ts";
-import type { SendSnapshot } from "../src/nodeHost/SendSnapshotTaker.ts";
 import { readConfigsDiff } from "./configsDiff.ts";
 import { GeneratedDir } from "./GeneratedDir.ts";
 import { HeldFile, parseConfirmToken } from "./HeldFile.ts";
@@ -27,10 +25,20 @@ import {
 } from "./nodeHost.ts";
 import type { SheetsConfig } from "./sheetsConfig.ts";
 import {
+  printSnapshotNotice,
   SnapshotFolder,
-  type SnapshotFolderKeepArgs,
   snapshotTarget,
 } from "./SnapshotFolder.ts";
+import { labelled } from "./syncLabel.ts";
+import {
+  type SnapshotNotice,
+  SyncSnapshotKeeper,
+} from "./SyncSnapshotKeeper.ts";
+
+// A test's stand-ins: the host's, and the package's tsc, which a temporary package can't run.
+export interface SyncStandIn extends HostStandIn {
+  runTsc: () => boolean;
+}
 
 interface SyncRunnerProps {
   sheetsConfig: SheetsConfig;
@@ -38,12 +46,12 @@ interface SyncRunnerProps {
   forcedTraits: ForcedTrait[];
   confirmToken?: string;
   snapshotFolder: SnapshotFolder;
-  standIn: HostStandIn | undefined;
+  standIn: SyncStandIn | undefined;
 }
 
-// A run with the undo lines of its send's snapshot, when the send kept one.
+// A run with what its held send says of its snapshot, when it says anything.
 interface KeptSyncRun extends SyncRun {
-  undo?: string;
+  snapshotNotice?: SnapshotNotice;
 }
 
 export class SyncRunner {
@@ -53,7 +61,7 @@ export class SyncRunner {
   readonly heldFile: HeldFile;
   readonly generatedDir: GeneratedDir;
   readonly snapshotFolder: SnapshotFolder;
-  readonly standIn: HostStandIn | undefined;
+  readonly standIn: SyncStandIn | undefined;
   constructor({
     sheetsConfig,
     isSending,
@@ -78,7 +86,7 @@ export class SyncRunner {
   static init(
     sheetsConfig: SheetsConfig,
     argv: string[],
-    standIn?: HostStandIn,
+    standIn?: SyncStandIn,
   ): SyncRunner {
     return new SyncRunner({
       sheetsConfig,
@@ -93,21 +101,35 @@ export class SyncRunner {
       standIn,
     });
   }
+  get target(): string {
+    return snapshotTarget(this.sheetsConfig);
+  }
+  // A confirmed or forced send.
+  get isHeldSend(): boolean {
+    const isConfirmed = this.heldFile.confirmToken !== undefined;
+    const isForced = this.forcedTraits.length > 0;
+    return this.isSending && (isConfirmed || isForced);
+  }
   async run(): Promise<void> {
-    const { result, files, undo } = await this._sync();
+    const synced = await this._sync();
+    const { result, files, snapshotNotice } = synced;
     const report = await reportText(result);
-    process.exitCode = syncExitCode(result);
+    process.exitCode = syncExitCode(synced);
     // A refused run returns no files: the run writes every file or none.
     if (files === undefined) {
       console.log(report);
-      printUndo(undo);
+      printSnapshotNotice(snapshotNotice?.text);
       return;
     }
-    this._write(files);
-    console.log(`\n${labelled("changes against HEAD:")}`);
-    console.log(readConfigsDiff(this.sheetsConfig).join("\n"));
-    console.log(`\n${report}`);
-    printUndo(undo);
+    try {
+      this._write(files);
+      console.log(`\n${labelled("changes against HEAD:")}`);
+      console.log(readConfigsDiff(this.sheetsConfig).join("\n"));
+      console.log(`\n${report}`);
+    } finally {
+      // The send is already out, so a failing write or diff still leaves its undo line printed.
+      printSnapshotNotice(snapshotNotice?.text);
+    }
 
     console.log(
       "\nRunning this package's npm run tsc to check the regenerated files...",
@@ -121,12 +143,11 @@ export class SyncRunner {
   }
 
   async _sync(): Promise<KeptSyncRun> {
-    const { generatedDir, standIn } = this;
-    const target = snapshotTarget(this.sheetsConfig);
+    const { generatedDir, standIn, target } = this;
     // Loaded before the host starts, as the configs are, so a broken alterations.ts costs no setup.
     const intendedState = await generatedDir.loadIntendedState();
     const previousIdNameMap = generatedDir.loadPreviousIdNameMap();
-    // The previous configs say which Tables have API access; a package with no generated files yet borrows the framework's.
+    // The previous configs say which Tables have API access.
     // No app endpoints: they may name columns the configs being regenerated don't have yet.
     const host = await startNodeHost({
       isDryRun: !this.isSending,
@@ -142,6 +163,12 @@ export class SyncRunner {
     const { SyncCoordinator } =
       await import("../src/05_Operators/SyncCoordinator.ts");
     const dropdownStyleReset = await loadDropdownStyleReset(this.sheetsConfig);
+    const keeper = SyncSnapshotKeeper.init({
+      host,
+      snapshotFolder: this.snapshotFolder,
+      target,
+      isHeldSend: this.isHeldSend,
+    });
     let run: SyncRun;
     try {
       run = SyncCoordinator.init().run({
@@ -159,51 +186,25 @@ export class SyncRunner {
         dropdownStyleReset,
       });
     } catch (error) {
-      await this._keepThrownSnapshot(host);
+      await keeper.keepThrown();
       throw error;
     }
     // Kept before any generated file is written, so a failing write leaves the snapshot behind.
-    const undo = await this._keepSnapshot({
+    const snapshotNotice = await keeper.keepReturned({
+      result: run.result,
       plan: await reportText(run.result),
-      takeSnapshot: () => landedSnapshot(host, run.result),
     });
     const { heldList } = host;
-    if (heldList === undefined) return { ...run, undo };
+    if (heldList === undefined) return { ...run, snapshotNotice };
     const result = await this._withHeld(run.result, heldList);
-    return { ...run, result, undo };
+    return { ...run, result, snapshotNotice };
   }
   // A package with no generated files yet borrows the framework's.
-  async _loadConfigs(): Promise<Configs> {
+  private async _loadConfigs(): Promise<Configs> {
     if (hasPackageConfigs(this.sheetsConfig)) {
       return loadPackageConfigs(this.sheetsConfig);
     }
     return loadFrameworkConfigs();
-  }
-  // Flushes that landed before a throw still get their snapshot; with no report to print, the requests are the plan.
-  async _keepThrownSnapshot(host: NodeHost): Promise<void> {
-    const plan = host.summary.lines.join("\n");
-    const undo = await this._keepSnapshot({
-      plan,
-      takeSnapshot: () => host.sendSnapshot(),
-    });
-    if (undo !== undefined) console.log(`\n${plan}\n\n${undo}`);
-  }
-  // A confirmed or forced send prunes the old snapshots and writes its own; a forced send needs no token.
-  async _keepSnapshot({
-    plan,
-    takeSnapshot,
-  }: Pick<SnapshotFolderKeepArgs, "plan" | "takeSnapshot">): Promise<
-    string | undefined
-  > {
-    const isConfirmed = this.heldFile.confirmToken !== undefined;
-    const isForced = this.forcedTraits.length > 0;
-    if (!this.isSending || !(isConfirmed || isForced)) return undefined;
-    return this.snapshotFolder.keep({
-      takeSnapshot,
-      target: snapshotTarget(this.sheetsConfig),
-      command: "sync",
-      plan,
-    });
   }
 
   // Only a dry run prints the held list and its token, and writes every held item with its value to the held file.
@@ -246,6 +247,7 @@ export class SyncRunner {
   }
 
   _runTsc(): boolean {
+    if (this.standIn !== undefined) return this.standIn.runTsc();
     const { status } = spawnSync("npm", ["run", "tsc"], {
       cwd: this.sheetsConfig.dir,
       stdio: "inherit",
@@ -275,23 +277,6 @@ async function reportText(result: SyncRunResult): Promise<string> {
   return SyncRunReport.init(result).text;
 }
 
-function printUndo(undo: string | undefined): void {
-  if (undo !== undefined) console.log(`\n${undo}`);
-}
-
-// A send stopped before any flush landed changed nothing, though a flush Google refused already had its snapshot read.
-function landedSnapshot(
-  host: NodeHost,
-  { outcome }: SyncRunResult,
-): SendSnapshot | undefined {
-  if (outcome.kind === "stoppedBeforeSending") return undefined;
-  return host.sendSnapshot();
-}
-
-function labelled(text: string): string {
-  return `sync: ${text}`;
-}
-
 function reportTscFailure(): void {
   console.error(
     `\n${labelled("regeneration succeeded and every generated file was written, ")}` +
@@ -303,8 +288,9 @@ function reportTscFailure(): void {
 }
 
 // Non-zero whenever something the run meant to do didn't happen, so an agent can branch on the exit code alone.
-function syncExitCode(result: SyncRunResult): number {
+function syncExitCode({ result, snapshotNotice }: KeptSyncRun): number {
   const { outcome } = result;
+  if (snapshotNotice?.isLost) return 1;
   if (outcome.kind === "ready" || outcome.kind === "sent") {
     if (result.mode === "send" && result.didntLand.length > 0) return 1;
     return 0;

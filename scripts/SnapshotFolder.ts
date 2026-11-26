@@ -107,7 +107,7 @@ export class SnapshotFolder {
     return lines.join("\n");
   }
   // Removes the snapshots older than 30 days by file time, so a seeded time ages a file with no wait.
-  _prune(): void {
+  private _prune(): void {
     let names: string[];
     try {
       names = readdirSync(this.dir);
@@ -122,7 +122,7 @@ export class SnapshotFolder {
     }
   }
   // Writes one file and returns its path; a file already there is never overwritten.
-  _write({ target, command, plan, snapshot }: SnapshotFile): string {
+  private _write({ target, command, plan, snapshot }: SnapshotFile): string {
     const takenAt = this.now().toISOString();
     const path = join(this.dir, fileNameOf({ takenAt, target, command }));
     mkdirSync(this.dir, { recursive: true });
@@ -139,7 +139,7 @@ export class SnapshotFolder {
     return path;
   }
   // The undo line, with the held items only version history undoes beside it.
-  async _undoLines(
+  private async _undoLines(
     path: string,
     versionHistoryItems: HeldItem[],
   ): Promise<string[]> {
@@ -149,6 +149,11 @@ export class SnapshotFolder {
       ...GateReport.versionHistoryLines(versionHistoryItems),
     ];
   }
+}
+
+// A held send's undo lines, or why it has none, as every runner prints them.
+export function printSnapshotNotice(text: string | undefined): void {
+  if (text !== undefined) console.log(`\n${text}`);
 }
 
 // The snapshot file an undo line names, a path typed from where npm was invoked.
