@@ -192,7 +192,7 @@ STATE_DIR="$HOME/.config/clasp-real-estate-manager"
 ENV_FILE="$STATE_DIR/wizard.env"
 CLASP_USER="desktop-clasp-run"
 CLASPRC="$HOME/.clasprc.json"
-AGENT_AUTH_DIR="$HOME/.config/sheets-framework"
+AGENT_AUTH_DIR="$HOME/.config/credentials"
 AGENT_AUTH_FILE="$AGENT_AUTH_DIR/agent-auth.json"
 AGENT_SKIPPED="agent credential (re-run this wizard and say yes at stage 7)"
 # clasp reads clasp_config_auth too, so an exported one would aim stage 4 at the agent file.
