@@ -51,6 +51,52 @@ export const Grid = {
   isInSpan(index: number, span: IndexSpan): boolean {
     return index >= span.startIndex && index < span.endIndex;
   },
+  isSpanInside(inner: IndexSpan, outer: IndexSpan): boolean {
+    return (
+      inner.startIndex >= outer.startIndex && inner.endIndex <= outer.endIndex
+    );
+  },
+  doSpansOverlap(first: IndexSpan, second: IndexSpan): boolean {
+    return (
+      first.startIndex < second.endIndex && second.startIndex < first.endIndex
+    );
+  },
+  isSpanEmpty(span: IndexSpan): boolean {
+    return span.endIndex <= span.startIndex;
+  },
+  doRangesOverlap(first: BoundedRange, second: BoundedRange): boolean {
+    return (
+      first.sheetGid === second.sheetGid &&
+      Grid.doSpansOverlap(first.rows, second.rows) &&
+      Grid.doSpansOverlap(first.cols, second.cols)
+    );
+  },
+  isRangeInside(inner: BoundedRange, outer: BoundedRange): boolean {
+    return (
+      inner.sheetGid === outer.sheetGid &&
+      Grid.isSpanInside(inner.rows, outer.rows) &&
+      Grid.isSpanInside(inner.cols, outer.cols)
+    );
+  },
+  // Undefined when an open bound meets a tab of unknown size.
+  bounded(
+    range: GoogleGridRange,
+    size: GridSize | undefined,
+  ): BoundedRange | undefined {
+    const endRowIndex = range.endRowIndex ?? size?.rowCount;
+    const endColumnIndex = range.endColumnIndex ?? size?.columnCount;
+    if (endRowIndex === undefined || endColumnIndex === undefined) {
+      return undefined;
+    }
+    return {
+      sheetGid: range.sheetId ?? 0,
+      rows: { startIndex: range.startRowIndex ?? 0, endIndex: endRowIndex },
+      cols: {
+        startIndex: range.startColumnIndex ?? 0,
+        endIndex: endColumnIndex,
+      },
+    };
+  },
   // An absent end is open, as Google reads it.
   isInRange(range: GoogleGridRange, cell: GridCell): boolean {
     return (
@@ -90,6 +136,13 @@ export const Grid = {
   },
   spanAcross(range: BoundedRange, dimension: ShiftDimension): IndexSpan {
     return range[dimensionKeys[dimension].crossSpan];
+  },
+  withSpanAlong(
+    range: BoundedRange,
+    dimension: ShiftDimension,
+    span: IndexSpan,
+  ): BoundedRange {
+    return { ...range, [dimensionKeys[dimension].span]: span };
   },
   grown(size: GridSize, dimension: ShiftDimension, count: number): GridSize {
     const sizeCount = dimensionKeys[dimension].sizeCount;

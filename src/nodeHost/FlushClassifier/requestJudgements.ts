@@ -6,11 +6,12 @@ import { Rfc4180 } from "../Rfc4180.ts";
 import type {
   BoundedRange,
   CellAfter,
+  DimensionShift,
   GoogleGridRange,
   IndexSpan,
   ShiftDimension,
 } from "./flushClassifierTypes.ts";
-import type { DimensionShift, FlushTracker } from "./FlushTracker.ts";
+import type { FlushTracker } from "./FlushTracker.ts";
 import { Grid } from "./Grid.ts";
 import type { CellWrite, RequestJudge } from "./RequestJudge.ts";
 import { cellAfter } from "./requestJudgements/cellAfter.ts";

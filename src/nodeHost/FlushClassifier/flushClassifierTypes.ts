@@ -37,6 +37,45 @@ export interface BoundedRange {
   cols: IndexSpan;
 }
 
+export type CellOrigin =
+  | { kind: "read"; cell: GridCell }
+  // Inserted, appended, on an added tab, or emptied by a cut.
+  | { kind: "created" }
+  | { kind: "written" }
+  // Sorted earlier in the flush, so which read cell it holds is unknown.
+  | { kind: "reordered" };
+
+export type CellBack = GridCell | Exclude<CellOrigin, { kind: "read" }>;
+
+// One request's effect on the grid, as the cells it left mapped back and the ranges it found mapped on.
+export interface TrackerLayer {
+  back(cell: GridCell): CellBack;
+  // Undefined once the request split the range, so it no longer stands as one range.
+  forward(range: BoundedRange): BoundedRange | undefined;
+}
+
+export interface DimensionShift {
+  sheetGid: number;
+  dimension: ShiftDimension;
+  startIndex: number;
+  // Positive for an insert, negative for a delete.
+  count: number;
+  // The span across the other dimension a range shift stays inside; undefined for whole rows or columns.
+  band: IndexSpan | undefined;
+}
+
+export interface DimensionMove extends IndexSpan {
+  sheetGid: number;
+  dimension: ShiftDimension;
+  // Counted before the moved span is lifted out, as Google counts it.
+  destinationIndex: number;
+}
+
+export interface RangeCut {
+  source: BoundedRange;
+  destination: GridCell;
+}
+
 export type HeldRow =
   { rowId: string } | { sheetRow: number; nameValue: string | undefined };
 

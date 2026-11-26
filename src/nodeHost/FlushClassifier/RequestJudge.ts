@@ -96,14 +96,18 @@ export class RequestJudge {
     }
     return this;
   }
-  // Every cell of the read range, header included, since deleteTable blanks it all.
+  // Every cell of the read range where earlier requests left it, header included, since deleteTable blanks it all.
   deleteTable(tableId: string): this {
     if (this.tracker.isTableAdded(tableId)) return this;
     const range = this.reads.table(tableId)?.range;
     if (range === undefined) {
       return this.holdUnmeasured(`Table ${tableId}, which no read fetched`);
     }
-    const cells = this.cellsIn(range);
+    const tableNow = this._tableNow(range);
+    if (tableNow.kind === "unfollowed") {
+      return this.holdUnmeasured(`Table ${tableId}, ${tableNow.reason}`);
+    }
+    const cells = Grid.cells(tableNow.now);
     this.delete(cells);
     this.tracker.write(cells);
     return this;
@@ -113,9 +117,10 @@ export class RequestJudge {
     const tableId = table.tableId ?? "";
     if (this.tracker.isTableAdded(tableId)) return this;
     const readTable = this.reads.table(tableId);
+    const readDropdowns = this._readDropdownsNow(readTable);
     if (
-      readTable !== undefined &&
-      !dropdowns.isLeftOut(readTable, table) &&
+      readDropdowns !== undefined &&
+      !dropdowns.isLeftOut(readDropdowns, table) &&
       !dropdowns.isIn(table)
     ) {
       return this;
@@ -126,6 +131,49 @@ export class RequestJudge {
       table: readTable?.name ?? table.name ?? tableId,
     });
     return this;
+  }
+  // Each read dropdown's column index within its Table where earlier requests left it; undefined when the tracker can't follow the Table or one of its dropdowns.
+  private _readDropdownsNow(
+    read: GoogleTable | undefined,
+  ): number[] | undefined {
+    if (read?.range === undefined) return undefined;
+    const tableNow = this._tableNow(read.range);
+    if (tableNow.kind === "unfollowed") return undefined;
+    const indexes: number[] = [];
+    const readDropdowns = (read.columnProperties ?? []).filter(
+      dropdowns.isColumn,
+    );
+    for (const { columnIndex = 0 } of readDropdowns) {
+      const colIndex = tableNow.read.cols.startIndex + columnIndex;
+      const colNow = this.tracker.follow({
+        ...tableNow.read,
+        cols: { startIndex: colIndex, endIndex: colIndex + 1 },
+      });
+      if (colNow === undefined || Grid.isSpanEmpty(colNow.cols)) {
+        return undefined;
+      }
+      indexes.push(colNow.cols.startIndex - tableNow.now.cols.startIndex);
+    }
+    return indexes;
+  }
+  // A read Table's range, bounded by its tab's size as read, and where earlier requests left it.
+  private _tableNow(range: GoogleGridRange): TableNow {
+    const sheetGid = range.sheetId ?? 0;
+    const read = Grid.bounded(range, this.reads.gridSizes.get(sheetGid));
+    if (read === undefined) {
+      return {
+        kind: "unfollowed",
+        reason: `whose read range is open-ended on gid ${sheetGid}, a tab no read sized`,
+      };
+    }
+    const now = this.tracker.follow(read);
+    if (now === undefined) {
+      return {
+        kind: "unfollowed",
+        reason: "whose read range an earlier request split",
+      };
+    }
+    return { kind: "followed", read, now };
   }
   holdFindReplace(find: string, replacement: string): this {
     this.held.push({
@@ -211,6 +259,10 @@ export class RequestJudge {
   }
 }
 
+type TableNow =
+  | { kind: "followed"; read: BoundedRange; now: BoundedRange }
+  | { kind: "unfollowed"; reason: string };
+
 interface JudgedCell {
   origin: GridCell;
   read: ReadValue;
@@ -225,14 +277,11 @@ const dropdowns = {
     return (table.columnProperties ?? []).some(dropdowns.isColumn);
   },
   // A read dropdown the sent Table retypes is being removed, with no style to keep; one it leaves out is held, since this judge doesn't model what a partial list does to it.
-  isLeftOut(read: GoogleTable, sent: GoogleTable): boolean {
+  isLeftOut(readDropdowns: number[], sent: GoogleTable): boolean {
     const sentColumns = sent.columnProperties ?? [];
-    return (read.columnProperties ?? []).some(
-      (column) =>
-        dropdowns.isColumn(column) &&
-        !sentColumns.some(
-          ({ columnIndex }) => columnIndex === column.columnIndex,
-        ),
+    return readDropdowns.some(
+      (readIndex) =>
+        !sentColumns.some(({ columnIndex }) => columnIndex === readIndex),
     );
   },
   isColumn(column: GoogleTableColumnProperties): boolean {
