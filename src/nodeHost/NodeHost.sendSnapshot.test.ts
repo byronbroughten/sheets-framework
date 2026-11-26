@@ -75,6 +75,7 @@ function seedHost(
     enteredDataGate: {
       target: gateTarget,
       confirmedList,
+      dropdownStyleReset: undefined,
       forcedTraits,
       hash: (input) => `hash(${input})`,
     },
