@@ -13,6 +13,7 @@ import type {
   FlushRead,
   HeldItem,
 } from "./FlushClassifier/flushClassifierTypes.ts";
+import { judgedReadsOf } from "./FlushClassifier/judgedReads.ts";
 import type { requestJudgements } from "./FlushClassifier/requestJudgements.ts";
 
 type GoogleCellData = GoogleAppsScript.Sheets.Schema.CellData;
@@ -119,12 +120,18 @@ function paymentsRead(
   };
 }
 
+interface HeldItemsProps extends Partial<
+  Omit<FlushClassifierProps, "judgedReads">
+> {
+  reads?: FlushRead[];
+}
+
 function heldItems(
   requests: GoogleRequest[],
-  props: Partial<FlushClassifierProps> = {},
+  { reads = [paymentsRead()], ...props }: HeldItemsProps = {},
 ): HeldItem[] {
   return FlushClassifier.init({
-    reads: [paymentsRead()],
+    judgedReads: judgedReadsOf(reads),
     requests,
     dropdownStyleReset: "ask",
     forcedTraits: [],

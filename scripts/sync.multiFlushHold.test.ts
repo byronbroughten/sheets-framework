@@ -7,7 +7,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { PendingAlterations } from "../src/01_SpreadsheetSchema/configReaders/intendedState.ts";
 import {
-  itemGid,
   itemRowId,
   seedFixture,
 } from "../src/05_Operators/syncCoordinatorTestSupport.ts";
@@ -17,6 +16,7 @@ import { readJson, snapshotFiles, snapshotsFolder } from "./snapshotFixture.ts";
 import {
   confirmedArgv,
   forceNoteHeader,
+  itemValues,
   itemWithRenamedNote,
   runSyncOver,
   syncSheetsConfig,
@@ -66,10 +66,6 @@ const deletionAlone: HoldCase = {
   seed: forcedPair.seed,
   extra: [],
 };
-
-function itemValues(fake: FakeSheetsService): unknown[] {
-  return fake.grid.sheet(itemGid).values().flat();
-}
 
 async function dryRunOutput({ alterations, seed, extra }: HoldCase) {
   const { output } = await runSyncOver({

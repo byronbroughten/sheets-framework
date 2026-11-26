@@ -11,8 +11,10 @@ import {
 import type { ForcedTrait } from "../01_SpreadsheetSchema/configReaders/syncRunResult.ts";
 import { FlushClassifier } from "./FlushClassifier.ts";
 import type { HeldItem } from "./FlushClassifier/flushClassifierTypes.ts";
-import { FlushTracker } from "./FlushClassifier/FlushTracker.ts";
-import { RunReads } from "./FlushClassifier/RunReads.ts";
+import {
+  type JudgedReads,
+  judgedReadsOf,
+} from "./FlushClassifier/judgedReads.ts";
 import {
   type FlushSnapshotPlan,
   flushSnapshotPlan,
@@ -84,24 +86,22 @@ export class EnteredDataGate {
   integrateRead(read: SheetsHttpRead): void {
     this.reads.push(read);
   }
-  // The reads restart at a flush that has its own, withheld or sent, so a dry run judges each flush as its send will.
-  // A flush with none is judged against the last flush's reads, through the grid the flushes since left: a deletion after a write still holds what it deletes.
+  // A flush with no reads of its own is judged against the last ones, as docs/how-it-runs/sync.md's entered-data gate says.
   classify(requests: GoogleRequest[]): this {
     if (this.reads.length > 0) {
       this.judgedReads = judgedReadsOf(this.reads);
       this.reads = [];
     }
-    const { reads, tracker } = this.judgedReads;
-    const hasShiftedCells = tracker.hasShiftedCells;
+    const { judgedReads } = this;
+    const hasShiftedCells = judgedReads.tracker.hasShiftedCells;
     const items = FlushClassifier.init({
-      reads,
+      judgedReads,
       requests,
       dropdownStyleReset: this.dropdownStyleReset,
       forcedTraits: [],
-      tracker,
     }).heldItems();
     this.latestSnapshotPlan = flushSnapshotPlan({
-      reads: new RunReads(reads),
+      reads: judgedReads.reads,
       items,
       forcedTraits: this.flushes.length === 0 ? this.forcedTraits : [],
       hasShiftedCells,
@@ -143,14 +143,4 @@ export class EnteredDataGate {
   private _tokenFor(flushes: unknown[][]): string {
     return this.hash(JSON.stringify({ target: this.target, flushes }));
   }
-}
-
-// The reads the gate judges flushes against, and the grid the flushes judged against them left.
-interface JudgedReads {
-  reads: SheetsHttpRead[];
-  tracker: FlushTracker;
-}
-
-function judgedReadsOf(reads: SheetsHttpRead[]): JudgedReads {
-  return { reads, tracker: new FlushTracker(new RunReads(reads).gridSizes) };
 }

@@ -11,6 +11,7 @@ import type { PendingAlterations } from "../src/01_SpreadsheetSchema/configReade
 import { idNameMapFileSource } from "../src/05_Operators/configFileSource.ts";
 import {
   itemColumns,
+  itemGid,
   itemRowId,
   previousItemMap,
   seedFixture,
@@ -47,6 +48,10 @@ export function syncSheetsConfig(
     choreHomes: [],
     endpointModule: undefined,
   };
+}
+
+export function itemValues(fake: FakeSheetsService): unknown[] {
+  return fake.grid.sheet(itemGid).values().flat();
 }
 
 // A person renamed the note column on the sheet after the last sync.

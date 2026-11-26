@@ -10,7 +10,6 @@ import type { SheetsHttpTransport } from "../src/00_Source/GoogleSheets/GoogleSh
 import type { PendingAlterations } from "../src/01_SpreadsheetSchema/configReaders/intendedState.ts";
 import {
   bodyRowsWithNote,
-  itemGid,
   itemRowId,
   seedFixture,
 } from "../src/05_Operators/syncCoordinatorTestSupport.ts";
@@ -27,6 +26,7 @@ import {
 import {
   confirmedArgv,
   forceNoteHeader,
+  itemValues,
   itemWithRenamedNote,
   runSyncOver,
   syncRunner,
@@ -49,10 +49,6 @@ const noteRename: PendingAlterations = {
 };
 function itemWithNote(): FakeSheetsService {
   return seedFixture({ item: { bodyRows: bodyRowsWithNote } });
-}
-
-function itemValues(fake: FakeSheetsService): unknown[] {
-  return fake.grid.sheet(itemGid).values().flat();
 }
 
 function namedFolderArgs(folder: string): string[] {
