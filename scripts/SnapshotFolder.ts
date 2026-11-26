@@ -7,10 +7,13 @@ import {
   statSync,
   writeFileSync,
 } from "node:fs";
-import { join, relative, resolve } from "node:path";
+import { basename, join, relative, resolve } from "node:path";
+
+import { Val } from "@byronbroughten/utils/val";
 
 import type { HeldItem } from "../src/nodeHost/FlushClassifier/flushClassifierTypes.ts";
 import type { SendSnapshot } from "../src/nodeHost/SendSnapshotTaker.ts";
+import type { SheetsConfig } from "./sheetsConfig.ts";
 
 // Each takes a value, which a runner reading its command's name must skip.
 export const snapshotFlags = {
@@ -146,14 +149,27 @@ export function readSnapshotFile(named: string): SavedSnapshotFile {
   return contents;
 }
 
-// The fields restore reads; the file is one this module wrote.
+// The target a snapshot names: the package folder, so restore can refuse another target's file.
+export function snapshotTarget(sheetsConfig: SheetsConfig): string {
+  return basename(sheetsConfig.dir);
+}
+
+// The fields restore reads, checked; the rest is as this module wrote it.
 function isSavedSnapshotFile(contents: unknown): contents is SavedSnapshotFile {
-  const file = contents as Partial<SavedSnapshotFile> | null;
+  if (typeof contents !== "object" || contents === null) return false;
+  if (!("target" in contents && "command" in contents)) return false;
+  if (!("takenAt" in contents && "snapshot" in contents)) return false;
+  const { target, command, takenAt, snapshot } = contents;
   return (
-    typeof file?.target === "string" &&
-    typeof file.command === "string" &&
-    Array.isArray(file.snapshot?.columns) &&
-    Array.isArray(file.snapshot.fingerprints)
+    Val.is.string(target) &&
+    Val.is.string(command) &&
+    Val.is.string(takenAt) &&
+    typeof snapshot === "object" &&
+    snapshot !== null &&
+    "columns" in snapshot &&
+    "fingerprints" in snapshot &&
+    Array.isArray(snapshot.columns) &&
+    Array.isArray(snapshot.fingerprints)
   );
 }
 

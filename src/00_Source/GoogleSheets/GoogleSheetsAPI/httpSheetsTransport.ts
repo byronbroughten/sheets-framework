@@ -18,16 +18,14 @@ interface ColumnValueRanges {
   valueRanges?: { values?: SheetValue[][] }[];
 }
 
-export interface ColumnValuesRead {
-  spreadsheetId: string;
-  transport: SheetsHttpTransport;
-  // Each an A1 range of one column, such as 'Payments'!C:C.
-  ranges: string[];
-}
-
 export interface HttpSpreadsheetCall {
   spreadsheetId: string;
   transport: SheetsHttpTransport;
+}
+
+export interface ColumnValuesRead extends HttpSpreadsheetCall {
+  // Each an A1 range, such as 'Payments'!C:C.
+  ranges: string[];
 }
 
 // A tab's ID, title and grid size.
@@ -65,7 +63,7 @@ export function httpRangeColumns({
   ].join("&");
   const { valueRanges = [] } = send<ColumnValueRanges>(transport, {
     method: "GET",
-    url: `${sheetsApiBase}/${spreadsheetId}/values:batchGet?${query}`,
+    url: `${url(spreadsheetId, "/values:batchGet")}?${query}`,
     body: null,
   });
   return ranges.map((_, index) => valueRanges[index]?.values ?? []);
@@ -80,7 +78,7 @@ export function httpTabGrids({
     "sheets.properties(sheetId,title,gridProperties(rowCount,columnCount))";
   const { sheets = [] } = send<TabGridsReply>(transport, {
     method: "GET",
-    url: `${sheetsApiBase}/${spreadsheetId}?fields=${encodeURIComponent(fields)}`,
+    url: url(spreadsheetId, "", fields),
     body: null,
   });
   return sheets.map(({ properties }) => ({
@@ -97,20 +95,12 @@ export function httpBatchUpdate({
   transport,
   requests,
 }: BatchUpdateSend): GoogleBatchUpdateResponse {
-  return send<GoogleBatchUpdateResponse>(transport, {
-    method: "POST",
-    url: `${sheetsApiBase}/${spreadsheetId}:batchUpdate`,
-    body: JSON.stringify({ requests }),
-  });
+  return postBatchUpdate(transport, spreadsheetId, { requests });
 }
 
 export function httpSheetsTransport(
   props: GoogleSheetsAPIHttpProps,
 ): SheetsAdvancedTransport {
-  function url(spreadsheetId: string, suffix: string, fields?: string): string {
-    const query = fields ? `?fields=${encodeURIComponent(fields)}` : "";
-    return `${sheetsApiBase}/${spreadsheetId}${suffix}${query}`;
-  }
   return {
     Spreadsheets: {
       get: (spreadsheetId, optionalArgs) => {
@@ -138,14 +128,27 @@ export function httpSheetsTransport(
       },
       batchUpdate: (resource, spreadsheetId) =>
         props.gateFlush(resource.requests ?? [], () =>
-          send<GoogleBatchUpdateResponse>(props.transport, {
-            method: "POST",
-            url: url(spreadsheetId, ":batchUpdate"),
-            body: JSON.stringify(resource),
-          }),
+          postBatchUpdate(props.transport, spreadsheetId, resource),
         ),
     },
   };
+}
+
+function url(spreadsheetId: string, suffix: string, fields?: string): string {
+  const query = fields ? `?fields=${encodeURIComponent(fields)}` : "";
+  return `${sheetsApiBase}/${spreadsheetId}${suffix}${query}`;
+}
+
+function postBatchUpdate(
+  transport: SheetsHttpTransport,
+  spreadsheetId: string,
+  resource: GoogleAppsScript.Sheets.Schema.BatchUpdateSpreadsheetRequest,
+): GoogleBatchUpdateResponse {
+  return send<GoogleBatchUpdateResponse>(transport, {
+    method: "POST",
+    url: url(spreadsheetId, ":batchUpdate"),
+    body: JSON.stringify(resource),
+  });
 }
 
 // The one place the wire is trusted, as Apps Script's own declaration trusts it.

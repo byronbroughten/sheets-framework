@@ -80,8 +80,11 @@ function writeCell(
 }
 
 // Reads Text and Checkbox, then overwrites both on every row, which the gate holds.
-function overwriteChoreSource(tableCase: TableCase): string {
-  const requests = bodyRows.flatMap((_, bodyIndex) => [
+function overwriteChoreSource(
+  tableCase: TableCase,
+  rows: ValueTypesBodyRow[],
+): string {
+  const requests = rows.flatMap((_, bodyIndex) => [
     writeCell(topDataRowIndex + bodyIndex, colOf(tableCase, "stringValue"), {
       stringValue: "Overwritten",
     }),
@@ -114,14 +117,17 @@ interface SentCase {
 }
 
 // A dry run for the token, the confirmed send it covers, then the restore its undo line names.
-async function overwritingSend(tableCase: TableCase): Promise<SentCase> {
+async function overwritingSend(
+  tableCase: TableCase,
+  rows: ValueTypesBodyRow[] = bodyRows,
+): Promise<SentCase> {
   const fake = stubSheetsService({
-    sheets: [valueTypesTableSheet(bodyRows, tableCase)],
+    sheets: [valueTypesTableSheet(rows, tableCase)],
   });
   const transport = fakeSheetsHttpTransport(fake);
   const sheetsConfig = choreSheetsConfig({
     name: "overwrite",
-    source: overwriteChoreSource(tableCase),
+    source: overwriteChoreSource(tableCase, rows),
   });
   const folder = mkdtempSync(join(tmpdir(), "snapshots-"));
   vi.stubEnv("INIT_CWD", folder);
@@ -221,6 +227,22 @@ describe("restore of an overwriting send's snapshot", () => {
       "Pear",
     ]);
     expect(columnValues(fake, withoutRowIds, "checkbox")).toEqual([true, true]);
+  });
+
+  it("puts a saved row with a blank row ID back by position when no row moved", async () => {
+    const { fake, restore } = await overwritingSend(withRowIds, [
+      { id: "r:vty:apple", stringValue: "Apple", checkbox: true },
+      { stringValue: "Pear", checkbox: true },
+    ]);
+
+    const { output, exitCode } = await restore();
+
+    expect(exitCode).toBeUndefined();
+    expect(columnValues(fake, withRowIds, "stringValue")).toEqual([
+      "Apple",
+      "Pear",
+    ]);
+    expect(output).not.toContain("left to the spreadsheet's version history");
   });
 });
 

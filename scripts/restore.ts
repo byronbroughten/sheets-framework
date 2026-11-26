@@ -1,11 +1,14 @@
 // `sheets-framework restore`: puts a confirmed send's snapshot back on the package's spreadsheet. See docs/how-it-runs/chore-dry-run.md.
-import { basename } from "node:path";
-
 import type { SheetsHttpTransport } from "../src/00_Source/GoogleSheets/GoogleSheetsAPI.ts";
 import type { SnapshotRestore } from "../src/nodeHost/SendSnapshotRestorer.ts";
+import type { ColumnLabel } from "../src/nodeHost/SendSnapshotRestorer/SnapshotColumnRestorer.ts";
 import { liveTransport } from "./nodeHost.ts";
 import type { SheetsConfig } from "./sheetsConfig.ts";
-import { readSnapshotFile, type SavedSnapshotFile } from "./SnapshotFolder.ts";
+import {
+  readSnapshotFile,
+  type SavedSnapshotFile,
+  snapshotTarget,
+} from "./SnapshotFolder.ts";
 
 const usage = `Usage: npm run restore -- <snapshot> [--force]
   <snapshot>  the snapshot file a confirmed send's undo line names
@@ -52,7 +55,7 @@ export class RestoreRunner {
     });
   }
   get target(): string {
-    return basename(this.sheetsConfig.dir);
+    return snapshotTarget(this.sheetsConfig);
   }
   async run(): Promise<void> {
     if (this.snapshotPath === undefined) {
@@ -104,24 +107,24 @@ function restoreLines(restore: SnapshotRestore): string[] {
     ...section(
       "restored:",
       restoredColumns.map(
-        ({ tabTitle, header, rowCount }) =>
-          `  ${tabTitle} › ${header} (${rowCount} row(s))`,
+        (column) => `  ${columnLabel(column)} (${column.rowCount} row(s))`,
       ),
     ),
     ...section(
       "not restored, its column ID is gone:",
       goneColumns.map(
-        ({ tabTitle, header, columnId }) =>
-          `  ${tabTitle} › ${header} (${columnId})`,
+        (column) => `  ${columnLabel(column)} (${column.columnId})`,
       ),
     ),
     ...section(
       "left to the spreadsheet's version history, with no row to land on:",
-      homelessRows.map(
-        ({ tabTitle, header, row }) => `  ${tabTitle} › ${header}, ${row}`,
-      ),
+      homelessRows.map((row) => `  ${columnLabel(row)}, ${row.row}`),
     ),
   ];
+}
+
+function columnLabel({ tabTitle, header }: ColumnLabel): string {
+  return `${tabTitle} › ${header}`;
 }
 
 function section(heading: string, lines: string[]): string[] {
