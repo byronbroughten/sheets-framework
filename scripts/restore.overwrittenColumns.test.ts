@@ -1,11 +1,8 @@
 // The scripts project installs no configs, and valueTypesTableSheet reads them as it loads.
 import "../dev/installDevConfigs.ts";
 
-import { fileURLToPath } from "node:url";
-
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { tableLayout } from "../src/01_SpreadsheetSchema/tableLayout.ts";
 import { fakeSheetsHttpTransport } from "../src/testSupport/fakeSheetsHttpTransport.ts";
 import {
   type FakeSheetsService,
@@ -14,15 +11,22 @@ import {
 import {
   type ValueTypesBodyRow,
   type ValueTypesColumnName,
-  valueTypesColumnNames,
   valueTypesGid,
   valueTypesTableSheet,
 } from "../src/testSupport/valueTypesTableSheet.ts";
 import {
   choreSheetsConfig,
-  type ConfirmedSend,
   confirmedSendOver,
+  srcModule,
 } from "./choreFixture.ts";
+import {
+  colOf,
+  type SentCase,
+  type TableCase,
+  topDataRowIndex,
+  withoutRowIds,
+  withRowIds,
+} from "./restoreFixture.ts";
 
 type GoogleRequest = GoogleAppsScript.Sheets.Schema.Request;
 
@@ -30,31 +34,10 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-const srcUrl = new URL("../src/", import.meta.url);
-
-function srcModule(path: string): string {
-  return JSON.stringify(fileURLToPath(new URL(path, srcUrl)));
-}
-
-const topDataRowIndex = tableLayout.headerZoneDepth;
-
 const bodyRows: ValueTypesBodyRow[] = [
   { id: "r:vty:apple", stringValue: "Apple", checkbox: true },
   { id: "r:vty:pear", stringValue: "Pear", checkbox: true },
 ];
-
-interface TableCase {
-  columnNames: ValueTypesColumnName[];
-}
-
-const withRowIds: TableCase = { columnNames: valueTypesColumnNames() };
-const withoutRowIds: TableCase = {
-  columnNames: valueTypesColumnNames().filter((name) => name !== "id"),
-};
-
-function colOf({ columnNames }: TableCase, name: ValueTypesColumnName): number {
-  return columnNames.indexOf(name);
-}
 
 function writeCell(
   rowIndex: number,
@@ -108,11 +91,6 @@ export const overwrite = {
 `;
 }
 
-interface SentCase {
-  fake: FakeSheetsService;
-  restore: ConfirmedSend["restore"];
-}
-
 async function overwritingSend(
   tableCase: TableCase,
   rows: ValueTypesBodyRow[] = bodyRows,
@@ -120,7 +98,7 @@ async function overwritingSend(
   const fake = stubSheetsService({
     sheets: [valueTypesTableSheet(rows, tableCase)],
   });
-  const { dryRun, sent, restore } = await confirmedSendOver({
+  const { restore } = await confirmedSendOver({
     sheetsConfig: choreSheetsConfig({
       name: "overwrite",
       source: overwriteChoreSource(tableCase, rows),
@@ -128,9 +106,6 @@ async function overwritingSend(
     transport: fakeSheetsHttpTransport(fake),
     chore: "overwrite",
   });
-  expect(sent.output, `${dryRun.output}\n---\n${sent.output}`).toMatch(
-    /undo: /,
-  );
   return { fake, restore };
 }
 

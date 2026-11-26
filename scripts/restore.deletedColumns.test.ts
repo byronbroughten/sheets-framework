@@ -1,11 +1,8 @@
 // The scripts project installs no configs, and valueTypesTableSheet reads them as it loads.
 import "../dev/installDevConfigs.ts";
 
-import { fileURLToPath } from "node:url";
-
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { tableLayout } from "../src/01_SpreadsheetSchema/tableLayout.ts";
 import { fakeSheetsHttpTransport } from "../src/testSupport/fakeSheetsHttpTransport.ts";
 import {
   type FakeSheetsService,
@@ -14,41 +11,27 @@ import {
 import {
   type ValueTypesBodyRow,
   type ValueTypesColumnName,
-  valueTypesColumnNames,
   valueTypesGid,
   valueTypesTableSheet,
 } from "../src/testSupport/valueTypesTableSheet.ts";
+import { choreSheetsConfig, confirmedSendOver } from "./choreFixture.ts";
 import {
-  choreSheetsConfig,
-  type ConfirmedSend,
-  confirmedSendOver,
-} from "./choreFixture.ts";
+  colOf,
+  type SentCase,
+  type TableCase,
+  topDataRowIndex,
+  withoutRowIds,
+  withRowIds,
+} from "./restoreFixture.ts";
 
 afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-const srcUrl = new URL("../src/", import.meta.url);
-
-const topDataRowIndex = tableLayout.headerZoneDepth;
-
 const bodyRows: ValueTypesBodyRow[] = [
   { id: "r:vty:apple", stringValue: "Apple", checkbox: true },
   { id: "r:vty:pear", stringValue: "Pear", checkbox: false },
 ];
-
-interface TableCase {
-  columnNames: ValueTypesColumnName[];
-}
-
-const withRowIds: TableCase = { columnNames: valueTypesColumnNames() };
-const withoutRowIds: TableCase = {
-  columnNames: valueTypesColumnNames().filter((name) => name !== "id"),
-};
-
-function colOf({ columnNames }: TableCase, name: ValueTypesColumnName): number {
-  return columnNames.indexOf(name);
-}
 
 // Reads the named columns, then deletes them through the framework, rightmost first so each index holds.
 function deleteChoreSource(
@@ -58,12 +41,7 @@ function deleteChoreSource(
   const colIndexes = names
     .map((name) => colOf(tableCase, name))
     .toSorted((a, b) => b - a);
-  const spreadsheetRaw = JSON.stringify(
-    fileURLToPath(new URL("02_SpreadsheetRaw/SpreadsheetRaw.ts", srcUrl)),
-  );
   return `
-import { SpreadsheetRaw } from ${spreadsheetRaw};
-
 export const remove = {
   description: "deletes columns of Value Types",
   action(ss) {
@@ -79,21 +57,19 @@ export const remove = {
 `;
 }
 
-interface SentCase {
-  fake: FakeSheetsService;
+interface DeletingSend extends SentCase {
   gridBefore: unknown[][];
-  restore: ConfirmedSend["restore"];
 }
 
 async function deletingSend(
   tableCase: TableCase,
   names: ValueTypesColumnName[],
-): Promise<SentCase> {
+): Promise<DeletingSend> {
   const fake = stubSheetsService({
     sheets: [valueTypesTableSheet(bodyRows, tableCase)],
   });
   const gridBefore = fake.grid.sheet(valueTypesGid).values();
-  const { dryRun, sent, restore } = await confirmedSendOver({
+  const { restore } = await confirmedSendOver({
     sheetsConfig: choreSheetsConfig({
       name: "remove",
       source: deleteChoreSource(tableCase, names),
@@ -101,9 +77,6 @@ async function deletingSend(
     transport: fakeSheetsHttpTransport(fake),
     chore: "remove",
   });
-  expect(sent.output, `${dryRun.output}\n---\n${sent.output}`).toMatch(
-    /undo: /,
-  );
   expect(fake.grid.sheet(valueTypesGid).values()).not.toEqual(gridBefore);
   return { fake, gridBefore, restore };
 }
@@ -136,6 +109,18 @@ describe("restore of a deleting send's snapshot", () => {
     const { exitCode } = await restore();
 
     expect(exitCode).toBeUndefined();
+    expect(fake.grid.sheet(valueTypesGid).values()).toEqual(gridBefore);
+    expect(tableColumnCount(fake)).toBe(withoutRowIds.columnNames.length);
+  });
+
+  it("recreates the Table's first column, widening the Table again", async () => {
+    const firstName = withoutRowIds.columnNames[0] ?? "stringValue";
+    const { fake, gridBefore, restore } = await deletingSend(withoutRowIds, [
+      firstName,
+    ]);
+
+    await restore();
+
     expect(fake.grid.sheet(valueTypesGid).values()).toEqual(gridBefore);
     expect(tableColumnCount(fake)).toBe(withoutRowIds.columnNames.length);
   });

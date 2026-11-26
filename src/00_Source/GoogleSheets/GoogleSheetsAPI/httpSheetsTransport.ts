@@ -28,13 +28,17 @@ export interface ColumnValuesRead extends HttpSpreadsheetCall {
   ranges: string[];
 }
 
-// A Table's ID and its range, header row first.
-export interface TabTable {
-  tableId: string;
+export interface TableRange {
   startRowIndex: number;
   endRowIndex: number;
   startColumnIndex: number;
   endColumnIndex: number;
+}
+
+// A Table's ID and its range, header row first.
+export interface TabTable {
+  tableId: string;
+  range: TableRange;
 }
 
 // A tab's ID, title, grid size and Tables.
@@ -98,10 +102,12 @@ export function httpTabGrids({
     columnCount: properties?.gridProperties?.columnCount ?? 0,
     tables: tables.map(({ tableId, range }) => ({
       tableId: tableId ?? "",
-      startRowIndex: range?.startRowIndex ?? 0,
-      endRowIndex: range?.endRowIndex ?? 0,
-      startColumnIndex: range?.startColumnIndex ?? 0,
-      endColumnIndex: range?.endColumnIndex ?? 0,
+      range: {
+        startRowIndex: range?.startRowIndex ?? 0,
+        endRowIndex: range?.endRowIndex ?? 0,
+        startColumnIndex: range?.startColumnIndex ?? 0,
+        endColumnIndex: range?.endColumnIndex ?? 0,
+      },
     })),
   }));
 }
