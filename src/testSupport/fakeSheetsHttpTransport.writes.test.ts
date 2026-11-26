@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import { fakeSheetsHttpTransport } from "./fakeSheetsHttpTransport.ts";
+import { widgetFixture } from "./fakeSheetsHttpTransportFixture.ts";
 import { stubSheetsService } from "./fakeSheetsService.ts";
+import { a1Notation } from "./fakeSheetsService/a1Notation.ts";
 
 type Request = GoogleAppsScript.Sheets.Schema.Request;
 
-const base =
-  "https://sheets.googleapis.com/v4/spreadsheets/spreadsheet-under-test";
-const widgetGid = 7;
+const { gid: widgetGid, spreadsheetUrl: base } = widgetFixture;
 
 function seed() {
   const fake = stubSheetsService({
@@ -38,30 +38,37 @@ function seed() {
     });
   }
   function lastColumn() {
-    return "ABCDEFGH"[fake.grid.sheet(widgetGid).columnCount - 1];
+    return a1Notation.columnLetters(fake.grid.sheet(widgetGid).columnCount - 1);
   }
   return { fake, transport, post, readSheet };
 }
 
-function columns(startIndex: number, endIndex: number) {
-  return { sheetId: widgetGid, dimension: "COLUMNS", startIndex, endIndex };
+function oneColumn(columnIndex: number) {
+  return {
+    sheetId: widgetGid,
+    dimension: "COLUMNS",
+    startIndex: columnIndex,
+    endIndex: columnIndex + 1,
+  };
 }
 
-function columnBand(startColumnIndex: number, endColumnIndex: number) {
+function columnBand(columnIndex: number) {
   return {
     sheetId: widgetGid,
     startRowIndex: 0,
     endRowIndex: 2,
-    startColumnIndex,
-    endColumnIndex,
+    startColumnIndex: columnIndex,
+    endColumnIndex: columnIndex + 1,
   };
 }
 
-// Writes both rows of one column.
-function write(columnIndex: number, top: string, bottom = top): Request {
+function writeColumn(
+  columnIndex: number,
+  [top, bottom]: [string, string],
+): Request {
   return {
     updateCells: {
-      range: columnBand(columnIndex, columnIndex + 1),
+      range: columnBand(columnIndex),
       rows: [top, bottom].map((stringValue) => ({
         values: [{ userEnteredValue: { stringValue } }],
       })),
@@ -82,7 +89,7 @@ describe("fakeSheetsHttpTransport batchUpdate", () => {
             length: 1,
           },
         },
-        write(2, "c", "3"),
+        writeColumn(2, ["c", "3"]),
       ],
       [
         ["a", "b", "c"],
@@ -91,7 +98,7 @@ describe("fakeSheetsHttpTransport batchUpdate", () => {
     ],
     [
       "an inserted dimension",
-      [{ insertDimension: { range: columns(1, 2) } }],
+      [{ insertDimension: { range: oneColumn(1) } }],
       [
         ["a", "", "b"],
         [1, "", 2],
@@ -99,16 +106,16 @@ describe("fakeSheetsHttpTransport batchUpdate", () => {
     ],
     [
       "a deleted dimension",
-      [{ deleteDimension: { range: columns(0, 1) } }],
+      [{ deleteDimension: { range: oneColumn(0) } }],
       [["b"], [2]],
     ],
     [
       "a column inserted as a range",
       [
         {
-          insertRange: { range: columnBand(0, 1), shiftDimension: "COLUMNS" },
+          insertRange: { range: columnBand(0), shiftDimension: "COLUMNS" },
         },
-        write(0, "new", "0"),
+        writeColumn(0, ["new", "0"]),
       ],
       [
         ["new", "a", "b"],
@@ -119,7 +126,7 @@ describe("fakeSheetsHttpTransport batchUpdate", () => {
       "a column deleted as a range",
       [
         {
-          deleteRange: { range: columnBand(0, 1), shiftDimension: "COLUMNS" },
+          deleteRange: { range: columnBand(0), shiftDimension: "COLUMNS" },
         },
       ],
       [["b"], [2]],
@@ -147,10 +154,9 @@ describe("fakeSheetsHttpTransport batchUpdate", () => {
 
   it("answers one reply for each request", () => {
     const { post } = seed();
+    const requests = [writeColumn(0, ["x", "x"]), writeColumn(1, ["y", "y"])];
 
-    expect(post({ requests: [write(0, "x"), write(1, "y")] })).toEqual({
-      replies: [{}, {}],
-    });
+    expect(post({ requests })).toEqual({ replies: [{}, {}] });
   });
 });
 
@@ -159,7 +165,7 @@ describe("fakeSheetsHttpTransport writes it doesn't model", () => {
 
   it("throws on a request kind with no replay, leaving the whole batch unapplied", () => {
     const { fake, post } = seed();
-    const requests = [write(0, "x"), { autoResizeDimensions: {} }];
+    const requests = [writeColumn(0, ["x", "x"]), { autoResizeDimensions: {} }];
 
     expect(() => post({ requests })).toThrow(`POST ${url}`);
     expect(() => post({ requests })).toThrow("autoResizeDimensions");
@@ -169,7 +175,7 @@ describe("fakeSheetsHttpTransport writes it doesn't model", () => {
   it("keeps Google's refusal text in the error", () => {
     const { post } = seed();
     const pastGrid = {
-      insertRange: { range: columnBand(5, 6), shiftDimension: "COLUMNS" },
+      insertRange: { range: columnBand(5), shiftDimension: "COLUMNS" },
     };
 
     expect(() => post({ requests: [pastGrid] })).toThrow(

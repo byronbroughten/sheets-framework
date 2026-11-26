@@ -1,11 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { fakeSheetsHttpTransport } from "./fakeSheetsHttpTransport.ts";
+import { widgetFixture } from "./fakeSheetsHttpTransportFixture.ts";
 import { buildGridRows, stubSheetsService } from "./fakeSheetsService.ts";
 
-const base =
-  "https://sheets.googleapis.com/v4/spreadsheets/spreadsheet-under-test";
-const widgetGid = 7;
+const { gid: widgetGid, spreadsheetUrl: base } = widgetFixture;
 
 function seed() {
   const fake = stubSheetsService({
@@ -212,7 +211,13 @@ describe("fakeSheetsHttpTransport reads it doesn't model", () => {
     ["GET", "?includeGridData=true", null],
     ["POST", ":getByDataFilter", null],
     ["POST", ":getByDataFilter", '{"excludeTablesInBandedRanges":true}'],
-    ["POST", ":getByDataFilter", '{"dataFilters":[{"a1Range":"Widget!A1"}]}'],
+    ["POST", ":getByDataFilter", '{"dataFilters":[]}'],
+    ["POST", ":getByDataFilter", '{"dataFilters":[],"includeGridData":false}'],
+    [
+      "POST",
+      ":getByDataFilter",
+      '{"dataFilters":[{"a1Range":"Widget!A1"}],"includeGridData":true}',
+    ],
   ] as const)(
     "throws on %s %s with body %s, naming the method and URL",
     (method, suffix, body) => {

@@ -7,19 +7,16 @@ import type {
   FakeSheetView,
 } from "../fakeSheetsService/gridView.ts";
 import { unreplayed } from "../fakeSheetsService/unreplayed.ts";
+import type { FakeQueryParams } from "./FakeQueryParams.ts";
 
 type ValueRange = GoogleAppsScript.Sheets.Schema.ValueRange;
 type MajorDimension = "ROWS" | "COLUMNS";
 type ValueRender = "UNFORMATTED_VALUE" | "FORMULA";
 
-// Groups: quoted title, plain title, start column, start row, end column, end row.
-const a1Range =
-  /^(?:'((?:[^']|'')+)'|([A-Za-z_]\w*))!([A-Z]{1,3})([1-9]\d*)?(?::([A-Z]{1,3})([1-9]\d*)?)?$/;
-
 interface ValuesBatchGetProps {
   grid: FakeGridView;
   spreadsheetId: string;
-  params: [string, string][];
+  params: FakeQueryParams;
 }
 
 interface ValuesOptions {
@@ -28,7 +25,12 @@ interface ValuesOptions {
   valueRender: ValueRender;
 }
 
-// `spreadsheets.values.batchGet`, in the request and response shape of Google's Sheets API.
+interface ValueRangeRead {
+  grid: FakeGridView;
+  range: string;
+  options: ValuesOptions;
+}
+
 export const valuesBatchGet = {
   reply({ grid, spreadsheetId, params }: ValuesBatchGetProps): {
     spreadsheetId: string;
@@ -38,18 +40,18 @@ export const valuesBatchGet = {
     return {
       spreadsheetId,
       valueRanges: options.ranges.map((range) =>
-        valueRange(grid, range, options),
+        valueRange({ grid, range, options }),
       ),
     };
   },
 };
 
-function valuesOptions(params: [string, string][]): ValuesOptions {
+function valuesOptions(params: FakeQueryParams): ValuesOptions {
   const ranges: string[] = [];
   let majorDimension: MajorDimension = "ROWS";
   // Google's default, which the fake can't answer, as it formats nothing.
   let valueRender = "FORMATTED_VALUE";
-  for (const [key, value] of params) {
+  for (const [key, value] of params.entries) {
     if (key === "ranges") {
       ranges.push(value);
     } else if (key === "valueRenderOption") {
@@ -73,11 +75,8 @@ function isMajorDimension(value: string): value is MajorDimension {
   return value === "ROWS" || value === "COLUMNS";
 }
 
-function valueRange(
-  grid: FakeGridView,
-  range: string,
-  { majorDimension, valueRender }: ValuesOptions,
-): ValueRange {
+function valueRange({ grid, range, options }: ValueRangeRead): ValueRange {
+  const { majorDimension, valueRender } = options;
   const { sheet, bounds } = parsedRange(grid, range);
   const rows = sheet
     .rows(bounds)
@@ -89,7 +88,7 @@ function valueRange(
     (line) => line.length === 0,
   );
   return {
-    range: echoedRange(sheet.title, bounds),
+    range: a1Notation.qualifiedRange(sheet.title, bounds),
     majorDimension,
     // Like Google: a range holding nothing comes back with no values.
     ...(values.length > 0 ? { values } : {}),
@@ -101,15 +100,10 @@ function parsedRange(
   grid: FakeGridView,
   range: string,
 ): { sheet: FakeSheetView; bounds: BoundedRange } {
-  const match = a1Range.exec(range);
-  if (match === null) throw unreplayed(`the range "${range}"`);
-  const [, quoted, plain = "", startColumn = "", startRow] = match;
-  const [, , , , , endColumn, endRow] = match;
-  // A lone column with no row, such as Title!A, is no A1 range.
-  if (endColumn === undefined && startRow === undefined) {
-    throw unreplayed(`the range "${range}"`);
-  }
-  const sheet = grid.sheetByTitle(quoted?.replaceAll("''", "'") ?? plain);
+  const parts = a1Notation.sheetRangeParts(range);
+  if (parts === undefined) throw unreplayed(rangePhrase(range));
+  const { title, startColumn, startRow, endColumn, endRow } = parts;
+  const sheet = grid.sheetByTitle(title);
   let lastRow = endRow;
   if (endColumn === undefined) lastRow = startRow;
   const bounds = {
@@ -125,9 +119,13 @@ function parsedRange(
     bounds.endRowIndex > sheet.rowCount ||
     bounds.endColumnIndex > sheet.columnCount
   ) {
-    throw unreplayed(`the range "${range}", reversed or past the grid`);
+    throw unreplayed(`${rangePhrase(range)}, reversed or past the grid`);
   }
   return { sheet, bounds };
+}
+
+function rangePhrase(range: string): string {
+  return `the range "${range}"`;
 }
 
 function rendered(
@@ -152,11 +150,4 @@ function withoutTrailing<IT>(
   isEmpty: (item: IT) => boolean,
 ): IT[] {
   return items.slice(0, items.findLastIndex((item) => !isEmpty(item)) + 1);
-}
-
-function echoedRange(title: string, bounds: BoundedRange): string {
-  const cells = a1Notation.range(bounds);
-  const [first, last] = cells.split(":");
-  const echoed = first === last ? first : cells;
-  return `${a1Notation.sheetName(title)}!${echoed}`;
 }

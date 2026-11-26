@@ -2,6 +2,8 @@ import type {
   SheetsHttpRequest,
   SheetsHttpTransport,
 } from "../00_Source/GoogleSheets/GoogleSheetsAPI.ts";
+import { FakeQueryParams } from "./fakeSheetsHttpTransport/FakeQueryParams.ts";
+import { validateKeys } from "./fakeSheetsHttpTransport/validateKeys.ts";
 import { valuesBatchGet } from "./fakeSheetsHttpTransport/valuesBatchGet.ts";
 import type { FakeSheetsService } from "./fakeSheetsService.ts";
 import { unreplayed } from "./fakeSheetsService/unreplayed.ts";
@@ -16,30 +18,27 @@ const spreadsheetUrl =
 interface FakeCall {
   fake: FakeSheetsService;
   spreadsheetId: string;
-  params: [string, string][];
+  params: FakeQueryParams;
   body: string | null;
 }
 
 // Keyed by method and URL suffix; anything else goes unanswered.
 const routes: Record<string, (call: FakeCall) => unknown> = {
   "GET "({ fake, spreadsheetId, params }) {
-    return fake.sheets.Spreadsheets.get(spreadsheetId, fieldsArg(params));
+    return fake.sheets.Spreadsheets.get(spreadsheetId, params.fieldsArg);
   },
   "POST :getByDataFilter"({ fake, spreadsheetId, params, body }) {
     const resource = parsedBody(body, ["dataFilters", "includeGridData"]);
+    validateGridData(resource);
     validateGridFilters(resource);
     return fake.sheets.Spreadsheets.getByDataFilter(
       resource,
       spreadsheetId,
-      fieldsArg(params),
+      params.fieldsArg,
     );
   },
   "POST :batchUpdate"({ fake, spreadsheetId, params, body }) {
-    validateKeys(
-      params.map(([key]) => key),
-      [],
-      "query parameter",
-    );
+    params.validateKeys([]);
     const resource: BatchUpdateRequest = parsedBody(body, ["requests"]);
     return fake.sheets.Spreadsheets.batchUpdate(resource, spreadsheetId);
   },
@@ -48,7 +47,6 @@ const routes: Record<string, (call: FakeCall) => unknown> = {
   },
 };
 
-// Answers the Node host's requests from the spreadsheet a `stubSheetsService` fake holds.
 export function fakeSheetsHttpTransport(
   fake: FakeSheetsService,
 ): SheetsHttpTransport {
@@ -75,44 +73,23 @@ function reply(
   if (spreadsheetId === undefined || route === undefined) {
     throw unreplayed("that method and URL");
   }
-  return route({ fake, spreadsheetId, params: queryParams(query), body });
+  const params = FakeQueryParams.init(query);
+  return route({ fake, spreadsheetId, params, body });
 }
 
-function queryParams(query: string | undefined): [string, string][] {
-  if (query === undefined) return [];
-  return query.split("&").map((pair) => {
-    const [key = "", ...value] = pair.split("=");
-    return [decoded(key), decoded(value.join("="))];
-  });
-}
-
-function decoded(text: string): string {
-  return decodeURIComponent(text.replaceAll("+", " "));
-}
-
-function fieldsArg(params: [string, string][]): { fields?: string } {
-  validateKeys(
-    params.map(([key]) => key),
-    ["fields"],
-    "query parameter",
-  );
-  return Object.fromEntries(params);
-}
-
-function parsedBody(body: string | null, keys: string[]): object {
+function parsedBody(body: string | null, modelled: string[]): object {
   if (body === null) throw unreplayed("a POST with no body");
   const resource = JSON.parse(body) as object;
-  validateKeys(Object.keys(resource), keys, "body key");
+  validateKeys({ keys: Object.keys(resource), modelled, kind: "body key" });
   return resource;
 }
 
-function validateKeys(
-  keys: string[],
-  modelled: string[],
-  kind: "query parameter" | "body key",
-): void {
-  const other = keys.find((key) => !modelled.includes(key));
-  if (other !== undefined) throw unreplayed(`the ${kind} "${other}"`);
+// The stub sends grid data whatever this says.
+function validateGridData(resource: object): void {
+  const { includeGridData } = resource as { includeGridData?: boolean };
+  if (includeGridData !== true) {
+    throw unreplayed("a getByDataFilter without includeGridData");
+  }
 }
 
 // The stub drops any other filter without a word, so its Tables would silently go missing.
