@@ -9,6 +9,7 @@ import type {
   GridCell,
   GridSize,
   HeldCell,
+  HeldColumn,
   HeldRow,
 } from "./flushClassifierTypes.ts";
 import { Grid } from "./Grid.ts";
@@ -20,6 +21,7 @@ type GoogleGridProperties = GoogleAppsScript.Sheets.Schema.GridProperties;
 interface SheetTables {
   tables: GoogleTable[];
   gridSize: GridSize | undefined;
+  title: string | undefined;
 }
 
 export type ReadValue =
@@ -87,9 +89,36 @@ export class RunReads {
     }
     return {
       sheetGid: cell.sheetGid,
-      table: table.name ?? table.tableId ?? "(no name)",
+      table: tableLabel(table),
       column: this._columnName(table, cell.colIndex),
       row: this._heldRow(table, cell),
+    };
+  }
+  // Undefined for a cell no read of its Table covered, whose column is only a letter.
+  heldColumn({
+    sheetGid,
+    table: label,
+    column,
+  }: HeldCell): HeldColumn | undefined {
+    const sheet = this.sheetTables.get(sheetGid);
+    if (label === undefined || sheet === undefined) return undefined;
+    const { title, gridSize } = sheet;
+    const table = sheet.tables.find((each) => tableLabel(each) === label);
+    if (title === undefined || gridSize === undefined || table === undefined) {
+      return undefined;
+    }
+    const colIndex = this._colIndexNamed(table, column);
+    if (colIndex === undefined) return undefined;
+    const headerRowIndex = table.range?.startRowIndex ?? 0;
+    return {
+      sheetGid,
+      tabTitle: title,
+      table: label,
+      header: column,
+      colIndex,
+      columnIdRowIndex: headerRowIndex - tableLayout.headRowOffsets.columnId,
+      idColIndex: this._colIndexNamed(table, tableLayout.idHeader),
+      tabColumnCount: gridSize.columnCount,
     };
   }
   private _heldRow(table: GoogleTable, cell: GridCell): HeldRow {
@@ -105,12 +134,18 @@ export class RunReads {
     cell: GridCell,
     header: string,
   ): string | undefined {
-    const colIndex = tableColIndexes(table).find(
-      (index) => this._columnName(table, index) === header,
-    );
+    const colIndex = this._colIndexNamed(table, header);
     if (colIndex === undefined) return undefined;
     const data = this._cellData({ ...cell, colIndex });
     return ExtVal.text(data && readValue(data));
+  }
+  private _colIndexNamed(
+    table: GoogleTable,
+    header: string,
+  ): number | undefined {
+    return tableColIndexes(table).find(
+      (index) => this._columnName(table, index) === header,
+    );
   }
   private _columnName(table: GoogleTable, colIndex: number): string {
     const range = table.range ?? {};
@@ -145,9 +180,14 @@ function tablesBySheet(reads: FlushRead[]): Map<number, SheetTables> {
       bySheet.set(sheet.properties?.sheetId ?? 0, {
         tables: sheet.tables ?? [],
         gridSize: gridSizeOf(sheet.properties?.gridProperties),
+        title: sheet.properties?.title,
       });
       return bySheet;
     }, new Map<number, SheetTables>());
+}
+
+function tableLabel(table: GoogleTable): string {
+  return table.name ?? table.tableId ?? "(no name)";
 }
 
 function gridSizeOf(

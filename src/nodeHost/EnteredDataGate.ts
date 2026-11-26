@@ -8,8 +8,14 @@ import {
   defaultDropdownStyleReset,
   type DropdownStyleReset,
 } from "../00_Source/RawSource/RawSource.ts";
+import type { ForcedTrait } from "../01_SpreadsheetSchema/configReaders/syncRunResult.ts";
 import { FlushClassifier } from "./FlushClassifier.ts";
 import type { HeldItem } from "./FlushClassifier/flushClassifierTypes.ts";
+import { RunReads } from "./FlushClassifier/RunReads.ts";
+import {
+  type FlushSnapshotPlan,
+  flushSnapshotPlan,
+} from "./flushSnapshotPlan.ts";
 
 // Every flush's held items in flush order, a free flush's empty list included, and the token that binds them to a target.
 export interface HeldList {
@@ -32,6 +38,8 @@ export interface EnteredDataGateProps {
   dropdownStyleReset: DropdownStyleReset | undefined;
   // Injected by the Node half, since src/ takes no Node API.
   hash: (input: string) => string;
+  // What a sync --force forces; only the send snapshot reads them, so a forced send needs no token.
+  forcedTraits?: ForcedTrait[];
 }
 
 // ADR 0034: holds each flush the classifier holds until a hash-bound token covers it; the host withholds a dry run's flushes.
@@ -40,18 +48,22 @@ export class EnteredDataGate {
   private confirmedList: ConfirmedList | undefined;
   private dropdownStyleReset: DropdownStyleReset;
   private hash: (input: string) => string;
+  private forcedTraits: ForcedTrait[];
   private reads: SheetsHttpRead[];
   private flushes: HeldItem[][];
   private landedFlushes: number;
+  private latestSnapshotPlan: FlushSnapshotPlan;
   constructor(props: EnteredDataGateProps) {
     this.target = props.target;
     this.confirmedList = props.confirmedList;
     this.dropdownStyleReset =
       props.dropdownStyleReset ?? defaultDropdownStyleReset;
     this.hash = props.hash;
+    this.forcedTraits = props.forcedTraits ?? [];
     this.reads = [];
     this.flushes = [];
     this.landedFlushes = 0;
+    this.latestSnapshotPlan = { columns: [], versionHistoryItems: [] };
   }
   static init(props: EnteredDataGateProps): EnteredDataGate {
     return new EnteredDataGate(props);
@@ -62,19 +74,27 @@ export class EnteredDataGate {
       flushes: this.flushes,
     };
   }
+  // What the send snapshot reads before the flush classify last judged goes out.
+  get snapshotPlan(): FlushSnapshotPlan {
+    return this.latestSnapshotPlan;
+  }
   integrateRead(read: SheetsHttpRead): void {
     this.reads.push(read);
   }
   // The reads restart at every flush, withheld or sent, so a dry run judges each flush as its send will.
   classify(requests: GoogleRequest[]): this {
-    this.flushes.push(
-      FlushClassifier.init({
-        reads: this.reads,
-        requests,
-        dropdownStyleReset: this.dropdownStyleReset,
-        forcedTraits: [],
-      }).heldItems(),
-    );
+    const items = FlushClassifier.init({
+      reads: this.reads,
+      requests,
+      dropdownStyleReset: this.dropdownStyleReset,
+      forcedTraits: [],
+    }).heldItems();
+    this.latestSnapshotPlan = flushSnapshotPlan({
+      reads: new RunReads(this.reads),
+      items,
+      forcedTraits: this.flushes.length === 0 ? this.forcedTraits : [],
+    });
+    this.flushes.push(items);
     this.reads = [];
     return this;
   }

@@ -3,12 +3,12 @@ import { Val } from "@byronbroughten/utils/val";
 import type { HeldGroup } from "../01_SpreadsheetSchema/configReaders/dryRunHeld.ts";
 import type {
   HeldCell,
+  HeldCellItem,
   HeldItem,
   HeldRow,
 } from "./FlushClassifier/flushClassifierTypes.ts";
 
-type CellItem = Extract<HeldItem, { kind: "enteredData" | "unreadCell" }>;
-type OtherItem = Exclude<HeldItem, CellItem>;
+type OtherItem = Exclude<HeldItem, HeldCellItem>;
 type OtherItemOf<KN extends OtherItem["kind"]> = Extract<
   OtherItem,
   { kind: KN }
@@ -21,8 +21,8 @@ const listedCellLimit = 20;
 export function heldGroups(flushes: HeldItem[][]): HeldGroup[] {
   const items = flushes.flat();
   const cellGroups = items
-    .filter(isCellItem)
-    .reduce<Map<string, CellItem[]>>((groups, item) => {
+    .filter(isHeldCellItem)
+    .reduce<Map<string, HeldCellItem[]>>((groups, item) => {
       const key = JSON.stringify([
         item.kind,
         item.cell.sheetGid,
@@ -35,17 +35,17 @@ export function heldGroups(flushes: HeldItem[][]): HeldGroup[] {
   return [
     ...[...cellGroups.values()].map(cellGroup),
     ...items.flatMap((item): HeldGroup[] =>
-      isCellItem(item) ? [] : [otherGroup(item)],
+      isHeldCellItem(item) ? [] : [otherGroup(item)],
     ),
   ];
 }
 
-function isCellItem(item: HeldItem): item is CellItem {
+export function isHeldCellItem(item: HeldItem): item is HeldCellItem {
   return item.kind === "enteredData" || item.kind === "unreadCell";
 }
 
 const cellGroupWhat: Record<
-  CellItem["kind"],
+  HeldCellItem["kind"],
   (cells: number, cellWord: string) => string
 > = {
   enteredData: (cells, cellWord) =>
@@ -54,7 +54,7 @@ const cellGroupWhat: Record<
     `the send writes ${cells} ${cellWord} no read covered, so they may hold entered data:`,
 };
 
-function cellGroup(items: CellItem[]): HeldGroup {
+function cellGroup(items: HeldCellItem[]): HeldGroup {
   const { cell, kind } = Val.assert(items[0], "held cell group's first cell");
   const cells = items.length;
   const cellWord = cells === 1 ? "cell" : "cells";
@@ -75,19 +75,22 @@ function cellGroup(items: CellItem[]): HeldGroup {
   };
 }
 
-// A cell on a sheet no read covered has no Table, so its tab's GID names it.
+// A cell on a sheet no read covered has no Table, so its tab's GID names it, and no column ID, so the send snapshot can't hold it.
 function cellSubject({
   table,
   column,
   sheetGid,
-}: HeldCell): Pick<HeldGroup, "subject"> {
+}: HeldCell): Pick<HeldGroup, "subject" | "isUndoneOnlyByVersionHistory"> {
   if (table === undefined) {
-    return { subject: { tab: `gid ${sheetGid}`, path: column } };
+    return {
+      subject: { tab: `gid ${sheetGid}`, path: column },
+      isUndoneOnlyByVersionHistory: true,
+    };
   }
   return { subject: { table, column } };
 }
 
-function cellLine(item: CellItem): string {
+function cellLine(item: HeldCellItem): string {
   const row = rowLabel(item.cell.row);
   if (item.kind === "unreadCell") return `${row}  not read`;
   const { change } = item;
@@ -133,5 +136,5 @@ function otherGroup<KN extends OtherItem["kind"]>(
 ): HeldGroup {
   const build: (item: OtherItemOf<KN>) => HeldGroup =
     otherGroupByKind[item.kind];
-  return build(item);
+  return { ...build(item), isUndoneOnlyByVersionHistory: true };
 }

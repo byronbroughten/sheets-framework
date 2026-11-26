@@ -105,6 +105,7 @@ export class SyncRunner {
       enteredDataGate: {
         target,
         confirmedList: this.heldFile.confirmedList,
+        forcedTraits: this.forcedTraits,
       },
     });
     const { SyncCoordinator } =

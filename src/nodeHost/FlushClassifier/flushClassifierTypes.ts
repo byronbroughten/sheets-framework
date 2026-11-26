@@ -48,6 +48,19 @@ export interface HeldCell {
   row: HeldRow;
 }
 
+// Where a held cell's column stood when the run last read its Table: what a send snapshot reads.
+export interface HeldColumn {
+  sheetGid: number;
+  tabTitle: string;
+  table: string;
+  header: string;
+  colIndex: number;
+  columnIdRowIndex: number;
+  // Undefined where the Table has no ID column.
+  idColIndex: number | undefined;
+  tabColumnCount: number;
+}
+
 export type CellChange =
   | { kind: "overwrite"; before: string; after: string }
   | { kind: "delete"; before: string };
@@ -81,6 +94,12 @@ export type HeldItem =
   | { kind: "dropdownReset"; requestIndex: number; table: string }
   | { kind: "forcedTrait"; trait: ForcedTrait }
   | { kind: "unclassified"; requestIndex: number; verb: RequestVerb };
+
+// The held items that name a cell; every other kind is undone only by version history.
+export type HeldCellItem = Extract<
+  HeldItem,
+  { kind: "enteredData" | "unreadCell" }
+>;
 
 // What a judged cell holds after the request: a value, nothing, or no cell at all.
 export type CellAfter =
