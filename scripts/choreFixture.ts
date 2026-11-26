@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { vi } from "vitest";
+import { expect, vi } from "vitest";
 
 import { appConfigs } from "../dev/generated/appConfigs.ts";
 import type { SheetsHttpTransport } from "../src/00_Source/GoogleSheets/GoogleSheetsAPI.ts";
@@ -75,6 +75,48 @@ export async function runRestoreOver({
   return capturedRun(() => runner.run());
 }
 
+interface ConfirmedSendProps {
+  sheetsConfig: SheetsConfig;
+  transport: SheetsHttpTransport;
+  chore: string;
+}
+
+export interface ConfirmedSend {
+  dryRun: ChoreRun;
+  sent: ChoreRun;
+  restore: (argv?: string[]) => Promise<ChoreRun>;
+}
+
+// A dry run for the token, the confirmed send it covers, which must print an undo line, then the restore that line names.
+export async function confirmedSendOver({
+  sheetsConfig,
+  transport,
+  chore,
+}: ConfirmedSendProps): Promise<ConfirmedSend> {
+  vi.stubEnv("INIT_CWD", mkdtempSync(join(tmpdir(), "snapshots-")));
+  const dryRun = await runChoreOver({ sheetsConfig, transport, argv: [chore] });
+  const token = /Token (\S+):/.exec(dryRun.output)?.[1];
+  const sent = await runChoreOver({
+    sheetsConfig,
+    transport,
+    argv: [chore, "--send", "--confirm", `${token}`],
+  });
+  expect(sent.output, `${dryRun.output}\n---\n${sent.output}`).toMatch(
+    /undo: /,
+  );
+  const snapshot = /undo: npm run \S+ -- (\S+)/.exec(sent.output)?.[1];
+  return {
+    dryRun,
+    sent,
+    restore: (argv = []) =>
+      runRestoreOver({
+        sheetsConfig,
+        transport,
+        argv: [`${snapshot}`, ...argv],
+      }),
+  };
+}
+
 async function capturedRun(run: () => Promise<void>): Promise<ChoreRun> {
   const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
   process.exitCode = undefined;
@@ -89,10 +131,15 @@ async function capturedRun(run: () => Promise<void>): Promise<ChoreRun> {
 
 const srcUrl = new URL("../src/", import.meta.url);
 
+// A src/ module's path as a chore source's import specifier.
+export function srcModule(path: string): string {
+  return JSON.stringify(fileURLToPath(new URL(path, srcUrl)));
+}
+
 // A chore whose one flush is a findReplace, which the gate always holds.
 const replaceRentChoreSource = `
-import { googleRawRequest } from ${JSON.stringify(fileURLToPath(new URL("00_Source/GoogleSheets/GoogleSheetsAPI.ts", srcUrl)))};
-import { SpreadsheetRaw } from ${JSON.stringify(fileURLToPath(new URL("02_SpreadsheetRaw/SpreadsheetRaw.ts", srcUrl)))};
+import { googleRawRequest } from ${srcModule("00_Source/GoogleSheets/GoogleSheetsAPI.ts")};
+import { SpreadsheetRaw } from ${srcModule("02_SpreadsheetRaw/SpreadsheetRaw.ts")};
 
 export const replaceRent = {
   description: "replaces Rent with Lease everywhere",

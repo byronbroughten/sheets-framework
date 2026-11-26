@@ -1,14 +1,8 @@
 // The scripts project installs no configs, and valueTypesTableSheet reads them as it loads.
 import "../dev/installDevConfigs.ts";
 
-import { mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { fileURLToPath } from "node:url";
-
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { tableLayout } from "../src/01_SpreadsheetSchema/tableLayout.ts";
 import { fakeSheetsHttpTransport } from "../src/testSupport/fakeSheetsHttpTransport.ts";
 import {
   type FakeSheetsService,
@@ -17,15 +11,22 @@ import {
 import {
   type ValueTypesBodyRow,
   type ValueTypesColumnName,
-  valueTypesColumnNames,
   valueTypesGid,
   valueTypesTableSheet,
 } from "../src/testSupport/valueTypesTableSheet.ts";
 import {
   choreSheetsConfig,
-  runChoreOver,
-  runRestoreOver,
+  confirmedSendOver,
+  srcModule,
 } from "./choreFixture.ts";
+import {
+  colOf,
+  type SentCase,
+  type TableCase,
+  topDataRowIndex,
+  withoutRowIds,
+  withRowIds,
+} from "./restoreFixture.ts";
 
 type GoogleRequest = GoogleAppsScript.Sheets.Schema.Request;
 
@@ -33,31 +34,10 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-const srcUrl = new URL("../src/", import.meta.url);
-
-function srcModule(path: string): string {
-  return JSON.stringify(fileURLToPath(new URL(path, srcUrl)));
-}
-
-const topDataRowIndex = tableLayout.headerZoneDepth;
-
 const bodyRows: ValueTypesBodyRow[] = [
   { id: "r:vty:apple", stringValue: "Apple", checkbox: true },
   { id: "r:vty:pear", stringValue: "Pear", checkbox: true },
 ];
-
-interface TableCase {
-  columnNames: ValueTypesColumnName[];
-}
-
-const withRowIds: TableCase = { columnNames: valueTypesColumnNames() };
-const withoutRowIds: TableCase = {
-  columnNames: valueTypesColumnNames().filter((name) => name !== "id"),
-};
-
-function colOf({ columnNames }: TableCase, name: ValueTypesColumnName): number {
-  return columnNames.indexOf(name);
-}
 
 function writeCell(
   rowIndex: number,
@@ -111,12 +91,6 @@ export const overwrite = {
 `;
 }
 
-interface SentCase {
-  fake: FakeSheetsService;
-  restore: (argv?: string[]) => ReturnType<typeof runRestoreOver>;
-}
-
-// A dry run for the token, the confirmed send it covers, then the restore its undo line names.
 async function overwritingSend(
   tableCase: TableCase,
   rows: ValueTypesBodyRow[] = bodyRows,
@@ -124,35 +98,15 @@ async function overwritingSend(
   const fake = stubSheetsService({
     sheets: [valueTypesTableSheet(rows, tableCase)],
   });
-  const transport = fakeSheetsHttpTransport(fake);
-  const sheetsConfig = choreSheetsConfig({
-    name: "overwrite",
-    source: overwriteChoreSource(tableCase, rows),
+  const { restore } = await confirmedSendOver({
+    sheetsConfig: choreSheetsConfig({
+      name: "overwrite",
+      source: overwriteChoreSource(tableCase, rows),
+    }),
+    transport: fakeSheetsHttpTransport(fake),
+    chore: "overwrite",
   });
-  const folder = mkdtempSync(join(tmpdir(), "snapshots-"));
-  vi.stubEnv("INIT_CWD", folder);
-  const dryRun = await runChoreOver({
-    sheetsConfig,
-    transport,
-    argv: ["overwrite"],
-  });
-  const token = /Token (\S+):/.exec(dryRun.output)?.[1];
-  const sent = await runChoreOver({
-    sheetsConfig,
-    transport,
-    argv: ["overwrite", "--send", "--confirm", `${token}`],
-  });
-  const snapshot = /undo: npm run \S+ -- (\S+)/.exec(sent.output)?.[1];
-  expect(snapshot, `${dryRun.output}\n---\n${sent.output}`).toBeDefined();
-  return {
-    fake,
-    restore: (argv = []) =>
-      runRestoreOver({
-        sheetsConfig,
-        transport,
-        argv: [`${snapshot}`, ...argv],
-      }),
-  };
+  return { fake, restore };
 }
 
 function columnValues(
@@ -304,23 +258,15 @@ describe("restore when rows moved since the send", () => {
   });
 });
 
-describe("restore when a saved column's column ID is gone", () => {
-  it("lists it as not restored and restores the rest", async () => {
+describe("restore when a saved column's tab is gone", () => {
+  it("lists each of its columns as not restored, with --force", async () => {
     const { fake, restore } = await overwritingSend(withRowIds);
-    edit(fake, [
-      writeCell(0, colOf(withRowIds, "checkbox"), {
-        stringValue: "c:vty:renamed",
-      }),
-    ]);
+    edit(fake, [{ deleteSheet: { sheetId: valueTypesGid } }]);
 
-    const { output, exitCode } = await restore();
+    const { output, exitCode } = await restore(["--force"]);
 
     expect(exitCode).toBeUndefined();
-    expect(output).toContain("not restored, its column ID is gone:");
-    expect(columnValues(fake, withRowIds, "checkbox")).toEqual([false, false]);
-    expect(columnValues(fake, withRowIds, "stringValue")).toEqual([
-      "Apple",
-      "Pear",
-    ]);
+    expect(output).toContain("not restored, its tab or Table is gone:");
+    expect(output).toContain("  Value Types › Checkbox (c:vty:checkbox)");
   });
 });

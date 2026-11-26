@@ -111,7 +111,7 @@ function restoreLines(restore: SnapshotRestore): string[] {
       ),
     ),
     ...section(
-      "not restored, its column ID is gone:",
+      "not restored, its tab or Table is gone:",
       goneColumns.map(
         (column) => `  ${columnLabel(column)} (${column.columnId})`,
       ),

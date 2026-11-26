@@ -28,12 +28,26 @@ export interface ColumnValuesRead extends HttpSpreadsheetCall {
   ranges: string[];
 }
 
-// A tab's ID, title and grid size.
+export interface TableRange {
+  startRowIndex: number;
+  endRowIndex: number;
+  startColumnIndex: number;
+  endColumnIndex: number;
+}
+
+// A Table's ID and its range, header row first.
+export interface TabTable {
+  tableId: string;
+  range: TableRange;
+}
+
+// A tab's ID, title, grid size and Tables.
 export interface TabGrid {
   sheetGid: number;
   title: string;
   rowCount: number;
   columnCount: number;
+  tables: TabTable[];
 }
 
 interface TabGridsReply {
@@ -69,23 +83,32 @@ export function httpRangeColumns({
   return ranges.map((_, index) => valueRanges[index]?.values ?? []);
 }
 
-// One GET of every tab's ID, title and grid size.
+// One GET of every tab's ID, title, grid size and Tables.
 export function httpTabGrids({
   spreadsheetId,
   transport,
 }: HttpSpreadsheetCall): TabGrid[] {
   const fields =
-    "sheets.properties(sheetId,title,gridProperties(rowCount,columnCount))";
+    "sheets(properties(sheetId,title,gridProperties(rowCount,columnCount)),tables(tableId,range))";
   const { sheets = [] } = send<TabGridsReply>(transport, {
     method: "GET",
     url: url(spreadsheetId, "", fields),
     body: null,
   });
-  return sheets.map(({ properties }) => ({
+  return sheets.map(({ properties, tables = [] }) => ({
     sheetGid: properties?.sheetId ?? 0,
     title: properties?.title ?? "",
     rowCount: properties?.gridProperties?.rowCount ?? 0,
     columnCount: properties?.gridProperties?.columnCount ?? 0,
+    tables: tables.map(({ tableId, range }) => ({
+      tableId: tableId ?? "",
+      range: {
+        startRowIndex: range?.startRowIndex ?? 0,
+        endRowIndex: range?.endRowIndex ?? 0,
+        startColumnIndex: range?.startColumnIndex ?? 0,
+        endColumnIndex: range?.endColumnIndex ?? 0,
+      },
+    })),
   }));
 }
 
