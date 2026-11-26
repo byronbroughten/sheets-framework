@@ -31,7 +31,7 @@ afterEach(() => {
 });
 
 const heldCount = `r:itm:fixture  "1"  → deleted`;
-const countDeletion = { requiredCount: { deleted: true } };
+const countDeletion = { requiredCount: { deleted: true } } as const;
 const noteRenameWithCountDeletion: PendingAlterations = {
   tables: {
     item: { columns: { optionalNote: { header: "Mine" }, ...countDeletion } },
