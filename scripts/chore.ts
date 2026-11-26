@@ -17,13 +17,18 @@ import {
   startNodeHost,
 } from "./nodeHost.ts";
 import type { SheetsConfig } from "./sheetsConfig.ts";
+import { snapshotFlags, SnapshotFolder } from "./SnapshotFolder.ts";
+
+// Flags whose next argument is their value, not a chore's name.
+const valueFlags: string[] = ["--confirm", ...Object.values(snapshotFlags)];
 
 const genericHome = fileURLToPath(new URL("../src/chores/", import.meta.url));
 
-// A test's stand-ins for Google and for the package's configs, which a program installs once.
+// A test's stand-ins for Google, for the package's configs, which a program installs once, and for the clock.
 export interface ChoreHostStandIn {
   transport: SheetsHttpTransport;
   configs: Configs;
+  now?: () => Date;
 }
 
 interface ChoreRunnerProps {
@@ -33,6 +38,7 @@ interface ChoreRunnerProps {
   isSending: boolean;
   isJson: boolean;
   heldFile: HeldFile;
+  snapshotFolder: SnapshotFolder;
   standIn: ChoreHostStandIn | undefined;
 }
 
@@ -43,6 +49,7 @@ export class ChoreRunner {
   readonly isSending: boolean;
   readonly isJson: boolean;
   readonly heldFile: HeldFile;
+  readonly snapshotFolder: SnapshotFolder;
   readonly standIn: ChoreHostStandIn | undefined;
   constructor({
     sheetsConfig,
@@ -51,6 +58,7 @@ export class ChoreRunner {
     isSending,
     isJson,
     heldFile,
+    snapshotFolder,
     standIn,
   }: ChoreRunnerProps) {
     this.sheetsConfig = sheetsConfig;
@@ -59,6 +67,7 @@ export class ChoreRunner {
     this.isSending = isSending;
     this.isJson = isJson;
     this.heldFile = heldFile;
+    this.snapshotFolder = snapshotFolder;
     this.standIn = standIn;
   }
   static init(
@@ -74,9 +83,10 @@ export class ChoreRunner {
         genericHome,
         packageHomes: sheetsConfig.choreHomes,
       }),
-      // The token after --confirm is no chore name.
+      // A flag's value, the token after --confirm among them, is no chore name.
       choreName: argv.find(
-        (arg) => !arg.startsWith("--") && arg !== confirmToken,
+        (arg, index) =>
+          !arg.startsWith("--") && !valueFlags.includes(argv[index - 1] ?? ""),
       ),
       isSending,
       isJson: argv.includes("--json"),
@@ -85,6 +95,11 @@ export class ChoreRunner {
         command: "chore",
         isSending,
         confirmToken,
+      }),
+      snapshotFolder: SnapshotFolder.fromArgv({
+        packageDir: sheetsConfig.dir,
+        argv,
+        now: standIn?.now ?? (() => new Date()),
       }),
       standIn,
     });
@@ -97,12 +112,21 @@ export class ChoreRunner {
       console.log(
         "Usage: npm run <app|dev>:chore <name> [-- --send [--confirm <token>]] [-- --json]",
       );
+      console.log(
+        "       a --confirm send also takes [--snapshots <folder>] [--restore-script <name>]",
+      );
       console.log("  no flag    preview what it would write, writing nothing");
       console.log("  --send     apply it to the live spreadsheet");
       console.log(
         "  --confirm  with --send, send what the dry run held, by its token",
       );
-      console.log("  --json     preview as raw request JSON\n");
+      console.log("  --json     preview as raw request JSON");
+      console.log(
+        "  --snapshots  with --confirm, the folder the snapshot file goes in (default .probe/snapshots)",
+      );
+      console.log(
+        "  --restore-script  with --confirm, the npm script the undo line names (default restore)\n",
+      );
       console.log(this.index.listing(this.sheetsConfig.dir));
       return;
     }
@@ -124,14 +148,37 @@ export class ChoreRunner {
         spreadsheetId: host.spreadsheetId,
       });
     } catch (error) {
-      if (!(error instanceof HeldFlushRefusal)) throw error;
-      await this._reportRefusal(error);
+      // Flushes that landed before the stop still get their snapshot.
+      const isRefusal = error instanceof HeldFlushRefusal;
+      if (isRefusal) await this._reportRefusal(error);
+      await this._keepSnapshot(host);
+      if (!isRefusal) throw error;
       return;
     }
     if (result) console.log(`result: ${result}`);
     const held = await this._dryRunHeld(host);
     this._report(host, held);
     if (held !== undefined) await reportHeld(held);
+    await this._keepSnapshot(host);
+  }
+  // A confirmed send prunes the old snapshots and writes its own, then prints the undo line; a send nothing held has no snapshot.
+  async _keepSnapshot(host: NodeHost): Promise<void> {
+    if (!this.isSending || this.heldFile.confirmToken === undefined) return;
+    const { snapshotFolder } = this;
+    snapshotFolder.prune();
+    const snapshot = host.sendSnapshot();
+    if (snapshot === undefined) return;
+    const path = snapshotFolder.write({
+      target: this.target,
+      command: `chore ${this.choreName}`,
+      plan: this._planText(host),
+      snapshot,
+    });
+    const lines = await snapshotFolder.undoLines(
+      path,
+      snapshot.versionHistoryItems,
+    );
+    console.log(`\n${lines.join("\n")}`);
   }
   async _startHost(): Promise<NodeHost> {
     const { standIn } = this;
@@ -171,8 +218,12 @@ export class ChoreRunner {
       ? "SENT — the spreadsheet was written to:"
       : "DRY RUN — nothing was written. It would send:";
     console.log(`\n${heading}\n`);
-    console.log(this.isJson ? summary.json : summary.lines.join("\n"));
+    console.log(this._planText({ summary }));
     console.log(`\n${summary.count} request(s).${this._nextStep(held)}`);
+  }
+  // The requests as the run prints them, which the send's snapshot file keeps as its plan.
+  _planText({ summary }: Pick<NodeHost, "summary">): string {
+    return this.isJson ? summary.json : summary.lines.join("\n");
   }
   // A dry run that held items points at the held section's rerun instead, since a plain --send would be refused.
   _nextStep(held: DryRunHeld | undefined): string {

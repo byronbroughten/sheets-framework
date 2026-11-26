@@ -1,39 +1,13 @@
-import { fileURLToPath } from "node:url";
-
 import { describe, expect, it, vi } from "vitest";
 
 import type { SheetsHttpRequest } from "../src/00_Source/GoogleSheets/GoogleSheetsAPI.ts";
 import {
   type ChoreRun,
-  choreSheetsConfig,
+  replaceRentSheetsConfig,
   runChoreOver,
 } from "./choreFixture.ts";
 
-const srcUrl = new URL("../src/", import.meta.url);
-
-// A chore whose one flush is a findReplace, which the gate always holds.
-const replaceRentChoreSource = `
-import { googleRawRequest } from ${JSON.stringify(fileURLToPath(new URL("00_Source/GoogleSheets/GoogleSheetsAPI.ts", srcUrl)))};
-import { SpreadsheetRaw } from ${JSON.stringify(fileURLToPath(new URL("02_SpreadsheetRaw/SpreadsheetRaw.ts", srcUrl)))};
-
-export const replaceRent = {
-  description: "replaces Rent with Lease everywhere",
-  action() {
-    SpreadsheetRaw.init()
-      .gatherRawOperation(
-        googleRawRequest({
-          findReplace: { find: "Rent", replacement: "Lease", allSheets: true },
-        }),
-      )
-      .batchUpdateGSheets();
-  },
-};
-`;
-
-const sheetsConfig = choreSheetsConfig({
-  name: "replaceRent",
-  source: replaceRentChoreSource,
-});
+const sheetsConfig = replaceRentSheetsConfig();
 
 async function runReplaceRent(
   argv: string[],

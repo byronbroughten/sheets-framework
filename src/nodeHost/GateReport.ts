@@ -11,6 +11,8 @@ import {
   type LandedFlushes,
 } from "../01_SpreadsheetSchema/configReaders/flushStoppedOutcome.ts";
 import { fillRowIdsName } from "../01_SpreadsheetSchema/configReaders/syncRunResult.ts";
+import type { HeldItem } from "./FlushClassifier/flushClassifierTypes.ts";
+import { heldGroups } from "./heldGroups.ts";
 import { ReportText } from "./ReportText.ts";
 
 const { section, indent, formatCount, counted, subjectLabel } = ReportText;
@@ -48,6 +50,18 @@ export const GateReport = {
   rerunDryRunLine(command: string): string {
     return `Rerun the dry run: ${command}`;
   },
+  // Beside a send's undo line: the held items the send snapshot couldn't hold; nothing when it held them all.
+  versionHistoryLines(items: HeldItem[]): string[] {
+    const groups = heldGroups([items]);
+    if (groups.length === 0) return [];
+    return [
+      `${versionHistoryWords}:`,
+      ...indent(
+        2,
+        groups.flatMap((group) => groupBlock(group, [])),
+      ),
+    ];
+  },
 };
 
 function heldTitle(held: DryRunHeld): string {
@@ -66,20 +80,24 @@ function heldTitle(held: DryRunHeld): string {
   return `${heldSectionName}: ${counted(count, "cell", "cells")}${sum}, ${confirm}`;
 }
 
-function heldGroupLines({
-  subject,
-  what,
-  isUndoneOnlyByVersionHistory,
-  lines,
-}: HeldGroup): string[] {
-  const heading =
-    subject === undefined ? what : `${subjectLabel(subject)}  ${what}`;
-  const undo = isUndoneOnlyByVersionHistory ? [versionHistoryLine] : [];
-  return [heading, ...indent(2, [...undo, ...lines])];
+function heldGroupLines(group: HeldGroup): string[] {
+  const undo = group.isUndoneOnlyByVersionHistory ? [versionHistoryLine] : [];
+  return groupBlock(group, undo);
 }
 
-const versionHistoryLine =
-  "undone only by the spreadsheet's version history: the send snapshot can't hold it";
+// A group's heading, then its extra lines and its own, indented.
+function groupBlock(
+  { subject, what, lines }: HeldGroup,
+  extraLines: string[],
+): string[] {
+  const heading =
+    subject === undefined ? what : `${subjectLabel(subject)}  ${what}`;
+  return [heading, ...indent(2, [...extraLines, ...lines])];
+}
+
+const versionHistoryWords = "undone only by the spreadsheet's version history";
+
+const versionHistoryLine = `${versionHistoryWords}: the send snapshot can't hold it`;
 
 // The fill is the send's last flush, after the files are built.
 function fillFailedLine(outcome: FillFailedOutcome): string {

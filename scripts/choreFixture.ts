@@ -1,6 +1,7 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { vi } from "vitest";
 
@@ -39,17 +40,20 @@ interface ChoreRunProps {
   sheetsConfig: SheetsConfig;
   transport: SheetsHttpTransport;
   argv: string[];
+  now?: () => Date;
 }
 
-// Runs a chore past its live host: only the Sheets transport is stood in for.
+// Runs a chore past its live host: only the Sheets transport, and the clock when a test names one, are stood in for.
 export async function runChoreOver({
   sheetsConfig,
   transport,
   argv,
+  now,
 }: ChoreRunProps): Promise<ChoreRun> {
   const runner = ChoreRunner.init(sheetsConfig, argv, {
     transport,
     configs: appConfigs,
+    now,
   });
   const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
   process.exitCode = undefined;
@@ -60,4 +64,40 @@ export async function runChoreOver({
   // A held run's exit code would otherwise fail the test process.
   process.exitCode = undefined;
   return { output, exitCode };
+}
+
+const srcUrl = new URL("../src/", import.meta.url);
+
+// A chore whose one flush is a findReplace, which the gate always holds.
+const replaceRentChoreSource = `
+import { googleRawRequest } from ${JSON.stringify(fileURLToPath(new URL("00_Source/GoogleSheets/GoogleSheetsAPI.ts", srcUrl)))};
+import { SpreadsheetRaw } from ${JSON.stringify(fileURLToPath(new URL("02_SpreadsheetRaw/SpreadsheetRaw.ts", srcUrl)))};
+
+export const replaceRent = {
+  description: "replaces Rent with Lease everywhere",
+  action() {
+    SpreadsheetRaw.init()
+      .gatherRawOperation(
+        googleRawRequest({
+          findReplace: { find: "Rent", replacement: "Lease", allSheets: true },
+        }),
+      )
+      .batchUpdateGSheets();
+  },
+};
+`;
+
+export function replaceRentSheetsConfig(): SheetsConfig {
+  return choreSheetsConfig({
+    name: "replaceRent",
+    source: replaceRentChoreSource,
+  });
+}
+
+// A transport that accepts every write and answers every read with an empty spreadsheet.
+export function emptySheetsTransport(): SheetsHttpTransport {
+  return (request) => {
+    if (request.url.includes(":batchUpdate")) return { replies: [] };
+    return { sheets: [] };
+  };
 }
