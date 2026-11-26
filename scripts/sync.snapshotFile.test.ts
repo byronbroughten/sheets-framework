@@ -1,35 +1,22 @@
 // The scripts project installs no configs, and syncCoordinatorTestSupport reads them as it loads.
 import "../dev/installDevConfigs.ts";
 
-import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { appConfigs } from "../dev/generated/appConfigs.ts";
 import type { SheetsHttpTransport } from "../src/00_Source/GoogleSheets/GoogleSheetsAPI.ts";
 import type { PendingAlterations } from "../src/01_SpreadsheetSchema/configReaders/intendedState.ts";
-import { idNameMapFileSource } from "../src/05_Operators/configFileSource.ts";
 import {
   bodyRowsWithNote,
-  itemColumns,
   itemGid,
   itemRowId,
-  previousItemMap,
   seedFixture,
 } from "../src/05_Operators/syncCoordinatorTestSupport.ts";
 import { fakeSheetsHttpTransport } from "../src/testSupport/fakeSheetsHttpTransport.ts";
 import type { FakeSheetsService } from "../src/testSupport/fakeSheetsService.ts";
-import type { FakeBodyRow } from "../src/testSupport/fakeSheetsService/fakeTableSheet.ts";
-import { type CapturedRun, capturedRun, tokenOf } from "./runnerFixture.ts";
-import type { SheetsConfig } from "./sheetsConfig.ts";
+import { capturedRun } from "./runnerFixture.ts";
 import {
   clock,
   readJson,
@@ -37,7 +24,14 @@ import {
   snapshotFiles,
   snapshotsFolder,
 } from "./snapshotFixture.ts";
-import { SyncRunner } from "./sync.ts";
+import {
+  confirmedArgv,
+  forceNoteHeader,
+  itemWithRenamedNote,
+  runSyncOver,
+  syncRunner,
+  syncSheetsConfig,
+} from "./syncFixture.ts";
 
 // The diff shells out to git, and a temporary package is no repo.
 vi.mock("./configsDiff.ts", () => ({ readConfigsDiff: () => [] }));
@@ -53,91 +47,16 @@ const noteDeletion: PendingAlterations = {
 const noteRename: PendingAlterations = {
   tables: { item: { columns: { optionalNote: { header: "Mine" } } } },
 };
-const forceNoteHeader = ["--force", "item/optionalNote/header"];
-
-// A temporary package as an earlier sync left it: the previous ID-name map, and the alterations pending.
-function syncSheetsConfig(alterations: PendingAlterations): SheetsConfig {
-  const packageDir = mkdtempSync(join(tmpdir(), "sync-send-"));
-  const generatedDir = join(packageDir, "generated");
-  mkdirSync(generatedDir);
-  writeFileSync(
-    join(generatedDir, "idNameMap.ts"),
-    idNameMapFileSource(previousItemMap()),
-  );
-  writeFileSync(
-    join(packageDir, "alterations.ts"),
-    `export const pendingAlterations = ${JSON.stringify(alterations)};\n`,
-  );
-  return {
-    path: join(packageDir, "sheets.config.json"),
-    dir: packageDir,
-    spreadsheetId: "spreadsheet-under-test",
-    generatedDir,
-    choreHomes: [],
-    endpointModule: undefined,
-  };
-}
-
 function itemWithNote(): FakeSheetsService {
   return seedFixture({ item: { bodyRows: bodyRowsWithNote } });
-}
-
-// A person renamed the note column on the sheet after the last sync.
-function itemWithRenamedNote(
-  bodyRows: FakeBodyRow<string>[] = [{ id: itemRowId, requiredCount: 1 }],
-): FakeSheetsService {
-  return seedFixture({
-    item: {
-      columns: {
-        optionalNote: { ...itemColumns.optionalNote, header: "Theirs" },
-      },
-      bodyRows,
-    },
-  });
 }
 
 function itemValues(fake: FakeSheetsService): unknown[] {
   return fake.grid.sheet(itemGid).values().flat();
 }
 
-interface SyncRunProps {
-  sheetsConfig: SheetsConfig;
-  transport: SheetsHttpTransport;
-  argv: string[];
-}
-
-// A sync past its live host: the transport, the dev configs, the clock and tsc are stood in for, and the git diff mocked.
-function syncRunner({
-  sheetsConfig,
-  transport,
-  argv,
-}: SyncRunProps): SyncRunner {
-  return SyncRunner.init(sheetsConfig, argv, {
-    transport,
-    configs: appConfigs,
-    now: () => clock,
-    runTsc: () => true,
-  });
-}
-
-function runSyncOver(props: SyncRunProps): Promise<CapturedRun> {
-  const runner = syncRunner(props);
-  return capturedRun(() => runner.run());
-}
-
 function namedFolderArgs(folder: string): string[] {
   return ["--snapshots", folder, "--restore-script", "app:restore"];
-}
-
-// Runs the dry run for its token, and returns the argv of the send that token covers.
-async function confirmedArgv(
-  props: Omit<SyncRunProps, "argv">,
-  extra: string[] = [],
-): Promise<string[]> {
-  const { output } = await runSyncOver({ ...props, argv: extra });
-  const token = tokenOf(output);
-  expect(token, output).toBeDefined();
-  return ["--send", "--confirm", `${token}`, ...extra];
 }
 
 // Throws each failure on its matching requests once a flush has gone out, and answers every other one.

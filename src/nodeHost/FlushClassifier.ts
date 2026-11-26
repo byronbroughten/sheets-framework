@@ -17,11 +17,13 @@ import {
 import { RunReads } from "./FlushClassifier/RunReads.ts";
 
 export interface FlushClassifierProps {
-  // Taken since the last flush landed: a stale read could free an overwrite.
+  // Taken since the last flush landed, or before earlier flushes the tracker followed: a stale read could free an overwrite.
   reads: FlushRead[];
   requests: GoogleRequest[];
   dropdownStyleReset: DropdownStyleReset;
   forcedTraits: ForcedTrait[];
+  // What earlier flushes judged against the same reads did to the grid; a fresh one when the reads are this flush's alone.
+  tracker?: FlushTracker;
 }
 
 interface RequestToJudge {
@@ -37,11 +39,13 @@ export class FlushClassifier {
   private requests: GoogleRequest[];
   private dropdownStyleReset: DropdownStyleReset;
   private forcedTraits: ForcedTrait[];
+  private tracker: FlushTracker | undefined;
   constructor(props: FlushClassifierProps) {
     this.flushReads = props.reads;
     this.requests = props.requests;
     this.dropdownStyleReset = props.dropdownStyleReset;
     this.forcedTraits = props.forcedTraits;
+    this.tracker = props.tracker;
   }
   static init(props: FlushClassifierProps): FlushClassifier {
     return new FlushClassifier(props);
@@ -52,7 +56,7 @@ export class FlushClassifier {
   // Requests are judged in order, each against the grid the ones before it left.
   heldItems(): HeldItem[] {
     const reads = this.reads;
-    const tracker = new FlushTracker(reads.gridSizes);
+    const tracker = this.tracker ?? new FlushTracker(reads.gridSizes);
     const forced: HeldItem[] = this.forcedTraits.map((trait) => ({
       kind: "forcedTrait",
       trait,

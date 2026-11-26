@@ -11,6 +11,7 @@ import {
 import type { ForcedTrait } from "../01_SpreadsheetSchema/configReaders/syncRunResult.ts";
 import { FlushClassifier } from "./FlushClassifier.ts";
 import type { HeldItem } from "./FlushClassifier/flushClassifierTypes.ts";
+import { FlushTracker } from "./FlushClassifier/FlushTracker.ts";
 import { RunReads } from "./FlushClassifier/RunReads.ts";
 import {
   type FlushSnapshotPlan,
@@ -50,6 +51,7 @@ export class EnteredDataGate {
   private hash: (input: string) => string;
   private forcedTraits: ForcedTrait[];
   private reads: SheetsHttpRead[];
+  private judgedReads: JudgedReads;
   private flushes: HeldItem[][];
   private landedFlushes: number;
   private latestSnapshotPlan: FlushSnapshotPlan;
@@ -61,6 +63,7 @@ export class EnteredDataGate {
     this.hash = props.hash;
     this.forcedTraits = props.forcedTraits ?? [];
     this.reads = [];
+    this.judgedReads = judgedReadsOf([]);
     this.flushes = [];
     this.landedFlushes = 0;
     this.latestSnapshotPlan = { columns: [], versionHistoryItems: [] };
@@ -81,21 +84,29 @@ export class EnteredDataGate {
   integrateRead(read: SheetsHttpRead): void {
     this.reads.push(read);
   }
-  // The reads restart at every flush, withheld or sent, so a dry run judges each flush as its send will.
+  // The reads restart at a flush that has its own, withheld or sent, so a dry run judges each flush as its send will.
+  // A flush with none is judged against the last flush's reads, through the grid the flushes since left: a deletion after a write still holds what it deletes.
   classify(requests: GoogleRequest[]): this {
+    if (this.reads.length > 0) {
+      this.judgedReads = judgedReadsOf(this.reads);
+      this.reads = [];
+    }
+    const { reads, tracker } = this.judgedReads;
+    const hasShiftedCells = tracker.hasShiftedCells;
     const items = FlushClassifier.init({
-      reads: this.reads,
+      reads,
       requests,
       dropdownStyleReset: this.dropdownStyleReset,
       forcedTraits: [],
+      tracker,
     }).heldItems();
     this.latestSnapshotPlan = flushSnapshotPlan({
-      reads: new RunReads(this.reads),
+      reads: new RunReads(reads),
       items,
       forcedTraits: this.flushes.length === 0 ? this.forcedTraits : [],
+      hasShiftedCells,
     });
     this.flushes.push(items);
-    this.reads = [];
     return this;
   }
   // Sends the flush classify last judged, once its held items are covered.
@@ -132,4 +143,14 @@ export class EnteredDataGate {
   private _tokenFor(flushes: unknown[][]): string {
     return this.hash(JSON.stringify({ target: this.target, flushes }));
   }
+}
+
+// The reads the gate judges flushes against, and the grid the flushes judged against them left.
+interface JudgedReads {
+  reads: SheetsHttpRead[];
+  tracker: FlushTracker;
+}
+
+function judgedReadsOf(reads: SheetsHttpRead[]): JudgedReads {
+  return { reads, tracker: new FlushTracker(new RunReads(reads).gridSizes) };
 }
