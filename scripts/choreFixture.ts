@@ -9,6 +9,7 @@ import { appConfigs } from "../dev/generated/appConfigs.ts";
 import type { SheetsHttpTransport } from "../src/00_Source/GoogleSheets/GoogleSheetsAPI.ts";
 import { ChoreRunner } from "./chore.ts";
 import { RestoreRunner } from "./restore.ts";
+import { type CapturedRun, capturedRun } from "./runnerFixture.ts";
 import type { SheetsConfig } from "./sheetsConfig.ts";
 
 interface ChoreSource {
@@ -32,11 +33,6 @@ export function choreSheetsConfig({ name, source }: ChoreSource): SheetsConfig {
   };
 }
 
-export interface ChoreRun {
-  output: string;
-  exitCode: number | string | null | undefined;
-}
-
 interface ChoreRunProps {
   sheetsConfig: SheetsConfig;
   transport: SheetsHttpTransport;
@@ -50,7 +46,7 @@ export async function runChoreOver({
   transport,
   argv,
   now,
-}: ChoreRunProps): Promise<ChoreRun> {
+}: ChoreRunProps): Promise<CapturedRun> {
   const runner = ChoreRunner.init(sheetsConfig, argv, {
     transport,
     configs: appConfigs,
@@ -70,7 +66,7 @@ export async function runRestoreOver({
   sheetsConfig,
   transport,
   argv,
-}: RestoreRunProps): Promise<ChoreRun> {
+}: RestoreRunProps): Promise<CapturedRun> {
   const runner = RestoreRunner.init(sheetsConfig, argv, { transport });
   return capturedRun(() => runner.run());
 }
@@ -82,9 +78,9 @@ interface ConfirmedSendProps {
 }
 
 export interface ConfirmedSend {
-  dryRun: ChoreRun;
-  sent: ChoreRun;
-  restore: (argv?: string[]) => Promise<ChoreRun>;
+  dryRun: CapturedRun;
+  sent: CapturedRun;
+  restore: (argv?: string[]) => Promise<CapturedRun>;
 }
 
 // A dry run for the token, the confirmed send it covers, which must print an undo line, then the restore that line names.
@@ -115,18 +111,6 @@ export async function confirmedSendOver({
         argv: [`${snapshot}`, ...argv],
       }),
   };
-}
-
-async function capturedRun(run: () => Promise<void>): Promise<ChoreRun> {
-  const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
-  process.exitCode = undefined;
-  await run();
-  const output = log.mock.calls.map(([line]) => String(line)).join("\n");
-  log.mockRestore();
-  const { exitCode } = process;
-  // A held or stopped run's exit code would otherwise fail the test process.
-  process.exitCode = undefined;
-  return { output, exitCode };
 }
 
 const srcUrl = new URL("../src/", import.meta.url);

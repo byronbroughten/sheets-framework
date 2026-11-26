@@ -1,4 +1,4 @@
-// A confirmed send's snapshot file, its undo line and the prune of old snapshots, which chore calls and sync is to call too; restore reads the file back. The caller names the folder; none is the package's .probe/snapshots.
+// A confirmed or forced send's snapshot file, its undo line and the prune of old snapshots, which chore and sync call; restore reads the file back. The caller names the folder; none is the package's .probe/snapshots.
 import {
   mkdirSync,
   readdirSync,
@@ -52,6 +52,11 @@ export interface SavedSnapshotFile extends SnapshotFile {
   takenAt: string;
 }
 
+// The snapshot is taken by the folder, after the prune, so a send with none still prunes.
+export interface SnapshotFolderKeepArgs extends Omit<SnapshotFile, "snapshot"> {
+  takeSnapshot: () => SendSnapshot | undefined;
+}
+
 type SnapshotFileName = Pick<
   SavedSnapshotFile,
   "target" | "command" | "takenAt"
@@ -87,8 +92,22 @@ export class SnapshotFolder {
       now,
     });
   }
+  // Prunes the old snapshots and writes this send's, returning its undo lines; a send with no snapshot returns undefined.
+  async keep({
+    takeSnapshot,
+    target,
+    command,
+    plan,
+  }: SnapshotFolderKeepArgs): Promise<string | undefined> {
+    this._prune();
+    const snapshot = takeSnapshot();
+    if (snapshot === undefined) return undefined;
+    const path = this._write({ target, command, plan, snapshot });
+    const lines = await this._undoLines(path, snapshot.versionHistoryItems);
+    return lines.join("\n");
+  }
   // Removes the snapshots older than 30 days by file time, so a seeded time ages a file with no wait.
-  prune(): void {
+  _prune(): void {
     let names: string[];
     try {
       names = readdirSync(this.dir);
@@ -103,7 +122,7 @@ export class SnapshotFolder {
     }
   }
   // Writes one file and returns its path; a file already there is never overwritten.
-  write({ target, command, plan, snapshot }: SnapshotFile): string {
+  _write({ target, command, plan, snapshot }: SnapshotFile): string {
     const takenAt = this.now().toISOString();
     const path = join(this.dir, fileNameOf({ takenAt, target, command }));
     mkdirSync(this.dir, { recursive: true });
@@ -120,7 +139,7 @@ export class SnapshotFolder {
     return path;
   }
   // The undo line, with the held items only version history undoes beside it.
-  async undoLines(
+  async _undoLines(
     path: string,
     versionHistoryItems: HeldItem[],
   ): Promise<string[]> {

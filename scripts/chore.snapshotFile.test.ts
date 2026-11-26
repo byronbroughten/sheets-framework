@@ -1,11 +1,4 @@
-import {
-  existsSync,
-  mkdtempSync,
-  readdirSync,
-  readFileSync,
-  utimesSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -16,9 +9,7 @@ import {
   replaceRentSheetsConfig,
   runChoreOver,
 } from "./choreFixture.ts";
-
-const clock = new Date("2026-11-25T12:00:00.000Z");
-const dayMilliseconds = 24 * 60 * 60 * 1000;
+import { ageFile, clock, readJson, snapshotFiles } from "./runnerFixture.ts";
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -40,20 +31,6 @@ async function confirmedSend(sheetsConfig = replaceRentSheetsConfig()) {
     return run(["--send", "--confirm", `${token}`, ...extra]);
   }
   return { dryRun, sent, sheetsConfig };
-}
-
-function snapshotFiles(folder: string): string[] {
-  if (!existsSync(folder)) return [];
-  return readdirSync(folder).filter((name) => name.startsWith("snapshot-"));
-}
-
-function readJson(path: string): Record<string, unknown> {
-  return JSON.parse(readFileSync(path, "utf8"));
-}
-
-function ageFile(path: string, daysOld: number): void {
-  const time = new Date(clock.getTime() - daysOld * dayMilliseconds);
-  utimesSync(path, time, time);
 }
 
 describe("a chore's confirmed send's snapshot file", () => {

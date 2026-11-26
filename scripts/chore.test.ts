@@ -1,17 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { SheetsHttpRequest } from "../src/00_Source/GoogleSheets/GoogleSheetsAPI.ts";
-import {
-  type ChoreRun,
-  replaceRentSheetsConfig,
-  runChoreOver,
-} from "./choreFixture.ts";
+import { replaceRentSheetsConfig, runChoreOver } from "./choreFixture.ts";
+import type { CapturedRun } from "./runnerFixture.ts";
 
 const sheetsConfig = replaceRentSheetsConfig();
 
 async function runReplaceRent(
   argv: string[],
-): Promise<ChoreRun & { batchUpdates: number }> {
+): Promise<CapturedRun & { batchUpdates: number }> {
   const transport = vi.fn((request: SheetsHttpRequest) => {
     if (request.url.includes(":batchUpdate")) return { replies: [] };
     return { sheets: [] };

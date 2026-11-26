@@ -1,15 +1,14 @@
 // `sheets-framework chore`: runs one chore against the package's spreadsheet. See docs/how-it-runs/chore-dry-run.md.
 import { fileURLToPath } from "node:url";
 
-import type { SheetsHttpTransport } from "../src/00_Source/GoogleSheets/GoogleSheetsAPI.ts";
 import type { HeldFlushRefusal } from "../src/00_Source/RawSource/HeldFlushRefusal.ts";
-import type { Configs } from "../src/01_SpreadsheetSchema/configReaders/configRegister.ts";
 import type { DryRunHeld } from "../src/01_SpreadsheetSchema/configReaders/dryRunHeld.ts";
 import type { Chore } from "../src/chores/Chore.ts";
 import type { NodeHost } from "../src/nodeHost/NodeHost.ts";
 import { ChoreIndex } from "./choreIndex.ts";
 import { HeldFile, parseConfirmToken } from "./HeldFile.ts";
 import {
+  type HostStandIn,
   importConstNamedAfterFile,
   loadPackageConfigs,
   loadPackageEndpoints,
@@ -27,13 +26,6 @@ const valueFlags: string[] = ["--confirm", ...Object.values(snapshotFlags)];
 
 const genericHome = fileURLToPath(new URL("../src/chores/", import.meta.url));
 
-// A test's stand-ins for Google, for the package's configs, which a program installs once, and for the clock.
-export interface ChoreHostStandIn {
-  transport: SheetsHttpTransport;
-  configs: Configs;
-  now?: () => Date;
-}
-
 interface ChoreRunnerProps {
   sheetsConfig: SheetsConfig;
   index: ChoreIndex;
@@ -42,7 +34,7 @@ interface ChoreRunnerProps {
   isJson: boolean;
   heldFile: HeldFile;
   snapshotFolder: SnapshotFolder;
-  standIn: ChoreHostStandIn | undefined;
+  standIn: HostStandIn | undefined;
 }
 
 export class ChoreRunner {
@@ -53,7 +45,7 @@ export class ChoreRunner {
   readonly isJson: boolean;
   readonly heldFile: HeldFile;
   readonly snapshotFolder: SnapshotFolder;
-  readonly standIn: ChoreHostStandIn | undefined;
+  readonly standIn: HostStandIn | undefined;
   constructor({
     sheetsConfig,
     index,
@@ -76,7 +68,7 @@ export class ChoreRunner {
   static init(
     sheetsConfig: SheetsConfig,
     argv: string[],
-    standIn?: ChoreHostStandIn,
+    standIn?: HostStandIn,
   ): ChoreRunner {
     const confirmToken = parseConfirmToken(argv);
     const isSending = argv.includes("--send");
@@ -167,21 +159,13 @@ export class ChoreRunner {
   // A confirmed send prunes the old snapshots and writes its own, then prints the undo line; a send nothing held has no snapshot.
   async _keepSnapshot(host: NodeHost): Promise<void> {
     if (!this.isSending || this.heldFile.confirmToken === undefined) return;
-    const { snapshotFolder } = this;
-    snapshotFolder.prune();
-    const snapshot = host.sendSnapshot();
-    if (snapshot === undefined) return;
-    const path = snapshotFolder.write({
+    const undo = await this.snapshotFolder.keep({
+      takeSnapshot: () => host.sendSnapshot(),
       target: this.target,
       command: `chore ${this.choreName}`,
       plan: this._planText(host),
-      snapshot,
     });
-    const lines = await snapshotFolder.undoLines(
-      path,
-      snapshot.versionHistoryItems,
-    );
-    console.log(`\n${lines.join("\n")}`);
+    if (undo !== undefined) console.log(`\n${undo}`);
   }
   async _startHost(): Promise<NodeHost> {
     const { standIn } = this;

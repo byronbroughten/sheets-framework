@@ -184,6 +184,13 @@ function fetchSync(request: FetchRequest): FetchResponse {
   };
 }
 
+// A test's stand-ins for Google, for the package's configs, which a program installs once, and for the clock.
+export interface HostStandIn {
+  transport: SheetsHttpTransport;
+  configs: Configs;
+  now?: () => Date;
+}
+
 // The gate's terms but what the Node half supplies: its hash and the app's dropdownStyleReset.
 type EnteredDataGateTerms = Omit<
   EnteredDataGateProps,
