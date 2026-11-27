@@ -6,11 +6,8 @@ import type { PendingAlterations } from "../src/01_SpreadsheetSchema/configReade
 import { alterationsFileSource } from "../src/05_Operators/configFileSource.ts";
 import { parseIdNameMapFileSource } from "../src/05_Operators/parseIdNameMapFileSource.ts";
 import type { SyncIntendedState } from "../src/05_Operators/SyncCoordinator.ts";
-import {
-  type ConfigFile,
-  configFilePath,
-  importExportIfPresent,
-} from "./packageLoader.ts";
+import { type ConfigFile, PackageConfigLoader } from "./PackageConfigLoader.ts";
+import { importExportIfPresent } from "./packageLoader.ts";
 
 export class GeneratedDir {
   static readonly alterationsText = alterationsFileSource({});
@@ -48,13 +45,14 @@ declare module "@byronbroughten/sheets-framework" {
   >;
   constructor(dir: string) {
     this.dir = dir;
+    const configs = new PackageConfigLoader(dir);
     this.path = {
-      tableConfigs: configFilePath(dir, "tableConfigs"),
-      tabConfigs: configFilePath(dir, "tabConfigs"),
-      conditionalFormatConfigs: configFilePath(dir, "conditionalFormatConfigs"),
-      retiredIdPrefixes: configFilePath(dir, "retiredIdPrefixes"),
-      columnConfigs: configFilePath(dir, "columnConfigs"),
-      valueConfigs: configFilePath(dir, "valueConfigs"),
+      tableConfigs: configs.filePath("tableConfigs"),
+      tabConfigs: configs.filePath("tabConfigs"),
+      conditionalFormatConfigs: configs.filePath("conditionalFormatConfigs"),
+      retiredIdPrefixes: configs.filePath("retiredIdPrefixes"),
+      columnConfigs: configs.filePath("columnConfigs"),
+      valueConfigs: configs.filePath("valueConfigs"),
       appConfigs: join(dir, "appConfigs.ts"),
       idNameMap: join(dir, "idNameMap.ts"),
       // A fixed path from the generated directory, so finding it needs no setting of its own.

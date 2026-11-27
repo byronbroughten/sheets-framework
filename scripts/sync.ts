@@ -16,11 +16,10 @@ import { readConfigsDiff } from "./configsDiff.ts";
 import { GeneratedDir } from "./GeneratedDir.ts";
 import { HeldFile, parseConfirmToken } from "./HeldFile.ts";
 import { type HostStandIn, startNodeHost } from "./nodeHost.ts";
+import { PackageConfigLoader } from "./PackageConfigLoader.ts";
 import {
-  hasPackageConfigs,
   loadDropdownStyleReset,
   loadFrameworkConfigs,
-  loadPackageConfigs,
 } from "./packageLoader.ts";
 import type { SheetsConfig } from "./sheetsConfig.ts";
 import {
@@ -200,8 +199,11 @@ export class SyncRunner {
   }
   // A package with no generated files yet borrows the framework's.
   private async _loadConfigs(): Promise<Configs> {
-    if (hasPackageConfigs(this.sheetsConfig)) {
-      return loadPackageConfigs(this.sheetsConfig);
+    const packageConfigs = PackageConfigLoader.fromSheetsConfig(
+      this.sheetsConfig,
+    );
+    if (packageConfigs.hasConfigs()) {
+      return packageConfigs.loadConfigs();
     }
     return loadFrameworkConfigs();
   }
