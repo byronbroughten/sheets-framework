@@ -19,11 +19,11 @@ import {
   type FlushSnapshotPlan,
   flushSnapshotPlan,
 } from "./flushSnapshotPlan.ts";
+import type { HeldFlushes } from "./heldGroups.ts";
 
-// Every flush's held items in flush order, a free flush's empty list included, and the token that binds them to a target.
-export interface HeldList {
+// Every flush's held items in flush order, a free flush's empty list included, and the token binding them to a target, which hashes only the flushes.
+export interface HeldList extends HeldFlushes {
   token: string;
-  flushes: HeldItem[][];
 }
 
 // The token a send was given, and the dry run's flushes loaded back from its held file; undefined flushes when that file was missing or unreadable.
@@ -55,6 +55,7 @@ export class EnteredDataGate {
   private reads: SheetsHttpRead[];
   private judgedReads: JudgedReads;
   private flushes: HeldItem[][];
+  private versionHistoryItems: HeldItem[][];
   private landedFlushes: number;
   private latestSnapshotPlan: FlushSnapshotPlan;
   constructor(props: EnteredDataGateProps) {
@@ -67,6 +68,7 @@ export class EnteredDataGate {
     this.reads = [];
     this.judgedReads = judgedReadsOf([]);
     this.flushes = [];
+    this.versionHistoryItems = [];
     this.landedFlushes = 0;
     this.latestSnapshotPlan = { columns: [], versionHistoryItems: [] };
   }
@@ -77,6 +79,7 @@ export class EnteredDataGate {
     return {
       token: this._tokenFor(this.flushes),
       flushes: this.flushes,
+      versionHistoryItems: this.versionHistoryItems,
     };
   }
   // What the send snapshot reads before the flush classify last judged goes out.
@@ -107,6 +110,7 @@ export class EnteredDataGate {
       hasShiftedCells,
     });
     this.flushes.push(items);
+    this.versionHistoryItems.push(this.latestSnapshotPlan.versionHistoryItems);
     return this;
   }
   // Sends the flush classify last judged, once its held items are covered.

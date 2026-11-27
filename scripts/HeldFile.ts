@@ -2,7 +2,11 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 
-import type { DryRunHeld } from "../src/01_SpreadsheetSchema/configReaders/dryRunHeld.ts";
+import type {
+  DryRunHeld,
+  HeldBlock,
+} from "../src/01_SpreadsheetSchema/configReaders/dryRunHeld.ts";
+import type { ForcedTrait } from "../src/01_SpreadsheetSchema/configReaders/syncRunResult.ts";
 import type {
   ConfirmedList,
   HeldList,
@@ -21,6 +25,13 @@ interface HeldFileContents {
   target: string;
   token: string;
   flushes: HeldItem[][];
+}
+
+export interface DryRunHeldProps {
+  heldList: HeldList;
+  target: string;
+  // What the gate's send snapshot forces; a chore forces none.
+  forcedTraits: ForcedTrait[];
 }
 
 export interface HeldFileProps {
@@ -66,19 +77,27 @@ export class HeldFile {
     if (!isSending || confirmToken === undefined) return undefined;
     return { token: confirmToken, flushes: this.flushes };
   }
-  // Writes a dry run's held items with their values to the held file; undefined, writing nothing, when no flush held any.
-  async dryRunHeld(
-    { token, flushes }: HeldList,
-    target: string,
-  ): Promise<DryRunHeld | undefined> {
-    if (flushes.every((items) => items.length === 0)) return undefined;
-    const { heldGroups } = await import("../src/nodeHost/heldGroups.ts");
-    this._write({ target, token, flushes });
-    return {
-      groups: heldGroups(flushes),
-      token,
-      fullListPath: relative(process.cwd(), this.path),
-    };
+  // Writes a dry run's held items with their values to the held file, only when some flush held one; undefined when nothing is held or forced.
+  async dryRunHeld({
+    heldList,
+    target,
+    forcedTraits,
+  }: DryRunHeldProps): Promise<DryRunHeld | undefined> {
+    const { token, flushes } = heldList;
+    const isHolding = flushes.some((items) => items.length > 0);
+    if (!isHolding && forcedTraits.length === 0) return undefined;
+    const { heldGroups, forcedTraitGroups } =
+      await import("../src/nodeHost/heldGroups.ts");
+    let block: HeldBlock | undefined;
+    if (isHolding) {
+      this._write({ target, token, flushes });
+      block = {
+        groups: heldGroups(heldList),
+        token,
+        fullListPath: relative(process.cwd(), this.path),
+      };
+    }
+    return { block, forcedGroups: forcedTraitGroups(forcedTraits) };
   }
   _write(contents: HeldFileContents): void {
     mkdirSync(dirname(this.path), { recursive: true });

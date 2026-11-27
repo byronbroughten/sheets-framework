@@ -2,6 +2,10 @@ import { Val } from "@byronbroughten/utils/val";
 
 import type { HeldGroup } from "../01_SpreadsheetSchema/configReaders/dryRunHeld.ts";
 import type {
+  ForcedTrait,
+  SyncSubject,
+} from "../01_SpreadsheetSchema/configReaders/syncRunResult.ts";
+import type {
   HeldCell,
   HeldCellItem,
   HeldItem,
@@ -17,27 +21,55 @@ type OtherItemOf<KN extends OtherItem["kind"]> = Extract<
 // The report lists this many cells of a group; the held file lists every one.
 const listedCellLimit = 20;
 
-// The dry run's held items as the report groups them: cells per Table, column and kind, and one group per other item.
-export function heldGroups(flushes: HeldItem[][]): HeldGroup[] {
-  const items = flushes.flat();
-  const cellGroups = items
-    .filter(isHeldCellItem)
-    .reduce<Map<string, HeldCellItem[]>>((groups, item) => {
+// Each flush's held items, and the ones its send snapshot plan leaves to version history.
+export interface HeldFlushes {
+  flushes: HeldItem[][];
+  versionHistoryItems: HeldItem[][];
+}
+
+interface FlaggedCells {
+  isUndoneOnlyByVersionHistory: boolean;
+  items: HeldCellItem[];
+}
+
+// The dry run's held items as the report groups them: cells per Table, column, kind and version-history flag, and one group per other item.
+export function heldGroups({
+  flushes,
+  versionHistoryItems,
+}: HeldFlushes): HeldGroup[] {
+  const cellGroups = flushes.reduce((groups, items, flushIndex) => {
+    const flagged = new Set(versionHistoryItems[flushIndex] ?? []);
+    for (const item of items.filter(isHeldCellItem)) {
+      const isUndoneOnlyByVersionHistory = flagged.has(item);
       const key = JSON.stringify([
+        isUndoneOnlyByVersionHistory,
         item.kind,
         item.cell.sheetGid,
         item.cell.table,
         item.cell.column,
       ]);
-      groups.set(key, [...(groups.get(key) ?? []), item]);
-      return groups;
-    }, new Map());
+      const group = groups.get(key) ?? {
+        isUndoneOnlyByVersionHistory,
+        items: [],
+      };
+      group.items.push(item);
+      groups.set(key, group);
+    }
+    return groups;
+  }, new Map<string, FlaggedCells>());
   return [
     ...[...cellGroups.values()].map(cellGroup),
-    ...items.flatMap((item): HeldGroup[] =>
-      isHeldCellItem(item) ? [] : [otherGroup(item)],
-    ),
+    ...flushes
+      .flat()
+      .flatMap((item): HeldGroup[] =>
+        isHeldCellItem(item) ? [] : [otherGroup(item)],
+      ),
   ];
+}
+
+// Each forced trait as its own group; a forced send needs no token, so these sit outside the held block.
+export function forcedTraitGroups(traits: ForcedTrait[]): HeldGroup[] {
+  return traits.map((trait) => otherGroup({ kind: "forcedTrait", trait }));
 }
 
 export function isHeldCellItem(item: HeldItem): item is HeldCellItem {
@@ -54,7 +86,10 @@ const cellGroupWhat: Record<
     `the send writes ${cells} ${cellWord} no read covered, so they may hold entered data:`,
 };
 
-function cellGroup(items: HeldCellItem[]): HeldGroup {
+function cellGroup({
+  isUndoneOnlyByVersionHistory,
+  items,
+}: FlaggedCells): HeldGroup {
   const { cell, kind } = Val.assert(items[0], "held cell group's first cell");
   const cells = items.length;
   const cellWord = cells === 1 ? "cell" : "cells";
@@ -67,27 +102,20 @@ function cellGroup(items: HeldCellItem[]): HeldGroup {
           `… and ${unlisted} more in ${cell.column}, counted, not listed`,
         ]
       : listed;
-  return {
-    ...cellSubject(cell),
+  const group: HeldGroup = {
+    subject: cellSubject(cell),
     what: cellGroupWhat[kind](cells, cellWord),
     cells,
     lines,
   };
+  if (!isUndoneOnlyByVersionHistory) return group;
+  return { ...group, isUndoneOnlyByVersionHistory };
 }
 
-// A cell on a sheet no read covered has no Table, so its tab's GID names it, and no column ID, so the send snapshot can't hold it.
-function cellSubject({
-  table,
-  column,
-  sheetGid,
-}: HeldCell): Pick<HeldGroup, "subject" | "isUndoneOnlyByVersionHistory"> {
-  if (table === undefined) {
-    return {
-      subject: { tab: `gid ${sheetGid}`, path: column },
-      isUndoneOnlyByVersionHistory: true,
-    };
-  }
-  return { subject: { table, column } };
+// A cell on a sheet no read covered has no Table, so its tab's GID names it.
+function cellSubject({ table, column, sheetGid }: HeldCell): SyncSubject {
+  if (table === undefined) return { tab: `gid ${sheetGid}`, path: column };
+  return { table, column };
 }
 
 function cellLine(item: HeldCellItem): string {

@@ -1,5 +1,6 @@
 import type {
   DryRunHeld,
+  HeldBlock,
   HeldGroup,
 } from "../01_SpreadsheetSchema/configReaders/dryRunHeld.ts";
 import {
@@ -17,23 +18,29 @@ import { ReportText } from "./ReportText.ts";
 
 const { section, indent, formatCount, counted, subjectLabel } = ReportText;
 
-export const heldSectionName = "Held";
+export const gateSectionTitles = {
+  held: "Held",
+  forced: "Forced: sent over the live value, no --confirm needed",
+} as const;
 
 type FillFailedOutcome = FlushStoppedOutcome & FillFailedCause;
 
 // The entered-data gate's report pieces, which sync's report and a chore's output both print.
 export const GateReport = {
-  // A dry run's held items, their full list's path and the token covering them; a chore's dry run prints it too.
-  heldSection(held: DryRunHeld): string[] {
-    return section(heldTitle(held), [
-      ...held.groups.flatMap(heldGroupLines),
-      `Full list, every cell with its value: ${held.fullListPath}`,
-      `Token ${held.token}: binds this target and exactly this list.`,
-      `Rerun with --send --confirm ${held.token} to send these.`,
-    ]);
+  // A dry run's forced traits, then its held items, their full list's path and the token covering them; a chore's dry run prints it too.
+  heldSections({ block, forcedGroups }: DryRunHeld): string[] {
+    return [
+      ...section(
+        gateSectionTitles.forced,
+        forcedGroups.flatMap(heldGroupLines),
+      ),
+      ...(block === undefined ? [] : heldBlockLines(block)),
+    ];
   },
-  heldCount(held: DryRunHeld): number {
-    return held.groups.reduce((count, group) => count + (group.cells ?? 1), 0);
+  // The held block's items only; a forced trait needs no --confirm, so it never counts.
+  heldCount({ block }: DryRunHeld): number {
+    if (block === undefined) return 0;
+    return blockCount(block);
   },
   // The result line of a send the gate or Google refused, sync's or a chore's, or whose fill failed.
   flushStoppedLine(outcome: FlushStoppedOutcome): string {
@@ -52,7 +59,10 @@ export const GateReport = {
   },
   // Beside a send's undo line: the held items the send snapshot couldn't hold; nothing when it held them all.
   versionHistoryLines(items: HeldItem[]): string[] {
-    const groups = heldGroups([items]);
+    const groups = heldGroups({
+      flushes: [items],
+      versionHistoryItems: [items],
+    });
     if (groups.length === 0) return [];
     return [
       `${versionHistoryWords}:`,
@@ -64,20 +74,33 @@ export const GateReport = {
   },
 };
 
-function heldTitle(held: DryRunHeld): string {
+function heldBlockLines(block: HeldBlock): string[] {
+  return section(heldTitle(block), [
+    ...block.groups.flatMap(heldGroupLines),
+    `Full list, every cell with its value: ${block.fullListPath}`,
+    `Token ${block.token}: binds this target and exactly this list.`,
+    `Rerun with --send --confirm ${block.token} to send these.`,
+  ]);
+}
+
+function heldTitle(block: HeldBlock): string {
   const confirm = "sent only with --confirm";
-  const cellCounts = held.groups.flatMap(({ cells }) =>
+  const cellCounts = block.groups.flatMap(({ cells }) =>
     cells === undefined ? [] : [cells],
   );
-  const count = GateReport.heldCount(held);
-  if (cellCounts.length < held.groups.length) {
-    return `${heldSectionName}: ${counted(count, "item", "items")}, ${confirm}`;
+  const count = blockCount(block);
+  if (cellCounts.length < block.groups.length) {
+    return `${gateSectionTitles.held}: ${counted(count, "item", "items")}, ${confirm}`;
   }
   let sum = "";
   if (cellCounts.length > 1) {
     sum = `: ${cellCounts.map(formatCount).join(" + ")}`;
   }
-  return `${heldSectionName}: ${counted(count, "cell", "cells")}${sum}, ${confirm}`;
+  return `${gateSectionTitles.held}: ${counted(count, "cell", "cells")}${sum}, ${confirm}`;
+}
+
+function blockCount({ groups }: HeldBlock): number {
+  return groups.reduce((count, group) => count + (group.cells ?? 1), 0);
 }
 
 function heldGroupLines(group: HeldGroup): string[] {

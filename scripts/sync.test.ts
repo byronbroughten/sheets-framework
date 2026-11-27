@@ -34,6 +34,7 @@ import type {
   ConfigRegeneration,
   SyncRun,
 } from "../src/05_Operators/SyncCoordinator.ts";
+import type { HeldList } from "../src/nodeHost/EnteredDataGate.ts";
 import type { HeldItem } from "../src/nodeHost/FlushClassifier/flushClassifierTypes.ts";
 import { SyncRunReport } from "../src/nodeHost/SyncRunReport.ts";
 import { GeneratedDir } from "./GeneratedDir.ts";
@@ -137,7 +138,10 @@ describe("the sync script's exit code", () => {
   });
 
   it("is 0 for a ready dry run with held items", async () => {
-    const held = { groups: [], fullListPath: "held.txt", token: "abc" };
+    const held = {
+      block: { groups: [], fullListPath: "held.txt", token: "abc" },
+      forcedGroups: [],
+    };
     const result: SyncRunResult = {
       ...dryRunResult,
       outcome: { kind: "ready" },
@@ -326,9 +330,19 @@ describe("the held file", () => {
     enteredDataItem(rowIndex),
   );
   const flushes = [[], [...notesItems, enteredDataItem(0, "title")]];
+  const forceArgv = ["--force", "item/notes/valueName"];
+  const forcedLines = [
+    "== Forced: sent over the live value, no --confirm needed ==",
+    "item › notes › valueName  sent over the live value by --force",
+    "  undone only by the spreadsheet's version history: the send snapshot can't hold it",
+  ].join("\n");
 
   function runner(argv: string[]): SyncRunner {
     return SyncRunner.init(heldSheetsConfig, argv);
+  }
+  // The gate's held list, its snapshot plans leaving nothing to version history.
+  function heldList(token: string, held: HeldItem[][]): HeldList {
+    return { token, flushes: held, versionHistoryItems: held.map(() => []) };
   }
   const heldFilePath = runner([]).heldFile.path;
 
@@ -343,7 +357,7 @@ describe("the held file", () => {
   it("gets every held item and its value from a dry run, with the token", async () => {
     await runner([])._withHeld(
       { ...dryRunResult, outcome: { kind: "ready" } },
-      { token: "7f3a9c", flushes },
+      heldList("7f3a9c", flushes),
     );
 
     expect(JSON.parse(readFileSync(heldFilePath, "utf8"))).toEqual({
@@ -356,13 +370,15 @@ describe("the held file", () => {
   it("gives the dry run's report its held list, capped at 20 lines per column, and its path", async () => {
     const result = await runner([])._withHeld(
       { ...dryRunResult, outcome: { kind: "ready" } },
-      { token: "7f3a9c", flushes },
+      heldList("7f3a9c", flushes),
     );
 
     expect(result).toMatchObject({
       held: {
-        token: "7f3a9c",
-        fullListPath: relative(process.cwd(), heldFilePath),
+        block: {
+          token: "7f3a9c",
+          fullListPath: relative(process.cwd(), heldFilePath),
+        },
       },
     });
     const text = SyncRunReport.init(result).text;
@@ -381,17 +397,50 @@ describe("the held file", () => {
   it("is left alone by a dry run that holds nothing", async () => {
     const result = await runner([])._withHeld(
       { ...dryRunResult, outcome: { kind: "ready" } },
-      { token: "e3b0c4", flushes: [[], []] },
+      heldList("e3b0c4", [[], []]),
     );
 
     expect(result).not.toHaveProperty("held");
     expect(existsSync(heldFilePath)).toBe(false);
   });
 
+  it("is left alone by a --force dry run that holds nothing, which prints the forced trait and no held block", async () => {
+    const result = await runner(forceArgv)._withHeld(
+      { ...dryRunResult, outcome: { kind: "ready" } },
+      heldList("e3b0c4", [[], []]),
+    );
+
+    const text = SyncRunReport.init(result).text;
+    expect(text).toContain(forcedLines);
+    expect(text).not.toContain("== Held");
+    expect(text).toContain("READY: nothing held");
+    expect(text).not.toContain("--confirm e3b0c4");
+    expect(existsSync(heldFilePath)).toBe(false);
+  });
+
+  it("prints a --force dry run's forced trait beside the held block, outside its count", async () => {
+    const result = await runner(forceArgv)._withHeld(
+      { ...dryRunResult, outcome: { kind: "ready" } },
+      heldList("7f3a9c", flushes),
+    );
+
+    const text = SyncRunReport.init(result).text;
+    expect(text).toContain(forcedLines);
+    expect(text).toContain(
+      "== Held: 24 cells: 23 + 1, sent only with --confirm ==",
+    );
+    expect(text).toContain("READY, 24 HELD");
+    expect(JSON.parse(readFileSync(heldFilePath, "utf8"))).toEqual({
+      target: "dev",
+      token: "7f3a9c",
+      flushes,
+    });
+  });
+
   it("is left alone by a send, which prints no held list", async () => {
     const result = await runner(["--send"])._withHeld(
       { ...sendResult, outcome: { kind: "sent", summary: "1 sent" } },
-      { token: "7f3a9c", flushes },
+      heldList("7f3a9c", flushes),
     );
 
     expect(result).not.toHaveProperty("held");
@@ -401,7 +450,7 @@ describe("the held file", () => {
   it("is read back by a send with --confirm, and passed with the token", async () => {
     await runner([])._withHeld(
       { ...dryRunResult, outcome: { kind: "ready" } },
-      { token: "7f3a9c", flushes },
+      heldList("7f3a9c", flushes),
     );
 
     expect(

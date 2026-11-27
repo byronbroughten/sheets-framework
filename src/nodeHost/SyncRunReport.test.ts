@@ -159,19 +159,22 @@ describe("SyncRunReport, case B: a held overwrite of typed notes", () => {
     ...appDryRun,
     outcome: { kind: "ready" },
     held: {
-      groups: [
-        {
-          subject: { table: "occPayment", column: "notes" },
-          what: "the formula alteration overwrites entered data in 41 cells:",
-          cells: 41,
-          lines: [
-            'opy-0007  "Paid by cheque #1182"  → formula',
-            "… and 40 more in notes, counted, not listed",
-          ],
-        },
-      ],
-      token: "7f3a9c",
-      fullListPath: ".probe/sync-held.json",
+      forcedGroups: [],
+      block: {
+        groups: [
+          {
+            subject: { table: "occPayment", column: "notes" },
+            what: "the formula alteration overwrites entered data in 41 cells:",
+            cells: 41,
+            lines: [
+              'opy-0007  "Paid by cheque #1182"  → formula',
+              "… and 40 more in notes, counted, not listed",
+            ],
+          },
+        ],
+        token: "7f3a9c",
+        fullListPath: ".probe/sync-held.json",
+      },
     },
     plan: [
       {
@@ -224,18 +227,21 @@ describe("SyncRunReport, case C: a dropdown reset under ask, a rule added first,
     alterationsPath: "dev/alterations.ts",
     outcome: { kind: "ready" },
     held: {
-      groups: [
-        {
-          subject: { table: "item" },
-          what: 'dropdown style reset (dropdownStyleReset: "ask"):',
-          isUndoneOnlyByVersionHistory: true,
-          lines: [
-            "Sending item's column list resets these dropdowns to plain chips and clears their option colours: status, category.",
-          ],
-        },
-      ],
-      token: "b21e07",
-      fullListPath: "dev/.probe/sync-held.json",
+      forcedGroups: [],
+      block: {
+        groups: [
+          {
+            subject: { table: "item" },
+            what: 'dropdown style reset (dropdownStyleReset: "ask"):',
+            isUndoneOnlyByVersionHistory: true,
+            lines: [
+              "Sending item's column list resets these dropdowns to plain chips and clears their option colours: status, category.",
+            ],
+          },
+        ],
+        token: "b21e07",
+        fullListPath: "dev/.probe/sync-held.json",
+      },
     },
     plan: [
       {
@@ -341,28 +347,33 @@ describe("SyncRunReport, case D: deleting a Table and a tab", () => {
       },
     ],
     held: {
-      groups: [
-        {
-          subject: { table: "occChargeArchive" },
-          what: "deleting the Table deletes entered data in 1,204 cells, over 318 rows:",
-          cells: 1204,
-          lines: ["description 318 · amount 318 · chargeDate 318 · unitId 250"],
-        },
-        {
-          subject: { tab: "Old Imports" },
-          what: "deleting the tab deletes entered data in importRaw (a Table without API access): 380 cells",
-          cells: 380,
-          lines: [],
-        },
-        {
-          subject: { tab: "Old Imports" },
-          what: "deleting the tab deletes 46 non-blank cells outside any Table, formulas and values",
-          cells: 46,
-          lines: [],
-        },
-      ],
-      token: "4c9d10",
-      fullListPath: ".probe/sync-held.json",
+      forcedGroups: [],
+      block: {
+        groups: [
+          {
+            subject: { table: "occChargeArchive" },
+            what: "deleting the Table deletes entered data in 1,204 cells, over 318 rows:",
+            cells: 1204,
+            lines: [
+              "description 318 · amount 318 · chargeDate 318 · unitId 250",
+            ],
+          },
+          {
+            subject: { tab: "Old Imports" },
+            what: "deleting the tab deletes entered data in importRaw (a Table without API access): 380 cells",
+            cells: 380,
+            lines: [],
+          },
+          {
+            subject: { tab: "Old Imports" },
+            what: "deleting the tab deletes 46 non-blank cells outside any Table, formulas and values",
+            cells: 46,
+            lines: [],
+          },
+        ],
+        token: "4c9d10",
+        fullListPath: ".probe/sync-held.json",
+      },
     },
     plan: [
       {
