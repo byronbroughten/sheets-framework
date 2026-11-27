@@ -10,4 +10,4 @@ Source: byronbroughten/byro-repo#49, byronbroughten/byro-repo#51
 
 ## Amendments
 
-- Superseded by [sheets-framework#219](https://github.com/byronbroughten/sheets-framework/issues/219): removes the three config tabs and with them the floor these warnings protected. Intended state holds no protections at all, for the reasons in the deliberate-absence page's protections bullet ([deliberate absence](../design/deliberate-absence.md)).
+- Superseded by [byronbroughten/sheets-framework#219](https://github.com/byronbroughten/sheets-framework/issues/219): removes the three config tabs and with them the floor these warnings protected. Intended state holds no protections at all, for the reasons in the deliberate-absence page's protections bullet ([deliberate absence](../design/deliberate-absence.md)).

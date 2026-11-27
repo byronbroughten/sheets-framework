@@ -14,4 +14,4 @@ Source: byronbroughten/byro-repo#73
 
 ## Amendments
 
-- Superseded by [sheets-framework#219](https://github.com/byronbroughten/sheets-framework/issues/219): removes the floor and its seed. No tab, Table or column is the framework's own: each exists because a person made it or an `alterations.ts` entry did, and an ID-prefix guard over every Table takes the place of the floor's identity check.
+- Superseded by [byronbroughten/sheets-framework#219](https://github.com/byronbroughten/sheets-framework/issues/219): removes the floor and its seed. No tab, Table or column is the framework's own: each exists because a person made it or an `alterations.ts` entry did, and an ID-prefix guard over every Table takes the place of the floor's identity check.

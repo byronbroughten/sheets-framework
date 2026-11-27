@@ -10,4 +10,4 @@ Source: byronbroughten/sheets-framework#108
 
 ## Amendments
 
-- Superseded by [sheets-framework#219](https://github.com/byronbroughten/sheets-framework/issues/219): removes Table Config and its tick. API access stays per Table, so an operator's own Tables stay theirs, but it is now a Table's presence in the generated `tableConfigs`, changed only by a `letApiAccess` alteration ([granting and revoking](../generated-data/table-configs.md#granting-and-revoking-api-access)).
+- Superseded by [byronbroughten/sheets-framework#219](https://github.com/byronbroughten/sheets-framework/issues/219): removes Table Config and its tick. API access stays per Table, so an operator's own Tables stay theirs, but it is now a Table's presence in the generated `tableConfigs`, changed only by a `letApiAccess` alteration ([granting and revoking](../generated-data/table-configs.md#granting-and-revoking-api-access)).

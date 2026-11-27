@@ -10,4 +10,4 @@ Source: byronbroughten/sheets-framework#149
 
 ## Amendments
 
-- Amended by [sheets-framework#219](https://github.com/byronbroughten/sheets-framework/issues/219): removes Column Config and its tick. The decision stands with the column's `emptyValueAllowed` trait in the generated configs as the declaration, carried forward from run to run and changed by an `alterations.ts` entry that a `sync` run lands. A flag would now save only that `sync` run, and the three things above still hold.
+- Amended by [byronbroughten/sheets-framework#219](https://github.com/byronbroughten/sheets-framework/issues/219): removes Column Config and its tick. The decision stands with the column's `emptyValueAllowed` trait in the generated configs as the declaration, carried forward from run to run and changed by an `alterations.ts` entry that a `sync` run lands. A flag would now save only that `sync` run, and the three things above still hold.

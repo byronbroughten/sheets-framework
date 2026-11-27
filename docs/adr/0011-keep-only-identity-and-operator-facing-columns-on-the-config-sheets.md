@@ -10,4 +10,4 @@ Source: byronbroughten/byro-repo#33
 
 ## Amendments
 
-- Superseded by [sheets-framework#219](https://github.com/byronbroughten/sheets-framework/issues/219): removes the config sheets, so no column is kept on them. The declarations they held, API access and `emptyValueAllowed`, are carried forward in the generated configs and changed by an `alterations.ts` entry, and the sampled traits stay sampled.
+- Superseded by [byronbroughten/sheets-framework#219](https://github.com/byronbroughten/sheets-framework/issues/219): removes the config sheets, so no column is kept on them. The declarations they held, API access and `emptyValueAllowed`, are carried forward in the generated configs and changed by an `alterations.ts` entry, and the sampled traits stay sampled.

@@ -33,4 +33,4 @@ Source: byronbroughten/sheets-framework#218, byronbroughten/sheets-framework#178
 
 ## Amendments
 
-- Amended by [sheets-framework#219](https://github.com/byronbroughten/sheets-framework/issues/219): pending formula text, a column's or a rule's, holds braces, not `Table[Header]`, so the rewrite reaches every reference in it by codebase name, as it reaches a key. Sheets' `Table[Header]` is left only where no brace can name the column, a Table without API access, and the rewrite keeps it on that Table's live names.
+- Amended by [byronbroughten/sheets-framework#219](https://github.com/byronbroughten/sheets-framework/issues/219): pending formula text, a column's or a rule's, holds braces, not `Table[Header]`, so the rewrite reaches every reference in it by codebase name, as it reaches a key. Sheets' `Table[Header]` is left only where no brace can name the column, a Table without API access, and the rewrite keeps it on that Table's live names.

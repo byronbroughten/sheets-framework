@@ -14,4 +14,4 @@ Source: byronbroughten/byro-repo#8, byronbroughten/byro-repo#13
 
 ## Amendments
 
-- Amended by [sheets-framework#219](https://github.com/byronbroughten/sheets-framework/issues/219): removes Column Config and its tick. The decision stands with the column's `emptyValueAllowed` trait in the generated configs in the tick's place: carried forward from run to run, set by an `alterations.ts` entry, and `false` for a new column unless its entry says otherwise.
+- Amended by [byronbroughten/sheets-framework#219](https://github.com/byronbroughten/sheets-framework/issues/219): removes Column Config and its tick. The decision stands with the column's `emptyValueAllowed` trait in the generated configs in the tick's place: carried forward from run to run, set by an `alterations.ts` entry, and `false` for a new column unless its entry says otherwise.
