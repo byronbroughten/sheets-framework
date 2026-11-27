@@ -18,7 +18,7 @@ import type { FakeSheetsService } from "../src/testSupport/fakeSheetsService.ts"
 import { capturedRun } from "./runnerFixture.ts";
 import {
   clock,
-  readJson,
+  onlySnapshot,
   seedAgedFiles,
   snapshotFiles,
   snapshotsFolder,
@@ -68,14 +68,6 @@ function failingAfterSend(
     if (request.url.includes(":batchUpdate")) hasSent = true;
     return answer(request);
   };
-}
-
-// The folder's one snapshot file, by name and contents.
-function onlySnapshot(folder: string) {
-  const [name, ...others] = snapshotFiles(folder);
-  expect(others).toEqual([]);
-  expect(name).toBeDefined();
-  return { name: `${name}`, file: readJson(join(folder, `${name}`)) };
 }
 
 describe("a sync's confirmed send's snapshot file", () => {

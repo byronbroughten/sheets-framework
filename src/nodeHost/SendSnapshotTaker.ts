@@ -1,6 +1,7 @@
 import type { SheetsHttpTransport } from "../00_Source/GoogleSheets/GoogleSheetsAPI.ts";
 import {
   httpColumnValues,
+  httpTabGrids,
   type SheetValue,
 } from "../00_Source/GoogleSheets/GoogleSheetsAPI/httpSheetsTransport.ts";
 import { colLetters } from "./colLetters.ts";
@@ -30,15 +31,26 @@ export interface SnapshotColumn extends Pick<
   values: SheetValue[];
 }
 
-// Each row of an affected tab, read from columns the send doesn't change, before and after the send.
-export interface TabFingerprints extends Pick<
+// Each row of an affected tab, read from columns the send doesn't change, before the send.
+interface TabFingerprintsBefore extends Pick<
   HeldColumn,
   "sheetGid" | "tabTitle"
 > {
   colIndexes: number[];
   before: SheetValue[][];
+}
+
+// The same columns read again after the send.
+interface TabFingerprintsAfter extends TabFingerprintsBefore {
   after: SheetValue[][];
 }
+
+// A tab the send deleted, so it has no rows after it.
+interface TabGoneAfterSend extends TabFingerprintsBefore {
+  isGoneAfterSend: true;
+}
+
+export type TabFingerprints = TabFingerprintsAfter | TabGoneAfterSend;
 
 // What a send changes, as it stood just before the send, and the held items only version history undoes.
 export interface SendSnapshot {
@@ -51,8 +63,6 @@ export interface SendSnapshotTakerProps {
   spreadsheetId: string;
   transport: SheetsHttpTransport;
 }
-
-type TabFingerprintsBefore = Omit<TabFingerprints, "after">;
 
 // A tab with the rows one read gave its fingerprint columns.
 interface TabRows {
@@ -110,20 +120,40 @@ export class SendSnapshotTaker {
     }
     return this;
   }
-  // Reads the fingerprint columns again after the send's last flush; undefined when the send held nothing.
+  // Reads the fingerprint columns again after the send's last flush, each tab under its title then; undefined when the send held nothing.
   finished(): SendSnapshot | undefined {
     if (!this.hasStarted) return undefined;
     const tabs = [...this.tabs.values()];
-    const values = this._columnValues(tabs.flatMap(fingerprintRanges));
-    const fingerprints = tabsWithRows(tabs, values).map(({ tab, rows }) => ({
-      ...tab,
-      after: rows,
-    }));
+    const titlesNow = this._tabTitlesNow(tabs);
+    const tabsNow = tabs.flatMap((tab) => {
+      const tabTitle = titlesNow.get(tab.sheetGid);
+      return tabTitle === undefined ? [] : [{ ...tab, tabTitle }];
+    });
+    const values = this._columnValues(tabsNow.flatMap(fingerprintRanges));
+    const rowsAfter = new Map(
+      tabsWithRows(tabsNow, values).map(({ tab, rows }) => [
+        tab.sheetGid,
+        rows,
+      ]),
+    );
+    const fingerprints = tabs.map((tab) =>
+      fingerprintsAfter(tab, rowsAfter.get(tab.sheetGid)),
+    );
     return {
       columns: this.columns,
       fingerprints,
       versionHistoryItems: this.versionHistoryItems,
     };
+  }
+  // By sheet ID, since the send may have renamed or deleted a tab; a send that changed no tab's columns takes no read.
+  private _tabTitlesNow(tabs: TabFingerprintsBefore[]): Map<number, string> {
+    if (tabs.length === 0) return new Map();
+    return new Map(
+      httpTabGrids({
+        spreadsheetId: this.spreadsheetId,
+        transport: this.transport,
+      }).map(({ sheetGid, title }) => [sheetGid, title]),
+    );
   }
   // A tab's fingerprint columns are fixed by the first flush that changes it.
   // 'after' is compared only with a later read at the same indexes (`SendSnapshotRestorer`'s `hasMoved`), so a fingerprint column the send changes does no harm.
@@ -225,6 +255,15 @@ function tabsWithRows(
     offset = end;
   }
   return withRows;
+}
+
+// Undefined rows mean the send deleted the tab, so it had no read after.
+function fingerprintsAfter(
+  tab: TabFingerprintsBefore,
+  rows: SheetValue[][] | undefined,
+): TabFingerprints {
+  if (rows === undefined) return { ...tab, isGoneAfterSend: true };
+  return { ...tab, after: rows };
 }
 
 // The columns turned into rows, a column's trimmed tail padded with "": a tab's fingerprint as the snapshot keeps it.

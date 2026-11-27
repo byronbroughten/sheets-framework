@@ -219,15 +219,17 @@ function tabRange({ title, rowCount, columnCount }: TabGrid): string {
 
 // A tab whose fingerprint columns differ from just after the send: rows were added, removed or reordered.
 function hasMoved(
-  { sheetGid, colIndexes, after }: TabFingerprints,
+  fingerprints: TabFingerprints,
   tabs: Map<number, CurrentTab>,
 ): boolean {
-  const tab = tabs.get(sheetGid);
+  const tab = tabs.get(fingerprints.sheetGid);
+  // A tab the send deleted, still gone, leaves the others to restore.
+  if ("isGoneAfterSend" in fingerprints) return tab !== undefined;
   if (tab === undefined) return true;
   const now = fingerprintRows(
-    colIndexes.map((colIndex) => tab.columns[colIndex] ?? []),
+    fingerprints.colIndexes.map((colIndex) => tab.columns[colIndex] ?? []),
   );
-  return JSON.stringify(now) !== JSON.stringify(after);
+  return JSON.stringify(now) !== JSON.stringify(fingerprints.after);
 }
 
 function colIndexOf(

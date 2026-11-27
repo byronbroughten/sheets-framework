@@ -11,7 +11,7 @@ import {
 import { tokenOf } from "./runnerFixture.ts";
 import {
   clock,
-  readJson,
+  onlySnapshot,
   seedAgedFiles,
   snapshotFiles,
   snapshotsFolder,
@@ -51,10 +51,8 @@ describe("a chore's confirmed send's snapshot file", () => {
       "app:restore",
     ]);
 
-    const [name, ...others] = snapshotFiles(folder);
-    expect(others).toEqual([]);
+    const { name, file } = onlySnapshot(folder);
     expect(output).toContain(`undo: npm run app:restore -- ${name}`);
-    const file = readJson(join(folder, `${name}`));
     expect(file).toMatchObject({
       command: "chore replaceRent",
       takenAt: clock.toISOString(),
