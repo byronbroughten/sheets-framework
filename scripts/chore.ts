@@ -8,9 +8,9 @@ import type { NodeHost } from "../src/nodeHost/NodeHost.ts";
 import { ChoreIndex } from "./choreIndex.ts";
 import { HeldFile, parseConfirmToken } from "./HeldFile.ts";
 import { type HostStandIn, startNodeHost } from "./nodeHost.ts";
+import { PackageConfigLoader } from "./PackageConfigLoader.ts";
 import {
   importConstNamedAfterFile,
-  loadPackageConfigs,
   loadPackageEndpoints,
 } from "./packageLoader.ts";
 import type { SheetsConfig } from "./sheetsConfig.ts";
@@ -173,7 +173,10 @@ export class ChoreRunner {
       isDryRun: !this.isSending,
       sheetsConfig: this.sheetsConfig,
       configs:
-        standIn?.configs ?? (await loadPackageConfigs(this.sheetsConfig)),
+        standIn?.configs ??
+        (await PackageConfigLoader.fromSheetsConfig(
+          this.sheetsConfig,
+        ).loadConfigs()),
       endpoints: await loadPackageEndpoints(this.sheetsConfig),
       enteredDataGate: {
         target: this.target,

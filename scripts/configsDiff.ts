@@ -2,7 +2,7 @@
 import type { ValueConfigBase } from "../src/01_SpreadsheetSchema/configReaders/makeConfigs.ts";
 import { configFiles } from "./configsDiff/configFiles.ts";
 import { snapshotDiff } from "./configsDiff/snapshotDiff.ts";
-import { configFilePath, hasPackageConfigs } from "./packageLoader.ts";
+import { PackageConfigLoader } from "./PackageConfigLoader.ts";
 import type { SheetsConfig } from "./sheetsConfig.ts";
 
 export type ConfigEntry = Record<string, unknown>;
@@ -50,7 +50,7 @@ function emptySnapshot(): ConfigSnapshot {
 }
 
 export function runConfigsDiff(sheetsConfig: SheetsConfig): void {
-  if (!hasPackageConfigs(sheetsConfig)) {
+  if (!PackageConfigLoader.fromSheetsConfig(sheetsConfig).hasConfigs()) {
     throw new Error(
       `configs:diff: no generated config files in ${sheetsConfig.generatedDir}; run sync first.`,
     );
@@ -59,13 +59,14 @@ export function runConfigsDiff(sheetsConfig: SheetsConfig): void {
 }
 
 export function readConfigsDiff(sheetsConfig: SheetsConfig): string[] {
-  const { dir, generatedDir } = sheetsConfig;
+  const { dir } = sheetsConfig;
+  const configLoader = PackageConfigLoader.fromSheetsConfig(sheetsConfig);
   return summarizeConfigsDiff({
     before: configFiles.readSnapshot((file) =>
-      configFiles.readHeadFile(dir, configFilePath(generatedDir, file)),
+      configFiles.readHeadFile(dir, configLoader.filePath(file)),
     ),
     after: configFiles.readSnapshot((file) =>
-      configFiles.readFileIfPresent(configFilePath(generatedDir, file)),
+      configFiles.readFileIfPresent(configLoader.filePath(file)),
     ),
   });
 }
