@@ -14,6 +14,8 @@ export interface SnapshotColumnRecreatorProps {
 export interface ColumnRecreation {
   tab: CurrentTab;
   requests: GoogleRequest[];
+  // The columns recreated, leaving out one whose Table is gone.
+  columns: SnapshotColumn[];
 }
 
 // Each deleted column back at its saved position, head rows and column ID included, as the framework inserts one: from the column ID row to the Table's last row.
@@ -32,21 +34,23 @@ export class SnapshotColumnRecreator {
     const sorted = this.columns.toSorted((a, b) => a.colIndex - b.colIndex);
     return sorted.reduce<ColumnRecreation>(
       (recreation, column) => recreatedOn(recreation, column),
-      { tab: this.tab, requests: [] },
+      { tab: this.tab, requests: [], columns: [] },
     );
   }
 }
 
 // A column whose Table's ID is gone is left as it is, for the restore to list as not restored.
 function recreatedOn(
-  { tab, requests }: ColumnRecreation,
+  recreation: ColumnRecreation,
   column: SnapshotColumn,
 ): ColumnRecreation {
+  const { tab, requests, columns } = recreation;
   const table = tableOf(tab, column);
-  if (table === undefined) return { tab, requests };
+  if (table === undefined) return recreation;
   const recreated = RecreatedColumn.init({ column, table });
   return {
     tab: recreated.tabAfter(tab),
     requests: [...requests, ...recreated.requests],
+    columns: [...columns, column],
   };
 }
