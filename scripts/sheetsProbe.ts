@@ -105,7 +105,7 @@ class SheetsProbe {
   }
 }
 
-// Shown from where npm was invoked, so dev's file reads as dev/.probe/last.json from the root.
+// Shown from where npm was invoked, so dev's file, beside the framework's sheets.config.json, reads as packages/framework/.probe/last.json from the root.
 function outputShownOf(sheetsConfig: SheetsConfig): string {
   return relative(
     process.env.INIT_CWD ?? process.cwd(),
