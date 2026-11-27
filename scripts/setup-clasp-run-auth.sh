@@ -188,12 +188,12 @@ TOTAL_STAGES=7
 
 # ── Wizard-specific setup ─────────────────────────────────────────────────
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-STATE_DIR="$HOME/.config/clasp-real-estate-manager"
+CREDENTIALS_DIR="$HOME/.config/credentials"
+STATE_DIR="$CREDENTIALS_DIR/clasp-run-auth"
 ENV_FILE="$STATE_DIR/wizard.env"
 CLASP_USER="desktop-clasp-run"
 CLASPRC="$HOME/.clasprc.json"
-AGENT_AUTH_DIR="$HOME/.config/credentials"
-AGENT_AUTH_FILE="$AGENT_AUTH_DIR/agent-auth.json"
+AGENT_AUTH_FILE="$CREDENTIALS_DIR/agent-auth.json"
 AGENT_SKIPPED="agent credential (re-run this wizard and say yes at stage 7)"
 # clasp reads clasp_config_auth too, so an exported one would aim stage 4 at the agent file.
 unset clasp_config_auth
@@ -204,7 +204,7 @@ AGENT_SCOPES=(
   "https://www.googleapis.com/auth/script.deployments"
 )
 mkdir -p "$STATE_DIR"
-chmod 700 "$STATE_DIR"
+chmod 700 "$CREDENTIALS_DIR" "$STATE_DIR"
 
 PROJECT_ID=$(node -e 'try{process.stdout.write(require(process.argv[1]).projectId||"")}catch(e){}' "$REPO_DIR/.clasp.json" 2>/dev/null || true)
 [[ -n "$PROJECT_ID" ]] || PROJECT_ID="real-estate-manager-sheets"
@@ -523,8 +523,6 @@ say "It is written to $AGENT_AUTH_FILE (chmod 600), and"
 say "the transport reads it once clasp_config_auth names that file."
 say ""
 if confirm "Mint the agent credential now?"; then
-  mkdir -p "$AGENT_AUTH_DIR"
-  chmod 700 "$AGENT_AUTH_DIR"
   # clasp login has no exact-scope flag, but --use-project-scopes requests a throwaway manifest's.
   SCOPE_DIR=$(mktemp -d)
   trap 'rm -rf "$SCOPE_DIR"' EXIT
