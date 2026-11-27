@@ -168,9 +168,17 @@ export function readSnapshotFile(named: string): SavedSnapshotFile {
     );
   }
   if (!isSavedSnapshotFile(contents)) {
-    throw new Error(`${named} is not a send's snapshot file.`);
+    throw new Error(refusalOf(named, contents));
   }
   return contents;
+}
+
+// A file from before columns carried a tableId would list every column as not restored.
+function refusalOf(named: string, contents: unknown): string {
+  if (!hasSnapshotFileFields(contents)) {
+    return `${named} is not a send's snapshot file.`;
+  }
+  return `${named} predates the snapshot's Table IDs, so restore can't place its columns; the spreadsheet's version history undoes that send.`;
 }
 
 // The target a snapshot names: the package folder, so restore can refuse another target's file.
@@ -178,8 +186,24 @@ export function snapshotTarget(sheetsConfig: SheetsConfig): string {
   return basename(sheetsConfig.dir);
 }
 
-// The fields restore reads, checked; the rest is as this module wrote it.
+// The top-level fields restore reads and a string tableId on every saved column, checked; the rest is as this module wrote it.
 function isSavedSnapshotFile(contents: unknown): contents is SavedSnapshotFile {
+  return (
+    hasSnapshotFileFields(contents) &&
+    contents.snapshot.columns.every(
+      (column) =>
+        typeof column === "object" &&
+        column !== null &&
+        "tableId" in column &&
+        Val.is.string(column.tableId),
+    )
+  );
+}
+
+// The fields every snapshot file has carried, a file from before the snapshot's Table IDs included.
+function hasSnapshotFileFields(
+  contents: unknown,
+): contents is { snapshot: { columns: unknown[] } } {
   if (typeof contents !== "object" || contents === null) return false;
   if (!("target" in contents && "command" in contents)) return false;
   if (!("takenAt" in contents && "snapshot" in contents)) return false;
