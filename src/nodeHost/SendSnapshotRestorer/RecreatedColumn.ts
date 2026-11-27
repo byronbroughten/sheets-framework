@@ -2,7 +2,7 @@ import type {
   SheetValue,
   TableRange,
   TabTable,
-} from "../../00_Source/GoogleSheets/GoogleSheetsAPI/httpSheetsTransport.ts";
+} from "../../00_Source/GoogleSheets/GoogleSheetsAPI/HttpSpreadsheet.ts";
 import { tableLayout } from "../../01_SpreadsheetSchema/tableLayout.ts";
 import type { SnapshotColumn } from "../SendSnapshotTaker.ts";
 import { type CurrentTab, enteredCell } from "./SnapshotColumnRestorer.ts";

@@ -10,7 +10,7 @@ import {
   type ConfigFile,
   configFilePath,
   importExportIfPresent,
-} from "./nodeHost.ts";
+} from "./packageLoader.ts";
 
 export class GeneratedDir {
   static readonly alterationsText = alterationsFileSource({});

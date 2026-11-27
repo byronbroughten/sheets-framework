@@ -1,11 +1,9 @@
 import {
-  httpBatchUpdate,
-  httpRangeColumns,
-  type HttpSpreadsheetCall,
-  httpTabGrids,
+  HttpSpreadsheet,
+  type HttpSpreadsheetProps,
   type SheetValue,
   type TabGrid,
-} from "../00_Source/GoogleSheets/GoogleSheetsAPI/httpSheetsTransport.ts";
+} from "../00_Source/GoogleSheets/GoogleSheetsAPI/HttpSpreadsheet.ts";
 import { colLetters } from "./colLetters.ts";
 import { SnapshotColumnRecreator } from "./SendSnapshotRestorer/SnapshotColumnRecreator.ts";
 import {
@@ -25,7 +23,7 @@ import {
 
 type GoogleRequest = GoogleAppsScript.Sheets.Schema.Request;
 
-export interface SendSnapshotRestorerProps extends HttpSpreadsheetCall {
+export interface SendSnapshotRestorerProps extends HttpSpreadsheetProps {
   snapshot: SendSnapshot;
   isForced: boolean;
 }
@@ -53,15 +51,11 @@ interface TabsRecreation {
 
 // Puts a send's snapshot back: each saved column by its column ID, a deleted one recreated first, its rows by position on a tab whose rows didn't move, else by row ID where the Table has an ID column.
 export class SendSnapshotRestorer {
-  private call: HttpSpreadsheetCall;
+  private spreadsheet: HttpSpreadsheet;
   private snapshot: SendSnapshot;
   private isForced: boolean;
-  constructor({
-    spreadsheetId,
-    transport,
-    ...props
-  }: SendSnapshotRestorerProps) {
-    this.call = { spreadsheetId, transport };
+  constructor(props: SendSnapshotRestorerProps) {
+    this.spreadsheet = HttpSpreadsheet.init(props);
     this.snapshot = props.snapshot;
     this.isForced = props.isForced;
   }
@@ -99,7 +93,7 @@ export class SendSnapshotRestorer {
     }
     if (requests.length > 0) {
       // Past the entered-data gate: a restore undoes a send the gate already held.
-      httpBatchUpdate({ ...this.call, requests });
+      this.spreadsheet.batchUpdate(requests);
     }
     return {
       kind: "restored",
@@ -136,17 +130,16 @@ export class SendSnapshotRestorer {
     const sheetGids = new Set(
       [...columns, ...fingerprints].map(({ sheetGid }) => sheetGid),
     );
-    const grids = httpTabGrids(this.call).filter(
-      (grid) =>
-        sheetGids.has(grid.sheetGid) &&
-        grid.rowCount > 0 &&
-        grid.columnCount > 0,
-    );
+    const grids = this.spreadsheet
+      .tabGrids()
+      .filter(
+        (grid) =>
+          sheetGids.has(grid.sheetGid) &&
+          grid.rowCount > 0 &&
+          grid.columnCount > 0,
+      );
     if (grids.length === 0) return new Map();
-    const values = httpRangeColumns({
-      ...this.call,
-      ranges: grids.map(tabRange),
-    });
+    const values = this.spreadsheet.rangeColumns(grids.map(tabRange));
     return new Map(
       grids.map((grid, index) => [
         grid.sheetGid,

@@ -2,7 +2,7 @@
 import type { ValueConfigBase } from "../src/01_SpreadsheetSchema/configReaders/makeConfigs.ts";
 import { configFiles } from "./configsDiff/configFiles.ts";
 import { snapshotDiff } from "./configsDiff/snapshotDiff.ts";
-import { configFilePath, hasPackageConfigs } from "./nodeHost.ts";
+import { configFilePath, hasPackageConfigs } from "./packageLoader.ts";
 import type { SheetsConfig } from "./sheetsConfig.ts";
 
 export type ConfigEntry = Record<string, unknown>;
