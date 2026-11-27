@@ -91,12 +91,16 @@ export const overwrite = {
 `;
 }
 
+// Spare blank rows below the Table, as a live tab keeps; the fake otherwise sizes its grid to the Table.
 async function overwritingSend(
   tableCase: TableCase,
   rows: ValueTypesBodyRow[] = bodyRows,
+  spareRowCount = 0,
 ): Promise<SentCase> {
+  const sheet = valueTypesTableSheet(rows, tableCase);
+  const spareRows = Array.from({ length: spareRowCount }, () => []);
   const fake = stubSheetsService({
-    sheets: [valueTypesTableSheet(rows, tableCase)],
+    sheets: [{ ...sheet, rows: [...(sheet.rows ?? []), ...spareRows] }],
   });
   const { restore } = await confirmedSendOver({
     sheetsConfig: choreSheetsConfig({
@@ -247,13 +251,34 @@ describe("restore when rows moved since the send", () => {
     expect(output).toContain("row ID r:vty:apple");
   });
 
-  it("lists a saved row past the tab's end as left to version history, on a Table without an ID column", async () => {
+  it("lists a saved row past the Table's last row as left to version history, on a Table without an ID column", async () => {
     const { fake, restore } = await overwritingSend(withoutRowIds);
     edit(fake, [deleteRow(topDataRowIndex + 1)]);
 
     const { output } = await restore(["--force"]);
 
     expect(columnValues(fake, withoutRowIds, "stringValue")).toEqual(["Apple"]);
+    expect(output).toContain(`row ${topDataRowIndex + 2}`);
+  });
+
+  it("lists a saved row past the Table's last row as left to version history, never writing it onto a spare blank row below the Table", async () => {
+    const { fake, restore } = await overwritingSend(withoutRowIds, bodyRows, 5);
+    edit(fake, [deleteRow(topDataRowIndex + 1)]);
+    const rowCountBefore = fake.grid.sheet(valueTypesGid).rowCount;
+
+    const { output } = await restore(["--force"]);
+
+    const stringValues = columnValues(fake, withoutRowIds, "stringValue");
+    expect(stringValues[0]).toBe("Apple");
+    expect(stringValues).not.toContain("Pear");
+    expect(columnValues(fake, withoutRowIds, "checkbox")).toEqual([
+      true,
+      ...stringValues.slice(1).map(() => null),
+    ]);
+    expect(fake.grid.sheet(valueTypesGid).rowCount).toBe(rowCountBefore);
+    expect(output).toContain(
+      "left to the spreadsheet's version history, with no row to land on:",
+    );
     expect(output).toContain(`row ${topDataRowIndex + 2}`);
   });
 });

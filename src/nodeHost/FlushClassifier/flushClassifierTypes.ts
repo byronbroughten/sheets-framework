@@ -92,6 +92,7 @@ export interface HeldColumn {
   sheetGid: number;
   tabTitle: string;
   table: string;
+  tableId: string;
   header: string;
   colIndex: number;
   columnIdRowIndex: number;

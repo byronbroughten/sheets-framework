@@ -1,6 +1,7 @@
 import type {
   SheetValue,
   TabGrid,
+  TabTable,
 } from "../../00_Source/GoogleSheets/GoogleSheetsAPI/httpSheetsTransport.ts";
 import { tableLayout } from "../../01_SpreadsheetSchema/tableLayout.ts";
 import type { GoogleCellData } from "../FlushClassifier/flushClassifierTypes.ts";
@@ -29,7 +30,8 @@ export interface RowIds {
 
 export interface SnapshotColumnRestorerProps {
   column: SnapshotColumn;
-  tab: CurrentTab;
+  // The Table the column stands in now.
+  table: TabTable;
   colIndex: number;
   // Undefined where rows match by position: a Table without an ID column, or a tab whose rows didn't move.
   rowIds: RowIds | undefined;
@@ -50,13 +52,13 @@ interface RowTarget {
 // One saved column put back where it stands now: each saved row onto the row it lands on.
 export class SnapshotColumnRestorer {
   private column: SnapshotColumn;
-  private tab: CurrentTab;
+  private table: TabTable;
   private colIndex: number;
   private rowIds: RowIds | undefined;
   private preSendRowCount: number;
   constructor(props: SnapshotColumnRestorerProps) {
     this.column = props.column;
-    this.tab = props.tab;
+    this.table = props.table;
     this.colIndex = props.colIndex;
     this.rowIds = props.rowIds;
     this.preSendRowCount = props.preSendRowCount;
@@ -91,13 +93,14 @@ export class SnapshotColumnRestorer {
     };
   }
   // Where each saved row lands now, by row ID or by position, and how a homeless one is named.
+  // By position the Table's last row ends the tab, not the grid's, as a live tab keeps spare blank rows below its Table.
   private _landings(
     dataStart: number,
   ): (rowIndex: number) => { landing: number | undefined; row: string } {
-    const { rowIds, tab } = this;
+    const { rowIds, table } = this;
     if (rowIds === undefined) {
       return (rowIndex) => ({
-        landing: rowIndex < tab.grid.rowCount ? rowIndex : undefined,
+        landing: rowIndex < table.range.endRowIndex ? rowIndex : undefined,
         row: `row ${rowIndex + 1}`,
       });
     }
@@ -144,6 +147,14 @@ export class SnapshotColumnRestorer {
       },
     }));
   }
+}
+
+// The Table the column stood in, by the ID the snapshot recorded; undefined where it is gone.
+export function tableOf(
+  tab: CurrentTab,
+  { tableId }: SnapshotColumn,
+): TabTable | undefined {
+  return tab.grid.tables.find((table) => table.tableId === tableId);
 }
 
 function rowIndexesById(

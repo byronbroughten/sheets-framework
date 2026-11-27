@@ -1,3 +1,5 @@
+import { Val } from "@byronbroughten/utils/val";
+
 import { tableLayout } from "../../01_SpreadsheetSchema/tableLayout.ts";
 import { colLetters } from "../colLetters.ts";
 import { ExtVal } from "../ExtVal.ts";
@@ -119,6 +121,7 @@ export class RunReads {
       sheetGid,
       tabTitle: title,
       table: label,
+      tableId: Val.assert(table.tableId, "held column's Table ID"),
       header: column,
       colIndex,
       columnIdRowIndex,

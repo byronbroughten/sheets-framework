@@ -254,7 +254,7 @@ function seededFingerprints(colIndexes: number[]): unknown[][] {
 }
 
 describe("NodeHost.sendSnapshot", () => {
-  it("holds an overwritten column whole by its column ID, and fingerprints the tab before and after the send", () => {
+  it("holds an overwritten column whole by its column ID, with its Table's ID, and fingerprints the tab before and after the send", () => {
     const { snapshot } = confirmedSend({
       flushes: [[overwriteSprocket, noteSprocket]],
     });
@@ -264,6 +264,7 @@ describe("NodeHost.sendSnapshot", () => {
         sheetGid: widget.gid,
         tabTitle: widget.title,
         table: widget.title,
+        tableId: `fake-table-${widget.gid}`,
         header: "Amount",
         columnId: "col-amount",
         colIndex: widgetCol("amount"),
