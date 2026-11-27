@@ -14,6 +14,7 @@ import {
   type HomelessRow,
   type RowIds,
   SnapshotColumnRestorer,
+  tableOf,
 } from "./SendSnapshotRestorer/SnapshotColumnRestorer.ts";
 import {
   fingerprintRows,
@@ -153,7 +154,7 @@ export class SendSnapshotRestorer {
       ]),
     );
   }
-  // Undefined where the column's tab or Table is gone, so it couldn't be recreated.
+  // Undefined where the column's tab or Table, found by its recorded ID, is gone, so it couldn't be recreated.
   private _columnRestorer(
     column: SnapshotColumn,
     tabs: Map<number, CurrentTab>,
@@ -161,15 +162,16 @@ export class SendSnapshotRestorer {
   ): SnapshotColumnRestorer | undefined {
     const tab = tabs.get(column.sheetGid);
     if (tab === undefined) return undefined;
+    const table = tableOf(tab, column);
     const colIndex = colIndexOf(tab, column.columnIdRowIndex, column.columnId);
-    if (colIndex === undefined) return undefined;
+    if (table === undefined || colIndex === undefined) return undefined;
     const fingerprints = this._fingerprintsOf(column.sheetGid);
     // Fingerprints that still match mean no row moved, so position is exact, even for a row whose ID the send filled.
     const isUnmoved =
       fingerprints !== undefined && !movedGids.has(column.sheetGid);
     return SnapshotColumnRestorer.init({
       column,
-      tab,
+      table,
       colIndex,
       rowIds: isUnmoved ? undefined : this._rowIds(column, tab),
       preSendRowCount: Math.max(

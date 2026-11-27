@@ -1,8 +1,6 @@
-import type { TabTable } from "../../00_Source/GoogleSheets/GoogleSheetsAPI/httpSheetsTransport.ts";
-import { tableLayout } from "../../01_SpreadsheetSchema/tableLayout.ts";
 import type { SnapshotColumn } from "../SendSnapshotTaker.ts";
 import { RecreatedColumn } from "./RecreatedColumn.ts";
-import type { CurrentTab } from "./SnapshotColumnRestorer.ts";
+import { type CurrentTab, tableOf } from "./SnapshotColumnRestorer.ts";
 
 type GoogleRequest = GoogleAppsScript.Sheets.Schema.Request;
 
@@ -17,9 +15,6 @@ export interface ColumnRecreation {
   tab: CurrentTab;
   requests: GoogleRequest[];
 }
-
-const columnIdToHeaderRows =
-  tableLayout.headRowOffsets.columnId - tableLayout.headRowOffsets.header;
 
 // Each deleted column back at its saved position, head rows and column ID included, as the framework inserts one: from the column ID row to the Table's last row.
 export class SnapshotColumnRecreator {
@@ -42,7 +37,7 @@ export class SnapshotColumnRecreator {
   }
 }
 
-// A column whose Table is gone is left as it is, for the restore to list as not restored.
+// A column whose Table's ID is gone is left as it is, for the restore to list as not restored.
 function recreatedOn(
   { tab, requests }: ColumnRecreation,
   column: SnapshotColumn,
@@ -54,17 +49,4 @@ function recreatedOn(
     tab: recreated.tabAfter(tab),
     requests: [...requests, ...recreated.requests],
   };
-}
-
-// The Table the column stood in: its header row under the column's column ID row, and the column inside it or at an edge.
-function tableOf(
-  tab: CurrentTab,
-  { columnIdRowIndex, colIndex }: SnapshotColumn,
-): TabTable | undefined {
-  return tab.grid.tables.find(
-    ({ range }) =>
-      range.startRowIndex === columnIdRowIndex + columnIdToHeaderRows &&
-      range.startColumnIndex <= colIndex &&
-      colIndex <= range.endColumnIndex,
-  );
 }

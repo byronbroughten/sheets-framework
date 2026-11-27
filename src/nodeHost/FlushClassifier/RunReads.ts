@@ -119,6 +119,7 @@ export class RunReads {
       sheetGid,
       tabTitle: title,
       table: label,
+      tableId: table.tableId ?? "",
       header: column,
       colIndex,
       columnIdRowIndex,

@@ -21,6 +21,7 @@ export interface SnapshotColumn extends Pick<
   | "sheetGid"
   | "tabTitle"
   | "table"
+  | "tableId"
   | "header"
   | "colIndex"
   | "columnIdRowIndex"
@@ -190,6 +191,7 @@ export class SendSnapshotTaker {
       sheetGid,
       tabTitle,
       table,
+      tableId,
       header,
       colIndex,
       columnIdRowIndex,
@@ -199,6 +201,7 @@ export class SendSnapshotTaker {
       sheetGid,
       tabTitle,
       table,
+      tableId,
       header,
       colIndex,
       columnIdRowIndex,
