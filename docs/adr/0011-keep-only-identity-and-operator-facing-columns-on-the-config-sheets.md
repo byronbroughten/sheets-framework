@@ -1,13 +1,13 @@
 ---
-status: superseded by sheets-framework#219, which removes the config sheets
+status: deprecated
 ---
 
 # Keep only identity and operator-facing columns on the config sheets
 
 A live config-sheet column exists either so the host can identify the row or so a person can use it on that sheet: readable identity, declarations and helper formulas. Sampled generated traits don't earn a cell, so Column Config's Is formula and Value title and Sheet Config's Has ID column were deleted, and each regen samples `isFormula`, `valueName` and `hasIdColumn` from the described live columns, ignoring leftover cells while they remain. A cell the sync would overwrite was a third copy that invited edits that never stuck, and the operator gave up the glance at those traits on the config sheet for it.
 
-## Superseded
-
-[sheets-framework#219](https://github.com/byronbroughten/sheets-framework/issues/219) removes the config sheets, so no column is kept on them. The declarations they held, API access and `emptyValueAllowed`, are carried forward in the generated configs and changed by an `alterations.ts` entry, and the sampled traits stay sampled.
-
 Source: byronbroughten/byro-repo#33
+
+## Amendments
+
+- Superseded by [sheets-framework#219](https://github.com/byronbroughten/sheets-framework/issues/219): removes the config sheets, so no column is kept on them. The declarations they held, API access and `emptyValueAllowed`, are carried forward in the generated configs and changed by an `alterations.ts` entry, and the sampled traits stay sampled.

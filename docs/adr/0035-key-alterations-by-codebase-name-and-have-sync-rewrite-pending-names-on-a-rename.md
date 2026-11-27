@@ -1,5 +1,5 @@
 ---
-status: accepted, amended by sheets-framework#219
+status: accepted, amended
 ---
 
 # Key alterations by codebase name, and have `sync` rewrite pending names when a regen renames
@@ -29,8 +29,8 @@ Claims are deferred to [#286](https://github.com/byronbroughten/sheets-framework
 - **Keys in display text** (`"Rent"`, `"Rent Roll"`): rejected for the codebase names endpoints already use, which need no quotes where dot access applies.
 - **`sync` rewriting names in endpoint and chore code**: rejected. Only a type-aware codemod could tell a column name from any other string, a rename sometimes needs retarget's ask, it would widen what a run writes into hand-written `src/`, and it would hide the claim stop that #286 may add. A codemod as retarget's first step is its own effort.
 
-## Amended
-
-[sheets-framework#219](https://github.com/byronbroughten/sheets-framework/issues/219): pending formula text, a column's or a rule's, holds braces, not `Table[Header]`, so the rewrite reaches every reference in it by codebase name, as it reaches a key. Sheets' `Table[Header]` is left only where no brace can name the column, a Table without API access, and the rewrite keeps it on that Table's live names.
-
 Source: byronbroughten/sheets-framework#218, byronbroughten/sheets-framework#178, byronbroughten/sheets-framework#285
+
+## Amendments
+
+- Amended by [sheets-framework#219](https://github.com/byronbroughten/sheets-framework/issues/219): pending formula text, a column's or a rule's, holds braces, not `Table[Header]`, so the rewrite reaches every reference in it by codebase name, as it reaches a key. Sheets' `Table[Header]` is left only where no brace can name the column, a Table without API access, and the rewrite keeps it on that Table's live names.
