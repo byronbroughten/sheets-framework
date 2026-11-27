@@ -1,6 +1,6 @@
 import {
   HttpSpreadsheet,
-  type HttpSpreadsheetCall,
+  type HttpSpreadsheetProps,
   type SheetValue,
   type TabGrid,
 } from "../00_Source/GoogleSheets/GoogleSheetsAPI/HttpSpreadsheet.ts";
@@ -23,7 +23,7 @@ import {
 
 type GoogleRequest = GoogleAppsScript.Sheets.Schema.Request;
 
-export interface SendSnapshotRestorerProps extends HttpSpreadsheetCall {
+export interface SendSnapshotRestorerProps extends HttpSpreadsheetProps {
   snapshot: SendSnapshot;
   isForced: boolean;
 }

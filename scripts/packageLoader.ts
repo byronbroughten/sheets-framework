@@ -1,4 +1,3 @@
-// Loads a package's config files and modules for the Node host.
 import { existsSync } from "node:fs";
 import { basename, join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -18,14 +17,11 @@ const requiredConfigFiles = [
   "valueConfigs",
 ] as const;
 
-export const configFiles = [
-  ...requiredConfigFiles,
-  "tabConfigs",
-  "conditionalFormatConfigs",
-  "retiredIdPrefixes",
-] as const;
-
-export type ConfigFile = (typeof configFiles)[number];
+export type ConfigFile =
+  | (typeof requiredConfigFiles)[number]
+  | "tabConfigs"
+  | "conditionalFormatConfigs"
+  | "retiredIdPrefixes";
 
 // The generated files in the package's generatedDir, as the package's entry passes them to the framework.
 export async function loadPackageConfigs({

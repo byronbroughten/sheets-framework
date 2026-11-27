@@ -16,7 +16,7 @@ interface ColumnValueRanges {
   valueRanges?: { values?: SheetValue[][] }[];
 }
 
-export interface HttpSpreadsheetCall {
+export interface HttpSpreadsheetProps {
   spreadsheetId: string;
   transport: SheetsHttpTransport;
 }
@@ -47,16 +47,15 @@ interface TabGridsReply {
   sheets?: GoogleAppsScript.Sheets.Schema.Sheet[];
 }
 
-// The calls made on one spreadsheet directly, outside the Advanced Service's shape.
 export class HttpSpreadsheet {
   private spreadsheetId: string;
   private transport: SheetsHttpTransport;
-  constructor({ spreadsheetId, transport }: HttpSpreadsheetCall) {
+  constructor({ spreadsheetId, transport }: HttpSpreadsheetProps) {
     this.spreadsheetId = spreadsheetId;
     this.transport = transport;
   }
-  static init(call: HttpSpreadsheetCall): HttpSpreadsheet {
-    return new HttpSpreadsheet(call);
+  static init(props: HttpSpreadsheetProps): HttpSpreadsheet {
+    return new HttpSpreadsheet(props);
   }
   // One values:batchGet, each range's column from its first row; Google trims a column's trailing blanks.
   columnValues(a1Ranges: string[]): SheetValue[][] {
