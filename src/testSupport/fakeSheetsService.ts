@@ -242,6 +242,7 @@ export function stubSheetsService(
       }
       return fakeTables.googleTablesOverlapping(s, fetch.filterRanges);
     }
+    // The fake returns every sheet's cell data whatever the range and gates tab properties by field-mask substring; narrower reads are modelled only when a test depends on one.
     // Like Google: getByDataFilter drops rules, and an empty list is omitted.
     const includeConditionalFormats =
       !isFilteredFetch &&
