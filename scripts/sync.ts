@@ -199,11 +199,11 @@ export class SyncRunner {
   }
   // A package with no generated files yet borrows the framework's.
   private async _loadConfigs(): Promise<Configs> {
-    const packageConfigs = PackageConfigLoader.fromSheetsConfig(
+    const configLoader = PackageConfigLoader.fromSheetsConfig(
       this.sheetsConfig,
     );
-    if (packageConfigs.hasConfigs()) {
-      return packageConfigs.loadConfigs();
+    if (configLoader.hasConfigs()) {
+      return configLoader.loadConfigs();
     }
     return loadFrameworkConfigs();
   }

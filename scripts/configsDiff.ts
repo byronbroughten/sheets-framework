@@ -60,13 +60,13 @@ export function runConfigsDiff(sheetsConfig: SheetsConfig): void {
 
 export function readConfigsDiff(sheetsConfig: SheetsConfig): string[] {
   const { dir } = sheetsConfig;
-  const configs = PackageConfigLoader.fromSheetsConfig(sheetsConfig);
+  const configLoader = PackageConfigLoader.fromSheetsConfig(sheetsConfig);
   return summarizeConfigsDiff({
     before: configFiles.readSnapshot((file) =>
-      configFiles.readHeadFile(dir, configs.filePath(file)),
+      configFiles.readHeadFile(dir, configLoader.filePath(file)),
     ),
     after: configFiles.readSnapshot((file) =>
-      configFiles.readFileIfPresent(configs.filePath(file)),
+      configFiles.readFileIfPresent(configLoader.filePath(file)),
     ),
   });
 }

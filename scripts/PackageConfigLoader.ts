@@ -23,13 +23,13 @@ export type ConfigFile =
   | "retiredIdPrefixes";
 
 export class PackageConfigLoader {
-  readonly generatedDir: string;
-  constructor(generatedDir: string) {
-    this.generatedDir = generatedDir;
-  }
-
   static fromSheetsConfig({ generatedDir }: SheetsConfig): PackageConfigLoader {
     return new PackageConfigLoader(generatedDir);
+  }
+
+  private readonly generatedDir: string;
+  constructor(generatedDir: string) {
+    this.generatedDir = generatedDir;
   }
 
   filePath(base: ConfigFile): string {
@@ -43,20 +43,20 @@ export class PackageConfigLoader {
   // The generated files in the package's generatedDir, as the package's entry passes them to the framework.
   async loadConfigs(): Promise<Configs> {
     const configs: ConfigSetBase = {
-      tableConfigs: await this.importConfig("tableConfigs"),
-      tabConfigs: await this.importConfigIfPresent("tabConfigs"),
-      conditionalFormatConfigs: await this.importConfigIfPresent(
+      tableConfigs: await this._importConfig("tableConfigs"),
+      tabConfigs: await this._importConfigIfPresent("tabConfigs"),
+      conditionalFormatConfigs: await this._importConfigIfPresent(
         "conditionalFormatConfigs",
       ),
-      retiredIdPrefixes: await this.importConfigIfPresent("retiredIdPrefixes"),
-      columnConfigs: await this.importConfig("columnConfigs"),
-      valueConfigs: await this.importConfig("valueConfigs"),
+      retiredIdPrefixes: await this._importConfigIfPresent("retiredIdPrefixes"),
+      columnConfigs: await this._importConfig("columnConfigs"),
+      valueConfigs: await this._importConfig("valueConfigs"),
     };
     // The registered set may or may not carry the optional files, and these are the generated files it registers.
     return configs as Configs;
   }
 
-  async importConfig<CF extends ConfigFile>(
+  private async _importConfig<CF extends ConfigFile>(
     base: CF,
   ): Promise<ConfigSetBase[CF]> {
     const url = pathToFileURL(this.filePath(base));
@@ -64,7 +64,7 @@ export class PackageConfigLoader {
   }
 
   // A file the package's last regen predates is absent, so its config reads as unset.
-  async importConfigIfPresent<CF extends ConfigFile>(
+  private async _importConfigIfPresent<CF extends ConfigFile>(
     base: CF,
   ): Promise<ConfigSetBase[CF] | undefined> {
     return importExportIfPresent<ConfigSetBase[CF]>(this.filePath(base), base);

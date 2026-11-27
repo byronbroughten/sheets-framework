@@ -45,14 +45,16 @@ declare module "@byronbroughten/sheets-framework" {
   >;
   constructor(dir: string) {
     this.dir = dir;
-    const configs = new PackageConfigLoader(dir);
+    const configLoader = new PackageConfigLoader(dir);
     this.path = {
-      tableConfigs: configs.filePath("tableConfigs"),
-      tabConfigs: configs.filePath("tabConfigs"),
-      conditionalFormatConfigs: configs.filePath("conditionalFormatConfigs"),
-      retiredIdPrefixes: configs.filePath("retiredIdPrefixes"),
-      columnConfigs: configs.filePath("columnConfigs"),
-      valueConfigs: configs.filePath("valueConfigs"),
+      tableConfigs: configLoader.filePath("tableConfigs"),
+      tabConfigs: configLoader.filePath("tabConfigs"),
+      conditionalFormatConfigs: configLoader.filePath(
+        "conditionalFormatConfigs",
+      ),
+      retiredIdPrefixes: configLoader.filePath("retiredIdPrefixes"),
+      columnConfigs: configLoader.filePath("columnConfigs"),
+      valueConfigs: configLoader.filePath("valueConfigs"),
       appConfigs: join(dir, "appConfigs.ts"),
       idNameMap: join(dir, "idNameMap.ts"),
       // A fixed path from the generated directory, so finding it needs no setting of its own.
