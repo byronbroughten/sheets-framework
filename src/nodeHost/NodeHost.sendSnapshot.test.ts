@@ -13,9 +13,11 @@ import { fakeSheetsHttpTransport } from "../testSupport/fakeSheetsHttpTransport.
 import { stubSheetsService } from "../testSupport/fakeSheetsService.ts";
 import {
   type FakeBodyRow,
+  type FakeTableColumn,
   fakeTableSheet,
 } from "../testSupport/fakeSheetsService/fakeTableSheet.ts";
-import type { HeldList } from "./EnteredDataGate.ts";
+import type { ConfirmedList, HeldList } from "./EnteredDataGate.ts";
+import { GateReport } from "./GateReport.ts";
 import { heldGroups } from "./heldGroups.ts";
 import { NodeHost } from "./NodeHost.ts";
 
@@ -36,6 +38,8 @@ const widgetBodyRows: FakeBodyRow<WidgetColumn>[] = [
   { id: "row-1", name: "Sprocket", amount: 1200 },
   { id: "row-2", name: "Gizmo", amount: 50, note: "late" },
 ];
+const versionHistoryLine =
+  "undone only by the spreadsheet's version history: the send snapshot can't hold it";
 // A tab with no Table the run reads.
 const scratch = { gid: 6, title: "Scratch" };
 
@@ -43,14 +47,20 @@ function widgetCol(column: WidgetColumn): number {
   return widgetColumnNames.indexOf(column);
 }
 
-function seedFake() {
+function seedFake(blankColumnIds: WidgetColumn[]) {
+  const columnConfigs: Record<WidgetColumn, FakeTableColumn> = {
+    ...widgetColumns,
+  };
+  for (const column of blankColumnIds) {
+    columnConfigs[column] = { ...widgetColumns[column], columnId: "" };
+  }
   return stubSheetsService({
     sheets: [
       fakeTableSheet.build({
         sheetId: widget.gid,
         title: widget.title,
         name: widget.title,
-        columnConfigs: widgetColumns,
+        columnConfigs,
         columnNames: widgetColumnNames,
         bodyRows: widgetBodyRows,
       }),
@@ -64,41 +74,47 @@ interface SnapshotCase {
   forcedTraits?: ForcedTrait[];
   // No read before the flushes, so every cell they write is unread.
   isWidgetUnread?: boolean;
+  // The read starts at the header row, so it never sees the column IDs.
+  isColumnIdRowUnread?: boolean;
+  // Columns whose column-ID cell is blank on the sheet.
+  blankColumnIds?: WidgetColumn[];
 }
 
 interface HostSeed {
   isDryRun: boolean;
-  confirmedList: HeldList | undefined;
-  forcedTraits: ForcedTrait[] | undefined;
+  confirmedList: ConfirmedList | undefined;
+  snapshotCase: SnapshotCase;
 }
 
 function seedHost({
   isDryRun,
   confirmedList,
-  forcedTraits,
+  snapshotCase,
 }: HostSeed): NodeHost {
   return NodeHost.init({
     configs: installedConfigs(),
     spreadsheetId,
-    transport: fakeSheetsHttpTransport(seedFake()),
+    transport: fakeSheetsHttpTransport(
+      seedFake(snapshotCase.blankColumnIds ?? []),
+    ),
     isDryRun,
     log: vi.fn(),
     enteredDataGate: {
       target: gateTarget,
       confirmedList,
       dropdownStyleReset: undefined,
-      forcedTraits,
+      forcedTraits: snapshotCase.forcedTraits,
       hash: (input) => `hash(${input})`,
     },
   });
 }
 
-function readWidget(api: GoogleSheetsAPI): void {
+function readWidget(api: GoogleSheetsAPI, isColumnIdRowUnread = false): void {
   api.fetchGrid(
     [
       {
         sheetId: widget.gid,
-        startRowIndex: SheetIndex.row(0),
+        startRowIndex: SheetIndex.row(isColumnIdRowUnread ? 3 : 0),
         endRowIndex: SheetIndex.row(widget.endRow),
         startColumnIndex: SheetIndex.col(0),
         endColumnIndex: SheetIndex.col(widgetColumnNames.length),
@@ -110,10 +126,10 @@ function readWidget(api: GoogleSheetsAPI): void {
 
 function runFlushes(
   host: NodeHost,
-  { flushes, isWidgetUnread }: SnapshotCase,
+  { flushes, isWidgetUnread, isColumnIdRowUnread }: SnapshotCase,
 ): void {
   const api = host.googleSheetsAPI;
-  if (!isWidgetUnread) readWidget(api);
+  if (!isWidgetUnread) readWidget(api, isColumnIdRowUnread);
   for (const requests of flushes) {
     api.flush(
       requests.map((request) => ({
@@ -128,19 +144,36 @@ function dryRun(snapshotCase: SnapshotCase) {
   const host = seedHost({
     isDryRun: true,
     confirmedList: undefined,
-    forcedTraits: snapshotCase.forcedTraits,
+    snapshotCase,
   });
   runFlushes(host, snapshotCase);
   return host;
 }
 
-// A dry run for the token, then the send it covers.
+function dryRunHeldList(snapshotCase: SnapshotCase): HeldList {
+  return Val.assert(dryRun(snapshotCase).heldList, "heldList");
+}
+
+// The held block as the dry run prints it.
+function dryRunHeldText(snapshotCase: SnapshotCase): string {
+  const heldList = dryRunHeldList(snapshotCase);
+  return GateReport.heldSection({
+    block: {
+      groups: heldGroups(heldList),
+      token: heldList.token,
+      fullListPath: ".probe/sync-held.json",
+    },
+    forcedTraits: [],
+  }).join("\n");
+}
+
+// A dry run for the token, then the send it covers, given the held list as the held file keeps it.
 function confirmedSend(snapshotCase: SnapshotCase) {
-  const heldList = Val.assert(dryRun(snapshotCase).heldList, "heldList");
+  const { token, flushes } = dryRunHeldList(snapshotCase);
   const host = seedHost({
     isDryRun: false,
-    confirmedList: heldList,
-    forcedTraits: snapshotCase.forcedTraits,
+    confirmedList: { token, flushes },
+    snapshotCase,
   });
   runFlushes(host, snapshotCase);
   return { snapshot: host.sendSnapshot() };
@@ -179,6 +212,16 @@ const deleteNoteColumn: GoogleRequest = {
       sheetId: widget.gid,
       startColumnIndex: widgetCol("note"),
       endColumnIndex: widgetCol("note") + 1,
+    },
+    shiftDimension: "COLUMNS",
+  },
+};
+const deleteNameColumn: GoogleRequest = {
+  deleteRange: {
+    range: {
+      sheetId: widget.gid,
+      startColumnIndex: widgetCol("name"),
+      endColumnIndex: widgetCol("name") + 1,
     },
     shiftDimension: "COLUMNS",
   },
@@ -279,16 +322,6 @@ describe("NodeHost.sendSnapshot", () => {
   });
 
   it("names a later flush's held cell as undone only by version history once an earlier flush shifted columns", () => {
-    const deleteNameColumn: GoogleRequest = {
-      deleteRange: {
-        range: {
-          sheetId: widget.gid,
-          startColumnIndex: widgetCol("name"),
-          endColumnIndex: widgetCol("name") + 1,
-        },
-        shiftDimension: "COLUMNS",
-      },
-    };
     // Gizmo's note, one column left of where the read saw it.
     const overwriteShiftedNote = writeCell(widget.gid, 5, widgetCol("amount"), {
       stringValue: "early",
@@ -321,11 +354,9 @@ describe("NodeHost.sendSnapshot", () => {
   });
 
   it("names the same items in the dry run's held groups as undone only by version history", () => {
-    const heldList = dryRun({
-      flushes: [[overwriteSprocket], [replaceSprocket]],
-    }).heldList;
-
-    const groups = heldGroups(Val.assert(heldList, "heldList").flushes);
+    const groups = heldGroups(
+      dryRunHeldList({ flushes: [[overwriteSprocket], [replaceSprocket]] }),
+    );
 
     expect(groups).toEqual([
       expect.objectContaining({
@@ -337,6 +368,119 @@ describe("NodeHost.sendSnapshot", () => {
       }),
     ]);
     expect(groups[0]).not.toHaveProperty("isUndoneOnlyByVersionHistory");
+  });
+
+  it("names in the dry run a held column whose column ID is blank and a held cell whose column can't be resolved, as the snapshot leaves them to version history", () => {
+    // Gizmo's note, one column left of where the read saw it.
+    const overwriteShiftedNote = writeCell(widget.gid, 5, widgetCol("amount"), {
+      stringValue: "early",
+    });
+    const snapshotCase = {
+      flushes: [[overwriteSprocket, deleteNameColumn], [overwriteShiftedNote]],
+      blankColumnIds: ["amount"],
+    } satisfies SnapshotCase;
+
+    const text = dryRunHeldText(snapshotCase);
+
+    expect(text).toContain(
+      [
+        "Widget › Amount  the send overwrites or deletes entered data in 1 cell:",
+        `  ${versionHistoryLine}`,
+      ].join("\n"),
+    );
+    expect(text).toContain(
+      [
+        "Widget › Note  the send overwrites or deletes entered data in 1 cell:",
+        `  ${versionHistoryLine}`,
+      ].join("\n"),
+    );
+    expect(text).toContain(
+      [
+        "Widget › Name  the send overwrites or deletes entered data in 2 cells:",
+        "  row-1  ",
+      ].join("\n"),
+    );
+    const { snapshot } = confirmedSend(snapshotCase);
+    expect(snapshot?.columns.map(({ header }) => header)).toEqual(["Name"]);
+    expect(
+      snapshot?.versionHistoryItems.map((item) =>
+        "cell" in item ? item.cell.column : item.kind,
+      ),
+    ).toEqual(["Amount", "Note"]);
+  });
+
+  it("keeps a column whose column-ID cell the run never read, and the send leaves it to version history when that cell is blank", () => {
+    const snapshotCase = {
+      flushes: [[overwriteSprocket]],
+      blankColumnIds: ["amount"],
+      isColumnIdRowUnread: true,
+    } satisfies SnapshotCase;
+
+    const text = dryRunHeldText(snapshotCase);
+
+    expect(text).toContain(
+      "Widget › Amount  the send overwrites or deletes entered data in 1 cell:",
+    );
+    expect(text).not.toContain(versionHistoryLine);
+    const { snapshot } = confirmedSend(snapshotCase);
+    expect(snapshot?.columns).toEqual([]);
+    expect(snapshot?.versionHistoryItems).toEqual([
+      expect.objectContaining({
+        kind: "enteredData",
+        cell: expect.objectContaining({ column: "Amount" }),
+      }),
+    ]);
+  });
+
+  it("prints a column as two groups when the snapshot holds one flush's cells and leaves another's to version history", () => {
+    // Gizmo's amount, one column left once the Name column is deleted.
+    const overwriteShiftedGizmo = writeCell(widget.gid, 5, widgetCol("name"), {
+      numberValue: 7,
+    });
+    const snapshotCase = {
+      flushes: [[overwriteSprocket, deleteNameColumn], [overwriteShiftedGizmo]],
+    } satisfies SnapshotCase;
+
+    const amountHeadings = dryRunHeldText(snapshotCase)
+      .split("\n")
+      .flatMap((line, index, lines) =>
+        line.startsWith("Widget › Amount") ? [[line, lines[index + 1]]] : [],
+      );
+
+    expect(amountHeadings).toEqual([
+      [
+        "Widget › Amount  the send overwrites or deletes entered data in 1 cell:",
+        '  row-1  "1200"  → "900"',
+      ],
+      [
+        "Widget › Amount  the send overwrites or deletes entered data in 1 cell:",
+        `  ${versionHistoryLine}`,
+      ],
+    ]);
+    const { snapshot } = confirmedSend(snapshotCase);
+    expect(snapshot?.columns.map(({ header }) => header)).toEqual([
+      "Amount",
+      "Name",
+    ]);
+    expect(snapshot?.versionHistoryItems).toEqual([
+      expect.objectContaining({
+        cell: expect.objectContaining({ column: "Amount" }),
+      }),
+    ]);
+  });
+
+  it("gives the same token whether or not the snapshot leaves the held cells to version history", () => {
+    const held = dryRunHeldList({ flushes: [[overwriteSprocket]] });
+    const blankIdHeld = dryRunHeldList({
+      flushes: [[overwriteSprocket]],
+      blankColumnIds: ["amount"],
+    });
+
+    expect(blankIdHeld.flushes).toEqual(held.flushes);
+    expect(blankIdHeld.versionHistoryItems).not.toEqual(
+      held.versionHistoryItems,
+    );
+    expect(blankIdHeld.token).toBe(held.token);
   });
 
   it("snapshots a forced send's traits though the send holds no cell", () => {

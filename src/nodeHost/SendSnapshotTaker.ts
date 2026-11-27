@@ -150,6 +150,7 @@ export class SendSnapshotTaker {
     values: SheetValue[],
   ): void {
     const columnId = values[column.columnIdRowIndex];
+    // RunReads.heldColumn drops a column whose ID read blank, so this guards an ID cleared after the dry run, or one the run never read.
     if (typeof columnId !== "string" || columnId === "") {
       this.versionHistoryItems.push(...items);
       return;

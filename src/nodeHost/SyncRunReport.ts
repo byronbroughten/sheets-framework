@@ -117,13 +117,13 @@ export class SyncRunReport {
     const { checks, command } = this.result;
     const dryRun = "This was a dry run: nothing was sent.";
     const planTitle = planTitles.dryRun;
-    if (held !== undefined) {
+    if (held?.block !== undefined) {
       const count = GateReport.heldCount(held);
       const items = count === 1 ? "item" : "items";
       return {
         resultLine: `READY, ${formatCount(count)} HELD: --send sends only with --confirm (see ${heldSectionName})${this._checkClause}. ${dryRun}`,
         planTitle,
-        next: `--send refuses this plan without --confirm ${held.token}, because of the held ${items}.`,
+        next: `--send refuses this plan without --confirm ${held.block.token}, because of the held ${items}.`,
       };
     }
     const resultLine = `READY: nothing held${this._checkClause}. ${dryRun}`;

@@ -213,7 +213,12 @@ export class SyncRunner {
     heldList: HeldList,
   ): Promise<SyncRunResult> {
     if (result.mode !== "dry run") return result;
-    const held = await this.heldFile.dryRunHeld(heldList, result.target);
+    // The argv's traits, the list the gate's send snapshot names.
+    const held = await this.heldFile.dryRunHeld({
+      heldList,
+      target: result.target,
+      forcedTraits: this.forcedTraits,
+    });
     if (held === undefined) return result;
     return { ...result, held };
   }

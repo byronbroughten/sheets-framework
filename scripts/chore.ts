@@ -195,7 +195,11 @@ export class ChoreRunner {
   // Only a dry run prints the held list and its token, and writes every held item with its value to the held file.
   async _dryRunHeld({ heldList }: NodeHost): Promise<DryRunHeld | undefined> {
     if (this.isSending || heldList === undefined) return undefined;
-    return this.heldFile.dryRunHeld(heldList, this.target);
+    return this.heldFile.dryRunHeld({
+      heldList,
+      target: this.target,
+      forcedTraits: [],
+    });
   }
   _report({ summary }: NodeHost, held: DryRunHeld | undefined): void {
     if (summary.isEmpty) {

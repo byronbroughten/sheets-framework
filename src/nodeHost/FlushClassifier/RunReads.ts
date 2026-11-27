@@ -94,7 +94,7 @@ export class RunReads {
       row: this._heldRow(table, cell),
     };
   }
-  // Undefined for a cell no read of its Table covered, whose column is only a letter.
+  // Undefined for a cell no read of its Table covered, whose column is only a letter, or whose column-ID cell reads blank; an unread column-ID cell keeps the column, for the send's batchGet to check.
   heldColumn({
     sheetGid,
     table: label,
@@ -110,16 +110,25 @@ export class RunReads {
     const colIndex = this._colIndexNamed(table, column);
     if (colIndex === undefined) return undefined;
     const headerRowIndex = table.range?.startRowIndex ?? 0;
+    const columnIdRowIndex =
+      headerRowIndex - tableLayout.headRowOffsets.columnId;
+    if (this._isReadBlank({ sheetGid, rowIndex: columnIdRowIndex, colIndex })) {
+      return undefined;
+    }
     return {
       sheetGid,
       tabTitle: title,
       table: label,
       header: column,
       colIndex,
-      columnIdRowIndex: headerRowIndex - tableLayout.headRowOffsets.columnId,
+      columnIdRowIndex,
       idColIndex: this._colIndexNamed(table, tableLayout.idHeader),
       tabColumnCount: gridSize.columnCount,
     };
+  }
+  private _isReadBlank(cell: GridCell): boolean {
+    const read = this.valueAt(cell);
+    return read.kind === "read" && !ExtVal.text(read.value);
   }
   private _heldRow(table: GoogleTable, cell: GridCell): HeldRow {
     const rowId = this._textInColumn(table, cell, tableLayout.idHeader);
