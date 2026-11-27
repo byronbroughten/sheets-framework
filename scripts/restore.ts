@@ -98,7 +98,13 @@ function restoreLines(restore: SnapshotRestore): string[] {
       "Re-run with `-- --force` to restore anyway.",
     ];
   }
-  const { changedTabs, restoredColumns, goneColumns, homelessRows } = restore;
+  const {
+    changedTabs,
+    restoredColumns,
+    recreatedColumns,
+    goneColumns,
+    homelessRows,
+  } = restore;
   return [
     ...section(
       "restored anyway, though rows moved since the send, on:",
@@ -109,6 +115,10 @@ function restoreLines(restore: SnapshotRestore): string[] {
       restoredColumns.map(
         (column) => `  ${columnLabel(column)} (${column.rowCount} row(s))`,
       ),
+    ),
+    ...section(
+      "recreated, its column type, data validation and number format left to the spreadsheet's version history:",
+      recreatedColumns.map((column) => `  ${columnLabel(column)}`),
     ),
     ...section(
       "not restored, its tab or Table is gone:",

@@ -150,6 +150,28 @@ describe("restore of a deleting send's snapshot", () => {
   });
 });
 
+describe("restore of a deleting send, naming what a recreated column lacks", () => {
+  it("lists each recreated column under a heading leaving its type, validation and format to version history", async () => {
+    const { restore } = await deletingSend(withRowIds, [
+      "stringValue",
+      "checkbox",
+    ]);
+
+    const { output } = await restore();
+
+    const lines = output.split("\n");
+    const heading = lines.indexOf(
+      "recreated, its column type, data validation and number format left to the spreadsheet's version history:",
+    );
+    expect(heading).toBeGreaterThan(-1);
+    // Leftmost first: the recreator works in saved column order.
+    expect(lines.slice(heading + 1, heading + 3)).toEqual([
+      "  Value Types › String value",
+      "  Value Types › Checkbox",
+    ]);
+  });
+});
+
 describe("restore of a deleting send when rows moved since", () => {
   it("recreates nothing without --force", async () => {
     const { fake, restore } = await deletingSend(withRowIds, ["stringValue"]);

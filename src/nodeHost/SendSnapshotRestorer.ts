@@ -25,6 +25,8 @@ export type SnapshotRestore =
       // Restored over anyway, by --force.
       changedTabs: string[];
       restoredColumns: RestoredColumn[];
+      // Columns the send deleted and the restore recreated, with no column type, validation or format of their own.
+      recreatedColumns: SnapshotColumn[];
       goneColumns: SnapshotColumn[];
       homelessRows: HomelessRow[];
     };
@@ -58,7 +60,7 @@ export class SendSnapshotRestorer {
     const movedGids = new Set(
       movedFingerprints.map(({ sheetGid }) => sheetGid),
     );
-    const { tabs, requests } = tabsNow.recreated();
+    const { tabs, requests, columns: recreatedColumns } = tabsNow.recreated();
     const restoredColumns: RestoredColumn[] = [];
     const goneColumns: SnapshotColumn[] = [];
     const homelessRows: HomelessRow[] = [];
@@ -82,6 +84,7 @@ export class SendSnapshotRestorer {
       kind: "restored",
       changedTabs,
       restoredColumns,
+      recreatedColumns,
       goneColumns,
       homelessRows,
     };

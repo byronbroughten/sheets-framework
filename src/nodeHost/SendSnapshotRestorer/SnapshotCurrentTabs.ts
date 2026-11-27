@@ -34,6 +34,7 @@ export interface SnapshotCurrentTabsReadProps {
 interface TabsRecreation {
   tabs: SnapshotCurrentTabs;
   requests: GoogleRequest[];
+  columns: SnapshotColumn[];
 }
 
 // The snapshot's tabs as they stand now, by sheet ID. Recreating deleted columns returns a new one, so a moved-check made on the tabs as read can't see the recreated ones.
@@ -91,6 +92,7 @@ export class SnapshotCurrentTabs {
   recreated(): TabsRecreation {
     const recreated = new Map(this.tabs);
     const requests: GoogleRequest[] = [];
+    const columns: SnapshotColumn[] = [];
     for (const [sheetGid, tab] of this.tabs) {
       const deleted = this.snapshot.columns.filter(
         (column) =>
@@ -105,6 +107,7 @@ export class SnapshotCurrentTabs {
       }).recreate();
       recreated.set(sheetGid, recreation.tab);
       requests.push(...recreation.requests);
+      columns.push(...recreation.columns);
     }
     return {
       tabs: SnapshotCurrentTabs.init({
@@ -112,6 +115,7 @@ export class SnapshotCurrentTabs {
         tabs: recreated,
       }),
       requests,
+      columns,
     };
   }
   // Undefined where the column's tab or Table, found by its recorded ID, is gone, so it couldn't be recreated.

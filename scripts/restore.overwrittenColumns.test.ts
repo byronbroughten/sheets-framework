@@ -187,6 +187,16 @@ describe("restore of an overwriting send's snapshot", () => {
     expect(columnValues(fake, withoutRowIds, "checkbox")).toEqual([true, true]);
   });
 
+  it("lists no recreated column when no column was deleted", async () => {
+    const { restore } = await overwritingSend(withRowIds);
+
+    const { output } = await restore();
+
+    expect(output).not.toContain(
+      "recreated, its column type, data validation and number format left to the spreadsheet's version history:",
+    );
+  });
+
   it("puts a saved row with a blank row ID back by position when no row moved", async () => {
     const { fake, restore } = await overwritingSend(withRowIds, [
       { id: "r:vty:apple", stringValue: "Apple", checkbox: true },
