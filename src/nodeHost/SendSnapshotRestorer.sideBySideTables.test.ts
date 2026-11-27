@@ -30,8 +30,16 @@ function sideColumn(name: string): SideColumn {
   return { columnId: `c:${name}`, header: name, value: `${name} value` };
 }
 
-const leftColumns = ["L0", "L1", "L2"].map(sideColumn);
-const rightColumns = ["R0", "R1", "R2", "R3"].map(sideColumn);
+// The two columns on the Tables' shared edge.
+const leftLast = sideColumn("L2");
+const rightFirst = sideColumn("R0");
+const leftColumns = [sideColumn("L0"), sideColumn("L1"), leftLast];
+const rightColumns = [
+  rightFirst,
+  sideColumn("R1"),
+  sideColumn("R2"),
+  sideColumn("R3"),
+];
 
 function headRow(columns: SideColumn[], key: keyof SideColumn): FakeCell[] {
   return columns.map((column) => column[key]);
@@ -117,45 +125,48 @@ function tableSpans(fake: FakeSheetsService): [string, number, number][] {
 
 const allColumns = [...leftColumns, ...rightColumns];
 
+// Both Tables at their pre-send spans, every column's head rows back in place.
+function expectBothTablesWhole(fake: FakeSheetsService): void {
+  expect(tableSpans(fake)).toEqual([
+    [leftTableId, 0, leftColumns.length],
+    [rightTableId, leftColumns.length, allColumns.length],
+  ]);
+  const values = fake.grid.sheet(sheetGid).values();
+  expect(values[0]).toEqual(headRow(allColumns, "columnId"));
+  expect(values[headerRowIndex]).toEqual(headRow(allColumns, "header"));
+}
+
 describe("restore of a column deleted on the shared edge of two side-by-side Tables", () => {
   it("recreates the right Table's first column inside the right Table", () => {
-    const deleted = rightColumns[0] ?? sideColumn("R0");
-    const fake = stubSideBySide(deleted);
-
-    restoreOver(fake, savedColumn(deleted, leftColumns.length, rightTableId));
-
-    expect(tableSpans(fake)).toEqual([
-      [leftTableId, 0, leftColumns.length],
-      [rightTableId, leftColumns.length, allColumns.length],
-    ]);
-    const values = fake.grid.sheet(sheetGid).values();
-    expect(values[0]).toEqual(headRow(allColumns, "columnId"));
-    expect(values[headerRowIndex]).toEqual(headRow(allColumns, "header"));
-  });
-
-  it("recreates the left Table's last column inside the left Table", () => {
-    const deleted = leftColumns.at(-1) ?? sideColumn("L2");
-    const fake = stubSideBySide(deleted);
+    const fake = stubSideBySide(rightFirst);
 
     restoreOver(
       fake,
-      savedColumn(deleted, leftColumns.length - 1, leftTableId),
+      savedColumn(rightFirst, leftColumns.length, rightTableId),
     );
 
-    expect(tableSpans(fake)).toEqual([
-      [leftTableId, 0, leftColumns.length],
-      [rightTableId, leftColumns.length, allColumns.length],
-    ]);
-    const values = fake.grid.sheet(sheetGid).values();
-    expect(values[0]).toEqual(headRow(allColumns, "columnId"));
-    expect(values[headerRowIndex]).toEqual(headRow(allColumns, "header"));
+    expectBothTablesWhole(fake);
+  });
+
+  it("recreates the left Table's last column inside the left Table", () => {
+    const fake = stubSideBySide(leftLast);
+
+    restoreOver(
+      fake,
+      savedColumn(leftLast, leftColumns.length - 1, leftTableId),
+    );
+
+    expectBothTablesWhole(fake);
   });
 
   it("lists a column whose Table's ID is gone as not restored, recreating nothing", () => {
-    const deleted = rightColumns[0] ?? sideColumn("R0");
-    const fake = stubSideBySide(deleted);
+    const fake = stubSideBySide(rightFirst);
     const before = fake.grid.sheet(sheetGid).values();
-    const column = savedColumn(deleted, leftColumns.length, "fake-table-gone");
+    const column = savedColumn(
+      rightFirst,
+      leftColumns.length,
+      "fake-table-gone",
+    );
 
     const restore = restoreOver(fake, column);
 
