@@ -1,12 +1,8 @@
-import type {
-  GoogleBatchUpdateResponse,
-  SheetsHttpTransport,
-} from "../GoogleSheetsAPI.ts";
+import type { GoogleBatchUpdateResponse } from "../GoogleSheetsAPI.ts";
 import {
-  postBatchUpdate,
-  send,
-  spreadsheetUrl,
-} from "./httpSheetsTransport.ts";
+  SpreadsheetWire,
+  type SpreadsheetWireProps,
+} from "./SpreadsheetWire.ts";
 
 // A cell as values:batchGet gives it under FORMULA: a formula's text, else its unformatted value.
 export type SheetValue = string | number | boolean;
@@ -16,10 +12,7 @@ interface ColumnValueRanges {
   valueRanges?: { values?: SheetValue[][] }[];
 }
 
-export interface HttpSpreadsheetProps {
-  spreadsheetId: string;
-  transport: SheetsHttpTransport;
-}
+export type HttpSpreadsheetProps = SpreadsheetWireProps;
 
 export interface TableRange {
   startRowIndex: number;
@@ -48,11 +41,9 @@ interface TabGridsReply {
 }
 
 export class HttpSpreadsheet {
-  private spreadsheetId: string;
-  private transport: SheetsHttpTransport;
-  constructor({ spreadsheetId, transport }: HttpSpreadsheetProps) {
-    this.spreadsheetId = spreadsheetId;
-    this.transport = transport;
+  private wire: SpreadsheetWire;
+  constructor(props: HttpSpreadsheetProps) {
+    this.wire = SpreadsheetWire.init(props);
   }
   static init(props: HttpSpreadsheetProps): HttpSpreadsheet {
     return new HttpSpreadsheet(props);
@@ -69,9 +60,9 @@ export class HttpSpreadsheet {
       "valueRenderOption=FORMULA",
       "dateTimeRenderOption=SERIAL_NUMBER",
     ].join("&");
-    const { valueRanges = [] } = send<ColumnValueRanges>(this.transport, {
+    const { valueRanges = [] } = this.wire.send<ColumnValueRanges>({
       method: "GET",
-      url: `${spreadsheetUrl(this.spreadsheetId, "/values:batchGet")}?${query}`,
+      url: `${this.wire.url({ suffix: "/values:batchGet" })}?${query}`,
       body: null,
     });
     return a1Ranges.map((_, index) => valueRanges[index]?.values ?? []);
@@ -80,9 +71,9 @@ export class HttpSpreadsheet {
   tabGrids(): TabGrid[] {
     const fields =
       "sheets(properties(sheetId,title,gridProperties(rowCount,columnCount)),tables(tableId,range))";
-    const { sheets = [] } = send<TabGridsReply>(this.transport, {
+    const { sheets = [] } = this.wire.send<TabGridsReply>({
       method: "GET",
-      url: spreadsheetUrl(this.spreadsheetId, "", fields),
+      url: this.wire.url({ fields }),
       body: null,
     });
     return sheets.map(({ properties, tables = [] }) => ({
@@ -105,6 +96,6 @@ export class HttpSpreadsheet {
   batchUpdate(
     requests: GoogleAppsScript.Sheets.Schema.Request[],
   ): GoogleBatchUpdateResponse {
-    return postBatchUpdate(this.transport, this.spreadsheetId, { requests });
+    return this.wire.postBatchUpdate({ requests });
   }
 }
