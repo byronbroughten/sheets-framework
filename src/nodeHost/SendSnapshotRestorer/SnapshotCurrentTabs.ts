@@ -5,11 +5,11 @@ import {
 } from "../../00_Source/GoogleSheets/GoogleSheetsAPI/HttpSpreadsheet.ts";
 import { colLetters } from "../colLetters.ts";
 import {
-  fingerprintRows,
   type SendSnapshot,
   type SnapshotColumn,
   type TabFingerprints,
 } from "../SendSnapshotTaker.ts";
+import { fingerprintRows } from "../SendSnapshotTaker/SnapshotTabFingerprints.ts";
 import { SnapshotColumnRecreator } from "./SnapshotColumnRecreator.ts";
 import {
   type CurrentTab,
@@ -31,7 +31,7 @@ export interface SnapshotCurrentTabsReadProps {
 }
 
 // The tabs as the recreated columns leave them, and the requests that recreate them.
-export interface TabsRecreation {
+interface TabsRecreation {
   tabs: SnapshotCurrentTabs;
   requests: GoogleRequest[];
 }

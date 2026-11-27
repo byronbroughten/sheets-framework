@@ -46,25 +46,6 @@ export class SnapshotTabFingerprints {
     }
     return values.slice(0, leadingRanges.length);
   }
-  // Reads the fingerprint columns again, each tab under its title now; a tab with no title now was deleted by the send.
-  after(titlesNow: Map<number, string>, read: ColumnReader): TabFingerprints[] {
-    const tabs = [...this.tabs.values()];
-    const tabsNow = tabs.flatMap((tab) => {
-      const tabTitle = titlesNow.get(tab.sheetGid);
-      return tabTitle === undefined ? [] : [{ ...tab, tabTitle }];
-    });
-    const ranges = tabsNow.flatMap(fingerprintRanges);
-    const values = ranges.length === 0 ? [] : read(ranges);
-    const rowsAfter = new Map(
-      tabsWithRows(tabsNow, values).map(({ tab, rows }) => [
-        tab.sheetGid,
-        rows,
-      ]),
-    );
-    return tabs.map((tab) =>
-      fingerprintsAfter(tab, rowsAfter.get(tab.sheetGid)),
-    );
-  }
   // A tab's fingerprint columns are fixed by the first flush that changes it.
   // 'after' is compared only with a later read at the same indexes (`SnapshotCurrentTabs`'s `hasMoved`), so a fingerprint column the send changes does no harm.
   private _newTabs(columns: PlannedColumn[]): TabFingerprintsBefore[] {
@@ -84,6 +65,25 @@ export class SnapshotTabFingerprints {
       colIndexes: fingerprintColIndexes(column, colIndexes),
       before: [],
     }));
+  }
+  // Reads the fingerprint columns again, each tab under its title now; a tab with no title now was deleted by the send.
+  after(titlesNow: Map<number, string>, read: ColumnReader): TabFingerprints[] {
+    const tabs = [...this.tabs.values()];
+    const tabsNow = tabs.flatMap((tab) => {
+      const tabTitle = titlesNow.get(tab.sheetGid);
+      return tabTitle === undefined ? [] : [{ ...tab, tabTitle }];
+    });
+    const ranges = tabsNow.flatMap(fingerprintRanges);
+    const values = ranges.length === 0 ? [] : read(ranges);
+    const rowsAfter = new Map(
+      tabsWithRows(tabsNow, values).map(({ tab, rows }) => [
+        tab.sheetGid,
+        rows,
+      ]),
+    );
+    return tabs.map((tab) =>
+      fingerprintsAfter(tab, rowsAfter.get(tab.sheetGid)),
+    );
   }
 }
 

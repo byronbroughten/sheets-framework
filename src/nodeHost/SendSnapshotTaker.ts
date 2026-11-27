@@ -13,7 +13,6 @@ import {
   type PlannedColumn,
 } from "./flushSnapshotPlan.ts";
 import {
-  fingerprintRows,
   SnapshotTabFingerprints,
   wholeColumnRange,
 } from "./SendSnapshotTaker/SnapshotTabFingerprints.ts";
@@ -166,5 +165,3 @@ export class SendSnapshotTaker {
     return this.spreadsheet.columnValues(ranges);
   }
 }
-
-export { fingerprintRows };
