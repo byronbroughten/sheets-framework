@@ -97,7 +97,7 @@ export class HeldFile {
         fullListPath: relative(process.cwd(), this.path),
       };
     }
-    return { block, forcedTraits: forcedTraitGroups(forcedTraits) };
+    return { block, forcedGroups: forcedTraitGroups(forcedTraits) };
   }
   _write(contents: HeldFileContents): void {
     mkdirSync(dirname(this.path), { recursive: true });

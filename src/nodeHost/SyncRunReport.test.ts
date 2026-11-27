@@ -159,7 +159,7 @@ describe("SyncRunReport, case B: a held overwrite of typed notes", () => {
     ...appDryRun,
     outcome: { kind: "ready" },
     held: {
-      forcedTraits: [],
+      forcedGroups: [],
       block: {
         groups: [
           {
@@ -227,7 +227,7 @@ describe("SyncRunReport, case C: a dropdown reset under ask, a rule added first,
     alterationsPath: "dev/alterations.ts",
     outcome: { kind: "ready" },
     held: {
-      forcedTraits: [],
+      forcedGroups: [],
       block: {
         groups: [
           {
@@ -347,7 +347,7 @@ describe("SyncRunReport, case D: deleting a Table and a tab", () => {
       },
     ],
     held: {
-      forcedTraits: [],
+      forcedGroups: [],
       block: {
         groups: [
           {

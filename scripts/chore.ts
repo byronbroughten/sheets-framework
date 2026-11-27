@@ -236,7 +236,7 @@ export class ChoreRunner {
 
 async function reportHeld(held: DryRunHeld): Promise<void> {
   const { GateReport } = await import("../src/nodeHost/GateReport.ts");
-  console.log(GateReport.heldSection(held).join("\n"));
+  console.log(GateReport.heldSections(held).join("\n"));
 }
 
 export async function runChore(

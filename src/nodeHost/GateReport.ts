@@ -18,16 +18,22 @@ import { ReportText } from "./ReportText.ts";
 
 const { section, indent, formatCount, counted, subjectLabel } = ReportText;
 
-export const heldSectionName = "Held";
+export const gateSectionTitles = {
+  held: "Held",
+  forced: "Forced: sent over the live value, no --confirm needed",
+} as const;
 
 type FillFailedOutcome = FlushStoppedOutcome & FillFailedCause;
 
 // The entered-data gate's report pieces, which sync's report and a chore's output both print.
 export const GateReport = {
   // A dry run's forced traits, then its held items, their full list's path and the token covering them; a chore's dry run prints it too.
-  heldSection({ block, forcedTraits }: DryRunHeld): string[] {
+  heldSections({ block, forcedGroups }: DryRunHeld): string[] {
     return [
-      ...section(forcedSectionTitle, forcedTraits.flatMap(heldGroupLines)),
+      ...section(
+        gateSectionTitles.forced,
+        forcedGroups.flatMap(heldGroupLines),
+      ),
       ...(block === undefined ? [] : heldBlockLines(block)),
     ];
   },
@@ -68,9 +74,6 @@ export const GateReport = {
   },
 };
 
-const forcedSectionTitle =
-  "Forced: sent over the live value, no --confirm needed";
-
 function heldBlockLines(block: HeldBlock): string[] {
   return section(heldTitle(block), [
     ...block.groups.flatMap(heldGroupLines),
@@ -87,13 +90,13 @@ function heldTitle(block: HeldBlock): string {
   );
   const count = blockCount(block);
   if (cellCounts.length < block.groups.length) {
-    return `${heldSectionName}: ${counted(count, "item", "items")}, ${confirm}`;
+    return `${gateSectionTitles.held}: ${counted(count, "item", "items")}, ${confirm}`;
   }
   let sum = "";
   if (cellCounts.length > 1) {
     sum = `: ${cellCounts.map(formatCount).join(" + ")}`;
   }
-  return `${heldSectionName}: ${counted(count, "cell", "cells")}${sum}, ${confirm}`;
+  return `${gateSectionTitles.held}: ${counted(count, "cell", "cells")}${sum}, ${confirm}`;
 }
 
 function blockCount({ groups }: HeldBlock): number {

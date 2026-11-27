@@ -140,7 +140,7 @@ describe("the sync script's exit code", () => {
   it("is 0 for a ready dry run with held items", async () => {
     const held = {
       block: { groups: [], fullListPath: "held.txt", token: "abc" },
-      forcedTraits: [],
+      forcedGroups: [],
     };
     const result: SyncRunResult = {
       ...dryRunResult,

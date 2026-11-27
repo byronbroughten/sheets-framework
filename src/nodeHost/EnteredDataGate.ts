@@ -21,8 +21,7 @@ import {
 } from "./flushSnapshotPlan.ts";
 import type { HeldFlushes } from "./heldGroups.ts";
 
-// Every flush's held items in flush order, a free flush's empty list included, and the token that binds them to a target.
-// The token hashes only the flushes, so the version-history items beside them never change it.
+// Every flush's held items in flush order, a free flush's empty list included, and the token binding them to a target, which hashes only the flushes.
 export interface HeldList extends HeldFlushes {
   token: string;
 }

@@ -6,7 +6,7 @@ export interface DryRunHeld {
   // Undefined when no flush held an item, so no --confirm is needed.
   block: HeldBlock | undefined;
   // What --force sends over the live value, which needs no --confirm; a chore forces none.
-  forcedTraits: HeldGroup[];
+  forcedGroups: HeldGroup[];
 }
 
 // What the entered-data gate holds until --confirm names the token.

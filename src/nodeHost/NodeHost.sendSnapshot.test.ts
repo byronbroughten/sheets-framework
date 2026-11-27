@@ -157,13 +157,13 @@ function dryRunHeldList(snapshotCase: SnapshotCase): HeldList {
 // The held block as the dry run prints it.
 function dryRunHeldText(snapshotCase: SnapshotCase): string {
   const heldList = dryRunHeldList(snapshotCase);
-  return GateReport.heldSection({
+  return GateReport.heldSections({
     block: {
       groups: heldGroups(heldList),
       token: heldList.token,
       fullListPath: ".probe/sync-held.json",
     },
-    forcedTraits: [],
+    forcedGroups: [],
   }).join("\n");
 }
 
@@ -370,7 +370,7 @@ describe("NodeHost.sendSnapshot", () => {
     expect(groups[0]).not.toHaveProperty("isUndoneOnlyByVersionHistory");
   });
 
-  it("names in the dry run a held column whose column ID is blank and a held cell whose column can't be resolved, as the snapshot leaves them to version history", () => {
+  it("names in the dry run a held column whose column ID is blank and a held cell in a flush after a column shift, as the snapshot leaves them to version history", () => {
     // Gizmo's note, one column left of where the read saw it.
     const overwriteShiftedNote = writeCell(widget.gid, 5, widgetCol("amount"), {
       stringValue: "early",
@@ -407,6 +407,27 @@ describe("NodeHost.sendSnapshot", () => {
         "cell" in item ? item.cell.column : item.kind,
       ),
     ).toEqual(["Amount", "Note"]);
+  });
+
+  it("names in the dry run a held cell whose column can't be resolved, as no read covered its tab, as the snapshot leaves it to version history", () => {
+    const snapshotCase = {
+      flushes: [[overwriteScratch]],
+      isWidgetUnread: true,
+    } satisfies SnapshotCase;
+
+    const text = dryRunHeldText(snapshotCase);
+
+    expect(text).toContain(
+      [
+        `tab gid ${scratch.gid} › A  the send writes 1 cell no read covered, so they may hold entered data:`,
+        `  ${versionHistoryLine}`,
+      ].join("\n"),
+    );
+    const { snapshot } = confirmedSend(snapshotCase);
+    expect(snapshot?.columns).toEqual([]);
+    expect(snapshot?.versionHistoryItems.map(({ kind }) => kind)).toEqual([
+      "unreadCell",
+    ]);
   });
 
   it("keeps a column whose column-ID cell the run never read, and the send leaves it to version history when that cell is blank", () => {

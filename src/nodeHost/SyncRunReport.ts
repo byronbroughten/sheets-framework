@@ -9,7 +9,7 @@ import type {
   SyncSendOutcome,
   SyncSentOutcome,
 } from "../01_SpreadsheetSchema/configReaders/syncRunResult.ts";
-import { GateReport, heldSectionName } from "./GateReport.ts";
+import { GateReport, gateSectionTitles } from "./GateReport.ts";
 import { ReportText } from "./ReportText.ts";
 import { checkLines, checkSectionName } from "./SyncRunReport/checks.ts";
 import { configsLines } from "./SyncRunReport/configs.ts";
@@ -63,7 +63,7 @@ export class SyncRunReport {
       ...section("Refused", refusalLines.blocks(result.refusals)),
       ...section("Stops", stopLines.blocks(result.stops)),
       ...this._sendSections,
-      ...this._heldSection,
+      ...this._heldSections,
       ...section(outcomeText.planTitle, planLines.of(result.plan)),
       ...section(
         "Notices: nothing to do unless your task needs it",
@@ -121,7 +121,7 @@ export class SyncRunReport {
       const count = GateReport.heldCount(held);
       const items = count === 1 ? "item" : "items";
       return {
-        resultLine: `READY, ${formatCount(count)} HELD: --send sends only with --confirm (see ${heldSectionName})${this._checkClause}. ${dryRun}`,
+        resultLine: `READY, ${formatCount(count)} HELD: --send sends only with --confirm (see ${gateSectionTitles.held})${this._checkClause}. ${dryRun}`,
         planTitle,
         next: `--send refuses this plan without --confirm ${held.block.token}, because of the held ${items}.`,
       };
@@ -197,10 +197,10 @@ export class SyncRunReport {
       ),
     ];
   }
-  private get _heldSection(): string[] {
+  private get _heldSections(): string[] {
     const { result } = this;
     if (result.mode === "send" || result.held === undefined) return [];
-    return GateReport.heldSection(result.held);
+    return GateReport.heldSections(result.held);
   }
   // A refusal reads nothing, so there is nothing to refresh the configs from.
   private get _configsLines(): string[] {
