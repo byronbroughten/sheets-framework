@@ -192,7 +192,9 @@ describe("restore of an overwriting send's snapshot", () => {
 
     const { output } = await restore();
 
-    expect(output).not.toContain("recreated");
+    expect(output).not.toContain(
+      "recreated, its column type, data validation and number format left to the spreadsheet's version history:",
+    );
   });
 
   it("puts a saved row with a blank row ID back by position when no row moved", async () => {

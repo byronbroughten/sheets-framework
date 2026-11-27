@@ -164,9 +164,10 @@ describe("restore of a deleting send, naming what a recreated column lacks", () 
       "recreated, its column type, data validation and number format left to the spreadsheet's version history:",
     );
     expect(heading).toBeGreaterThan(-1);
+    // Leftmost first: the recreator works in saved column order.
     expect(lines.slice(heading + 1, heading + 3)).toEqual([
-      expect.stringMatching(/^ {2}Value Types › .+$/),
-      expect.stringMatching(/^ {2}Value Types › .+$/),
+      "  Value Types › String value",
+      "  Value Types › Checkbox",
     ]);
   });
 });
