@@ -97,6 +97,7 @@ export class SendSnapshotRestorer {
       restoredColumns.push({ tabTitle, header, rowCount: restored.rowCount });
     }
     if (requests.length > 0) {
+      // Past the entered-data gate: a restore undoes a send the gate already held.
       httpBatchUpdate({ ...this.call, requests });
     }
     return {
