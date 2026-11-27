@@ -6,6 +6,10 @@ Before each flush, the Node host's adapter classifies every request, and a flush
 
 Each cell is judged from a read the run already makes (`formulaValue` added to Node-host reads; `sync` reads only the columns a delete or formula alteration touches), and a cell no read covered is held. Endpoints, which a person triggers on the Apps Script host and whose deletes are their design, are not classified.
 
+## Amended: a forced property isn't held
+
+A `--force`d property is no longer a held item: the flag is itself the developer's yes for that one trait, so it needs no `--confirm` token, and the send snapshot names it as undone only by version history ([forcing one trait](../how-it-runs/sync.md#forcing-one-trait-with---force)). Every other held item above still waits for `--confirm`.
+
 ## Considered options
 
 - **Replaying the requests on the fake spreadsheet and diffing**: rejected, since it costs a seeded copy of the live sheet per send and fails open wherever the fake's fidelity falls short.
