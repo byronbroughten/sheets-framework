@@ -1,8 +1,8 @@
-import type {
-  GoogleBatchUpdateResponse,
-  SheetsHttpTransport,
-} from "../GoogleSheetsAPI.ts";
-import { SpreadsheetWire } from "./SpreadsheetWire.ts";
+import type { GoogleBatchUpdateResponse } from "../GoogleSheetsAPI.ts";
+import {
+  SpreadsheetWire,
+  type SpreadsheetWireProps,
+} from "./SpreadsheetWire.ts";
 
 // A cell as values:batchGet gives it under FORMULA: a formula's text, else its unformatted value.
 export type SheetValue = string | number | boolean;
@@ -12,10 +12,7 @@ interface ColumnValueRanges {
   valueRanges?: { values?: SheetValue[][] }[];
 }
 
-export interface HttpSpreadsheetProps {
-  spreadsheetId: string;
-  transport: SheetsHttpTransport;
-}
+export type HttpSpreadsheetProps = SpreadsheetWireProps;
 
 export interface TableRange {
   startRowIndex: number;
