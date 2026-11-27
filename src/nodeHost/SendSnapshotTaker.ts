@@ -1,6 +1,6 @@
-import type { SheetsHttpTransport } from "../00_Source/GoogleSheets/GoogleSheetsAPI.ts";
 import {
   HttpSpreadsheet,
+  type HttpSpreadsheetProps,
   type SheetValue,
 } from "../00_Source/GoogleSheets/GoogleSheetsAPI/HttpSpreadsheet.ts";
 import { colLetters } from "./colLetters.ts";
@@ -59,10 +59,7 @@ export interface SendSnapshot {
   versionHistoryItems: HeldItem[];
 }
 
-export interface SendSnapshotTakerProps {
-  spreadsheetId: string;
-  transport: SheetsHttpTransport;
-}
+export type SendSnapshotTakerProps = HttpSpreadsheetProps;
 
 // A tab with the rows one read gave its fingerprint columns.
 interface TabRows {
