@@ -15,14 +15,13 @@ import type { HeldList } from "../src/nodeHost/EnteredDataGate.ts";
 import { readConfigsDiff } from "./configsDiff.ts";
 import { GeneratedDir } from "./GeneratedDir.ts";
 import { HeldFile, parseConfirmToken } from "./HeldFile.ts";
+import { type HostStandIn, startNodeHost } from "./nodeHost.ts";
 import {
   hasPackageConfigs,
-  type HostStandIn,
   loadDropdownStyleReset,
   loadFrameworkConfigs,
   loadPackageConfigs,
-  startNodeHost,
-} from "./nodeHost.ts";
+} from "./packageLoader.ts";
 import type { SheetsConfig } from "./sheetsConfig.ts";
 import {
   printSnapshotNotice,

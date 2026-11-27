@@ -7,13 +7,12 @@ import type { Chore } from "../src/chores/Chore.ts";
 import type { NodeHost } from "../src/nodeHost/NodeHost.ts";
 import { ChoreIndex } from "./choreIndex.ts";
 import { HeldFile, parseConfirmToken } from "./HeldFile.ts";
+import { type HostStandIn, startNodeHost } from "./nodeHost.ts";
 import {
-  type HostStandIn,
   importConstNamedAfterFile,
   loadPackageConfigs,
   loadPackageEndpoints,
-  startNodeHost,
-} from "./nodeHost.ts";
+} from "./packageLoader.ts";
 import type { SheetsConfig } from "./sheetsConfig.ts";
 import {
   printSnapshotNotice,

@@ -1,9 +1,8 @@
 import type { SheetsHttpTransport } from "../00_Source/GoogleSheets/GoogleSheetsAPI.ts";
 import {
-  httpColumnValues,
-  httpTabGrids,
+  HttpSpreadsheet,
   type SheetValue,
-} from "../00_Source/GoogleSheets/GoogleSheetsAPI/httpSheetsTransport.ts";
+} from "../00_Source/GoogleSheets/GoogleSheetsAPI/HttpSpreadsheet.ts";
 import { colLetters } from "./colLetters.ts";
 import type {
   HeldColumn,
@@ -75,16 +74,14 @@ const fingerprintColumnLimit = 3;
 
 // One snapshot per send: each column is read before the first flush that changes it.
 export class SendSnapshotTaker {
-  private spreadsheetId: string;
-  private transport: SheetsHttpTransport;
+  private spreadsheet: HttpSpreadsheet;
   private columns: SnapshotColumn[];
   private capturedColumnKeys: Set<string>;
   private tabs: Map<number, TabFingerprintsBefore>;
   private versionHistoryItems: HeldItem[];
   private hasStarted: boolean;
   constructor(props: SendSnapshotTakerProps) {
-    this.spreadsheetId = props.spreadsheetId;
-    this.transport = props.transport;
+    this.spreadsheet = HttpSpreadsheet.init(props);
     this.columns = [];
     this.capturedColumnKeys = new Set();
     this.tabs = new Map();
@@ -150,10 +147,9 @@ export class SendSnapshotTaker {
   private _tabTitlesNow(tabs: TabFingerprintsBefore[]): Map<number, string> {
     if (tabs.length === 0) return new Map();
     return new Map(
-      httpTabGrids({
-        spreadsheetId: this.spreadsheetId,
-        transport: this.transport,
-      }).map(({ sheetGid, title }) => [sheetGid, title]),
+      this.spreadsheet
+        .tabGrids()
+        .map(({ sheetGid, title }) => [sheetGid, title]),
     );
   }
   // A tab's fingerprint columns are fixed by the first flush that changes it.
@@ -212,11 +208,7 @@ export class SendSnapshotTaker {
   }
   private _columnValues(ranges: string[]): SheetValue[][] {
     if (ranges.length === 0) return [];
-    return httpColumnValues({
-      spreadsheetId: this.spreadsheetId,
-      transport: this.transport,
-      ranges,
-    });
+    return this.spreadsheet.columnValues(ranges);
   }
 }
 

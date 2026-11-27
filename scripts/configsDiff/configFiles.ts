@@ -17,7 +17,7 @@ import type {
   RuleSnapshot,
   TabEntry,
 } from "../configsDiff.ts";
-import type { ConfigFile } from "../nodeHost.ts";
+import type { ConfigFile } from "../packageLoader.ts";
 import { valueKindLabels } from "./snapshotDiff.ts";
 
 type ReadFile = (file: ConfigFile) => string | undefined;

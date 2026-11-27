@@ -4,7 +4,8 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { claspCredential, loadDropdownStyleReset } from "./nodeHost.ts";
+import { claspCredential } from "./nodeHost.ts";
+import { loadDropdownStyleReset } from "./packageLoader.ts";
 import type { SheetsConfig } from "./sheetsConfig.ts";
 
 // A sheets config whose endpoint module is a temp file holding `source`, or none when `source` is undefined.
