@@ -126,6 +126,7 @@ export class SendSnapshotTaker {
     };
   }
   // A tab's fingerprint columns are fixed by the first flush that changes it.
+  // 'after' is compared only with a later read at the same indexes (`SendSnapshotRestorer`'s `hasMoved`), so a fingerprint column the send changes does no harm.
   private _newTabs(columns: PlannedColumn[]): TabFingerprintsBefore[] {
     const changedByTab = columns.reduce((byTab, { column }) => {
       if (this.tabs.has(column.sheetGid)) return byTab;
