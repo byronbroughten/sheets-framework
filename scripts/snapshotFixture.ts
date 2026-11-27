@@ -10,7 +10,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { vi } from "vitest";
+import { expect, vi } from "vitest";
 
 export const clock = new Date("2026-11-25T12:00:00.000Z");
 
@@ -30,6 +30,19 @@ export function snapshotFiles(folder: string): string[] {
 
 export function readJson(path: string): Record<string, unknown> {
   return JSON.parse(readFileSync(path, "utf8"));
+}
+
+export interface SnapshotFile {
+  name: string;
+  file: Record<string, unknown>;
+}
+
+// The folder's one snapshot file, by name and contents.
+export function onlySnapshot(folder: string): SnapshotFile {
+  const [name, ...others] = snapshotFiles(folder);
+  expect(others).toEqual([]);
+  expect(name).toBeDefined();
+  return { name: `${name}`, file: readJson(join(folder, `${name}`)) };
 }
 
 export interface AgedFiles {

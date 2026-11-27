@@ -24,8 +24,7 @@ import {
   confirmedSendOver,
 } from "./choreFixture.ts";
 import { colOf, withRowIds } from "./restoreFixture.ts";
-import type { SheetsConfig } from "./sheetsConfig.ts";
-import { readJson, snapshotFiles } from "./snapshotFixture.ts";
+import { onlySnapshot } from "./snapshotFixture.ts";
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -95,14 +94,8 @@ async function tabChangingSend(
     transport: fakeSheetsHttpTransport(fake),
     chore,
   });
-  return { ...sent, fake, snapshot: onlySnapshot(sheetsConfig) };
-}
-
-function onlySnapshot(sheetsConfig: SheetsConfig): Record<string, unknown> {
   const folder = join(sheetsConfig.dir, ".probe", "snapshots");
-  const [name, ...others] = snapshotFiles(folder);
-  expect(others).toEqual([]);
-  return readJson(join(folder, `${name}`));
+  return { ...sent, fake, snapshot: onlySnapshot(folder).file };
 }
 
 describe("a chore's confirmed send that renames a tab with captured columns", () => {

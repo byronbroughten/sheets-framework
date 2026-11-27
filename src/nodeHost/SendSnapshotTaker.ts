@@ -31,17 +31,26 @@ export interface SnapshotColumn extends Pick<
   values: SheetValue[];
 }
 
-// Each row of an affected tab, read from columns the send doesn't change, before and after the send.
-export interface TabFingerprints extends Pick<
+// Each row of an affected tab, read from columns the send doesn't change, before the send.
+interface TabFingerprintsBefore extends Pick<
   HeldColumn,
   "sheetGid" | "tabTitle"
 > {
   colIndexes: number[];
   before: SheetValue[][];
-  after: SheetValue[][];
-  // Set only on a tab the send deleted, which has no rows after it.
-  isGoneAfterSend?: boolean;
 }
+
+// The same columns read again after the send.
+interface TabFingerprintsAfter extends TabFingerprintsBefore {
+  after: SheetValue[][];
+}
+
+// A tab the send deleted, so it has no rows after it.
+interface TabGoneAfterSend extends TabFingerprintsBefore {
+  isGoneAfterSend: true;
+}
+
+export type TabFingerprints = TabFingerprintsAfter | TabGoneAfterSend;
 
 // What a send changes, as it stood just before the send, and the held items only version history undoes.
 export interface SendSnapshot {
@@ -54,8 +63,6 @@ export interface SendSnapshotTakerProps {
   spreadsheetId: string;
   transport: SheetsHttpTransport;
 }
-
-type TabFingerprintsBefore = Omit<TabFingerprints, "after">;
 
 // A tab with the rows one read gave its fingerprint columns.
 interface TabRows {
@@ -118,13 +125,13 @@ export class SendSnapshotTaker {
     if (!this.hasStarted) return undefined;
     const tabs = [...this.tabs.values()];
     const titlesNow = this._tabTitlesNow(tabs);
-    const remaining = tabs.flatMap((tab) => {
+    const tabsNow = tabs.flatMap((tab) => {
       const tabTitle = titlesNow.get(tab.sheetGid);
       return tabTitle === undefined ? [] : [{ ...tab, tabTitle }];
     });
-    const values = this._columnValues(remaining.flatMap(fingerprintRanges));
+    const values = this._columnValues(tabsNow.flatMap(fingerprintRanges));
     const rowsAfter = new Map(
-      tabsWithRows(remaining, values).map(({ tab, rows }) => [
+      tabsWithRows(tabsNow, values).map(({ tab, rows }) => [
         tab.sheetGid,
         rows,
       ]),
@@ -255,7 +262,7 @@ function fingerprintsAfter(
   tab: TabFingerprintsBefore,
   rows: SheetValue[][] | undefined,
 ): TabFingerprints {
-  if (rows === undefined) return { ...tab, after: [], isGoneAfterSend: true };
+  if (rows === undefined) return { ...tab, isGoneAfterSend: true };
   return { ...tab, after: rows };
 }
 
