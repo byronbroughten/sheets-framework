@@ -39,6 +39,6 @@ Decisions are ADRs in [`docs/adr/`](./adr/); the issue, commit, probe and code-s
 - **A principle gets a reasoning file only for what no single ADR holds**: the argument across several ADRs, or a citable case beyond its one ADR. Otherwise its line links its ADR directly.
 - **A new ADR that makes a principle's argument goes in that principle's reasoning file**, as a link plus one clause on how it makes the argument.
 - **A new principle is proposed to the developer and added only once approved**, as one line here, plus a reasoning file in `docs/design/` when it has one.
-- **A superseded ADR stops counting.** A principle it leaves with no ADR goes to the developer.
+- **A superseded or deprecated ADR stops counting.** A principle it leaves with no ADR goes to the developer.
 - **Each bullet under the deliberate-absence principle names the gap and its reason.**
 - **A real-estate ADR may be cited, as an absolute GitHub URL because these docs are published**, and counts toward a principle only when its argument is framework-general.
