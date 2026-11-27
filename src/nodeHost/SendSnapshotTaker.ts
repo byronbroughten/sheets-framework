@@ -1,6 +1,7 @@
 import type { SheetsHttpTransport } from "../00_Source/GoogleSheets/GoogleSheetsAPI.ts";
 import {
   httpColumnValues,
+  httpTabGrids,
   type SheetValue,
 } from "../00_Source/GoogleSheets/GoogleSheetsAPI/httpSheetsTransport.ts";
 import { colLetters } from "./colLetters.ts";
@@ -38,6 +39,8 @@ export interface TabFingerprints extends Pick<
   colIndexes: number[];
   before: SheetValue[][];
   after: SheetValue[][];
+  // Set only on a tab the send deleted, which has no rows after it.
+  isGoneAfterSend?: boolean;
 }
 
 // What a send changes, as it stood just before the send, and the held items only version history undoes.
@@ -110,20 +113,40 @@ export class SendSnapshotTaker {
     }
     return this;
   }
-  // Reads the fingerprint columns again after the send's last flush; undefined when the send held nothing.
+  // Reads the fingerprint columns again after the send's last flush, each tab under its title then; undefined when the send held nothing.
   finished(): SendSnapshot | undefined {
     if (!this.hasStarted) return undefined;
     const tabs = [...this.tabs.values()];
-    const values = this._columnValues(tabs.flatMap(fingerprintRanges));
-    const fingerprints = tabsWithRows(tabs, values).map(({ tab, rows }) => ({
-      ...tab,
-      after: rows,
-    }));
+    const titlesNow = this._tabTitlesNow(tabs);
+    const remaining = tabs.flatMap((tab) => {
+      const tabTitle = titlesNow.get(tab.sheetGid);
+      return tabTitle === undefined ? [] : [{ ...tab, tabTitle }];
+    });
+    const values = this._columnValues(remaining.flatMap(fingerprintRanges));
+    const rowsAfter = new Map(
+      tabsWithRows(remaining, values).map(({ tab, rows }) => [
+        tab.sheetGid,
+        rows,
+      ]),
+    );
+    const fingerprints = tabs.map((tab) =>
+      fingerprintsAfter(tab, rowsAfter.get(tab.sheetGid)),
+    );
     return {
       columns: this.columns,
       fingerprints,
       versionHistoryItems: this.versionHistoryItems,
     };
+  }
+  // By sheet ID, since the send may have renamed or deleted a tab; a send that changed no tab's columns takes no read.
+  private _tabTitlesNow(tabs: TabFingerprintsBefore[]): Map<number, string> {
+    if (tabs.length === 0) return new Map();
+    return new Map(
+      httpTabGrids({
+        spreadsheetId: this.spreadsheetId,
+        transport: this.transport,
+      }).map(({ sheetGid, title }) => [sheetGid, title]),
+    );
   }
   // A tab's fingerprint columns are fixed by the first flush that changes it.
   // 'after' is compared only with a later read at the same indexes (`SendSnapshotRestorer`'s `hasMoved`), so a fingerprint column the send changes does no harm.
@@ -225,6 +248,15 @@ function tabsWithRows(
     offset = end;
   }
   return withRows;
+}
+
+// Undefined rows mean the send deleted the tab, so it had no read after.
+function fingerprintsAfter(
+  tab: TabFingerprintsBefore,
+  rows: SheetValue[][] | undefined,
+): TabFingerprints {
+  if (rows === undefined) return { ...tab, after: [], isGoneAfterSend: true };
+  return { ...tab, after: rows };
 }
 
 // The columns turned into rows, a column's trimmed tail padded with "": a tab's fingerprint as the snapshot keeps it.
